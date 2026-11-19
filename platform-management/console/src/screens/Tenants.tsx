@@ -10,7 +10,8 @@ import {
   TableCell,
 } from "@multica/ui/components/ui/table";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Search } from "@multica/ui/icons";
+import { Search, X } from "@multica/ui/icons";
+import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
@@ -70,22 +71,34 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-heading text-title-lg font-bold">Tenants</h1>
-          <p className="text-body text-muted-foreground">
-            View and manage workspace tenants.
-          </p>
-        </div>
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+      <PageHeader title="Tenants" />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full max-w-sm">
+          <Search
+            className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             type="search"
+            aria-label="Search tenants"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or slug..."
-            className="pl-9"
+            className="pr-8 pl-9"
           />
+          {search && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Clear search"
+              onClick={() => setSearch("")}
+              className="absolute top-1 right-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -107,12 +120,19 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
               ? "No tenants matched your search query."
               : "There are currently no registered tenants."
           }
+          actions={
+            search ? (
+              <Button variant="outline" size="sm" onClick={() => setSearch("")}>
+                Clear search
+              </Button>
+            ) : undefined
+          }
         />
       )}
 
       {!isLoading && !isError && tenants.length > 0 && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-surface-border bg-surface shadow-xs">
+          <div className="rounded-lg border border-surface-border bg-surface">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -128,7 +148,12 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
               <TableBody>
                 {tenants.map((tenant: Tenant) => (
                   <TableRow key={tenant.id}>
-                    <TableCell className="font-medium">{tenant.name}</TableCell>
+                    <TableCell>
+                      <div className="font-medium text-foreground">{tenant.name}</div>
+                      <div className="font-mono text-caption text-muted-foreground">
+                        {tenant.id}
+                      </div>
+                    </TableCell>
                     <TableCell className="font-mono text-caption text-muted-foreground">
                       {tenant.slug}
                     </TableCell>
@@ -149,7 +174,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                     >
                       {usageSummary(tenant)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground tabular-nums">
                       {tenant.last_activity_at
                         ? new Date(tenant.last_activity_at).toLocaleString()
                         : "-"}

@@ -10,7 +10,8 @@ import {
   TableCell,
 } from "@multica/ui/components/ui/table";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Search } from "@multica/ui/icons";
+import { Search, X } from "@multica/ui/icons";
+import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
@@ -43,22 +44,34 @@ export function Users({ onSelectUser }: UsersProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-heading text-title-lg font-bold">Users</h1>
-          <p className="text-body text-muted-foreground">
-            Search and manage Multica user accounts.
-          </p>
-        </div>
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+      <PageHeader title="Users" />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full max-w-sm">
+          <Search
+            className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             type="search"
+            aria-label="Search users"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by email or name..."
-            className="pl-9"
+            className="pr-8 pl-9"
           />
+          {search && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Clear search"
+              onClick={() => setSearch("")}
+              className="absolute top-1 right-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -80,12 +93,19 @@ export function Users({ onSelectUser }: UsersProps) {
               ? "No users matched your search query."
               : "There are currently no registered users."
           }
+          actions={
+            search ? (
+              <Button variant="outline" size="sm" onClick={() => setSearch("")}>
+                Clear search
+              </Button>
+            ) : undefined
+          }
         />
       )}
 
       {!isLoading && !isError && users.length > 0 && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-surface-border bg-surface shadow-xs">
+          <div className="rounded-lg border border-surface-border bg-surface">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -100,7 +120,12 @@ export function Users({ onSelectUser }: UsersProps) {
               <TableBody>
                 {users.map((user: User) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
+                    <TableCell>
+                      <div className="font-medium text-foreground">{user.email}</div>
+                      <div className="font-mono text-caption text-muted-foreground">
+                        {user.id}
+                      </div>
+                    </TableCell>
                     <TableCell>{user.name || "-"}</TableCell>
                     <TableCell>
                       <StatusBadge status={user.status} />
@@ -108,7 +133,7 @@ export function Users({ onSelectUser }: UsersProps) {
                     <TableCell className="text-right tabular-nums">
                       {user.memberships_count}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground tabular-nums">
                       {user.created_at ? new Date(user.created_at).toLocaleString() : "-"}
                     </TableCell>
                     <TableCell className="text-right">

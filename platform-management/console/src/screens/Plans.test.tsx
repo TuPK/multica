@@ -51,6 +51,8 @@ const mockPlanList = [
     is_public: true,
     sort: 10,
     archived_at: null,
+    audience: "business" as const,
+    billing_model: "seat" as const,
     version: 1,
   },
   {
@@ -67,6 +69,8 @@ const mockPlanList = [
     is_public: false,
     sort: 99,
     archived_at: "2026-01-01T00:00:00Z",
+    audience: "any" as const,
+    billing_model: "usage" as const,
     version: 2,
   },
 ];
@@ -93,8 +97,14 @@ describe("Plans screen", () => {
     render(<Plans userRole="admin" />);
 
     expect(screen.getByRole("heading", { name: "Plans Catalogue" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Audience" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Billing Model" })).toBeInTheDocument();
     expect(screen.getByText("Pro Plan")).toBeInTheDocument();
+    expect(screen.getByText("Business")).toBeInTheDocument();
+    expect(screen.getByText("Seat")).toBeInTheDocument();
     expect(screen.getByText("Legacy Plan")).toBeInTheDocument();
+    expect(screen.getByText("Any")).toBeInTheDocument();
+    expect(screen.getByText("Usage")).toBeInTheDocument();
     expect(screen.getByText("pro")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit plan Pro Plan" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Schedule price for Pro Plan" })).toBeInTheDocument();
@@ -137,7 +147,7 @@ describe("Plans screen", () => {
     expect(screen.queryByRole("button", { name: /Cancel scheduled change/i })).not.toBeInTheDocument();
 
     expect(screen.getByRole("heading", { name: "Price Change History" })).toBeInTheDocument();
-    expect(screen.getByText("scheduled")).toBeInTheDocument();
+    expect(screen.getByText(/scheduled/i)).toBeInTheDocument();
     expect(screen.getByText(/2026-12-20/)).toBeInTheDocument();
     expect(screen.getByText(/149,000/)).toBeInTheDocument();
     expect(screen.getByText(/199,000/)).toBeInTheDocument();

@@ -1,48 +1,67 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { Layout } from "./Layout";
 
 describe("Layout navigation", () => {
-  it("keeps the nav inside its own scroll container so a narrow screen does not overflow the page", () => {
+  it("renders a grouped desktop SideNav with w-60, aria-current on the active item, and truncated footer email", () => {
+    render(
+      <Layout
+        currentScreen="tenant-detail"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-admin", email: "very.long.admin.address@example.com", role: "admin" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>,
+    );
+
+    const aside = screen.getByRole("complementary", { name: "Sidebar" });
+    expect(aside).toHaveClass("md:w-60");
+
+    const nav = screen.getByRole("navigation", { name: "Main Navigation" });
+    expect(within(nav).getByText("Operations")).toBeInTheDocument();
+    expect(within(nav).getByText("Commercial")).toBeInTheDocument();
+    expect(within(nav).getByText("Administration")).toBeInTheDocument();
+
+    const tenantsBtn = within(nav).getByRole("button", { name: /Tenants/i });
+    expect(tenantsBtn).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("button", { name: /Overview/i })).not.toHaveAttribute("aria-current");
+
+    const emailEl = screen.getByText("very.long.admin.address@example.com");
+    expect(emailEl).toHaveClass("truncate");
+    expect(emailEl).toHaveAttribute("title", "very.long.admin.address@example.com");
+    expect(screen.getByText("Admin")).toBeInTheDocument();
+  });
+
+  it("hides Commercial group, Plans, Accounts, and Staff from support role", () => {
     render(
       <Layout
         currentScreen="overview"
         onNavigate={vi.fn()}
-        user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
+        user={{ user_id: "u-supp", email: "support@example.com", role: "support" }}
         onLogout={vi.fn()}
       >
         <div>Content</div>
-      </Layout>
+      </Layout>,
     );
 
     const nav = screen.getByRole("navigation", { name: "Main Navigation" });
-    expect(nav).toHaveClass("min-w-0", "overflow-x-auto");
+    expect(within(nav).getByRole("button", { name: /Overview/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /Tenants/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /Users/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /Audit Log/i })).toBeInTheDocument();
+
+    expect(within(nav).queryByText("Commercial")).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Orders/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Payment notices/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /E-invoices/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Plans/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Staff/i })).not.toBeInTheDocument();
   });
 
-  it("hides Orders, Plans, and Staff from support role", () => {
-    render(
-      <Layout
-        currentScreen="overview"
-        onNavigate={vi.fn()}
-        user={{ user_id: "u-supp", email: "support@example.com", role: "support" }}
-        onLogout={vi.fn()}
-      >
-        <div>Content</div>
-      </Layout>
-    );
-
-    expect(screen.getByRole("button", { name: /Overview/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Tenants/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Users/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Audit Log/i })).toBeInTheDocument();
-
-    expect(screen.queryByRole("button", { name: /Orders/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Plans/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Staff/i })).not.toBeInTheDocument();
-  });
-
-  it("shows Orders to billing role, but hides Plans and Staff", () => {
+  it("shows Orders, Payment notices, and E-invoices to billing role, but hides Accounts, Plans, and Staff", () => {
     render(
       <Layout
         currentScreen="overview"
@@ -51,130 +70,53 @@ describe("Layout navigation", () => {
         onLogout={vi.fn()}
       >
         <div>Content</div>
-      </Layout>
+      </Layout>,
     );
 
-    expect(screen.getByRole("button", { name: /Orders/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Plans/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Staff/i })).not.toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Main Navigation" });
+    expect(within(nav).getByText("Commercial")).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /Orders/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /Payment notices/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /E-invoices/i })).toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Plans/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Staff/i })).not.toBeInTheDocument();
   });
 
-  it("shows Orders, Plans, and Staff to admin role", () => {
+  it("shows all admin items and invokes onNavigate / onLogout", () => {
+    const onNavigate = vi.fn();
+    const onLogout = vi.fn();
     render(
       <Layout
         currentScreen="overview"
-        onNavigate={vi.fn()}
+        onNavigate={onNavigate}
         user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
-        onLogout={vi.fn()}
+        onLogout={onLogout}
       >
         <div>Content</div>
-      </Layout>
+      </Layout>,
     );
 
-    expect(screen.getByRole("button", { name: /Orders/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Plans/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Staff/i })).toBeInTheDocument();
-  });
+    const nav = screen.getByRole("navigation", { name: "Main Navigation" });
+    for (const name of [
+      "Overview",
+      "Tenants",
+      "Users",
+      "Orders",
+      "Payment notices",
+      "E-invoices",
+      "Accounts",
+      "Plans",
+      "Staff",
+      "Audit Log",
+    ]) {
+      expect(within(nav).getByRole("button", { name })).toBeInTheDocument();
+    }
 
-  it("shows Accounts only to admin role", () => {
-    const { rerender } = render(
-      <Layout
-        currentScreen="overview"
-        onNavigate={vi.fn()}
-        user={{ user_id: "u-supp", email: "support@example.com", role: "support" }}
-        onLogout={vi.fn()}
-      >
-        <div>Content</div>
-      </Layout>
-    );
-    expect(screen.queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
+    fireEvent.click(within(nav).getByRole("button", { name: "Orders" }));
+    expect(onNavigate).toHaveBeenCalledWith("orders");
 
-    rerender(
-      <Layout
-        currentScreen="overview"
-        onNavigate={vi.fn()}
-        user={{ user_id: "u-bill", email: "billing@example.com", role: "billing" }}
-        onLogout={vi.fn()}
-      >
-        <div>Content</div>
-      </Layout>
-    );
-    expect(screen.queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
-
-    rerender(
-      <Layout
-        currentScreen="overview"
-        onNavigate={vi.fn()}
-        user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
-        onLogout={vi.fn()}
-      >
-        <div>Content</div>
-      </Layout>
-    );
-    expect(screen.getByRole("button", { name: /Accounts/i })).toBeInTheDocument();
-  });
-
-  it("shows Payment notices to billing and admin, hides it from support", () => {
-    const { rerender } = render(
-      <Layout
-        currentScreen="overview"
-        onNavigate={vi.fn()}
-        user={{ user_id: "u-supp", email: "support@example.com", role: "support" }}
-        onLogout={vi.fn()}
-      >
-        <div>Content</div>
-      </Layout>
-    );
-    expect(screen.queryByRole("button", { name: /Payment notices/i })).not.toBeInTheDocument();
-
-    rerender(
-      <Layout
-        currentScreen="overview"
-        onNavigate={vi.fn()}
-        user={{ user_id: "u-bill", email: "billing@example.com", role: "billing" }}
-        onLogout={vi.fn()}
-      >
-        <div>Content</div>
-      </Layout>
-    );
-    expect(screen.getByRole("button", { name: /Payment notices/i })).toBeInTheDocument();
-  });
-
-  it("shows E-invoices to billing and admin, hides it from support", () => {
-    const { rerender } = render(
-      <Layout
-        currentScreen="overview"
-        onNavigate={vi.fn()}
-        user={{ user_id: "u-supp", email: "support@example.com", role: "support" }}
-        onLogout={vi.fn()}
-      >
-        <div>Content</div>
-      </Layout>
-    );
-    expect(screen.queryByRole("button", { name: /E-invoices/i })).not.toBeInTheDocument();
-
-    rerender(
-      <Layout
-        currentScreen="overview"
-        onNavigate={vi.fn()}
-        user={{ user_id: "u-bill", email: "billing@example.com", role: "billing" }}
-        onLogout={vi.fn()}
-      >
-        <div>Content</div>
-      </Layout>
-    );
-    expect(screen.getByRole("button", { name: /E-invoices/i })).toBeInTheDocument();
-
-    rerender(
-      <Layout
-        currentScreen="overview"
-        onNavigate={vi.fn()}
-        user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
-        onLogout={vi.fn()}
-      >
-        <div>Content</div>
-      </Layout>
-    );
-    expect(screen.getByRole("button", { name: /E-invoices/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Sign out/i }));
+    expect(onLogout).toHaveBeenCalledTimes(1);
   });
 });

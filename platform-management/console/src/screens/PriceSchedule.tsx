@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
+import { Checkbox } from "@multica/ui/components/ui/checkbox";
+import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import { Badge } from "@multica/ui/components/ui/badge";
+import { Separator } from "@multica/ui/components/ui/separator";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@multica/ui/components/ui/card";
 import {
   Table,
   TableHeader,
@@ -19,10 +14,13 @@ import {
   TableHead,
   TableCell,
 } from "@multica/ui/components/ui/table";
-import { AlertTriangle, ArrowLeft } from "@multica/ui/icons";
-import { LoadingState } from "../components/LoadingState";
-import { ErrorState } from "../components/ErrorState";
+import { Textarea } from "@multica/ui/components/ui/textarea";
+import { AlertCircle, AlertTriangle, CheckCircle2 } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { LoadingState } from "../components/LoadingState";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import {
   usePriceChanges,
   useSchedulePriceChange,
@@ -33,7 +31,6 @@ import type {
   Plan,
   PriceChange,
   PriceChangeDryRunResponse,
-  PriceChangeState,
   PriceSnapshot,
 } from "../api/schemas";
 import { formatMinorAmount } from "../money";
@@ -111,21 +108,6 @@ function formatPriceSnapshot(snapshot: PriceSnapshot, currency: string): string 
     parts.push(`${key}: ${JSON.stringify(snapshot[key])}`);
   }
   return parts.length > 0 ? parts.join(" · ") : "-";
-}
-
-function stateBadgeVariant(
-  state: PriceChangeState,
-): "default" | "secondary" | "destructive" | "outline" {
-  switch (state) {
-    case "scheduled":
-      return "default";
-    case "applied":
-      return "secondary";
-    case "canceled":
-      return "destructive";
-    default:
-      return "outline";
-  }
 }
 
 export function PriceSchedule({
@@ -366,27 +348,14 @@ export function PriceSchedule({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {!readOnly && (
         <>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              {onBack && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={onBack}
-                  className="-ml-2 mb-1 gap-1.5"
-                >
-                  <ArrowLeft className="size-4" />
-                  <span>Back to plans</span>
-                </Button>
-              )}
-              <h1 className="font-heading text-title-lg font-bold">
-                Price Schedule: {plan?.name ?? resolvedPlanKey}
-              </h1>
-              <p className="text-body text-muted-foreground">
+          <PageHeader
+            title={`Price Schedule: ${plan?.name ?? resolvedPlanKey}`}
+            backAction={onBack ? { label: "Back to plans", onClick: onBack } : undefined}
+            meta={
+              <span className="tabular-nums">
                 Current prices — Month:{" "}
                 {plan?.seat_price_month !== null && plan?.seat_price_month !== undefined
                   ? formatMinorAmount(plan.seat_price_month, currency)
@@ -396,210 +365,212 @@ export function PriceSchedule({
                 {plan?.seat_price_year !== null && plan?.seat_price_year !== undefined
                   ? formatMinorAmount(plan.seat_price_year, currency)
                   : "-"}
+              </span>
+            }
+          />
+
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="font-heading text-title-sm font-semibold text-foreground">
+                Schedule price change
+              </h2>
+              <p className="text-caption text-muted-foreground">
+                Preview affected subscribers before scheduling. Price increases with paid subscribers require advance notice in UTC.
               </p>
             </div>
-          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Schedule price change</CardTitle>
-              <CardDescription>
-                Preview affected subscribers before scheduling. Price increases with paid subscribers require advance notice in UTC.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSchedule} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label
-                      htmlFor="price-effective-from"
-                      className="text-caption font-medium text-foreground"
-                    >
-                      Effective from (UTC) <span className="text-destructive">*</span>
-                    </label>
-                    <Input
-                      id="price-effective-from"
-                      type="datetime-local"
-                      step={1}
-                      min={minEffectiveFrom ? toDateTimeLocalUTC(minEffectiveFrom) : undefined}
-                      value={effectiveFrom}
-                      onChange={(e) => {
-                        setEffectiveFrom(e.target.value);
-                        setPreview(null);
-                      }}
-                      required
-                      disabled={schedulePriceChange.isPending}
-                    />
-                    {minEffectiveFrom && (
-                      <p className="text-caption text-muted-foreground">
-                        Minimum effective date (UTC): {minEffectiveFrom}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label
-                      htmlFor="price-seat-month"
-                      className="text-caption font-medium text-foreground"
-                    >
-                      Monthly seat price {currency ? `(${currency.toUpperCase()})` : ""}
-                    </label>
-                    <Input
-                      id="price-seat-month"
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={seatPriceMonth}
-                      onChange={(e) => {
-                        setSeatPriceMonth(e.target.value);
-                        setConfirmLargeChange(false);
-                        invalidatePreviewAndConfirm();
-                      }}
-                      disabled={schedulePriceChange.isPending}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label
-                      htmlFor="price-seat-year"
-                      className="text-caption font-medium text-foreground"
-                    >
-                      Yearly seat price {currency ? `(${currency.toUpperCase()})` : ""}
-                    </label>
-                    <Input
-                      id="price-seat-year"
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={seatPriceYear}
-                      onChange={(e) => {
-                        setSeatPriceYear(e.target.value);
-                        setConfirmLargeChange(false);
-                        invalidatePreviewAndConfirm();
-                      }}
-                      disabled={schedulePriceChange.isPending}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="price-reason"
-                    className="text-caption font-medium text-foreground"
-                  >
-                    Reason <span className="text-destructive">*</span>
-                  </label>
-                  <Textarea
-                    id="price-reason"
-                    value={reason}
+            <form
+              onSubmit={handleSchedule}
+              className="space-y-4 rounded-lg border border-surface-border bg-surface p-4"
+            >
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field>
+                  <FieldLabel htmlFor="price-effective-from" className="text-label">
+                    Effective from (UTC) <span className="text-destructive">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="price-effective-from"
+                    type="datetime-local"
+                    step={1}
+                    min={minEffectiveFrom ? toDateTimeLocalUTC(minEffectiveFrom) : undefined}
+                    value={effectiveFrom}
                     onChange={(e) => {
-                      setReason(e.target.value);
+                      setEffectiveFrom(e.target.value);
                       setPreview(null);
                     }}
-                    maxLength={500}
-                    rows={2}
-                    placeholder="Reason for this price change..."
                     required
                     disabled={schedulePriceChange.isPending}
                   />
-                </div>
+                  {minEffectiveFrom && (
+                    <p className="font-mono text-caption text-muted-foreground">
+                      Minimum effective date (UTC): {minEffectiveFrom}
+                    </p>
+                  )}
+                </Field>
 
-                {needsConfirm && (
-                  <div
-                    role="status"
-                    className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-2"
-                  >
-                    <div className="flex items-center gap-2 text-body font-medium text-foreground">
-                      <AlertTriangle className="size-4 text-amber-600" />
-                      <span>
-                        Large price change ({warningPct}% exceeds {LARGE_CHANGE_CONFIRM_PCT}% threshold).
-                      </span>
-                    </div>
-                    <label className="flex items-center gap-2 text-body">
-                      <input
-                        id="confirm-large-change"
-                        type="checkbox"
-                        checked={confirmLargeChange}
-                        onChange={(e) => setConfirmLargeChange(e.target.checked)}
-                        disabled={schedulePriceChange.isPending}
-                        className="size-4 rounded border-surface-border text-primary focus:ring-primary"
-                      />
-                      <span>Confirm large price change</span>
-                    </label>
-                  </div>
-                )}
-
-                {preview && (
-                  <div
-                    role="status"
-                    data-testid="price-dry-run-preview"
-                    className="rounded-lg border border-surface-border bg-muted/40 p-3 text-body space-y-1"
-                  >
-                    <div className="font-medium text-foreground">Dry-run impact preview</div>
-                    <div className="text-caption text-muted-foreground">
-                      Affected subscribers:{" "}
-                      <span className="font-medium text-foreground tabular-nums">
-                        {preview.affected_subscribers}
-                      </span>
-                    </div>
-                    <div className="text-caption text-muted-foreground">
-                      Notice date:{" "}
-                      <span className="font-medium text-foreground font-mono">
-                        {preview.notice_date ?? "None (immediate effect)"}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {formError && (
-                  <div role="alert" className="text-caption text-destructive">
-                    {formError}
-                  </div>
-                )}
-
-                {formNotice && (
-                  <div role="status" className="text-caption text-emerald-700 dark:text-emerald-300">
-                    {formNotice}
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePreview}
+                <Field>
+                  <FieldLabel htmlFor="price-seat-month" className="text-label">
+                    Monthly seat price {currency ? `(${currency.toUpperCase()})` : ""}
+                  </FieldLabel>
+                  <Input
+                    id="price-seat-month"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={seatPriceMonth}
+                    onChange={(e) => {
+                      setSeatPriceMonth(e.target.value);
+                      setConfirmLargeChange(false);
+                      invalidatePreviewAndConfirm();
+                    }}
                     disabled={schedulePriceChange.isPending}
-                  >
-                    {schedulePriceChange.isPending && <Spinner className="size-3.5" />}
-                    Preview impact
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={
-                      schedulePriceChange.isPending || (needsConfirm && !confirmLargeChange)
-                    }
-                  >
-                    {schedulePriceChange.isPending && <Spinner className="size-3.5" />}
-                    Schedule
-                  </Button>
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="price-seat-year" className="text-label">
+                    Yearly seat price {currency ? `(${currency.toUpperCase()})` : ""}
+                  </FieldLabel>
+                  <Input
+                    id="price-seat-year"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={seatPriceYear}
+                    onChange={(e) => {
+                      setSeatPriceYear(e.target.value);
+                      setConfirmLargeChange(false);
+                      invalidatePreviewAndConfirm();
+                    }}
+                    disabled={schedulePriceChange.isPending}
+                  />
+                </Field>
+              </div>
+
+              <Field>
+                <FieldLabel htmlFor="price-reason" className="text-label">
+                  Reason <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Textarea
+                  id="price-reason"
+                  value={reason}
+                  onChange={(e) => {
+                    setReason(e.target.value);
+                    setPreview(null);
+                  }}
+                  maxLength={500}
+                  rows={2}
+                  placeholder="Reason for this price change..."
+                  required
+                  disabled={schedulePriceChange.isPending}
+                />
+              </Field>
+
+              {needsConfirm && (
+                <Alert role="status" className="border-warning/40 bg-warning/10 text-foreground">
+                  <AlertTriangle className="size-4 text-warning" aria-hidden="true" />
+                  <AlertTitle className="text-body font-medium text-foreground">
+                    Large price change ({warningPct}% exceeds {LARGE_CHANGE_CONFIRM_PCT}% threshold).
+                  </AlertTitle>
+                  <AlertDescription className="col-start-2 pt-1.5 text-foreground">
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id="confirm-large-change"
+                        checked={confirmLargeChange}
+                        onCheckedChange={(checked) => setConfirmLargeChange(Boolean(checked))}
+                        disabled={schedulePriceChange.isPending}
+                      />
+                      <FieldLabel
+                        htmlFor="confirm-large-change"
+                        className="text-body font-normal text-foreground"
+                      >
+                        Confirm large price change
+                      </FieldLabel>
+                    </Field>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {preview && (
+                <div
+                  role="status"
+                  data-testid="price-dry-run-preview"
+                  className="space-y-1 rounded-lg border border-surface-border bg-muted/40 p-3 text-body"
+                >
+                  <div className="font-medium text-foreground">Dry-run impact preview</div>
+                  <div className="text-caption text-muted-foreground">
+                    Affected subscribers:{" "}
+                    <span className="font-medium text-foreground tabular-nums">
+                      {preview.affected_subscribers}
+                    </span>
+                  </div>
+                  <div className="text-caption text-muted-foreground">
+                    Notice date:{" "}
+                    <span className="font-mono font-medium text-foreground">
+                      {preview.notice_date ?? "None (immediate effect)"}
+                    </span>
+                  </div>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
+              )}
+
+              {formError && (
+                <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                  <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                  <AlertDescription className="text-caption">{formError}</AlertDescription>
+                </Alert>
+              )}
+
+              {formNotice && (
+                <Alert
+                  role="status"
+                  className="border-success/30 bg-success/10 py-2 text-success"
+                >
+                  <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden="true" />
+                  <AlertDescription className="text-caption text-success">
+                    {formNotice}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePreview}
+                  disabled={schedulePriceChange.isPending}
+                  aria-busy={schedulePriceChange.isPending}
+                >
+                  {schedulePriceChange.isPending && <Spinner className="size-3.5" />}
+                  Preview impact
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    schedulePriceChange.isPending || (needsConfirm && !confirmLargeChange)
+                  }
+                  aria-busy={schedulePriceChange.isPending}
+                >
+                  {schedulePriceChange.isPending && <Spinner className="size-3.5" />}
+                  Schedule
+                </Button>
+              </div>
+            </form>
+          </section>
+
+          <Separator />
         </>
       )}
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading text-title-sm font-semibold">
-            {readOnly ? `Changes for ${resolvedPlanKey}` : "Price Change History"}
-          </h2>
-        </div>
+      <section className="space-y-4">
+        <h2 className="font-heading text-title-sm font-semibold text-foreground">
+          {readOnly ? `Changes for ${resolvedPlanKey}` : "Price Change History"}
+        </h2>
 
         {cancelError && (
-          <div role="alert" className="text-caption text-destructive">
-            {cancelError}
-          </div>
+          <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            <AlertDescription className="text-caption">{cancelError}</AlertDescription>
+          </Alert>
         )}
 
         {historyLoading && <LoadingState message="Loading price change history..." />}
@@ -624,7 +595,7 @@ export function PriceSchedule({
         )}
 
         {!historyLoading && !historyError && history && history.length > 0 && (
-          <div className="rounded-lg border border-surface-border bg-surface overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -640,9 +611,9 @@ export function PriceSchedule({
                 {history.map((item: PriceChange) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <Badge variant={stateBadgeVariant(item.state)}>{item.state}</Badge>
+                      <StatusBadge status={item.state} />
                     </TableCell>
-                    <TableCell className="font-mono text-caption">
+                    <TableCell className="font-mono text-caption tabular-nums">
                       {item.effective_from}
                     </TableCell>
                     <TableCell className="text-caption tabular-nums">
@@ -661,6 +632,7 @@ export function PriceSchedule({
                             size="sm"
                             onClick={handleCancelScheduled}
                             disabled={cancelScheduledPriceChange.isPending}
+                            aria-busy={cancelScheduledPriceChange.isPending}
                           >
                             {cancelScheduledPriceChange.isPending && (
                               <Spinner className="size-3.5" />
@@ -676,7 +648,7 @@ export function PriceSchedule({
             </Table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

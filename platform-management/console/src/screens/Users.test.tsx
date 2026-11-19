@@ -101,4 +101,23 @@ describe("Users screen", () => {
     rerender(<Users onSelectUser={vi.fn()} />);
     expect(screen.getByText("No users found")).toBeInTheDocument();
   });
+
+  it("offers Clear search when a search query returns no users", () => {
+    mockUseUsers.mockReturnValue({
+      data: { users: [], next_cursor: null },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<Users onSelectUser={vi.fn()} />);
+    const input = screen.getByPlaceholderText("Search by email or name...");
+    fireEvent.change(input, { target: { value: "missing@example.com" } });
+    expect(mockUseUsers).toHaveBeenLastCalledWith({ q: "missing@example.com" });
+
+    const clearButtons = screen.getAllByRole("button", { name: /Clear search/i });
+    fireEvent.click(clearButtons[clearButtons.length - 1]!);
+    expect(input).toHaveValue("");
+    expect(mockUseUsers).toHaveBeenLastCalledWith({ q: undefined });
+  });
 });

@@ -186,4 +186,23 @@ describe("Tenants screen", () => {
     rerender(<Tenants onSelectTenant={vi.fn()} />);
     expect(screen.getByText("No tenants found")).toBeInTheDocument();
   });
+
+  it("offers Clear search when a search query returns no tenants", () => {
+    mockUseTenants.mockReturnValue({
+      data: { tenants: [], next_cursor: null },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<Tenants onSelectTenant={vi.fn()} />);
+    const input = screen.getByPlaceholderText("Search by name or slug...");
+    fireEvent.change(input, { target: { value: "nonexistent" } });
+    expect(mockUseTenants).toHaveBeenLastCalledWith({ q: "nonexistent" });
+
+    const clearButtons = screen.getAllByRole("button", { name: /Clear search/i });
+    fireEvent.click(clearButtons[clearButtons.length - 1]!);
+    expect(input).toHaveValue("");
+    expect(mockUseTenants).toHaveBeenLastCalledWith({ q: undefined });
+  });
 });

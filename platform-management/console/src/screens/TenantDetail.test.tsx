@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TenantDetail } from "./TenantDetail";
 import { PlatformApiError } from "../api/client";
 
@@ -201,35 +202,43 @@ describe("TenantDetail screen", () => {
     expect(screen.getByText("workspace.status_changed")).toBeInTheDocument();
   });
 
-  it("role gating: support role does not see pending_deletion option in change status dialog", () => {
+  it("role gating: support role does not see Pending deletion option in change status dialog", async () => {
+    const user = userEvent.setup();
     render(
       <TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="support" />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Change status" }));
+    await user.click(screen.getByRole("button", { name: "Change status" }));
     expect(screen.getByRole("heading", { name: "Change workspace status" })).toBeInTheDocument();
 
-    const options = screen.getAllByRole("option");
-    const optionValues = options.map((opt) => (opt as HTMLOptionElement).value);
+    const trigger = screen.getByRole("combobox", { name: /Target status/i });
+    await user.click(trigger);
 
-    expect(optionValues).toContain("active");
-    expect(optionValues).toContain("read_only");
-    expect(optionValues).toContain("suspended");
-    expect(optionValues).not.toContain("pending_deletion");
+    const options = await screen.findAllByRole("option");
+    const optionLabels = options.map((opt) => opt.textContent);
+
+    expect(optionLabels).toContain("Active");
+    expect(optionLabels).toContain("Read-only");
+    expect(optionLabels).toContain("Suspended");
+    expect(optionLabels).not.toContain("Pending deletion");
   });
 
-  it("role gating: admin role sees pending_deletion option in change status dialog", () => {
+  it("role gating: admin role sees Pending deletion option in change status dialog", async () => {
+    const user = userEvent.setup();
     render(
       <TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Change status" }));
+    await user.click(screen.getByRole("button", { name: "Change status" }));
     expect(screen.getByRole("heading", { name: "Change workspace status" })).toBeInTheDocument();
 
-    const options = screen.getAllByRole("option");
-    const optionValues = options.map((opt) => (opt as HTMLOptionElement).value);
+    const trigger = screen.getByRole("combobox", { name: /Target status/i });
+    await user.click(trigger);
 
-    expect(optionValues).toContain("pending_deletion");
+    const options = await screen.findAllByRole("option");
+    const optionLabels = options.map((opt) => opt.textContent);
+
+    expect(optionLabels).toContain("Pending deletion");
   });
 
   it("the reason is required before a status change can be confirmed", async () => {
@@ -489,7 +498,7 @@ describe("TenantDetail screen", () => {
         const unpaidRegion = screen.getByTestId("usage-unpaid-orders");
         expect(within(unpaidRegion).getByText("ord-usage-1")).toBeInTheDocument();
         expect(within(unpaidRegion).getByText("50,000")).toBeInTheDocument();
-        expect(within(unpaidRegion).getAllByText("pending").length).toBeGreaterThanOrEqual(2);
+        expect(within(unpaidRegion).getAllByText(/pending/i).length).toBeGreaterThanOrEqual(2);
         expect(within(unpaidRegion).queryByRole("button", { name: /write off/i })).not.toBeInTheDocument();
         unmount();
       }
@@ -812,7 +821,7 @@ describe("TenantDetail screen", () => {
       fireEvent.click(within(card).getByRole("button", { name: "Edit" }));
 
       const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getByLabelText(/Account kind/i)).toHaveValue("business");
+      expect(within(dialog).getByRole("combobox", { name: /Account kind/i })).toHaveTextContent("Business");
       expect(within(dialog).getByLabelText(/Legal name/i)).toHaveValue("Acme Corp");
       expect(within(dialog).getByLabelText(/Tax code/i)).toHaveValue("0101234567");
       expect(within(dialog).getByLabelText(/^Address$/i)).toHaveValue("123 Street");
@@ -854,6 +863,7 @@ describe("TenantDetail screen", () => {
     });
 
     it("shows missing field errors on 409 billing_profile_incomplete and disables Save while pending", async () => {
+      const user = userEvent.setup();
       mockUpdateTenantBillingProfileMutateAsync.mockRejectedValueOnce(
         new PlatformApiError(409, "billing_profile_incomplete", "billing profile is incomplete", {
           fields: ["legal_name", "tax_code", "address", "invoice_email"],
@@ -861,11 +871,12 @@ describe("TenantDetail screen", () => {
       );
 
       const { rerender } = render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />);
-      fireEvent.click(within(getBillingProfileCard()).getByRole("button", { name: "Edit" }));
+      await user.click(within(getBillingProfileCard()).getByRole("button", { name: "Edit" }));
 
       const dialog = screen.getByRole("dialog");
-      fireEvent.change(within(dialog).getByLabelText(/Account kind/i), { target: { value: "business" } });
-      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+      await user.click(within(dialog).getByRole("combobox", { name: /Account kind/i }));
+      await user.click(await screen.findByRole("option", { name: "Business" }));
+      await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
         expect(within(dialog).getByLabelText(/Legal name/i)).toHaveAttribute("aria-invalid", "true");

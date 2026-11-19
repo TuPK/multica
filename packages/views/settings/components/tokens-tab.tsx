@@ -15,7 +15,6 @@ import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
 import { Button } from "@multica/ui/components/ui/button";
-import { Card, CardContent } from "@multica/ui/components/ui/card";
 import { Switch } from "@multica/ui/components/ui/switch";
 import {
   Select,
@@ -46,7 +45,7 @@ import { copyText } from "@multica/ui/lib/clipboard";
 import { toast } from "sonner";
 import { ApiError, api, errorCode } from "@multica/core/api";
 import { useLocale, useT } from "../../i18n";
-import { SettingsSection, SettingsTab } from "./settings-layout";
+import { SettingsCard, SettingsSection, SettingsTab } from "./settings-layout";
 
 const EXPIRY_KEYS = ["30", "90", "365", "never"] as const;
 const ANY_WORKSPACE = "__any__";
@@ -177,14 +176,11 @@ export function TokensTab() {
       <SettingsSection
         description={t(($) => $.tokens.security_note)}
       >
-        <details className="text-caption text-muted-foreground">
-          <summary className="cursor-pointer rounded-sm py-2 focus-visible:outline-2 focus-visible:outline-ring">
-            {t(($) => $.tokens.usage_help)}
-          </summary>
-          <p className="mt-1">{t(($) => $.tokens.description)}</p>
-        </details>
-        <Card>
-          <CardContent className="space-y-3">
+        <p className="text-caption text-muted-foreground">
+          {t(($) => $.tokens.description)}
+        </p>
+        <SettingsCard>
+          <div className="space-y-3 p-4">
             <div className="grid gap-3 sm:grid-cols-[1fr_120px_auto]">
               <Input
                 type="text"
@@ -254,90 +250,86 @@ export function TokensTab() {
                 </span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SettingsCard>
 
         {tokensLoading ? (
-          <div className="space-y-2">
+          <SettingsCard>
             {Array.from({ length: 2 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="flex items-center gap-3">
-                  <div className="flex-1 space-y-1.5">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
-                  <Skeleton className="h-8 w-8 rounded-xs" />
-                </CardContent>
-              </Card>
+              <div key={i} className="flex items-center gap-3 px-4 py-3">
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+                <Skeleton className="h-8 w-8 rounded-xs" />
+              </div>
             ))}
-          </div>
+          </SettingsCard>
         ) : tokens.length === 0 ? (
-          <Card>
-            <CardContent>
+          <SettingsCard>
+            <div className="px-4 py-4">
               <p className="text-caption text-muted-foreground">
                 {tokensLoadFailed ? t(($) => $.tokens.load_failed) : t(($) => $.tokens.empty)}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </SettingsCard>
         ) : (
-          <div className="space-y-2">
+          <SettingsCard>
             {tokens.map((token) => {
               const boundWorkspaceName = token.workspace_id
                 ? workspaceNamesById.get(token.workspace_id)
                 : undefined;
               return (
-                <Card key={token.id}>
-                  <CardContent className="flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="truncate text-body font-medium">{token.name}</span>
-                        {token.workspace_id ? (
-                          <Badge variant="secondary">
-                            {boundWorkspaceName ?? t(($) => $.tokens.workspace_scoped)}
-                          </Badge>
-                        ) : null}
-                        {token.read_only ? (
-                          <Badge variant="outline">
-                            {t(($) => $.tokens.read_only_badge)}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className="text-caption text-muted-foreground">
-                        {t(($) => $.tokens.metadata_prefix, {
-                          prefix: token.token_prefix,
-                          created: new Date(token.created_at).toLocaleDateString(locale),
-                          lastUsed: token.last_used_at
-                            ? t(($) => $.tokens.last_used_with_date, {
-                                date: new Date(token.last_used_at!).toLocaleDateString(locale),
-                              })
-                            : t(($) => $.tokens.last_used_never),
-                        })}
-                        {token.expires_at && t(($) => $.tokens.expires_with_date, {
-                          date: new Date(token.expires_at!).toLocaleDateString(locale),
-                        })}
-                      </div>
+                <div key={token.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="truncate text-body font-medium">{token.name}</span>
+                      {token.workspace_id ? (
+                        <Badge variant="secondary">
+                          {boundWorkspaceName ?? t(($) => $.tokens.workspace_scoped)}
+                        </Badge>
+                      ) : null}
+                      {token.read_only ? (
+                        <Badge variant="outline">
+                          {t(($) => $.tokens.read_only_badge)}
+                        </Badge>
+                      ) : null}
                     </div>
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setRevokeConfirmId(token.id)}
-                            disabled={tokenRevoking === token.id}
-                            aria-label={t(($) => $.tokens.revoke_aria, { name: token.name })}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>{t(($) => $.tokens.revoke_tooltip)}</TooltipContent>
-                    </Tooltip>
-                  </CardContent>
-                </Card>
+                    <div className="text-caption tabular-nums text-muted-foreground">
+                      {t(($) => $.tokens.metadata_prefix, {
+                        prefix: token.token_prefix,
+                        created: new Date(token.created_at).toLocaleDateString(locale),
+                        lastUsed: token.last_used_at
+                          ? t(($) => $.tokens.last_used_with_date, {
+                              date: new Date(token.last_used_at!).toLocaleDateString(locale),
+                            })
+                          : t(($) => $.tokens.last_used_never),
+                      })}
+                      {token.expires_at && t(($) => $.tokens.expires_with_date, {
+                        date: new Date(token.expires_at!).toLocaleDateString(locale),
+                      })}
+                    </div>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setRevokeConfirmId(token.id)}
+                          disabled={tokenRevoking === token.id}
+                          aria-label={t(($) => $.tokens.revoke_aria, { name: token.name })}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>{t(($) => $.tokens.revoke_tooltip)}</TooltipContent>
+                  </Tooltip>
+                </div>
               );
             })}
-          </div>
+          </SettingsCard>
         )}
       </SettingsSection>
 

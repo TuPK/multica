@@ -310,7 +310,7 @@ describe("AuditLogTab", () => {
     });
   });
 
-  it("displays empty state when there are no events", async () => {
+  it("displays empty state when there are no events and clears active filters", async () => {
     mockAuditState.pages[0]!.events = [];
     mockAuditState.pages[0]!.next_cursor = null;
     renderAuditLogTab();
@@ -318,6 +318,14 @@ describe("AuditLogTab", () => {
     await waitFor(() => {
       expect(screen.getByText("No audit events")).toBeInTheDocument();
     });
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+
+    const fromInput = screen.getByLabelText("From");
+    fireEvent.change(fromInput, { target: { value: "2026-11-01" } });
+
+    const clearBtn = await screen.findByRole("button", { name: "Clear filters" });
+    fireEvent.click(clearBtn);
+    expect(fromInput).toHaveValue("");
   });
 
   it("displays error state when audit query fails", async () => {

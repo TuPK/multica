@@ -422,12 +422,13 @@ describe("orders", () => {
     },
   };
 
-  it("parses a well-formed orders list", () => {
-    const parsed = parseOrderList({ orders: [order] });
-    expect(parsed.orders).toHaveLength(1);
+  it("parses a well-formed orders list including usage kind", () => {
+    const parsed = parseOrderList({ orders: [order, { ...order, id: "ord-u", kind: "usage" }] });
+    expect(parsed.orders).toHaveLength(2);
     expect(parsed.orders[0]?.id).toBe("ord-1");
     expect(parsed.orders[0]?.transfer_code).toBe("MUL12345678");
     expect(parsed.orders[0]?.status).toBe("pending");
+    expect(parsed.orders[1]?.kind).toBe("usage");
   });
 
   it("falls back to empty list on malformed orders body", () => {
@@ -507,12 +508,26 @@ describe("plans", () => {
     is_public: true,
     sort: 10,
     archived_at: null,
+    audience: "any",
+    billing_model: "seat",
   };
 
-  it("parses a well-formed plan list", () => {
-    const parsed = parsePlanList({ plans: [plan] });
-    expect(parsed.plans).toHaveLength(1);
+  it("parses a well-formed plan list and applies audience/billing_model defaults and unknown fallback", () => {
+    const parsed = parsePlanList({
+      plans: [
+        plan,
+        { key: "payg", audience: "business", billing_model: "usage" },
+        { key: "future", audience: "enterprise", billing_model: "credits" },
+      ],
+    });
+    expect(parsed.plans).toHaveLength(3);
     expect(parsed.plans[0]?.key).toBe("pro");
+    expect(parsed.plans[0]?.audience).toBe("any");
+    expect(parsed.plans[0]?.billing_model).toBe("seat");
+    expect(parsed.plans[1]?.audience).toBe("business");
+    expect(parsed.plans[1]?.billing_model).toBe("usage");
+    expect(parsed.plans[2]?.audience).toBe("unknown");
+    expect(parsed.plans[2]?.billing_model).toBe("unknown");
   });
 
   it("falls back to empty list on malformed plan list", () => {

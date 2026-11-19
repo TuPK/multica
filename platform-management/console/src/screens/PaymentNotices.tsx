@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@multica/ui/components/ui/card";
+import { Separator } from "@multica/ui/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -19,6 +14,8 @@ import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
+import { MetadataList, MetadataListItem } from "../components/MetadataList";
+import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { PlatformApiError } from "../api/client";
 import {
@@ -148,12 +145,10 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-title-lg font-bold">Payment notices</h1>
-        <p className="text-body text-muted-foreground">
-          Match incoming bank transfers to pending orders or dismiss unmatched notices.
-        </p>
-      </div>
+      <PageHeader
+        title="Payment notices"
+        description="Match incoming bank transfers to pending orders or dismiss unmatched notices."
+      />
 
       {isLoading && <LoadingState message="Loading payment notices..." />}
 
@@ -166,7 +161,14 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
       )}
 
       {!isLoading && !isError && (!notices || notices.length === 0) && (
-        <EmptyState title="No payment notices need review" />
+        <EmptyState
+          title="No payment notices need review"
+          actions={
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Refresh
+            </Button>
+          }
+        />
       )}
 
       {!isLoading && !isError && notices && notices.length > 0 && (
@@ -177,6 +179,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                 <TableHead>Received</TableHead>
                 <TableHead>Transfer code</TableHead>
                 <TableHead>Amount</TableHead>
+                <TableHead>State</TableHead>
                 <TableHead>Reason</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -185,8 +188,11 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
               {notices.map((notice: Notice) => {
                 const isSelected = selectedId === notice.id;
                 return (
-                  <TableRow key={notice.id} className={isSelected ? "bg-muted/50" : undefined}>
-                    <TableCell className="text-caption text-muted-foreground">
+                  <TableRow
+                    key={notice.id}
+                    className={isSelected ? "bg-surface-selected" : undefined}
+                  >
+                    <TableCell className="text-caption tabular-nums text-muted-foreground">
                       {formatDateTime(notice.received_at)}
                     </TableCell>
                     <TableCell className="font-mono text-body font-semibold">
@@ -194,6 +200,9 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                     </TableCell>
                     <TableCell className="font-medium tabular-nums">
                       {formatMinorAmount(notice.amount, notice.currency)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={notice.state} />
                     </TableCell>
                     <TableCell>{formatReviewReason(notice.review_reason)}</TableCell>
                     <TableCell className="text-right">
@@ -214,102 +223,78 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
       )}
 
       {selectedId !== null && (
-        <Card>
-          {detailLoading && (
-            <CardContent className="pt-6">
-              <LoadingState message="Loading payment notice..." />
-            </CardContent>
-          )}
+        <>
+          <Separator />
+          <section aria-label="Notice details" className="space-y-6">
+            {detailLoading && <LoadingState message="Loading payment notice..." />}
 
-          {!detailLoading && (detailIsError || !detail) && (
-            <CardContent className="pt-6">
+            {!detailLoading && (detailIsError || !detail) && (
               <ErrorState
                 title="Failed to load payment notice"
                 message={getErrorMessage(detailError, "An error occurred while loading the payment notice.")}
                 onRetry={refetchDetail}
               />
-            </CardContent>
-          )}
+            )}
 
-          {!detailLoading && !detailIsError && detail && (
-            <>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <CardTitle>Notice details</CardTitle>
-                <div className="flex items-center gap-2">
-                  {detail.state === "needs_review" && (
+            {!detailLoading && !detailIsError && detail && (
+              <>
+                <div className="flex flex-row items-start justify-between gap-4">
+                  <h2 className="font-heading text-title-sm font-semibold">Notice details</h2>
+                  <div className="flex items-center gap-2">
+                    {detail.state === "needs_review" && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleOpenDismissDialog}
+                      >
+                        Dismiss
+                      </Button>
+                    )}
                     <Button
-                      variant="destructive"
+                      variant="ghost"
                       size="sm"
-                      onClick={handleOpenDismissDialog}
+                      onClick={() => setSelectedId(null)}
                     >
-                      Dismiss
+                      Close
                     </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedId(null)}
-                  >
-                    Close
-                  </Button>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 gap-4 text-body sm:grid-cols-4">
-                  <div>
-                    <span className="block text-caption text-muted-foreground">State</span>
-                    <div className="mt-1">
-                      <StatusBadge status={detail.state} />
-                    </div>
-                  </div>
-                  <div>
-                    <span className="block text-caption text-muted-foreground">Provider</span>
-                    <span className="mt-1 block font-medium">{detail.provider || "-"}</span>
-                  </div>
-                  <div>
-                    <span className="block text-caption text-muted-foreground">Provider event ID</span>
-                    <span className="mt-1 block font-mono text-caption break-all">
-                      {detail.provider_event_id || "-"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-caption text-muted-foreground">Transfer code</span>
-                    <span className="mt-1 block font-mono font-medium">
-                      {detail.transfer_code || "-"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-caption text-muted-foreground">Amount</span>
-                    <span className="mt-1 block font-medium tabular-nums">
-                      {formatMinorAmount(detail.amount, detail.currency)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-caption text-muted-foreground">Received</span>
-                    <span className="mt-1 block text-muted-foreground">
+
+                <MetadataList columns={4}>
+                  <MetadataListItem label="State">
+                    <StatusBadge status={detail.state} />
+                  </MetadataListItem>
+                  <MetadataListItem label="Provider">
+                    {detail.provider || "-"}
+                  </MetadataListItem>
+                  <MetadataListItem label="Provider event ID" mono className="break-all">
+                    {detail.provider_event_id || "-"}
+                  </MetadataListItem>
+                  <MetadataListItem label="Transfer code" mono>
+                    {detail.transfer_code || "-"}
+                  </MetadataListItem>
+                  <MetadataListItem label="Amount" tabular>
+                    {formatMinorAmount(detail.amount, detail.currency)}
+                  </MetadataListItem>
+                  <MetadataListItem label="Received" tabular>
+                    <span className="font-normal text-muted-foreground">
                       {formatDateTime(detail.received_at)}
                     </span>
-                  </div>
-                  <div>
-                    <span className="block text-caption text-muted-foreground">Reason</span>
-                    <span className="mt-1 block font-medium">
-                      {formatReviewReason(detail.review_reason)}
-                    </span>
-                  </div>
+                  </MetadataListItem>
+                  <MetadataListItem label="Reason">
+                    {formatReviewReason(detail.review_reason)}
+                  </MetadataListItem>
                   {detail.order_id && (
-                    <div>
-                      <span className="block text-caption text-muted-foreground">Order ID</span>
-                      <span className="mt-1 block font-mono text-caption break-all">
-                        {detail.order_id}
-                      </span>
-                    </div>
+                    <MetadataListItem label="Order ID" mono className="break-all">
+                      {detail.order_id}
+                    </MetadataListItem>
                   )}
-                </div>
+                </MetadataList>
 
                 <div className="space-y-3">
                   <h3 className="font-heading text-title-sm font-semibold">Candidate orders</h3>
                   {detail.candidates.length === 0 ? (
-                    <EmptyState title="No matching orders" />
+                    <EmptyState isCompact title="No matching orders" />
                   ) : (
                     <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
                       <Table>
@@ -341,7 +326,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                               <TableCell className="font-medium tabular-nums">
                                 {formatMinorAmount(candidate.amount + candidate.vat_amount, candidate.currency)}
                               </TableCell>
-                              <TableCell className="text-caption text-muted-foreground">
+                              <TableCell className="text-caption tabular-nums text-muted-foreground">
                                 {formatDateTime(candidate.created_at)}
                               </TableCell>
                               <TableCell>
@@ -364,10 +349,10 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </>
-          )}
-        </Card>
+              </>
+            )}
+          </section>
+        </>
       )}
 
       {/* Match Reason Dialog */}

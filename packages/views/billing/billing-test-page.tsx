@@ -468,7 +468,7 @@ function TransactionRow({ row }: { row: BillingTransaction }) {
           className={`text-body tabular-nums ${
             credit >= 0
               ? "text-green-700 dark:text-green-400"
-              : "text-red-700 dark:text-red-400"
+              : "text-destructive"
           }`}
         >
           {t(($) => $.transactions.credits_value, {
@@ -617,8 +617,8 @@ function TopupRow({ row }: { row: BillingTopup }) {
               row.status === "credited"
                 ? "bg-green-500/10 text-green-700 dark:text-green-400"
                 : row.status === "failed" || row.status === "canceled"
-                  ? "bg-red-500/10 text-red-700 dark:text-red-400"
-                  : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-warning/10 text-warning"
             }`}
           >
             {row.status}

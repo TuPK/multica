@@ -1651,7 +1651,8 @@
     "export_csv": "Exportar CSV",
     "export_failed": "Error al exportar los eventos de auditoría",
     "empty": "No hay eventos de auditoría",
-    "load_failed": "Error al cargar los eventos de auditoría"
+    "load_failed": "Error al cargar los eventos de auditoría",
+    "clear_filters": "Limpiar filtros"
   },
   "legal": {
     "title": "Documentos legales requeridos",

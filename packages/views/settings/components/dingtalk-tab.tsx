@@ -128,7 +128,7 @@ export function DingTalkConnectionLabel({
       )}
     >
       <span
-        className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
+        className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-success"
         aria-hidden="true"
       />
       <span className="inline-flex min-w-0 items-center">

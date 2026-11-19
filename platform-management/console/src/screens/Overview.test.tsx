@@ -47,6 +47,55 @@ describe("Overview screen", () => {
     expect(screen.getByText("1")).toBeInTheDocument();
   });
 
+  it("renders pending orders, subscriptions by plan, and platform usage snapshot when present", () => {
+    mockUseOverview.mockReturnValue({
+      data: {
+        workspaces_by_status: {
+          active: 10,
+          read_only: 0,
+          suspended: 0,
+          pending_deletion: 0,
+        },
+        signups_7d: 4,
+        pending_orders: 3,
+        pending_by_currency: {
+          vnd: { orders: 3, amount: 600000, vat_amount: 60000 },
+        },
+        by_plan: {
+          free: 7,
+          pro: 3,
+        },
+        usage_day: "2026-11-18",
+        usage_workspaces: 8,
+        usage_members: 24,
+        usage_agents: 6,
+        usage_runtimes: 4,
+        usage_issues_total: 120,
+        usage_issues_created: 15,
+        usage_tasks_run: 45,
+        usage_storage_bytes: 2048,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<Overview />);
+
+    expect(screen.getByText("Pending Orders")).toBeInTheDocument();
+    expect(screen.getByText(/660,000 VND/)).toBeInTheDocument();
+
+    expect(screen.getByRole("heading", { name: "Subscriptions by Plan" })).toBeInTheDocument();
+    expect(screen.getByText("free")).toBeInTheDocument();
+    expect(screen.getByText("pro")).toBeInTheDocument();
+
+    expect(screen.getByRole("heading", { name: "Platform Usage Snapshot" })).toBeInTheDocument();
+    expect(screen.getByText("2026-11-18")).toBeInTheDocument();
+    expect(screen.getByText("24")).toBeInTheDocument();
+    expect(screen.getByText("120")).toBeInTheDocument();
+    expect(screen.getByText("2.0 KB")).toBeInTheDocument();
+  });
+
   it("handles loading, error, and empty states", () => {
     mockUseOverview.mockReturnValue({
       data: null,

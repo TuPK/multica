@@ -35,6 +35,8 @@ const proPlan: Plan = {
   is_public: true,
   sort: 20,
   archived_at: null,
+  audience: "any",
+  billing_model: "seat",
   version: 1,
 };
 
@@ -288,8 +290,8 @@ describe("PriceSchedule screen", () => {
 
     render(<PriceSchedule plan={proPlan} />);
 
-    expect(screen.getByText("scheduled")).toBeInTheDocument();
-    expect(screen.getByText("applied")).toBeInTheDocument();
+    expect(screen.getByText("Scheduled")).toBeInTheDocument();
+    expect(screen.getByText("Applied")).toBeInTheDocument();
     expect(screen.getByText("2026-12-20T00:00:00Z")).toBeInTheDocument();
     expect(screen.getByText("2026-06-01T00:00:00Z")).toBeInTheDocument();
     expect(screen.getByText(/240,000/)).toBeInTheDocument();

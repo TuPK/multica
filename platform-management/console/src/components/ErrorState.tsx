@@ -1,5 +1,6 @@
-import { AlertCircle } from "@multica/ui/icons";
+import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
+import { AlertCircle } from "@multica/ui/icons";
 
 export function ErrorState({
   title = "Something went wrong",
@@ -11,20 +12,23 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div
-      role="alert"
-      className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-6 text-center text-destructive"
-    >
-      <AlertCircle className="size-6 shrink-0" />
-      <div className="space-y-1">
+    <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 p-4">
+      <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+      <AlertTitle>
         <h3 className="font-heading text-title-sm font-semibold">{title}</h3>
-        {message && <p className="text-body text-muted-foreground">{message}</p>}
-      </div>
-      {onRetry && (
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          Try again
-        </Button>
+      </AlertTitle>
+      {(message || onRetry) && (
+        <AlertDescription className="col-start-2 space-y-3 text-body text-muted-foreground">
+          {message && <p>{message}</p>}
+          {onRetry && (
+            <div>
+              <Button variant="outline" size="sm" onClick={onRetry}>
+                Try again
+              </Button>
+            </div>
+          )}
+        </AlertDescription>
       )}
-    </div>
+    </Alert>
   );
 }

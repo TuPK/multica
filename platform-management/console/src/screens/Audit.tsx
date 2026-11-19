@@ -1,6 +1,14 @@
-import { useState } from "react";
-import { Input } from "@multica/ui/components/ui/input";
+import { useMemo, useState } from "react";
 import { Button } from "@multica/ui/components/ui/button";
+import { Field, FieldLabel } from "@multica/ui/components/ui/field";
+import { Input } from "@multica/ui/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
 import {
   Table,
   TableHeader,
@@ -10,6 +18,7 @@ import {
   TableCell,
 } from "@multica/ui/components/ui/table";
 import { Spinner } from "@multica/ui/components/ui/spinner";
+import { PageHeader } from "../components/PageHeader";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
@@ -22,6 +31,8 @@ export function Audit() {
   const [actorId, setActorId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+
+  const hasFilters = Boolean(action || actorId || from || to);
 
   const filters: AuditFilters = {
     action: action || undefined,
@@ -45,77 +56,96 @@ export function Audit() {
     ? data
     : (data as unknown as { events?: AuditEvent[] })?.events || [];
 
-  const handleFilterChange =
-    (setter: (val: string) => void) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      setter(e.target.value);
-    };
+  const actionItems = useMemo(
+    () => [
+      { value: "all", label: "All actions" },
+      ...CATALOG_ACTIONS.map((code) => ({ value: code, label: code })),
+    ],
+    [],
+  );
+
+  const clearFilters = () => {
+    setAction("");
+    setActorId("");
+    setFrom("");
+    setTo("");
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-title-lg font-bold">Audit Log</h1>
-        <p className="text-body text-muted-foreground">
-          System-wide audit trail of security, administration, and tenant events.
-        </p>
-      </div>
+      <PageHeader
+        title="Audit Log"
+        actions={
+          hasFilters ? (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          ) : undefined
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 rounded-lg border border-surface-border bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1.5">
-          <label htmlFor="audit-action-select" className="text-caption font-medium text-foreground">
+        <Field>
+          <FieldLabel htmlFor="audit-action-select" className="text-label">
             Action
-          </label>
-          <select
-            id="audit-action-select"
-            value={action}
-            onChange={handleFilterChange(setAction)}
-            className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          </FieldLabel>
+          <Select
+            items={actionItems}
+            value={action || "all"}
+            onValueChange={(val) => setAction(!val || val === "all" ? "" : val)}
           >
-            <option value="">All actions</option>
-            {CATALOG_ACTIONS.map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-        </div>
+            <SelectTrigger id="audit-action-select" aria-label="Action" className="w-full">
+              <SelectValue>
+                {actionItems.find((item) => item.value === (action || "all"))?.label ??
+                  "All actions"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {actionItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label htmlFor="audit-actor-input" className="text-caption font-medium text-foreground">
+        <Field>
+          <FieldLabel htmlFor="audit-actor-input" className="text-label">
             Actor ID
-          </label>
+          </FieldLabel>
           <Input
             id="audit-actor-input"
             type="text"
             value={actorId}
-            onChange={handleFilterChange(setActorId)}
+            onChange={(e) => setActorId(e.target.value)}
             placeholder="Filter by actor ID..."
           />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label htmlFor="audit-from-input" className="text-caption font-medium text-foreground">
+        <Field>
+          <FieldLabel htmlFor="audit-from-input" className="text-label">
             From Date
-          </label>
+          </FieldLabel>
           <Input
             id="audit-from-input"
             type="date"
             value={from}
-            onChange={handleFilterChange(setFrom)}
+            onChange={(e) => setFrom(e.target.value)}
           />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label htmlFor="audit-to-input" className="text-caption font-medium text-foreground">
+        <Field>
+          <FieldLabel htmlFor="audit-to-input" className="text-label">
             To Date
-          </label>
+          </FieldLabel>
           <Input
             id="audit-to-input"
             type="date"
             value={to}
-            onChange={handleFilterChange(setTo)}
+            onChange={(e) => setTo(e.target.value)}
           />
-        </div>
+        </Field>
       </div>
 
       {isLoading && <LoadingState message="Loading audit log..." />}
@@ -132,12 +162,19 @@ export function Audit() {
         <EmptyState
           title="No audit events found"
           description="Try adjusting your filter criteria."
+          actions={
+            hasFilters ? (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            ) : undefined
+          }
         />
       )}
 
       {!isLoading && !isError && events.length > 0 && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-surface-border bg-surface shadow-xs">
+          <div className="rounded-lg border border-surface-border bg-surface">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -151,10 +188,10 @@ export function Audit() {
               <TableBody>
                 {events.map((event: AuditEvent) => (
                   <TableRow key={event.id}>
-                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
                       {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
                     </TableCell>
-                    <TableCell className="font-mono text-caption whitespace-nowrap font-medium">
+                    <TableCell className="whitespace-nowrap font-mono text-caption font-medium">
                       {event.action}
                     </TableCell>
                     <TableCell>
