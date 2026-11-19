@@ -2,10 +2,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getApiErrorMessage,
+  getApprovalErrorMessage,
+  getLegalHoldErrorMessage,
   getLimitOverrideErrorMessage,
   getMemberChangeErrorMessage,
+  getTenantPolicyErrorMessage,
   PlatformApiError,
   platformFetch,
+  platformFetchText,
 } from "./client";
 
 function mockFetch(response: Response) {
@@ -252,5 +256,68 @@ describe("platformFetch error mapping", () => {
         "fallback",
       ),
     ).toBe("Raw server error");
+  });
+
+  it("reads plain text responses and X-Next-Cursor in platformFetchText", async () => {
+    const fn = mockFetch(
+      new Response("id,action\nae-1,staff.added\n", {
+        status: 200,
+        headers: {
+          "Content-Type": "text/csv",
+          "X-Next-Cursor": "cur-next",
+        },
+      }),
+    );
+
+    const result = await platformFetchText("/audit-events/export?format=csv", {
+      accept: "text/csv",
+    });
+
+    expect(result).toEqual({
+      text: "id,action\nae-1,staff.added\n",
+      contentType: "text/csv",
+      nextCursor: "cur-next",
+    });
+    expect(new Headers(fn.mock.calls[0]?.[1]?.headers).get("Accept")).toBe("text/csv");
+
+    fn.mockResolvedValueOnce(json(400, { error: "range exceeds 31 days", code: "invalid_range" }));
+    const err = await catchError(platformFetchText("/audit-events/export"));
+    expect(err.code).toBe("invalid_range");
+    expect(err.message).toBe("range exceeds 31 days");
+  });
+
+  it("maps tenant policy, approval, and legal hold errors cleanly", () => {
+    expect(
+      getTenantPolicyErrorMessage(
+        new PlatformApiError(402, "plan_feature_unavailable", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/workspace policies/i);
+    expect(
+      getTenantPolicyErrorMessage(
+        new PlatformApiError(409, "policy_version_conflict", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/changed since it was read/i);
+
+    expect(
+      getApprovalErrorMessage(
+        new PlatformApiError(409, "approver_must_differ", "the approver must differ from the requester"),
+        "fallback",
+      ),
+    ).toBe("the approver must differ from the requester");
+    expect(
+      getApprovalErrorMessage(
+        new PlatformApiError(409, "approver_unavailable", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/two active system administrators/i);
+
+    expect(
+      getLegalHoldErrorMessage(
+        new PlatformApiError(409, "legal_hold_exists", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/already covers/i);
   });
 });

@@ -21,6 +21,7 @@ const mockUpdateWorkspaceBillingProfileMutateAsync = vi.fn();
 const mockAddWorkspaceMemberMutateAsync = vi.fn();
 const mockCancelMemberRequestMutateAsync = vi.fn();
 const mockDeleteWorkspaceNowMutateAsync = vi.fn();
+const mockCreateQuotaRequestMutateAsync = vi.fn();
 const mockExportWorkspaceMutateAsync = vi.fn();
 let mockUpdateBillingProfileIsPending = false;
 
@@ -66,6 +67,10 @@ vi.mock("../api/hooks", () => ({
   }),
   useDeleteWorkspaceNow: () => ({
     mutateAsync: mockDeleteWorkspaceNowMutateAsync,
+    isPending: false,
+  }),
+  useCreateQuotaRequest: () => ({
+    mutateAsync: mockCreateQuotaRequestMutateAsync,
     isPending: false,
   }),
   useExportWorkspace: () => ({
@@ -1173,6 +1178,7 @@ describe("WorkspaceDetail screen", () => {
           workspaceId: "t-123",
           reason: "Customer offboarding",
           confirm: "acme",
+          export_first: false,
         });
       });
       unmount();
@@ -1242,6 +1248,96 @@ describe("WorkspaceDetail screen", () => {
         expect(alert).toHaveTextContent("the workspace state does not allow this action");
         expect(alert).toHaveTextContent("pending_deletion");
         expect(alert).toHaveTextContent("active, read_only, suspended");
+      });
+    });
+  });
+
+  describe("R6 S36 quota request and export-first deletion", () => {
+    it("system_admin and admin can request quota increase while support cannot", async () => {
+      mockCreateQuotaRequestMutateAsync.mockResolvedValueOnce({
+        id: "qr-new",
+        workspace_id: "t-123",
+        tenant_id: "ten-1",
+        gate: "agents",
+        current_value: 5,
+        requested_value: 25,
+        approved_value: null,
+        state: "pending",
+        reason: "Growing agent pool",
+        decision_reason: "",
+        requested_by: "u-admin",
+        decided_by: "",
+        created_at: "2026-11-19T12:00:00Z",
+        decided_at: null,
+      });
+
+      const { rerender } = render(
+        <WorkspaceDetail workspaceId="t-123" backLabel="Back" onBack={vi.fn()} userRole="admin" />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Request quota increase/i }));
+      const dialog = screen.getByRole("dialog");
+      fireEvent.change(within(dialog).getByLabelText(/Requested value/i), {
+        target: { value: "25" },
+      });
+      fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
+        target: { value: "Growing agent pool" },
+      });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Submit request" }));
+
+      await waitFor(() => {
+        expect(mockCreateQuotaRequestMutateAsync).toHaveBeenCalledWith({
+          workspaceId: "t-123",
+          gate: "agents",
+          requested_value: 25,
+          reason: "Growing agent pool",
+        });
+      });
+
+      mockUseMe.mockReturnValue({
+        data: { user_id: "u-supp", email: "support@example.com", role: "support" },
+      });
+      rerender(
+        <WorkspaceDetail workspaceId="t-123" backLabel="Back" onBack={vi.fn()} userRole="support" />,
+      );
+      expect(
+        screen.queryByRole("button", { name: /Request quota increase/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("forwards export_first=true when delete workspace switch is enabled", async () => {
+      mockDeleteWorkspaceNowMutateAsync.mockResolvedValueOnce({
+        request_id: "dr-exp",
+        state: "pending",
+      });
+
+      render(
+        <WorkspaceDetail
+          workspaceId="t-123"
+          backLabel="Back"
+          onBack={vi.fn()}
+          userRole="system_admin"
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Delete workspace/i }));
+      const dialog = screen.getByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("switch", { name: /Export data before deleting/i }));
+      fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
+        target: { value: "Export archive before delete" },
+      });
+      fireEvent.change(within(dialog).getByLabelText(/Workspace slug/i), {
+        target: { value: "acme" },
+      });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Delete workspace" }));
+
+      await waitFor(() => {
+        expect(mockDeleteWorkspaceNowMutateAsync).toHaveBeenCalledWith({
+          workspaceId: "t-123",
+          reason: "Export archive before delete",
+          confirm: "acme",
+          export_first: true,
+        });
       });
     });
   });

@@ -33,6 +33,7 @@ import {
   Activity,
   AlertCircle,
   AlertTriangle,
+  ArrowUpCircle,
   Ban,
   CalendarClock,
   CheckCircle2,
@@ -72,20 +73,22 @@ import {
   useAddWorkspaceMember,
   useCancelMemberRequest,
   useDeleteWorkspaceNow,
+  useCreateQuotaRequest,
   type MemberRole,
 } from "../api/hooks";
 import { getApiErrorMessage, PlatformApiError } from "../api/client";
 import { formatBytes } from "./Tenants";
 import type { StaffRole } from "../components/types";
-import type {
-  Note,
-  AuditEvent,
-  Order,
-  BillingProfile,
-  MemberRequest,
-  WorkspaceUsage,
-  WorkspaceUsageRow,
-  WorkspaceUsageUnpaidOrder,
+import {
+  LIMIT_GATES,
+  type Note,
+  type AuditEvent,
+  type Order,
+  type BillingProfile,
+  type MemberRequest,
+  type WorkspaceUsage,
+  type WorkspaceUsageRow,
+  type WorkspaceUsageUnpaidOrder,
 } from "../api/schemas";
 import { formatMinorAmount } from "../money";
 
@@ -518,6 +521,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
   const canExportWorkspace = effectiveRole === "system_admin" || effectiveRole === "admin";
   const canManageMembers = effectiveRole === "system_admin" || effectiveRole === "admin";
   const canDeleteWorkspace = effectiveRole === "system_admin" || effectiveRole === "admin";
+  const canRequestQuota = !effectiveRole || effectiveRole === "system_admin" || effectiveRole === "admin";
 
   const {
     data: memberRequests = [],
@@ -530,6 +534,15 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
   const addWorkspaceMember = useAddWorkspaceMember();
   const cancelMemberRequest = useCancelMemberRequest();
   const deleteWorkspaceNow = useDeleteWorkspaceNow();
+  const createQuotaRequest = useCreateQuotaRequest();
+
+  // Quota request dialog state
+  const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
+  const [quotaGate, setQuotaGate] = useState<string>("agents");
+  const [quotaRequestedValue, setQuotaRequestedValue] = useState("");
+  const [quotaReason, setQuotaReason] = useState("");
+  const [quotaError, setQuotaError] = useState<string | null>(null);
+  const [quotaNotice, setQuotaNotice] = useState<string | null>(null);
 
   // Add member dialog state
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -850,18 +863,63 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
     }
   };
 
-  const handleConfirmDeleteNow = async ({ reason, confirm }: { reason: string; confirm: string }) => {
+  const handleConfirmDeleteNow = async ({
+    reason,
+    confirm,
+    export_first,
+  }: {
+    reason: string;
+    confirm: string;
+    export_first?: boolean;
+  }) => {
     setDeleteError(null);
     try {
       const res = await deleteWorkspaceNow.mutateAsync({
         workspaceId,
         reason,
         confirm,
+        ...(export_first !== undefined ? { export_first } : {}),
       });
       setDeleteDialogOpen(false);
       setDeleteNotice(`Immediate deletion requested (${res.request_id}).`);
     } catch (err: unknown) {
       setDeleteError(getApiErrorMessage(err, "Failed to start workspace deletion"));
+    }
+  };
+
+  const handleOpenQuotaDialog = () => {
+    setQuotaGate("agents");
+    setQuotaRequestedValue("");
+    setQuotaReason("");
+    setQuotaError(null);
+    setQuotaDialogOpen(true);
+  };
+
+  const handleSubmitQuotaRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (createQuotaRequest.isPending) return;
+    const parsedValue = Number(quotaRequestedValue.trim());
+    if (quotaRequestedValue.trim() === "" || !Number.isInteger(parsedValue) || parsedValue <= 0) {
+      setQuotaError("Requested value must be a positive whole number.");
+      return;
+    }
+    const trimmedReason = quotaReason.trim();
+    if (!trimmedReason) {
+      setQuotaError("A reason is required.");
+      return;
+    }
+    setQuotaError(null);
+    try {
+      const created = await createQuotaRequest.mutateAsync({
+        workspaceId,
+        gate: quotaGate,
+        requested_value: parsedValue,
+        reason: trimmedReason,
+      });
+      setQuotaDialogOpen(false);
+      setQuotaNotice(`Quota increase requested (${created.id}).`);
+    } catch (err: unknown) {
+      setQuotaError(getApiErrorMessage(err, "Failed to submit quota increase request"));
     }
   };
 
@@ -950,6 +1008,12 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 <span>Add member</span>
               </Button>
             )}
+            {canRequestQuota && (
+              <Button variant="outline" size="sm" onClick={handleOpenQuotaDialog}>
+                <ArrowUpCircle className="size-3.5" aria-hidden="true" />
+                <span>Request quota increase</span>
+              </Button>
+            )}
             {canDeleteWorkspace && (
               <Button
                 variant="destructive"
@@ -966,6 +1030,13 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
           </>
         }
       />
+
+      {quotaNotice && (
+        <Alert role="status">
+          <Info className="size-4" aria-hidden="true" />
+          <AlertDescription>{quotaNotice}</AlertDescription>
+        </Alert>
+      )}
 
       {deleteNotice && (
         <Alert role="status">
@@ -2131,6 +2202,107 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={quotaDialogOpen}
+        onOpenChange={(open) => {
+          if (!createQuotaRequest.isPending) {
+            setQuotaDialogOpen(open);
+            if (!open) setQuotaError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleSubmitQuotaRequest} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Request quota increase</DialogTitle>
+              <DialogDescription>
+                Submit a limit increase request for {workspace.name || workspace.slug}. System administrators review pending requests.
+              </DialogDescription>
+            </DialogHeader>
+
+            {quotaError && (
+              <Alert variant="destructive">
+                <AlertCircle className="size-4" aria-hidden="true" />
+                <AlertDescription>{quotaError}</AlertDescription>
+              </Alert>
+            )}
+
+            <Field>
+              <FieldLabel htmlFor="workspace-quota-gate">Gate</FieldLabel>
+              <Select
+                items={LIMIT_GATES.map((g) => ({ value: g, label: g }))}
+                value={quotaGate}
+                onValueChange={(val) => val && setQuotaGate(val)}
+              >
+                <SelectTrigger id="workspace-quota-gate" aria-label="Gate" className="w-full">
+                  <SelectValue>{quotaGate}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {LIMIT_GATES.map((gate) => (
+                    <SelectItem key={gate} value={gate}>
+                      {gate}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="workspace-quota-value">Requested value</FieldLabel>
+              <Input
+                id="workspace-quota-value"
+                type="number"
+                min={1}
+                step={1}
+                value={quotaRequestedValue}
+                onChange={(e) => setQuotaRequestedValue(e.target.value)}
+                placeholder="25"
+                disabled={createQuotaRequest.isPending}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="workspace-quota-reason">Reason</FieldLabel>
+              <Textarea
+                id="workspace-quota-reason"
+                value={quotaReason}
+                onChange={(e) => setQuotaReason(e.target.value)}
+                placeholder="Explain why the workspace needs this quota increase..."
+                disabled={createQuotaRequest.isPending}
+                rows={3}
+              />
+            </Field>
+
+            <DialogFooter>
+              <DialogClose
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={createQuotaRequest.isPending}
+                  />
+                }
+              >
+                Cancel
+              </DialogClose>
+              <Button
+                type="submit"
+                variant="default"
+                disabled={
+                  !quotaRequestedValue.trim() ||
+                  !quotaReason.trim() ||
+                  createQuotaRequest.isPending
+                }
+                aria-busy={createQuotaRequest.isPending || undefined}
+              >
+                {createQuotaRequest.isPending && <Spinner className="size-3.5" />}
+                Submit request
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <TypeToConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
@@ -2143,6 +2315,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         confirmInputLabel="Workspace slug"
         confirmLabel="Delete workspace"
         confirmVariant="destructive"
+        showExportFirst
         error={deleteError}
         onConfirm={handleConfirmDeleteNow}
       />

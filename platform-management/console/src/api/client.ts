@@ -86,6 +86,44 @@ export async function platformFetch(path: string, init: PlatformRequestInit = {}
   }
 }
 
+export interface PlatformTextResponse {
+  text: string;
+  contentType: string;
+  nextCursor: string | null;
+}
+
+/**
+ * Calls the platform API and returns a plain-text / streaming response body
+ * (e.g. NDJSON or CSV audit exports), mapping non-2xx JSON errors to PlatformApiError.
+ */
+export async function platformFetchText(
+  path: string,
+  init: PlatformRequestInit & { accept?: string } = {},
+): Promise<PlatformTextResponse> {
+  const { body, headers, accept, ...rest } = init;
+  const requestHeaders = new Headers(headers);
+  if (accept) requestHeaders.set("Accept", accept);
+  if (body !== undefined) requestHeaders.set("Content-Type", "application/json");
+
+  const res = await fetch(BASE_PATH + path, {
+    ...rest,
+    headers: requestHeaders,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    credentials: "same-origin",
+  });
+
+  if (!res.ok) {
+    const { code, message, details } = await readErrorBody(res);
+    throw new PlatformApiError(res.status, code, message, details);
+  }
+
+  return {
+    text: await res.text(),
+    contentType: res.headers.get("Content-Type") ?? "",
+    nextCursor: res.headers.get("X-Next-Cursor"),
+  };
+}
+
 /** Extracts a non-empty user-facing message from an API or generic error. */
 export function getApiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof Error && err.message.trim() !== "") return err.message;
@@ -124,6 +162,53 @@ export function getLimitOverrideErrorMessage(err: unknown, fallback: string): st
     err instanceof PlatformApiError && err.code
       ? LIMIT_OVERRIDE_ERROR_MESSAGES[err.code]
       : undefined;
+  if (mapped) return mapped;
+  return getApiErrorMessage(err, fallback);
+}
+
+const TENANT_POLICY_ERROR_MESSAGES: Record<string, string> = {
+  plan_feature_unavailable:
+    "At least one workspace in this tenant must be on a plan with workspace policies to save a tenant policy.",
+  policy_version_conflict:
+    "The policy changed since it was read. Reload and try again.",
+};
+
+/** Maps tenant-policy API error codes to clear guidance, falling back to the server message. */
+export function getTenantPolicyErrorMessage(err: unknown, fallback: string): string {
+  const mapped =
+    err instanceof PlatformApiError && err.code
+      ? TENANT_POLICY_ERROR_MESSAGES[err.code]
+      : undefined;
+  if (mapped) return mapped;
+  return getApiErrorMessage(err, fallback);
+}
+
+const APPROVAL_ERROR_MESSAGES: Record<string, string> = {
+  approver_unavailable: "At least two active system administrators are required for two-person approval.",
+  approval_not_pending: "This deletion request is no longer awaiting approval.",
+  legal_hold: "Deletion is blocked by an active legal hold.",
+};
+
+/** Maps approval API error codes to clear guidance, preserving server messages such as approver_must_differ. */
+export function getApprovalErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof PlatformApiError && err.code === "approver_must_differ") {
+    return err.message || "The approver must differ from the requester.";
+  }
+  const mapped =
+    err instanceof PlatformApiError && err.code ? APPROVAL_ERROR_MESSAGES[err.code] : undefined;
+  if (mapped) return mapped;
+  return getApiErrorMessage(err, fallback);
+}
+
+const LEGAL_HOLD_ERROR_MESSAGES: Record<string, string> = {
+  legal_hold_exists: "An active legal hold already covers this scope.",
+  legal_hold_not_found: "Legal hold not found or already released.",
+};
+
+/** Maps legal-hold API error codes to clear guidance, falling back to the server message. */
+export function getLegalHoldErrorMessage(err: unknown, fallback: string): string {
+  const mapped =
+    err instanceof PlatformApiError && err.code ? LEGAL_HOLD_ERROR_MESSAGES[err.code] : undefined;
   if (mapped) return mapped;
   return getApiErrorMessage(err, fallback);
 }

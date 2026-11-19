@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Section } from "@astryxdesign/core/Section";
 import { proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
+import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
 import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
@@ -13,21 +16,40 @@ import {
   SelectValue,
 } from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Activity } from "@multica/ui/icons";
+import { Activity, AlertCircle, Download } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { DatePickerField } from "../components/DatePickerField";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
-import { useAuditEvents, type AuditFilters } from "../api/hooks";
+import { getApiErrorMessage } from "../api/client";
+import { useAuditEvents, useExportAudit, useMe, type AuditFilters } from "../api/hooks";
 import { CATALOG_ACTIONS } from "../components/types";
 import type { AuditEvent } from "../api/schemas";
 
+const MAX_EXPORT_RANGE_MS = 31 * 24 * 60 * 60 * 1000;
+
+const EXPORT_FORMAT_ITEMS = [
+  { value: "ndjson", label: "NDJSON (.ndjson)" },
+  { value: "csv", label: "CSV (.csv)" },
+] as const;
+
 export function Audit() {
+  const { data: me } = useMe();
+  const canExport = !me?.role || me.role === "system_admin" || me.role === "admin";
+
   const [action, setAction] = useState("");
   const [actorId, setActorId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
+  const [exportFormat, setExportFormat] = useState<"ndjson" | "csv">("ndjson");
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  const exportAudit = useExportAudit();
 
   const hasFilters = Boolean(action || actorId || from || to);
 
@@ -66,6 +88,59 @@ export function Audit() {
     setActorId("");
     setFrom("");
     setTo("");
+  };
+
+  const handleExport = async () => {
+    setExportError(null);
+    setExportNotice(null);
+
+    if (!exportFrom || !exportTo) {
+      setExportError("Select both Export from and Export to dates.");
+      return;
+    }
+
+    const startMs = Date.parse(`${exportFrom}T00:00:00Z`);
+    const endInclusiveMs = Date.parse(`${exportTo}T00:00:00Z`);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endInclusiveMs) || endInclusiveMs < startMs) {
+      setExportError("Export end date must be on or after the start date.");
+      return;
+    }
+
+    const endExclusiveMs = endInclusiveMs + 24 * 60 * 60 * 1000;
+    if (endExclusiveMs - startMs > MAX_EXPORT_RANGE_MS) {
+      setExportError("Export range cannot exceed 31 days.");
+      return;
+    }
+
+    try {
+      const result = await exportAudit.mutateAsync({
+        from: new Date(startMs).toISOString(),
+        to: new Date(endExclusiveMs).toISOString(),
+        format: exportFormat,
+        action: action || undefined,
+        actor_id: actorId || undefined,
+      });
+
+      if (typeof URL.createObjectURL === "function") {
+        const mimeType =
+          exportFormat === "csv" ? "text/csv;charset=utf-8" : "application/x-ndjson;charset=utf-8";
+        const blob = new Blob([result.text], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `audit-events-${exportFrom}-to-${exportTo}.${exportFormat}`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+
+      setExportNotice(
+        result.nextCursor
+          ? "Downloaded export page (more matching events exist; narrow the window for all rows)."
+          : "Audit log export downloaded.",
+      );
+    } catch (err) {
+      setExportError(getApiErrorMessage(err, "Failed to export audit log"));
+    }
   };
 
   return (
@@ -146,6 +221,101 @@ export function Audit() {
           </Field>
         </div>
       </Card>
+
+      {canExport && (
+        <Section padding={4}>
+          <div className="space-y-4">
+            <Heading level={3}>Export audit log</Heading>
+            {exportError && (
+              <Alert variant="destructive">
+                <AlertCircle className="size-4" />
+                <AlertDescription>{exportError}</AlertDescription>
+              </Alert>
+            )}
+            {exportNotice && (
+              <Text type="supporting" color="secondary" role="status">
+                {exportNotice}
+              </Text>
+            )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+              <Field>
+                <FieldLabel htmlFor="audit-export-from-input" className="text-label">
+                  Export from
+                </FieldLabel>
+                <DatePickerField
+                  id="audit-export-from-input"
+                  value={exportFrom}
+                  onChange={setExportFrom}
+                  placeholder="Select start date"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="audit-export-to-input" className="text-label">
+                  Export to
+                </FieldLabel>
+                <DatePickerField
+                  id="audit-export-to-input"
+                  value={exportTo}
+                  onChange={setExportTo}
+                  placeholder="Select end date"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="audit-export-format-select" className="text-label">
+                  Format
+                </FieldLabel>
+                <Select
+                  items={EXPORT_FORMAT_ITEMS}
+                  value={exportFormat}
+                  onValueChange={(val) => {
+                    if (val === "csv" || val === "ndjson") setExportFormat(val);
+                  }}
+                >
+                  <SelectTrigger
+                    id="audit-export-format-select"
+                    aria-label="Format"
+                    className="w-full"
+                  >
+                    <SelectValue>
+                      {EXPORT_FORMAT_ITEMS.find((item) => item.value === exportFormat)?.label ??
+                        "NDJSON (.ndjson)"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXPORT_FORMAT_ITEMS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={exportAudit.isPending}
+                  aria-busy={exportAudit.isPending || undefined}
+                  onClick={handleExport}
+                >
+                  {exportAudit.isPending ? (
+                    <Spinner />
+                  ) : (
+                    <Download className="size-4" aria-hidden="true" />
+                  )}
+                  Export audit log
+                </Button>
+              </div>
+            </div>
+            <Text type="supporting" color="secondary">
+              Maximum export window is 31 days. Currently applied action and actor filters apply to the export.
+            </Text>
+          </div>
+        </Section>
+      )}
 
       {isLoading && <LoadingState message="Loading audit log..." />}
 

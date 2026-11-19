@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
-import { Field } from "@astryxdesign/core";
+import { Field, Text } from "@astryxdesign/core";
 import { AlertCircle } from "@multica/ui/icons";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
@@ -13,6 +13,7 @@ import {
 } from "@multica/ui/components/ui/dialog";
 import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
+import { Switch } from "@multica/ui/components/ui/switch";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { getApiErrorMessage } from "../api/client";
 
@@ -31,9 +32,18 @@ export interface TypeToConfirmDialogProps {
   confirmVariant?: "default" | "destructive";
   error?: string | null;
   isConfirmDisabled?: boolean;
-  onConfirm: (values: { reason: string; confirm: string }) => Promise<void> | void;
+  showExportFirst?: boolean;
+  ownersNotice?: string;
+  onConfirm: (values: {
+    reason: string;
+    confirm: string;
+    export_first?: boolean;
+  }) => Promise<void> | void;
   children?: ReactNode;
 }
+
+const DEFAULT_OWNERS_NOTICE =
+  "Workspace owners will be notified by email before deletion and receive any exported archive link (valid for 7 days).";
 
 export function TypeToConfirmDialog({
   open,
@@ -50,21 +60,27 @@ export function TypeToConfirmDialog({
   confirmVariant = "destructive",
   error = null,
   isConfirmDisabled = false,
+  showExportFirst = false,
+  ownersNotice = DEFAULT_OWNERS_NOTICE,
   onConfirm,
   children,
 }: TypeToConfirmDialogProps) {
   const [reason, setReason] = useState("");
   const [confirmText, setConfirmText] = useState("");
+  const [exportFirst, setExportFirst] = useState(false);
   const [pending, setPending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const reasonId = useId();
   const confirmId = useId();
+  const exportFirstId = useId();
+  const exportFirstLabelId = useId();
 
   useEffect(() => {
     if (open) {
       setReason("");
       setConfirmText("");
+      setExportFirst(false);
       setLocalError(null);
     }
   }, [open]);
@@ -92,6 +108,7 @@ export function TypeToConfirmDialog({
       await onConfirm({
         reason: trimmedReason,
         confirm: trimmedConfirm,
+        ...(showExportFirst ? { export_first: exportFirst } : {}),
       });
     } catch (err) {
       setLocalError(getApiErrorMessage(err, "Request failed"));
@@ -114,6 +131,37 @@ export function TypeToConfirmDialog({
               <AlertCircle className="size-4" />
               <AlertDescription>{displayError}</AlertDescription>
             </Alert>
+          )}
+
+          {showExportFirst && (
+            <>
+              <div className="rounded-md border border-border bg-secondary/40 p-3">
+                <Text type="supporting" color="primary">
+                  {ownersNotice}
+                </Text>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
+                <div className="min-w-0">
+                  <label
+                    id={exportFirstLabelId}
+                    htmlFor={exportFirstId}
+                    className="text-body font-medium text-foreground"
+                  >
+                    Export data before deleting
+                  </label>
+                  <Text type="supporting" as="div">
+                    Queues a pre-deletion workspace archive before purge starts.
+                  </Text>
+                </div>
+                <Switch
+                  id={exportFirstId}
+                  aria-labelledby={exportFirstLabelId}
+                  checked={exportFirst}
+                  onCheckedChange={setExportFirst}
+                  disabled={pending}
+                />
+              </div>
+            </>
           )}
 
           {children}

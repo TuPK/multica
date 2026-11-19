@@ -25,11 +25,16 @@ import { PlanHistory } from "./screens/PlanHistory";
 import { Resources } from "./screens/Resources";
 import { Runtimes } from "./screens/Runtimes";
 import { RuntimeDetail } from "./screens/RuntimeDetail";
+import { TenantPolicy } from "./screens/TenantPolicy";
+import { QuotaRequests } from "./screens/QuotaRequests";
+import { Approvals } from "./screens/Approvals";
+import { LegalHolds } from "./screens/LegalHolds";
 
 type Screen =
   | "overview"
   | "tenants"
   | "tenant-detail"
+  | "tenant-policy"
   | "workspaces"
   | "workspace-detail"
   | "users"
@@ -37,6 +42,9 @@ type Screen =
   | "resources"
   | "runtimes"
   | "runtime-detail"
+  | "quota-requests"
+  | "approvals"
+  | "legal-holds"
   | "payment-notices"
   | "einvoices"
   | "orders"
@@ -66,10 +74,14 @@ const SCREEN_PATHS: Record<
 > = {
   overview: "/",
   tenants: "/tenants",
+  "tenant-policy": "/policy",
   workspaces: "/workspaces",
   users: "/users",
   resources: "/resources",
   runtimes: "/runtimes",
+  "quota-requests": "/quota-requests",
+  approvals: "/approvals",
+  "legal-holds": "/legal-holds",
   orders: "/orders",
   "payment-notices": "/payment-notices",
   einvoices: "/einvoices",
@@ -98,6 +110,13 @@ function parseRoute(pathname: string): RouteState {
   }
   if (clean === "/workspaces") {
     return { screen: "workspaces", tenantId: null, workspaceId: null, userId: null, runtimeId: null, planKey: null };
+  }
+  if (clean.startsWith("/tenants/") && clean.endsWith("/policy")) {
+    const rawId = clean.slice("/tenants/".length, -"/policy".length);
+    const id = safeDecodeSegment(rawId);
+    if (id && !id.includes("/")) {
+      return { screen: "tenant-policy", tenantId: id, workspaceId: null, userId: null, runtimeId: null, planKey: null };
+    }
   }
   if (clean.startsWith("/tenants/")) {
     const id = safeDecodeSegment(clean.slice("/tenants/".length));
@@ -151,6 +170,9 @@ function routeToPath(route: RouteState): string {
   if (route.screen === "tenant-detail" && route.tenantId) {
     return `/tenants/${encodeURIComponent(route.tenantId)}`;
   }
+  if (route.screen === "tenant-policy" && route.tenantId) {
+    return `/tenants/${encodeURIComponent(route.tenantId)}/policy`;
+  }
   if (route.screen === "workspace-detail" && route.workspaceId) {
     return `/workspaces/${encodeURIComponent(route.workspaceId)}`;
   }
@@ -175,11 +197,23 @@ function canAccessScreen(screen: Screen, role: StaffRole): boolean {
   if (screen === "overview") {
     return role !== "admin";
   }
-  if (screen === "staff" || screen === "accounts" || screen === "resources") {
+  if (
+    screen === "staff" ||
+    screen === "accounts" ||
+    screen === "resources" ||
+    screen === "approvals" ||
+    screen === "legal-holds"
+  ) {
     return role === "system_admin";
   }
   if (screen === "runtimes" || screen === "runtime-detail") {
     return role === "system_admin" || role === "admin" || role === "support";
+  }
+  if (screen === "tenant-policy") {
+    return role === "system_admin" || role === "admin" || role === "support";
+  }
+  if (screen === "quota-requests") {
+    return role === "system_admin" || role === "admin" || role === "billing";
   }
   if (screen === "plans") {
     return role === "system_admin" || role === "admin";
@@ -416,6 +450,19 @@ export function App() {
         return <Accounts userRole={me.role} />;
       case "staff":
         return <Staff />;
+      case "tenant-policy":
+        return (
+          <TenantPolicy
+            tenantId={me.role === "admin" ? (me.tenant_id ?? undefined) : (effectiveRoute.tenantId ?? undefined)}
+            userRole={me.role}
+          />
+        );
+      case "quota-requests":
+        return <QuotaRequests userRole={me.role} />;
+      case "approvals":
+        return <Approvals userRole={me.role} />;
+      case "legal-holds":
+        return <LegalHolds userRole={me.role} />;
       case "deletion-requests":
         return <DeletionRequests userRole={me.role} />;
       case "audit":

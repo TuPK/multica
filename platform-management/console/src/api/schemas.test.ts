@@ -62,6 +62,12 @@ import {
   parseRuntimeDetail,
   parseSetRuntimeStatusResponse,
   parseRuntimeUnregisterResponse,
+  parseTenantPolicyResponse,
+  parseTenantStatusResponse,
+  parseQuotaRequestPage,
+  parseApprovalList,
+  parseLegalHold,
+  parseLegalHoldList,
 } from "./schemas";
 
 const workspace = {
@@ -1926,5 +1932,91 @@ describe("R6 S25 resources, limit overrides and runtimes schemas", () => {
     expect(
       parseRuntimeUnregisterResponse({ request_id: "dr-1", state: "pending" }),
     ).toEqual({ request_id: "dr-1", state: "pending" });
+  });
+
+  it("parses tenant policy, tenant status, quota request page, approvals, legal holds, and new deletion states", () => {
+    const policy = parseTenantPolicyResponse({
+      policy: {
+        allowed_invite_domains: ["acme.com"],
+        share_links_enabled: false,
+        require_sso: true,
+        require_mfa: false,
+        session_max_age_hours: 12,
+      },
+      version: 3,
+      sources: {
+        require_sso: "tenant",
+        require_mfa: "future_source",
+      },
+    });
+    expect(policy?.version).toBe(3);
+    expect(policy?.policy.allowed_invite_domains).toEqual(["acme.com"]);
+    expect(policy?.sources?.require_mfa).toBe("unknown");
+    expect(policy?.tenant_fields).toEqual([]);
+    expect(parseTenantPolicyResponse(null)).toBeNull();
+
+    expect(parseTenantStatusResponse({ status: "suspended", workspace_ids: ["ws-1"] })).toEqual({
+      status: "suspended",
+      workspace_ids: ["ws-1"],
+    });
+
+    const qrPage = parseQuotaRequestPage({
+      requests: [
+        {
+          id: "qr-1",
+          workspace_id: "ws-1",
+          gate: "agents",
+          current_value: 5,
+          requested_value: 20,
+          state: "pending",
+          reason: "Scale",
+        },
+      ],
+      next_cursor: "cur-q",
+    });
+    expect(qrPage.requests).toHaveLength(1);
+    expect(qrPage.next_cursor).toBe("cur-q");
+    expect(parseQuotaRequestPage(null)).toEqual({ requests: [], next_cursor: null });
+
+    const approvals = parseApprovalList({
+      approvals: [
+        {
+          id: "dr-ap",
+          kind: "tenant",
+          target_id: "t-1",
+          state: "awaiting_approval",
+          export_first: true,
+        },
+      ],
+    });
+    expect(approvals.approvals[0]?.state).toBe("awaiting_approval");
+    expect(approvals.approvals[0]?.export_first).toBe(true);
+    expect(parseApprovalList(null)).toEqual({ approvals: [] });
+
+    const holds = parseLegalHoldList({
+      legal_holds: [
+        {
+          id: "lh-1",
+          scope_kind: "future_scope",
+          scope_id: "t-1",
+          reason: "Subpoena",
+          case_ref: "CASE-1",
+          placed_by: "u-sys",
+          released: false,
+        },
+      ],
+    });
+    expect(holds.legal_holds[0]?.scope_kind).toBe("unknown");
+    expect(holds.legal_holds[0]?.placed_at).toBeNull();
+    expect(parseLegalHold({ id: "lh-2", scope_kind: "tenant", scope_id: "t-1" }, "POST")).not.toBeNull();
+    expect(parseLegalHoldList(null)).toEqual({ legal_holds: [] });
+
+    const deletions = parseDeletionRequestList({
+      requests: [
+        { id: "d-1", kind: "workspace", state: "legal_hold" },
+        { id: "d-2", kind: "workspace", state: "export_timeout" },
+      ],
+    });
+    expect(deletions.requests.map((r) => r.state)).toEqual(["legal_hold", "export_timeout"]);
   });
 });

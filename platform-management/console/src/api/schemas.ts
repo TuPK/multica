@@ -624,6 +624,10 @@ export type TenantWorkspace = z.output<typeof TenantWorkspaceSchema>;
 export const TenantDetailSchema = TenantSchema.extend({
   created_by: nullableText,
   workspaces: z.array(TenantWorkspaceSchema).default([]),
+  // Pending optional fields not yet returned by GET /tenants/{id} on main.
+  status_reason: z.string().optional(),
+  legal_hold: z.boolean().optional(),
+  legal_hold_id: z.string().nullable().optional(),
 });
 export type TenantDetail = z.output<typeof TenantDetailSchema>;
 
@@ -1280,7 +1284,16 @@ export function parseMemberRequestList(data: unknown): MemberRequestList {
 export const DELETION_KINDS = ["workspace", "tenant", "account"] as const;
 export type DeletionKind = (typeof DELETION_KINDS)[number] | "unknown";
 
-export const DELETION_REQUEST_STATES = ["pending", "running", "completed", "failed", "canceled"] as const;
+export const DELETION_REQUEST_STATES = [
+  "awaiting_approval",
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "canceled",
+  "legal_hold",
+  "export_timeout",
+] as const;
 export type DeletionRequestState = (typeof DELETION_REQUEST_STATES)[number] | "unknown";
 
 export const DeletionRequestSchema = z.object({
@@ -1297,6 +1310,9 @@ export const DeletionRequestSchema = z.object({
   requested_by_label: text,
   created_at: text,
   updated_at: text,
+  export_first: z.boolean().optional(),
+  approved_by: z.string().nullable().optional(),
+  approved_at: z.string().nullable().optional(),
 });
 export type DeletionRequest = z.output<typeof DeletionRequestSchema>;
 
@@ -1764,5 +1780,114 @@ export function parseRuntimeUnregisterResponse(data: unknown): DeletionStartResp
     DeletionStartResponseSchema,
     null,
     { endpoint: "POST /api/platform/runtimes/{id}/unregister" },
+  );
+}
+
+// Tenant policy, tenant status, quota request listing, approvals, and legal holds (R6 / S36)
+
+export const TenantPolicyValuesSchema = z.object({
+  allowed_invite_domains: nullableArray(z.string()),
+  share_links_enabled: z.boolean().default(true),
+  require_sso: z.boolean().default(false),
+  require_mfa: z.boolean().default(false),
+  session_max_age_hours: z.number().int().nonnegative().default(0),
+});
+export type TenantPolicyValues = z.output<typeof TenantPolicyValuesSchema>;
+
+export const POLICY_SOURCES = ["tenant", "workspace", "default"] as const;
+export type PolicySource = (typeof POLICY_SOURCES)[number] | "unknown";
+
+export const TenantPolicyResponseSchema = z.object({
+  policy: TenantPolicyValuesSchema.prefault({}),
+  version: z.number().int().nonnegative().default(0),
+  // Pending backend fields: GET /tenants/{id}/policy currently returns { policy, version } only.
+  effective_policy: TenantPolicyValuesSchema.optional(),
+  sources: z.record(z.string(), enumOf(POLICY_SOURCES)).default({}),
+  tenant_fields: nullableArray(z.string()),
+});
+export type TenantPolicyResponse = z.output<typeof TenantPolicyResponseSchema>;
+
+export function parseTenantPolicyResponse(
+  data: unknown,
+  endpoint = "GET /api/platform/tenants/{id}/policy",
+): TenantPolicyResponse | null {
+  return parseWithFallback<TenantPolicyResponse | null>(data, TenantPolicyResponseSchema, null, {
+    endpoint,
+  });
+}
+
+export const TenantStatusResponseSchema = z.object({
+  status: enumOf(WORKSPACE_STATUSES),
+  workspace_ids: nullableArray(z.string()),
+});
+export type TenantStatusResponse = z.output<typeof TenantStatusResponseSchema>;
+
+export function parseTenantStatusResponse(data: unknown): TenantStatusResponse | null {
+  return parseWithFallback<TenantStatusResponse | null>(data, TenantStatusResponseSchema, null, {
+    endpoint: "POST /api/platform/tenants/{id}/status",
+  });
+}
+
+export const QuotaRequestPageSchema = z.object({
+  requests: nullableArray(QuotaRequestSchema),
+  next_cursor: nextCursor,
+});
+export type QuotaRequestPage = z.output<typeof QuotaRequestPageSchema>;
+
+export function parseQuotaRequestPage(data: unknown): QuotaRequestPage {
+  return parseWithFallback<QuotaRequestPage>(
+    data,
+    QuotaRequestPageSchema,
+    { requests: [], next_cursor: null },
+    { endpoint: "GET /api/platform/quota-requests" },
+  );
+}
+
+export const ApprovalListSchema = z.object({
+  approvals: nullableArray(DeletionRequestSchema),
+});
+export type ApprovalList = z.output<typeof ApprovalListSchema>;
+
+export function parseApprovalList(data: unknown): ApprovalList {
+  return parseWithFallback<ApprovalList>(
+    data,
+    ApprovalListSchema,
+    { approvals: [] },
+    { endpoint: "GET /api/platform/approvals" },
+  );
+}
+
+export const LEGAL_HOLD_SCOPE_KINDS = ["tenant", "workspace", "account"] as const;
+export type LegalHoldScopeKind = (typeof LEGAL_HOLD_SCOPE_KINDS)[number] | "unknown";
+
+export const LegalHoldSchema = z.object({
+  id: z.string(),
+  scope_kind: enumOf(LEGAL_HOLD_SCOPE_KINDS),
+  scope_id: text,
+  reason: text,
+  case_ref: text,
+  placed_by: text,
+  released: z.boolean().default(false),
+  released_by: text,
+  placed_at: nullableText,
+  released_at: nullableText,
+});
+export type LegalHold = z.output<typeof LegalHoldSchema>;
+
+export const LegalHoldListSchema = z.object({
+  legal_holds: nullableArray(LegalHoldSchema),
+});
+export type LegalHoldList = z.output<typeof LegalHoldListSchema>;
+
+export function parseLegalHold(data: unknown, endpoint: string): LegalHold | null {
+  return parseWithFallback<LegalHold | null>(data, LegalHoldSchema, null, { endpoint });
+}
+
+export function parseLegalHoldList(data: unknown): LegalHoldList {
+  return parseWithFallback<LegalHoldList>(
+    data,
+    LegalHoldListSchema,
+    { legal_holds: [] },
+    { endpoint: "GET /api/platform/legal-holds" },
   );
 }

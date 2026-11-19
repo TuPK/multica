@@ -5,7 +5,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
-import { PlatformApiError, platformFetch } from "./client";
+import { PlatformApiError, platformFetch, platformFetchText, type PlatformTextResponse } from "./client";
 import {
   parseAuditPage,
   parseMe,
@@ -64,6 +64,12 @@ import {
   parseRuntimeDetail,
   parseSetRuntimeStatusResponse,
   parseRuntimeUnregisterResponse,
+  parseTenantPolicyResponse,
+  parseTenantStatusResponse,
+  parseQuotaRequestPage,
+  parseApprovalList,
+  parseLegalHold,
+  parseLegalHoldList,
   type Me,
   type Overview,
   type StaffRole,
@@ -133,6 +139,15 @@ import {
   type RuntimeTask,
   type RuntimeDetail,
   type SetRuntimeStatusResponse,
+  type TenantPolicyValues,
+  type PolicySource,
+  type TenantPolicyResponse,
+  type TenantStatusResponse,
+  type QuotaRequestPage,
+  type ApprovalList,
+  type LegalHoldScopeKind,
+  type LegalHold,
+  type LegalHoldList,
 } from "./schemas";
 
 export type {
@@ -179,6 +194,7 @@ export type {
   DeactivateTenantUserResponse,
   MemberChangeResponse,
   QuotaRequest,
+  QuotaRequestPage,
   LimitGate,
   TenantLimitOverrideResponse,
   ResourceState,
@@ -196,6 +212,15 @@ export type {
   RuntimeTask,
   RuntimeDetail,
   SetRuntimeStatusResponse,
+  TenantPolicyValues,
+  PolicySource,
+  TenantPolicyResponse,
+  TenantStatusResponse,
+  ApprovalList,
+  LegalHoldScopeKind,
+  LegalHold,
+  LegalHoldList,
+  PlatformTextResponse,
 };
 
 /** The states staff may set on a workspace. */
@@ -254,6 +279,21 @@ export interface RuntimeFilters {
   disabled?: boolean;
 }
 
+export interface QuotaRequestFilters {
+  state?: string;
+}
+
+export interface AuditExportFilters {
+  from: string;
+  to: string;
+  format: "ndjson" | "csv";
+  action?: string;
+  actor_id?: string;
+  workspace_id?: string;
+  cursor?: string;
+  limit?: number;
+}
+
 /** Drops empty values, so `{}` and `{ q: "" }` are one query. */
 function clean<T extends object>(filters: T): T {
   const out: Record<string, unknown> = {};
@@ -294,6 +334,7 @@ export const platformKeys = {
   tenantLists: () => ["platform", "tenants", "list"] as const,
   tenantList: (filters: SearchFilters) => ["platform", "tenants", "list", clean(filters)] as const,
   tenant: (id: string) => ["platform", "tenants", "detail", id] as const,
+  tenantPolicy: (id: string) => ["platform", "tenants", "policy", id] as const,
   tenantUsersAll: (tenantId: string) => ["platform", "tenants", "users", tenantId] as const,
   tenantUserList: (tenantId: string, filters: TenantUserFilters) =>
     ["platform", "tenants", "users", tenantId, "list", clean(filters)] as const,
@@ -308,6 +349,11 @@ export const platformKeys = {
     ["platform", "runtimes", "list", clean(filters)] as const,
   runtime: (id: string) => ["platform", "runtimes", "detail", id] as const,
   quotaRequests: () => ["platform", "quota-requests"] as const,
+  quotaRequestList: (filters: QuotaRequestFilters) =>
+    ["platform", "quota-requests", "list", clean(filters)] as const,
+  quotaRequest: (id: string) => ["platform", "quota-requests", "detail", id] as const,
+  approvals: () => ["platform", "approvals"] as const,
+  legalHolds: () => ["platform", "legal-holds"] as const,
   workspace: (id: string) => ["platform", "workspaces", "detail", id] as const,
   workspaceUsage: (id: string) => ["platform", "workspaces", "usage", id] as const,
   workspaceBillingProfile: (id: string) => ["platform", "workspaces", "billing-profile", id] as const,
@@ -1553,10 +1599,15 @@ export function useDeleteWorkspaceNow() {
       workspaceId: string;
       reason: string;
       confirm: string;
+      export_first?: boolean;
     }): Promise<DeletionStartResponse> => {
       const res = await platformFetch(`/workspaces/${pathSegment(vars.workspaceId)}/delete-now`, {
         method: "POST",
-        body: { reason: vars.reason, confirm: vars.confirm },
+        body: {
+          reason: vars.reason,
+          confirm: vars.confirm,
+          ...(vars.export_first !== undefined ? { export_first: vars.export_first } : {}),
+        },
       });
       return orMalformed(parseDeletionStartResponse(res, "POST /api/platform/workspaces/{id}/delete-now"));
     },
@@ -1575,10 +1626,19 @@ export function useDeleteWorkspaceNow() {
 export function useDeleteTenantNow() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: { tenantId: string; reason: string; confirm: string }): Promise<DeletionStartResponse> => {
+    mutationFn: async (vars: {
+      tenantId: string;
+      reason: string;
+      confirm: string;
+      export_first?: boolean;
+    }): Promise<DeletionStartResponse> => {
       const res = await platformFetch(`/tenants/${pathSegment(vars.tenantId)}/delete-now`, {
         method: "POST",
-        body: { reason: vars.reason, confirm: vars.confirm },
+        body: {
+          reason: vars.reason,
+          confirm: vars.confirm,
+          ...(vars.export_first !== undefined ? { export_first: vars.export_first } : {}),
+        },
       });
       return orMalformed(parseDeletionStartResponse(res, "POST /api/platform/tenants/{id}/delete-now"));
     },
@@ -1643,8 +1703,9 @@ export function useDeleteAccountNow() {
 
 /**
  * List immediate deletion requests.
- * Note: the backend's validDeletionKind currently rejects `?kind=account`, so when
- * filtering by `account` we omit `kind` from the query and filter client-side.
+ * Note: the backend's validDeletionKind rejects `?kind=account` and
+ * validDeletionState rejects `awaiting_approval` / `legal_hold` / `export_timeout`
+ * on main, so we omit them from the server query and filter client-side.
  */
 export function useDeletionRequests(filters: DeletionRequestFilters = {}) {
   const f = clean(filters);
@@ -1652,12 +1713,21 @@ export function useDeletionRequests(filters: DeletionRequestFilters = {}) {
     queryKey: platformKeys.deletionRequestList(f),
     queryFn: async ({ signal }): Promise<DeletionRequest[]> => {
       const serverKind = f.kind && f.kind !== "account" ? f.kind : undefined;
+      const clientOnlyState =
+        f.state === "awaiting_approval" || f.state === "legal_hold" || f.state === "export_timeout";
+      const serverState = f.state && !clientOnlyState ? f.state : undefined;
       const res = await platformFetch(
-        `/deletion-requests${queryString({ kind: serverKind, state: f.state })}`,
+        `/deletion-requests${queryString({ kind: serverKind, state: serverState })}`,
         { signal },
       );
-      const list = parseDeletionRequestList(res).requests;
-      return f.kind === "account" ? list.filter((r) => r.kind === "account") : list;
+      let list = parseDeletionRequestList(res).requests;
+      if (f.kind === "account") {
+        list = list.filter((r) => r.kind === "account");
+      }
+      if (clientOnlyState) {
+        list = list.filter((r) => r.state === f.state || r.error_code === f.state);
+      }
+      return list;
     },
   });
 }
@@ -2084,5 +2154,303 @@ export function useUnregisterRuntime() {
         platformKeys.deletionRequests(),
         platformKeys.audits(),
       ]),
+  });
+}
+
+// Tenant policy, tenant status, quota requests, approvals, legal holds, and audit export (R6 / S36)
+
+/** Fetch the effective policy and tenant floor values for a tenant. */
+export function useTenantPolicy(tenantId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.tenantPolicy(tenantId ?? ""),
+    enabled: Boolean(tenantId) && enabled,
+    queryFn: async ({ signal }): Promise<TenantPolicyResponse> =>
+      orMalformed(
+        parseTenantPolicyResponse(
+          await platformFetch(`/tenants/${pathSegment(tenantId ?? "")}/policy`, { signal }),
+        ),
+      ),
+  });
+}
+
+/** Update the tenant policy floor using optimistic version concurrency (`expected_version`). */
+export function useUpdateTenantPolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      tenantId: string;
+      expected_version: number;
+      allowed_invite_domains: string[];
+      share_links_enabled: boolean;
+      require_sso: boolean;
+      require_mfa: boolean;
+      session_max_age_hours: number;
+    }): Promise<TenantPolicyResponse> => {
+      const res = await platformFetch(`/tenants/${pathSegment(vars.tenantId)}/policy`, {
+        method: "PUT",
+        body: {
+          expected_version: vars.expected_version,
+          allowed_invite_domains: vars.allowed_invite_domains,
+          share_links_enabled: vars.share_links_enabled,
+          require_sso: vars.require_sso,
+          require_mfa: vars.require_mfa,
+          session_max_age_hours: vars.session_max_age_hours,
+        },
+      });
+      return orMalformed(
+        parseTenantPolicyResponse(res, "PUT /api/platform/tenants/{id}/policy"),
+      );
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.tenantPolicy(vars.tenantId),
+        platformKeys.tenant(vars.tenantId),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Lock or unlock all workspaces of a tenant (system_admin). */
+export function useSetTenantStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      tenantId: string;
+      status: SettableWorkspaceStatus;
+      reason: string;
+    }): Promise<TenantStatusResponse> => {
+      const res = await platformFetch(`/tenants/${pathSegment(vars.tenantId)}/status`, {
+        method: "POST",
+        body: { status: vars.status, reason: vars.reason },
+      });
+      return orMalformed(parseTenantStatusResponse(res));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.tenant(vars.tenantId),
+        platformKeys.tenants(),
+        platformKeys.workspaces(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** List quota increase requests (all for system_admin/billing; own tenant for admin). */
+export function useQuotaRequests(filters: QuotaRequestFilters = {}, enabled = true) {
+  const f = clean(filters);
+  return useInfiniteQuery({
+    queryKey: platformKeys.quotaRequestList(f),
+    enabled,
+    queryFn: async ({ pageParam, signal }) =>
+      parseQuotaRequestPage(
+        await platformFetch(
+          `/quota-requests${queryString({ state: f.state, cursor: pageParam })}`,
+          { signal },
+        ),
+      ),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    select: (data) => data.pages.flatMap((page) => page.requests),
+  });
+}
+
+/** Fetch one quota request by id. */
+export function useQuotaRequest(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.quotaRequest(id ?? ""),
+    enabled: Boolean(id) && enabled,
+    queryFn: async ({ signal }): Promise<QuotaRequest> =>
+      orMalformed(
+        parseQuotaRequest(
+          await platformFetch(`/quota-requests/${pathSegment(id ?? "")}`, { signal }),
+          "GET /api/platform/quota-requests/{id}",
+        ),
+      ),
+  });
+}
+
+/** Approve a pending quota request with an optional adjusted value and required reason. */
+export function useApproveQuotaRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      id: string;
+      value?: number;
+      reason: string;
+    }): Promise<QuotaRequest> => {
+      const res = await platformFetch(`/quota-requests/${pathSegment(vars.id)}/approve`, {
+        method: "POST",
+        body: {
+          ...(vars.value !== undefined ? { value: vars.value } : {}),
+          reason: vars.reason,
+        },
+      });
+      return orMalformed(
+        parseQuotaRequest(res, "POST /api/platform/quota-requests/{id}/approve"),
+      );
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.quotaRequests(),
+        platformKeys.quotaRequest(vars.id),
+        platformKeys.workspaces(),
+        platformKeys.tenants(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Deny a pending quota request with a required reason. */
+export function useDenyQuotaRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string; reason: string }): Promise<QuotaRequest> => {
+      const res = await platformFetch(`/quota-requests/${pathSegment(vars.id)}/deny`, {
+        method: "POST",
+        body: { reason: vars.reason },
+      });
+      return orMalformed(parseQuotaRequest(res, "POST /api/platform/quota-requests/{id}/deny"));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.quotaRequests(),
+        platformKeys.quotaRequest(vars.id),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** List two-person deletion requests awaiting approval (system_admin). */
+export function useApprovals(enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.approvals(),
+    enabled,
+    queryFn: async ({ signal }): Promise<DeletionRequest[]> =>
+      parseApprovalList(await platformFetch("/approvals", { signal })).approvals,
+  });
+}
+
+/** Second-person approval for a pending deletion request (system_admin). */
+export function useApproveApproval() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string }): Promise<DeletionStartResponse> => {
+      const res = await platformFetch(`/approvals/${pathSegment(vars.id)}/approve`, {
+        method: "POST",
+      });
+      return orMalformed(parseDeletionStartResponse(res, "POST /api/platform/approvals/{id}/approve"));
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.approvals(),
+        platformKeys.deletionRequests(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Reject a deletion request awaiting approval (system_admin). */
+export function useRejectApproval() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string }): Promise<DeletionStartResponse> => {
+      const res = await platformFetch(`/approvals/${pathSegment(vars.id)}/reject`, {
+        method: "POST",
+      });
+      return orMalformed(parseDeletionStartResponse(res, "POST /api/platform/approvals/{id}/reject"));
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.approvals(),
+        platformKeys.deletionRequests(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** List legal holds across tenants, workspaces, and accounts (system_admin). */
+export function useLegalHolds(enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.legalHolds(),
+    enabled,
+    queryFn: async ({ signal }): Promise<LegalHold[]> =>
+      parseLegalHoldList(await platformFetch("/legal-holds", { signal })).legal_holds,
+  });
+}
+
+/** Place a legal hold with a required reason and case reference (system_admin). */
+export function usePlaceLegalHold() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      scope_kind: Exclude<LegalHoldScopeKind, "unknown">;
+      scope_id: string;
+      reason: string;
+      case_ref: string;
+    }): Promise<LegalHold> => {
+      const res = await platformFetch("/legal-holds", {
+        method: "POST",
+        body: {
+          scope_kind: vars.scope_kind,
+          scope_id: vars.scope_id,
+          reason: vars.reason,
+          case_ref: vars.case_ref,
+        },
+      });
+      return orMalformed(parseLegalHold(res, "POST /api/platform/legal-holds"));
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.legalHolds(),
+        platformKeys.tenants(),
+        platformKeys.workspaces(),
+        platformKeys.users(),
+        platformKeys.deletionRequests(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Release an active legal hold (system_admin). */
+export function useReleaseLegalHold() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string }): Promise<LegalHold> => {
+      const res = await platformFetch(`/legal-holds/${pathSegment(vars.id)}/release`, {
+        method: "POST",
+      });
+      return orMalformed(parseLegalHold(res, "POST /api/platform/legal-holds/{id}/release"));
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.legalHolds(),
+        platformKeys.tenants(),
+        platformKeys.workspaces(),
+        platformKeys.users(),
+        platformKeys.deletionRequests(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Export audit events in NDJSON or CSV format for up to a 31-day window. */
+export function useExportAudit() {
+  return useMutation({
+    mutationFn: async (vars: AuditExportFilters): Promise<PlatformTextResponse> =>
+      platformFetchText(
+        `/audit-events/export${queryString({
+          from: vars.from,
+          to: vars.to,
+          format: vars.format,
+          action: vars.action,
+          actor_id: vars.actor_id,
+          workspace_id: vars.workspace_id,
+          cursor: vars.cursor,
+          limit: vars.limit !== undefined ? String(vars.limit) : undefined,
+        })}`,
+        {
+          accept: vars.format === "csv" ? "text/csv" : "application/x-ndjson",
+        },
+      ),
   });
 }

@@ -10,6 +10,8 @@ const mockUseTenantUsers = vi.fn();
 const mockUseTenantResources = vi.fn();
 const mockSetTenantLimitOverrideMutateAsync = vi.fn();
 const mockDeleteTenantNowMutateAsync = vi.fn();
+const mockSetTenantStatusMutateAsync = vi.fn();
+const mockUseLegalHolds = vi.fn();
 
 vi.mock("../api/hooks", () => ({
   useMe: () => mockUseMe(),
@@ -24,6 +26,38 @@ vi.mock("../api/hooks", () => ({
   }),
   useDeleteTenantNow: () => ({
     mutateAsync: mockDeleteTenantNowMutateAsync,
+    isPending: false,
+  }),
+  useLegalHolds: () => mockUseLegalHolds(),
+  useSetTenantStatus: () => ({
+    mutateAsync: mockSetTenantStatusMutateAsync,
+    isPending: false,
+  }),
+  useTenants: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }),
+  useTenantPolicy: () => ({
+    data: {
+      policy: {
+        allowed_invite_domains: [],
+        share_links_enabled: true,
+        require_sso: false,
+        require_mfa: false,
+        session_max_age_hours: 0,
+      },
+      version: 1,
+      sources: {},
+      tenant_fields: [],
+    },
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useUpdateTenantPolicy: () => ({
+    mutateAsync: vi.fn(),
     isPending: false,
   }),
 }));
@@ -75,6 +109,7 @@ function loaded(data: unknown) {
 describe("TenantDetail screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseLegalHolds.mockReturnValue({ data: [], isLoading: false, isError: false });
     mockUseMe.mockReturnValue({ data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null } });
     mockUseTenantUsers.mockReturnValue({
       data: [],
@@ -208,6 +243,7 @@ describe("TenantDetail screen", () => {
         tenantId: "t-1",
         reason: "Contract ended",
         confirm: "Acme Group",
+        export_first: false,
       });
     });
   });
@@ -416,5 +452,77 @@ describe("TenantDetail screen", () => {
         reason: "Contract expired",
       });
     });
+  });
+
+  it("shows Policy tab, legal hold mark, and lock tenant only for system_admin", async () => {
+    const user = userEvent.setup();
+    mockUseLegalHolds.mockReturnValue({
+      data: [
+        {
+          id: "lh-1",
+          scope_kind: "tenant",
+          scope_id: "t-1",
+          reason: "Subpoena",
+          case_ref: "CASE-1",
+          placed_by: "u-sys",
+          released: false,
+          released_by: "",
+          placed_at: null,
+          released_at: null,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+    mockSetTenantStatusMutateAsync.mockResolvedValueOnce({
+      status: "suspended",
+      workspace_ids: ["ws-1"],
+    });
+
+    const { rerender } = render(
+      <TenantDetail
+        tenantId="t-1"
+        onBack={vi.fn()}
+        onSelectWorkspace={vi.fn()}
+        userRole="system_admin"
+      />,
+    );
+
+    expect(screen.getByText("Legal hold")).toBeInTheDocument();
+    const lockBtn = screen.getByRole("button", { name: /Lock tenant/i });
+    expect(lockBtn).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /Policy/i }));
+    expect(screen.getByRole("heading", { name: /Effective policy/i })).toBeInTheDocument();
+
+    await user.click(lockBtn);
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
+      target: { value: "Fraud hold" },
+    });
+    await user.click(within(dialog).getByRole("button", { name: /Apply lock/i }));
+
+    await waitFor(() => {
+      expect(mockSetTenantStatusMutateAsync).toHaveBeenCalledWith({
+        tenantId: "t-1",
+        status: "suspended",
+        reason: "Fraud hold",
+      });
+    });
+
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-admin", email: "admin@example.com", role: "admin", tenant_id: "t-1" },
+    });
+    rerender(
+      <TenantDetail
+        tenantId="t-1"
+        onBack={vi.fn()}
+        onSelectWorkspace={vi.fn()}
+        userRole="admin"
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /Lock tenant/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Legal hold")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Policy/i })).toBeInTheDocument();
   });
 });

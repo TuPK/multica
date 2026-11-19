@@ -79,6 +79,20 @@ import {
   useRuntime,
   useSetRuntimeStatus,
   useUnregisterRuntime,
+  useTenantPolicy,
+  useUpdateTenantPolicy,
+  useSetTenantStatus,
+  useQuotaRequests,
+  useQuotaRequest,
+  useApproveQuotaRequest,
+  useDenyQuotaRequest,
+  useApprovals,
+  useApproveApproval,
+  useRejectApproval,
+  useLegalHolds,
+  usePlaceLegalHold,
+  useReleaseLegalHold,
+  useExportAudit,
 } from "./hooks";
 
 type Handler = Response | ((url: URL, init: RequestInit | undefined) => Response);
@@ -2189,5 +2203,185 @@ describe("R6 S25 resources, limit overrides and runtimes hooks", () => {
     expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.runtime("rt-1")));
     expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.runtimes()));
     expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.deletionRequests()));
+  });
+
+  it("supports tenant policy, tenant status, quota requests, approvals, legal holds, and audit export", async () => {
+    const samplePolicy = {
+      policy: {
+        allowed_invite_domains: ["acme.com"],
+        share_links_enabled: false,
+        require_sso: true,
+        require_mfa: false,
+        session_max_age_hours: 24,
+      },
+      version: 2,
+    };
+    const sampleQuota = {
+      id: "qr-1",
+      workspace_id: "ws-1",
+      tenant_id: "t-1",
+      gate: "agents",
+      current_value: 5,
+      requested_value: 20,
+      approved_value: null,
+      state: "pending",
+      reason: "Need more",
+      decision_reason: "",
+      requested_by: "u-owner",
+      decided_by: "",
+      created_at: "2026-11-19T10:00:00Z",
+      decided_at: null,
+    };
+    const sampleHold = {
+      id: "lh-1",
+      scope_kind: "tenant",
+      scope_id: "t-1",
+      reason: "Subpoena",
+      case_ref: "CASE-1",
+      placed_by: "u-sys",
+      released: false,
+      released_by: "",
+    };
+
+    const calls = stubFetch({
+      "GET /api/platform/tenants/t-1/policy": json(200, samplePolicy),
+      "PUT /api/platform/tenants/t-1/policy": json(200, { ...samplePolicy, version: 3 }),
+      "POST /api/platform/tenants/t-1/status": json(200, {
+        status: "suspended",
+        workspace_ids: ["ws-1"],
+      }),
+      "GET /api/platform/quota-requests": json(200, {
+        requests: [sampleQuota],
+        next_cursor: null,
+      }),
+      "GET /api/platform/quota-requests/qr-1": json(200, sampleQuota),
+      "POST /api/platform/quota-requests/qr-1/approve": json(200, {
+        ...sampleQuota,
+        state: "approved",
+        approved_value: 15,
+      }),
+      "POST /api/platform/quota-requests/qr-1/deny": json(200, {
+        ...sampleQuota,
+        state: "denied",
+      }),
+      "GET /api/platform/approvals": json(200, {
+        approvals: [{ id: "dr-1", kind: "tenant", target_id: "t-1", state: "awaiting_approval" }],
+      }),
+      "POST /api/platform/approvals/dr-1/approve": json(200, {
+        request_id: "dr-1",
+        state: "pending",
+      }),
+      "POST /api/platform/approvals/dr-1/reject": json(200, {
+        request_id: "dr-1",
+        state: "canceled",
+      }),
+      "GET /api/platform/legal-holds": json(200, { legal_holds: [sampleHold] }),
+      "POST /api/platform/legal-holds": json(201, sampleHold),
+      "POST /api/platform/legal-holds/lh-1/release": json(200, {
+        ...sampleHold,
+        released: true,
+      }),
+      "GET /api/platform/audit-events/export": new Response('{"id":"ae-1"}\n', {
+        status: 200,
+        headers: { "Content-Type": "application/x-ndjson", "X-Next-Cursor": "cur-exp" },
+      }),
+    });
+
+    const { queryClient, wrapper } = setup();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const policyHook = renderHook(() => useTenantPolicy("t-1"), { wrapper });
+    await waitFor(() => expect(policyHook.result.current.isSuccess).toBe(true));
+    expect(policyHook.result.current.data?.version).toBe(2);
+
+    const updatePolicyHook = renderHook(() => useUpdateTenantPolicy(), { wrapper });
+    await act(async () => {
+      const updated = await updatePolicyHook.result.current.mutateAsync({
+        tenantId: "t-1",
+        expected_version: 2,
+        allowed_invite_domains: ["acme.com"],
+        share_links_enabled: false,
+        require_sso: true,
+        require_mfa: true,
+        session_max_age_hours: 24,
+      });
+      expect(updated.version).toBe(3);
+    });
+
+    const tenantStatusHook = renderHook(() => useSetTenantStatus(), { wrapper });
+    await act(async () => {
+      const res = await tenantStatusHook.result.current.mutateAsync({
+        tenantId: "t-1",
+        status: "suspended",
+        reason: "Abuse",
+      });
+      expect(res.workspace_ids).toEqual(["ws-1"]);
+    });
+
+    const qrListHook = renderHook(() => useQuotaRequests({ state: "pending" }), { wrapper });
+    await waitFor(() => expect(qrListHook.result.current.isSuccess).toBe(true));
+    expect(qrListHook.result.current.data).toHaveLength(1);
+
+    const qrOneHook = renderHook(() => useQuotaRequest("qr-1"), { wrapper });
+    await waitFor(() => expect(qrOneHook.result.current.isSuccess).toBe(true));
+
+    const qrApproveHook = renderHook(() => useApproveQuotaRequest(), { wrapper });
+    await act(async () => {
+      await qrApproveHook.result.current.mutateAsync({ id: "qr-1", value: 15, reason: "OK" });
+    });
+
+    const qrDenyHook = renderHook(() => useDenyQuotaRequest(), { wrapper });
+    await act(async () => {
+      await qrDenyHook.result.current.mutateAsync({ id: "qr-1", reason: "Over budget" });
+    });
+
+    const approvalsHook = renderHook(() => useApprovals(), { wrapper });
+    await waitFor(() => expect(approvalsHook.result.current.isSuccess).toBe(true));
+    expect(approvalsHook.result.current.data).toHaveLength(1);
+
+    const approveApprovalHook = renderHook(() => useApproveApproval(), { wrapper });
+    const rejectApprovalHook = renderHook(() => useRejectApproval(), { wrapper });
+    await act(async () => {
+      await approveApprovalHook.result.current.mutateAsync({ id: "dr-1" });
+      await rejectApprovalHook.result.current.mutateAsync({ id: "dr-1" });
+    });
+
+    const holdsHook = renderHook(() => useLegalHolds(), { wrapper });
+    await waitFor(() => expect(holdsHook.result.current.isSuccess).toBe(true));
+    expect(holdsHook.result.current.data).toHaveLength(1);
+
+    const placeHoldHook = renderHook(() => usePlaceLegalHold(), { wrapper });
+    const releaseHoldHook = renderHook(() => useReleaseLegalHold(), { wrapper });
+    await act(async () => {
+      await placeHoldHook.result.current.mutateAsync({
+        scope_kind: "tenant",
+        scope_id: "t-1",
+        reason: "Subpoena",
+        case_ref: "CASE-1",
+      });
+      await releaseHoldHook.result.current.mutateAsync({ id: "lh-1" });
+    });
+
+    const exportHook = renderHook(() => useExportAudit(), { wrapper });
+    await act(async () => {
+      const exported = await exportHook.result.current.mutateAsync({
+        from: "2026-11-01T00:00:00Z",
+        to: "2026-11-10T00:00:00Z",
+        format: "ndjson",
+      });
+      expect(exported.nextCursor).toBe("cur-exp");
+      expect(exported.text).toContain("ae-1");
+    });
+
+    expect(calls.find((c) => c.path === "/api/platform/tenants/t-1/policy" && c.method === "PUT")).toBeDefined();
+    expect(calls.find((c) => c.path === "/api/platform/audit-events/export")?.search).toBe(
+      "?from=2026-11-01T00%3A00%3A00Z&to=2026-11-10T00%3A00%3A00Z&format=ndjson",
+    );
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.tenantPolicy("t-1")));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.quotaRequests()));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.approvals()));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.legalHolds()));
   });
 });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Badge } from "@astryxdesign/core/Badge";
 import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
@@ -38,7 +39,15 @@ import {
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { Textarea } from "@multica/ui/components/ui/textarea";
-import { AlertCircle, Building2, Gauge, Info, SlidersHorizontal, Trash2 } from "@multica/ui/icons";
+import {
+  AlertCircle,
+  Building2,
+  Gauge,
+  Info,
+  Lock,
+  SlidersHorizontal,
+  Trash2,
+} from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
@@ -49,8 +58,10 @@ import { TypeToConfirmDialog } from "../components/TypeToConfirmDialog";
 import { getApiErrorMessage, getLimitOverrideErrorMessage } from "../api/client";
 import {
   useDeleteTenantNow,
+  useLegalHolds,
   useMe,
   useSetTenantLimitOverride,
+  useSetTenantStatus,
   useTenant,
   useTenantResources,
 } from "../api/hooks";
@@ -65,6 +76,7 @@ import {
   resourceTypeLabel,
 } from "./Resources";
 import { formatBytes, maxWorkspacesLabel, statusSummaryText } from "./Tenants";
+import { TenantPolicy } from "./TenantPolicy";
 import { TenantUsers } from "./TenantUsers";
 
 interface TenantDetailProps {
@@ -104,10 +116,16 @@ export function TenantDetail({
   const { data: me } = useMe();
   const effectiveRole = userRole ?? me?.role;
   const canDeleteTenant = effectiveRole === "system_admin";
+  const canManageTenantStatus = effectiveRole === "system_admin";
+  const canViewPolicy =
+    !effectiveRole ||
+    effectiveRole === "system_admin" ||
+    effectiveRole === "admin" ||
+    effectiveRole === "support";
   const canSetLimitOverride =
     effectiveRole === "system_admin" || effectiveRole === "billing";
 
-  const [activeTab, setActiveTab] = useState<"workspaces" | "users" | "resources">("workspaces");
+  const [activeTab, setActiveTab] = useState<"workspaces" | "users" | "resources" | "policy">("workspaces");
 
   const { data: tenant, isLoading, isError, error, refetch } = useTenant(tenantId);
   const {
@@ -117,12 +135,20 @@ export function TenantDetail({
     error: resourcesErrorObj,
     refetch: refetchResources,
   } = useTenantResources(tenantId, activeTab === "resources");
+  const legalHoldsQuery = useLegalHolds(effectiveRole === "system_admin");
   const setLimitOverride = useSetTenantLimitOverride();
   const deleteTenantNow = useDeleteTenantNow();
+  const setTenantStatus = useSetTenantStatus();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+
+  const [statusDialogMode, setStatusDialogMode] = useState<"lock" | "unlock" | null>(null);
+  const [lockTargetStatus, setLockTargetStatus] = useState<"suspended" | "read_only">("suspended");
+  const [statusReason, setStatusReason] = useState("");
+  const [statusDialogError, setStatusDialogError] = useState<string | null>(null);
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
 
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideGate, setOverrideGate] = useState<string>("agents");
@@ -156,16 +182,69 @@ export function TenantDetail({
     );
   }
 
-  const handleConfirmDeleteTenant = async ({ reason, confirm }: { reason: string; confirm: string }) => {
+  const handleConfirmDeleteTenant = async ({
+    reason,
+    confirm,
+    export_first,
+  }: {
+    reason: string;
+    confirm: string;
+    export_first?: boolean;
+  }) => {
     setDeleteError(null);
     try {
-      const res = await deleteTenantNow.mutateAsync({ tenantId, reason, confirm });
+      const res = await deleteTenantNow.mutateAsync({
+        tenantId,
+        reason,
+        confirm,
+        ...(export_first !== undefined ? { export_first } : {}),
+      });
       setDeleteDialogOpen(false);
       setDeleteNotice(`Immediate deletion requested (${res.request_id}).`);
     } catch (err) {
       setDeleteError(getApiErrorMessage(err, "Failed to start tenant deletion"));
     }
   };
+
+  const openStatusDialog = (mode: "lock" | "unlock") => {
+    setStatusDialogMode(mode);
+    setLockTargetStatus("suspended");
+    setStatusReason("");
+    setStatusDialogError(null);
+  };
+
+  const handleSubmitTenantStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!statusDialogMode || setTenantStatus.isPending) return;
+    const trimmedReason = statusReason.trim();
+    if (!trimmedReason) {
+      setStatusDialogError("A reason is required.");
+      return;
+    }
+
+    const nextStatus = statusDialogMode === "unlock" ? "active" : lockTargetStatus;
+    setStatusDialogError(null);
+    try {
+      const res = await setTenantStatus.mutateAsync({
+        tenantId,
+        status: nextStatus,
+        reason: trimmedReason,
+      });
+      setStatusDialogMode(null);
+      setStatusNotice(
+        `Tenant status updated to ${res.status} across ${res.workspace_ids.length} workspace(s).`,
+      );
+    } catch (err) {
+      setStatusDialogError(getApiErrorMessage(err, "Failed to update tenant status"));
+    }
+  };
+
+  const hasLegalHold =
+    effectiveRole === "system_admin" &&
+    (Boolean(tenant.legal_hold) ||
+      (legalHoldsQuery.data ?? []).some(
+        (h) => !h.released && h.scope_kind === "tenant" && h.scope_id === tenantId,
+      ));
 
   const handleOpenOverrideDialog = () => {
     setOverrideGate("agents");
@@ -232,25 +311,63 @@ export function TenantDetail({
     <div className="space-y-6">
       <PageHeader
         title={tenant.name || tenant.id}
-        badge={<StatusBadge status={tenant.status} />}
+        badge={
+          <div className="inline-flex items-center gap-2">
+            <StatusBadge status={tenant.status} />
+            {hasLegalHold && <Badge variant="error" label="Legal hold" />}
+          </div>
+        }
         backAction={back}
         description={<span className="font-mono text-caption">{tenant.id}</span>}
         actions={
-          canDeleteTenant ? (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                setDeleteError(null);
-                setDeleteDialogOpen(true);
-              }}
-            >
-              <Trash2 className="size-3.5" aria-hidden="true" />
-              <span>Delete tenant</span>
-            </Button>
+          canManageTenantStatus || canDeleteTenant ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {canManageTenantStatus && tenant.status !== "suspended" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openStatusDialog("lock")}
+                >
+                  <Lock className="size-3.5" aria-hidden="true" />
+                  <span>Lock tenant</span>
+                </Button>
+              )}
+              {canManageTenantStatus &&
+                (tenant.status === "suspended" || tenant.status === "read_only") && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openStatusDialog("unlock")}
+                  >
+                    <span>Unlock tenant</span>
+                  </Button>
+                )}
+              {canDeleteTenant && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setDeleteError(null);
+                    setDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                  <span>Delete tenant</span>
+                </Button>
+              )}
+            </div>
           ) : undefined
         }
       />
+
+      {statusNotice && (
+        <Alert role="status">
+          <Info className="size-4" aria-hidden="true" />
+          <AlertDescription>{statusNotice}</AlertDescription>
+        </Alert>
+      )}
 
       {deleteNotice && (
         <Alert role="status">
@@ -280,7 +397,12 @@ export function TenantDetail({
       <Tabs
         value={activeTab}
         onValueChange={(value) => {
-          if (value === "workspaces" || value === "users" || value === "resources") {
+          if (
+            value === "workspaces" ||
+            value === "users" ||
+            value === "resources" ||
+            value === "policy"
+          ) {
             setActiveTab(value);
           }
         }}
@@ -291,6 +413,7 @@ export function TenantDetail({
             <TabsTrigger value="workspaces">Workspaces</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="resources">Resources</TabsTrigger>
+            {canViewPolicy && <TabsTrigger value="policy">Policy</TabsTrigger>}
           </TabsList>
         </div>
 
@@ -584,6 +707,12 @@ export function TenantDetail({
             </Section>
           )}
         </TabsContent>
+
+        {canViewPolicy && (
+          <TabsContent value="policy">
+            <TenantPolicy tenantId={tenantId} userRole={effectiveRole} embedded />
+          </TabsContent>
+        )}
       </Tabs>
 
       {canSetLimitOverride && (
@@ -741,6 +870,107 @@ export function TenantDetail({
         </Dialog>
       )}
 
+      {canManageTenantStatus && (
+        <Dialog
+          open={statusDialogMode !== null}
+          onOpenChange={(open) => {
+            if (!open && !setTenantStatus.isPending) {
+              setStatusDialogMode(null);
+              setStatusDialogError(null);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <form onSubmit={handleSubmitTenantStatus} className="space-y-4">
+              <DialogHeader>
+                <DialogTitle>
+                  {statusDialogMode === "unlock" ? "Unlock tenant" : "Lock tenant"}
+                </DialogTitle>
+                <DialogDescription>
+                  {statusDialogMode === "unlock"
+                    ? "Restore all locked workspaces in this tenant back to active status."
+                    : "Cascade a status lock across every active workspace belonging to this tenant."}
+                </DialogDescription>
+              </DialogHeader>
+
+              {statusDialogError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" aria-hidden="true" />
+                  <AlertDescription>{statusDialogError}</AlertDescription>
+                </Alert>
+              )}
+
+              {statusDialogMode === "lock" && (
+                <Field>
+                  <FieldLabel htmlFor="tenant-lock-status">Target status</FieldLabel>
+                  <Select
+                    items={[
+                      { value: "suspended", label: "Suspended" },
+                      { value: "read_only", label: "Read-only" },
+                    ]}
+                    value={lockTargetStatus}
+                    onValueChange={(val) => {
+                      if (val === "suspended" || val === "read_only") {
+                        setLockTargetStatus(val);
+                      }
+                    }}
+                  >
+                    <SelectTrigger
+                      id="tenant-lock-status"
+                      aria-label="Target status"
+                      className="w-full"
+                    >
+                      <SelectValue>
+                        {lockTargetStatus === "read_only" ? "Read-only" : "Suspended"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="suspended">Suspended</SelectItem>
+                      <SelectItem value="read_only">Read-only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+
+              <Field>
+                <FieldLabel htmlFor="tenant-status-reason">Reason</FieldLabel>
+                <Textarea
+                  id="tenant-status-reason"
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  placeholder="Explain why this tenant is being updated..."
+                  disabled={setTenantStatus.isPending}
+                  rows={3}
+                />
+              </Field>
+
+              <DialogFooter>
+                <DialogClose
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={setTenantStatus.isPending}
+                    />
+                  }
+                >
+                  Cancel
+                </DialogClose>
+                <Button
+                  type="submit"
+                  variant={statusDialogMode === "unlock" ? "default" : "destructive"}
+                  disabled={!statusReason.trim() || setTenantStatus.isPending}
+                  aria-busy={setTenantStatus.isPending || undefined}
+                >
+                  {setTenantStatus.isPending && <Spinner className="size-3.5" />}
+                  {statusDialogMode === "unlock" ? "Unlock tenant" : "Apply lock"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {canDeleteTenant && (
         <TypeToConfirmDialog
           open={deleteDialogOpen}
@@ -754,6 +984,7 @@ export function TenantDetail({
           confirmInputLabel="Tenant name"
           confirmLabel="Delete tenant"
           confirmVariant="destructive"
+          showExportFirst
           error={deleteError}
           onConfirm={handleConfirmDeleteTenant}
         />

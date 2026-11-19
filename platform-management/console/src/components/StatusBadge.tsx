@@ -33,6 +33,7 @@ const STATUS_CONFIG: Record<string, StatusPresentation> = {
   applied: { kind: "quiet", label: "Applied", dotVariant: "success", textColor: "primary" },
   resolved: { kind: "quiet", label: "Resolved", dotVariant: "success", textColor: "primary" },
   verified: { kind: "quiet", label: "Verified", dotVariant: "success", textColor: "primary" },
+  approved: { kind: "quiet", label: "Approved", dotVariant: "success", textColor: "primary" },
 
   // Inactive / neutral operational states — quiet dot + secondary text
   read_only: { kind: "quiet", label: "Read-only", dotVariant: "neutral", textColor: "secondary" },
@@ -45,9 +46,16 @@ const STATUS_CONFIG: Record<string, StatusPresentation> = {
   dismissed: { kind: "quiet", label: "Dismissed", dotVariant: "neutral", textColor: "secondary" },
   unverified: { kind: "quiet", label: "Unverified", dotVariant: "neutral", textColor: "secondary" },
   received: { kind: "quiet", label: "Received", dotVariant: "neutral", textColor: "secondary" },
+  released: { kind: "quiet", label: "Released", dotVariant: "neutral", textColor: "secondary" },
 
   // Attention / warning states — semantic warning badge + dot
   pending: { kind: "badge", label: "Pending", badgeVariant: "warning", dotVariant: "warning" },
+  awaiting_approval: {
+    kind: "badge",
+    label: "Awaiting approval",
+    badgeVariant: "warning",
+    dotVariant: "warning",
+  },
   past_due: { kind: "badge", label: "Past due", badgeVariant: "warning", dotVariant: "warning" },
   needs_review: {
     kind: "badge",
@@ -64,7 +72,15 @@ const STATUS_CONFIG: Record<string, StatusPresentation> = {
     badgeVariant: "error",
     dotVariant: "error",
   },
+  legal_hold: { kind: "badge", label: "Legal hold", badgeVariant: "error", dotVariant: "error" },
+  export_timeout: {
+    kind: "badge",
+    label: "Export timeout",
+    badgeVariant: "error",
+    dotVariant: "error",
+  },
   failed: { kind: "badge", label: "Failed", badgeVariant: "error", dotVariant: "error" },
+  denied: { kind: "badge", label: "Denied", badgeVariant: "error", dotVariant: "error" },
   needs_info: { kind: "badge", label: "Needs info", badgeVariant: "error", dotVariant: "error" },
 
   // Transitional / informational states — semantic info badge + dot

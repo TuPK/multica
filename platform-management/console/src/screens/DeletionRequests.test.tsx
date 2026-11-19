@@ -146,4 +146,47 @@ describe("DeletionRequests screen", () => {
     render(<DeletionRequests userRole="support" />);
     expect(screen.getByRole("region", { name: "Not found" })).toBeInTheDocument();
   });
+
+  it("awaiting_approval legal_hold and export_timeout states render", () => {
+    mockUseDeletionRequests.mockReturnValue({
+      data: [
+        {
+          ...pendingRequest,
+          id: "dr-await",
+          kind: "tenant" as const,
+          target_label: "Holdout Tenant",
+          state: "awaiting_approval" as const,
+        },
+        {
+          ...failedRequest,
+          id: "dr-hold",
+          target_label: "Held Workspace",
+          state: "failed" as const,
+          error_code: "legal_hold",
+        },
+        {
+          ...failedRequest,
+          id: "dr-timeout",
+          target_label: "Slow Export Workspace",
+          state: "failed" as const,
+          error_code: "export_timeout",
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<DeletionRequests />);
+
+    const awaitRow = screen.getByText("Holdout Tenant").closest("tr") as HTMLElement;
+    expect(within(awaitRow).getByText("Awaiting approval")).toBeInTheDocument();
+
+    const holdRow = screen.getByText("Held Workspace").closest("tr") as HTMLElement;
+    expect(within(holdRow).getByText("Legal hold")).toBeInTheDocument();
+
+    const timeoutRow = screen.getByText("Slow Export Workspace").closest("tr") as HTMLElement;
+    expect(within(timeoutRow).getByText("Export timeout")).toBeInTheDocument();
+  });
 });

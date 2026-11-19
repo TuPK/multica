@@ -82,4 +82,41 @@ describe("TypeToConfirmDialog", () => {
     expect(reasonInput).toHaveValue("Legal erasure");
     expect(confirmInput).toHaveValue("user@example.com");
   });
+
+  it("export first toggle is sent and owners notice is stated", async () => {
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TypeToConfirmDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Delete workspace"
+        description="Immediate deletion permanently removes this workspace."
+        expectedText="acme-ws"
+        confirmInputLabel="Workspace slug"
+        confirmLabel="Delete workspace"
+        confirmVariant="destructive"
+        showExportFirst
+        onConfirm={onConfirm}
+      />,
+    );
+
+    expect(screen.getByText(/owners will be notified/i)).toBeInTheDocument();
+
+    const exportSwitch = screen.getByRole("switch", { name: /Export data before deleting/i });
+    expect(exportSwitch).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(exportSwitch);
+    expect(exportSwitch).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.change(screen.getByLabelText(/Reason/i), { target: { value: "Offboarding" } });
+    fireEvent.change(screen.getByLabelText(/Workspace slug/i), { target: { value: "acme-ws" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete workspace" }));
+    await waitFor(() => {
+      expect(onConfirm).toHaveBeenCalledWith({
+        reason: "Offboarding",
+        confirm: "acme-ws",
+        export_first: true,
+      });
+    });
+  });
 });

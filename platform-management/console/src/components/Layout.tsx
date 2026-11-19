@@ -9,6 +9,7 @@ import {
 } from "@astryxdesign/core/SideNav";
 import {
   Activity,
+  ArrowUpCircle,
   BarChart3,
   Building2,
   CreditCard,
@@ -17,11 +18,14 @@ import {
   Inbox,
   Layers,
   LayoutGrid,
+  Lock,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   Server,
   Shield,
+  ShieldCheck,
+  SlidersHorizontal,
   Trash2,
   UserPlus,
   Users,
@@ -66,6 +70,12 @@ export function Layout({
   const canSeeRuntimes =
     isSystemAdmin || user.role === "admin" || user.role === "support";
   const canSeePlans = isSystemAdmin || user.role === "admin";
+  const canSeeQuotaRequests =
+    isSystemAdmin || user.role === "admin" || user.role === "billing";
+  const canSeePolicy =
+    isSystemAdmin || user.role === "admin" || user.role === "support";
+  const canSeeApprovals = isSystemAdmin;
+  const canSeeLegalHolds = isSystemAdmin;
   const canSeeDeletionRequests = isSystemAdmin || user.role === "admin";
   const canSeeOrders = isSystemAdmin || user.role === "admin" || user.role === "billing";
   const canSeePayments = isSystemAdmin || user.role === "billing";
@@ -80,6 +90,9 @@ export function Layout({
       : []),
     ...(isSystemAdmin ? [{ id: "accounts", label: "Accounts", icon: UserPlus }] : []),
     ...(canSeePlans ? [{ id: "plans", label: "Plans", icon: Layers }] : []),
+    ...(canSeeQuotaRequests
+      ? [{ id: "quota-requests", label: "Quota requests", icon: ArrowUpCircle }]
+      : []),
   ];
 
   const navGroups: NavGroup[] = [
@@ -101,6 +114,11 @@ export function Layout({
       label: "Administration",
       items: [
         ...(isSystemAdmin ? [{ id: "staff", label: "Staff", icon: Shield }] : []),
+        ...(canSeePolicy
+          ? [{ id: "tenant-policy", label: "Policy", icon: SlidersHorizontal }]
+          : []),
+        ...(canSeeApprovals ? [{ id: "approvals", label: "Approvals", icon: ShieldCheck }] : []),
+        ...(canSeeLegalHolds ? [{ id: "legal-holds", label: "Legal holds", icon: Lock }] : []),
         ...(canSeeDeletionRequests
           ? [{ id: "deletion-requests", label: "Deletion requests", icon: Trash2 }]
           : []),

@@ -48,9 +48,12 @@ const KIND_OPTIONS = [
 
 const STATE_OPTIONS = [
   { value: "all", label: "All states" },
+  { value: "awaiting_approval", label: "Awaiting approval" },
   { value: "pending", label: "Pending" },
   { value: "running", label: "Running" },
   { value: "failed", label: "Failed" },
+  { value: "legal_hold", label: "Legal hold" },
+  { value: "export_timeout", label: "Export timeout" },
   { value: "completed", label: "Completed" },
   { value: "canceled", label: "Canceled" },
 ] as const;
@@ -258,7 +261,9 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
                       <StatusBadge status={req.state} />
                     </TableCell>
                     <TableCell>
-                      {req.error_code ? (
+                      {req.error_code === "legal_hold" || req.error_code === "export_timeout" ? (
+                        <StatusBadge status={req.error_code} />
+                      ) : req.error_code ? (
                         <span className="font-mono text-caption text-destructive">
                           {req.error_code}
                         </span>
