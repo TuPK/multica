@@ -783,6 +783,10 @@ DEV_ADMIN_EMAIL="system@admin.com"
 # development sign-in code is Multica's own, so both accept the same code here.
 fill_platform_secrets() {
   set_if_empty PLATFORM_SESSION_SECRET "$(openssl rand -hex 32)"
+  # The platform refuses to start without these two; Multica itself runs without MFA when the
+  # key is unset, so generating it here only turns the platform's staff sign-in on.
+  set_if_empty MULTICA_MFA_SECRET_KEY "$(openssl rand -base64 32)"
+  set_if_empty REDIS_URL "redis://127.0.0.1:6379/0"
   local web_port dev_code
   web_port="$(env_value "$ENV_FILE" FRONTEND_PORT)"
   set_if_empty PLATFORM_APP_URL "http://localhost:${web_port:-3000}"
@@ -816,8 +820,34 @@ seed_system_admin() {
 
 # Starts the platform's API and staff console. It needs the database that make dev has
 # migrated, so it starts after the Multica API answers. The console is built if it is missing.
+# The platform's rate limiter and health check use Redis. On this machine that is a loopback
+# container of its own, so it does not depend on the WeKnora Redis or any host install.
+PLATFORM_REDIS_CONTAINER="${PLATFORM_REDIS_CONTAINER:-multica-platform-redis}"
+PLATFORM_REDIS_IMAGE="${PLATFORM_REDIS_IMAGE:-redis:7.0-alpine}"
+PLATFORM_REDIS_BIND="${PLATFORM_REDIS_BIND:-127.0.0.1:6379}"
+
+start_platform_redis() {
+  local url
+  url=$(env_value "$ENV_FILE" REDIS_URL)
+  case "$url" in
+    redis://127.0.0.1:*|redis://localhost:*|redis://127.0.0.1/*|redis://localhost/*) ;;
+    *) info "REDIS_URL is not a local Redis, so no Redis container is started"; return 0 ;;
+  esac
+  info "Starting Redis for the platform on $PLATFORM_REDIS_BIND (container $PLATFORM_REDIS_CONTAINER)"
+  # `docker container inspect`: plain `docker inspect` also matches a volume with the same name.
+  if docker container inspect "$PLATFORM_REDIS_CONTAINER" >/dev/null 2>&1; then
+    docker start "$PLATFORM_REDIS_CONTAINER" >/dev/null || fail "Could not start the Redis container $PLATFORM_REDIS_CONTAINER"
+  else
+    docker run -d --name "$PLATFORM_REDIS_CONTAINER" --restart unless-stopped \
+      -p "$PLATFORM_REDIS_BIND:6379" "$PLATFORM_REDIS_IMAGE" >/dev/null \
+      || fail "Could not start Redis on $PLATFORM_REDIS_BIND. Check whether another program uses that port."
+  fi
+  ok "Redis serves the platform at $PLATFORM_REDIS_BIND"
+}
+
 start_platform() {
   info "Starting the platform console and API (platform-management)"
+  start_platform_redis
   if [ ! -f "$PLATFORM_DIR/console/dist/index.html" ]; then
     (cd "$REPO_ROOT" && pnpm --filter @multica/platform-console build) \
       || fail "The platform console did not build."

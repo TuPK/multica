@@ -427,6 +427,41 @@ if grep -Fq "run -d" "$docker_log"; then
   fail "an existing Ollama container must be started, not created again"
 fi
 
+# ---------- Platform secrets and Redis ----------
+# The platform refuses to start without MULTICA_MFA_SECRET_KEY and REDIS_URL.
+printf 'FRONTEND_PORT=30000\n' >"$ENV_FILE"
+fill_platform_secrets >/dev/null
+[ -n "$(env_value "$ENV_FILE" MULTICA_MFA_SECRET_KEY)" ] || fail "fill_platform_secrets must set MULTICA_MFA_SECRET_KEY"
+require_contains "$ENV_FILE" "REDIS_URL=redis://127.0.0.1:6379/0"
+before_mfa=$(env_value "$ENV_FILE" MULTICA_MFA_SECRET_KEY)
+fill_platform_secrets >/dev/null
+[ "$(env_value "$ENV_FILE" MULTICA_MFA_SECRET_KEY)" = "$before_mfa" ] || fail "an existing MULTICA_MFA_SECRET_KEY must be kept"
+
+run_start_platform_redis() { # REDIS_URL, and 1 when the Redis container already exists
+  printf 'REDIS_URL=%s\n' "$1" >"$ENV_FILE"
+  : >"$docker_log"
+  if ! (
+    export OLLAMA_EXISTS="$2" DOCKER_LOG="$docker_log" PATH="$ollama_bin:$PATH"
+    start_platform_redis
+  ) >"$tmp_dir/out-redis" 2>&1; then
+    sed 's/^/  /' "$tmp_dir/out-redis" >&2
+    fail "start_platform_redis failed for $1"
+  fi
+}
+
+run_start_platform_redis "redis://10.20.30.40:6379/0" 0
+[ ! -s "$docker_log" ] || fail "a remote REDIS_URL must not start a local Redis container"
+require_contains "$tmp_dir/out-redis" "not a local Redis"
+
+run_start_platform_redis "redis://127.0.0.1:6379/0" 0
+require_contains "$docker_log" "run -d --name multica-platform-redis --restart unless-stopped -p 127.0.0.1:6379:6379 redis:7.0-alpine"
+
+run_start_platform_redis "redis://127.0.0.1:6379/0" 1
+require_contains "$docker_log" "start multica-platform-redis"
+if grep -Fq "run -d" "$docker_log"; then
+  fail "an existing platform Redis container must be started, not created again"
+fi
+
 # ---------- Startup order ----------
 # The platform starts after the Multica API answers and before the web app is awaited: it needs
 # the migrated database and the system admin, not the web app.
