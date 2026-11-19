@@ -19,8 +19,11 @@ const (
 	Deleted         State = "deleted"
 )
 
-// TTL bounds how long a cached state can be stale if invalidation fails.
-const TTL = 60 * time.Second
+// TTL bounds how long a cached state can be stale if invalidation fails, or
+// if the status was changed in SQL with no invalidation at all. An open
+// WebSocket rechecks every 20s (server/internal/realtime), so a SQL change
+// closes it within TTL + 20s = 50s, inside the 60-second bound.
+const TTL = 30 * time.Second
 
 const keyPrefix = "mul:auth:acct:"
 

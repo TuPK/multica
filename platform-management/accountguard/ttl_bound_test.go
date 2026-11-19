@@ -44,11 +44,20 @@ func (s *countingStore) AccountState(context.Context, string) (Record, bool, err
 	return s.rec, true, nil
 }
 
-// Spec: a cached account state is stale for at most 60 seconds when
-// invalidation fails.
+// socketRecheckInterval mirrors accountStatusRecheckInterval in
+// server/internal/realtime. It is not shared across modules, so this test pins
+// the platform side only: the server's constant must stay at or below this.
+const socketRecheckInterval = 20 * time.Second
+
+// Spec: a cached account state is stale for at most 30 seconds when
+// invalidation fails, so a socket recheck every 20s closes a SQL-suspended
+// account's socket within the 60-second bound.
 func TestGuardCacheStalenessIsBoundedByTTL(t *testing.T) {
-	if TTL != 60*time.Second {
-		t.Fatalf("TTL = %s, spec bound is 60s", TTL)
+	if TTL > 30*time.Second {
+		t.Fatalf("TTL = %s, want <= 30s", TTL)
+	}
+	if TTL+socketRecheckInterval > 60*time.Second {
+		t.Fatalf("TTL + recheck interval = %s, spec bound is 60s", TTL+socketRecheckInterval)
 	}
 	ctx := context.Background()
 	cache := &ttlCache{now: time.Unix(1_700_000_000, 0), vals: map[string][]byte{}, expires: map[string]time.Time{}}

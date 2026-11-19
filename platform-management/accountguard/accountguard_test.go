@@ -65,7 +65,7 @@ func TestMissReadsStoreThenHitsCache(t *testing.T) {
 	if s.calls != 1 {
 		t.Fatalf("store calls = %d, want 1", s.calls)
 	}
-	if _, ok := c.m["mul:auth:acct:u1"]; !ok || c.ttl != 60*time.Second {
+	if _, ok := c.m["mul:auth:acct:u1"]; !ok || c.ttl != TTL {
 		t.Fatalf("cache key/ttl wrong: %v %v", c.m, c.ttl)
 	}
 }

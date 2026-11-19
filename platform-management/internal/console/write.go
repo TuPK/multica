@@ -157,8 +157,8 @@ func (h *Handler) addNote(w http.ResponseWriter, r *http.Request) {
 // afterAccountChange drops the guard cache and tells the Multica server to
 // close the user's sockets. The change is committed by now, so a failure is
 // logged and the request still succeeds: the cache entry expires within
-// accountguard.TTL, and a socket is closed by the next change notice or its
-// next reconnect.
+// accountguard.TTL, and a socket is closed by the next change notice or the
+// server's periodic status recheck.
 func (h *Handler) afterAccountChange(ctx context.Context, userID, kind string) {
 	// The change is committed; a client that hangs up now must not stop the
 	// notice.
