@@ -42,8 +42,8 @@ Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` =
 | 21 | UserDetail.tsx | suspension in the audit log | covered | the suspension shows in the audit log |
 | 252 | UserDetail.tsx | own account cannot be suspended | covered | an admin cannot suspend their own account |
 | 22 | UserDetail.tsx | sign out everywhere needs reason | covered | Sign out everywhere asks for a reason |
-| 23 | UserDetail.tsx | reset two-step sign-in opens its dialog | covered | staff opens the two-step sign-in reset |
-| 23 | UserDetail.tsx | reset removes the MFA row and the notice email | gap | the reset dialog cannot be clicked (see fixme above); the notice email has no provider in the harness |
+| 23 | UserDetail.tsx | reset two-step sign-in opens its dialog | covered | flow 23: staff opens the two-step sign-in reset for another user |
+| 23 | UserDetail.tsx | reset removes the MFA row and the notice email | covered | flow 23: the reset emails the user that two-step sign-in was turned off |
 | 14 | Staff.tsx | list shows the signed-in admin with role | covered | the staff list shows the signed-in admin |
 | 14 | Staff.tsx | add with unknown email refused | covered | an unknown email is refused in the add dialog |
 | 256 | Staff.tsx | active staff cannot be added twice | covered | an active staff member cannot be added twice |
@@ -66,7 +66,7 @@ Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` =
 | 61 | PaymentNotices.tsx | queue empty state | covered | billing opens the payment notice queue |
 | 268 | PaymentNotices.tsx | malformed id refused (API test, not UI) | covered | flow 268: a malformed payment notice id is refused with invalid_id |
 | 72 | EinvoiceFailures.tsx | state tabs switch | covered | the e-invoice screen shows its state tabs |
-| 78 | EinvoiceFailures.tsx | retry, cancel or replace from the UI | gap | needs a live e-invoice provider; the provider is empty in the harness |
+| 78 | EinvoiceFailures.tsx | retry, cancel or replace from the UI | gap | DROPPED (user decision): the e-invoice replace and cancel flows were removed; no test is planned |
 | 26 | Audit.tsx | empty state for an unknown actor | covered | the audit log filters by an actor id that has no events |
 | 26 | Audit.tsx | columns and action filter | covered | the audit log shows its columns and the action filter narrows the list |
 | 26 | Audit.tsx | date range filter | covered | flow 26: a From date after every event empties the audit list, and clearing it restores the list |
@@ -105,7 +105,7 @@ Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` =
 | 20 | Console Users -> UserDetail | Staff searches users and inspects account metadata | covered | finds a user and reads the account record |
 | 21 | Console UserDetail | Staff suspends or reactivates user account with realtime WS disconnect | covered | search finds no one, then the target is suspended |
 | 22 | Console UserDetail | Staff force-revokes all user sessions with realtime WS disconnect | covered | Sign out everywhere asks for a reason |
-| 23 | Console UserDetail | Staff resets another user's MFA with email notification | gap | reset dialog and MFA row removal covered (API e2e/platform/staff-users.spec.ts flow 23); the notice email is not asserted, the harness has no mail provider |
+| 23 | Console UserDetail | Staff resets another user's MFA with email notification | covered | flow 23: the reset emails the user that two-step sign-in was turned off |
 | 24 | Console Accounts screen | Admin creates provisioned account request, cancels pending request, or resends welcome email (and customer signs in with ALLOW_SIGNUP=false) | covered | flow 24: each request state shows its own label in the accounts list |
 | 25 | Console Accounts screen | Admin welcome email resend records spec audit action account.welcome_resent [NOT BUILT] | gap | NOT BUILT: spec feature not built (welcome resend audit action) |
 | 26 | Console Overview -> Tenants -> TenantDetail / Audit | Staff views platform overview KPIs, searches tenants, inspects tenant metadata, views audit logs, and adds internal notes | covered | flow 26: the audit log shows its columns and the action filter narrows the list |
@@ -120,10 +120,10 @@ Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` =
 | 67 | Console PriceSchedule.tsx (unrouted) or API | Admin previews (?dry_run=1), schedules, views history, and cancels plan price change | covered | flow 67: staff previews a price change, and nothing is scheduled |
 | 72 | Console EinvoiceFailures screen | Billing or admin staff lists e-invoices in Console EinvoiceFailures screen | covered | the e-invoice screen shows its state tabs and switches between them |
 | 73 | Console EinvoiceFailures screen or API | Billing or admin staff inspects single order e-invoice revision history via GET /api/platform/einvoices/{orderId} [NOT BUILT] | gap | NOT BUILT: spec feature not built (single order revision history) |
-| 76 | Console API POST /api/platform/einvoices/{orderId}/retry | Billing or admin staff retries failed or needs_info e-invoice via POST /api/platform/einvoices/{orderId}/retry with live provider [NOT BUILT] | gap | NOT BUILT: spec feature not built (retry API with live provider) |
-| 77 | Console API POST /api/platform/einvoices/{orderId}/replace | Admin replaces issued e-invoice via POST /api/platform/einvoices/{orderId}/replace with live provider [NOT BUILT] | gap | NOT BUILT: spec feature not built (replace API with live provider) |
-| 78 | Console EinvoiceFailures screen | Billing or admin staff triggers Retry, Cancel, or Replace from Console EinvoiceFailures UI [NOT BUILT] | gap | NOT BUILT: spec feature not built (retry, cancel or replace from the UI) |
-| 79 | Console API | Admin cancels issued e-invoice via POST /api/platform/einvoices/{orderId}/cancel [NOT BUILT] | gap | NOT BUILT: spec feature not built (cancel API) |
+| 76 | Console API POST /api/platform/einvoices/{orderId}/retry | Billing or admin staff retries failed or needs_info e-invoice via POST /api/platform/einvoices/{orderId}/retry with live provider [NOT BUILT] | gap | DROPPED (user decision): the e-invoice retry flow was removed; no test is planned |
+| 77 | Console API POST /api/platform/einvoices/{orderId}/replace | Admin replaces issued e-invoice via POST /api/platform/einvoices/{orderId}/replace with live provider [NOT BUILT] | gap | DROPPED (user decision): the e-invoice replace and cancel flows were removed; no test is planned |
+| 78 | Console EinvoiceFailures screen | Billing or admin staff triggers Retry, Cancel, or Replace from Console EinvoiceFailures UI [NOT BUILT] | gap | DROPPED (user decision): the e-invoice replace and cancel flows were removed; no test is planned |
+| 79 | Console API | Admin cancels issued e-invoice via POST /api/platform/einvoices/{orderId}/cancel [NOT BUILT] | gap | DROPPED (user decision): the e-invoice replace and cancel flows were removed; no test is planned |
 | 83 | Console Layout top nav | Staff clicks Orders or Plans in Console top nav and falls back to Overview | covered | flow 83: Orders and Plans in the nav open their own screens |
 | 142 | Console Login screen | Non-staff, locked account, or rate-limited caller requests Console OTP send (silent 204) | covered | an unknown email and a known email get the same neutral message |
 | 143 | Console Login screen | Staff enters wrong OTP or TOTP on Console verify-code (invalid_code) | covered | a wrong email code shows the invalid-code message |
@@ -141,8 +141,8 @@ Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` =
 | 224 | Console Orders / PaymentNotices | Staff confirms or resolves order during concurrent subscription race (order_conflict) | gap | race: a subscription changed between the check and the apply; not reproducible on demand. Go tests only |
 | 225 | Console Orders / TenantDetail / API | Billing staff attempts to cancel or write off usage invoice (usage_cancel_admin_only) | covered | flow 225: an admin writes off an unpaid usage order and it leaves the unpaid list |
 | 228 | Console API POST /api/platform/einvoices/{orderId}/{retry,replace} | Staff calls e-invoice retry or replace while provider is unconfigured (einvoice_provider_not_configured) | covered | flow 228: an e-invoice retry while the provider is not configured is refused with einvoice_provider_not_configured |
-| 229 | Console API POST /api/platform/einvoices/{orderId}/{retry,replace} | Staff calls e-invoice retry or replace on incomplete buyer fields (einvoice_buyer_incomplete) | gap | provider check runs first; the harness has no e-invoice provider, so buyer checks are not reached. Go test only |
-| 230 | Console API POST /api/platform/einvoices/{orderId}/{retry,replace} | Staff calls e-invoice retry or replace on ineligible e-invoice state (einvoice_state_conflict) | gap | provider check runs first; the harness has no e-invoice provider. Go test only |
+| 229 | Console API POST /api/platform/einvoices/{orderId}/{retry,replace} | Staff calls e-invoice retry or replace on incomplete buyer fields (einvoice_buyer_incomplete) | fixme | flow 229: retrying a failed invoice whose buyer lacks required fields is refused and names the fields |
+| 230 | Console API POST /api/platform/einvoices/{orderId}/{retry,replace} | Staff calls e-invoice retry or replace on ineligible e-invoice state (einvoice_state_conflict) | fixme | flow 230: retrying an invoice that is already issued is refused with einvoice_state_conflict |
 | 231 | Console API POST /api/platform/einvoices/{orderId}/replace | Admin calls e-invoice replace with invalid buyer field (>500 chars or NUL) (invalid_buyer) | gap | NOT BUILT: the code has no invalid_buyer check (the e-invoice buyer checks return einvoice_buyer_incomplete only) |
 | 232 | Console PriceSchedule / Plans | Admin submits invalid price, meter, currency, or non-00:00-UTC effective_from (price_invalid) | covered | flow 232: a negative seat price is refused in the price form before it is sent |
 | 233 | Console Plans / API | Admin sends price fields directly to PUT /api/platform/plans/{key} (price_field_via_schedule) | covered | flow 233: a PUT to a plan with a price field is refused with price_field_via_schedule |
