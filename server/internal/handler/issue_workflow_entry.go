@@ -140,8 +140,10 @@ func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params 
 	// someone else moves it: the leader splits it into issues, and those issues
 	// go through the steps. The leader's own run moving the request does hand it
 	// to the step's handler, so the request does not stall with the leader after
-	// the leader sends it on.
-	if h.isSquadRequest(ctx, prev) && !h.isRunOfRequestLeader(ctx, prev, run) {
+	// the leader sends it on. Review is the exception: a request moved into
+	// review is finished work waiting for its reviewer, whoever moved it, and
+	// leaving it with the leader would start no run.
+	if entering != issuestatus.InReview && h.isSquadRequest(ctx, prev) && !h.isRunOfRequestLeader(ctx, prev, run) {
 		return nil, nil
 	}
 	assigneeType, assigneeID, ok := issueworkflow.ResolveHandler(step, project, prev.CreatorType, prev.CreatorID)
