@@ -2,7 +2,7 @@
 
 Companion to [platform-management-flows.md](platform-management-flows.md) and [platform-management-e2e-gaps.md](platform-management-e2e-gaps.md). Generated against the console inventory (`discover-ui.mjs` over `platform-management/console/src`) and checked by `coverage-check.mjs` over `e2e/platform`.
 
-Status: `covered` = a passing test exists; `fixme` = a test marks a product failure; `gap` = no UI test, with the reason in the last column.
+Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` = a test marks a product failure; `gap` = no passing test in e2e/platform, with the reason in the last column (a Go test may cover the rule; the reason says so).
 
 | id | screen | action | status | test |
 | --- | --- | --- | --- | --- |
@@ -70,10 +70,10 @@ Status: `covered` = a passing test exists; `fixme` = a test marks a product fail
 | 26 | Audit.tsx | empty state for an unknown actor | covered | the audit log filters by an actor id that has no events |
 | 26 | Audit.tsx | columns and action filter | covered | the audit log shows its columns and the action filter narrows the list |
 | 26 | Audit.tsx | date range filter | covered | flow 26: a From date after every event empties the audit list, and clearing it restores the list |
-| 62 | Orders.tsx | orders screen | covered | flow 83: clicking Orders in the nav opens its own screen |
+| 62 | Orders.tsx | orders screen | covered | flow 83: Orders and Plans in the nav open their own screens |
 | 221 | Orders.tsx | expired order status label | gap | Orders is routed from the nav (flow 83); the Expired label only shows on that screen |
-| 65, 66, 67 | Plans.tsx, PriceSchedule.tsx | plan and price schedule screens | covered | flow 83: the Plans screen opens from the nav and opens the price schedule |
-| 83 | Layout.tsx | Orders and Plans nav fall back to Overview | covered | flow 83: clicking Orders and Plans in the nav opens their own screens |
+| 65, 66, 67 | Plans.tsx, PriceSchedule.tsx | plan and price schedule screens | covered | flow 83: Orders and Plans in the nav open their own screens |
+| 83 | Layout.tsx | Orders and Plans nav fall back to Overview | covered | flow 83: Orders and Plans in the nav open their own screens |
 | 146 | Layout.tsx | support nav hides restricted screens | covered | support sees only the screens its role allows |
 | 146 | Layout.tsx | billing nav hides restricted screens | covered | billing sees the billing screens |
 | 146 | App.tsx | admin opens Staff and Accounts | covered | an admin opens the Staff and Accounts screens |
@@ -99,3 +99,90 @@ Status: `covered` = a passing test exists; `fixme` = a test marks a product fail
 | 27 | TenantDetail.tsx | target-status-select | covered | staff changes a workspace status with a reason |
 | 64 | TenantDetail.tsx | Edit subscription, Edit Subscription, sub-plan-key-input, sub-seats-input, sub-interval-select, sub-trial-end-input, sub-reason-input | covered | flow 64: staff overrides the tenant subscription with a reason and the dialog closes |
 | 26 | TenantDetail.tsx | Daily charges, Missing days | covered | flow 26: the monthly usage section shows the daily charges table or its empty note |
+| 12 | Console Login screen | Staff console sign-in (OTP + conditional TOTP MFA) and session check | covered | a staff member signs in, reloads the page, and signs out |
+| 13 | Console Layout top nav | Staff console sign-out | covered | a staff member signs in, reloads the page, and signs out |
+| 14 | Console Staff screen | Admin lists, adds, and revokes platform staff members | covered | an admin adds a billing staff member |
+| 20 | Console Users -> UserDetail | Staff searches users and inspects account metadata | covered | finds a user and reads the account record |
+| 21 | Console UserDetail | Staff suspends or reactivates user account with realtime WS disconnect | covered | search finds no one, then the target is suspended |
+| 22 | Console UserDetail | Staff force-revokes all user sessions with realtime WS disconnect | covered | Sign out everywhere asks for a reason |
+| 23 | Console UserDetail | Staff resets another user's MFA with email notification | gap | UI: the reset dialog opens (covered); server removal of the MFA row is asserted in e2e/platform/staff-users.spec.ts flow 23; the notice email is not asserted |
+| 24 | Console Accounts screen | Admin creates provisioned account request, cancels pending request, or resends welcome email (and customer signs in with ALLOW_SIGNUP=false) | covered | flow 24: each request state shows its own label in the accounts list |
+| 25 | Console Accounts screen | Admin welcome email resend records spec audit action account.welcome_resent [NOT BUILT] | gap | NOT BUILT: spec feature not built (welcome resend audit action) |
+| 26 | Console Overview -> Tenants -> TenantDetail / Audit | Staff views platform overview KPIs, searches tenants, inspects tenant metadata, views audit logs, and adds internal notes | covered | flow 26: the audit log shows its columns and the action filter narrows the list |
+| 27 | Console TenantDetail | Staff changes tenant workspace status (active, read_only, suspended, pending_deletion) | covered | staff changes a workspace status with a reason |
+| 60 | Console PaymentNotices screen | Staff inspects payment notice queue and resolves notice onto candidate pending order | covered | flow 60: billing matches a payment notice to a pending order in a dialog |
+| 61 | Console PaymentNotices screen | Staff dismisses unmatched payment notice from queue | covered | flow 61: staff dismisses a payment notice in a dialog and it leaves the review queue |
+| 62 | Console Orders.tsx (unrouted) or API | Staff confirms or cancels pending order via Console Orders API / unrouted Orders.tsx | covered | flow 62: staff cancels a pending order and it is no longer pending |
+| 63 | Console TenantDetail | Staff views, edits, verifies, and unverifies tenant billing profile | covered | flow 63: staff edits the billing profile in a dialog and the saved legal name is shown |
+| 64 | Console TenantDetail | Staff inspects tenant usage, writes off unpaid usage order (admin), and overrides tenant subscription | covered | flow 64: staff overrides the tenant subscription with a reason and the dialog closes |
+| 65 | Console Plans.tsx (unrouted) or API | Admin lists, updates non-price plan metadata, and deletes unused plan via Console API / unrouted Plans.tsx | gap | Plans is routed (flow 83); the metadata edit and delete dialogs have no UI test yet; plan_in_use and invalid_plan are in Go tests |
+| 66 | Console Plans screen or API | Admin creates a new or private plan via POST /api/platform/plans [NOT BUILT] | gap | NOT BUILT: spec feature not built (POST /api/platform/plans) |
+| 67 | Console PriceSchedule.tsx (unrouted) or API | Admin previews (?dry_run=1), schedules, views history, and cancels plan price change | gap | PriceSchedule opens from Plans (flow 83 routes Plans); the schedule dialogs have no UI test yet; price-change API is covered by Go tests in internal/pricechange |
+| 72 | Console EinvoiceFailures screen | Billing or admin staff lists e-invoices in Console EinvoiceFailures screen | covered | the e-invoice screen shows its state tabs and switches between them |
+| 73 | Console EinvoiceFailures screen or API | Billing or admin staff inspects single order e-invoice revision history via GET /api/platform/einvoices/{orderId} [NOT BUILT] | gap | NOT BUILT: spec feature not built (single order revision history) |
+| 76 | Console API POST /api/platform/einvoices/{orderId}/retry | Billing or admin staff retries failed or needs_info e-invoice via POST /api/platform/einvoices/{orderId}/retry with live provider [NOT BUILT] | gap | NOT BUILT: spec feature not built (retry API with live provider) |
+| 77 | Console API POST /api/platform/einvoices/{orderId}/replace | Admin replaces issued e-invoice via POST /api/platform/einvoices/{orderId}/replace with live provider [NOT BUILT] | gap | NOT BUILT: spec feature not built (replace API with live provider) |
+| 78 | Console EinvoiceFailures screen | Billing or admin staff triggers Retry, Cancel, or Replace from Console EinvoiceFailures UI [NOT BUILT] | gap | NOT BUILT: spec feature not built (retry, cancel or replace from the UI) |
+| 79 | Console API | Admin cancels issued e-invoice via POST /api/platform/einvoices/{orderId}/cancel [NOT BUILT] | gap | NOT BUILT: spec feature not built (cancel API) |
+| 83 | Console Layout top nav | Staff clicks Orders or Plans in Console top nav and falls back to Overview | covered | flow 83: Orders and Plans in the nav open their own screens |
+| 142 | Console Login screen | Non-staff, locked account, or rate-limited caller requests Console OTP send (silent 204) | covered | an unknown email and a known email get the same neutral message |
+| 143 | Console Login screen | Staff enters wrong OTP or TOTP on Console verify-code (invalid_code) | covered | a wrong email code shows the invalid-code message |
+| 144 | Console SPA or HTTP client | Browser or caller sends Console auth, price-change, or e-invoice request with bad/missing Origin (bad_origin) | gap | no UI test; bad Origin refusal is in Go tests (internal/platformauth) |
+| 145 | Console listener (:30001) | Caller hits Console proxy with dot segments, non-platform /api/* paths, or dead API upstream (404 / 502) | gap | no UI test; proxy path refusals are in Go tests (internal/server) |
+| 146 | Console API /api/platform/* | Unauthenticated, expired (>12h), non-MFA, revoked, locked, outside-CIDR, wrong-method, or unauthorized-role caller hits /api/platform/* (not_found obfuscation) | covered | support sees only the screens its role allows |
+| 188 | Console Accounts screen | Admin creates account request with mismatched kind and plan audience (plan_audience_mismatch) | covered | flow 188: a plan that is not sold for the account kind is refused with the field error |
+| 190 | Console TenantDetail | Staff verifies incomplete tenant billing profile (billing_profile_incomplete) | covered | flow 190: verifying a tenant whose billing profile is incomplete is refused and names the missing fields |
+| 216 | Console PaymentNotices | Staff resolves or dismisses payment notice no longer in needs_review (payment_notice_closed) | covered | flow 216: dismissing a notice that someone else already closed shows the closed message |
+| 217 | Console PaymentNotices | Staff hits concurrent state change resolving or dismissing payment notice (payment_notice_conflict) | gap | no test; a concurrent state change needs two staff acting at the same moment (Go test payment_notice_conflict) |
+| 220 | Console Orders / PaymentNotices / API | Staff confirms or cancels non-pending order (order_not_pending) | covered | flow 220: a canceled order cannot be canceled or confirmed again |
+| 221 | Console Orders / PaymentNotices | Staff confirms order or resolves notice onto expired pending order (order_expired) | covered | flow 221: an order past its expiry cannot be confirmed |
+| 222 | Console Orders / PaymentNotices | Staff confirms, cancels, or resolves nonexistent order ID (order_not_found) | covered | flow 222: confirming an order id that does not exist is refused with order_not_found |
+| 223 | Console Orders / PaymentNotices | Staff confirms or resolves order incompatible with current subscription (order_not_applicable) | gap | no test; order_not_applicable has no e2e or UI test |
+| 224 | Console Orders / PaymentNotices | Staff confirms or resolves order during concurrent subscription race (order_conflict) | gap | no test; order_conflict has no e2e or UI test |
+| 225 | Console Orders / TenantDetail / API | Billing staff attempts to cancel or write off usage invoice (usage_cancel_admin_only) | covered | flow 225: an admin writes off an unpaid usage order and it leaves the unpaid list |
+| 228 | Console API POST /api/platform/einvoices/{orderId}/{retry,replace} | Staff calls e-invoice retry or replace while provider is unconfigured (einvoice_provider_not_configured) | gap | API only: einvoice_provider_not_configured in Go tests; provider is empty in the harness, no e2e test |
+| 229 | Console API POST /api/platform/einvoices/{orderId}/{retry,replace} | Staff calls e-invoice retry or replace on incomplete buyer fields (einvoice_buyer_incomplete) | gap | API only: einvoice_buyer_incomplete in Go tests, no e2e test |
+| 230 | Console API POST /api/platform/einvoices/{orderId}/{retry,replace} | Staff calls e-invoice retry or replace on ineligible e-invoice state (einvoice_state_conflict) | gap | API only: einvoice_state_conflict in Go tests, no e2e test |
+| 231 | Console API POST /api/platform/einvoices/{orderId}/replace | Admin calls e-invoice replace with invalid buyer field (>500 chars or NUL) (invalid_buyer) | gap | no test; invalid_buyer has no test |
+| 232 | Console PriceSchedule / Plans | Admin submits invalid price, meter, currency, or non-00:00-UTC effective_from (price_invalid) | gap | PriceSchedule not routed; price_invalid covered by Go tests in internal/pricechange |
+| 233 | Console Plans / API | Admin sends price fields directly to PUT /api/platform/plans/{key} (price_field_via_schedule) | covered | flow 233: a PUT to a plan with a price field is refused with price_field_via_schedule |
+| 234 | Console PriceSchedule | Admin schedules price change when plan already has a scheduled change (price_change_pending) | gap | PriceSchedule not routed; price_change_pending covered by Go tests |
+| 235 | Console PriceSchedule | Admin cancels scheduled price change when none is scheduled (price_change_not_found) | gap | PriceSchedule not routed; price_change_not_found covered by Go tests |
+| 236 | Console PriceSchedule | Admin schedules price delta above PLATFORM_PRICE_CONFIRM_PCT without confirmation (price_change_confirm_required) | gap | PriceSchedule not routed; price_change_confirm_required covered by Go tests |
+| 237 | Console PriceSchedule | Admin schedules price increase shorter than PLATFORM_PRICE_NOTICE_DAYS for paid subscribers (price_notice_too_short) | gap | PriceSchedule not routed; price_notice_too_short covered by Go tests |
+| 238 | Console Plans / API | Admin changes currency on plan referenced by subscriptions or orders (plan_currency_locked) | gap | Plans not routed; plan_currency_locked covered by Go tests |
+| 239 | Console Plans / API | Admin updates plan with stale expected_version returning 409 plan_version_conflict [NOT BUILT] | gap | NOT BUILT: spec feature not built (expected_version conflict) |
+| 240 | Console Plans / API | Admin deletes plan still referenced by subscriptions (plan_in_use) | gap | Plans not routed; plan_in_use covered by Go tests |
+| 241 | Console TenantDetail / API | Staff assigns archived plan in tenant subscription override (plan_archived) | gap | tenant override with an archived plan: plan_archived covered by Go tests, no UI test |
+| 242 | Console TenantDetail / API | Staff assigns unknown plan_key in tenant subscription override (unknown_plan) | covered | flow 64: an unknown plan key is refused and the subscription dialog stays open |
+| 243 | Console TenantDetail / API | Staff hits concurrent update race overriding tenant subscription (concurrent_change) | gap | concurrent_change covered by Go tests, no e2e test |
+| 244 | Console Accounts | Admin submits invalid fields creating provisioned account request (account_request_invalid) | covered | flow 244: admin submits an invalid workspace slug and the dialog shows the field error |
+| 245 | Console Accounts | Admin creates paid seat account request without trial or comp_reason (account_activation_required) | covered | flow 245: a paid plan without a trial or complimentary reason is refused in the dialog |
+| 246 | Console Accounts | Admin creates account request for existing Multica user email (account_email_exists) | covered | flow 246: an email that already has a Multica user is refused in the dialog |
+| 247 | Console Accounts | Admin cancels account request not in pending state (account_request_not_cancelable) | covered | flow 247: staff keeps a pending request, then cancels it and the row shows Canceled |
+| 248 | Console Accounts | Admin exceeds hourly PLATFORM_ACCOUNT_CREATE_PER_HOUR cap (account_create_rate_limited) | gap | needs more than the hourly cap of requests; Go tests only |
+| 249 | Console Accounts | Admin resends welcome email on ineligible account request state (account_request_not_resendable) | covered | flow 249: a completed request with no account yet is refused a resend, and the reason is shown |
+| 250 | Console Accounts | Admin exceeds 3 welcome email resends per day (welcome_resend_rate_limited) | gap | needs a completed request with an account and the mail provider; Go tests only |
+| 251 | Console Accounts | Admin welcome email resend fails on email transport error (welcome_send_failed) | gap | needs the mail provider to fail; the harness has no mail provider |
+| 252 | Console UserDetail / API | Staff targets own account status (self_target) | covered | an admin cannot suspend their own account |
+| 253 | Console UserDetail / API | Staff attempts self MFA reset (self_reset_refused) | covered | flow 253: staff cannot reset their own two-step sign-in |
+| 254 | Console UserDetail / API | Staff changes status of permanently deleted user account (account_locked) | covered | flow 254: an account that is pending deletion or deleted cannot be changed |
+| 255 | Console Staff screen | Admin adds staff email that has no Multica account (no_such_account) | covered | an unknown email is refused in the add dialog |
+| 256 | Console Staff screen | Admin adds user who is already active staff (already_staff) | covered | an active staff member cannot be added twice |
+| 257 | Console Staff screen | Admin attempts to revoke final active admin (last_admin) | gap | needs a second active admin seed; the remove dialog refusal is not exercised |
+| 258 | Console Staff screen / API | Admin adds staff with invalid role (invalid_role) | covered | flow 258: an unknown staff role is refused with invalid_role |
+| 259 | Console Staff screen / API | Admin adds staff with malformed or >254-char email (invalid_email) | covered | flow 259: the add-staff form stops a malformed email before it is sent, and the dialog stays open |
+| 260 | Console mutation dialogs / API | Staff submits console mutation with missing or blank reason (reason_required) | covered | a reason one character over the limit is refused |
+| 261 | Console mutation dialogs / API | Staff submits console reason exceeding max length (reason_too_long) | covered | a reason one character over the limit is refused |
+| 262 | Console Orders / API | Staff submits transfer_reference >100 chars confirming order (transfer_reference_too_long) | covered | flow 262: a transfer reference over 100 characters is refused with transfer_reference_too_long |
+| 263 | Console TenantDetail / API | Staff submits empty internal tenant note (body_required) | covered | staff adds an internal note and reads it back |
+| 264 | Console TenantDetail / API | Staff submits internal tenant note >4000 chars (body_too_long) | covered | a note one character over 4000 is refused |
+| 265 | Console write endpoints | Staff submits malformed JSON, trailing data, or NUL byte to Console or pricechange (invalid_body) | covered | flow 265: a body that is not JSON is refused with invalid_body |
+| 266 | Console list screens / API | Staff passes invalid query parameter to Console list endpoints (invalid_filter) | covered | flow 266: a limit outside 1 to the maximum is refused with invalid_filter |
+| 267 | Console list screens / API | Staff passes invalid pagination cursor to Console list endpoints (invalid_cursor) | covered | flow 267: a malformed cursor is refused with invalid_cursor |
+| 268 | Console PaymentNotices / API | Staff passes malformed UUID path parameter to payment notices endpoints (invalid_id) | covered | flow 268: a malformed payment notice id is refused with invalid_id |
+| 269 | Console PaymentNotices / API | Staff passes non-UUID order_id resolving payment notice (invalid_order_id) | covered | flow 269: an order_id that is not a UUID is refused with invalid_order_id |
+| 270 | Console Tenants / Users / Orders / API | Staff submits invalid status enum on tenant, user, or order endpoints (invalid_status) | covered | flow 270: an unknown tenant status is refused with invalid_status |
+| 271 | Console PaymentNotices / EinvoiceFailures / API | Staff passes invalid state filter (including cancelled on e-invoices) to payment notices or e-invoices list (invalid_state) | gap | no test; the screens send only valid state filters; API invalid_state is in Go tests (einvoices.go) |
+| 272 | Console Plans / API | Admin submits invalid plan key or metadata on PUT /api/platform/plans/{key} (invalid_plan) | gap | Plans not routed; invalid_plan covered by Go tests only |
+| 273 | Console TenantDetail or PlanChangeDialog / API | Staff or customer submits invalid subscription fields (invalid_subscription) | gap | UI refuses an unknown plan key (flow 64); invalid_subscription covered by Go tests only |
