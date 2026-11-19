@@ -1066,6 +1066,7 @@ func main() {
 		Seats:               h.SeatCapacity,
 		Bus:                 bus,
 		MemberPayload:       h.MemberAddedPayload,
+		Members:             h,
 	}))); err != nil {
 		slog.Error("scheduler: register member provisioning job", "error", err)
 	}

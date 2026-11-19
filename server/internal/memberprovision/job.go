@@ -46,6 +46,9 @@ type Deps struct {
 	BlockedEmailDomains []string
 	// Seats is the seat protocol client. Nil means seats are not managed.
 	Seats seatcapacity.Executor
+	// Members runs remove and change_role requests through the handler's member
+	// paths, which own the revocation, the seat release and the events.
+	Members MemberChanger
 	// Bus receives the member:added event. May be nil.
 	Bus Publisher
 	// MemberPayload builds the "member" value of the member:added event. The
@@ -100,6 +103,7 @@ const (
 	workspaceStatusActive  = "active"
 	targetTypeMember       = "member"
 	targetTypeMemberReq    = "member_request"
+	kindAdd                = "add"
 	uniqueViolationSQLCode = "23505"
 )
 
@@ -170,7 +174,11 @@ func (r *Runner) process(ctx context.Context, id pgtype.UUID) (bool, error) {
 	}
 
 	var st attemptState
-	err = r.provision(ctx, qtx, req, &st)
+	if req.Kind == kindAdd {
+		err = r.provision(ctx, qtx, req, &st)
+	} else {
+		err = r.changeMember(ctx, qtx, req)
+	}
 	if err == nil {
 		err = tx.Commit(ctx)
 	}
@@ -364,6 +372,11 @@ func (r *Runner) recordFailure(ctx context.Context, req db.PlatformMemberRequest
 	if t, err := q.GetTenantIDByWorkspace(ctx, req.WorkspaceID); err == nil {
 		tenantID = uuid.UUID(t.Bytes).String()
 	}
+	if req.Kind != kindAdd {
+		// The failure stays on the request row: the audit catalog has no failed
+		// action for remove or change_role yet (spec R6 section 3b.3).
+		return tx.Commit(ctx)
+	}
 	if err := audit.Record(ctx, auditstore.New(q), audit.Entry{
 		WorkspaceID: uuid.UUID(req.WorkspaceID.Bytes).String(),
 		TenantID:    tenantID,
@@ -412,6 +425,9 @@ func (r *Runner) releaseSeat(ctx context.Context, req db.PlatformMemberRequest) 
 // afterCommit confirms the seat and tells the workspace. The member exists, so
 // a seat that cannot be confirmed does not undo it.
 func (r *Runner) afterCommit(ctx context.Context, req db.PlatformMemberRequest, st *attemptState) {
+	if req.Kind != kindAdd {
+		return // remove and change_role publish from the handler, and hold no seat here
+	}
 	if r.d.Seats != nil && st.seatManaged {
 		var err error
 		for i := 0; i < confirmAttempts; i++ {

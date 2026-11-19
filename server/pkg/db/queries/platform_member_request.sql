@@ -3,16 +3,15 @@
 -- user_created, updated_at and completed_at.
 
 -- name: ListPendingMemberRequestIDs :many
--- Only add requests. Remove and change_role are not handled by this job yet.
 SELECT id FROM platform_member_request
-WHERE state = 'pending' AND kind = 'add'
+WHERE state = 'pending' AND kind IN ('add', 'remove', 'change_role')
 ORDER BY created_at, id
 LIMIT $1;
 
 -- name: LockPendingMemberRequest :one
 -- SKIP LOCKED: no row means another run holds the request or it is no longer pending.
 SELECT * FROM platform_member_request
-WHERE id = $1 AND state = 'pending' AND kind = 'add'
+WHERE id = $1 AND state = 'pending' AND kind IN ('add', 'remove', 'change_role')
 FOR UPDATE SKIP LOCKED;
 
 -- name: MarkMemberRequestCompleted :exec

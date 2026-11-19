@@ -54,7 +54,7 @@ func (q *Queries) IncrementMemberRequestAttempts(ctx context.Context, id pgtype.
 const listPendingMemberRequestIDs = `-- name: ListPendingMemberRequestIDs :many
 
 SELECT id FROM platform_member_request
-WHERE state = 'pending' AND kind = 'add'
+WHERE state = 'pending' AND kind IN ('add', 'remove', 'change_role')
 ORDER BY created_at, id
 LIMIT $1
 `
@@ -62,7 +62,6 @@ LIMIT $1
 // platform_member_request: the platform writes a staff add-member request; the
 // member_provisioning job owns state, error_code, attempts, user_id, member_id,
 // user_created, updated_at and completed_at.
-// Only add requests. Remove and change_role are not handled by this job yet.
 func (q *Queries) ListPendingMemberRequestIDs(ctx context.Context, limit int32) ([]pgtype.UUID, error) {
 	rows, err := q.db.Query(ctx, listPendingMemberRequestIDs, limit)
 	if err != nil {
@@ -85,7 +84,7 @@ func (q *Queries) ListPendingMemberRequestIDs(ctx context.Context, limit int32) 
 
 const lockPendingMemberRequest = `-- name: LockPendingMemberRequest :one
 SELECT id, workspace_id, kind, target_user_id, previous_role, email, role, state, error_code, attempts, user_id, member_id, user_created, requested_by, requested_by_label, created_at, updated_at, completed_at FROM platform_member_request
-WHERE id = $1 AND state = 'pending' AND kind = 'add'
+WHERE id = $1 AND state = 'pending' AND kind IN ('add', 'remove', 'change_role')
 FOR UPDATE SKIP LOCKED
 `
 

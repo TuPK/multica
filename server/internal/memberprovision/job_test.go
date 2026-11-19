@@ -762,13 +762,13 @@ func TestMemberProvisioningLeavesOtherKindsAlone(t *testing.T) {
 	id := uuid.New()
 	if _, err := testPool.Exec(context.Background(), `
 		INSERT INTO platform_member_request (id, workspace_id, kind, email, role, requested_by)
-		VALUES ($1, $2::uuid, 'remove', $3, 'member', $4::uuid)`, id, w.ws, w.email("remove"), w.staff); err != nil {
+		VALUES ($1, $2::uuid, 'bogus', $3, 'member', $4::uuid)`, id, w.ws, w.email("bogus"), w.staff); err != nil {
 		t.Fatal(err)
 	}
 	if n := w.runOnce(); n != 0 {
 		t.Errorf("RunOnce = %d, want 0", n)
 	}
 	if r := w.row(id); r.State != "pending" || r.Attempts != 0 {
-		t.Errorf("a remove request changed: %+v", r)
+		t.Errorf("a request of an unknown kind changed: %+v", r)
 	}
 }
