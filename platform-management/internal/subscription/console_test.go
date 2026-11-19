@@ -301,7 +301,7 @@ func TestOtherMethodsOnTheseRoutesAre404(t *testing.T) {
 func TestPatternsListTheRoutesTheServerMounts(t *testing.T) {
 	want := map[string]bool{
 		"/api/platform/plans": true, "/api/platform/plans/{key}": true, "/api/platform/workspaces/{id}/subscription": true,
-		"/api/platform/plans/{key}/activate": true, "/api/platform/plans/{key}/deactivate": true, "/api/platform/plans/{key}/history": true,
+		"/api/platform/plans/{key}/activate": true, "/api/platform/plans/{key}/deactivate": true, "/api/platform/plans/{key}/history": true, "/api/platform/tenants/{id}/limit-overrides": true,
 		"/api/platform/workspaces/{id}/billing-profile":          true,
 		"/api/platform/workspaces/{id}/billing-profile/verify":   true,
 		"/api/platform/workspaces/{id}/billing-profile/unverify": true,
@@ -1190,6 +1190,7 @@ func TestRouteRolesFollowTheMatrix(t *testing.T) {
 		{"POST", "/api/platform/plans/{key}/activate"}:                     {sa},
 		{"POST", "/api/platform/plans/{key}/deactivate"}:                   {sa},
 		{"GET", "/api/platform/plans/{key}/history"}:                       {sa, billing},
+		{"POST", "/api/platform/tenants/{id}/limit-overrides"}:             {sa, billing},
 		{"POST", "/api/platform/plans"}:                                    {sa},
 		{"PUT", "/api/platform/plans/{key}"}:                               {sa},
 		{"DELETE", "/api/platform/plans/{key}"}:                            {sa},

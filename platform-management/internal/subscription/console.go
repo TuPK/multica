@@ -40,7 +40,9 @@ type ConsoleDeps struct {
 	Plans      plan.Reader
 	PlanRunner plan.Runner
 	// PlanHistory reads the plan's audit rows for GET /plans/{key}/history.
-	PlanHistory   plan.HistoryReader
+	PlanHistory plan.HistoryReader
+	// Tenants reads the tenants that a tenant-wide limit override applies to.
+	Tenants       TenantWorkspaces
 	Subscriptions *Service
 	Profiles      *ProfileService
 	Emails        EmailLookup
@@ -104,6 +106,9 @@ func routeTable() []routeSpec {
 		}},
 		{base + "/plans/{key}/deactivate", staff.ActionPlansManage, nil, map[string]handlerFunc{
 			http.MethodPost: (*Console).deactivatePlan,
+		}},
+		{base + "/tenants/{id}/limit-overrides", staff.ActionTenantLimitOverride, nil, map[string]handlerFunc{
+			http.MethodPost: (*Console).postTenantLimitOverride,
 		}},
 		{base + "/plans/{key}/history", staff.ActionPlanHistoryRead, nil, map[string]handlerFunc{
 			http.MethodGet: (*Console).planHistory,

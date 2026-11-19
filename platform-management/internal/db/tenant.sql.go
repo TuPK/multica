@@ -186,6 +186,33 @@ func (q *Queries) ListTenantWorkspaceSummaries(ctx context.Context, tenantIds []
 	return items, nil
 }
 
+const listWorkspacesOfTenant = `-- name: ListWorkspacesOfTenant :many
+SELECT workspace_id FROM tenant_workspace
+WHERE tenant_id = $1
+ORDER BY workspace_id
+`
+
+// The workspace ids of one tenant, in a fixed order (spec R6 section 3b.4, rule 4).
+func (q *Queries) ListWorkspacesOfTenant(ctx context.Context, tenantID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listWorkspacesOfTenant, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var workspace_id pgtype.UUID
+		if err := rows.Scan(&workspace_id); err != nil {
+			return nil, err
+		}
+		items = append(items, workspace_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchTenants = `-- name: SearchTenants :many
 SELECT
     t.id,
@@ -294,6 +321,17 @@ SELECT EXISTS (SELECT 1 FROM tenant WHERE id = $1)
 
 func (q *Queries) TenantExists(ctx context.Context, id pgtype.UUID) (bool, error) {
 	row := q.db.QueryRow(ctx, tenantExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const tenantExistsForLimits = `-- name: TenantExistsForLimits :one
+SELECT EXISTS (SELECT 1 FROM tenant WHERE id = $1)
+`
+
+func (q *Queries) TenantExistsForLimits(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, tenantExistsForLimits, id)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err

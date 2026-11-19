@@ -146,14 +146,15 @@ func TestR1CatalogActionsAreDefined(t *testing.T) {
 // audit_event.action, so a rename is a data change.
 func TestConsoleCatalogActionsAreDefined(t *testing.T) {
 	cases := map[string]string{
-		"workspace.status_changed": ActionWorkspaceStatusChanged,
-		"account.status_changed":   ActionAccountStatusChanged,
-		"account.sessions_revoked": ActionAccountSessionsRevoked,
-		"staff.added":              ActionStaffAdded,
-		"staff.removed":            ActionStaffRemoved,
-		"note.added":               ActionNoteAdded,
-		"subscription.changed":     ActionSubscriptionChanged,
-		"plan.changed":             ActionPlanChanged,
+		"workspace.status_changed":            ActionWorkspaceStatusChanged,
+		"account.status_changed":              ActionAccountStatusChanged,
+		"account.sessions_revoked":            ActionAccountSessionsRevoked,
+		"staff.added":                         ActionStaffAdded,
+		"staff.removed":                       ActionStaffRemoved,
+		"note.added":                          ActionNoteAdded,
+		"subscription.changed":                ActionSubscriptionChanged,
+		"subscription.limit_override_changed": ActionSubscriptionLimitOverrideChanged,
+		"plan.changed":                        ActionPlanChanged,
 	}
 	for want, got := range cases {
 		if got != want {

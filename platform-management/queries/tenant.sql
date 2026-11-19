@@ -130,3 +130,12 @@ SELECT EXISTS (SELECT 1 FROM tenant WHERE id = $1);
 SELECT count(*)::bigint
 FROM workspace w
 WHERE NOT EXISTS (SELECT 1 FROM tenant_workspace tw WHERE tw.workspace_id = w.id);
+
+-- name: ListWorkspacesOfTenant :many
+-- The workspace ids of one tenant, in a fixed order (spec R6 section 3b.4, rule 4).
+SELECT workspace_id FROM tenant_workspace
+WHERE tenant_id = $1
+ORDER BY workspace_id;
+
+-- name: TenantExistsForLimits :one
+SELECT EXISTS (SELECT 1 FROM tenant WHERE id = $1);

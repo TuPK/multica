@@ -42,17 +42,18 @@ const (
 
 // Console actions: written by the platform's staff API, with the staff actor.
 const (
-	ActionWorkspaceStatusChanged = "workspace.status_changed"
-	ActionAccountStatusChanged   = "account.status_changed"
-	ActionAccountSessionsRevoked = "account.sessions_revoked"
-	ActionStaffAdded             = "staff.added"
-	ActionStaffRemoved           = "staff.removed"
-	ActionStaffRoleChanged       = "staff.role_changed"
-	ActionStaffTenantAssigned    = "staff.tenant_assigned"
-	ActionNoteAdded              = "note.added"
-	ActionSubscriptionChanged    = "subscription.changed"
-	ActionPlanChanged            = "plan.changed"
-	ActionUserMFAReset           = "user.mfa_reset"
+	ActionWorkspaceStatusChanged           = "workspace.status_changed"
+	ActionAccountStatusChanged             = "account.status_changed"
+	ActionAccountSessionsRevoked           = "account.sessions_revoked"
+	ActionStaffAdded                       = "staff.added"
+	ActionStaffRemoved                     = "staff.removed"
+	ActionStaffRoleChanged                 = "staff.role_changed"
+	ActionStaffTenantAssigned              = "staff.tenant_assigned"
+	ActionNoteAdded                        = "note.added"
+	ActionSubscriptionChanged              = "subscription.changed"
+	ActionSubscriptionLimitOverrideChanged = "subscription.limit_override_changed"
+	ActionPlanChanged                      = "plan.changed"
+	ActionUserMFAReset                     = "user.mfa_reset"
 )
 
 // Staff add-member actions (spec R6 section 4.5). member.staff_added has
@@ -200,6 +201,7 @@ var Catalog = []string{
 	ActionDeletionRequestRetried,
 	ActionNoteAdded,
 	ActionSubscriptionChanged,
+	ActionSubscriptionLimitOverrideChanged,
 	ActionPlanChanged,
 	ActionUserMFAReset,
 	ActionBillingOrderCreated,
