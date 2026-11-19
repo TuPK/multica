@@ -216,6 +216,38 @@ describe("PublishChannelsTab", () => {
     });
   });
 
+  it("changes platform and market through Select controls when adding a channel", async () => {
+    const user = userEvent.setup();
+    testState.channels = [];
+    mockCreate.mockResolvedValueOnce({
+      id: "pc-li",
+      platform: "linkedin",
+      market: "vn",
+      account_name: "Multica VN",
+      status: "not_connected",
+    });
+
+    renderTab();
+    await user.click(screen.getByRole("button", { name: "Add channel" }));
+
+    await user.click(screen.getByRole("combobox", { name: "Platform" }));
+    await user.click(await screen.findByRole("option", { name: "LinkedIn" }));
+
+    await user.click(screen.getByRole("combobox", { name: "Market" }));
+    await user.click(await screen.findByRole("option", { name: "Vietnam (vn)" }));
+
+    await user.type(screen.getByPlaceholderText("@username or page name"), "Multica VN");
+    await user.click(screen.getByRole("button", { name: "Add channel" }));
+
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith({
+        platform: "linkedin",
+        market: "vn",
+        account_name: "Multica VN",
+      });
+    });
+  });
+
   it("handles connecting a channel and opens link in new tab", async () => {
     testState.channels = [
       {

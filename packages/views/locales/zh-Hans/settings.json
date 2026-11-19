@@ -1640,7 +1640,8 @@
     "export_csv": "导出 CSV",
     "export_failed": "无法导出审计事件",
     "empty": "暂无审计事件",
-    "load_failed": "无法加载审计事件"
+    "load_failed": "无法加载审计事件",
+    "clear_filters": "清除筛选"
   },
   "legal": {
     "title": "必要法律文件",

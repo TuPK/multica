@@ -1640,7 +1640,8 @@
     "export_csv": "CSV 내보내기",
     "export_failed": "감사 이벤트를 내보내지 못했습니다",
     "empty": "감사 이벤트가 없습니다",
-    "load_failed": "감사 이벤트를 불러오지 못했습니다"
+    "load_failed": "감사 이벤트를 불러오지 못했습니다",
+    "clear_filters": "필터 지우기"
   },
   "legal": {
     "title": "필수 법적 문서",

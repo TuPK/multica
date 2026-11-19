@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
 import {
   Card,
   CardHeader,
@@ -8,8 +8,10 @@ import {
   CardDescription,
   CardContent,
 } from "@multica/ui/components/ui/card";
+import { Field, FieldLabel } from "@multica/ui/components/ui/field";
+import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Shield } from "@multica/ui/icons";
+import { AlertCircle, Info, Shield } from "@multica/ui/icons";
 import { useSendCode, useVerifyCode } from "../api/hooks";
 
 interface LoginProps {
@@ -78,13 +80,15 @@ export function Login({ onSuccess }: LoginProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center bg-app-shell p-4">
+      <Card className="w-full max-w-sm border-surface-border shadow-none">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Shield className="size-5" />
+          <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Shield className="size-5" aria-hidden="true" />
           </div>
-          <CardTitle>Platform Console</CardTitle>
+          <CardTitle className="font-heading text-title-lg font-semibold">
+            Platform Console
+          </CardTitle>
           <CardDescription>
             {step === "email"
               ? "Sign in with your staff email address"
@@ -93,34 +97,29 @@ export function Login({ onSuccess }: LoginProps) {
                 : "Enter the code from your authenticator app"}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {infoMessage && (
-            <div
-              role="status"
-              className="mb-4 rounded-md bg-muted p-3 text-caption text-muted-foreground"
-            >
-              {infoMessage}
-            </div>
+            <Alert role="status" className="border-info/30 bg-info/10 text-foreground">
+              <Info className="size-4 text-info" aria-hidden="true" />
+              <AlertDescription className="text-caption text-foreground">
+                {infoMessage}
+              </AlertDescription>
+            </Alert>
           )}
 
           {errorMessage && (
-            <div
-              role="alert"
-              className="mb-4 rounded-md bg-destructive/10 p-3 text-caption text-destructive"
-            >
-              {errorMessage}
-            </div>
+            <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
+              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+              <AlertDescription className="text-caption">{errorMessage}</AlertDescription>
+            </Alert>
           )}
 
           {step === "email" ? (
             <form onSubmit={handleSendCode} className="space-y-4">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="email-input"
-                  className="text-caption font-medium text-foreground"
-                >
+              <Field>
+                <FieldLabel htmlFor="email-input" className="text-label">
                   Email address
-                </label>
+                </FieldLabel>
                 <Input
                   id="email-input"
                   type="email"
@@ -131,7 +130,7 @@ export function Login({ onSuccess }: LoginProps) {
                   disabled={sendCode.isPending}
                   autoComplete="email"
                 />
-              </div>
+              </Field>
               <Button
                 type="submit"
                 className="w-full"
@@ -144,13 +143,10 @@ export function Login({ onSuccess }: LoginProps) {
             </form>
           ) : step === "code" ? (
             <form onSubmit={handleVerifyCode} className="space-y-4">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="code-input"
-                  className="text-caption font-medium text-foreground"
-                >
+              <Field>
+                <FieldLabel htmlFor="code-input" className="text-label">
                   6-digit code
-                </label>
+                </FieldLabel>
                 <Input
                   id="code-input"
                   type="text"
@@ -162,8 +158,9 @@ export function Login({ onSuccess }: LoginProps) {
                   required
                   disabled={verifyCode.isPending}
                   autoFocus
+                  className="text-center font-mono tabular-nums tracking-widest"
                 />
-              </div>
+              </Field>
               <Button
                 type="submit"
                 className="w-full"
@@ -184,13 +181,10 @@ export function Login({ onSuccess }: LoginProps) {
             </form>
           ) : (
             <form onSubmit={handleVerifyTotp} className="space-y-4">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="totp-input"
-                  className="text-caption font-medium text-foreground"
-                >
+              <Field>
+                <FieldLabel htmlFor="totp-input" className="text-label">
                   Authenticator code
-                </label>
+                </FieldLabel>
                 <Input
                   id="totp-input"
                   type="text"
@@ -203,8 +197,9 @@ export function Login({ onSuccess }: LoginProps) {
                   required
                   disabled={verifyCode.isPending}
                   autoFocus
+                  className="text-center font-mono tabular-nums tracking-widest"
                 />
-              </div>
+              </Field>
               <Button
                 type="submit"
                 className="w-full"

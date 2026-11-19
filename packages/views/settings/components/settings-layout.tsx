@@ -20,6 +20,7 @@ import {
 } from "@multica/ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@multica/ui/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { cn } from "@multica/ui/lib/utils";
 import { useCurrentWorkspace } from "@multica/core/paths";
 import { memberListOptions } from "@multica/core/workspace/queries";
@@ -356,37 +357,26 @@ export function SettingsViewTabs<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div
-      role="tablist"
-      aria-label={label}
-      className="inline-flex w-fit items-center gap-0.5 rounded-lg bg-muted p-0.5"
+    <Tabs
+      value={value}
+      onValueChange={(nextValue) => onChange(nextValue as T)}
     >
-      {items.map((item) => (
-        <button
-          key={item.value}
-          type="button"
-          role="tab"
-          aria-selected={value === item.value}
-          onClick={() => onChange(item.value)}
-          className={cn(
-            "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-label font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring",
-            value === item.value
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {item.label}
-          {item.count !== undefined ? (
-            <>
-              {" "}
-              <span className="text-caption font-normal tabular-nums text-muted-foreground">
-                {item.count}
-              </span>
-            </>
-          ) : null}
-        </button>
-      ))}
-    </div>
+      <TabsList aria-label={label}>
+        {items.map((item) => (
+          <TabsTrigger key={item.value} value={item.value}>
+            {item.label}
+            {item.count !== undefined ? (
+              <>
+                {" "}
+                <span className="text-caption font-normal tabular-nums text-muted-foreground">
+                  {item.count}
+                </span>
+              </>
+            ) : null}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 

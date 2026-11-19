@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Accounts } from "./Accounts";
 import { PlatformApiError } from "../api/client";
@@ -222,14 +223,16 @@ describe("Accounts screen", () => {
   });
 
   it("requires the billing profile for a business account", async () => {
+    const user = userEvent.setup();
     render(<Accounts userRole="admin" />);
     const dialog = openCreateDialog();
 
-    fireEvent.change(within(dialog).getByLabelText(/Account kind/i), { target: { value: "business" } });
+    await user.click(within(dialog).getByRole("combobox", { name: /Account kind/i }));
+    await user.click(await screen.findByRole("option", { name: "Business" }));
     fillCommonIndividualFields(dialog, "boss@acme.example");
-    fireEvent.click(within(dialog).getByLabelText(/^Trial$/i));
+    await user.click(within(dialog).getByRole("checkbox", { name: /^Trial$/i }));
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Submit request" }));
+    await user.click(within(dialog).getByRole("button", { name: "Submit request" }));
 
     expect(mockCreateMutateAsync).not.toHaveBeenCalled();
     expect(within(dialog).getByText(/Legal name is required/i)).toBeInTheDocument();
@@ -239,13 +242,15 @@ describe("Accounts screen", () => {
   });
 
   it("rejects a paid plan when both trial and complimentary reason are missing", async () => {
+    const user = userEvent.setup();
     render(<Accounts userRole="admin" />);
     const dialog = openCreateDialog();
 
     fillCommonIndividualFields(dialog, "pro@example.com");
-    fireEvent.change(within(dialog).getByLabelText(/^Plan$/i), { target: { value: "pro" } });
+    await user.click(within(dialog).getByRole("combobox", { name: /^Plan$/i }));
+    await user.click(await screen.findByRole("option", { name: /Pro \(pro\)/i }));
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Submit request" }));
+    await user.click(within(dialog).getByRole("button", { name: "Submit request" }));
 
     expect(mockCreateMutateAsync).not.toHaveBeenCalled();
     expect(
@@ -272,6 +277,7 @@ describe("Accounts screen", () => {
   });
 
   it("shows field messages for a 400 account_request_invalid response", async () => {
+    const user = userEvent.setup();
     mockCreateMutateAsync.mockRejectedValue(
       new AccountApiError(400, "account_request_invalid", "the request has invalid fields", [
         "workspace_slug",
@@ -281,16 +287,17 @@ describe("Accounts screen", () => {
 
     render(<Accounts userRole="admin" />);
     const dialog = openCreateDialog();
-    fireEvent.change(within(dialog).getByLabelText(/Account kind/i), { target: { value: "business" } });
+    await user.click(within(dialog).getByRole("combobox", { name: /Account kind/i }));
+    await user.click(await screen.findByRole("option", { name: "Business" }));
     fillCommonIndividualFields(dialog, "boss@acme.example");
     fireEvent.change(within(dialog).getByLabelText(/Workspace slug/i), { target: { value: "bad-slug" } });
-    fireEvent.click(within(dialog).getByLabelText(/^Trial$/i));
+    await user.click(within(dialog).getByRole("checkbox", { name: /^Trial$/i }));
     fireEvent.change(within(dialog).getByLabelText(/Legal name/i), { target: { value: "Acme Co" } });
     fireEvent.change(within(dialog).getByLabelText(/Tax code/i), { target: { value: "12345" } });
     fireEvent.change(within(dialog).getByLabelText(/^Address$/i), { target: { value: "1 Main St" } });
     fireEvent.change(within(dialog).getByLabelText(/Invoice email/i), { target: { value: "ap@acme.example" } });
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Submit request" }));
+    await user.click(within(dialog).getByRole("button", { name: "Submit request" }));
 
     await waitFor(() => {
       expect(within(dialog).getByLabelText(/Workspace slug/i)).toHaveAttribute("aria-invalid", "true");

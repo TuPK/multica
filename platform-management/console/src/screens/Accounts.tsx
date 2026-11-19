@@ -1,16 +1,8 @@
 import { useState } from "react";
-import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
+import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Badge } from "@multica/ui/components/ui/badge";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
+import { Button } from "@multica/ui/components/ui/button";
+import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -20,10 +12,31 @@ import {
   DialogFooter,
   DialogClose,
 } from "@multica/ui/components/ui/dialog";
-import { UserPlus } from "@multica/ui/icons";
-import { LoadingState } from "../components/LoadingState";
-import { ErrorState } from "../components/ErrorState";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@multica/ui/components/ui/field";
+import { Input } from "@multica/ui/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
+import { Spinner } from "@multica/ui/components/ui/spinner";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@multica/ui/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
+import { AlertCircle, CheckCircle2, UserPlus } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { LoadingState } from "../components/LoadingState";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import {
   useMe,
   usePlans,
@@ -44,13 +57,23 @@ interface AccountsProps {
 
 type StateFilter = Exclude<AccountRequestState, "unknown"> | "";
 
-const STATE_TABS: { value: StateFilter; label: string }[] = [
-  { value: "", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "provisioned", label: "Provisioned" },
-  { value: "completed", label: "Completed" },
-  { value: "failed", label: "Failed" },
-  { value: "canceled", label: "Canceled" },
+const STATE_TABS: { value: string; filter: StateFilter; label: string }[] = [
+  { value: "all", filter: "", label: "All" },
+  { value: "pending", filter: "pending", label: "Pending" },
+  { value: "provisioned", filter: "provisioned", label: "Provisioned" },
+  { value: "completed", filter: "completed", label: "Completed" },
+  { value: "failed", filter: "failed", label: "Failed" },
+  { value: "canceled", filter: "canceled", label: "Canceled" },
+];
+
+const ACCOUNT_KIND_ITEMS = [
+  { value: "individual", label: "Individual" },
+  { value: "business", label: "Business" },
+];
+
+const INTERVAL_ITEMS = [
+  { value: "month", label: "Monthly" },
+  { value: "year", label: "Yearly" },
 ];
 
 const ERROR_CODE_LABELS: Record<string, string> = {
@@ -78,9 +101,6 @@ const FIELD_ERROR_MESSAGES: Record<string, string> = {
   "billing_profile.address": "Address is required.",
   "billing_profile.invoice_email": "Enter a valid invoice email address.",
 };
-
-const SELECT_CLASS =
-  "h-8 w-full rounded-lg border border-input bg-background px-2.5 text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 function createIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -164,40 +184,9 @@ function formatErrorCode(code: string): string {
 
 function AccountStateBadge({ req }: { req: AccountRequest }) {
   if (req.state === "failed" && req.error_code === "finalize_failed") {
-    return (
-      <Badge
-        variant="outline"
-        className="border-amber-600/40 bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
-      >
-        Finalize failed
-      </Badge>
-    );
+    return <StatusBadge status="needs_review" label="Finalize failed" />;
   }
-  switch (req.state) {
-    case "pending":
-      return <Badge variant="secondary">Pending</Badge>;
-    case "provisioned":
-      return <Badge variant="outline">Provisioned</Badge>;
-    case "completed":
-      return (
-        <Badge
-          variant="outline"
-          className="border-emerald-600/30 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-        >
-          Completed
-        </Badge>
-      );
-    case "failed":
-      return <Badge variant="destructive">Failed</Badge>;
-    case "canceled":
-      return (
-        <Badge variant="outline" className="text-muted-foreground">
-          Canceled
-        </Badge>
-      );
-    default:
-      return <Badge variant="outline">Unknown</Badge>;
-  }
+  return <StatusBadge status={req.state} />;
 }
 
 export function Accounts({ userRole }: AccountsProps) {
@@ -495,58 +484,59 @@ export function Accounts({ userRole }: AccountsProps) {
   };
 
   const requestList = requests ?? [];
+  const planItems = activePlans.map((p) => ({
+    value: p.key,
+    label: `${p.name} (${p.key})`,
+  }));
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-heading text-title-lg font-bold">Accounts</h1>
-        <Button onClick={handleOpenCreate} className="gap-1.5">
-          <UserPlus className="size-4" />
-          <span>Create account</span>
-        </Button>
-      </div>
+      <PageHeader
+        title="Accounts"
+        actions={
+          <Button size="sm" onClick={handleOpenCreate} className="gap-1.5">
+            <UserPlus className="size-4" aria-hidden="true" />
+            <span>Create account</span>
+          </Button>
+        }
+      />
 
       {actionNotice && (
-        <div
+        <Alert
           role="status"
-          className="rounded-lg border border-emerald-600/30 bg-emerald-50 p-3 text-body text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+          className="border-success/30 bg-success/10 text-success"
         >
-          {actionNotice}
-        </div>
+          <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden="true" />
+          <AlertDescription className="text-body text-success">
+            {actionNotice}
+          </AlertDescription>
+        </Alert>
       )}
 
       {actionError && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-body text-destructive"
-        >
-          {actionError}
-        </div>
+        <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
+          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+          <AlertDescription className="text-body">{actionError}</AlertDescription>
+        </Alert>
       )}
 
-      <div className="flex border-b border-surface-border">
-        <div role="tablist" className="flex gap-2">
-          {STATE_TABS.map((tab) => {
-            const isActive = stateFilter === tab.value;
-            return (
-              <button
-                key={tab.label}
-                role="tab"
-                type="button"
-                aria-selected={isActive}
-                onClick={() => setStateFilter(tab.value)}
-                className={`border-b-2 px-4 py-2 text-body font-medium transition-colors ${
-                  isActive
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:border-surface-border hover:text-foreground"
-                }`}
-              >
+      <Tabs
+        value={stateFilter || "all"}
+        onValueChange={(value) => {
+          const found = STATE_TABS.find((t) => t.value === value);
+          setStateFilter(found ? found.filter : "");
+        }}
+      >
+        <div className="border-b border-surface-border">
+          <TabsList variant="line" aria-label="Account request state">
+            {STATE_TABS.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>
                 {tab.label}
-              </button>
-            );
-          })}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </div>
+      </Tabs>
 
       {isLoading && <LoadingState message="Loading account requests..." />}
 
@@ -566,11 +556,22 @@ export function Accounts({ userRole }: AccountsProps) {
               ? `No account requests with state "${stateFilter}".`
               : "Create an account request to provision a user and workspace."
           }
+          actions={
+            stateFilter ? (
+              <Button variant="outline" size="sm" onClick={() => setStateFilter("")}>
+                Show all
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleOpenCreate}>
+                Create account
+              </Button>
+            )
+          }
         />
       )}
 
       {!isLoading && !isError && requestList.length > 0 && (
-        <div className="rounded-lg border border-surface-border bg-surface overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
           <Table>
             <TableHeader>
               <TableRow>
@@ -614,7 +615,7 @@ export function Accounts({ userRole }: AccountsProps) {
                     <TableCell className="capitalize">{req.kind}</TableCell>
                     <TableCell>
                       <div className="font-medium">{req.plan_key}</div>
-                      <div className="text-caption text-muted-foreground">
+                      <div className="text-caption text-muted-foreground tabular-nums">
                         {req.seats} seats &bull; {req.interval}
                       </div>
                     </TableCell>
@@ -634,7 +635,7 @@ export function Accounts({ userRole }: AccountsProps) {
                       )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{req.attempts}</TableCell>
-                    <TableCell className="text-caption text-muted-foreground whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap text-caption text-muted-foreground tabular-nums">
                       {req.created_at ? new Date(req.created_at).toLocaleString() : "-"}
                     </TableCell>
                     <TableCell className="text-right">
@@ -682,31 +683,48 @@ export function Accounts({ userRole }: AccountsProps) {
             </DialogHeader>
 
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="account-kind" className="text-caption font-medium text-foreground">
+              <Field data-invalid={Boolean(fieldErrors.kind) || undefined}>
+                <FieldLabel htmlFor="account-kind" className="text-label">
                   Account kind
-                </label>
-                <select
-                  id="account-kind"
+                </FieldLabel>
+                <Select
+                  items={ACCOUNT_KIND_ITEMS}
                   value={kind}
-                  onChange={(e) => handleKindChange(e.target.value as "individual" | "business")}
+                  onValueChange={(val) => {
+                    if (val === "individual" || val === "business") {
+                      handleKindChange(val);
+                    }
+                  }}
                   disabled={createAccount.isPending}
-                  aria-invalid={Boolean(fieldErrors.kind)}
-                  className={SELECT_CLASS}
                 >
-                  <option value="individual">Individual</option>
-                  <option value="business">Business</option>
-                </select>
+                  <SelectTrigger
+                    id="account-kind"
+                    aria-label="Account kind"
+                    aria-invalid={Boolean(fieldErrors.kind)}
+                    className="w-full"
+                  >
+                    <SelectValue>
+                      {ACCOUNT_KIND_ITEMS.find((i) => i.value === kind)?.label ?? kind}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACCOUNT_KIND_ITEMS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {fieldErrors.kind && (
-                  <p className="text-caption text-destructive">{fieldErrors.kind}</p>
+                  <FieldError role={undefined} className="text-caption">{fieldErrors.kind}</FieldError>
                 )}
-              </div>
+              </Field>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="account-email" className="text-caption font-medium text-foreground">
+                <Field data-invalid={Boolean(fieldErrors.email) || undefined}>
+                  <FieldLabel htmlFor="account-email" className="text-label">
                     Email
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="account-email"
                     type="email"
@@ -721,17 +739,14 @@ export function Accounts({ userRole }: AccountsProps) {
                     disabled={createAccount.isPending}
                   />
                   {fieldErrors.email && (
-                    <p className="text-caption text-destructive">{fieldErrors.email}</p>
+                    <FieldError role={undefined} className="text-caption">{fieldErrors.email}</FieldError>
                   )}
-                </div>
+                </Field>
 
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="account-confirm-email"
-                    className="text-caption font-medium text-foreground"
-                  >
+                <Field data-invalid={Boolean(confirmEmailError) || undefined}>
+                  <FieldLabel htmlFor="account-confirm-email" className="text-label">
                     Confirm email
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="account-confirm-email"
                     type="email"
@@ -745,19 +760,16 @@ export function Accounts({ userRole }: AccountsProps) {
                     disabled={createAccount.isPending}
                   />
                   {confirmEmailError && (
-                    <p className="text-caption text-destructive">{confirmEmailError}</p>
+                    <FieldError role={undefined} className="text-caption">{confirmEmailError}</FieldError>
                   )}
-                </div>
+                </Field>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="account-display-name"
-                    className="text-caption font-medium text-foreground"
-                  >
+                <Field data-invalid={Boolean(fieldErrors.display_name) || undefined}>
+                  <FieldLabel htmlFor="account-display-name" className="text-label">
                     Display name
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="account-display-name"
                     value={displayName}
@@ -770,17 +782,14 @@ export function Accounts({ userRole }: AccountsProps) {
                     disabled={createAccount.isPending}
                   />
                   {fieldErrors.display_name && (
-                    <p className="text-caption text-destructive">{fieldErrors.display_name}</p>
+                    <FieldError role={undefined} className="text-caption">{fieldErrors.display_name}</FieldError>
                   )}
-                </div>
+                </Field>
 
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="account-workspace-name"
-                    className="text-caption font-medium text-foreground"
-                  >
+                <Field data-invalid={Boolean(fieldErrors.workspace_name) || undefined}>
+                  <FieldLabel htmlFor="account-workspace-name" className="text-label">
                     Workspace name
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="account-workspace-name"
                     value={workspaceName}
@@ -793,18 +802,15 @@ export function Accounts({ userRole }: AccountsProps) {
                     disabled={createAccount.isPending}
                   />
                   {fieldErrors.workspace_name && (
-                    <p className="text-caption text-destructive">{fieldErrors.workspace_name}</p>
+                    <FieldError role={undefined} className="text-caption">{fieldErrors.workspace_name}</FieldError>
                   )}
-                </div>
+                </Field>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="account-workspace-slug"
-                  className="text-caption font-medium text-foreground"
-                >
+              <Field data-invalid={Boolean(fieldErrors.workspace_slug) || undefined}>
+                <FieldLabel htmlFor="account-workspace-slug" className="text-label">
                   Workspace slug (optional)
-                </label>
+                </FieldLabel>
                 <Input
                   id="account-workspace-slug"
                   value={workspaceSlug}
@@ -817,30 +823,43 @@ export function Accounts({ userRole }: AccountsProps) {
                   disabled={createAccount.isPending}
                 />
                 {fieldErrors.workspace_slug && (
-                  <p className="text-caption text-destructive">{fieldErrors.workspace_slug}</p>
+                  <FieldError role={undefined} className="text-caption">{fieldErrors.workspace_slug}</FieldError>
                 )}
-              </div>
+              </Field>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="account-plan-key" className="text-caption font-medium text-foreground">
+                <Field data-invalid={Boolean(fieldErrors.plan_key) || undefined}>
+                  <FieldLabel htmlFor="account-plan-key" className="text-label">
                     Plan
-                  </label>
+                  </FieldLabel>
                   {activePlans.length > 0 ? (
-                    <select
-                      id="account-plan-key"
+                    <Select
+                      items={planItems}
                       value={effectivePlanKey}
-                      onChange={(e) => handlePlanChange(e.target.value)}
+                      onValueChange={(val) => {
+                        if (val) handlePlanChange(val);
+                      }}
                       disabled={createAccount.isPending}
-                      aria-invalid={Boolean(fieldErrors.plan_key)}
-                      className={SELECT_CLASS}
                     >
-                      {activePlans.map((p) => (
-                        <option key={p.key} value={p.key}>
-                          {p.name} ({p.key})
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        id="account-plan-key"
+                        aria-label="Plan"
+                        aria-invalid={Boolean(fieldErrors.plan_key)}
+                        className="w-full"
+                      >
+                        <SelectValue>
+                          {planItems.find((i) => i.value === effectivePlanKey)?.label ??
+                            effectivePlanKey}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {planItems.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   ) : (
                     <Input
                       id="account-plan-key"
@@ -851,14 +870,14 @@ export function Accounts({ userRole }: AccountsProps) {
                     />
                   )}
                   {fieldErrors.plan_key && (
-                    <p className="text-caption text-destructive">{fieldErrors.plan_key}</p>
+                    <FieldError role={undefined} className="text-caption">{fieldErrors.plan_key}</FieldError>
                   )}
-                </div>
+                </Field>
 
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="account-seats" className="text-caption font-medium text-foreground">
+                <Field data-invalid={Boolean(fieldErrors.seats) || undefined}>
+                  <FieldLabel htmlFor="account-seats" className="text-label">
                     Seats
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="account-seats"
                     type="number"
@@ -872,66 +891,78 @@ export function Accounts({ userRole }: AccountsProps) {
                     disabled={createAccount.isPending}
                   />
                   {fieldErrors.seats && (
-                    <p className="text-caption text-destructive">{fieldErrors.seats}</p>
+                    <FieldError role={undefined} className="text-caption">{fieldErrors.seats}</FieldError>
                   )}
-                </div>
+                </Field>
 
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="account-interval" className="text-caption font-medium text-foreground">
+                <Field data-invalid={Boolean(fieldErrors.interval) || undefined}>
+                  <FieldLabel htmlFor="account-interval" className="text-label">
                     Interval
-                  </label>
-                  <select
-                    id="account-interval"
+                  </FieldLabel>
+                  <Select
+                    items={INTERVAL_ITEMS}
                     value={interval}
-                    onChange={(e) => {
-                      setInterval(e.target.value as "month" | "year");
-                      clearFieldError("interval");
+                    onValueChange={(val) => {
+                      if (val === "month" || val === "year") {
+                        setInterval(val);
+                        clearFieldError("interval");
+                      }
                     }}
                     disabled={createAccount.isPending}
-                    aria-invalid={Boolean(fieldErrors.interval)}
-                    className={SELECT_CLASS}
                   >
-                    <option value="month">Monthly</option>
-                    <option value="year">Yearly</option>
-                  </select>
+                    <SelectTrigger
+                      id="account-interval"
+                      aria-label="Interval"
+                      aria-invalid={Boolean(fieldErrors.interval)}
+                      className="w-full"
+                    >
+                      <SelectValue>
+                        {INTERVAL_ITEMS.find((i) => i.value === interval)?.label ?? interval}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INTERVAL_ITEMS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {fieldErrors.interval && (
-                    <p className="text-caption text-destructive">{fieldErrors.interval}</p>
+                    <FieldError role={undefined} className="text-caption">{fieldErrors.interval}</FieldError>
                   )}
-                </div>
+                </Field>
               </div>
 
-              <div className="space-y-2 rounded-lg border border-surface-border p-3">
+              <div className="space-y-3 rounded-lg border border-surface-border p-3">
                 <div className="space-y-1">
-                  <label className="flex items-center gap-2 text-body font-medium">
-                    <input
+                  <Field orientation="horizontal">
+                    <Checkbox
                       id="account-trial"
-                      type="checkbox"
                       checked={trial}
-                      onChange={(e) => {
-                        setTrial(e.target.checked);
+                      onCheckedChange={(checked) => {
+                        setTrial(Boolean(checked));
                         clearFieldError("trial");
                         clearFieldError("activation");
                       }}
                       disabled={createAccount.isPending}
-                      className="size-4 rounded border-surface-border text-primary focus:ring-primary"
                     />
-                    <span>Trial</span>
-                  </label>
+                    <FieldLabel htmlFor="account-trial" className="text-body font-medium">
+                      Trial
+                    </FieldLabel>
+                  </Field>
                   <p className="text-caption text-muted-foreground">
                     A trial starts now and ends after the plan's trial days.
                   </p>
                   {fieldErrors.trial && (
-                    <p className="text-caption text-destructive">{fieldErrors.trial}</p>
+                    <FieldError role={undefined} className="text-caption">{fieldErrors.trial}</FieldError>
                   )}
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="account-comp-reason"
-                    className="text-caption font-medium text-foreground"
-                  >
+                <Field data-invalid={Boolean(fieldErrors.comp_reason) || undefined}>
+                  <FieldLabel htmlFor="account-comp-reason" className="text-label">
                     Complimentary reason
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="account-comp-reason"
                     value={compReason}
@@ -944,13 +975,13 @@ export function Accounts({ userRole }: AccountsProps) {
                     aria-invalid={Boolean(fieldErrors.comp_reason)}
                     disabled={createAccount.isPending}
                   />
-                  <p className="text-caption text-muted-foreground">
+                  <FieldDescription className="text-caption">
                     Grants one full billing interval at no charge.
-                  </p>
+                  </FieldDescription>
                   {fieldErrors.comp_reason && (
-                    <p className="text-caption text-destructive">{fieldErrors.comp_reason}</p>
+                    <FieldError role={undefined} className="text-caption">{fieldErrors.comp_reason}</FieldError>
                   )}
-                </div>
+                </Field>
 
                 {fieldErrors.activation && (
                   <p className="text-caption text-destructive">{fieldErrors.activation}</p>
@@ -967,13 +998,10 @@ export function Accounts({ userRole }: AccountsProps) {
                   )}
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="flex flex-col gap-1.5">
-                      <label
-                        htmlFor="billing-legal-name"
-                        className="text-caption font-medium text-foreground"
-                      >
+                    <Field data-invalid={Boolean(fieldErrors["billing_profile.legal_name"]) || undefined}>
+                      <FieldLabel htmlFor="billing-legal-name" className="text-label">
                         Legal name
-                      </label>
+                      </FieldLabel>
                       <Input
                         id="billing-legal-name"
                         value={legalName}
@@ -985,19 +1013,16 @@ export function Accounts({ userRole }: AccountsProps) {
                         disabled={createAccount.isPending}
                       />
                       {fieldErrors["billing_profile.legal_name"] && (
-                        <p className="text-caption text-destructive">
+                        <FieldError role={undefined} className="text-caption">
                           {fieldErrors["billing_profile.legal_name"]}
-                        </p>
+                        </FieldError>
                       )}
-                    </div>
+                    </Field>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label
-                        htmlFor="billing-tax-code"
-                        className="text-caption font-medium text-foreground"
-                      >
+                    <Field data-invalid={Boolean(fieldErrors["billing_profile.tax_code"]) || undefined}>
+                      <FieldLabel htmlFor="billing-tax-code" className="text-label">
                         Tax code
-                      </label>
+                      </FieldLabel>
                       <Input
                         id="billing-tax-code"
                         value={taxCode}
@@ -1009,20 +1034,17 @@ export function Accounts({ userRole }: AccountsProps) {
                         disabled={createAccount.isPending}
                       />
                       {fieldErrors["billing_profile.tax_code"] && (
-                        <p className="text-caption text-destructive">
+                        <FieldError role={undefined} className="text-caption">
                           {fieldErrors["billing_profile.tax_code"]}
-                        </p>
+                        </FieldError>
                       )}
-                    </div>
+                    </Field>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label
-                      htmlFor="billing-address"
-                      className="text-caption font-medium text-foreground"
-                    >
+                  <Field data-invalid={Boolean(fieldErrors["billing_profile.address"]) || undefined}>
+                    <FieldLabel htmlFor="billing-address" className="text-label">
                       Address
-                    </label>
+                    </FieldLabel>
                     <Input
                       id="billing-address"
                       value={address}
@@ -1034,19 +1056,16 @@ export function Accounts({ userRole }: AccountsProps) {
                       disabled={createAccount.isPending}
                     />
                     {fieldErrors["billing_profile.address"] && (
-                      <p className="text-caption text-destructive">
+                      <FieldError role={undefined} className="text-caption">
                         {fieldErrors["billing_profile.address"]}
-                      </p>
+                      </FieldError>
                     )}
-                  </div>
+                  </Field>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label
-                      htmlFor="billing-invoice-email"
-                      className="text-caption font-medium text-foreground"
-                    >
+                  <Field data-invalid={Boolean(fieldErrors["billing_profile.invoice_email"]) || undefined}>
+                    <FieldLabel htmlFor="billing-invoice-email" className="text-label">
                       Invoice email
-                    </label>
+                    </FieldLabel>
                     <Input
                       id="billing-invoice-email"
                       type="email"
@@ -1059,22 +1078,20 @@ export function Accounts({ userRole }: AccountsProps) {
                       disabled={createAccount.isPending}
                     />
                     {fieldErrors["billing_profile.invoice_email"] && (
-                      <p className="text-caption text-destructive">
+                      <FieldError role={undefined} className="text-caption">
                         {fieldErrors["billing_profile.invoice_email"]}
-                      </p>
+                      </FieldError>
                     )}
-                  </div>
+                  </Field>
                 </fieldset>
               )}
             </div>
 
             {formError && (
-              <div
-                role="alert"
-                className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-caption text-destructive"
-              >
-                {formError}
-              </div>
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{formError}</AlertDescription>
+              </Alert>
             )}
 
             <DialogFooter>
@@ -1118,9 +1135,10 @@ export function Accounts({ userRole }: AccountsProps) {
             </DialogHeader>
 
             {cancelError && (
-              <div role="alert" className="text-caption text-destructive">
-                {cancelError}
-              </div>
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{cancelError}</AlertDescription>
+              </Alert>
             )}
 
             <DialogFooter>

@@ -429,7 +429,7 @@ function TelegramAgentBotStatusRow({
       )}
       data-testid="telegram-agent-bot-status"
     >
-      <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+      <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-success" />
       <span className="truncate">{t(($) => $.telegram.agent_bot_connected_label)}</span>
       <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0" />
     </button>
@@ -476,7 +476,7 @@ function TelegramAgentBotConnectedBadge({
     >
       <div className="flex items-center justify-between gap-3">
         <span className="inline-flex min-w-0 items-center gap-2 text-caption text-muted-foreground">
-          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-success" />
           <span className="truncate">
             {t(($) => $.telegram.agent_bot_connected_label)}
             {installation.bot_username ? ` · @${installation.bot_username}` : ""}

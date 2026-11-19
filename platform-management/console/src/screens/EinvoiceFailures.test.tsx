@@ -161,6 +161,10 @@ describe("EinvoiceFailures screen", () => {
     });
     rerender(<EinvoiceFailures userRole="billing" />);
     expect(screen.getByText("No e-invoices found")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Issued" }));
+    fireEvent.click(screen.getByRole("button", { name: "View needing attention" }));
+    expect(mockUseEinvoices).toHaveBeenLastCalledWith("");
   });
 
   it("hides the screen from support role", () => {

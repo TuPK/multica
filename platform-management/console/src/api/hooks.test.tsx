@@ -730,6 +730,8 @@ describe("plans hooks", () => {
     is_public: true,
     sort: 10,
     archived_at: null,
+    audience: "any",
+    billing_model: "seat",
   };
 
   it("usePlans fetches plan list", async () => {

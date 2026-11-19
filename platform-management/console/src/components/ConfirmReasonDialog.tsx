@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +10,10 @@ import {
   DialogClose,
 } from "@multica/ui/components/ui/dialog";
 import { Button } from "@multica/ui/components/ui/button";
+import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { Spinner } from "@multica/ui/components/ui/spinner";
+import { AlertCircle } from "@multica/ui/icons";
 
 interface ConfirmReasonDialogProps {
   open: boolean;
@@ -62,10 +65,10 @@ export function ConfirmReasonDialog({
 
           {children}
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="confirm-reason-input" className="text-caption font-medium text-foreground">
+          <Field>
+            <FieldLabel htmlFor="confirm-reason-input" className="text-label">
               Reason <span className="text-destructive">*</span>
-            </label>
+            </FieldLabel>
             <Textarea
               id="confirm-reason-input"
               value={reason}
@@ -75,12 +78,13 @@ export function ConfirmReasonDialog({
               required
               disabled={isPending}
             />
-          </div>
+          </Field>
 
           {error && (
-            <div role="alert" className="text-caption text-destructive">
-              {error}
-            </div>
+            <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+              <AlertDescription className="text-caption">{error}</AlertDescription>
+            </Alert>
           )}
 
           <DialogFooter>

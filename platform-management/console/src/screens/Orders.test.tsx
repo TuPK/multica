@@ -91,6 +91,7 @@ describe("Orders screen", () => {
 
     // Order details displayed
     expect(screen.getByText("Acme Corp")).toBeInTheDocument();
+    expect(screen.getByText("Subscribe")).toBeInTheDocument();
     expect(screen.getByText("MUL12345678")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /copy transfer code/i })).toBeInTheDocument();
 
@@ -372,5 +373,48 @@ describe("Orders screen", () => {
     expect(dialog.getByRole("alert")).toHaveTextContent("order not found");
     fireEvent.click(dialog.getByRole("button", { name: "Try again" }));
     expect(refetchHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows Write off on pending usage orders only for admin role, and submits cancel with reason", async () => {
+    const usageOrder = {
+      ...mockPendingOrder,
+      id: "ord-usage-9",
+      kind: "usage" as const,
+      transfer_code: "MULUSAGE01",
+    };
+    mockUseOrders.mockReturnValue({
+      data: [usageOrder],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockCancelOrderMutateAsync.mockResolvedValue({
+      order: { ...usageOrder, status: "canceled" },
+      applied: true,
+    });
+
+    mockMeRole = "billing";
+    const { rerender } = render(<Orders userRole="billing" />);
+    expect(screen.getByText("Usage")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Write off" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+
+    mockMeRole = "admin";
+    rerender(<Orders userRole="admin" />);
+    const writeOffBtn = screen.getByRole("button", { name: "Write off" });
+    fireEvent.click(writeOffBtn);
+    expect(screen.getByRole("heading", { name: "Write off usage order" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Reason/i), {
+      target: { value: "Approved goodwill write-off" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Write off order" }));
+
+    await waitFor(() => {
+      expect(mockCancelOrderMutateAsync).toHaveBeenCalledWith({
+        orderId: "ord-usage-9",
+        reason: "Approved goodwill write-off",
+      });
+    });
   });
 });

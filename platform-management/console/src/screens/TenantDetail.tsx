@@ -1,22 +1,7 @@
 import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
+import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@multica/ui/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -26,14 +11,34 @@ import {
   DialogFooter,
   DialogClose,
 } from "@multica/ui/components/ui/dialog";
+import { Field, FieldError, FieldLabel } from "@multica/ui/components/ui/field";
+import { Input } from "@multica/ui/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
+import { Separator } from "@multica/ui/components/ui/separator";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Badge } from "@multica/ui/components/ui/badge";
-import { ArrowLeft, Plus } from "@multica/ui/icons";
-import { StatusBadge } from "../components/StatusBadge";
-import { LoadingState } from "../components/LoadingState";
-import { ErrorState } from "../components/ErrorState";
-import { EmptyState } from "../components/EmptyState";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@multica/ui/components/ui/table";
+import { Textarea } from "@multica/ui/components/ui/textarea";
+import { AlertCircle, AlertTriangle, Info, Plus } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
+import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { LoadingState } from "../components/LoadingState";
+import { MetadataList, MetadataListItem } from "../components/MetadataList";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import {
   useMe,
   useTenant,
@@ -75,7 +80,7 @@ function formatUsageQuantity(row: TenantUsageRow): string {
   return row.quantity.toLocaleString();
 }
 
-interface MonthlyUsageCardProps {
+interface MonthlyUsageSectionProps {
   usageData: TenantUsage | undefined;
   isLoading: boolean;
   isError: boolean;
@@ -86,7 +91,7 @@ interface MonthlyUsageCardProps {
 }
 
 /** Monthly rated usage charges, unrated missing days, and unpaid usage invoices. */
-function MonthlyUsageCard({
+function MonthlyUsageSection({
   usageData,
   isLoading,
   isError,
@@ -94,163 +99,164 @@ function MonthlyUsageCard({
   onRetry,
   canWriteOff,
   onWriteOff,
-}: MonthlyUsageCardProps) {
+}: MonthlyUsageSectionProps) {
   return (
-    <Card data-testid="usage-month">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle role="heading" aria-level={2}>Monthly Usage</CardTitle>
+    <section data-testid="usage-month" className="space-y-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-heading text-title-sm font-semibold text-foreground">
+          Monthly Usage
+        </h2>
         {usageData && (
           <span className="font-mono text-caption text-muted-foreground">
             {usageData.period_start.slice(0, 10)} to {usageData.period_end.slice(0, 10)} (UTC)
           </span>
         )}
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {isLoading && <LoadingState message="Loading monthly usage..." />}
-        {isError && (
-          <ErrorState
-            title="Failed to load monthly usage"
-            message={error instanceof Error ? error.message : "Unable to load monthly usage."}
-            onRetry={onRetry}
-          />
-        )}
-        {!isLoading && !isError && usageData && (
-          <>
-            <div data-testid="usage-rows" className="space-y-2">
-              <h3 className="text-caption font-medium text-foreground">Daily charges</h3>
-              {usageData.rows.length === 0 ? (
-                <p className="text-caption text-muted-foreground">
-                  No rated usage rows for this month.
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Day</TableHead>
-                        <TableHead>Meter</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead className="text-right">Unit price</TableHead>
-                        <TableHead className="text-right">Discount</TableHead>
-                        <TableHead className="text-right">Net amount</TableHead>
-                        <TableHead>Note</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {usageData.rows.map((row) => (
-                        <TableRow key={`${row.day}-${row.meter}`}>
-                          <TableCell className="font-mono text-caption">{row.day}</TableCell>
-                          <TableCell className="font-mono text-caption">{row.meter}</TableCell>
-                          <TableCell
-                            className="text-right tabular-nums"
-                            title={
-                              row.meter === "storage_bytes"
-                                ? `${row.quantity.toLocaleString()} bytes`
-                                : undefined
-                            }
-                          >
-                            {formatUsageQuantity(row)}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground tabular-nums">
-                            {row.unit_price.toLocaleString()} / {row.per.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground tabular-nums">
-                            {row.discount_pct > 0 ? `${row.discount_pct}%` : "-"}
-                          </TableCell>
-                          <TableCell className="text-right font-medium tabular-nums">
-                            {row.net_amount.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-caption text-muted-foreground">
-                            {row.note || "-"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
+      </div>
 
-            {usageData.missing_days.length > 0 && (
-              <div data-testid="usage-missing-days" className="space-y-2">
-                <h3 className="text-caption font-medium text-foreground">Missing days</h3>
-                <ul className="flex flex-wrap gap-2">
-                  {usageData.missing_days.map((day) => (
-                    <li
-                      key={day}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-muted/40 px-2.5 py-1 text-caption"
-                    >
-                      <span className="font-mono">{day}</span>
-                      <Badge variant="outline">missing</Badge>
-                    </li>
-                  ))}
-                </ul>
+      {isLoading && <LoadingState message="Loading monthly usage..." />}
+      {isError && (
+        <ErrorState
+          title="Failed to load monthly usage"
+          message={error instanceof Error ? error.message : "Unable to load monthly usage."}
+          onRetry={onRetry}
+        />
+      )}
+      {!isLoading && !isError && usageData && (
+        <div className="space-y-6">
+          <div data-testid="usage-rows" className="space-y-2">
+            <h3 className="text-label font-medium text-foreground">Daily charges</h3>
+            {usageData.rows.length === 0 ? (
+              <p className="text-caption text-muted-foreground">
+                No rated usage rows for this month.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Day</TableHead>
+                      <TableHead>Meter</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="text-right">Unit price</TableHead>
+                      <TableHead className="text-right">Discount</TableHead>
+                      <TableHead className="text-right">Net amount</TableHead>
+                      <TableHead>Note</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usageData.rows.map((row) => (
+                      <TableRow key={`${row.day}-${row.meter}`}>
+                        <TableCell className="font-mono text-caption">{row.day}</TableCell>
+                        <TableCell className="font-mono text-caption">{row.meter}</TableCell>
+                        <TableCell
+                          className="text-right tabular-nums"
+                          title={
+                            row.meter === "storage_bytes"
+                              ? `${row.quantity.toLocaleString()} bytes`
+                              : undefined
+                          }
+                        >
+                          {formatUsageQuantity(row)}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground tabular-nums">
+                          {row.unit_price.toLocaleString()} / {row.per.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground tabular-nums">
+                          {row.discount_pct > 0 ? `${row.discount_pct}%` : "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {row.net_amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-caption text-muted-foreground">
+                          {row.note || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
+          </div>
 
-            <div data-testid="usage-unpaid-orders" className="space-y-2">
-              <h3 className="text-caption font-medium text-foreground">Unpaid usage orders</h3>
-              {usageData.unpaid_orders.length === 0 ? (
-                <p className="text-caption text-muted-foreground">
-                  No unpaid usage orders.
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order</TableHead>
-                        <TableHead>Period</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="text-right">VAT</TableHead>
-                        <TableHead>Status</TableHead>
-                        {canWriteOff && <TableHead className="text-right">Action</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {usageData.unpaid_orders.map((order) => (
-                        <TableRow key={order.id}>
-                          <TableCell className="font-mono text-caption">{order.id}</TableCell>
-                          <TableCell className="font-mono text-caption text-muted-foreground">
-                            {order.period_start && order.period_end
-                              ? `${order.period_start.slice(0, 10)} – ${order.period_end.slice(0, 10)}`
-                              : "-"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
-                          </TableCell>
-                          <TableCell className="text-right font-medium tabular-nums">
-                            {order.amount.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground tabular-nums">
-                            {order.vat_amount.toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge status={order.status} />
-                          </TableCell>
-                          {canWriteOff && (
-                            <TableCell className="text-right">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => onWriteOff(order)}
-                              >
-                                Write off
-                              </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+          {usageData.missing_days.length > 0 && (
+            <div data-testid="usage-missing-days" className="space-y-2">
+              <h3 className="text-label font-medium text-foreground">Missing days</h3>
+              <ul className="flex flex-wrap gap-2">
+                {usageData.missing_days.map((day) => (
+                  <li
+                    key={day}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-muted/40 px-2.5 py-1 text-caption"
+                  >
+                    <span className="font-mono">{day}</span>
+                    <Badge variant="outline">missing</Badge>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          )}
+
+          <div data-testid="usage-unpaid-orders" className="space-y-2">
+            <h3 className="text-label font-medium text-foreground">Unpaid usage orders</h3>
+            {usageData.unpaid_orders.length === 0 ? (
+              <p className="text-caption text-muted-foreground">
+                No unpaid usage orders.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">VAT</TableHead>
+                      <TableHead>Status</TableHead>
+                      {canWriteOff && <TableHead className="text-right">Action</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usageData.unpaid_orders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-mono text-caption">{order.id}</TableCell>
+                        <TableCell className="font-mono text-caption text-muted-foreground">
+                          {order.period_start && order.period_end
+                            ? `${order.period_start.slice(0, 10)} – ${order.period_end.slice(0, 10)}`
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground tabular-nums">
+                          {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {order.amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground tabular-nums">
+                          {order.vat_amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={order.status} />
+                        </TableCell>
+                        {canWriteOff && (
+                          <TableCell className="text-right">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => onWriteOff(order)}
+                            >
+                              Write off
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -258,15 +264,6 @@ function formatTimestamp(value: string | null | undefined): string {
   if (!value) return "-";
   const ms = Date.parse(value);
   return Number.isNaN(ms) ? value : new Date(ms).toLocaleString();
-}
-
-function UsageValue({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div>
-      <span className="block text-caption text-muted-foreground">{label}</span>
-      <span className="mt-1 block font-medium tabular-nums">{value}</span>
-    </div>
-  );
 }
 
 const BILLING_PROFILE_FIELDS = [
@@ -298,6 +295,16 @@ const BILLING_PROFILE_INVALID_MESSAGES: Record<BillingProfileField, string> = {
 function isBillingProfileField(value: string): value is BillingProfileField {
   return (BILLING_PROFILE_FIELDS as readonly string[]).includes(value);
 }
+
+const BILLING_INTERVAL_ITEMS = [
+  { value: "month", label: "Month" },
+  { value: "year", label: "Year" },
+];
+
+const ACCOUNT_KIND_ITEMS = [
+  { value: "individual", label: "Individual" },
+  { value: "business", label: "Business" },
+];
 
 export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) {
   const { data: me } = useMe();
@@ -412,7 +419,7 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
     try {
       await changeStatus.mutateAsync({
         tenantId,
-        status: targetStatus as any,
+        status: targetStatus as "active" | "read_only" | "suspended" | "pending_deletion",
         reason,
       });
       setStatusDialogOpen(false);
@@ -637,224 +644,188 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
     ? auditData
     : (auditData as unknown as { events?: AuditEvent[] })?.events || [];
 
+  const currentStatus = tenant.state?.status || tenant.status;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className="gap-1 text-muted-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            <span>Back to tenants</span>
-          </Button>
-          <div>
-            <h1 className="font-heading text-title-lg font-bold">{tenant.name}</h1>
-            <p className="font-mono text-caption text-muted-foreground">
-              {tenant.slug} &bull; ID: {tenant.id}
-            </p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={handleOpenStatusDialog}>
-          Change status
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Workspace State</CardTitle>
-            <CardDescription>
-              Current status, state rationale, and tenant metadata.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-body sm:grid-cols-3">
-              <div>
-                <span className="block text-caption text-muted-foreground">Status</span>
-                <div className="mt-1">
-                  <StatusBadge status={tenant.state?.status || tenant.status} />
-                </div>
-              </div>
-              <div>
-                <span className="block text-caption text-muted-foreground">Members</span>
-                <span className="mt-1 block font-medium tabular-nums">
-                  {tenant.member_count}
-                </span>
-              </div>
-              <div>
-                <span className="block text-caption text-muted-foreground">Account groups</span>
-                <span className="mt-1 block font-medium tabular-nums">
-                  {tenant.group_count}
-                </span>
-              </div>
-              <div>
-                <span className="block text-caption text-muted-foreground">Owner</span>
-                <span className="mt-1 block font-medium">
-                  {tenant.owner?.email || "Unknown"}
-                </span>
-              </div>
-              <div>
-                <span className="block text-caption text-muted-foreground">Created</span>
-                <span className="mt-1 block text-muted-foreground">
-                  {tenant.created_at ? new Date(tenant.created_at).toLocaleString() : "-"}
-                </span>
-              </div>
-              <div>
-                <span className="block text-caption text-muted-foreground">Last Activity</span>
-                <span className="mt-1 block text-muted-foreground">
-                  {tenant.last_activity_at ? new Date(tenant.last_activity_at).toLocaleString() : "-"}
-                </span>
-              </div>
-              {tenant.state?.changed_at && (
-                <div>
-                  <span className="block text-caption text-muted-foreground">Status Changed At</span>
-                  <span className="mt-1 block text-muted-foreground">
-                    {new Date(tenant.state.changed_at).toLocaleString()}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {tenant.state?.reason && (
-              <div className="rounded-lg border border-surface-border bg-muted/40 p-3">
-                <span className="block text-caption font-medium text-foreground">
-                  State Reason:
-                </span>
-                <p className="mt-0.5 text-body text-muted-foreground">
-                  {tenant.state.reason}
-                </p>
-              </div>
-            )}
-
-            {tenant.state?.deletion_scheduled_at && (
-              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-destructive">
-                <span className="block text-caption font-medium">
-                  Deletion Scheduled At:
-                </span>
-                <p className="mt-0.5 text-body">
-                  {new Date(tenant.state.deletion_scheduled_at).toLocaleString()}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Internal Notes</CardTitle>
-            <CardDescription>
-              Staff-only notes. Never visible to tenant members.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={handleAddNote} className="space-y-2">
-              <Textarea
-                value={noteBody}
-                onChange={(e) => setNoteBody(e.target.value)}
-                placeholder="Write an internal note..."
-                rows={3}
-                disabled={addNote.isPending}
-              />
-              {noteError && (
-                <p role="alert" className="text-caption text-destructive">
-                  {noteError}
-                </p>
-              )}
-              <Button
-                type="submit"
-                size="sm"
-                className="w-full gap-1"
-                disabled={!noteBody.trim() || addNote.isPending}
-                aria-busy={addNote.isPending}
-              >
-                {addNote.isPending ? (
-                  <Spinner className="size-3.5" />
-                ) : (
-                  <Plus className="size-3.5" />
-                )}
-                Add note
+    <div className="space-y-8">
+      <PageHeader
+        title={tenant.name}
+        badge={<StatusBadge status={currentStatus} />}
+        meta={
+          <span className="font-mono">
+            {tenant.slug} &bull; ID: {tenant.id}
+          </span>
+        }
+        backAction={{ label: "Back to tenants", onClick: onBack }}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={handleOpenStatusDialog}>
+              Change status
+            </Button>
+            {canEditSubscription && (
+              <Button variant="outline" size="sm" onClick={handleOpenSubDialog}>
+                Edit subscription
               </Button>
-            </form>
+            )}
+          </>
+        }
+      />
 
-            <div className="space-y-2.5 pt-2">
-              {notesLoading && <LoadingState message="Loading notes..." />}
-              {!notesLoading && notes.length === 0 && (
-                <p className="text-center text-caption text-muted-foreground py-4">
-                  No internal notes yet.
-                </p>
+      {(tenant.state?.reason || tenant.state?.deletion_scheduled_at) && (
+        <div className="space-y-3">
+          {tenant.state?.reason && (
+            <Alert role="status" className="border-surface-border bg-surface">
+              <Info className="size-4 text-info" aria-hidden="true" />
+              <AlertTitle className="text-label font-semibold">State Reason</AlertTitle>
+              <AlertDescription className="text-body text-muted-foreground">
+                {tenant.state.reason}
+              </AlertDescription>
+            </Alert>
+          )}
+          {tenant.state?.deletion_scheduled_at && (
+            <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+              <AlertTitle className="text-label font-semibold">Deletion Scheduled</AlertTitle>
+              <AlertDescription className="text-body tabular-nums">
+                {new Date(tenant.state.deletion_scheduled_at).toLocaleString()}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <section className="space-y-4 lg:col-span-2">
+          <h2 className="font-heading text-title-sm font-semibold text-foreground">
+            Workspace State
+          </h2>
+          <MetadataList columns={3}>
+            <MetadataListItem label="Status">
+              <StatusBadge status={currentStatus} />
+            </MetadataListItem>
+            <MetadataListItem label="Members" tabular>
+              {tenant.member_count}
+            </MetadataListItem>
+            <MetadataListItem label="Account groups" tabular>
+              {tenant.group_count}
+            </MetadataListItem>
+            <MetadataListItem label="Owner">
+              {tenant.owner?.email || "Unknown"}
+            </MetadataListItem>
+            <MetadataListItem label="Created" tabular>
+              {tenant.created_at ? new Date(tenant.created_at).toLocaleString() : "-"}
+            </MetadataListItem>
+            <MetadataListItem label="Last Activity" tabular>
+              {tenant.last_activity_at
+                ? new Date(tenant.last_activity_at).toLocaleString()
+                : "-"}
+            </MetadataListItem>
+            {tenant.state?.changed_at && (
+              <MetadataListItem label="Status Changed At" tabular>
+                {new Date(tenant.state.changed_at).toLocaleString()}
+              </MetadataListItem>
+            )}
+          </MetadataList>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="font-heading text-title-sm font-semibold text-foreground">
+            Internal Notes
+          </h2>
+          <form onSubmit={handleAddNote} className="space-y-2">
+            <Textarea
+              value={noteBody}
+              onChange={(e) => setNoteBody(e.target.value)}
+              placeholder="Write an internal note..."
+              rows={3}
+              disabled={addNote.isPending}
+            />
+            {noteError && (
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{noteError}</AlertDescription>
+              </Alert>
+            )}
+            <Button
+              type="submit"
+              size="sm"
+              className="w-full gap-1"
+              disabled={!noteBody.trim() || addNote.isPending}
+              aria-busy={addNote.isPending}
+            >
+              {addNote.isPending ? (
+                <Spinner className="size-3.5" />
+              ) : (
+                <Plus className="size-3.5" aria-hidden="true" />
               )}
-              {!notesLoading &&
-                notes.map((note: Note) => (
-                  <div
-                    key={note.id}
-                    className="rounded-lg border border-surface-border bg-surface p-3 text-caption"
-                  >
-                    <p className="text-body whitespace-pre-wrap">{note.body}</p>
-                    <div className="mt-2 flex items-center justify-between text-muted-foreground">
+              Add note
+            </Button>
+          </form>
+
+          <div className="space-y-2">
+            {notesLoading && <LoadingState message="Loading notes..." />}
+            {!notesLoading && notes.length === 0 && (
+              <p className="py-4 text-center text-caption text-muted-foreground">
+                No internal notes yet.
+              </p>
+            )}
+            {!notesLoading && notes.length > 0 && (
+              <div className="divide-y divide-surface-border rounded-lg border border-surface-border bg-surface">
+                {notes.map((note: Note) => (
+                  <div key={note.id} className="p-3 text-caption">
+                    <p className="whitespace-pre-wrap text-body text-foreground">{note.body}</p>
+                    <div className="mt-2 flex items-center justify-between text-muted-foreground tabular-nums">
                       <span>{note.author_email || "Staff"}</span>
-                      <span>{note.created_at ? new Date(note.created_at).toLocaleDateString() : ""}</span>
+                      <span>
+                        {note.created_at ? new Date(note.created_at).toLocaleDateString() : ""}
+                      </span>
                     </div>
                   </div>
                 ))}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
-      {/* Subscription Panel */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle role="heading" aria-level={2}>Subscription</CardTitle>
-            <CardDescription>
-              Workspace plan, seats, billing interval, and trial period.
-            </CardDescription>
-          </div>
-          {canEditSubscription && (
-            <Button variant="outline" size="sm" onClick={handleOpenSubDialog}>
-              Edit subscription
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-body sm:grid-cols-4">
-            <div>
-              <span className="block text-caption text-muted-foreground">Plan</span>
-              <span className="mt-1 block font-medium capitalize">
-                {tenant.subscription?.plan_key || "free"}
-              </span>
-            </div>
-            <div>
-              <span className="block text-caption text-muted-foreground">Seats</span>
-              <span className="mt-1 block font-medium tabular-nums">
-                {tenant.subscription?.seats ?? 0}
-              </span>
-            </div>
-            <div>
-              <span className="block text-caption text-muted-foreground">Interval</span>
-              <span className="mt-1 block font-medium capitalize">
-                {tenant.subscription?.interval || "month"}
-              </span>
-            </div>
-            <div>
-              <span className="block text-caption text-muted-foreground">Trial End</span>
-              <span className="mt-1 block text-muted-foreground">
-                {tenant.subscription?.trial_end
-                  ? new Date(tenant.subscription.trial_end).toLocaleDateString()
-                  : "-"}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Separator />
 
-      {/* Billing Profile */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle role="heading" aria-level={2}>Billing profile</CardTitle>
+      {/* Subscription Section */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-heading text-title-sm font-semibold text-foreground">
+            Subscription
+          </h2>
+          {tenant.subscription?.status && (
+            <StatusBadge status={tenant.subscription.status} />
+          )}
+        </div>
+        <MetadataList columns={4}>
+          <MetadataListItem label="Plan" className="capitalize">
+            {tenant.subscription?.plan_key || "free"}
+          </MetadataListItem>
+          <MetadataListItem label="Seats" tabular>
+            {tenant.subscription?.seats ?? 0}
+          </MetadataListItem>
+          <MetadataListItem label="Interval" className="capitalize">
+            {tenant.subscription?.interval || "month"}
+          </MetadataListItem>
+          <MetadataListItem label="Trial End" tabular>
+            {tenant.subscription?.trial_end
+              ? new Date(tenant.subscription.trial_end).toLocaleDateString()
+              : "-"}
+          </MetadataListItem>
+        </MetadataList>
+      </section>
+
+      <Separator />
+
+      {/* Billing Profile Section */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-heading text-title-sm font-semibold text-foreground">
+            Billing profile
+          </h2>
           {canEditSubscription && (
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleOpenProfileDialog}>
@@ -872,118 +843,105 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
               </Button>
             </div>
           )}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-body sm:grid-cols-3">
-            <div>
-              <span className="block text-caption text-muted-foreground">Account kind</span>
-              <span className="mt-1 block font-medium capitalize">
-                {accountKind}
-              </span>
-            </div>
-            <div>
-              <span className="block text-caption text-muted-foreground">Status</span>
-              <div className="mt-1">
-                {isProfileVerified ? (
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-600/30 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                  >
-                    Verified
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">Unverified</Badge>
-                )}
-              </div>
-            </div>
-            <div>
-              <span className="block text-caption text-muted-foreground">Verified at</span>
-              <span className="mt-1 block text-muted-foreground">
-                {formatTimestamp(profileVerifiedAt)}
-              </span>
-            </div>
-            <div>
-              <span className="block text-caption text-muted-foreground">Legal name</span>
-              <span className="mt-1 block font-medium">
-                {profileLegalName || "-"}
-              </span>
-            </div>
-            <div>
-              <span className="block text-caption text-muted-foreground">Tax code</span>
-              <span className="mt-1 block font-mono">
-                {profileTaxCode || "-"}
-              </span>
-            </div>
-            <div>
-              <span className="block text-caption text-muted-foreground">Address</span>
-              <span className="mt-1 block">
-                {profileAddress || "-"}
-              </span>
-            </div>
-            <div className="sm:col-span-2">
-              <span className="block text-caption text-muted-foreground">Invoice email</span>
-              <span className="mt-1 block">
-                {profileInvoiceEmail || "-"}
-              </span>
-            </div>
+        </div>
+
+        <MetadataList columns={3}>
+          <MetadataListItem label="Account kind" className="capitalize">
+            {accountKind}
+          </MetadataListItem>
+          <MetadataListItem label="Status">
+            <StatusBadge status={isProfileVerified ? "verified" : "unverified"} />
+          </MetadataListItem>
+          <MetadataListItem label="Verified at" tabular>
+            {formatTimestamp(profileVerifiedAt)}
+          </MetadataListItem>
+          <MetadataListItem label="Legal name">
+            {profileLegalName || "-"}
+          </MetadataListItem>
+          <MetadataListItem label="Tax code" mono>
+            {profileTaxCode || "-"}
+          </MetadataListItem>
+          <MetadataListItem label="Address">
+            {profileAddress || "-"}
+          </MetadataListItem>
+          <MetadataListItem label="Invoice email" className="sm:col-span-2">
+            {profileInvoiceEmail || "-"}
+          </MetadataListItem>
+        </MetadataList>
+
+        {activeProfileError && (
+          <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            <AlertDescription className="text-caption">{activeProfileError}</AlertDescription>
+          </Alert>
+        )}
+      </section>
+
+      <Separator />
+
+      {/* Usage Section */}
+      <section className="space-y-4">
+        <h2 className="font-heading text-title-sm font-semibold text-foreground">
+          Usage
+        </h2>
+        <MetadataList data-testid="usage-current" columns={4}>
+          <MetadataListItem label="Members now" tabular>
+            {tenant.usage_current?.members ?? 0}
+          </MetadataListItem>
+          <MetadataListItem label="Agents now" tabular>
+            {tenant.usage_current?.agents ?? 0}
+          </MetadataListItem>
+          <MetadataListItem label="Runtimes now" tabular>
+            {tenant.usage_current?.runtimes ?? 0}
+          </MetadataListItem>
+          <MetadataListItem label="Issues now" tabular>
+            {tenant.usage_current?.issues_total ?? 0}
+          </MetadataListItem>
+          <MetadataListItem label="Storage now" tabular>
+            {formatBytes(tenant.usage_current?.storage_bytes ?? 0)}
+          </MetadataListItem>
+        </MetadataList>
+
+        {tenant.usage_day ? (
+          <div data-testid="usage-daily" className="space-y-3 pt-2">
+            <span className="block font-mono text-caption text-muted-foreground">
+              Daily snapshot for {tenant.usage_day} (UTC)
+            </span>
+            <MetadataList columns={4}>
+              <MetadataListItem label="Members" tabular>
+                {tenant.usage_members ?? 0}
+              </MetadataListItem>
+              <MetadataListItem label="Agents" tabular>
+                {tenant.usage_agents ?? 0}
+              </MetadataListItem>
+              <MetadataListItem label="Runtimes" tabular>
+                {tenant.usage_runtimes ?? 0}
+              </MetadataListItem>
+              <MetadataListItem label="Issues" tabular>
+                {tenant.usage_issues_total ?? 0}
+              </MetadataListItem>
+              <MetadataListItem label="Issues created" tabular>
+                {tenant.usage_issues_created ?? 0}
+              </MetadataListItem>
+              <MetadataListItem label="Tasks run" tabular>
+                {tenant.usage_tasks_run ?? 0}
+              </MetadataListItem>
+              <MetadataListItem label="Storage" tabular>
+                {formatBytes(tenant.usage_storage_bytes ?? 0)}
+              </MetadataListItem>
+            </MetadataList>
           </div>
+        ) : (
+          <p data-testid="usage-daily" className="text-caption text-muted-foreground">
+            No daily snapshot yet.
+          </p>
+        )}
+      </section>
 
-          {activeProfileError && (
-            <p role="alert" className="text-caption text-destructive">
-              {activeProfileError}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <Separator />
 
-      {/* Usage */}
-      <Card>
-        <CardHeader>
-          <CardTitle role="heading" aria-level={2}>Usage</CardTitle>
-          <CardDescription>
-            Counts only. Current counts are read now; the daily snapshot is the last closed UTC day.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div
-            data-testid="usage-current"
-            className="grid grid-cols-2 gap-4 text-body sm:grid-cols-5"
-          >
-            <UsageValue label="Members now" value={tenant.usage_current?.members ?? 0} />
-            <UsageValue label="Agents now" value={tenant.usage_current?.agents ?? 0} />
-            <UsageValue label="Runtimes now" value={tenant.usage_current?.runtimes ?? 0} />
-            <UsageValue label="Issues now" value={tenant.usage_current?.issues_total ?? 0} />
-            <UsageValue
-              label="Storage now"
-              value={formatBytes(tenant.usage_current?.storage_bytes ?? 0)}
-            />
-          </div>
-
-          {tenant.usage_day ? (
-            <div data-testid="usage-daily" className="space-y-2">
-              <span className="block text-caption text-muted-foreground">
-                Daily snapshot for {tenant.usage_day} (UTC)
-              </span>
-              <div className="grid grid-cols-2 gap-4 text-body sm:grid-cols-4">
-                <UsageValue label="Members" value={tenant.usage_members ?? 0} />
-                <UsageValue label="Agents" value={tenant.usage_agents ?? 0} />
-                <UsageValue label="Runtimes" value={tenant.usage_runtimes ?? 0} />
-                <UsageValue label="Issues" value={tenant.usage_issues_total ?? 0} />
-                <UsageValue label="Issues created" value={tenant.usage_issues_created ?? 0} />
-                <UsageValue label="Tasks run" value={tenant.usage_tasks_run ?? 0} />
-                <UsageValue label="Storage" value={formatBytes(tenant.usage_storage_bytes ?? 0)} />
-              </div>
-            </div>
-          ) : (
-            <p data-testid="usage-daily" className="text-caption text-muted-foreground">
-              No daily snapshot yet.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Monthly Usage */}
-      <MonthlyUsageCard
+      {/* Monthly Usage Section */}
+      <MonthlyUsageSection
         usageData={usageData}
         isLoading={usageLoading}
         isError={usageError}
@@ -993,74 +951,70 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
         onWriteOff={handleOpenWriteOffDialog}
       />
 
-      {/* Recent Orders */}
-      <Card>
-        <CardHeader>
-          <CardTitle role="heading" aria-level={2}>Recent Orders</CardTitle>
-          <CardDescription>
-            Recent payment orders for this workspace (up to 20, newest first).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!tenant.recent_orders || tenant.recent_orders.length === 0 ? (
-            <p className="text-center text-caption text-muted-foreground py-4">
-              No recent orders for this workspace.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Transfer Code</TableHead>
-                    <TableHead>Plan & Seats</TableHead>
-                    <TableHead>Total (incl. VAT)</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tenant.recent_orders.map((order: Order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="text-muted-foreground">
-                        {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
-                      </TableCell>
-                      <TableCell className="font-mono text-body font-semibold">
-                        {order.transfer_code}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {order.plan_key} &bull; {order.seats} seats ({order.interval})
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {formatMinorAmount(order.amount + order.vat_amount, order.currency)}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={order.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Separator />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Workspace Audit Log</CardTitle>
-          <CardDescription>
-            Audit events recorded for this workspace.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {auditLoading && <LoadingState message="Loading audit events..." />}
-          {!auditLoading && auditEvents.length === 0 && (
-            <EmptyState
-              title="No audit events"
-              description="No events found for this workspace."
-            />
-          )}
-          {!auditLoading && auditEvents.length > 0 && (
+      {/* Recent Orders Section */}
+      <section className="space-y-4">
+        <h2 className="font-heading text-title-sm font-semibold text-foreground">
+          Recent Orders
+        </h2>
+        {!tenant.recent_orders || tenant.recent_orders.length === 0 ? (
+          <EmptyState title="No recent orders" isCompact />
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Transfer Code</TableHead>
+                  <TableHead>Plan & Seats</TableHead>
+                  <TableHead>Total (incl. VAT)</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tenant.recent_orders.map((order: Order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
+                    </TableCell>
+                    <TableCell className="font-mono text-body font-semibold">
+                      {order.transfer_code}
+                    </TableCell>
+                    <TableCell className="capitalize">
+                      {order.plan_key} &bull; {order.seats} seats ({order.interval})
+                    </TableCell>
+                    <TableCell className="font-medium tabular-nums">
+                      {formatMinorAmount(order.amount + order.vat_amount, order.currency)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={order.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
+
+      <Separator />
+
+      {/* Workspace Audit Log Section */}
+      <section className="space-y-4">
+        <h2 className="font-heading text-title-sm font-semibold text-foreground">
+          Workspace Audit Log
+        </h2>
+        {auditLoading && <LoadingState message="Loading audit events..." />}
+        {!auditLoading && auditEvents.length === 0 && (
+          <EmptyState
+            title="No audit events"
+            description="No events found for this workspace."
+            isCompact
+          />
+        )}
+        {!auditLoading && auditEvents.length > 0 && (
+          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1073,21 +1027,19 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
               <TableBody>
                 {auditEvents.map((event: AuditEvent) => (
                   <TableRow key={event.id}>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground tabular-nums">
                       {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
                     </TableCell>
-                    <TableCell className="font-mono text-caption">
-                      {event.action}
-                    </TableCell>
+                    <TableCell className="font-mono text-caption">{event.action}</TableCell>
                     <TableCell>{event.actor_label}</TableCell>
                     <TableCell>{event.target_label || event.target_id}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </section>
 
       <ConfirmReasonDialog
         open={statusDialogOpen}
@@ -1099,24 +1051,32 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
         error={statusError}
         onConfirm={handleConfirmStatusChange}
       >
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="target-status-select" className="text-caption font-medium text-foreground">
+        <Field>
+          <FieldLabel htmlFor="target-status-select" className="text-label">
             Target status
-          </label>
-          <select
-            id="target-status-select"
+          </FieldLabel>
+          <Select
+            items={availableStatuses}
             value={targetStatus}
-            onChange={(e) => setTargetStatus(e.target.value)}
-            className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            onValueChange={(val) => {
+              if (val) setTargetStatus(val);
+            }}
             disabled={changeStatus.isPending}
           >
-            {availableStatuses.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            <SelectTrigger id="target-status-select" aria-label="Target status" className="w-full">
+              <SelectValue>
+                {availableStatuses.find((opt) => opt.value === targetStatus)?.label ?? targetStatus}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {availableStatuses.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
       </ConfirmReasonDialog>
 
       {/* Edit Subscription Dialog */}
@@ -1131,10 +1091,10 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
             </DialogHeader>
 
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="sub-plan-key-input" className="text-caption font-medium text-foreground">
+              <Field>
+                <FieldLabel htmlFor="sub-plan-key-input" className="text-label">
                   Plan <span className="text-destructive">*</span>
-                </label>
+                </FieldLabel>
                 <Input
                   id="sub-plan-key-input"
                   value={subPlanKey}
@@ -1143,13 +1103,13 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
                   required
                   disabled={updateSubscription.isPending}
                 />
-              </div>
+              </Field>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="sub-seats-input" className="text-caption font-medium text-foreground">
+                <Field>
+                  <FieldLabel htmlFor="sub-seats-input" className="text-label">
                     Seats <span className="text-destructive">*</span>
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="sub-seats-input"
                     type="number"
@@ -1159,29 +1119,45 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
                     required
                     disabled={updateSubscription.isPending}
                   />
-                </div>
+                </Field>
 
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="sub-interval-select" className="text-caption font-medium text-foreground">
+                <Field>
+                  <FieldLabel htmlFor="sub-interval-select" className="text-label">
                     Billing Interval <span className="text-destructive">*</span>
-                  </label>
-                  <select
-                    id="sub-interval-select"
+                  </FieldLabel>
+                  <Select
+                    items={BILLING_INTERVAL_ITEMS}
                     value={subInterval}
-                    onChange={(e) => setSubInterval(e.target.value)}
-                    className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    onValueChange={(val) => {
+                      if (val) setSubInterval(val);
+                    }}
                     disabled={updateSubscription.isPending}
                   >
-                    <option value="month">Month</option>
-                    <option value="year">Year</option>
-                  </select>
-                </div>
+                    <SelectTrigger
+                      id="sub-interval-select"
+                      aria-label="Billing Interval"
+                      className="w-full"
+                    >
+                      <SelectValue>
+                        {BILLING_INTERVAL_ITEMS.find((i) => i.value === subInterval)?.label ??
+                          subInterval}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BILLING_INTERVAL_ITEMS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="sub-trial-end-input" className="text-caption font-medium text-foreground">
+              <Field>
+                <FieldLabel htmlFor="sub-trial-end-input" className="text-label">
                   Trial End (RFC3339 or blank)
-                </label>
+                </FieldLabel>
                 <Input
                   id="sub-trial-end-input"
                   value={subTrialEnd}
@@ -1189,12 +1165,12 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
                   placeholder="e.g. 2026-12-01T00:00:00Z"
                   disabled={updateSubscription.isPending}
                 />
-              </div>
+              </Field>
 
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="sub-reason-input" className="text-caption font-medium text-foreground">
+              <Field>
+                <FieldLabel htmlFor="sub-reason-input" className="text-label">
                   Reason <span className="text-destructive">*</span>
-                </label>
+                </FieldLabel>
                 <Textarea
                   id="sub-reason-input"
                   value={subReason}
@@ -1204,20 +1180,27 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
                   required
                   disabled={updateSubscription.isPending}
                 />
-              </div>
+              </Field>
             </div>
 
             {subError && (
-              <div role="alert" className="text-caption text-destructive">
-                {subError}
-              </div>
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{subError}</AlertDescription>
+              </Alert>
             )}
 
             <DialogFooter>
-              <DialogClose render={<Button variant="outline" type="button" disabled={updateSubscription.isPending} />}>
+              <DialogClose
+                render={<Button variant="outline" type="button" disabled={updateSubscription.isPending} />}
+              >
                 Cancel
               </DialogClose>
-              <Button type="submit" disabled={!subReason.trim() || updateSubscription.isPending}>
+              <Button
+                type="submit"
+                disabled={!subReason.trim() || updateSubscription.isPending}
+                aria-busy={updateSubscription.isPending}
+              >
                 {updateSubscription.isPending && <Spinner className="size-3.5" />}
                 Save subscription
               </Button>
@@ -1238,28 +1221,46 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
             </DialogHeader>
 
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="bp-account-kind" className="text-caption font-medium text-foreground">
+              <Field data-invalid={Boolean(profileFieldErrors.account_kind) || undefined}>
+                <FieldLabel htmlFor="bp-account-kind" className="text-label">
                   Account kind
-                </label>
-                <select
-                  id="bp-account-kind"
+                </FieldLabel>
+                <Select
+                  items={ACCOUNT_KIND_ITEMS}
                   value={profileKind}
-                  onChange={(e) => {
-                    setProfileKind(e.target.value as "individual" | "business");
-                    clearProfileFieldError("account_kind");
+                  onValueChange={(val) => {
+                    if (val === "individual" || val === "business") {
+                      setProfileKind(val);
+                      clearProfileFieldError("account_kind");
+                    }
                   }}
-                  aria-invalid={Boolean(profileFieldErrors.account_kind)}
                   disabled={updateBillingProfile.isPending}
-                  className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20"
                 >
-                  <option value="individual">Individual</option>
-                  <option value="business">Business</option>
-                </select>
+                  <SelectTrigger
+                    id="bp-account-kind"
+                    aria-label="Account kind"
+                    aria-invalid={Boolean(profileFieldErrors.account_kind)}
+                    className="w-full"
+                  >
+                    <SelectValue>
+                      {ACCOUNT_KIND_ITEMS.find((i) => i.value === profileKind)?.label ??
+                        profileKind}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACCOUNT_KIND_ITEMS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {profileFieldErrors.account_kind && (
-                  <p className="text-caption text-destructive">{profileFieldErrors.account_kind}</p>
+                  <FieldError className="text-caption">
+                    {profileFieldErrors.account_kind}
+                  </FieldError>
                 )}
-              </div>
+              </Field>
 
               {[
                 {
@@ -1295,10 +1296,13 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
                   setValue: setProfileInvoiceEmailInput,
                 },
               ].map(({ field, id, label, type, value, setValue }) => (
-                <div key={field} className="flex flex-col gap-1.5">
-                  <label htmlFor={id} className="text-caption font-medium text-foreground">
+                <Field
+                  key={field}
+                  data-invalid={Boolean(profileFieldErrors[field]) || undefined}
+                >
+                  <FieldLabel htmlFor={id} className="text-label">
                     {label}
-                  </label>
+                  </FieldLabel>
                   <Input
                     id={id}
                     type={type}
@@ -1311,16 +1315,19 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
                     disabled={updateBillingProfile.isPending}
                   />
                   {profileFieldErrors[field] && (
-                    <p className="text-caption text-destructive">{profileFieldErrors[field]}</p>
+                    <FieldError className="text-caption">
+                      {profileFieldErrors[field]}
+                    </FieldError>
                   )}
-                </div>
+                </Field>
               ))}
             </div>
 
             {profileFormError && (
-              <div role="alert" className="text-caption text-destructive">
-                {profileFormError}
-              </div>
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{profileFormError}</AlertDescription>
+              </Alert>
             )}
 
             <DialogFooter>

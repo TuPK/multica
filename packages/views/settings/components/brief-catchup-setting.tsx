@@ -6,6 +6,13 @@ import { toast } from "sonner";
 import { api } from "@multica/core/api";
 import { workspaceKeys } from "@multica/core/workspace/queries";
 import type { Workspace } from "@multica/core/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
 import { Switch } from "@multica/ui/components/ui/switch";
 import { useT } from "../../i18n";
 import { SettingsCard, SettingsRow } from "./settings-layout";
@@ -28,6 +35,13 @@ export function BriefCatchupSetting({ workspace, canManage }: { workspace: Works
   const settings = workspace.settings ?? {};
   const enabled = typeof settings.brief_catchup_enabled === "boolean" ? settings.brief_catchup_enabled : DEFAULT_ENABLED;
   const hour = readHour(settings.brief_catchup_hour);
+
+  const hourItems = HOURS.map((option) => ({
+    value: String(option),
+    label: t(($) => $.workspace.brief_catchup_hour_option, {
+      hour: String(option).padStart(2, "0"),
+    }),
+  }));
 
   async function persist(patch: { brief_catchup_enabled?: boolean; brief_catchup_hour?: number }) {
     setSaving(true);
@@ -59,19 +73,27 @@ export function BriefCatchupSetting({ workspace, canManage }: { workspace: Works
         />
       </SettingsRow>
       <SettingsRow anchor="brief-catchup-hour" label={t(($) => $.workspace.brief_catchup_hour_label)}>
-        <select
-          value={hour}
+        <Select
+          items={hourItems}
+          value={String(hour)}
           disabled={!canManage || saving || !enabled}
-          aria-label={t(($) => $.workspace.brief_catchup_hour_label)}
-          onChange={(event) => persist({ brief_catchup_hour: Number(event.target.value) })}
-          className="h-9 rounded-lg border border-input bg-background px-3 text-body text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
+          onValueChange={(value) => {
+            if (value !== null) {
+              void persist({ brief_catchup_hour: Number(value) });
+            }
+          }}
         >
-          {HOURS.map((option) => (
-            <option key={option} value={option}>
-              {t(($) => $.workspace.brief_catchup_hour_option, { hour: String(option).padStart(2, "0") })}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger aria-label={t(($) => $.workspace.brief_catchup_hour_label)}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {hourItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </SettingsRow>
     </SettingsCard>
   );

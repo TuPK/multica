@@ -1,4 +1,5 @@
 import { fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SidebarProvider, useSidebar } from "@multica/ui/components/ui/sidebar";
@@ -383,13 +384,12 @@ describe("SettingsPage information architecture", () => {
     ).toBeInTheDocument();
   });
 
-  it("navigates from the compact selector and clears the old detail", () => {
+  it("navigates from the compact selector and clears the old detail", async () => {
+    const user = userEvent.setup();
     navigationState.search = "tab=channels&integration=slack&keep=1";
     renderWithI18n(<SettingsPage />);
-    fireEvent.change(
-      screen.getByRole("combobox", { name: "Go to settings page" }),
-      { target: { value: "preferences" } },
-    );
+    await user.click(screen.getByRole("combobox", { name: "Go to settings page" }));
+    await user.click(await screen.findByRole("option", { name: "Preferences" }));
     expect(push).toHaveBeenCalledWith("/acme/settings?tab=preferences&keep=1");
   });
 });

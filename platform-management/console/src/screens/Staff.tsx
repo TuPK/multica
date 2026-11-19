@@ -1,14 +1,6 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -18,14 +10,38 @@ import {
   DialogFooter,
   DialogClose,
 } from "@multica/ui/components/ui/dialog";
+import { Field, FieldLabel } from "@multica/ui/components/ui/field";
+import { Input } from "@multica/ui/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { UserPlus, Trash2 } from "@multica/ui/icons";
-import { StatusBadge } from "../components/StatusBadge";
-import { LoadingState } from "../components/LoadingState";
-import { ErrorState } from "../components/ErrorState";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@multica/ui/components/ui/table";
+import { AlertCircle, Trash2, UserPlus } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { LoadingState } from "../components/LoadingState";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import { useStaff, useAddStaff, useRemoveStaff } from "../api/hooks";
 import type { StaffMember, StaffRole } from "../components/types";
+
+const STAFF_ROLE_ITEMS = [
+  { value: "support", label: "Support" },
+  { value: "billing", label: "Billing" },
+  { value: "admin", label: "Admin" },
+];
 
 export function Staff() {
   const { data, isLoading, isError, error, refetch } = useStaff();
@@ -89,34 +105,29 @@ export function Staff() {
         err instanceof Error
           ? err.message
           : (err as { code?: string })?.code === "last_admin"
-          ? "the last active administrator cannot be removed"
-          : "Failed to remove staff member";
+            ? "the last active administrator cannot be removed"
+            : "Failed to remove staff member";
       setRemoveError(msg);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-heading text-title-lg font-bold">Staff Management</h1>
-          <p className="text-body text-muted-foreground">
-            Manage staff members and internal platform permissions.
-          </p>
-        </div>
-        <Button onClick={handleOpenAddDialog} className="gap-1.5">
-          <UserPlus className="size-4" />
-          <span>Add staff</span>
-        </Button>
-      </div>
+      <PageHeader
+        title="Staff Management"
+        actions={
+          <Button size="sm" onClick={handleOpenAddDialog} className="gap-1.5">
+            <UserPlus className="size-4" aria-hidden="true" />
+            <span>Add staff</span>
+          </Button>
+        }
+      />
 
       {removeError && !removeDialogOpen && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-body text-destructive"
-        >
-          {removeError}
-        </div>
+        <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
+          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+          <AlertDescription>{removeError}</AlertDescription>
+        </Alert>
       )}
 
       {isLoading && <LoadingState message="Loading staff..." />}
@@ -133,11 +144,16 @@ export function Staff() {
         <EmptyState
           title="No staff members"
           description="There are currently no staff members configured."
+          actions={
+            <Button variant="outline" size="sm" onClick={handleOpenAddDialog}>
+              Add staff
+            </Button>
+          }
         />
       )}
 
       {!isLoading && !isError && staffList.length > 0 && (
-        <div className="rounded-lg border border-surface-border bg-surface shadow-xs">
+        <div className="rounded-lg border border-surface-border bg-surface">
           <Table>
             <TableHeader>
               <TableRow>
@@ -158,7 +174,7 @@ export function Staff() {
                   <TableCell className="text-muted-foreground">
                     {member.created_by || "System"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-muted-foreground tabular-nums">
                     {member.created_at ? new Date(member.created_at).toLocaleString() : "-"}
                   </TableCell>
                   <TableCell className="text-right">
@@ -169,7 +185,7 @@ export function Staff() {
                       className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                       aria-label={`Remove staff member ${member.email}`}
                     >
-                      <Trash2 className="size-4" />
+                      <Trash2 className="size-4" aria-hidden="true" />
                       <span>Remove</span>
                     </Button>
                   </TableCell>
@@ -190,10 +206,10 @@ export function Staff() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-1.5">
-              <label htmlFor="staff-email-input" className="text-caption font-medium text-foreground">
+            <Field>
+              <FieldLabel htmlFor="staff-email-input" className="text-label">
                 Email address
-              </label>
+              </FieldLabel>
               <Input
                 id="staff-email-input"
                 type="email"
@@ -203,33 +219,46 @@ export function Staff() {
                 required
                 disabled={addStaff.isPending}
               />
-            </div>
+            </Field>
 
-            <div className="space-y-1.5">
-              <label htmlFor="staff-role-select" className="text-caption font-medium text-foreground">
+            <Field>
+              <FieldLabel htmlFor="staff-role-select" className="text-label">
                 Staff role
-              </label>
-              <select
-                id="staff-role-select"
+              </FieldLabel>
+              <Select
+                items={STAFF_ROLE_ITEMS}
                 value={role}
-                onChange={(e) => setRole(e.target.value as StaffRole)}
-                className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                onValueChange={(val) => {
+                  if (val) setRole(val as StaffRole);
+                }}
                 disabled={addStaff.isPending}
               >
-                <option value="support">Support</option>
-                <option value="billing">Billing</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
+                <SelectTrigger id="staff-role-select" aria-label="Staff role" className="w-full">
+                  <SelectValue>
+                    {STAFF_ROLE_ITEMS.find((item) => item.value === role)?.label ?? role}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {STAFF_ROLE_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
 
             {addError && (
-              <p role="alert" className="text-caption text-destructive">
-                {addError}
-              </p>
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{addError}</AlertDescription>
+              </Alert>
             )}
 
             <DialogFooter>
-              <DialogClose render={<Button variant="outline" type="button" disabled={addStaff.isPending} />}>
+              <DialogClose
+                render={<Button variant="outline" type="button" disabled={addStaff.isPending} />}
+              >
                 Cancel
               </DialogClose>
               <Button
@@ -256,12 +285,10 @@ export function Staff() {
           </DialogHeader>
 
           {removeError && (
-            <div
-              role="alert"
-              className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-caption text-destructive"
-            >
-              {removeError}
-            </div>
+            <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+              <AlertDescription className="text-caption">{removeError}</AlertDescription>
+            </Alert>
           )}
 
           <DialogFooter>

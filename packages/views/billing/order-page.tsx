@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
-  Building2,
   Calendar,
   Check,
   Copy,
-  CreditCard,
   FileText,
 } from "@multica/ui/icons";
 import { api } from "@multica/core/api";
@@ -20,17 +18,14 @@ import {
 } from "@multica/ui/components/ui/alert";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@multica/ui/components/ui/card";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { useLocale, useT } from "../i18n";
 import { useNavigation } from "../navigation";
 import { formatStripeMinorAmount } from "../settings/components/billing-format";
+import {
+  SettingsCard,
+  SettingsSection,
+} from "../settings/components/settings-layout";
 import {
   EinvoiceStatusSummary,
   OrderBuyerForm,
@@ -405,163 +400,144 @@ export function BillingOrderPage({
         </AlertDescription>
       </Alert>
 
-      {/* Transfer Details Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-title-md flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            {t(($) => $.order.bank_details_title)}
-          </CardTitle>
-          <CardDescription>
-            {t(($) => $.order.transfer_instructions)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-surface-border p-3">
-              <span className="text-caption text-muted-foreground">
-                {t(($) => $.order.bank_name)}
-              </span>
-              <p className="text-body font-medium">{bank.bankName || "—"}</p>
+      {/* Transfer Details Section */}
+      <SettingsSection
+        title={t(($) => $.order.bank_details_title)}
+        description={t(($) => $.order.transfer_instructions)}
+      >
+        <SettingsCard>
+          <div className="space-y-4 p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-surface-border p-3">
+                <span className="text-caption text-muted-foreground">
+                  {t(($) => $.order.bank_name)}
+                </span>
+                <p className="text-body font-medium">{bank.bankName || "—"}</p>
+              </div>
+              <div className="rounded-lg border border-surface-border p-3">
+                <span className="text-caption text-muted-foreground">
+                  {t(($) => $.order.account_name)}
+                </span>
+                <p className="text-body font-medium">{bank.accountName || "—"}</p>
+              </div>
+              <div className="rounded-lg border border-surface-border p-3 sm:col-span-2">
+                <span className="text-caption text-muted-foreground">
+                  {t(($) => $.order.account_number)}
+                </span>
+                <p className="font-mono text-body font-semibold tabular-nums tracking-wide">
+                  {bank.accountNumber || "—"}
+                </p>
+              </div>
             </div>
-            <div className="rounded-lg border border-surface-border p-3">
-              <span className="text-caption text-muted-foreground">
-                {t(($) => $.order.account_name)}
-              </span>
-              <p className="text-body font-medium">{bank.accountName || "—"}</p>
-            </div>
-            <div className="rounded-lg border border-surface-border p-3 sm:col-span-2">
-              <span className="text-caption text-muted-foreground">
-                {t(($) => $.order.account_number)}
-              </span>
-              <p className="text-body font-semibold tabular-nums tracking-wide">
-                {bank.accountNumber || "—"}
-              </p>
+
+            {/* Transfer Code Box */}
+            <div className="flex flex-col gap-2 rounded-lg border border-surface-border bg-muted p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <span className="text-caption font-medium text-muted-foreground">
+                  {t(($) => $.order.transfer_code)}
+                </span>
+                <p className="font-mono text-title-sm font-bold tracking-wider tabular-nums text-foreground">
+                  {order.transferCode}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyCode}
+                aria-label={t(($) => $.order.copy_code)}
+                className="gap-1.5 self-start sm:self-auto"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                <span>
+                  {copied ? t(($) => $.order.copied) : t(($) => $.order.copy_code)}
+                </span>
+              </Button>
             </div>
           </div>
+        </SettingsCard>
+      </SettingsSection>
 
-          {/* Transfer Code Box */}
-          <div className="flex flex-col gap-2 rounded-lg bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <span className="text-caption font-medium text-muted-foreground">
-                {t(($) => $.order.transfer_code)}
-              </span>
-              <p className="text-title-md font-bold tracking-wider text-foreground">
-                {order.transferCode}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleCopyCode}
-              aria-label={t(($) => $.order.copy_code)}
-              className="gap-1.5 self-start sm:self-auto"
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-success" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              <span>
-                {copied ? t(($) => $.order.copied) : t(($) => $.order.copy_code)}
-              </span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Amounts Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-title-md flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            {t(($) => $.order.total)}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex justify-between border-b border-surface-border pb-2 text-body">
+      {/* Amounts Section */}
+      <SettingsSection title={t(($) => $.order.total)}>
+        <SettingsCard>
+          <div className="flex justify-between px-4 py-3 text-body">
             <span className="text-muted-foreground">
               {t(($) => $.order.amount)}
             </span>
             <span className="tabular-nums font-medium">{subtotalFormatted}</span>
           </div>
-          <div className="flex justify-between border-b border-surface-border pb-2 text-body">
+          <div className="flex justify-between px-4 py-3 text-body">
             <span className="text-muted-foreground">
               {t(($) => $.order.vat)}
             </span>
             <span className="tabular-nums font-medium">{vatFormatted}</span>
           </div>
-          <div className="flex justify-between pt-1 text-title-md font-bold">
+          <div className="flex justify-between px-4 py-3 text-title-sm font-bold">
             <span>{t(($) => $.order.total)}</span>
             <span className="tabular-nums text-foreground">{totalFormatted}</span>
           </div>
-        </CardContent>
-      </Card>
+        </SettingsCard>
+      </SettingsSection>
 
       {order.kind === "usage" ? (
-        <Card>
-          <CardHeader>
-            <CardTitle role="heading" aria-level={2} className="text-title-md">
-              {t(($) => $.order.usage_lines_title)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <UsageInvoiceLines
-              wsId={order.workspaceId || wsId}
-              orderId={order.id}
-              currency={order.currency}
-            />
-          </CardContent>
-        </Card>
+        <SettingsSection title={t(($) => $.order.usage_lines_title)}>
+          <SettingsCard>
+            <div className="p-4">
+              <UsageInvoiceLines
+                wsId={order.workspaceId || wsId}
+                orderId={order.id}
+                currency={order.currency}
+              />
+            </div>
+          </SettingsCard>
+        </SettingsSection>
       ) : null}
 
       {order.einvoice ? (
-        <Card>
-          <CardHeader>
-            <CardTitle role="heading" aria-level={2} className="text-title-md">
-              {t(($) => $.order.einvoice.title)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EinvoiceStatusSummary
-              einvoice={order.einvoice}
-              showHeading={false}
-            />
-          </CardContent>
-        </Card>
+        <SettingsSection title={t(($) => $.order.einvoice.title)}>
+          <SettingsCard>
+            <div className="p-4">
+              <EinvoiceStatusSummary
+                einvoice={order.einvoice}
+                showHeading={false}
+              />
+            </div>
+          </SettingsCard>
+        </SettingsSection>
       ) : null}
 
-      {/* Buyer Details Form Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-title-md">
-            {t(($) => $.order.buyer_title)}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <OrderBuyerForm
-            idPrefix="buyer"
-            name={buyerName}
-            taxCode={buyerTaxCode}
-            address={buyerAddress}
-            invoiceEmail={buyerEmail}
-            onNameChange={setBuyerName}
-            onTaxCodeChange={(value) => {
-              setBuyerTaxCode(value);
-              if (taxCodeError) setTaxCodeError(null);
-            }}
-            onAddressChange={setBuyerAddress}
-            onEmailChange={setBuyerEmail}
-            disabled={!canEditBuyer}
-            isSubmitting={updateBuyerMutation.isPending}
-            taxCodeError={taxCodeError}
-            formError={formError}
-            formSuccess={formSuccess}
-            onSubmit={handleBuyerSubmit}
-          />
-        </CardContent>
-      </Card>
+      {/* Buyer Details Form Section */}
+      <SettingsSection title={t(($) => $.order.buyer_title)}>
+        <SettingsCard>
+          <div className="p-4">
+            <OrderBuyerForm
+              idPrefix="buyer"
+              name={buyerName}
+              taxCode={buyerTaxCode}
+              address={buyerAddress}
+              invoiceEmail={buyerEmail}
+              onNameChange={setBuyerName}
+              onTaxCodeChange={(value) => {
+                setBuyerTaxCode(value);
+                if (taxCodeError) setTaxCodeError(null);
+              }}
+              onAddressChange={setBuyerAddress}
+              onEmailChange={setBuyerEmail}
+              disabled={!canEditBuyer}
+              isSubmitting={updateBuyerMutation.isPending}
+              taxCodeError={taxCodeError}
+              formError={formError}
+              formSuccess={formSuccess}
+              onSubmit={handleBuyerSubmit}
+            />
+          </div>
+        </SettingsCard>
+      </SettingsSection>
     </div>
   );
 }

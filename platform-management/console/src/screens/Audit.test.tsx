@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Audit } from "./Audit";
 
 const mockUseAuditEvents = vi.fn();
@@ -49,9 +50,10 @@ describe("Audit screen", () => {
     expect(screen.getByText("Acme Corp")).toBeInTheDocument();
   });
 
-  it("applies filters (action select, actor id, dates)", () => {
+  it("applies filters (action Select, actor id) and clears filters", async () => {
+    const user = userEvent.setup();
     mockUseAuditEvents.mockReturnValue({
-      data: { events: mockAuditList, next_cursor: null },
+      data: { events: [], next_cursor: null },
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -59,18 +61,29 @@ describe("Audit screen", () => {
 
     render(<Audit />);
 
-    const actionSelect = screen.getByLabelText(/Action/i);
-    fireEvent.change(actionSelect, { target: { value: "staff.added" } });
+    const actionTrigger = screen.getByRole("combobox", { name: "Action" });
+    await user.click(actionTrigger);
+    const staffAddedOption = await screen.findByRole("option", { name: "staff.added" });
+    await user.click(staffAddedOption);
 
     const actorInput = screen.getByLabelText(/Actor ID/i);
-    fireEvent.change(actorInput, { target: { value: "u-staff-9" } });
+    await user.type(actorInput, "u-staff-9");
 
-    expect(mockUseAuditEvents).toHaveBeenCalledWith(
+    expect(mockUseAuditEvents).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "staff.added",
         actor_id: "u-staff-9",
-      })
+      }),
     );
+
+    const clearButtons = screen.getAllByRole("button", { name: "Clear filters" });
+    await user.click(clearButtons[0]!);
+    expect(mockUseAuditEvents).toHaveBeenLastCalledWith({
+      action: undefined,
+      actor_id: undefined,
+      from: undefined,
+      to: undefined,
+    });
   });
 
   it("shows 'Load more' button when hasNextPage is true and clicking fetches next page", () => {

@@ -1651,7 +1651,8 @@
     "export_csv": "Exporter en CSV",
     "export_failed": "Échec de l'exportation des événements d'audit",
     "empty": "Aucun événement d'audit",
-    "load_failed": "Échec du chargement des événements d'audit"
+    "load_failed": "Échec du chargement des événements d'audit",
+    "clear_filters": "Effacer les filtres"
   },
   "legal": {
     "title": "Documents juridiques requis",

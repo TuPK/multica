@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMe, useLogout } from "./api/hooks";
 import { LoadingState } from "./components/LoadingState";
 import { Layout } from "./components/Layout";
+import type { StaffRole } from "./components/types";
 import { Login } from "./screens/Login";
 import { Overview } from "./screens/Overview";
 import { Tenants } from "./screens/Tenants";
@@ -30,17 +31,104 @@ type Screen =
   | "staff"
   | "audit";
 
+interface RouteState {
+  screen: Screen;
+  tenantId: string | null;
+  userId: string | null;
+}
+
+const SCREEN_PATHS: Record<
+  Exclude<Screen, "tenant-detail" | "user-detail">,
+  string
+> = {
+  overview: "/",
+  tenants: "/tenants",
+  users: "/users",
+  orders: "/orders",
+  "payment-notices": "/payment-notices",
+  einvoices: "/einvoices",
+  accounts: "/accounts",
+  plans: "/plans",
+  staff: "/staff",
+  audit: "/audit",
+};
+
+function parseRoute(pathname: string): RouteState {
+  const clean = pathname.replace(/\/+$/, "") || "/";
+  if (clean === "/") {
+    return { screen: "overview", tenantId: null, userId: null };
+  }
+  if (clean === "/tenants") {
+    return { screen: "tenants", tenantId: null, userId: null };
+  }
+  if (clean.startsWith("/tenants/")) {
+    const id = decodeURIComponent(clean.slice("/tenants/".length));
+    if (id && !id.includes("/")) {
+      return { screen: "tenant-detail", tenantId: id, userId: null };
+    }
+  }
+  if (clean === "/users") {
+    return { screen: "users", tenantId: null, userId: null };
+  }
+  if (clean.startsWith("/users/")) {
+    const id = decodeURIComponent(clean.slice("/users/".length));
+    if (id && !id.includes("/")) {
+      return { screen: "user-detail", tenantId: null, userId: id };
+    }
+  }
+  for (const [screen, path] of Object.entries(SCREEN_PATHS)) {
+    if (path !== "/" && clean === path) {
+      return { screen: screen as Screen, tenantId: null, userId: null };
+    }
+  }
+  return { screen: "overview", tenantId: null, userId: null };
+}
+
+function routeToPath(route: RouteState): string {
+  if (route.screen === "tenant-detail" && route.tenantId) {
+    return `/tenants/${encodeURIComponent(route.tenantId)}`;
+  }
+  if (route.screen === "user-detail" && route.userId) {
+    return `/users/${encodeURIComponent(route.userId)}`;
+  }
+  if (route.screen === "tenant-detail") return "/tenants";
+  if (route.screen === "user-detail") return "/users";
+  return SCREEN_PATHS[route.screen];
+}
+
+function canAccessScreen(screen: Screen, role: StaffRole): boolean {
+  if (screen === "staff" || screen === "accounts" || screen === "plans") {
+    return role === "admin";
+  }
+  if (
+    screen === "orders" ||
+    screen === "payment-notices" ||
+    screen === "einvoices"
+  ) {
+    return role === "billing" || role === "admin";
+  }
+  return true;
+}
+
 export function App() {
   const { data: me, isLoading, refetch } = useMe();
   const logout = useLogout();
 
-  const [currentScreen, setCurrentScreen] = useState<Screen>("overview");
-  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [route, setRoute] = useState<RouteState>(() =>
+    parseRoute(typeof window !== "undefined" ? window.location.pathname : "/"),
+  );
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setRoute(parseRoute(window.location.pathname));
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-app-shell">
         <LoadingState message="Loading platform console..." />
       </div>
     );
@@ -50,25 +138,26 @@ export function App() {
     return <Login onSuccess={() => refetch()} />;
   }
 
+  const effectiveRoute: RouteState = canAccessScreen(route.screen, me.role)
+    ? route
+    : { screen: "overview", tenantId: null, userId: null };
+
+  const navigateTo = (next: RouteState) => {
+    const resolved: RouteState = canAccessScreen(next.screen, me.role)
+      ? next
+      : { screen: "overview", tenantId: null, userId: null };
+    setRoute(resolved);
+    const nextPath = routeToPath(resolved);
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState(null, "", nextPath);
+    }
+  };
+
   const handleNavigate = (screen: string) => {
-    // Role gating: billing and support do not see the staff or accounts screens
-    if ((screen === "staff" || screen === "accounts") && me.role !== "admin") {
-      setCurrentScreen("overview");
-      return;
-    }
-    if (screen === "plans" && me.role !== "admin") {
-      setCurrentScreen("overview");
-      return;
-    }
-    if (
-      (screen === "orders" || screen === "payment-notices" || screen === "einvoices") &&
-      me.role !== "billing" &&
-      me.role !== "admin"
-    ) {
-      setCurrentScreen("overview");
-      return;
-    }
-    setCurrentScreen(screen as Screen);
+    const targetScreen = (
+      screen in SCREEN_PATHS ? screen : "overview"
+    ) as Exclude<Screen, "tenant-detail" | "user-detail">;
+    navigateTo({ screen: targetScreen, tenantId: null, userId: null });
   };
 
   const handleLogout = async () => {
@@ -79,98 +168,55 @@ export function App() {
     }
   };
 
+  const openTenant = (id: string) =>
+    navigateTo({ screen: "tenant-detail", tenantId: id, userId: null });
+  const openUser = (id: string) =>
+    navigateTo({ screen: "user-detail", tenantId: null, userId: id });
+
   const renderScreen = () => {
-    switch (currentScreen) {
+    switch (effectiveRoute.screen) {
       case "overview":
         return <Overview />;
       case "tenants":
-        return (
-          <Tenants
-            onSelectTenant={(id) => {
-              setSelectedTenantId(id);
-              setCurrentScreen("tenant-detail");
-            }}
-          />
-        );
+        return <Tenants onSelectTenant={openTenant} />;
       case "tenant-detail":
-        if (!selectedTenantId) {
-          return (
-            <Tenants
-              onSelectTenant={(id) => {
-                setSelectedTenantId(id);
-                setCurrentScreen("tenant-detail");
-              }}
-            />
-          );
+        if (!effectiveRoute.tenantId) {
+          return <Tenants onSelectTenant={openTenant} />;
         }
         return (
           <TenantDetail
-            tenantId={selectedTenantId}
-            onBack={() => {
-              setSelectedTenantId(null);
-              setCurrentScreen("tenants");
-            }}
+            tenantId={effectiveRoute.tenantId}
+            onBack={() =>
+              navigateTo({ screen: "tenants", tenantId: null, userId: null })
+            }
             userRole={me.role}
           />
         );
       case "users":
-        return (
-          <Users
-            onSelectUser={(id) => {
-              setSelectedUserId(id);
-              setCurrentScreen("user-detail");
-            }}
-          />
-        );
+        return <Users onSelectUser={openUser} />;
       case "user-detail":
-        if (!selectedUserId) {
-          return (
-            <Users
-              onSelectUser={(id) => {
-                setSelectedUserId(id);
-                setCurrentScreen("user-detail");
-              }}
-            />
-          );
+        if (!effectiveRoute.userId) {
+          return <Users onSelectUser={openUser} />;
         }
         return (
           <UserDetail
-            userId={selectedUserId}
-            onBack={() => {
-              setSelectedUserId(null);
-              setCurrentScreen("users");
-            }}
+            userId={effectiveRoute.userId}
+            onBack={() =>
+              navigateTo({ screen: "users", tenantId: null, userId: null })
+            }
           />
         );
       case "orders":
-        if (me.role !== "billing" && me.role !== "admin") {
-          return <Overview />;
-        }
         return <Orders userRole={me.role} />;
       case "plans":
-        if (me.role !== "admin") {
-          return <Overview />;
-        }
         return <Plans userRole={me.role} />;
       case "payment-notices":
-        if (me.role !== "billing" && me.role !== "admin") {
-          return <Overview />;
-        }
         return <PaymentNotices userRole={me.role} />;
       case "einvoices":
-        if (me.role !== "billing" && me.role !== "admin") {
-          return <Overview />;
-        }
         return <EinvoiceFailures userRole={me.role} />;
       case "accounts":
-        if (me.role !== "admin") {
-          return <Overview />;
-        }
         return <Accounts userRole={me.role} />;
       case "staff":
-        if (me.role !== "admin") {
-          return <Overview />;
-        }
         return <Staff />;
       case "audit":
         return <Audit />;
@@ -181,7 +227,7 @@ export function App() {
 
   return (
     <Layout
-      currentScreen={currentScreen}
+      currentScreen={effectiveRoute.screen}
       onNavigate={handleNavigate}
       user={me}
       onLogout={handleLogout}

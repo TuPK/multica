@@ -38,6 +38,15 @@ import {
   PLUGINS_V1_FLAG,
 } from "@multica/core/feature-flags";
 import { TooltipHint } from "@multica/ui/components/common/tooltip-hint";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
 import { cn } from "@multica/ui/lib/utils";
 import { resolveSettingsLocation, settingsHref } from "./settings-navigation";
 import { AppLink, useNavigation } from "../../navigation";
@@ -508,27 +517,46 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
           <label className="sr-only" htmlFor="settings-navigation">
             {t(($) => $.page.navigate)}
           </label>
-          <select
-            id="settings-navigation"
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-body text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-            value={active.value}
-            onChange={(event) => navigation.push(href(event.target.value))}
-          >
-            {groups.flatMap((group) =>
-              group.subgroups.map((subgroup) => (
-                <optgroup
-                  key={`${group.key}:${subgroup.key}`}
-                  label={subgroup.label ? `${group.label} · ${subgroup.label}` : group.label}
-                >
-                  {subgroup.entries.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </optgroup>
-              )),
+          <Select
+            items={groups.flatMap((group) =>
+              group.subgroups.flatMap((subgroup) =>
+                subgroup.entries.map((item) => ({
+                  value: item.value,
+                  label: item.label,
+                })),
+              ),
             )}
-          </select>
+            value={active.value}
+            onValueChange={(value) => {
+              if (value) navigation.push(href(value));
+            }}
+          >
+            <SelectTrigger
+              id="settings-navigation"
+              aria-label={t(($) => $.page.navigate)}
+              className="w-full"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.flatMap((group) =>
+                group.subgroups.map((subgroup) => (
+                  <SelectGroup key={`${group.key}:${subgroup.key}`}>
+                    <SelectLabel>
+                      {subgroup.label
+                        ? `${group.label} · ${subgroup.label}`
+                        : group.label}
+                    </SelectLabel>
+                    {subgroup.entries.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )),
+              )}
+            </SelectContent>
+          </Select>
         </div>
         <div className="relative mx-3 mb-3 hidden shrink-0 md:block">
           <Search

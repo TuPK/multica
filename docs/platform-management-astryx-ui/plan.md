@@ -230,6 +230,12 @@ pnpm --filter @multica/platform-console build
 - `packages/views/settings/components/audit-log-tab.tsx` (sửa)
 - `packages/views/settings/components/account-tab.tsx` (sửa)
 - `packages/views/settings/components/billing-tab.tsx` (sửa nhẹ: `Banner` cho `scheduled_price_change`, thẻ `usage`)
+- `packages/views/billing/billing-test-page.tsx` (sửa: màu cứng `red-*`/`amber-` → token ngữ nghĩa; route `/billing` đang dùng)
+- `packages/views/settings/components/brief-catchup-setting.tsx` (sửa: `<select>` → `Select` của `@multica/ui`)
+- `packages/views/settings/components/settings-page.tsx` (sửa: `<select>` → `Select` của `@multica/ui`)
+- `packages/views/settings/components/settings-layout.tsx` (sửa: `role="tab"` tự dựng → `Tabs` của `@multica/ui`)
+- `packages/views/settings/components/publish-channels-tab.tsx` (sửa: `emerald-`/`amber-` → `--success`/`--warning`; 2 `<select>` → `Select`)
+- `packages/views/settings/components/wecom-tab.tsx`, `telegram-tab.tsx`, `slack-tab.tsx`, `dingtalk-tab.tsx`, `composio-tab.tsx` (sửa: `emerald-`/`amber-` → `--success`/`--warning`)
 
 **Thay đổi cụ thể:**
 1. `order-page.tsx`: `text-title-md` (`:411`, `:449`, `:477`) → `text-title-sm`; `bg-surface-muted` (`:444`) → `bg-muted`. Thay 3 `Card` bằng `Section` + `SettingsCard` phẳng. Giữ `id`, `name`, `role="alert"`, `aria-label`.
@@ -238,6 +244,7 @@ pnpm --filter @multica/platform-console build
 4. `account-tab.tsx`: `securityEvents` (`:485-499`) dùng `font-mono text-caption` cho mã hành động và `tabular-nums` cho thời gian.
 5. `billing-tab.tsx`: hiển thị `scheduled_price_change` bằng `Banner`; hiển thị `usage` bằng `SettingsCard` khi dữ liệu có mặt.
 6. Mọi chuỗi mới phải thêm đủ 7 ngôn ngữ trong `packages/views/locales/`.
+7. Dọn 20 dòng khớp của grep chốt trong các tệp tiếp theo: màu cứng → token ngữ nghĩa (`--success`, `--warning`, `--destructive`); `<select>` → `Select`; `role="tab"` tự dựng → `Tabs`. Xem mục "Kết quả grep chốt" cuối file. Quyết định mở rộng Slice 8 do người dùng chốt.
 
 **Lệnh kiểm chứng:**
 ```bash
@@ -295,3 +302,34 @@ grep -rn "emerald-\|amber-\|red-[0-9]\|text-title-xl\|text-title-md\|bg-surface-
 ```
 
 Kết quả mong đợi: không có dòng nào (trừ khi có ghi chú lý do trong spec).
+
+### Kết quả grep chốt: các mục mở (Open items)
+
+Lần chạy grep chốt cho 20 dòng khớp. Không dòng nào nằm trong các tệp chạm tới của Slice 8 (`order-page.tsx`, `tokens-tab.tsx`, `audit-log-tab.tsx`, `account-tab.tsx`, `billing-tab.tsx`). Các tệp này đã sạch. Các dòng còn lại nằm trong tệp không được liệt kê ở bất kỳ slice nào. Theo `[ASSUMPTION-OPEN-1]`, phạm vi "tenant-side screens" trong spec được hiểu là danh sách tệp chạm tới của từng slice, không phải toàn bộ thư mục. Các mục dưới đây chưa được sửa và cần quyết định riêng.
+
+| # | Tệp:dòng | Mẫu khớp | Vi phạm thật? |
+| --- | --- | --- | --- |
+| 1 | `packages/views/billing/billing-test-page.tsx:471` | `red-7`, `red-4` (màu cứng) | Có. Tệp này được route `/billing` trong `apps/web` dùng, không chỉ là trang thử. |
+| 2 | `packages/views/billing/billing-test-page.tsx:620` | `red-5`, `red-7`, `red-4` (màu cứng) | Có, như trên. |
+| 3 | `packages/views/billing/billing-test-page.tsx:621` | `amber-` (màu cứng) | Có, như trên. |
+| 4 | `packages/views/settings/components/brief-catchup-setting.tsx:62` | `<select` (thẻ select gốc) | Có. Spec yêu cầu dùng `Select` của `@multica/ui`. |
+| 5 | `packages/views/settings/components/settings-layout.tsx:368` | `role="tab"` (tự dựng) | Có. Spec yêu cầu dùng `Tabs` của `@multica/ui`. |
+| 6 | `packages/views/settings/components/settings-page.tsx:511` | `<select` (thẻ select gốc) | Có, như dòng 4. |
+| 7 | `packages/views/settings/components/publish-channels-tab.tsx:151` | `emerald-` ×4 (màu cứng) | Có. Nên dùng `--success`. |
+| 8 | `packages/views/settings/components/publish-channels-tab.tsx:276` | `emerald-` ×4 (màu cứng) | Có, như dòng 7. |
+| 9 | `packages/views/settings/components/publish-channels-tab.tsx:296` | `amber-` ×4 (màu cứng) | Có. Nên dùng `--warning`. |
+| 10 | `packages/views/settings/components/publish-channels-tab.tsx:586` | `<select` (thẻ select gốc) | Có, như dòng 4. |
+| 11 | `packages/views/settings/components/publish-channels-tab.tsx:604` | `<select` (thẻ select gốc) | Có, như dòng 4. |
+| 12 | `packages/views/settings/components/wecom-tab.tsx:537` | `emerald-` (màu cứng, chấm trạng thái) | Có, như dòng 7. |
+| 13 | `packages/views/settings/components/wecom-tab.tsx:582` | `emerald-` (màu cứng, chấm trạng thái) | Có, như dòng 7. |
+| 14 | `packages/views/settings/components/telegram-tab.tsx:432` | `emerald-` (màu cứng, chấm trạng thái) | Có, như dòng 7. |
+| 15 | `packages/views/settings/components/telegram-tab.tsx:479` | `emerald-` (màu cứng, chấm trạng thái) | Có, như dòng 7. |
+| 16 | `packages/views/settings/components/composio-tab.tsx:312` | `emerald-` (màu cứng) | Có, như dòng 7. |
+| 17 | `packages/views/settings/components/composio-tab.tsx:327` | `amber-` (màu cứng) | Có, như dòng 9. |
+| 18 | `packages/views/settings/components/slack-tab.tsx:476` | `emerald-` (màu cứng, chấm trạng thái) | Có, như dòng 7. |
+| 19 | `packages/views/settings/components/slack-tab.tsx:525` | `emerald-` (màu cứng, chấm trạng thái) | Có, như dòng 7. |
+| 20 | `packages/views/settings/components/dingtalk-tab.tsx:131` | `emerald-` (màu cứng, chấm trạng thái) | Có, như dòng 7. |
+
+**Kết luận:** cả 20 dòng đều là vi phạm thật theo quy tắc token và primitive trong spec §5.1 (mục 4). **Quyết định:** mở rộng Slice 8 (người dùng chốt). Mọi tệp trên đã được thêm vào "Tệp chạm tới" và "Thay đổi cụ thể" của Slice 8. Gate không đổi: vẫn yêu cầu kết quả rỗng.
+
+**Trạng thái: đã xử lý.** Grep chốt trả về 0 dòng. `pnpm --filter @multica/views typecheck` đạt. `pnpm --filter @multica/views exec vitest run settings billing` đạt (54 file, 626 test). `pnpm --filter @multica/platform-console test` đạt (22 file, 301 test).

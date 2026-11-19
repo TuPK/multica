@@ -1,20 +1,6 @@
 import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@multica/ui/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -24,13 +10,24 @@ import {
   DialogFooter,
   DialogClose,
 } from "@multica/ui/components/ui/dialog";
+import { Separator } from "@multica/ui/components/ui/separator";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { ArrowLeft, Ban, RotateCcw, LogOut, Shield } from "@multica/ui/icons";
-import { StatusBadge } from "../components/StatusBadge";
-import { LoadingState } from "../components/LoadingState";
-import { ErrorState } from "../components/ErrorState";
-import { EmptyState } from "../components/EmptyState";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@multica/ui/components/ui/table";
+import { AlertCircle, AlertTriangle, Ban, LogOut, RotateCcw, Shield } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
+import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { LoadingState } from "../components/LoadingState";
+import { MetadataList, MetadataListItem } from "../components/MetadataList";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import {
   useUser,
   useChangeUserStatus,
@@ -85,7 +82,8 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
     );
   }
 
-  const isSuspended = user.account?.status === "suspended" || user.status === "suspended";
+  const accountStatus = user.account?.status || user.status;
+  const isSuspended = accountStatus === "suspended";
 
   const handleOpenStatusDialog = (target: "suspended" | "active") => {
     setStatusDialogTarget(target);
@@ -137,171 +135,155 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className="gap-1 text-muted-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            <span>Back to users</span>
-          </Button>
-          <div>
-            <h1 className="font-heading text-title-lg font-bold">
-              {user.name || user.email}
-            </h1>
-            <p className="font-mono text-caption text-muted-foreground">
-              {user.email} &bull; ID: {user.id}
-            </p>
-          </div>
-        </div>
+    <div className="space-y-8">
+      <PageHeader
+        title={user.name || user.email}
+        badge={<StatusBadge status={accountStatus} />}
+        meta={
+          <span className="font-mono">
+            {user.email} &bull; ID: {user.id}
+          </span>
+        }
+        backAction={{ label: "Back to users", onClick: onBack }}
+        actions={
+          <>
+            {isSuspended ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenStatusDialog("active")}
+                className="gap-1.5"
+              >
+                <RotateCcw className="size-4" aria-hidden="true" />
+                <span>Reinstate account</span>
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleOpenStatusDialog("suspended")}
+                className="gap-1.5"
+              >
+                <Ban className="size-4" aria-hidden="true" />
+                <span>Suspend account</span>
+              </Button>
+            )}
 
-        <div className="flex items-center gap-2">
-          {isSuspended ? (
             <Button
               variant="outline"
-              onClick={() => handleOpenStatusDialog("active")}
+              size="sm"
+              onClick={() => {
+                setRevokeError(null);
+                setRevokeDialogOpen(true);
+              }}
               className="gap-1.5"
             >
-              <RotateCcw className="size-4" />
-              <span>Reinstate account</span>
+              <LogOut className="size-4" aria-hidden="true" />
+              <span>Sign out everywhere</span>
             </Button>
-          ) : (
+
             <Button
-              variant="destructive"
-              onClick={() => handleOpenStatusDialog("suspended")}
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setMfaError(null);
+                setMfaDialogOpen(true);
+              }}
               className="gap-1.5"
             >
-              <Ban className="size-4" />
-              <span>Suspend account</span>
+              <Shield className="size-4" aria-hidden="true" />
+              <span>Reset two-step sign-in</span>
             </Button>
+          </>
+        }
+      />
+
+      {(isSuspended || user.account?.reason) && (
+        <Alert
+          variant={isSuspended ? "destructive" : "default"}
+          className={
+            isSuspended
+              ? "border-destructive/30 bg-destructive/5"
+              : "border-surface-border bg-surface"
+          }
+        >
+          <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+          <AlertTitle className="text-label font-semibold">
+            {isSuspended ? "Account suspended" : "Status Reason"}
+          </AlertTitle>
+          {user.account?.reason && (
+            <AlertDescription className="text-body">
+              {user.account.reason}
+            </AlertDescription>
           )}
+        </Alert>
+      )}
 
-          <Button
-            variant="outline"
-            onClick={() => {
-              setRevokeError(null);
-              setRevokeDialogOpen(true);
-            }}
-            className="gap-1.5"
-          >
-            <LogOut className="size-4" />
-            <span>Sign out everywhere</span>
-          </Button>
+      <section className="space-y-4">
+        <h2 className="font-heading text-title-sm font-semibold text-foreground">
+          Account Record
+        </h2>
+        <MetadataList columns={3}>
+          <MetadataListItem label="Account Status">
+            <StatusBadge status={accountStatus} />
+          </MetadataListItem>
+          <MetadataListItem label="Registered" tabular>
+            {user.created_at ? new Date(user.created_at).toLocaleString() : "-"}
+          </MetadataListItem>
+          {user.account?.changed_at && (
+            <MetadataListItem label="Status Changed At" tabular>
+              {new Date(user.account.changed_at).toLocaleString()}
+            </MetadataListItem>
+          )}
+          {user.account?.sessions_valid_after && (
+            <MetadataListItem label="Sessions Valid After" mono tabular>
+              {new Date(user.account.sessions_valid_after).toLocaleString()}
+            </MetadataListItem>
+          )}
+        </MetadataList>
+      </section>
 
-          <Button
-            variant="outline"
-            onClick={() => {
-              setMfaError(null);
-              setMfaDialogOpen(true);
-            }}
-            className="gap-1.5"
-          >
-            <Shield className="size-4" />
-            <span>Reset two-step sign-in</span>
-          </Button>
-        </div>
-      </div>
+      <Separator />
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Account Record</CardTitle>
-            <CardDescription>
-              User authentication and security state.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <span className="block text-caption text-muted-foreground">Account Status</span>
-              <div className="mt-1">
-                <StatusBadge status={user.account?.status || user.status} />
-              </div>
-            </div>
-
-            <div>
-              <span className="block text-caption text-muted-foreground">Registered</span>
-              <span className="mt-1 block text-body font-medium">
-                {user.created_at ? new Date(user.created_at).toLocaleString() : "-"}
-              </span>
-            </div>
-
-            {user.account?.changed_at && (
-              <div>
-                <span className="block text-caption text-muted-foreground">Status Changed At</span>
-                <span className="mt-1 block text-body">
-                  {new Date(user.account.changed_at).toLocaleString()}
-                </span>
-              </div>
-            )}
-
-            {user.account?.reason && (
-              <div className="rounded-lg border border-surface-border bg-muted/40 p-3">
-                <span className="block text-caption font-medium text-foreground">
-                  Status Reason:
-                </span>
-                <p className="mt-0.5 text-body text-muted-foreground">
-                  {user.account.reason}
-                </p>
-              </div>
-            )}
-
-            {user.account?.sessions_valid_after && (
-              <div>
-                <span className="block text-caption text-muted-foreground">Sessions Valid After</span>
-                <span className="mt-1 block font-mono text-caption text-muted-foreground">
-                  {new Date(user.account.sessions_valid_after).toLocaleString()}
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Workspace Memberships</CardTitle>
-            <CardDescription>
-              Workspaces this user belongs to.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!user.memberships || user.memberships.length === 0 ? (
-              <EmptyState
-                title="No memberships"
-                description="This user does not belong to any workspaces."
-              />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Workspace Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Workspace ID</TableHead>
+      <section className="space-y-4">
+        <h2 className="font-heading text-title-sm font-semibold text-foreground">
+          Workspace Memberships
+        </h2>
+        {!user.memberships || user.memberships.length === 0 ? (
+          <EmptyState
+            title="No memberships"
+            description="This user does not belong to any workspaces."
+            isCompact
+          />
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Workspace Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Workspace ID</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {user.memberships.map((membership: Membership) => (
+                  <TableRow key={membership.workspace_id}>
+                    <TableCell className="font-medium">
+                      {membership.name}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={membership.role} />
+                    </TableCell>
+                    <TableCell className="font-mono text-caption text-muted-foreground">
+                      {membership.workspace_id}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {user.memberships.map((membership: Membership) => (
-                    <TableRow key={membership.workspace_id}>
-                      <TableCell className="font-medium">
-                        {membership.name}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={membership.role} />
-                      </TableCell>
-                      <TableCell className="font-mono text-caption text-muted-foreground">
-                        {membership.workspace_id}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
 
       <ConfirmReasonDialog
         open={statusDialogOpen}
@@ -348,12 +330,10 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
             </DialogDescription>
           </DialogHeader>
           {mfaError && (
-            <div
-              role="alert"
-              className="rounded-md bg-destructive/10 p-3 text-caption text-destructive"
-            >
-              {mfaError}
-            </div>
+            <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+              <AlertDescription className="text-caption">{mfaError}</AlertDescription>
+            </Alert>
           )}
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>

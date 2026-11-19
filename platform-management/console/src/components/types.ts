@@ -101,32 +101,4 @@ export interface OverviewData {
   signups_7d: number;
 }
 
-export const CATALOG_ACTIONS = [
-  "workspace.status_changed",
-  "workspace.created",
-  "workspace.updated",
-  "workspace.deleted",
-  "account.status_changed",
-  "account.sessions_revoked",
-  "account.export_requested",
-  "account.deletion_requested",
-  "account.deletion_canceled",
-  "staff.added",
-  "staff.removed",
-  "note.added",
-  "member.role_changed",
-  "member.removed",
-  "member.left",
-  "invitation.created",
-  "invitation.revoked",
-  "invitation.accepted",
-  "invitation.declined",
-  "share_link.created",
-  "share_link.revoked",
-  "share_link.joined",
-  "auth.login",
-  "auth.sessions_revoked",
-  "pat.created",
-  "pat.revoked",
-  "consent.accepted",
-] as const;
+export { AUDIT_ACTIONS as CATALOG_ACTIONS } from "../api/schemas";

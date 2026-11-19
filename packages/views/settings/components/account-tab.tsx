@@ -491,7 +491,7 @@ export function AccountTab() {
                   <code className="font-mono text-caption text-foreground">
                     {event.action}
                   </code>
-                  <span className="text-caption text-muted-foreground">
+                  <span className="text-caption tabular-nums text-muted-foreground">
                     {formatSecurityEventTime(event.created_at)}
                   </span>
                 </li>

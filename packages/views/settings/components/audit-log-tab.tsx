@@ -211,46 +211,64 @@ export function AuditLogTab() {
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : query.isSuccess && events.length === 0 ? (
-          <p className="py-12 text-center text-body text-muted-foreground">
-            {t(($) => $.audit.empty)}
-          </p>
+          <div className="flex flex-col items-center gap-3 py-12 text-center">
+            <p className="text-body text-muted-foreground">
+              {t(($) => $.audit.empty)}
+            </p>
+            {actionFilter || fromDate || toDate ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setActionFilter("");
+                  setFromDate("");
+                  setToDate("");
+                }}
+              >
+                {t(($) => $.audit.clear_filters)}
+              </Button>
+            ) : null}
+          </div>
         ) : null}
 
         {events.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t(($) => $.audit.column_time)}</TableHead>
-                <TableHead>{t(($) => $.audit.column_actor)}</TableHead>
-                <TableHead>{t(($) => $.audit.column_action)}</TableHead>
-                <TableHead>{t(($) => $.audit.column_target)}</TableHead>
-                <TableHead>{t(($) => $.audit.column_ip)}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {events.map((event) => (
-                <TableRow key={event.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {formatTime(event.created_at)}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {formatActor(event)}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <code className="font-mono text-caption text-foreground">
-                      {event.action}
-                    </code>
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {formatTarget(event)}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {event.ip || "-"}
-                  </TableCell>
+          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t(($) => $.audit.column_time)}</TableHead>
+                  <TableHead>{t(($) => $.audit.column_actor)}</TableHead>
+                  <TableHead>{t(($) => $.audit.column_action)}</TableHead>
+                  <TableHead>{t(($) => $.audit.column_target)}</TableHead>
+                  <TableHead>{t(($) => $.audit.column_ip)}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {events.map((event) => (
+                  <TableRow key={event.id}>
+                    <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
+                      {formatTime(event.created_at)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {formatActor(event)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <code className="font-mono text-caption text-foreground">
+                        {event.action}
+                      </code>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {formatTarget(event)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {event.ip || "-"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         ) : null}
 
         {query.hasNextPage ? (

@@ -32,6 +32,13 @@ import type { PublishChannel, SavePublishSettingsInput } from "@multica/core/typ
 import { Button } from "@multica/ui/components/ui/button";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Input } from "@multica/ui/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import {
   Dialog,
@@ -148,7 +155,7 @@ export function PublishChannelsTab() {
       return (
         <Badge
           variant="outline"
-          className="border-emerald-600/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          className="border-success/30 bg-success/10 text-success"
         >
           <CheckCircle2 className="mr-1 size-3" />
           {t(($) => $.publish_channels.status_connected)}
@@ -273,7 +280,7 @@ export function PublishChannelsTab() {
     switch (channel.status) {
       case "ready":
         return (
-          <Badge variant="outline" className="border-emerald-600/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+          <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
             <CheckCircle2 className="mr-1 size-3" />
             {t(($) => $.publish_channels.status_ready)}
           </Badge>
@@ -293,7 +300,7 @@ export function PublishChannelsTab() {
         );
       case "expired":
         return (
-          <Badge variant="outline" className="border-amber-600/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+          <Badge variant="outline" className="border-warning/40 bg-warning/10 text-warning">
             <AlertCircle className="mr-1 size-3" />
             {t(($) => $.publish_channels.status_expired)}
           </Badge>
@@ -583,33 +590,63 @@ export function PublishChannelsTab() {
               <label htmlFor="publish-channel-platform" className="text-caption font-medium">
                 {t(($) => $.publish_channels.platform)}
               </label>
-              <select
-                id="publish-channel-platform"
+              <Select
+                items={SUPPORTED_PLATFORMS.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                }))}
                 value={newPlatform}
-                onChange={(e) => setNewPlatform(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-body shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                onValueChange={(value) => {
+                  if (value) setNewPlatform(value);
+                }}
               >
-                {SUPPORTED_PLATFORMS.map((platform) => (
-                  <option key={platform.id} value={platform.id}>
-                    {platform.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  id="publish-channel-platform"
+                  aria-label={t(($) => $.publish_channels.platform)}
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_PLATFORMS.map((platform) => (
+                    <SelectItem key={platform.id} value={platform.id}>
+                      {platform.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="publish-channel-market" className="text-caption font-medium">
                 {t(($) => $.publish_channels.market)}
               </label>
-              <select
-                id="publish-channel-market"
+              <Select
+                items={[
+                  { value: "intl", label: t(($) => $.publish_channels.market_intl) },
+                  { value: "vn", label: t(($) => $.publish_channels.market_vn) },
+                ]}
                 value={newMarket}
-                onChange={(e) => setNewMarket(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-body shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                onValueChange={(value) => {
+                  if (value) setNewMarket(value);
+                }}
               >
-                <option value="intl">{t(($) => $.publish_channels.market_intl)}</option>
-                <option value="vn">{t(($) => $.publish_channels.market_vn)}</option>
-              </select>
+                <SelectTrigger
+                  id="publish-channel-market"
+                  aria-label={t(($) => $.publish_channels.market)}
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="intl">
+                    {t(($) => $.publish_channels.market_intl)}
+                  </SelectItem>
+                  <SelectItem value="vn">
+                    {t(($) => $.publish_channels.market_vn)}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">

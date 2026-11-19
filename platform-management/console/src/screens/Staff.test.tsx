@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Staff } from "./Staff";
 
 const mockUseStaff = vi.fn();
@@ -57,6 +58,7 @@ describe("Staff screen", () => {
   });
 
   it("adds a staff member", async () => {
+    const user = userEvent.setup();
     mockAddStaffMutateAsync.mockResolvedValue({
       user_id: "u-billing-1",
       email: "billing@example.com",
@@ -65,16 +67,17 @@ describe("Staff screen", () => {
 
     render(<Staff />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Add staff/i }));
+    await user.click(screen.getByRole("button", { name: /Add staff/i }));
     expect(screen.getByRole("heading", { name: "Add staff member" })).toBeInTheDocument();
 
     const emailInput = screen.getByLabelText(/Email address/i);
-    const roleSelect = screen.getByLabelText(/Staff role/i);
+    const roleSelect = screen.getByRole("combobox", { name: /Staff role/i });
 
-    fireEvent.change(emailInput, { target: { value: "billing@example.com" } });
-    fireEvent.change(roleSelect, { target: { value: "billing" } });
+    await user.type(emailInput, "billing@example.com");
+    await user.click(roleSelect);
+    await user.click(await screen.findByRole("option", { name: "Billing" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Add staff" }));
+    await user.click(screen.getByRole("button", { name: "Add staff" }));
 
     await waitFor(() => {
       expect(mockAddStaffMutateAsync).toHaveBeenCalledWith({

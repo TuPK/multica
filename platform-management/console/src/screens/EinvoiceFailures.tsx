@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge } from "@multica/ui/components/ui/badge";
+import { Button } from "@multica/ui/components/ui/button";
 import {
   Table,
   TableBody,
@@ -8,13 +8,16 @@ import {
   TableHeader,
   TableRow,
 } from "@multica/ui/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { ExternalLink } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import { PlatformApiError } from "../api/client";
 import { useEinvoices, useMe, type EinvoiceFilterState } from "../api/hooks";
-import { isSafeHttpsUrl, type Einvoice, type EinvoiceState } from "../api/schemas";
+import { isSafeHttpsUrl, type Einvoice } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { formatMinorAmount } from "../money";
 
@@ -41,23 +44,6 @@ function getErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-function EinvoiceStateBadge({ state }: { state: EinvoiceState }) {
-  switch (state) {
-    case "issued":
-      return <Badge variant="default">Issued</Badge>;
-    case "needs_info":
-      return <Badge variant="destructive">Needs buyer details</Badge>;
-    case "failed":
-      return <Badge variant="destructive">Failed</Badge>;
-    case "pending":
-      return <Badge variant="outline">Pending</Badge>;
-    case "cancelled":
-      return <Badge variant="secondary">Cancelled</Badge>;
-    default:
-      return <Badge variant="outline">Unknown</Badge>;
-  }
-}
-
 /** Staff view of e-invoice issuance records (defaulting to failed and needs_info). */
 export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
   const { data: me } = useMe();
@@ -80,33 +66,24 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-title-lg font-bold">E-invoices</h1>
-      </div>
+      <PageHeader title="E-invoices" />
 
-      <div className="flex border-b border-surface-border">
-        <div role="tablist" className="flex gap-2">
-          {STATE_TABS.map((tab) => {
-            const isActive = activeTab === tab.value;
-            return (
-              <button
-                key={tab.value || "default"}
-                role="tab"
-                type="button"
-                aria-selected={isActive}
-                onClick={() => setActiveTab(tab.value)}
-                className={`border-b-2 px-4 py-2 text-body font-medium transition-colors ${
-                  isActive
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:border-surface-border hover:text-foreground"
-                }`}
-              >
+      <Tabs
+        value={activeTab || "default"}
+        onValueChange={(value) =>
+          setActiveTab((value === "default" ? "" : value) as EinvoiceFilterState)
+        }
+      >
+        <div className="border-b border-surface-border">
+          <TabsList variant="line" aria-label="E-invoice state">
+            {STATE_TABS.map((tab) => (
+              <TabsTrigger key={tab.value || "default"} value={tab.value || "default"}>
                 {tab.label}
-              </button>
-            );
-          })}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </div>
+      </Tabs>
 
       {isLoading && <LoadingState message="Loading e-invoices..." />}
 
@@ -119,7 +96,20 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
       )}
 
       {!isLoading && !isError && (!einvoices || einvoices.length === 0) && (
-        <EmptyState title="No e-invoices found" />
+        <EmptyState
+          title="No e-invoices found"
+          actions={
+            activeTab ? (
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("")}>
+                View needing attention
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Refresh
+              </Button>
+            )
+          }
+        />
       )}
 
       {!isLoading && !isError && einvoices && einvoices.length > 0 && (
@@ -157,7 +147,10 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                       {item.workspace_id || "-"}
                     </TableCell>
                     <TableCell>
-                      <EinvoiceStateBadge state={item.state} />
+                      <StatusBadge
+                        status={item.state}
+                        label={item.state === "needs_info" ? "Needs buyer details" : undefined}
+                      />
                     </TableCell>
                     <TableCell className="text-body">{item.provider || "-"}</TableCell>
                     <TableCell>

@@ -102,11 +102,14 @@ describe("PaymentNotices screen", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it("shows an empty state when no notice needs review", () => {
-    mockUsePaymentNotices.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() });
+  it("shows an empty state with refresh action when no notice needs review", () => {
+    const refetch = vi.fn();
+    mockUsePaymentNotices.mockReturnValue({ data: [], isLoading: false, isError: false, refetch });
     render(<PaymentNotices userRole="billing" />);
 
     expect(screen.getByText("No payment notices need review")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("opens the detail of one notice with its event id and candidate orders", () => {

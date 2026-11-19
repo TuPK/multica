@@ -192,7 +192,7 @@ export type TenantState = z.output<typeof TenantStateSchema>;
 // Billing & Orders
 
 export const ORDER_STATUSES = ["pending", "paid", "expired", "canceled", "refunded"] as const;
-export const ORDER_KINDS = ["subscribe", "change_plan", "add_seats", "renew"] as const;
+export const ORDER_KINDS = ["subscribe", "change_plan", "add_seats", "renew", "usage"] as const;
 export const ORDER_INVOICE_STATES = ["pending", "issued", "needs_info", "failed"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number] | "unknown";
@@ -322,6 +322,19 @@ export const PutSubscriptionResponseSchema = z.object({
 });
 export type PutSubscriptionResponse = z.output<typeof PutSubscriptionResponseSchema>;
 
+export const PLAN_AUDIENCES = ["any", "individual", "business"] as const;
+export const PLAN_BILLING_MODELS = ["seat", "usage"] as const;
+
+export type PlanAudience = (typeof PLAN_AUDIENCES)[number] | "unknown";
+export type PlanBillingModel = (typeof PLAN_BILLING_MODELS)[number] | "unknown";
+
+function enumWithDefault<const T extends readonly string[]>(values: T, fallback: T[number]) {
+  return z
+    .string()
+    .default(fallback)
+    .transform((v): T[number] | "unknown" => (values.includes(v) ? v : "unknown"));
+}
+
 export const PlanSchema = z.object({
   key: z.string(),
   name: text,
@@ -336,6 +349,8 @@ export const PlanSchema = z.object({
   is_public: z.boolean().default(false),
   sort: count,
   archived_at: nullableText,
+  audience: enumWithDefault(PLAN_AUDIENCES, "any"),
+  billing_model: enumWithDefault(PLAN_BILLING_MODELS, "seat"),
   version: z.number().optional(),
 });
 export type Plan = z.output<typeof PlanSchema>;

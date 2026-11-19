@@ -3,6 +3,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Workspace } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
@@ -58,13 +59,15 @@ describe("BriefCatchupSetting", () => {
     renderSetting(workspace({ github_enabled: true }));
 
     expect((screen.getByRole("switch", { name: "Catch up a missed brief" }) as HTMLElement).getAttribute("aria-checked")).toBe("true");
-    expect((screen.getByLabelText("Catch-up hour") as HTMLSelectElement).value).toBe("10");
+    expect(screen.getByRole("combobox", { name: "Catch-up hour" })).toHaveTextContent("10:00");
   });
 
   it("saves a new hour and keeps every other workspace setting", async () => {
+    const user = userEvent.setup();
     renderSetting(workspace());
 
-    fireEvent.change(screen.getByLabelText("Catch-up hour"), { target: { value: "8" } });
+    await user.click(screen.getByRole("combobox", { name: "Catch-up hour" }));
+    await user.click(await screen.findByRole("option", { name: "08:00" }));
 
     await waitFor(() => expect(mocks.updateWorkspace).toHaveBeenCalledTimes(1));
     expect(mocks.updateWorkspace).toHaveBeenCalledWith("ws-1", {
@@ -98,13 +101,13 @@ describe("BriefCatchupSetting", () => {
   it("disables the hour while catch-up is off", () => {
     renderSetting(workspace({ ...SETTINGS, brief_catchup_enabled: false }));
 
-    expect((screen.getByLabelText("Catch-up hour") as HTMLSelectElement).disabled).toBe(true);
+    expect(screen.getByRole("combobox", { name: "Catch-up hour" })).toBeDisabled();
   });
 
   it("does not let a member change the setting", () => {
     renderSetting(workspace(), false);
 
-    expect((screen.getByLabelText("Catch-up hour") as HTMLSelectElement).disabled).toBe(true);
+    expect(screen.getByRole("combobox", { name: "Catch-up hour" })).toBeDisabled();
     expect(screen.getByRole("switch", { name: "Catch up a missed brief" }).hasAttribute("data-disabled")).toBe(true);
   });
 });

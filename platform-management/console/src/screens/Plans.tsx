@@ -1,14 +1,8 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
+import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
+import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -18,20 +12,44 @@ import {
   DialogFooter,
   DialogClose,
 } from "@multica/ui/components/ui/dialog";
+import { Field, FieldError, FieldLabel } from "@multica/ui/components/ui/field";
+import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Badge } from "@multica/ui/components/ui/badge";
-import { Pencil, Trash2, CalendarClock } from "@multica/ui/icons";
-import { LoadingState } from "../components/LoadingState";
-import { ErrorState } from "../components/ErrorState";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@multica/ui/components/ui/table";
+import { AlertCircle, CalendarClock, Pencil, Trash2 } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { LoadingState } from "../components/LoadingState";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import { PriceSchedule } from "./PriceSchedule";
 import { usePlans, usePutPlan, useDeletePlan, useMe } from "../api/hooks";
 import { PlatformApiError } from "../api/client";
 import type { StaffRole } from "../components/types";
-import type { Plan } from "../api/schemas";
+import type { Plan, PlanAudience, PlanBillingModel } from "../api/schemas";
 import { formatMinorAmount } from "../money";
 
 const HISTORY_PLAN_KEYS = ["pro", "business", "unlimited", "enterprise", "free"] as const;
+
+const AUDIENCE_LABELS: Record<PlanAudience, string> = {
+  any: "Any",
+  individual: "Individual",
+  business: "Business",
+  unknown: "Unknown",
+};
+
+const BILLING_MODEL_LABELS: Record<PlanBillingModel, string> = {
+  seat: "Seat",
+  usage: "Usage",
+  unknown: "Unknown",
+};
 
 interface PlansProps {
   userRole?: StaffRole;
@@ -94,14 +112,10 @@ export function Plans({ userRole }: PlansProps) {
 
     return (
       <div className="space-y-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="font-heading text-title-lg font-bold">Price Change History</h1>
-            <p className="text-body text-muted-foreground">
-              Read-only price change history per plan.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Price Change History"
+          description="Read-only price change history per plan."
+        />
 
         <div className="flex flex-wrap items-center gap-2">
           {HISTORY_PLAN_KEYS.map((key) => (
@@ -214,9 +228,7 @@ export function Plans({ userRole }: PlansProps) {
       setDeleteDialogOpen(false);
       setPlanToDelete(null);
     } catch (err: unknown) {
-      if (err instanceof PlatformApiError) {
-        setDeleteError(err.message);
-      } else if (err instanceof Error) {
+      if (err instanceof PlatformApiError || err instanceof Error) {
         setDeleteError(err.message);
       } else {
         setDeleteError("Failed to delete plan");
@@ -226,14 +238,7 @@ export function Plans({ userRole }: PlansProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-heading text-title-lg font-bold">Plans Catalogue</h1>
-          <p className="text-body text-muted-foreground">
-            Manage plans, seats configuration, and public catalog visibility.
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Plans Catalogue" />
 
       {isLoading && <LoadingState message="Loading plans..." />}
 
@@ -253,11 +258,13 @@ export function Plans({ userRole }: PlansProps) {
       )}
 
       {!isLoading && !isError && plans && plans.length > 0 && (
-        <div className="rounded-lg border border-surface-border bg-surface overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Plan</TableHead>
+                <TableHead>Audience</TableHead>
+                <TableHead>Billing Model</TableHead>
                 <TableHead>Pricing (Monthly / Yearly)</TableHead>
                 <TableHead>Seats Configuration</TableHead>
                 <TableHead>Trial</TableHead>
@@ -269,6 +276,8 @@ export function Plans({ userRole }: PlansProps) {
             <TableBody>
               {plans.map((plan: Plan) => {
                 const isArchived = Boolean(plan.archived_at);
+                const audience = plan.audience ?? "any";
+                const billingModel = plan.billing_model ?? "seat";
 
                 return (
                   <TableRow key={plan.key}>
@@ -277,25 +286,35 @@ export function Plans({ userRole }: PlansProps) {
                       <div className="font-mono text-caption text-muted-foreground">{plan.key}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-body font-medium">
+                      <Badge variant="outline">
+                        {AUDIENCE_LABELS[audience] ?? audience}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {BILLING_MODEL_LABELS[billingModel] ?? billingModel}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-body font-medium tabular-nums">
                         {plan.seat_price_month !== null
                           ? `${formatMinorAmount(plan.seat_price_month, plan.currency)}/mo`
                           : "Free / Fixed"}
                       </div>
-                      <div className="text-caption text-muted-foreground">
+                      <div className="text-caption text-muted-foreground tabular-nums">
                         {plan.seat_price_year !== null
                           ? `${formatMinorAmount(plan.seat_price_year, plan.currency)}/yr`
                           : "-"}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="tabular-nums">
                       <div className="text-body">
                         {plan.seats_fixed !== null
                           ? `${plan.seats_fixed} fixed seats`
                           : `${plan.min_seats || 1} min seats`}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="tabular-nums">
                       <div className="text-body">
                         {plan.trial_days > 0 ? `${plan.trial_days} days` : "No trial"}
                       </div>
@@ -306,12 +325,10 @@ export function Plans({ userRole }: PlansProps) {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={isArchived ? "secondary" : "outline"}>
-                        {isArchived ? "Archived" : "Active"}
-                      </Badge>
+                      <StatusBadge status={isArchived ? "archived" : "active"} />
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -320,9 +337,9 @@ export function Plans({ userRole }: PlansProps) {
                             setSchedulePlanKey(plan.key);
                           }}
                           aria-label={`Schedule price for ${plan.name}`}
-                          className="h-8 gap-1.5"
+                          className="gap-1.5"
                         >
-                          <CalendarClock className="size-3.5" />
+                          <CalendarClock className="size-3.5" aria-hidden="true" />
                           <span>Price schedule</span>
                         </Button>
                         <Button
@@ -330,9 +347,9 @@ export function Plans({ userRole }: PlansProps) {
                           size="sm"
                           onClick={() => handleOpenEdit(plan)}
                           aria-label={`Edit plan ${plan.name}`}
-                          className="h-8 gap-1.5"
+                          className="gap-1.5"
                         >
-                          <Pencil className="size-3.5" />
+                          <Pencil className="size-3.5" aria-hidden="true" />
                           <span>Edit</span>
                         </Button>
                         <Button
@@ -340,9 +357,9 @@ export function Plans({ userRole }: PlansProps) {
                           size="sm"
                           onClick={() => handleOpenDelete(plan)}
                           aria-label={`Delete plan ${plan.name}`}
-                          className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
+                          className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
-                          <Trash2 className="size-3.5" />
+                          <Trash2 className="size-3.5" aria-hidden="true" />
                           <span>Delete</span>
                         </Button>
                       </div>
@@ -367,10 +384,10 @@ export function Plans({ userRole }: PlansProps) {
             </DialogHeader>
 
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="plan-name-input" className="text-caption font-medium text-foreground">
+              <Field>
+                <FieldLabel htmlFor="plan-name-input" className="text-label">
                   Plan Name <span className="text-destructive">*</span>
-                </label>
+                </FieldLabel>
                 <Input
                   id="plan-name-input"
                   value={planName}
@@ -378,12 +395,12 @@ export function Plans({ userRole }: PlansProps) {
                   required
                   disabled={putPlan.isPending}
                 />
-              </div>
+              </Field>
 
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="plan-currency-input" className="text-caption font-medium text-foreground">
+              <Field data-invalid={Boolean(currencyError) || undefined}>
+                <FieldLabel htmlFor="plan-currency-input" className="text-label">
                   Currency
-                </label>
+                </FieldLabel>
                 <Input
                   id="plan-currency-input"
                   value={currency}
@@ -397,17 +414,17 @@ export function Plans({ userRole }: PlansProps) {
                   disabled={putPlan.isPending}
                 />
                 {currencyError && (
-                  <p id="plan-currency-error" role="alert" className="text-caption text-destructive">
+                  <FieldError id="plan-currency-error" role="alert" className="text-caption">
                     {currencyError}
-                  </p>
+                  </FieldError>
                 )}
-              </div>
+              </Field>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="trial-days-input" className="text-caption font-medium text-foreground">
+                <Field>
+                  <FieldLabel htmlFor="trial-days-input" className="text-label">
                     Trial Days
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="trial-days-input"
                     type="number"
@@ -416,12 +433,12 @@ export function Plans({ userRole }: PlansProps) {
                     onChange={(e) => setTrialDays(Number(e.target.value))}
                     disabled={putPlan.isPending}
                   />
-                </div>
+                </Field>
 
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="sort-order-input" className="text-caption font-medium text-foreground">
+                <Field>
+                  <FieldLabel htmlFor="sort-order-input" className="text-label">
                     Sort Order
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="sort-order-input"
                     type="number"
@@ -429,14 +446,14 @@ export function Plans({ userRole }: PlansProps) {
                     onChange={(e) => setSortOrder(Number(e.target.value))}
                     disabled={putPlan.isPending}
                   />
-                </div>
+                </Field>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="min-seats-input" className="text-caption font-medium text-foreground">
+                <Field>
+                  <FieldLabel htmlFor="min-seats-input" className="text-label">
                     Min Seats (Optional)
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="min-seats-input"
                     type="number"
@@ -446,12 +463,12 @@ export function Plans({ userRole }: PlansProps) {
                     placeholder="Leave blank if N/A"
                     disabled={putPlan.isPending}
                   />
-                </div>
+                </Field>
 
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="seats-fixed-input" className="text-caption font-medium text-foreground">
+                <Field>
+                  <FieldLabel htmlFor="seats-fixed-input" className="text-label">
                     Fixed Seats (Optional)
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="seats-fixed-input"
                     type="number"
@@ -461,45 +478,54 @@ export function Plans({ userRole }: PlansProps) {
                     placeholder="Leave blank if variable"
                     disabled={putPlan.isPending}
                   />
-                </div>
+                </Field>
               </div>
 
-              <div className="flex flex-col gap-2 pt-1">
-                <label className="flex items-center gap-2 text-body">
-                  <input
-                    type="checkbox"
+              <div className="flex flex-col gap-2.5 pt-1">
+                <Field orientation="horizontal">
+                  <Checkbox
+                    id="plan-is-public"
                     checked={isPublic}
-                    onChange={(e) => setIsPublic(e.target.checked)}
+                    onCheckedChange={(checked) => setIsPublic(Boolean(checked))}
                     disabled={putPlan.isPending}
-                    className="size-4 rounded border-surface-border text-primary focus:ring-primary"
                   />
-                  <span>Public plan (visible in client pricing catalogue)</span>
-                </label>
+                  <FieldLabel htmlFor="plan-is-public" className="text-body font-normal">
+                    Public plan (visible in client pricing catalogue)
+                  </FieldLabel>
+                </Field>
 
-                <label className="flex items-center gap-2 text-body">
-                  <input
-                    type="checkbox"
+                <Field orientation="horizontal">
+                  <Checkbox
+                    id="plan-archived"
                     checked={archived}
-                    onChange={(e) => setArchived(e.target.checked)}
+                    onCheckedChange={(checked) => setArchived(Boolean(checked))}
                     disabled={putPlan.isPending}
-                    className="size-4 rounded border-surface-border text-primary focus:ring-primary"
                   />
-                  <span>Archived (existing subscribers retain, no new signups)</span>
-                </label>
+                  <FieldLabel htmlFor="plan-archived" className="text-body font-normal">
+                    Archived (existing subscribers retain, no new signups)
+                  </FieldLabel>
+                </Field>
               </div>
             </div>
 
             {editError && (
-              <div role="alert" className="text-caption text-destructive">
-                {editError}
-              </div>
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{editError}</AlertDescription>
+              </Alert>
             )}
 
             <DialogFooter>
-              <DialogClose render={<Button variant="outline" type="button" disabled={putPlan.isPending} />}>
+              <DialogClose
+                render={<Button variant="outline" type="button" disabled={putPlan.isPending} />}
+              >
                 Cancel
               </DialogClose>
-              <Button type="submit" disabled={!planName.trim() || putPlan.isPending}>
+              <Button
+                type="submit"
+                disabled={!planName.trim() || putPlan.isPending}
+                aria-busy={putPlan.isPending}
+              >
                 {putPlan.isPending && <Spinner className="size-3.5" />}
                 Save changes
               </Button>
@@ -520,19 +546,23 @@ export function Plans({ userRole }: PlansProps) {
             </DialogHeader>
 
             {deleteError && (
-              <div role="alert" className="text-caption text-destructive">
-                {deleteError}
-              </div>
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{deleteError}</AlertDescription>
+              </Alert>
             )}
 
             <DialogFooter>
-              <DialogClose render={<Button variant="outline" type="button" disabled={deletePlan.isPending} />}>
+              <DialogClose
+                render={<Button variant="outline" type="button" disabled={deletePlan.isPending} />}
+              >
                 Cancel
               </DialogClose>
               <Button
                 variant="destructive"
                 onClick={handleConfirmDelete}
                 disabled={deletePlan.isPending}
+                aria-busy={deletePlan.isPending}
               >
                 {deletePlan.isPending && <Spinner className="size-3.5" />}
                 Confirm delete

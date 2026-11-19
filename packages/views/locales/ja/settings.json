@@ -1640,7 +1640,8 @@
     "export_csv": "CSV をエクスポート",
     "export_failed": "監査イベントのエクスポートに失敗しました",
     "empty": "監査イベントはありません",
-    "load_failed": "監査イベントの読み込みに失敗しました"
+    "load_failed": "監査イベントの読み込みに失敗しました",
+    "clear_filters": "フィルターをクリア"
   },
   "legal": {
     "title": "必要な法的文書",

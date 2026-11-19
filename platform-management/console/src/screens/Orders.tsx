@@ -9,6 +9,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@multica/ui/components/ui/dialog";
+import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
 import {
   Table,
@@ -18,20 +19,22 @@ import {
   TableHead,
   TableCell,
 } from "@multica/ui/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { Copy, Check, ExternalLink } from "@multica/ui/icons";
-import { StatusBadge } from "../components/StatusBadge";
-import { LoadingState } from "../components/LoadingState";
-import { ErrorState } from "../components/ErrorState";
-import { EmptyState } from "../components/EmptyState";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
+import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { LoadingState } from "../components/LoadingState";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import { useOrders, useOrderEinvoices, useConfirmOrder, useCancelOrder, useMe } from "../api/hooks";
 import { PlatformApiError } from "../api/client";
 import {
   isSafeHttpsUrl,
   type Order,
+  type OrderKind,
   type OrderStatus,
   type OrderEinvoice,
-  type OrderEinvoiceState,
 } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { formatMinorAmount } from "../money";
@@ -48,20 +51,14 @@ const STATUS_TABS: { value: OrderStatus; label: string }[] = [
   { value: "refunded", label: "Refunded" },
 ];
 
-function InvoiceStateBadge({ state }: { state: OrderEinvoiceState }) {
-  switch (state) {
-    case "issued":
-      return <Badge variant="default">Issued</Badge>;
-    case "needs_info":
-      return <Badge variant="destructive">Needs info</Badge>;
-    case "failed":
-      return <Badge variant="destructive">Failed</Badge>;
-    case "pending":
-      return <Badge variant="outline">Pending</Badge>;
-    default:
-      return <Badge variant="outline">Unknown</Badge>;
-  }
-}
+const ORDER_KIND_LABELS: Record<OrderKind, string> = {
+  subscribe: "Subscribe",
+  change_plan: "Change plan",
+  add_seats: "Add seats",
+  renew: "Renew",
+  usage: "Usage",
+  unknown: "Unknown",
+};
 
 export function Orders({ userRole }: OrdersProps) {
   const { data: me } = useMe();
@@ -81,7 +78,7 @@ export function Orders({ userRole }: OrdersProps) {
   const [transferReference, setTransferReference] = useState("");
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
-  // Cancel dialog state
+  // Cancel / write-off dialog state
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -137,9 +134,7 @@ export function Orders({ userRole }: OrdersProps) {
       setConfirmDialogOpen(false);
       setSelectedOrderForConfirm(null);
     } catch (err: unknown) {
-      if (err instanceof PlatformApiError) {
-        setConfirmError(err.message);
-      } else if (err instanceof Error) {
+      if (err instanceof PlatformApiError || err instanceof Error) {
         setConfirmError(err.message);
       } else {
         setConfirmError("Failed to confirm order payment");
@@ -164,55 +159,44 @@ export function Orders({ userRole }: OrdersProps) {
       setCancelDialogOpen(false);
       setSelectedOrderForCancel(null);
     } catch (err: unknown) {
-      if (err instanceof PlatformApiError) {
-        setCancelError(err.message);
-      } else if (err instanceof Error) {
+      if (err instanceof PlatformApiError || err instanceof Error) {
         setCancelError(err.message);
       } else {
-        setCancelError("Failed to cancel order");
+        setCancelError(
+          selectedOrderForCancel.kind === "usage"
+            ? "Failed to write off order"
+            : "Failed to cancel order",
+        );
       }
     }
   };
-
 
   const sortedHistory = orderEinvoices
     ? [...orderEinvoices].sort((a, b) => b.revision - a.revision)
     : [];
 
+  const isWriteOffTarget = selectedOrderForCancel?.kind === "usage";
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-heading text-title-lg font-bold">Orders</h1>
-          <p className="text-body text-muted-foreground">
-            Review and confirm bank transfer payments, view recent orders across workspaces.
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Orders" />
 
-      <div className="flex border-b border-surface-border">
-        <div role="tablist" className="flex gap-2">
-          {STATUS_TABS.map((tab) => {
-            const isActive = activeTab === tab.value;
-            return (
-              <button
-                key={tab.value}
-                role="tab"
-                type="button"
-                aria-selected={isActive}
-                onClick={() => setActiveTab(tab.value)}
-                className={`border-b-2 px-4 py-2 text-body font-medium transition-colors ${
-                  isActive
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:border-surface-border hover:text-foreground"
-                }`}
-              >
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          if (value) setActiveTab(value as OrderStatus);
+        }}
+      >
+        <div className="border-b border-surface-border">
+          <TabsList variant="line" aria-label="Order status">
+            {STATUS_TABS.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>
                 {tab.label}
-              </button>
-            );
-          })}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </div>
+      </Tabs>
 
       {isLoading && <LoadingState message="Loading orders..." />}
 
@@ -232,11 +216,12 @@ export function Orders({ userRole }: OrdersProps) {
       )}
 
       {!isLoading && !isError && orders && orders.length > 0 && (
-        <div className="rounded-lg border border-surface-border bg-surface overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Workspace</TableHead>
+                <TableHead>Kind</TableHead>
                 <TableHead>Transfer Code</TableHead>
                 <TableHead>Plan & Seats</TableHead>
                 <TableHead>Total (incl. VAT)</TableHead>
@@ -251,6 +236,8 @@ export function Orders({ userRole }: OrdersProps) {
               {orders.map((order: Order) => {
                 const totalAmount = order.amount + order.vat_amount;
                 const isCopied = copiedId === order.transfer_code;
+                const isUsageOrder = order.kind === "usage";
+                const canWriteOffUsage = effectiveRole === "admin";
 
                 return (
                   <TableRow key={order.id}>
@@ -259,16 +246,25 @@ export function Orders({ userRole }: OrdersProps) {
                       <div className="font-mono text-caption text-muted-foreground">{order.workspace_id}</div>
                     </TableCell>
                     <TableCell>
+                      <Badge variant="outline">
+                        {ORDER_KIND_LABELS[order.kind] ?? order.kind}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-1.5 font-mono text-body font-semibold">
                         <span>{order.transfer_code}</span>
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon-xs"
                           onClick={() => handleCopyTransferCode(order.transfer_code)}
                           aria-label="Copy transfer code"
-                          className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                          className="text-muted-foreground hover:text-foreground"
                         >
-                          {isCopied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                          {isCopied ? (
+                            <Check className="size-3.5 text-success" aria-hidden="true" />
+                          ) : (
+                            <Copy className="size-3.5" aria-hidden="true" />
+                          )}
                         </Button>
                       </div>
                     </TableCell>
@@ -276,18 +272,24 @@ export function Orders({ userRole }: OrdersProps) {
                       <div className="text-body font-medium capitalize">
                         {order.plan_key} &bull; {order.interval}
                       </div>
-                      <div className="text-caption text-muted-foreground">{order.seats} seats</div>
+                      <div className="text-caption text-muted-foreground tabular-nums">
+                        {order.seats} seats
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">{formatMinorAmount(totalAmount, order.currency)}</div>
-                      <div className="text-caption text-muted-foreground">
+                      <div className="font-medium tabular-nums">
+                        {formatMinorAmount(totalAmount, order.currency)}
+                      </div>
+                      <div className="text-caption text-muted-foreground tabular-nums">
                         Net: {formatMinorAmount(order.amount, order.currency)} + VAT: {formatMinorAmount(order.vat_amount, order.currency)}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-body">{order.buyer.invoice_email || "-"}</div>
                       {order.buyer.tax_code && (
-                        <div className="text-caption text-muted-foreground">MST: {order.buyer.tax_code}</div>
+                        <div className="font-mono text-caption text-muted-foreground">
+                          MST: {order.buyer.tax_code}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell>
@@ -295,12 +297,12 @@ export function Orders({ userRole }: OrdersProps) {
                     </TableCell>
                     <TableCell>
                       {order.invoice_state ? (
-                        <InvoiceStateBadge state={order.invoice_state} />
+                        <StatusBadge status={order.invoice_state} />
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-caption text-muted-foreground">
+                    <TableCell className="text-caption text-muted-foreground tabular-nums">
                       {order.expires_at ? new Date(order.expires_at).toLocaleString() : "-"}
                     </TableCell>
                     <TableCell className="text-right">
@@ -313,13 +315,25 @@ export function Orders({ userRole }: OrdersProps) {
                             >
                               Confirm
                             </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleOpenCancelDialog(order)}
-                            >
-                              Cancel
-                            </Button>
+                            {isUsageOrder ? (
+                              canWriteOffUsage && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleOpenCancelDialog(order)}
+                                >
+                                  Write off
+                                </Button>
+                              )
+                            ) : (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleOpenCancelDialog(order)}
+                              >
+                                Cancel
+                              </Button>
+                            )}
                           </>
                         )}
                         <Button
@@ -350,10 +364,10 @@ export function Orders({ userRole }: OrdersProps) {
         error={confirmError}
         onConfirm={handleConfirmPayment}
       >
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="transfer-reference-input" className="text-caption font-medium text-foreground">
+        <Field>
+          <FieldLabel htmlFor="transfer-reference-input" className="text-label">
             Bank transfer reference (optional)
-          </label>
+          </FieldLabel>
           <Input
             id="transfer-reference-input"
             value={transferReference}
@@ -361,16 +375,20 @@ export function Orders({ userRole }: OrdersProps) {
             placeholder="e.g. FT26111600123"
             disabled={confirmOrder.isPending}
           />
-        </div>
+        </Field>
       </ConfirmReasonDialog>
 
-      {/* Cancel Reason Dialog */}
+      {/* Cancel / Write-off Reason Dialog */}
       <ConfirmReasonDialog
         open={cancelDialogOpen}
         onOpenChange={setCancelDialogOpen}
-        title="Cancel order"
-        description={`Are you sure you want to cancel pending order ${selectedOrderForCancel?.transfer_code || ""}? This action cannot be undone.`}
-        confirmLabel="Cancel order"
+        title={isWriteOffTarget ? "Write off usage order" : "Cancel order"}
+        description={
+          isWriteOffTarget
+            ? `Write off pending usage order ${selectedOrderForCancel?.transfer_code || ""}? Its lines will stay excluded from future invoices.`
+            : `Are you sure you want to cancel pending order ${selectedOrderForCancel?.transfer_code || ""}? This action cannot be undone.`
+        }
+        confirmLabel={isWriteOffTarget ? "Write off order" : "Cancel order"}
         confirmVariant="destructive"
         isPending={cancelOrder.isPending}
         error={cancelError}
@@ -404,7 +422,7 @@ export function Orders({ userRole }: OrdersProps) {
           )}
 
           {!historyLoading && !historyIsError && sortedHistory.length === 0 && (
-            <EmptyState title="No e-invoice for this order" />
+            <EmptyState title="No e-invoice for this order" isCompact />
           )}
 
           {!historyLoading && !historyIsError && sortedHistory.length > 0 && (
@@ -431,7 +449,7 @@ export function Orders({ userRole }: OrdersProps) {
                           rev {item.revision}
                         </TableCell>
                         <TableCell>
-                          <InvoiceStateBadge state={item.state} />
+                          <StatusBadge status={item.state} />
                         </TableCell>
                         <TableCell>
                           <div className="font-mono text-caption">
@@ -444,7 +462,7 @@ export function Orders({ userRole }: OrdersProps) {
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-caption text-primary underline underline-offset-3 hover:opacity-80"
                             >
-                              <ExternalLink className="size-3.5" />
+                              <ExternalLink className="size-3.5" aria-hidden="true" />
                               <span>View</span>
                             </a>
                           )}
@@ -459,7 +477,7 @@ export function Orders({ userRole }: OrdersProps) {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="tabular-nums text-body">
+                        <TableCell className="text-body tabular-nums">
                           {item.attempts}
                         </TableCell>
                         <TableCell className="font-mono text-caption text-muted-foreground">
@@ -469,7 +487,7 @@ export function Orders({ userRole }: OrdersProps) {
                             "—"
                           )}
                         </TableCell>
-                        <TableCell className="text-caption text-muted-foreground">
+                        <TableCell className="text-caption text-muted-foreground tabular-nums">
                           {item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}
                         </TableCell>
                       </TableRow>
