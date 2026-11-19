@@ -60,6 +60,7 @@ import type {
   TenantUsageRow,
   TenantUsageUnpaidOrder,
 } from "../api/schemas";
+import { formatMinorAmount } from "../money";
 
 interface TenantDetailProps {
   tenantId: string;
@@ -1030,7 +1031,7 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
                         {order.plan_key} &bull; {order.seats} seats ({order.interval})
                       </TableCell>
                       <TableCell className="font-medium">
-                        {(order.amount + order.vat_amount).toLocaleString()} {order.currency.toUpperCase()}
+                        {formatMinorAmount(order.amount + order.vat_amount, order.currency)}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={order.status} />

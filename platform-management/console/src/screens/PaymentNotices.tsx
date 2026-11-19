@@ -30,6 +30,7 @@ import {
 } from "../api/hooks";
 import type { Notice, NoticeCandidate } from "../api/schemas";
 import type { StaffRole } from "../components/types";
+import { formatMinorAmount } from "../money";
 
 interface PaymentNoticesProps {
   userRole?: StaffRole;
@@ -48,12 +49,6 @@ const REVIEW_REASON_LABELS: Record<string, string> = {
 function formatReviewReason(reason: string): string {
   if (!reason) return "-";
   return REVIEW_REASON_LABELS[reason] ?? reason;
-}
-
-function formatCurrency(amount: number, currency: string): string {
-  return currency
-    ? `${amount.toLocaleString()} ${currency.toUpperCase()}`
-    : amount.toLocaleString();
 }
 
 function formatDateTime(value: string): string {
@@ -198,7 +193,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                       {notice.transfer_code || "-"}
                     </TableCell>
                     <TableCell className="font-medium tabular-nums">
-                      {formatCurrency(notice.amount, notice.currency)}
+                      {formatMinorAmount(notice.amount, notice.currency)}
                     </TableCell>
                     <TableCell>{formatReviewReason(notice.review_reason)}</TableCell>
                     <TableCell className="text-right">
@@ -286,7 +281,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                   <div>
                     <span className="block text-caption text-muted-foreground">Amount</span>
                     <span className="mt-1 block font-medium tabular-nums">
-                      {formatCurrency(detail.amount, detail.currency)}
+                      {formatMinorAmount(detail.amount, detail.currency)}
                     </span>
                   </div>
                   <div>
@@ -344,7 +339,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                                 {candidate.transfer_code || "-"}
                               </TableCell>
                               <TableCell className="font-medium tabular-nums">
-                                {formatCurrency(candidate.amount + candidate.vat_amount, candidate.currency)}
+                                {formatMinorAmount(candidate.amount + candidate.vat_amount, candidate.currency)}
                               </TableCell>
                               <TableCell className="text-caption text-muted-foreground">
                                 {formatDateTime(candidate.created_at)}
@@ -388,7 +383,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
         title="Match payment to order"
         description={
           selectedCandidate
-            ? `Match this payment notice to order ${selectedCandidate.order_id} (${formatCurrency(selectedCandidate.amount + selectedCandidate.vat_amount, selectedCandidate.currency)}).`
+            ? `Match this payment notice to order ${selectedCandidate.order_id} (${formatMinorAmount(selectedCandidate.amount + selectedCandidate.vat_amount, selectedCandidate.currency)}).`
             : ""
         }
         confirmLabel="Match payment"

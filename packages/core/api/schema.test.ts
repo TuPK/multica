@@ -1308,7 +1308,7 @@ describe("ApiClient schema fallback", () => {
         amount_cents: 0,
         credits: 0,
         bonus_credits: 0,
-        currency: "usd",
+        currency: "",
         tier_id: "",
       });
     });

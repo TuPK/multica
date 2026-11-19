@@ -570,18 +570,13 @@ describe("BillingTab", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("formats Stripe minor units for decimal, zero-decimal, and special currencies", () => {
+  it("formats minor units with the digits of the shared currency table", () => {
     expect(formatStripeMinorAmount(1234, "usd", "en-US")).toBe("$12.34");
-    expect(formatStripeMinorAmount(1234, "jpy", "en-US")).toBe("¥1,234");
-    expect(
-      formatStripeMinorAmount(1234, "bhd", "en-US")?.replace(/\s/g, " "),
-    ).toBe("BHD 1.234");
-    expect(
-      formatStripeMinorAmount(500, "ugx", "en-US")?.replace(/\s/g, " "),
-    ).toBe("UGX 5");
+    expect(formatStripeMinorAmount(149000, "vnd", "en-US")).toContain("149,000");
     expect(
       formatStripeMinorAmount(1234, "huf", "en-US")?.replace(/\s/g, " "),
-    ).toBe("HUF 12.34");
+    ).toBe("12.34 HUF");
+    expect(formatStripeMinorAmount(1234, "", "en-US")).toBeNull();
   });
 
   it("shows a local price skeleton without blocking Checkout while prices load", () => {

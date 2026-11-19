@@ -52,13 +52,13 @@ import {
   CardTitle,
 } from "@multica/ui/components/ui/card";
 import { useLocale, useT } from "../i18n";
+import { formatMinorAmount } from "@multica/core/billing/money";
 import { useNavigation } from "../navigation";
 
 // 1 credit = 1_000_000 micro-credit; cents → dollars factor for the
 // Stripe-side display column. Documented at the top of the cloud
 // billing.md so we don't sprinkle magic numbers through the UI.
 const MICRO_PER_CREDIT = 1_000_000;
-const CENTS_PER_DOLLAR = 100;
 
 export function BillingTestPage() {
   const { t } = useT("billing");
@@ -373,7 +373,7 @@ function TierButton({
   const locale = useLocale();
   const display = tier.display_name || tier.id;
   const baseLine = t(($) => $.buy.tier_money_to_credits, {
-    money: formatMoney(tier.amount_cents, "usd", locale),
+    money: formatMoney(tier.amount_cents, tier.currency ?? "", locale),
     credits: tier.credits.toLocaleString(locale),
   });
   const bonusLine = tier.bonus_credits
@@ -712,16 +712,7 @@ function formatMoney(
   currency: string,
   locale: string,
 ): string {
-  // Intl is fine here — no currency conversion happening, just canonical
-  // display in the same locale as the surrounding translated sentence.
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currency.toUpperCase(),
-    }).format(amountCents / CENTS_PER_DOLLAR);
-  } catch {
-    return `${(amountCents / CENTS_PER_DOLLAR).toFixed(2)} ${currency.toUpperCase()}`;
-  }
+  return formatMinorAmount(amountCents, currency, locale);
 }
 
 // formatDate returns an ISO-ish localized string or the locale's "—"

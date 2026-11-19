@@ -34,6 +34,7 @@ import {
   type OrderEinvoiceState,
 } from "../api/schemas";
 import type { StaffRole } from "../components/types";
+import { formatMinorAmount } from "../money";
 
 interface OrdersProps {
   userRole?: StaffRole;
@@ -173,9 +174,6 @@ export function Orders({ userRole }: OrdersProps) {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string) => {
-    return `${amount.toLocaleString()} ${currency.toUpperCase()}`;
-  };
 
   const sortedHistory = orderEinvoices
     ? [...orderEinvoices].sort((a, b) => b.revision - a.revision)
@@ -281,9 +279,9 @@ export function Orders({ userRole }: OrdersProps) {
                       <div className="text-caption text-muted-foreground">{order.seats} seats</div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">{formatCurrency(totalAmount, order.currency)}</div>
+                      <div className="font-medium">{formatMinorAmount(totalAmount, order.currency)}</div>
                       <div className="text-caption text-muted-foreground">
-                        Net: {formatCurrency(order.amount, order.currency)} + VAT: {formatCurrency(order.vat_amount, order.currency)}
+                        Net: {formatMinorAmount(order.amount, order.currency)} + VAT: {formatMinorAmount(order.vat_amount, order.currency)}
                       </div>
                     </TableCell>
                     <TableCell>

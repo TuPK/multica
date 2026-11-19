@@ -29,6 +29,7 @@ import { usePlans, usePutPlan, useDeletePlan, useMe } from "../api/hooks";
 import { PlatformApiError } from "../api/client";
 import type { StaffRole } from "../components/types";
 import type { Plan } from "../api/schemas";
+import { formatMinorAmount } from "../money";
 
 const HISTORY_PLAN_KEYS = ["pro", "business", "unlimited", "enterprise", "free"] as const;
 
@@ -58,7 +59,7 @@ export function Plans({ userRole }: PlansProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [planName, setPlanName] = useState("");
-  const [currency, setCurrency] = useState("vnd");
+  const [currency, setCurrency] = useState("");
   const [trialDays, setTrialDays] = useState(0);
   const [minSeats, setMinSeats] = useState<number | null>(null);
   const [seatsFixed, setSeatsFixed] = useState<number | null>(null);
@@ -278,12 +279,12 @@ export function Plans({ userRole }: PlansProps) {
                     <TableCell>
                       <div className="text-body font-medium">
                         {plan.seat_price_month !== null
-                          ? `${plan.seat_price_month.toLocaleString()} ${plan.currency.toUpperCase()}/mo`
+                          ? `${formatMinorAmount(plan.seat_price_month, plan.currency)}/mo`
                           : "Free / Fixed"}
                       </div>
                       <div className="text-caption text-muted-foreground">
                         {plan.seat_price_year !== null
-                          ? `${plan.seat_price_year.toLocaleString()} ${plan.currency.toUpperCase()}/yr`
+                          ? `${formatMinorAmount(plan.seat_price_year, plan.currency)}/yr`
                           : "-"}
                       </div>
                     </TableCell>
@@ -390,7 +391,7 @@ export function Plans({ userRole }: PlansProps) {
                     setCurrency(e.target.value);
                     setCurrencyError(null);
                   }}
-                  placeholder="e.g. vnd, usd"
+                  placeholder="ISO 4217 code"
                   aria-invalid={Boolean(currencyError)}
                   aria-describedby={currencyError ? "plan-currency-error" : undefined}
                   disabled={putPlan.isPending}

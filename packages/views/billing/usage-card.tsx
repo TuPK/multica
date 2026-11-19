@@ -32,7 +32,7 @@ export function formatUsageMoney(
 ): string {
   return (
     formatStripeMinorAmount(amount, currency, locale) ??
-    `${new Intl.NumberFormat(locale).format(amount)} ${currency.toUpperCase()}`
+    new Intl.NumberFormat(locale).format(amount)
   );
 }
 

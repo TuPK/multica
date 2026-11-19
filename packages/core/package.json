@@ -151,6 +151,7 @@
     "./billing": "./billing/index.ts",
     "./security": "./security/index.ts",
     "./billing/recovery": "./billing/recovery.ts",
+    "./billing/money": "./billing/money.ts",
     "./billing/queries": "./billing/queries.ts",
     "./billing/mutations": "./billing/mutations.ts",
     "./github": "./github/index.ts",

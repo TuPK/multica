@@ -16,6 +16,7 @@ import { PlatformApiError } from "../api/client";
 import { useEinvoices, useMe, type EinvoiceFilterState } from "../api/hooks";
 import { isSafeHttpsUrl, type Einvoice, type EinvoiceState } from "../api/schemas";
 import type { StaffRole } from "../components/types";
+import { formatMinorAmount } from "../money";
 
 interface EinvoiceFailuresProps {
   userRole?: StaffRole;
@@ -28,12 +29,6 @@ const STATE_TABS: { value: EinvoiceFilterState; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "issued", label: "Issued" },
 ];
-
-function formatCurrency(amount: number, currency: string): string {
-  return currency
-    ? `${amount.toLocaleString()} ${currency.toUpperCase()}`
-    : amount.toLocaleString();
-}
 
 function formatDateTime(value: string): string {
   return value ? new Date(value).toLocaleString() : "-";
@@ -167,11 +162,11 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                     <TableCell className="text-body">{item.provider || "-"}</TableCell>
                     <TableCell>
                       <div className="font-medium tabular-nums">
-                        {formatCurrency(totalAmount, item.currency)}
+                        {formatMinorAmount(totalAmount, item.currency)}
                       </div>
                       <div className="text-caption text-muted-foreground tabular-nums">
-                        Net: {formatCurrency(item.amount, item.currency)} + VAT:{" "}
-                        {formatCurrency(item.vat_amount, item.currency)}
+                        Net: {formatMinorAmount(item.amount, item.currency)} + VAT:{" "}
+                        {formatMinorAmount(item.vat_amount, item.currency)}
                       </div>
                     </TableCell>
                     <TableCell className="tabular-nums text-body">

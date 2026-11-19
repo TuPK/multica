@@ -95,7 +95,7 @@ export function normalizeOrder(raw: any): BillingOrder {
     seats: raw.seats ?? 1,
     amount: raw.amount ?? 0,
     vatAmount: raw.vat_amount ?? raw.vatAmount ?? 0,
-    currency: raw.currency ?? "vnd",
+    currency: raw.currency ?? "",
     status: raw.status ?? "pending",
     provider: raw.provider ?? "manual",
     transferCode: raw.transfer_code ?? raw.transferCode ?? "",
@@ -326,16 +326,16 @@ export function BillingOrderPage({
 
   const subtotalFormatted =
     formatStripeMinorAmount(order.amount, order.currency, locale) ??
-    `${order.amount} ${order.currency.toUpperCase()}`;
+    String(order.amount);
   const vatFormatted =
     formatStripeMinorAmount(order.vatAmount, order.currency, locale) ??
-    `${order.vatAmount} ${order.currency.toUpperCase()}`;
+    String(order.vatAmount);
   const totalFormatted =
     formatStripeMinorAmount(
       order.amount + order.vatAmount,
       order.currency,
       locale,
-    ) ?? `${order.amount + order.vatAmount} ${order.currency.toUpperCase()}`;
+    ) ?? String(order.amount + order.vatAmount);
 
   const formattedExpiry = order.expiresAt
     ? new Intl.DateTimeFormat(locale, {

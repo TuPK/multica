@@ -3703,7 +3703,7 @@ export const BillingTopupSchema = z.object({
   id: z.string(),
   owner_id: z.string(),
   amount_cents: z.number(),
-  currency: z.string().default("usd"),
+  currency: z.string().default(""),
   credits: z.number(),
   bonus_credits: z.number().default(0),
   status: z.string(),
@@ -3735,6 +3735,7 @@ export const BillingPriceTierSchema = z.object({
   // Cloud doc says display_name falls back to id; tolerate empty too.
   display_name: z.string().default(""),
   amount_cents: z.number(),
+  currency: z.string().default(""),
   credits: z.number(),
   bonus_credits: z.number().optional(),
   bonus_expires_in: z.string().optional(),
@@ -3762,7 +3763,7 @@ export const BillingCheckoutSessionStatusSchema = z.object({
   amount_cents: z.number(),
   credits: z.number(),
   bonus_credits: z.number().default(0),
-  currency: z.string().default("usd"),
+  currency: z.string().default(""),
   tier_id: z.string().default(""),
 }).loose();
 
@@ -3772,7 +3773,7 @@ export const EMPTY_BILLING_CHECKOUT_SESSION_STATUS: BillingCheckoutSessionStatus
   amount_cents: 0,
   credits: 0,
   bonus_credits: 0,
-  currency: "usd",
+  currency: "",
   tier_id: "",
 };
 

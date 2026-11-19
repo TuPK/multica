@@ -137,6 +137,8 @@ export interface BillingPriceTier {
   id: string;
   display_name: string;
   amount_cents: number;
+  /** Currency of `amount_cents`; empty when the server sent none. */
+  currency?: string;
   credits: number;
   // Both bonus fields are optional: when omitted, no bonus is granted.
   // When `bonus_expires_in` is omitted but `bonus_credits` is present,
@@ -230,7 +232,7 @@ export interface WorkspaceUsageMeter {
   /** `tasks_run`, `storage_bytes` or `members`; open, so a new meter reads as unknown. */
   key: string;
   quantity: number;
-  /** VND for `per` units. */
+  /** Minor units of the plan currency for `per` units. */
   unitPrice: number;
   per: number;
   /** Business discount in percent, 0 to 100. */

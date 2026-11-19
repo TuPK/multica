@@ -571,6 +571,18 @@ export const OverviewSchema = z.object({
     })),
   signups_7d: count,
   pending_orders: z.number().optional(),
+  // Pending orders per currency code; amounts are minor units of that currency.
+  pending_by_currency: z
+    .record(
+      z.string(),
+      z.object({
+        orders: z.number().int().nonnegative(),
+        amount: z.number().int().nonnegative(),
+        vat_amount: z.number().int().nonnegative(),
+      }),
+    )
+    .catch({})
+    .optional(),
   by_plan: z.record(z.string(), z.number()).optional(),
   // Totals of the newest usage row of each workspace that has one.
   usage_day: z.string().nullable().optional(),

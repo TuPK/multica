@@ -36,6 +36,7 @@ import type {
   PriceChangeState,
   PriceSnapshot,
 } from "../api/schemas";
+import { formatMinorAmount } from "../money";
 
 const LARGE_CHANGE_CONFIRM_PCT = 50;
 
@@ -92,8 +93,7 @@ function computeMaxChangePct(
 
 function formatSeatValue(val: unknown, currency: string): string | null {
   if (typeof val !== "number") return null;
-  const code = currency ? ` ${currency.toUpperCase()}` : "";
-  return `${val.toLocaleString()}${code}`;
+  return formatMinorAmount(val, currency);
 }
 
 function formatPriceSnapshot(snapshot: PriceSnapshot, currency: string): string {
@@ -389,12 +389,12 @@ export function PriceSchedule({
               <p className="text-body text-muted-foreground">
                 Current prices — Month:{" "}
                 {plan?.seat_price_month !== null && plan?.seat_price_month !== undefined
-                  ? `${plan.seat_price_month.toLocaleString()} ${currency.toUpperCase()}`
+                  ? formatMinorAmount(plan.seat_price_month, currency)
                   : "-"}
                 {" · "}
                 Year:{" "}
                 {plan?.seat_price_year !== null && plan?.seat_price_year !== undefined
-                  ? `${plan.seat_price_year.toLocaleString()} ${currency.toUpperCase()}`
+                  ? formatMinorAmount(plan.seat_price_year, currency)
                   : "-"}
               </p>
             </div>

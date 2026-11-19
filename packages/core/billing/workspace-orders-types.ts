@@ -1,6 +1,6 @@
 // Plans and orders of the platform's billing (platform-management spec 5.8),
-// served by `GET /api/workspaces/{id}/plans` and `/orders`. Amounts are whole
-// units of the currency; VND has no decimals.
+// served by `GET /api/workspaces/{id}/plans` and `/orders`. Amounts are integer
+// minor units of the order currency.
 
 import type { WorkspaceBillingModel } from "../types/billing";
 
