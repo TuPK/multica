@@ -63,3 +63,42 @@ func TestRunReadsDatabaseURLFromEnvironment(t *testing.T) {
 		t.Fatalf("run error = %v; want the environment DSN refused by the guard", err)
 	}
 }
+
+func TestPlatformBackfillTenantsSubcommandParsesArguments(t *testing.T) {
+	cases := []struct {
+		name    string
+		args    []string
+		want    options
+		wantErr string
+	}{
+		{"no command is the subscription backfill", []string{"--database-url", testDB}, options{command: commandSubscriptions, databaseURL: testDB}, ""},
+		{"tenants", []string{"tenants"}, options{command: commandTenants}, ""},
+		{"tenants with flags after it", []string{"tenants", "--database-url", testDB, "--allow-production"}, options{command: commandTenants, databaseURL: testDB, allowProduction: true}, ""},
+		{"subscriptions by name", []string{"subscriptions", "--allow-production"}, options{command: commandSubscriptions, allowProduction: true}, ""},
+		{"unknown command", []string{"orders"}, options{}, "unknown command"},
+		{"unknown flag", []string{"tenants", "--nope"}, options{}, "flag provided but not defined"},
+		{"stray argument", []string{"tenants", "extra"}, options{}, "unexpected argument"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseArgs(tc.args)
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("parseArgs(%v) error = %v, want one containing %q", tc.args, err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil || got != tc.want {
+				t.Fatalf("parseArgs(%v) = %+v, %v; want %+v", tc.args, got, err, tc.want)
+			}
+		})
+	}
+}
+
+// The tenants command goes through the same guard as the subscription backfill.
+func TestRunTenantsRefusesProductionNameWithoutFlag(t *testing.T) {
+	err := run([]string{"tenants", "--database-url", "postgres://multica:pw@localhost:1/platform"}, func(string) string { return "" })
+	if err == nil || !strings.Contains(err.Error(), "--allow-production") {
+		t.Fatalf("run error = %v; want a refusal that names --allow-production", err)
+	}
+}

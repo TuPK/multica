@@ -61,46 +61,54 @@ type Console struct {
 
 type handlerFunc func(*Console, http.ResponseWriter, *http.Request)
 
+// routeSpec is one path with the matrix action it needs (spec R6 section 3.6)
+// and a handler for each method it answers.
 type routeSpec struct {
 	pattern string
-	roles   []staff.Role
-	// methodRoles overrides roles for the methods it names.
-	methodRoles map[string][]staff.Role
-	methods     map[string]handlerFunc
+	action  string
+	// methodActions overrides action for the methods it names.
+	methodActions map[string]string
+	methods       map[string]handlerFunc
 }
 
-func (rt routeSpec) rolesFor(method string) []staff.Role {
-	if r, ok := rt.methodRoles[method]; ok {
-		return r
+// actionFor returns the matrix action of the route for method.
+func (rt routeSpec) actionFor(method string) string {
+	if a, ok := rt.methodActions[method]; ok {
+		return a
 	}
-	return rt.roles
+	return rt.action
+}
+
+// rolesFor returns the staff roles that may call the route with method: the
+// roles the matrix gives access to every object.
+func (rt routeSpec) rolesFor(method string) []staff.Role {
+	return staff.RolesWith(rt.actionFor(method))
 }
 
 func routeTable() []routeSpec {
 	const base = "/api/platform"
-	admin := []staff.Role{staff.RoleAdmin}
 	return []routeSpec{
-		{base + "/plans", admin, nil, map[string]handlerFunc{
+		{base + "/plans", staff.ActionPlansManage, nil, map[string]handlerFunc{
 			http.MethodGet:  (*Console).listPlans,
 			http.MethodPost: (*Console).postPlan,
 		}},
-		{base + "/plans/{key}", admin, nil, map[string]handlerFunc{
+		{base + "/plans/{key}", staff.ActionPlansManage, nil, map[string]handlerFunc{
 			http.MethodPut:    (*Console).putPlan,
 			http.MethodDelete: (*Console).deletePlan,
 		}},
-		{base + "/tenants/{id}/subscription", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, nil, map[string]handlerFunc{
+		{base + "/workspaces/{id}/subscription", staff.ActionSubscriptionsManage, nil, map[string]handlerFunc{
 			http.MethodPut: (*Console).putSubscription,
 		}},
-		{base + "/tenants/{id}/billing-profile", nil,
-			map[string][]staff.Role{http.MethodPut: {staff.RoleBilling, staff.RoleAdmin}},
+		{base + "/workspaces/{id}/billing-profile", staff.ActionWorkspacesRead,
+			map[string]string{http.MethodPut: staff.ActionSubscriptionsManage},
 			map[string]handlerFunc{
 				http.MethodGet: (*Console).getProfile,
 				http.MethodPut: (*Console).putProfile,
 			}},
-		{base + "/tenants/{id}/billing-profile/verify", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, nil, map[string]handlerFunc{
+		{base + "/workspaces/{id}/billing-profile/verify", staff.ActionSubscriptionsManage, nil, map[string]handlerFunc{
 			http.MethodPost: (*Console).verifyProfile,
 		}},
-		{base + "/tenants/{id}/billing-profile/unverify", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, nil, map[string]handlerFunc{
+		{base + "/workspaces/{id}/billing-profile/unverify", staff.ActionSubscriptionsManage, nil, map[string]handlerFunc{
 			http.MethodPost: (*Console).unverifyProfile,
 		}},
 	}
@@ -127,6 +135,12 @@ func NewConsole(d ConsoleDeps) *Console {
 	}
 	c := &Console{ConsoleDeps: d, mux: http.NewServeMux()}
 	for _, rt := range routeTable() {
+		for method := range rt.methods {
+			if len(rt.rolesFor(method)) == 0 {
+				// An empty list would admit every staff role.
+				panic("subscription: " + method + " " + rt.pattern + " lists no staff role")
+			}
+		}
 		c.mux.Handle(rt.pattern, c.methodSwitch(rt))
 	}
 	return c

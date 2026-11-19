@@ -18,6 +18,7 @@ import (
 type Identity struct {
 	UserID   string
 	Role     staff.Role
+	TenantID string
 	AuthTime time.Time
 }
 
@@ -79,7 +80,7 @@ func (h *Handler) authenticate(r *http.Request, roles []staff.Role) (Identity, s
 	}
 
 	ctx := r.Context()
-	role, found, err := h.Directory.ActiveStaff(ctx, claims.UserID)
+	role, tenantID, found, err := h.Directory.ActiveStaff(ctx, claims.UserID)
 	if err != nil {
 		h.Log.Error("platform staff check: staff lookup failed", "error", err)
 		return Identity{}, "staff lookup failed"
@@ -103,7 +104,7 @@ func (h *Handler) authenticate(r *http.Request, roles []staff.Role) (Identity, s
 	if !rec.SessionsValidAfter.IsZero() && claims.AuthUnix < rec.SessionsValidAfter.Unix() {
 		return Identity{}, "sessions revoked"
 	}
-	return Identity{UserID: claims.UserID, Role: role, AuthTime: claims.AuthTime()}, ""
+	return Identity{UserID: claims.UserID, Role: role, TenantID: tenantID, AuthTime: claims.AuthTime()}, ""
 }
 
 func inAny(prefixes []netip.Prefix, ip netip.Addr) bool {

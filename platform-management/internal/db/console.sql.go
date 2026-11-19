@@ -91,77 +91,6 @@ func (q *Queries) GetPlatformAccountForUpdate(ctx context.Context, userID pgtype
 	return i, err
 }
 
-const getTenant = `-- name: GetTenant :one
-SELECT
-    w.id,
-    w.name,
-    w.slug,
-    COALESCE(pw.status, 'active')::text AS status,
-    pw.reason AS state_reason,
-    pw.changed_by AS state_changed_by,
-    pw.changed_at AS state_changed_at,
-    pw.deletion_scheduled_at,
-    (SELECT count(*) FROM member m WHERE m.workspace_id = w.id)::bigint AS member_count,
-    w.created_at,
-    COALESCE(
-        (SELECT max(e.created_at) FROM audit_event e WHERE e.workspace_id = w.id),
-        w.created_at
-    )::timestamptz AS last_activity_at,
-    (SELECT count(*) FROM platform_note n WHERE n.workspace_id = w.id)::bigint AS notes_count,
-    ow.user_id AS owner_id,
-    owner_user.email AS owner_email
-FROM workspace w
-LEFT JOIN platform_workspace pw ON pw.workspace_id = w.id
-LEFT JOIN LATERAL (
-    SELECT m.user_id
-    FROM member m
-    WHERE m.workspace_id = w.id AND m.role = 'owner'
-    ORDER BY m.created_at, m.id
-    LIMIT 1
-) ow ON true
-LEFT JOIN "user" owner_user ON owner_user.id = ow.user_id
-WHERE w.id = $1
-`
-
-type GetTenantRow struct {
-	ID                  pgtype.UUID        `json:"id"`
-	Name                string             `json:"name"`
-	Slug                string             `json:"slug"`
-	Status              string             `json:"status"`
-	StateReason         pgtype.Text        `json:"state_reason"`
-	StateChangedBy      pgtype.UUID        `json:"state_changed_by"`
-	StateChangedAt      pgtype.Timestamptz `json:"state_changed_at"`
-	DeletionScheduledAt pgtype.Timestamptz `json:"deletion_scheduled_at"`
-	MemberCount         int64              `json:"member_count"`
-	CreatedAt           pgtype.Timestamptz `json:"created_at"`
-	LastActivityAt      pgtype.Timestamptz `json:"last_activity_at"`
-	NotesCount          int64              `json:"notes_count"`
-	OwnerID             pgtype.UUID        `json:"owner_id"`
-	OwnerEmail          pgtype.Text        `json:"owner_email"`
-}
-
-func (q *Queries) GetTenant(ctx context.Context, id pgtype.UUID) (GetTenantRow, error) {
-	row := q.db.QueryRow(ctx, getTenant, id)
-	var i GetTenantRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Slug,
-		&i.Status,
-		&i.StateReason,
-		&i.StateChangedBy,
-		&i.StateChangedAt,
-		&i.DeletionScheduledAt,
-		&i.MemberCount,
-		&i.CreatedAt,
-		&i.LastActivityAt,
-		&i.NotesCount,
-		&i.OwnerID,
-		&i.OwnerEmail,
-	)
-	return i, err
-}
-
 const getUser = `-- name: GetUser :one
 SELECT
     u.id,
@@ -207,6 +136,87 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (GetUserRow, erro
 	return i, err
 }
 
+const getWorkspace = `-- name: GetWorkspace :one
+
+SELECT
+    w.id,
+    w.name,
+    w.slug,
+    COALESCE(pw.status, 'active')::text AS status,
+    pw.reason AS state_reason,
+    pw.changed_by AS state_changed_by,
+    pw.changed_at AS state_changed_at,
+    pw.deletion_scheduled_at,
+    (SELECT count(*) FROM member m WHERE m.workspace_id = w.id)::bigint AS member_count,
+    w.created_at,
+    COALESCE(
+        (SELECT max(e.created_at) FROM audit_event e WHERE e.workspace_id = w.id),
+        w.created_at
+    )::timestamptz AS last_activity_at,
+    (SELECT count(*) FROM platform_note n WHERE n.workspace_id = w.id)::bigint AS notes_count,
+    ow.user_id AS owner_id,
+    owner_user.email AS owner_email
+FROM workspace w
+LEFT JOIN platform_workspace pw ON pw.workspace_id = w.id
+LEFT JOIN LATERAL (
+    SELECT m.user_id
+    FROM member m
+    WHERE m.workspace_id = w.id AND m.role = 'owner'
+    ORDER BY m.created_at, m.id
+    LIMIT 1
+) ow ON true
+LEFT JOIN "user" owner_user ON owner_user.id = ow.user_id
+WHERE w.id = $1
+`
+
+type GetWorkspaceRow struct {
+	ID                  pgtype.UUID        `json:"id"`
+	Name                string             `json:"name"`
+	Slug                string             `json:"slug"`
+	Status              string             `json:"status"`
+	StateReason         pgtype.Text        `json:"state_reason"`
+	StateChangedBy      pgtype.UUID        `json:"state_changed_by"`
+	StateChangedAt      pgtype.Timestamptz `json:"state_changed_at"`
+	DeletionScheduledAt pgtype.Timestamptz `json:"deletion_scheduled_at"`
+	MemberCount         int64              `json:"member_count"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	LastActivityAt      pgtype.Timestamptz `json:"last_activity_at"`
+	NotesCount          int64              `json:"notes_count"`
+	OwnerID             pgtype.UUID        `json:"owner_id"`
+	OwnerEmail          pgtype.Text        `json:"owner_email"`
+}
+
+// The staff console's reads and writes. They touch only the tables below:
+// the Multica account and workspace tables, the audit log, and the platform's
+// own tables. A scan test (internal/console) fails when this file names any
+// other table.
+//
+// Searches take a pattern the caller has already escaped for LIKE and wrapped
+// in percent signs. Lists are newest first, keyset-paged on (created_at, id);
+// callers ask for one row more than they return to learn whether another page
+// exists.
+func (q *Queries) GetWorkspace(ctx context.Context, id pgtype.UUID) (GetWorkspaceRow, error) {
+	row := q.db.QueryRow(ctx, getWorkspace, id)
+	var i GetWorkspaceRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Status,
+		&i.StateReason,
+		&i.StateChangedBy,
+		&i.StateChangedAt,
+		&i.DeletionScheduledAt,
+		&i.MemberCount,
+		&i.CreatedAt,
+		&i.LastActivityAt,
+		&i.NotesCount,
+		&i.OwnerID,
+		&i.OwnerEmail,
+	)
+	return i, err
+}
+
 const getWorkspaceName = `-- name: GetWorkspaceName :one
 SELECT name FROM workspace
 WHERE id = $1
@@ -220,7 +230,7 @@ func (q *Queries) GetWorkspaceName(ctx context.Context, id pgtype.UUID) (string,
 }
 
 const listActiveStaffWithEmail = `-- name: ListActiveStaffWithEmail :many
-SELECT s.user_id, u.email, s.role, s.created_by, s.created_at
+SELECT s.user_id, u.email, s.role, s.tenant_id, s.created_by, s.created_at
 FROM platform_staff s
 JOIN "user" u ON u.id = s.user_id
 WHERE s.revoked_at IS NULL
@@ -231,6 +241,7 @@ type ListActiveStaffWithEmailRow struct {
 	UserID    pgtype.UUID        `json:"user_id"`
 	Email     string             `json:"email"`
 	Role      string             `json:"role"`
+	TenantID  pgtype.UUID        `json:"tenant_id"`
 	CreatedBy pgtype.UUID        `json:"created_by"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
@@ -248,6 +259,7 @@ func (q *Queries) ListActiveStaffWithEmail(ctx context.Context) ([]ListActiveSta
 			&i.UserID,
 			&i.Email,
 			&i.Role,
+			&i.TenantID,
 			&i.CreatedBy,
 			&i.CreatedAt,
 		); err != nil {
@@ -262,20 +274,27 @@ func (q *Queries) ListActiveStaffWithEmail(ctx context.Context) ([]ListActiveSta
 }
 
 const listAllAuditEvents = `-- name: ListAllAuditEvents :many
-SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at FROM audit_event
-WHERE ($1::text IS NULL OR action = $1::text)
-  AND ($2::text IS NULL OR actor_id = $2::text)
-  AND ($3::timestamptz IS NULL OR created_at >= $3::timestamptz)
-  AND ($4::timestamptz IS NULL OR created_at < $4::timestamptz)
+SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at, tenant_id FROM audit_event
+WHERE (
+        NOT $1::boolean
+        OR tenant_id = $2::uuid
+        OR workspace_id IN (SELECT tw.workspace_id FROM tenant_workspace tw WHERE tw.tenant_id = $2::uuid)
+    )
+  AND ($3::text IS NULL OR action = $3::text)
+  AND ($4::text IS NULL OR actor_id = $4::text)
+  AND ($5::timestamptz IS NULL OR created_at >= $5::timestamptz)
+  AND ($6::timestamptz IS NULL OR created_at < $6::timestamptz)
   AND (
-    $5::timestamptz IS NULL
-    OR (created_at, id) < ($5::timestamptz, $6::uuid)
+    $7::timestamptz IS NULL
+    OR (created_at, id) < ($7::timestamptz, $8::uuid)
   )
 ORDER BY created_at DESC, id DESC
-LIMIT $7
+LIMIT $9
 `
 
 type ListAllAuditEventsParams struct {
+	Scoped          bool               `json:"scoped"`
+	ScopeTenant     pgtype.UUID        `json:"scope_tenant"`
 	Action          pgtype.Text        `json:"action"`
 	ActorID         pgtype.Text        `json:"actor_id"`
 	CreatedFrom     pgtype.Timestamptz `json:"created_from"`
@@ -285,9 +304,13 @@ type ListAllAuditEventsParams struct {
 	RowLimit        int32              `json:"row_limit"`
 }
 
-// Every workspace's rows and the account-level rows.
+// Every workspace's rows and the account-level rows. A scoped caller (an admin)
+// reads the rows of its tenant: those that carry its tenant_id, and those of its
+// workspaces (spec R6 section 3.5, D84).
 func (q *Queries) ListAllAuditEvents(ctx context.Context, arg ListAllAuditEventsParams) ([]AuditEvent, error) {
 	rows, err := q.db.Query(ctx, listAllAuditEvents,
+		arg.Scoped,
+		arg.ScopeTenant,
 		arg.Action,
 		arg.ActorID,
 		arg.CreatedFrom,
@@ -318,6 +341,7 @@ func (q *Queries) ListAllAuditEvents(ctx context.Context, arg ListAllAuditEvents
 			&i.UserAgent,
 			&i.RequestID,
 			&i.CreatedAt,
+			&i.TenantID,
 		); err != nil {
 			return nil, err
 		}
@@ -392,7 +416,7 @@ func (q *Queries) ListUserMemberships(ctx context.Context, userID pgtype.UUID) (
 }
 
 const listWorkspaceAuditEvents = `-- name: ListWorkspaceAuditEvents :many
-SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at FROM audit_event
+SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at, tenant_id FROM audit_event
 WHERE workspace_id = $1
   AND ($2::text IS NULL OR action = $2::text)
   AND ($3::text IS NULL OR actor_id = $3::text)
@@ -451,6 +475,7 @@ func (q *Queries) ListWorkspaceAuditEvents(ctx context.Context, arg ListWorkspac
 			&i.UserAgent,
 			&i.RequestID,
 			&i.CreatedAt,
+			&i.TenantID,
 		); err != nil {
 			return nil, err
 		}
@@ -462,17 +487,17 @@ func (q *Queries) ListWorkspaceAuditEvents(ctx context.Context, arg ListWorkspac
 	return items, nil
 }
 
-const lockActiveAdmins = `-- name: LockActiveAdmins :many
+const lockActiveSystemAdmins = `-- name: LockActiveSystemAdmins :many
 SELECT user_id FROM platform_staff
-WHERE role = 'admin' AND revoked_at IS NULL
+WHERE role = 'system_admin' AND revoked_at IS NULL
 ORDER BY user_id
 FOR UPDATE
 `
 
-// Locks every active administrator row, so two removals cannot each see the
-// other administrator still in place.
-func (q *Queries) LockActiveAdmins(ctx context.Context) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, lockActiveAdmins)
+// Locks every active system administrator row, so two removals or demotions
+// cannot each see the other administrator still in place.
+func (q *Queries) LockActiveSystemAdmins(ctx context.Context) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, lockActiveSystemAdmins)
 	if err != nil {
 		return nil, err
 	}
@@ -484,101 +509,6 @@ func (q *Queries) LockActiveAdmins(ctx context.Context) ([]pgtype.UUID, error) {
 			return nil, err
 		}
 		items = append(items, user_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const searchTenants = `-- name: SearchTenants :many
-
-SELECT
-    w.id,
-    w.name,
-    w.slug,
-    COALESCE(pw.status, 'active')::text AS status,
-    (SELECT count(*) FROM member m WHERE m.workspace_id = w.id)::bigint AS member_count,
-    w.created_at,
-    COALESCE(
-        (SELECT max(e.created_at) FROM audit_event e WHERE e.workspace_id = w.id),
-        w.created_at
-    )::timestamptz AS last_activity_at
-FROM workspace w
-LEFT JOIN platform_workspace pw ON pw.workspace_id = w.id
-WHERE (
-        $1::text IS NULL
-        OR w.name ILIKE $1::text
-        OR w.slug ILIKE $1::text
-        OR EXISTS (
-            SELECT 1
-            FROM member o
-            JOIN "user" ou ON ou.id = o.user_id
-            WHERE o.workspace_id = w.id
-              AND o.role = 'owner'
-              AND ou.email ILIKE $1::text
-        )
-    )
-  AND (
-        $2::timestamptz IS NULL
-        OR (w.created_at, w.id) < ($2::timestamptz, $3::uuid)
-    )
-ORDER BY w.created_at DESC, w.id DESC
-LIMIT $4
-`
-
-type SearchTenantsParams struct {
-	Pattern         pgtype.Text        `json:"pattern"`
-	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
-	CursorID        pgtype.UUID        `json:"cursor_id"`
-	RowLimit        int32              `json:"row_limit"`
-}
-
-type SearchTenantsRow struct {
-	ID             pgtype.UUID        `json:"id"`
-	Name           string             `json:"name"`
-	Slug           string             `json:"slug"`
-	Status         string             `json:"status"`
-	MemberCount    int64              `json:"member_count"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	LastActivityAt pgtype.Timestamptz `json:"last_activity_at"`
-}
-
-// The staff console's reads and writes. They touch only the tables below:
-// the Multica account and workspace tables, the audit log, and the platform's
-// own tables. A scan test (internal/console) fails when this file names any
-// other table.
-//
-// Searches take a pattern the caller has already escaped for LIKE and wrapped
-// in percent signs. Lists are newest first, keyset-paged on (created_at, id);
-// callers ask for one row more than they return to learn whether another page
-// exists.
-func (q *Queries) SearchTenants(ctx context.Context, arg SearchTenantsParams) ([]SearchTenantsRow, error) {
-	rows, err := q.db.Query(ctx, searchTenants,
-		arg.Pattern,
-		arg.CursorCreatedAt,
-		arg.CursorID,
-		arg.RowLimit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SearchTenantsRow{}
-	for rows.Next() {
-		var i SearchTenantsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Slug,
-			&i.Status,
-			&i.MemberCount,
-			&i.CreatedAt,
-			&i.LastActivityAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -602,15 +532,26 @@ WHERE (
         OR u.name ILIKE $1::text
     )
   AND (
-        $2::timestamptz IS NULL
-        OR (u.created_at, u.id) < ($2::timestamptz, $3::uuid)
+        NOT $2::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM member sm
+            JOIN tenant_workspace stw ON stw.workspace_id = sm.workspace_id
+            WHERE sm.user_id = u.id AND stw.tenant_id = $3::uuid
+        )
+    )
+  AND (
+        $4::timestamptz IS NULL
+        OR (u.created_at, u.id) < ($4::timestamptz, $5::uuid)
     )
 ORDER BY u.created_at DESC, u.id DESC
-LIMIT $4
+LIMIT $6
 `
 
 type SearchUsersParams struct {
 	Pattern         pgtype.Text        `json:"pattern"`
+	Scoped          bool               `json:"scoped"`
+	ScopeTenant     pgtype.UUID        `json:"scope_tenant"`
 	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
 	CursorID        pgtype.UUID        `json:"cursor_id"`
 	RowLimit        int32              `json:"row_limit"`
@@ -628,6 +569,8 @@ type SearchUsersRow struct {
 func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]SearchUsersRow, error) {
 	rows, err := q.db.Query(ctx, searchUsers,
 		arg.Pattern,
+		arg.Scoped,
+		arg.ScopeTenant,
 		arg.CursorCreatedAt,
 		arg.CursorID,
 		arg.RowLimit,

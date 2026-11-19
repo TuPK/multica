@@ -48,7 +48,7 @@ test.describe("API refusals the screens cannot send", () => {
   });
 
   test("flow 273: a tenant subscription with more seats than the limit is refused with invalid_subscription", async () => {
-    const res = await admin.put(`${CONSOLE_BASE}/api/platform/tenants/${randomUUID()}/subscription`, {
+    const res = await admin.put(`${CONSOLE_BASE}/api/platform/workspaces/${randomUUID()}/subscription`, {
       headers: ORIGIN,
       data: { plan_key: "pro", seats: 2_000_000, interval: "month", reason: "e2e seats limit" },
     });
@@ -219,7 +219,7 @@ test.describe("plan and subscription refusals on a copy of the free plan", () =>
         WS_OVERRIDE,
         `e2e-ov-${WS_OVERRIDE.slice(0, 8)}`,
       ]);
-      const res = await admin.put(`${CONSOLE_BASE}/api/platform/tenants/${WS_OVERRIDE}/subscription`, {
+      const res = await admin.put(`${CONSOLE_BASE}/api/platform/workspaces/${WS_OVERRIDE}/subscription`, {
         headers: ORIGIN,
         data: { plan_key: PLAN, seats: 1, interval: "month", reason: "e2e archived plan" },
       });

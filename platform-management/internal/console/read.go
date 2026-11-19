@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/multica-ai/multica/platform-management/internal/staff"
 	"github.com/multica-ai/multica/platform-management/internal/usage"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
 )
@@ -38,7 +39,7 @@ func nextCursor[T any](rows []T, limit int, key func(T) (time.Time, string)) ([]
 	return rows, &c
 }
 
-type tenantJSON struct {
+type workspaceJSON struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
 	Slug           string `json:"slug"`
@@ -50,8 +51,8 @@ type tenantJSON struct {
 	usage.Snapshot
 }
 
-func toTenantJSON(t TenantRow) tenantJSON {
-	return tenantJSON{
+func toWorkspaceJSON(t WorkspaceRow) workspaceJSON {
+	return workspaceJSON{
 		ID: t.ID, Name: t.Name, Slug: t.Slug, Status: t.Status, MemberCount: t.MemberCount,
 		CreatedAt: ts(t.CreatedAt), LastActivityAt: ts(t.LastActivityAt), Snapshot: t.Usage,
 	}
@@ -65,7 +66,7 @@ type stateJSON struct {
 	DeletionScheduledAt *string `json:"deletion_scheduled_at"`
 }
 
-func toStateJSON(d TenantDetail) stateJSON {
+func toStateJSON(d WorkspaceDetail) stateJSON {
 	return stateJSON{
 		Status:              d.Status,
 		Reason:              d.StateReason,
@@ -80,8 +81,8 @@ type ownerJSON struct {
 	Email string `json:"email"`
 }
 
-type tenantDetailJSON struct {
-	tenantJSON
+type workspaceDetailJSON struct {
+	workspaceJSON
 	State      stateJSON `json:"state"`
 	NotesCount int64     `json:"notes_count"`
 	// GroupCount is the number of account groups the workspace has (spec 7b.2).
@@ -93,7 +94,54 @@ type tenantDetailJSON struct {
 	UsageCurrent usage.Current `json:"usage_current"`
 }
 
+type tenantJSON struct {
+	ID             string           `json:"id"`
+	Name           string           `json:"name"`
+	Status         string           `json:"status"`
+	WorkspaceCount int64            `json:"workspace_count"`
+	MaxWorkspaces  *int64           `json:"max_workspaces"`
+	BestPlanKey    string           `json:"best_plan_key"`
+	StatusSummary  map[string]int64 `json:"status_summary"`
+	CreatedAt      string           `json:"created_at"`
+	LastActivityAt string           `json:"last_activity_at"`
+}
+
+func toTenantJSON(t TenantRow) tenantJSON {
+	summary := t.StatusSummary
+	if summary == nil {
+		summary = map[string]int64{}
+	}
+	return tenantJSON{
+		ID: t.ID, Name: t.Name, Status: t.Status, WorkspaceCount: t.WorkspaceCount, MaxWorkspaces: t.MaxWorkspaces,
+		BestPlanKey: t.BestPlanKey, StatusSummary: summary, CreatedAt: ts(t.CreatedAt), LastActivityAt: ts(t.LastActivityAt),
+	}
+}
+
+// tenantWorkspaceJSON is the summary of one workspace of a tenant. Counts and
+// names only (isolation rule I6).
+type tenantWorkspaceJSON struct {
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Slug        string     `json:"slug"`
+	Status      string     `json:"status"`
+	PlanKey     string     `json:"plan_key"`
+	MemberCount int64      `json:"member_count"`
+	Owner       *ownerJSON `json:"owner"`
+	CreatedAt   string     `json:"created_at"`
+	usage.Snapshot
+}
+
+type tenantDetailJSON struct {
+	tenantJSON
+	CreatedBy  *string               `json:"created_by"`
+	Workspaces []tenantWorkspaceJSON `json:"workspaces"`
+}
+
 func (h *Handler) listTenants(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionTenantsList)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
 	p, perr := parseListParams(q)
 	if perr != nil {
@@ -105,7 +153,7 @@ func (h *Handler) listTenants(w http.ResponseWriter, r *http.Request) {
 		writeError(w, perr)
 		return
 	}
-	rows, err := h.Reader.SearchTenants(r.Context(), TenantSearch{Pattern: pattern, Cursor: p.cursor, Limit: p.limit})
+	rows, err := h.Reader.SearchTenants(r.Context(), TenantSearch{Pattern: pattern, Cursor: p.cursor, Limit: p.limit, Scope: scope})
 	if err != nil {
 		h.fail(w, r, "search tenants", err)
 		return
@@ -119,12 +167,55 @@ func (h *Handler) listTenants(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getTenant(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionTenantsRead)
+	if !ok {
+		return
+	}
 	id, perr := pathID(r, "id")
 	if perr != nil {
 		writeError(w, perr)
 		return
 	}
-	d, found, err := h.Reader.GetTenant(r.Context(), id)
+	d, found, err := h.Reader.GetTenant(r.Context(), id, scope)
+	if err != nil {
+		h.fail(w, r, "get tenant", err)
+		return
+	}
+	if !found {
+		writeError(w, notFound())
+		return
+	}
+	out := tenantDetailJSON{tenantJSON: toTenantJSON(d.TenantRow), CreatedBy: strPtr(d.CreatedBy), Workspaces: make([]tenantWorkspaceJSON, len(d.Workspaces))}
+	for i, ws := range d.Workspaces {
+		out.Workspaces[i] = tenantWorkspaceJSON{
+			ID: ws.ID, Name: ws.Name, Slug: ws.Slug, Status: ws.Status, PlanKey: ws.PlanKey, MemberCount: ws.MemberCount,
+			CreatedAt: ts(ws.CreatedAt), Snapshot: ws.Usage,
+		}
+		if ws.OwnerID != "" {
+			out.Workspaces[i].Owner = &ownerJSON{ID: ws.OwnerID, Email: ws.OwnerEmail}
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (h *Handler) getWorkspace(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionWorkspacesRead)
+	if !ok {
+		return
+	}
+	id, perr := pathID(r, "id")
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	if visible, err := h.workspaceVisible(r.Context(), scope, id); err != nil {
+		h.fail(w, r, "check workspace scope", err)
+		return
+	} else if !visible {
+		writeError(w, notFound())
+		return
+	}
+	d, found, err := h.Reader.GetWorkspace(r.Context(), id)
 	if err != nil {
 		h.fail(w, r, "get tenant", err)
 		return
@@ -138,8 +229,8 @@ func (h *Handler) getTenant(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "recent orders", err)
 		return
 	}
-	out := tenantDetailJSON{
-		tenantJSON: toTenantJSON(d.TenantRow), State: toStateJSON(d), NotesCount: d.NotesCount,
+	out := workspaceDetailJSON{
+		workspaceJSON: toWorkspaceJSON(d.WorkspaceRow), State: toStateJSON(d), NotesCount: d.NotesCount,
 		GroupCount: d.GroupCount, RecentOrders: toOrdersJSON(orders), UsageCurrent: d.Current,
 	}
 	if d.OwnerID != "" {
@@ -148,23 +239,34 @@ func (h *Handler) getTenant(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// getTenantUsage is the usage tab of a workspace: this month's rows, the days
+// getWorkspaceUsage is the usage tab of a workspace: this month's rows, the days
 // with no usage numbers, and the unpaid usage invoices. It carries counts and
 // money only (isolation rule I6).
-func (h *Handler) getTenantUsage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getWorkspaceUsage(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionWorkspacesRead)
+	if !ok {
+		return
+	}
 	id, perr := pathID(r, "id")
 	if perr != nil {
 		writeError(w, perr)
 		return
 	}
-	if _, found, err := h.Reader.GetTenant(r.Context(), id); err != nil {
+	if visible, err := h.workspaceVisible(r.Context(), scope, id); err != nil {
+		h.fail(w, r, "check workspace scope", err)
+		return
+	} else if !visible {
+		writeError(w, notFound())
+		return
+	}
+	if _, found, err := h.Reader.GetWorkspace(r.Context(), id); err != nil {
 		h.fail(w, r, "get tenant", err)
 		return
 	} else if !found {
 		writeError(w, notFound())
 		return
 	}
-	m, err := h.Reader.TenantUsage(r.Context(), id, h.Now())
+	m, err := h.Reader.WorkspaceUsage(r.Context(), id, h.Now())
 	if err != nil {
 		h.fail(w, r, "tenant usage", err)
 		return
@@ -208,6 +310,10 @@ type userDetailJSON struct {
 }
 
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionUsersRead)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
 	p, perr := parseListParams(q)
 	if perr != nil {
@@ -219,7 +325,7 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 		writeError(w, perr)
 		return
 	}
-	rows, err := h.Reader.SearchUsers(r.Context(), UserSearch{Pattern: pattern, Cursor: p.cursor, Limit: p.limit})
+	rows, err := h.Reader.SearchUsers(r.Context(), UserSearch{Pattern: pattern, Cursor: p.cursor, Limit: p.limit, Scope: scope})
 	if err != nil {
 		h.fail(w, r, "search users", err)
 		return
@@ -233,10 +339,23 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionUsersRead)
+	if !ok {
+		return
+	}
 	id, perr := pathID(r, "id")
 	if perr != nil {
 		writeError(w, perr)
 		return
+	}
+	if !scope.All {
+		if visible, err := h.Reader.UserInScope(r.Context(), id, scope); err != nil {
+			h.fail(w, r, "check user scope", err)
+			return
+		} else if !visible {
+			writeError(w, notFound())
+			return
+		}
 	}
 	d, found, err := h.Reader.GetUser(r.Context(), id)
 	if err != nil {
@@ -280,9 +399,20 @@ func toNoteJSON(n Note) noteJSON {
 }
 
 func (h *Handler) listNotes(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionWorkspacesRead)
+	if !ok {
+		return
+	}
 	id, perr := pathID(r, "id")
 	if perr != nil {
 		writeError(w, perr)
+		return
+	}
+	if visible, err := h.workspaceVisible(r.Context(), scope, id); err != nil {
+		h.fail(w, r, "check workspace scope", err)
+		return
+	} else if !visible {
+		writeError(w, notFound())
 		return
 	}
 	p, perr := parseListParams(r.URL.Query())
@@ -307,11 +437,15 @@ type staffJSON struct {
 	UserID    string  `json:"user_id"`
 	Email     string  `json:"email"`
 	Role      string  `json:"role"`
+	TenantID  *string `json:"tenant_id"`
 	CreatedBy *string `json:"created_by"`
 	CreatedAt string  `json:"created_at"`
 }
 
 func (h *Handler) listStaff(w http.ResponseWriter, r *http.Request) {
+	if !h.requireStaffManager(w, r) {
+		return
+	}
 	rows, err := h.Reader.ListStaff(r.Context())
 	if err != nil {
 		h.fail(w, r, "list staff", err)
@@ -319,7 +453,7 @@ func (h *Handler) listStaff(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]staffJSON, len(rows))
 	for i, s := range rows {
-		out[i] = staffJSON{UserID: s.UserID, Email: s.Email, Role: s.Role, CreatedBy: strPtr(s.CreatedBy), CreatedAt: ts(s.CreatedAt)}
+		out[i] = staffJSON{UserID: s.UserID, Email: s.Email, Role: s.Role, TenantID: strPtr(s.TenantID), CreatedBy: strPtr(s.CreatedBy), CreatedAt: ts(s.CreatedAt)}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"staff": out})
 }
@@ -357,14 +491,14 @@ func toAuditEventJSON(e AuditRow) auditEventJSON {
 
 // auditPage serves an audit list for workspaceID, or for every row when it is
 // empty.
-func (h *Handler) auditPage(w http.ResponseWriter, r *http.Request, workspaceID string) {
+func (h *Handler) auditPage(w http.ResponseWriter, r *http.Request, workspaceID string, scope Scope) {
 	p, perr := parseAuditParams(r.URL.Query())
 	if perr != nil {
 		writeError(w, perr)
 		return
 	}
 	rows, err := h.Reader.ListAuditEvents(r.Context(), AuditQuery{
-		WorkspaceID: workspaceID, Action: p.action, ActorID: p.actorID, From: p.from, To: p.to,
+		Scope: scope, WorkspaceID: workspaceID, Action: p.action, ActorID: p.actorID, From: p.from, To: p.to,
 		Cursor: p.cursor, Limit: p.limit,
 	})
 	if err != nil {
@@ -379,19 +513,34 @@ func (h *Handler) auditPage(w http.ResponseWriter, r *http.Request, workspaceID 
 	writeJSON(w, http.StatusOK, map[string]any{"events": events, "next_cursor": next})
 }
 
-// listTenantAuditEvents does not check that the workspace exists: the rows of a
+// listWorkspaceAuditEvents does not check that the workspace exists: the rows of a
 // deleted workspace stay readable.
-func (h *Handler) listTenantAuditEvents(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) listWorkspaceAuditEvents(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionAuditRead)
+	if !ok {
+		return
+	}
 	id, perr := pathID(r, "id")
 	if perr != nil {
 		writeError(w, perr)
 		return
 	}
-	h.auditPage(w, r, id)
+	if visible, err := h.workspaceVisible(r.Context(), scope, id); err != nil {
+		h.fail(w, r, "check workspace scope", err)
+		return
+	} else if !visible {
+		writeError(w, notFound())
+		return
+	}
+	h.auditPage(w, r, id, scope)
 }
 
 func (h *Handler) listAuditEvents(w http.ResponseWriter, r *http.Request) {
-	h.auditPage(w, r, "")
+	scope, ok := h.scopeFor(w, r, staff.ActionAuditRead)
+	if !ok {
+		return
+	}
+	h.auditPage(w, r, "", scope)
 }
 
 const signupWindow = 7 * 24 * time.Hour
@@ -424,7 +573,8 @@ func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 		pendingByCurrency[currency] = map[string]int64{"orders": t.Orders, "amount": t.Amount, "vat_amount": t.VATAmount}
 	}
 	body := map[string]any{
-		"workspaces_by_status": byStatus, "signups_7d": o.Signups, "by_plan": byPlan, "pending_orders": o.PendingOrders,
+		"workspaces_without_tenant": o.WorkspacesWithoutTenant,
+		"workspaces_by_status":      byStatus, "signups_7d": o.Signups, "by_plan": byPlan, "pending_orders": o.PendingOrders,
 		"pending_by_currency": pendingByCurrency,
 	}
 	for k, v := range o.Usage.Map() {

@@ -18,22 +18,28 @@ WHERE user_id = $1;
 
 -- name: InsertStaff :execrows
 -- Does nothing when the user already has an active row.
-INSERT INTO platform_staff (user_id, role, created_by)
-VALUES ($1, $2, $3)
+INSERT INTO platform_staff (user_id, role, created_by, tenant_id)
+VALUES ($1, $2, $3, $4)
 ON CONFLICT (user_id) WHERE revoked_at IS NULL DO NOTHING;
 
 -- name: ReactivateStaff :execrows
 -- Re-activates the user's most recently created revoked row with the given
--- role. It changes nothing when the user has no revoked row, and fails on the
+-- role and tenant (null unless the role is admin). It changes nothing when the user has no revoked row, and fails on the
 -- unique index when the user already has an active row.
 UPDATE platform_staff
-SET revoked_at = NULL, role = $2
+SET revoked_at = NULL, role = $2, tenant_id = $3
 WHERE ctid = (
     SELECT s.ctid FROM platform_staff s
     WHERE s.user_id = $1 AND s.revoked_at IS NOT NULL
     ORDER BY s.created_at DESC
     LIMIT 1
 );
+
+-- name: UpdateStaffRoleAndTenant :execrows
+-- Changes the role and tenant of the user's active row.
+UPDATE platform_staff
+SET role = $2, tenant_id = $3
+WHERE user_id = $1 AND revoked_at IS NULL;
 
 -- name: RevokeStaff :execrows
 UPDATE platform_staff

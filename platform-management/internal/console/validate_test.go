@@ -94,7 +94,7 @@ func TestParseAccountStatus(t *testing.T) {
 }
 
 func TestParseStaffRole(t *testing.T) {
-	for _, in := range []string{"support", "billing", "admin"} {
+	for _, in := range []string{"support", "billing", "admin", "system_admin"} {
 		got, err := parseStaffRole(in)
 		if err != nil || string(got) != in {
 			t.Errorf("parseStaffRole(%q) = %q, %v", in, got, err)
@@ -255,58 +255,91 @@ func TestAuditActionFilterIsTheAuditCatalog(t *testing.T) {
 	}
 }
 
-// The role matrix of contract section 2, from the route table.
+// The role matrix of contract section 2 and spec R6 section 3.6, from the route
+// table. A route lists the roles with access All and the roles with access Own,
+// because every handler applies the Scope of the request.
 func TestRouteRoles(t *testing.T) {
-	anyStaff := []staff.Role(nil)
-	supportAdmin := []staff.Role{staff.RoleSupport, staff.RoleAdmin}
-	admin := []staff.Role{staff.RoleAdmin}
-	billingAdmin := []staff.Role{staff.RoleBilling, staff.RoleAdmin}
+	sa, ta, support, billing := staff.RoleSystemAdmin, staff.RoleAdmin, staff.RoleSupport, staff.RoleBilling
+	scopedAll := []staff.Role{sa, ta, support, billing}
+	systemOnly := []staff.Role{sa}
+	supportAdmin := []staff.Role{sa, support}
+	scopedLock := []staff.Role{sa, ta, support}
+	systemTenant := []staff.Role{sa, ta}
+	billingAdmin := []staff.Role{sa, billing}
+	scopedOrders := []staff.Role{sa, ta, billing}
 	want := map[string][]staff.Role{
-		"/api/platform/tenants":                      anyStaff,
-		"/api/platform/tenants/{id}":                 anyStaff,
-		"/api/platform/tenants/{id}/status":          supportAdmin,
-		"/api/platform/tenants/{id}/usage":           anyStaff,
-		"/api/platform/tenants/{id}/audit-events":    anyStaff,
-		"/api/platform/tenants/{id}/notes":           anyStaff,
-		"/api/platform/users":                        anyStaff,
-		"/api/platform/users/{id}":                   anyStaff,
-		"/api/platform/users/{id}/status":            supportAdmin,
-		"/api/platform/users/{id}/revoke-sessions":   supportAdmin,
-		"/api/platform/users/{id}/mfa-reset":         supportAdmin,
-		"/api/platform/staff":                        admin,
-		"/api/platform/staff/{user_id}":              admin,
-		"/api/platform/audit-events":                 anyStaff,
-		"/api/platform/overview":                     anyStaff,
-		"/api/platform/orders":                       billingAdmin,
-		"/api/platform/orders/{id}/einvoices":        billingAdmin,
-		"/api/platform/orders/{id}/confirm":          billingAdmin,
-		"/api/platform/orders/{id}/cancel":           billingAdmin,
-		"/api/platform/payment-notices":              billingAdmin,
-		"/api/platform/payment-notices/{id}":         billingAdmin,
-		"/api/platform/payment-notices/{id}/resolve": billingAdmin,
-		"/api/platform/payment-notices/{id}/dismiss": billingAdmin,
-		"/api/platform/einvoices":                    billingAdmin,
-		"/api/platform/einvoices/{orderId}/retry":    billingAdmin,
-		"/api/platform/accounts":                     admin,
-		"/api/platform/accounts/{id}":                admin,
-		"/api/platform/accounts/{id}/cancel":         admin,
-		"/api/platform/accounts/{id}/resend-welcome": admin,
+		"/api/platform/tenants":                         scopedAll,
+		"/api/platform/tenants/{id}":                    scopedAll,
+		"/api/platform/workspaces/{id}":                 scopedAll,
+		"/api/platform/workspaces/{id}/status":          scopedLock,
+		"/api/platform/workspaces/{id}/usage":           scopedAll,
+		"/api/platform/workspaces/{id}/audit-events":    scopedAll,
+		"/api/platform/workspaces/{id}/notes":           scopedAll,
+		"/api/platform/users":                           scopedAll,
+		"/api/platform/users/{id}":                      scopedAll,
+		"/api/platform/users/{id}/status":               supportAdmin,
+		"/api/platform/users/{id}/revoke-sessions":      supportAdmin,
+		"/api/platform/users/{id}/mfa-reset":            supportAdmin,
+		"/api/platform/staff":                           systemOnly,
+		"/api/platform/staff/{user_id}":                 systemOnly,
+		"/api/platform/audit-events":                    scopedAll,
+		"/api/platform/overview":                        {sa, support, billing},
+		"/api/platform/orders":                          scopedOrders,
+		"/api/platform/orders/{id}/einvoices":           scopedOrders,
+		"/api/platform/orders/{id}/confirm":             billingAdmin,
+		"/api/platform/orders/{id}/cancel":              billingAdmin,
+		"/api/platform/payment-notices":                 billingAdmin,
+		"/api/platform/payment-notices/{id}":            billingAdmin,
+		"/api/platform/payment-notices/{id}/resolve":    billingAdmin,
+		"/api/platform/payment-notices/{id}/dismiss":    billingAdmin,
+		"/api/platform/einvoices":                       billingAdmin,
+		"/api/platform/einvoices/{orderId}/retry":       billingAdmin,
+		"/api/platform/workspaces/{id}/members":         systemTenant,
+		"/api/platform/workspaces/{id}/member-requests": systemTenant,
+		"/api/platform/member-requests/{id}":            systemTenant,
+		"/api/platform/member-requests/{id}/cancel":     systemTenant,
+		"/api/platform/accounts":                        systemOnly,
+		"/api/platform/accounts/{id}":                   systemOnly,
+		"/api/platform/accounts/{id}/cancel":            systemOnly,
+		"/api/platform/accounts/{id}/resend-welcome":    systemOnly,
 	}
-	got := map[string][]staff.Role{}
-	for _, r := range routeTable() {
-		got[r.pattern] = r.roles
-	}
-	if len(got) != len(want) {
-		t.Fatalf("route table has %d patterns, want %d", len(got), len(want))
-	}
-	for pattern, roles := range want {
-		g, ok := got[pattern]
+	seen := map[string]bool{}
+	for _, rt := range routeTable() {
+		roles, ok := want[rt.pattern]
 		if !ok {
-			t.Errorf("%s is not routed", pattern)
+			t.Errorf("%s is routed and not in the matrix", rt.pattern)
 			continue
 		}
-		if strings.Join(roleNames(g), ",") != strings.Join(roleNames(roles), ",") {
-			t.Errorf("%s roles = %v, want %v", pattern, g, roles)
+		seen[rt.pattern] = true
+		for method := range rt.methods {
+			if g := rt.rolesFor(method); strings.Join(roleNames(g), ",") != strings.Join(roleNames(roles), ",") {
+				t.Errorf("%s %s roles = %v, want %v", method, rt.pattern, g, roles)
+			}
+		}
+	}
+	for pattern := range want {
+		if !seen[pattern] {
+			t.Errorf("%s is not routed", pattern)
+		}
+	}
+}
+
+// Every route of the table, for every method it answers, names an action of the
+// matrix, and no route is open to every staff role by an empty role list.
+func TestEveryRouteInEveryRouteTableHasAMatrixRow(t *testing.T) {
+	known := map[string]bool{}
+	for _, a := range staff.Actions() {
+		known[a] = true
+	}
+	for _, rt := range routeTable() {
+		for method := range rt.methods {
+			a := rt.actionFor(method)
+			if !known[a] {
+				t.Errorf("%s %s has action %q, which is not a row of the matrix", method, rt.pattern, a)
+			}
+			if len(rt.rolesFor(method)) == 0 {
+				t.Errorf("%s %s lists no role: the middleware would admit every staff role", method, rt.pattern)
+			}
 		}
 	}
 }

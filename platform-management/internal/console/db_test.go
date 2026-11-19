@@ -64,14 +64,18 @@ func (c *memCache) Del(_ context.Context, k string) error {
 }
 
 type dbFixture struct {
-	t     *testing.T
-	pool  *pgxpool.Pool
-	h     http.Handler
-	cache *memCache
-	pub   *fakeNotifier
+	t       *testing.T
+	pool    *pgxpool.Pool
+	h       http.Handler
+	console *Handler
+	auth    *platformauth.Handler
+	deps    Deps
+	cache   *memCache
+	pub     *fakeNotifier
 
-	userIDs []string
-	wsIDs   []string
+	userIDs   []string
+	wsIDs     []string
+	tenantIDs []string
 }
 
 func newDBFixture(t *testing.T) *dbFixture {
@@ -97,7 +101,8 @@ func newDBFixture(t *testing.T) *dbFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.h = New(Deps{
+	f.auth = auth
+	f.deps = Deps{
 		RequireStaff:  auth.RequirePlatformStaff,
 		RequireOrigin: auth.RequireOrigin,
 		Reader:        NewPgxReader(pool),
@@ -108,7 +113,9 @@ func newDBFixture(t *testing.T) *dbFixture {
 		Payments:      payments,
 		Emails:        store,
 		Log:           quiet,
-	})
+	}
+	f.console = New(f.deps)
+	f.h = f.console
 	t.Cleanup(f.cleanup)
 	return f
 }
@@ -116,11 +123,17 @@ func newDBFixture(t *testing.T) *dbFixture {
 func (f *dbFixture) cleanup() {
 	ctx := context.Background()
 	for _, ws := range f.wsIDs {
+		f.pool.Exec(ctx, `DELETE FROM tenant_workspace WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM audit_event WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM platform_note WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM platform_workspace WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM member WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM workspace WHERE id = $1`, ws)
+	}
+	for _, tn := range f.tenantIDs {
+		f.pool.Exec(ctx, `DELETE FROM audit_event WHERE tenant_id = $1`, tn)
+		f.pool.Exec(ctx, `DELETE FROM tenant_workspace WHERE tenant_id = $1`, tn)
+		f.pool.Exec(ctx, `DELETE FROM tenant WHERE id = $1`, tn)
 	}
 	for _, u := range f.userIDs {
 		f.pool.Exec(ctx, `DELETE FROM audit_event WHERE actor_id = $1 OR target_id = $1`, u)
@@ -161,8 +174,20 @@ func (f *dbFixture) staffUser(role staff.Role) (id, email string) {
 	return id, email
 }
 
-// workspace creates a workspace owned by ownerID with one more member.
+// workspace creates a workspace owned by ownerID with one more member, in a
+// tenant of its own keyed by the workspace id, as the server creates it.
 func (f *dbFixture) workspace(ownerID, memberID string) string {
+	f.t.Helper()
+	id := f.workspaceIn("", ownerID, memberID)
+	f.exec(`INSERT INTO tenant (id, name, created_by) VALUES ($1, 'Console Test tenant', $2)`, id, ownerID)
+	f.exec(`INSERT INTO tenant_workspace (workspace_id, tenant_id) VALUES ($1, $1)`, id)
+	f.tenantIDs = append(f.tenantIDs, id)
+	return id
+}
+
+// workspaceIn creates a workspace owned by ownerID with one more member, linked
+// to tenant when it is not empty.
+func (f *dbFixture) workspaceIn(tenant, ownerID, memberID string) string {
 	f.t.Helper()
 	var id string
 	suffix := randomHex(f.t)
@@ -172,6 +197,9 @@ func (f *dbFixture) workspace(ownerID, memberID string) string {
 		f.t.Fatalf("create workspace: %v", err)
 	}
 	f.wsIDs = append(f.wsIDs, id)
+	if tenant != "" {
+		f.exec(`INSERT INTO tenant_workspace (workspace_id, tenant_id) VALUES ($1, $2)`, id, tenant)
+	}
 	for user, role := range map[string]string{ownerID: "owner", memberID: "member"} {
 		if _, err := f.pool.Exec(context.Background(),
 			`INSERT INTO member (workspace_id, user_id, role) VALUES ($1, $2, $3)`, id, user, role); err != nil {
@@ -182,6 +210,15 @@ func (f *dbFixture) workspace(ownerID, memberID string) string {
 }
 
 func (f *dbFixture) do(user, method, path, body string) *httptest.ResponseRecorder {
+	f.t.Helper()
+	rec := httptest.NewRecorder()
+	f.h.ServeHTTP(rec, f.request(user, method, path, body))
+	return rec
+}
+
+// request builds a signed-in request for user. Write methods carry the
+// console's Origin.
+func (f *dbFixture) request(user, method, path, body string) *http.Request {
 	f.t.Helper()
 	var rd io.Reader
 	if body != "" {
@@ -196,9 +233,14 @@ func (f *dbFixture) do(user, method, path, body string) *httptest.ResponseRecord
 	if method != http.MethodGet {
 		req.Header.Set("Origin", origin)
 	}
-	rec := httptest.NewRecorder()
-	f.h.ServeHTTP(rec, req)
-	return rec
+	return req
+}
+
+func (f *dbFixture) exec(sql string, args ...any) {
+	f.t.Helper()
+	if _, err := f.pool.Exec(context.Background(), sql, args...); err != nil {
+		f.t.Fatalf("%s: %v", sql, err)
+	}
 }
 
 func (f *dbFixture) count(query string, args ...any) int {
@@ -237,7 +279,7 @@ func (f *dbFixture) staffRows(action, actorID string) []auditRow {
 // rows about their workspace.
 func TestDBEachWriteAuditsOnceWithTheStaffActor(t *testing.T) {
 	f := newDBFixture(t)
-	adminID, adminEmail := f.staffUser(staff.RoleAdmin)
+	adminID, adminEmail := f.staffUser(staff.RoleSystemAdmin)
 	ownerID, _ := f.user("owner")
 	memberID, _ := f.user("member")
 	hireID, _ := f.user("hire")
@@ -250,8 +292,8 @@ func TestDBEachWriteAuditsOnceWithTheStaffActor(t *testing.T) {
 			t.Fatalf("status = %d, want %d; %s", rec.Code, status, rec.Body.String())
 		}
 	}
-	wantOK(f.do(adminID, "POST", "/api/platform/tenants/"+ws+"/status", `{"status":"read_only","reason":"unpaid"}`), 200)
-	wantOK(f.do(adminID, "POST", "/api/platform/tenants/"+ws+"/notes", `{"body":"owner asked for a call"}`), 201)
+	wantOK(f.do(adminID, "POST", "/api/platform/workspaces/"+ws+"/status", `{"status":"read_only","reason":"unpaid"}`), 200)
+	wantOK(f.do(adminID, "POST", "/api/platform/workspaces/"+ws+"/notes", `{"body":"owner asked for a call"}`), 201)
 	wantOK(f.do(adminID, "POST", "/api/platform/users/"+memberID+"/status", `{"status":"suspended","reason":"abuse"}`), 200)
 	wantOK(f.do(adminID, "POST", "/api/platform/users/"+memberID+"/revoke-sessions", `{"reason":"abuse"}`), 200)
 	wantOK(f.do(adminID, "POST", "/api/platform/staff", `{"email":"`+hireEmail+`","role":"support"}`), 201)
@@ -330,7 +372,7 @@ func (f *dbFixture) emailOf(id string) string {
 
 func TestDBRefusedChangesWriteNothing(t *testing.T) {
 	f := newDBFixture(t)
-	adminID, _ := f.staffUser(staff.RoleAdmin)
+	adminID, _ := f.staffUser(staff.RoleSystemAdmin)
 	ownerID, _ := f.user("owner")
 	memberID, _ := f.user("member")
 	ws := f.workspace(ownerID, memberID)
@@ -338,9 +380,9 @@ func TestDBRefusedChangesWriteNothing(t *testing.T) {
 	for _, c := range []struct {
 		path, body, code string
 	}{
-		{"/tenants/" + ws + "/status", `{"status":"suspended"}`, "reason_required"},
-		{"/tenants/" + ws + "/status", `{"status":"suspended","reason":"   "}`, "reason_required"},
-		{"/tenants/" + ws + "/status", `{"status":"gone","reason":"r"}`, "invalid_status"},
+		{"/workspaces/" + ws + "/status", `{"status":"suspended"}`, "reason_required"},
+		{"/workspaces/" + ws + "/status", `{"status":"suspended","reason":"   "}`, "reason_required"},
+		{"/workspaces/" + ws + "/status", `{"status":"gone","reason":"r"}`, "invalid_status"},
 		{"/users/" + memberID + "/status", `{"status":"suspended"}`, "reason_required"},
 		{"/users/" + memberID + "/status", `{"status":"deleted","reason":"r"}`, "invalid_status"},
 		{"/users/" + memberID + "/revoke-sessions", `{}`, "reason_required"},
@@ -384,14 +426,14 @@ func TestDBRolesAreEnforced(t *testing.T) {
 		}
 	}
 	// billing cannot change a workspace state: 404, as the middleware answers.
-	if rec := f.do(billingID, "POST", "/api/platform/tenants/"+ws+"/status", `{"status":"suspended","reason":"r"}`); rec.Code != 404 {
+	if rec := f.do(billingID, "POST", "/api/platform/workspaces/"+ws+"/status", `{"status":"suspended","reason":"r"}`); rec.Code != 404 {
 		t.Errorf("billing status change = %d, want 404", rec.Code)
 	}
 	if n := f.count(`SELECT count(*) FROM platform_workspace WHERE workspace_id = $1`, ws); n != 0 {
 		t.Errorf("a refused change wrote %d rows", n)
 	}
 	// support can read and write notes.
-	if rec := f.do(supportID, "GET", "/api/platform/tenants/"+ws, ""); rec.Code != 200 {
+	if rec := f.do(supportID, "GET", "/api/platform/workspaces/"+ws, ""); rec.Code != 200 {
 		t.Errorf("support tenant read = %d", rec.Code)
 	}
 }
@@ -400,14 +442,14 @@ func TestDBRolesAreEnforced(t *testing.T) {
 func TestDBLastAdminRefusesTheLastRemoval(t *testing.T) {
 	f := newDBFixture(t)
 	ctx := context.Background()
-	adminID, _ := f.staffUser(staff.RoleAdmin)
-	secondID, _ := f.staffUser(staff.RoleAdmin)
+	adminID, _ := f.staffUser(staff.RoleSystemAdmin)
+	secondID, _ := f.staffUser(staff.RoleSystemAdmin)
 
 	// The test database is shared: park the administrators other than these two
 	// for the length of the test.
 	rows, err := f.pool.Query(ctx,
 		`UPDATE platform_staff SET revoked_at = now()
-		 WHERE role = 'admin' AND revoked_at IS NULL AND user_id::text <> ALL($1::text[])
+		 WHERE role = 'system_admin' AND revoked_at IS NULL AND user_id::text <> ALL($1::text[])
 		 RETURNING user_id::text, created_at`, []string{adminID, secondID})
 	if err != nil {
 		t.Fatal(err)
@@ -428,7 +470,7 @@ func TestDBLastAdminRefusesTheLastRemoval(t *testing.T) {
 	t.Cleanup(func() {
 		for _, p := range others {
 			f.pool.Exec(ctx,
-				`UPDATE platform_staff SET revoked_at = NULL WHERE user_id = $1 AND created_at = $2 AND role = 'admin'`, p.id, p.at)
+				`UPDATE platform_staff SET revoked_at = NULL WHERE user_id = $1 AND created_at = $2 AND role = 'system_admin'`, p.id, p.at)
 		}
 	})
 
@@ -436,7 +478,7 @@ func TestDBLastAdminRefusesTheLastRemoval(t *testing.T) {
 		t.Fatalf("removing one of two administrators = %d %s", rec.Code, rec.Body.String())
 	}
 	rec := f.do(adminID, "DELETE", "/api/platform/staff/"+adminID, "")
-	if rec.Code != 400 || !strings.Contains(rec.Body.String(), `"code":"last_admin"`) {
+	if rec.Code != 400 || !strings.Contains(rec.Body.String(), `"code":"last_system_admin"`) {
 		t.Fatalf("removing the last administrator = %d %s", rec.Code, rec.Body.String())
 	}
 	if n := f.count(`SELECT count(*) FROM platform_staff WHERE user_id = $1 AND revoked_at IS NULL`, adminID); n != 1 {
@@ -449,7 +491,7 @@ func TestDBLastAdminRefusesTheLastRemoval(t *testing.T) {
 
 func TestDBStaffAddReactivatesARevokedRow(t *testing.T) {
 	f := newDBFixture(t)
-	adminID, _ := f.staffUser(staff.RoleAdmin)
+	adminID, _ := f.staffUser(staff.RoleSystemAdmin)
 	otherID, otherEmail := f.staffUser(staff.RoleSupport)
 
 	if rec := f.do(adminID, "DELETE", "/api/platform/staff/"+otherID, ""); rec.Code != 200 {
@@ -478,7 +520,7 @@ func TestDBStaffAddReactivatesARevokedRow(t *testing.T) {
 // keeps the status.
 func TestDBAccountChangesPreserveTheOtherColumn(t *testing.T) {
 	f := newDBFixture(t)
-	adminID, _ := f.staffUser(staff.RoleAdmin)
+	adminID, _ := f.staffUser(staff.RoleSystemAdmin)
 	memberID, _ := f.user("member")
 	ownerID, _ := f.user("owner")
 	f.workspace(ownerID, memberID)
@@ -546,16 +588,16 @@ func TestDBAccountChangesPreserveTheOtherColumn(t *testing.T) {
 // are the only ones that return it.
 func TestDBNotesAreInvisibleToTheWorkspace(t *testing.T) {
 	f := newDBFixture(t)
-	adminID, _ := f.staffUser(staff.RoleAdmin)
+	adminID, _ := f.staffUser(staff.RoleSystemAdmin)
 	ownerID, _ := f.user("owner")
 	memberID, _ := f.user("member")
 	ws := f.workspace(ownerID, memberID)
 	text := "internal-only-" + randomHex(t)
 
-	if rec := f.do(adminID, "POST", "/api/platform/tenants/"+ws+"/notes", `{"body":"`+text+`"}`); rec.Code != 201 {
+	if rec := f.do(adminID, "POST", "/api/platform/workspaces/"+ws+"/notes", `{"body":"`+text+`"}`); rec.Code != 201 {
 		t.Fatalf("add note = %d %s", rec.Code, rec.Body.String())
 	}
-	if rec := f.do(adminID, "GET", "/api/platform/tenants/"+ws+"/notes", ""); rec.Code != 200 || !strings.Contains(rec.Body.String(), text) {
+	if rec := f.do(adminID, "GET", "/api/platform/workspaces/"+ws+"/notes", ""); rec.Code != 200 || !strings.Contains(rec.Body.String(), text) {
 		t.Fatalf("staff cannot read the note: %d %s", rec.Code, rec.Body.String())
 	}
 	if n := f.count(`SELECT count(*) FROM audit_event WHERE detail::text LIKE '%' || $1 || '%' OR target_label LIKE '%' || $1 || '%'`, text); n != 0 {
@@ -569,15 +611,15 @@ func TestDBNotesAreInvisibleToTheWorkspace(t *testing.T) {
 
 func TestDBReadsReturnWhatTheWritesChanged(t *testing.T) {
 	f := newDBFixture(t)
-	adminID, _ := f.staffUser(staff.RoleAdmin)
+	adminID, _ := f.staffUser(staff.RoleSystemAdmin)
 	ownerID, ownerEmail := f.user("owner")
 	memberID, _ := f.user("member")
 	ws := f.workspace(ownerID, memberID)
 
-	f.do(adminID, "POST", "/api/platform/tenants/"+ws+"/status", `{"status":"suspended","reason":"abuse"}`)
-	f.do(adminID, "POST", "/api/platform/tenants/"+ws+"/notes", `{"body":"n1"}`)
+	f.do(adminID, "POST", "/api/platform/workspaces/"+ws+"/status", `{"status":"suspended","reason":"abuse"}`)
+	f.do(adminID, "POST", "/api/platform/workspaces/"+ws+"/notes", `{"body":"n1"}`)
 
-	m := decode(t, f.do(adminID, "GET", "/api/platform/tenants/"+ws, ""))
+	m := decode(t, f.do(adminID, "GET", "/api/platform/workspaces/"+ws, ""))
 	state, _ := m["state"].(map[string]any)
 	owner, _ := m["owner"].(map[string]any)
 	if m["status"] != "suspended" || m["member_count"] != float64(2) || m["notes_count"] != float64(1) ||
@@ -585,7 +627,7 @@ func TestDBReadsReturnWhatTheWritesChanged(t *testing.T) {
 		t.Fatalf("tenant = %v", m)
 	}
 
-	// A search by the owner's email finds the workspace.
+	// A search by the owner's email finds the workspace's tenant.
 	list := decode(t, f.do(adminID, "GET", "/api/platform/tenants?q="+ownerEmail, ""))
 	tenants, _ := list["tenants"].([]any)
 	if len(tenants) != 1 {
@@ -603,7 +645,7 @@ func TestDBReadsReturnWhatTheWritesChanged(t *testing.T) {
 	if rec := f.do(adminID, "GET", "/api/platform/audit-events?limit=5", ""); rec.Code != 200 {
 		t.Fatalf("audit-events = %d %s", rec.Code, rec.Body.String())
 	}
-	if rec := f.do(adminID, "GET", "/api/platform/tenants/"+ws+"/audit-events?action=workspace.status_changed", ""); rec.Code != 200 ||
+	if rec := f.do(adminID, "GET", "/api/platform/workspaces/"+ws+"/audit-events?action=workspace.status_changed", ""); rec.Code != 200 ||
 		!strings.Contains(rec.Body.String(), `"workspace.status_changed"`) {
 		t.Fatalf("tenant audit-events = %d %s", rec.Code, rec.Body.String())
 	}
@@ -649,7 +691,7 @@ func TestDBOverviewCountsWorkspacesByPlan(t *testing.T) {
 func TestDBMFAResetDeletesOnlyThatUsersRow(t *testing.T) {
 	f := newDBFixture(t)
 	ctx := context.Background()
-	admin, adminEmail := f.staffUser(staff.RoleAdmin)
+	admin, adminEmail := f.staffUser(staff.RoleSystemAdmin)
 	target, targetEmail := f.user("mfa-target")
 	other, _ := f.user("mfa-other")
 	for _, id := range []string{target, other} {

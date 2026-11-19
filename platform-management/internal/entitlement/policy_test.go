@@ -296,7 +296,7 @@ var wantGateNames = []string{
 	"agents", "runtimes", "storage_bytes",
 	"api_rate_per_minute", "audit_retention_days",
 	"sso", "workspace_policies", "viewer_role", "audit_export",
-	"member_groups",
+	"member_groups", "max_workspaces",
 }
 
 // A limit gate takes the plan's value, as an enforce gate; a plan value of

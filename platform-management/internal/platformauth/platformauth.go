@@ -52,9 +52,10 @@ const (
 type Directory interface {
 	// UserIDByEmail takes a lower-cased email.
 	UserIDByEmail(ctx context.Context, email string) (userID string, found bool, err error)
-	// ActiveStaff returns the role of the user's active staff row. A user with
-	// no active row, or with a role this build does not know, is not found.
-	ActiveStaff(ctx context.Context, userID string) (role staff.Role, found bool, err error)
+	// ActiveStaff returns the role and tenant of the user's active staff row.
+	// The tenant is empty unless the role is admin. A user with no active row,
+	// or with a role this build does not know, is not found.
+	ActiveStaff(ctx context.Context, userID string) (role staff.Role, tenantID string, found bool, err error)
 	EmailByUserID(ctx context.Context, userID string) (string, error)
 }
 
@@ -246,7 +247,7 @@ func (h *Handler) allow(ctx context.Context, key string, limit int) bool {
 // eligible reports whether the user may sign in: an active staff row and an
 // active Multica account.
 func (h *Handler) eligible(ctx context.Context, userID string) (staff.Role, bool, error) {
-	role, found, err := h.Directory.ActiveStaff(ctx, userID)
+	role, _, found, err := h.Directory.ActiveStaff(ctx, userID)
 	if err != nil || !found {
 		return "", false, err
 	}
@@ -571,5 +572,10 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal", "internal error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"user_id": id.UserID, "email": email, "role": string(id.Role)})
+	// tenant_id is null unless the role is admin (spec R6 section 3.5, rule 6).
+	var tenantID any
+	if id.TenantID != "" {
+		tenantID = id.TenantID
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"user_id": id.UserID, "email": email, "role": string(id.Role), "tenant_id": tenantID})
 }

@@ -184,7 +184,7 @@ func TestDBOrdersListOrderingTenantDetailAndOverview(t *testing.T) {
 		t.Errorf("support GET /orders = %d, want 404", rec.Code)
 	}
 
-	rec := f.do(supportID, "GET", "/api/platform/tenants/"+f.ws, "")
+	rec := f.do(supportID, "GET", "/api/platform/workspaces/"+f.ws, "")
 	wantStatus(t, rec, 200)
 	var detail struct {
 		RecentOrders []struct {
@@ -217,7 +217,7 @@ func TestDBOrdersListOrderingTenantDetailAndOverview(t *testing.T) {
 func TestDBOrdersTwoConcurrentConfirmsApplyOnce(t *testing.T) {
 	f := newOrderFixture(t)
 	aID, _ := f.staffUser(staff.RoleBilling)
-	bID, _ := f.staffUser(staff.RoleAdmin)
+	bID, _ := f.staffUser(staff.RoleSystemAdmin)
 	f.seedSubscription(1)
 	id := f.seedOrder("pending", time.Hour, 24*time.Hour)
 

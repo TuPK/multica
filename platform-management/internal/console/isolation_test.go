@@ -158,8 +158,8 @@ func TestConsoleFilesAreScannedAndNameNoContentTable(t *testing.T) {
 	if len(goFiles) < 2 || len(sqlFiles) == 0 {
 		t.Fatalf("scan found %d Go files and %d SQL files", len(goFiles), len(sqlFiles))
 	}
-	// The note queries and the order queries are the console's too.
-	sqlFiles = append(sqlFiles, "../../queries/platform_note.sql", "../../queries/billing.sql")
+	// The note queries, the order queries and the tenant queries are the console's too.
+	sqlFiles = append(sqlFiles, "../../queries/platform_note.sql", "../../queries/billing.sql", "../../queries/tenant.sql", "../../queries/member_request.sql")
 
 	for _, name := range goFiles {
 		// This file holds the list of forbidden names.

@@ -106,15 +106,17 @@ type fakeDirectory struct {
 	users    map[string]string     // email -> user id
 	emails   map[string]string     // user id -> email
 	active   map[string]staff.Role // user id -> role of the active row
+	tenants  map[string]string     // user id -> tenant of an admin row
 	err      error
 	staffErr error
 }
 
 func newDirectory() *fakeDirectory {
 	d := &fakeDirectory{
-		users:  map[string]string{},
-		emails: map[string]string{},
-		active: map[string]staff.Role{},
+		users:   map[string]string{},
+		emails:  map[string]string{},
+		active:  map[string]staff.Role{},
+		tenants: map[string]string{},
 	}
 	d.addUser(staffEmail, staffUserID)
 	d.active[staffUserID] = staff.RoleAdmin
@@ -136,14 +138,14 @@ func (d *fakeDirectory) UserIDByEmail(_ context.Context, email string) (string, 
 	return id, ok, nil
 }
 
-func (d *fakeDirectory) ActiveStaff(_ context.Context, userID string) (staff.Role, bool, error) {
+func (d *fakeDirectory) ActiveStaff(_ context.Context, userID string) (staff.Role, string, bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.staffErr != nil {
-		return "", false, d.staffErr
+		return "", "", false, d.staffErr
 	}
 	r, ok := d.active[userID]
-	return r, ok, nil
+	return r, d.tenants[userID], ok, nil
 }
 
 func (d *fakeDirectory) EmailByUserID(_ context.Context, userID string) (string, error) {

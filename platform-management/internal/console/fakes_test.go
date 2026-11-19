@@ -40,6 +40,12 @@ const (
 	billID    = "aaaaaaaa-0000-0000-0000-000000000003"
 	billMail  = "billing@example.com"
 
+	// tadminID is an admin of the tenant tenantID.
+	tadminID      = "aaaaaaaa-0000-0000-0000-000000000004"
+	tadminMail    = "tenantadmin@example.com"
+	tenantID      = "eeeeeeee-0000-0000-0000-000000000001"
+	otherTenantID = "eeeeeeee-0000-0000-0000-000000000002"
+
 	wsID     = "bbbbbbbb-0000-0000-0000-000000000001"
 	wsName   = "Acme"
 	custID   = "cccccccc-0000-0000-0000-000000000001"
@@ -52,8 +58,9 @@ var t0 = time.Date(2030, 5, 6, 7, 8, 9, 123456789, time.UTC)
 // fakeDirectory is the staff table and the user table for the middleware and
 // for the audit label.
 type fakeDirectory struct {
-	roles  map[string]staff.Role
-	emails map[string]string
+	roles   map[string]staff.Role
+	tenants map[string]string // user id -> tenant of an admin row
+	emails  map[string]string
 }
 
 func (d *fakeDirectory) UserIDByEmail(_ context.Context, email string) (string, bool, error) {
@@ -65,9 +72,9 @@ func (d *fakeDirectory) UserIDByEmail(_ context.Context, email string) (string, 
 	return "", false, nil
 }
 
-func (d *fakeDirectory) ActiveStaff(_ context.Context, id string) (staff.Role, bool, error) {
+func (d *fakeDirectory) ActiveStaff(_ context.Context, id string) (staff.Role, string, bool, error) {
 	r, ok := d.roles[id]
-	return r, ok, nil
+	return r, d.tenants[id], ok, nil
 }
 
 func (d *fakeDirectory) EmailByUserID(_ context.Context, id string) (string, error) {
@@ -86,8 +93,7 @@ func (activeGuard) State(context.Context, string) (accountguard.Record, error) {
 
 // fakeReader serves canned rows and records what it was asked.
 type fakeReader struct {
-	tenants  []TenantRow
-	details  map[string]TenantDetail
+	details  map[string]WorkspaceDetail
 	users    []UserRow
 	userDets map[string]UserDetail
 	notes    []Note
@@ -101,11 +107,19 @@ type fakeReader struct {
 	history       map[string][]EinvoiceHistoryRow // order id -> revisions, newest first
 	historyErr    error
 
-	lastTenants TenantSearch
-	lastUsers   UserSearch
-	lastNotes   NoteQuery
-	lastAudit   AuditQuery
-	lastSince   time.Time
+	tenantRows    []TenantRow
+	tenantDetails map[string]TenantDetail
+	wsTenant      map[string]string // workspace id -> tenant id
+	userTenant    map[string]string // user id -> tenant id of one of its workspaces
+	scopeChecks   []string          // the workspaces WorkspaceInScope was asked about
+
+	lastTenants        TenantSearch
+	lastGetTenantScope Scope
+	lastOrderScope     Scope
+	lastUsers          UserSearch
+	lastNotes          NoteQuery
+	lastAudit          AuditQuery
+	lastSince          time.Time
 
 	lastOrderStatus billing.Status
 	lastNewestFirst bool
@@ -114,11 +128,12 @@ type fakeReader struct {
 	lastRecentLimit int
 }
 
-func (r *fakeReader) ListOrders(_ context.Context, status billing.Status, newestFirst bool, limit int) ([]OrderRow, error) {
-	r.lastOrderStatus, r.lastNewestFirst, r.lastOrderLimit = status, newestFirst, limit
+func (r *fakeReader) ListOrders(_ context.Context, status billing.Status, newestFirst bool, limit int, scope Scope) ([]OrderRow, error) {
+	r.lastOrderStatus, r.lastNewestFirst, r.lastOrderLimit, r.lastOrderScope = status, newestFirst, limit, scope
 	var out []OrderRow
 	for _, o := range r.store.orders {
-		if o.Status == status {
+		inScope := scope.All || (scope.TenantID != "" && r.wsTenant[o.WorkspaceID] == scope.TenantID)
+		if o.Status == status && inScope {
 			row := r.store.orderRow(o)
 			row.InvoiceState = r.invoiceStates[o.ID]
 			out = append(out, row)
@@ -132,7 +147,7 @@ func (r *fakeReader) ListOrderEinvoices(_ context.Context, orderID string) ([]Ei
 	return r.history[orderID], r.historyErr
 }
 
-func (r *fakeReader) TenantUsage(_ context.Context, ws string, _ time.Time) (usage.Month, error) {
+func (r *fakeReader) WorkspaceUsage(_ context.Context, ws string, _ time.Time) (usage.Month, error) {
 	return usage.Month{WorkspaceID: ws}, nil
 }
 
@@ -170,10 +185,35 @@ func sortOrders(rows []OrderRow, newestFirst bool) {
 
 func (r *fakeReader) SearchTenants(_ context.Context, q TenantSearch) ([]TenantRow, error) {
 	r.lastTenants = q
-	return r.tenants, r.err
+	var out []TenantRow
+	for _, t := range r.tenantRows {
+		if q.Scope.All || (q.Scope.TenantID != "" && t.ID == q.Scope.TenantID) {
+			out = append(out, t)
+		}
+	}
+	return out, r.err
 }
 
-func (r *fakeReader) GetTenant(_ context.Context, id string) (TenantDetail, bool, error) {
+func (r *fakeReader) GetTenant(_ context.Context, id string, scope Scope) (TenantDetail, bool, error) {
+	r.lastGetTenantScope = scope
+	d, ok := r.tenantDetails[id]
+	if !ok || !(scope.All || (scope.TenantID != "" && id == scope.TenantID)) {
+		return TenantDetail{}, false, r.err
+	}
+	return d, true, r.err
+}
+
+// WorkspaceInScope is true when the workspace's tenant is the scope's.
+func (r *fakeReader) WorkspaceInScope(_ context.Context, ws string, scope Scope) (bool, error) {
+	r.scopeChecks = append(r.scopeChecks, ws)
+	return scope.All || (scope.TenantID != "" && r.wsTenant[ws] == scope.TenantID), r.err
+}
+
+func (r *fakeReader) UserInScope(_ context.Context, user string, scope Scope) (bool, error) {
+	return scope.All || (scope.TenantID != "" && r.userTenant[user] == scope.TenantID), r.err
+}
+
+func (r *fakeReader) GetWorkspace(_ context.Context, id string) (WorkspaceDetail, bool, error) {
 	d, ok := r.details[id]
 	return d, ok, r.err
 }
@@ -208,6 +248,7 @@ func (r *fakeReader) Overview(_ context.Context, since time.Time) (Overview, err
 type fakeStaffRow struct {
 	user    string
 	role    string
+	tenant  string
 	revoked bool
 }
 
@@ -227,13 +268,18 @@ type fakeStore struct {
 	orders     map[string]billing.Order
 	subs       map[string]subscription.Subscription
 	mfaRows    map[string]bool // user id -> has a user_mfa row
+	// tenants are the tenants that exist; nil means every tenant id exists.
+	tenants map[string]bool
 }
+
+// defaultStaffRows is the number of staff rows newFakeStore starts with.
+const defaultStaffRows = 4
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
 		workspaces: map[string]string{wsID: wsName},
 		users: map[string]string{
-			adminID: adminMail, suppID: suppMail, billID: billMail, custID: custMail,
+			adminID: adminMail, suppID: suppMail, billID: billMail, custID: custMail, tadminID: tadminMail,
 		},
 		accounts: map[string]string{},
 		sessions: map[string]time.Time{},
@@ -241,9 +287,10 @@ func newFakeStore() *fakeStore {
 		subs:     map[string]subscription.Subscription{},
 		mfaRows:  map[string]bool{custID: true, suppID: true},
 		staffRows: []fakeStaffRow{
-			{user: adminID, role: "admin"},
+			{user: adminID, role: "system_admin"},
 			{user: suppID, role: "support"},
 			{user: billID, role: "billing"},
+			{user: tadminID, role: "admin", tenant: tenantID},
 		},
 	}
 }
@@ -306,6 +353,15 @@ func (s *fakeStore) activeRole(user string) (string, bool) {
 	return "", false
 }
 
+func (s *fakeStore) activeTenant(user string) string {
+	for _, r := range s.staffRows {
+		if r.user == user && !r.revoked {
+			return r.tenant
+		}
+	}
+	return ""
+}
+
 type fakeTx struct{ s *fakeStore }
 
 func (t *fakeTx) WorkspaceName(_ context.Context, id string) (string, bool, error) {
@@ -358,37 +414,51 @@ func (t *fakeTx) DeleteUserMFA(_ context.Context, id string) (bool, error) {
 	return had, nil
 }
 
-func (t *fakeTx) ActiveAdmins(context.Context) ([]string, error) {
+func (t *fakeTx) TenantExists(_ context.Context, id string) (bool, error) {
+	return t.s.tenants == nil || t.s.tenants[id], nil
+}
+
+func (t *fakeTx) ActiveSystemAdmins(context.Context) ([]string, error) {
 	var out []string
 	for _, r := range t.s.staffRows {
-		if r.role == "admin" && !r.revoked {
+		if r.role == "system_admin" && !r.revoked {
 			out = append(out, r.user)
 		}
 	}
 	return out, nil
 }
 
-func (t *fakeTx) ActiveStaffRole(_ context.Context, id string) (string, bool, error) {
+func (t *fakeTx) ActiveStaffRole(_ context.Context, id string) (string, string, bool, error) {
 	r, ok := t.s.activeRole(id)
-	return r, ok, nil
+	return r, t.s.activeTenant(id), ok, nil
 }
 
-func (t *fakeTx) ReactivateStaff(_ context.Context, id, role string) (bool, error) {
+func (t *fakeTx) ReactivateStaff(_ context.Context, id, role, tenant string) (bool, error) {
 	for i := len(t.s.staffRows) - 1; i >= 0; i-- {
 		if r := &t.s.staffRows[i]; r.user == id && r.revoked {
-			r.revoked, r.role = false, role
+			r.revoked, r.role, r.tenant = false, role, tenant
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func (t *fakeTx) InsertStaff(_ context.Context, id, role, _ string) (bool, error) {
+func (t *fakeTx) InsertStaff(_ context.Context, id, role, tenant, _ string) (bool, error) {
 	if _, ok := t.s.activeRole(id); ok {
 		return false, nil
 	}
-	t.s.staffRows = append(t.s.staffRows, fakeStaffRow{user: id, role: role})
+	t.s.staffRows = append(t.s.staffRows, fakeStaffRow{user: id, role: role, tenant: tenant})
 	return true, nil
+}
+
+func (t *fakeTx) UpdateStaff(_ context.Context, id, role, tenant string) (bool, error) {
+	for i := range t.s.staffRows {
+		if r := &t.s.staffRows[i]; r.user == id && !r.revoked {
+			r.role, r.tenant = role, tenant
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (t *fakeTx) RevokeStaff(_ context.Context, id string) (bool, error) {
@@ -572,6 +642,7 @@ type env struct {
 	pub    *fakeNotifier
 	mail   *fakeMailer
 	logs   *bytes.Buffer
+	member *fakeMembers
 }
 
 func newEnv(t *testing.T) *env { return newEnvMail(t, true) }
@@ -583,19 +654,27 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 	e := &env{
 		t: t,
 		dir: &fakeDirectory{
-			roles:  map[string]staff.Role{adminID: staff.RoleAdmin, suppID: staff.RoleSupport, billID: staff.RoleBilling},
-			emails: map[string]string{adminID: adminMail, suppID: suppMail, billID: billMail, custID: custMail},
+			roles:   map[string]staff.Role{adminID: staff.RoleSystemAdmin, suppID: staff.RoleSupport, billID: staff.RoleBilling, tadminID: staff.RoleAdmin},
+			tenants: map[string]string{tadminID: tenantID},
+			emails:  map[string]string{adminID: adminMail, suppID: suppMail, billID: billMail, custID: custMail, tadminID: tadminMail},
 		},
 		reader: &fakeReader{
-			details:  map[string]TenantDetail{wsID: {TenantRow: TenantRow{ID: wsID, Name: wsName, Slug: "acme", Status: "active", CreatedAt: t0, LastActivityAt: t0}}},
+			wsTenant:   map[string]string{wsID: tenantID},
+			userTenant: map[string]string{custID: tenantID},
+			tenantDetails: map[string]TenantDetail{tenantID: {TenantRow: TenantRow{
+				ID: tenantID, Name: "Acme tenant", Status: "active", WorkspaceCount: 1, BestPlanKey: "free",
+				StatusSummary: map[string]int64{"active": 1}, CreatedAt: t0, LastActivityAt: t0,
+			}, Workspaces: []TenantWorkspace{{ID: wsID, Name: wsName, Slug: "acme", Status: "active", PlanKey: "free", MemberCount: 2, CreatedAt: t0}}}},
+			details:  map[string]WorkspaceDetail{wsID: {WorkspaceRow: WorkspaceRow{ID: wsID, Name: wsName, Slug: "acme", Status: "active", CreatedAt: t0, LastActivityAt: t0}}},
 			userDets: map[string]UserDetail{custID: {UserRow: UserRow{ID: custID, Email: custMail, Name: "Cu", Status: "active", CreatedAt: t0}}},
 		},
-		store: newFakeStore(),
-		ws:    &fakeStatusSetter{changed: true},
-		cache: &fakeCache{},
-		pub:   &fakeNotifier{},
-		mail:  &fakeMailer{},
-		logs:  &bytes.Buffer{},
+		store:  newFakeStore(),
+		ws:     &fakeStatusSetter{changed: true},
+		cache:  &fakeCache{},
+		pub:    &fakeNotifier{},
+		mail:   &fakeMailer{},
+		logs:   &bytes.Buffer{},
+		member: newFakeMembers(),
 	}
 	e.reader.store = e.store
 	payments, err := billing.New(billing.Deps{
@@ -629,6 +708,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		Notifier:      e.pub,
 		Payments:      payments,
 		Emails:        e.dir,
+		Members:       e.member,
 		Log:           log,
 		Now:           func() time.Time { return t0 },
 	})

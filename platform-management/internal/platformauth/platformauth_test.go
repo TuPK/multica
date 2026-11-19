@@ -497,18 +497,56 @@ func assertNotFoundLikeUnknownRoute(t *testing.T, e *env, rec *httptest.Response
 	}
 }
 
-func TestMeReturnsTheStaffMember(t *testing.T) {
+func TestMeReturnsRoleAndTenantID(t *testing.T) {
+	const tenant = "11111111-aaaa-bbbb-cccc-000000000001"
+	cases := []struct {
+		name       string
+		role       staff.Role
+		tenant     string
+		wantTenant any
+	}{
+		{"admin of a tenant", staff.RoleAdmin, tenant, tenant},
+		{"system admin has no tenant", staff.RoleSystemAdmin, "", nil},
+		{"support has no tenant", staff.RoleSupport, "", nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t)
+			e.dir.active[staffUserID] = tc.role
+			e.dir.tenants[staffUserID] = tc.tenant
+			rec := e.me(request{cookies: []*http.Cookie{sessionCookie(e.token(staffUserID, e.now.Add(-time.Hour)))}})
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, body %s", rec.Code, rec.Body)
+			}
+			var body map[string]any
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			tid, present := body["tenant_id"]
+			if !present || tid != tc.wantTenant {
+				t.Errorf("tenant_id = %v (present %v), want %v", tid, present, tc.wantTenant)
+			}
+			if body["user_id"] != staffUserID || body["email"] != staffEmail || body["role"] != string(tc.role) || len(body) != 4 {
+				t.Errorf("body = %v", body)
+			}
+		})
+	}
+}
+
+func TestIdentityCarriesTenantID(t *testing.T) {
+	const tenant = "11111111-aaaa-bbbb-cccc-000000000001"
 	e := newEnv(t)
-	rec := e.me(request{cookies: []*http.Cookie{sessionCookie(e.token(staffUserID, e.now.Add(-time.Hour)))}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, body %s", rec.Code, rec.Body)
-	}
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatal(err)
-	}
-	if body["user_id"] != staffUserID || body["email"] != staffEmail || body["role"] != "admin" || len(body) != 3 {
-		t.Errorf("body = %v", body)
+	e.dir.tenants[staffUserID] = tenant
+	var got Identity
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got, _ = IdentityFrom(r.Context())
+	})
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.RemoteAddr = "203.0.113.9:1"
+	req.AddCookie(sessionCookie(e.token(staffUserID, e.now)))
+	e.h.RequirePlatformStaff()(inner).ServeHTTP(httptest.NewRecorder(), req)
+	if got.UserID != staffUserID || got.TenantID != tenant {
+		t.Errorf("identity = %+v, want tenant %s", got, tenant)
 	}
 }
 

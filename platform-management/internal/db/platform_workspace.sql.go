@@ -55,9 +55,10 @@ func (q *Queries) GetPlatformWorkspaceForUpdate(ctx context.Context, workspaceID
 const insertAuditEvent = `-- name: InsertAuditEvent :exec
 INSERT INTO audit_event (
     workspace_id, actor_type, actor_id, actor_label, action,
-    target_type, target_id, target_label, detail, ip, user_agent, request_id
+    target_type, target_id, target_label, detail, ip, user_agent, request_id,
+    tenant_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
 )
 `
 
@@ -74,6 +75,7 @@ type InsertAuditEventParams struct {
 	Ip          string      `json:"ip"`
 	UserAgent   string      `json:"user_agent"`
 	RequestID   string      `json:"request_id"`
+	TenantID    pgtype.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error {
@@ -90,6 +92,7 @@ func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventPara
 		arg.Ip,
 		arg.UserAgent,
 		arg.RequestID,
+		arg.TenantID,
 	)
 	return err
 }

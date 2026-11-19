@@ -66,25 +66,39 @@ func roleSet(ids ...string) map[string]bool {
 }
 
 func matrix() []matrixRoute {
+	// adminID is a system_admin; tadminID is an admin of the tenant that holds
+	// wsID and custID, so the rows it may use answer it too.
 	all := roleSet(adminID, suppID, billID)
+	scopedAll := roleSet(adminID, tadminID, suppID, billID)
+	scopedLock := roleSet(adminID, tadminID, suppID)
+	scopedOrders := roleSet(adminID, tadminID, billID)
 	supportAdmin := roleSet(adminID, suppID)
-	admin := roleSet(adminID)
+	systemOnly := roleSet(adminID)
+	systemTenant := roleSet(adminID, tadminID)
 	return []matrixRoute{
-		{"GET", "/api/platform/tenants", "", all, 200},
-		{"GET", "/api/platform/tenants/" + wsID, "", all, 200},
-		{"POST", "/api/platform/tenants/" + wsID + "/status", `{"status":"read_only","reason":"r"}`, supportAdmin, 200},
-		{"GET", "/api/platform/tenants/" + wsID + "/audit-events", "", all, 200},
-		{"GET", "/api/platform/tenants/" + wsID + "/notes", "", all, 200},
-		{"POST", "/api/platform/tenants/" + wsID + "/notes", `{"body":"hello"}`, all, 201},
-		{"GET", "/api/platform/users", "", all, 200},
-		{"GET", "/api/platform/users/" + custID, "", all, 200},
+		{"GET", "/api/platform/tenants", "", scopedAll, 200},
+		{"GET", "/api/platform/tenants/" + tenantID, "", scopedAll, 200},
+		{"GET", "/api/platform/workspaces/" + wsID, "", scopedAll, 200},
+		{"POST", "/api/platform/workspaces/" + wsID + "/status", `{"status":"read_only","reason":"r"}`, scopedLock, 200},
+		{"GET", "/api/platform/workspaces/" + wsID + "/usage", "", scopedAll, 200},
+		{"GET", "/api/platform/workspaces/" + wsID + "/audit-events", "", scopedAll, 200},
+		{"GET", "/api/platform/workspaces/" + wsID + "/notes", "", scopedAll, 200},
+		{"POST", "/api/platform/workspaces/" + wsID + "/notes", `{"body":"hello"}`, scopedAll, 201},
+		{"GET", "/api/platform/users", "", scopedAll, 200},
+		{"GET", "/api/platform/users/" + custID, "", scopedAll, 200},
 		{"POST", "/api/platform/users/" + custID + "/status", `{"status":"suspended","reason":"r"}`, supportAdmin, 200},
 		{"POST", "/api/platform/users/" + custID + "/revoke-sessions", `{"reason":"r"}`, supportAdmin, 200},
 		{"POST", "/api/platform/users/" + custID + "/mfa-reset", "", supportAdmin, 200},
-		{"GET", "/api/platform/staff", "", admin, 200},
-		{"POST", "/api/platform/staff", `{"email":"` + custMail + `","role":"support"}`, admin, 201},
-		{"DELETE", "/api/platform/staff/" + suppID, "", admin, 200},
-		{"GET", "/api/platform/audit-events", "", all, 200},
+		{"GET", "/api/platform/staff", "", systemOnly, 200},
+		{"POST", "/api/platform/staff", `{"email":"` + custMail + `","role":"support"}`, systemOnly, 201},
+		{"PUT", "/api/platform/staff/" + suppID, `{"role":"billing"}`, systemOnly, 200},
+		{"DELETE", "/api/platform/staff/" + suppID, "", systemOnly, 200},
+		{"GET", "/api/platform/audit-events", "", scopedAll, 200},
+		{"GET", "/api/platform/orders", "", scopedOrders, 200},
+		{"POST", "/api/platform/workspaces/" + wsID + "/members", `{"email":"new@example.com","role":"member"}`, systemTenant, 202},
+		{"GET", "/api/platform/workspaces/" + wsID + "/member-requests", "", systemTenant, 200},
+		{"GET", "/api/platform/member-requests/" + memReqID, "", systemTenant, 200},
+		{"POST", "/api/platform/member-requests/" + memReqID + "/cancel", "", systemTenant, 200},
 		{"GET", "/api/platform/overview", "", all, 200},
 	}
 }
@@ -93,7 +107,10 @@ func matrix() []matrixRoute {
 // caller with no session and to a user who is not staff. A staff-only route is
 // not found by support: it is a 404, not a 403.
 func TestRoleMatrix(t *testing.T) {
-	users := []string{adminID, suppID, billID}
+	// system_admin passes wherever the old admin did; the admin of a tenant passes
+	// the rows the matrix gives it Own access to, and gets the flat 404 on the rest;
+	// support and billing are as before.
+	users := []string{adminID, tadminID, suppID, billID}
 	for _, rt := range matrix() {
 		for _, user := range users {
 			// A fresh environment: the writes change what the next call sees.
@@ -119,7 +136,7 @@ func TestRoleMatrix(t *testing.T) {
 // 404, and nothing is written.
 func TestBillingCannotWrite(t *testing.T) {
 	e := newEnv(t)
-	wantUnknownRoute(t, e.do(billID, "POST", "/api/platform/tenants/"+wsID+"/status", `{"status":"suspended","reason":"r"}`))
+	wantUnknownRoute(t, e.do(billID, "POST", "/api/platform/workspaces/"+wsID+"/status", `{"status":"suspended","reason":"r"}`))
 	wantUnknownRoute(t, e.do(billID, "POST", "/api/platform/users/"+custID+"/status", `{"status":"suspended","reason":"r"}`))
 	wantUnknownRoute(t, e.do(billID, "POST", "/api/platform/users/"+custID+"/revoke-sessions", `{"reason":"r"}`))
 	if len(e.ws.calls) != 0 || e.store.txs != 0 || len(e.pub.sent) != 0 {
@@ -131,7 +148,7 @@ func TestBillingCannotWrite(t *testing.T) {
 func TestSupportCannotReachStaff(t *testing.T) {
 	e := newEnv(t)
 	wantUnknownRoute(t, e.do(suppID, "GET", "/api/platform/staff", ""))
-	wantUnknownRoute(t, e.do(suppID, "POST", "/api/platform/staff", `{"email":"`+custMail+`","role":"admin"}`))
+	wantUnknownRoute(t, e.do(suppID, "POST", "/api/platform/staff", `{"email":"`+custMail+`","role":"system_admin"}`))
 	wantUnknownRoute(t, e.do(suppID, "DELETE", "/api/platform/staff/"+adminID, ""))
 	if e.store.txs != 0 {
 		t.Fatal("a refused request opened a transaction")
@@ -143,11 +160,11 @@ func TestSupportCannotReachStaff(t *testing.T) {
 func TestWrongMethodIsNotFound(t *testing.T) {
 	e := newEnv(t)
 	for _, c := range []struct{ method, path string }{
-		{"PUT", "/api/platform/tenants"},
-		{"POST", "/api/platform/tenants"},
-		{"DELETE", "/api/platform/tenants/" + wsID},
-		{"GET", "/api/platform/tenants/" + wsID + "/status"},
-		{"PUT", "/api/platform/tenants/" + wsID + "/notes"},
+		{"PUT", "/api/platform/workspaces"},
+		{"POST", "/api/platform/workspaces"},
+		{"DELETE", "/api/platform/workspaces/" + wsID},
+		{"GET", "/api/platform/workspaces/" + wsID + "/status"},
+		{"PUT", "/api/platform/workspaces/" + wsID + "/notes"},
 		{"GET", "/api/platform/users/" + custID + "/status"},
 		{"GET", "/api/platform/users/" + custID + "/revoke-sessions"},
 		{"GET", "/api/platform/users/" + custID + "/mfa-reset"},
@@ -165,15 +182,15 @@ func TestWrongMethodIsNotFound(t *testing.T) {
 func TestMalformedPathIDIsNotFound(t *testing.T) {
 	e := newEnv(t)
 	for _, p := range []string{
-		"/api/platform/tenants/not-a-uuid",
+		"/api/platform/workspaces/not-a-uuid",
 		"/api/platform/users/1234",
-		"/api/platform/tenants/not-a-uuid/notes",
-		"/api/platform/tenants/not-a-uuid/audit-events",
+		"/api/platform/workspaces/not-a-uuid/notes",
+		"/api/platform/workspaces/not-a-uuid/audit-events",
 	} {
 		wantCode(t, e.do(adminID, "GET", p, ""), 404, "not_found")
 	}
 	wantCode(t, e.do(adminID, "DELETE", "/api/platform/staff/nope", ""), 404, "not_found")
-	wantCode(t, e.do(adminID, "POST", "/api/platform/tenants/nope/status", `{"status":"active","reason":"r"}`), 404, "not_found")
+	wantCode(t, e.do(adminID, "POST", "/api/platform/workspaces/nope/status", `{"status":"active","reason":"r"}`), 404, "not_found")
 }
 
 // A state-changing request must carry the console's Origin.
@@ -317,7 +334,7 @@ func TestAuditFailureRollsTheWriteBack(t *testing.T) {
 			return e.do(adminID, "POST", "/api/platform/users/"+custID+"/revoke-sessions", `{"reason":"r"}`)
 		},
 		"note": func(e *env) *httptest.ResponseRecorder {
-			return e.do(adminID, "POST", "/api/platform/tenants/"+wsID+"/notes", `{"body":"n"}`)
+			return e.do(adminID, "POST", "/api/platform/workspaces/"+wsID+"/notes", `{"body":"n"}`)
 		},
 		"add staff": func(e *env) *httptest.ResponseRecorder {
 			return e.do(adminID, "POST", "/api/platform/staff", `{"email":"`+custMail+`","role":"support"}`)
@@ -338,7 +355,7 @@ func TestAuditFailureRollsTheWriteBack(t *testing.T) {
 				t.Fatal("the cause is not in the log")
 			}
 			if len(e.store.accounts) != 0 || len(e.store.sessions) != 0 || len(e.store.notes) != 0 ||
-				len(e.store.staffRows) != 3 || len(e.pub.sent) != 0 || len(e.cache.dropped) != 0 {
+				len(e.store.staffRows) != defaultStaffRows || len(e.pub.sent) != 0 || len(e.cache.dropped) != 0 {
 				t.Fatalf("the failed write left traces: %+v", e.store)
 			}
 			if _, ok := e.store.activeRole(suppID); !ok {
@@ -365,13 +382,13 @@ func TestNoticeFailuresDoNotFailTheRequest(t *testing.T) {
 
 func TestTenantStatusCallsWorkspaceStatusSet(t *testing.T) {
 	e := newEnv(t)
-	e.reader.details[wsID] = TenantDetail{
-		TenantRow:      TenantRow{ID: wsID, Name: wsName, Slug: "acme", Status: "read_only", CreatedAt: t0, LastActivityAt: t0},
+	e.reader.details[wsID] = WorkspaceDetail{
+		WorkspaceRow:   WorkspaceRow{ID: wsID, Name: wsName, Slug: "acme", Status: "read_only", CreatedAt: t0, LastActivityAt: t0},
 		StateReason:    "unpaid invoice",
 		StateChangedBy: suppID,
 		StateChangedAt: &t0,
 	}
-	rec := e.do(suppID, "POST", "/api/platform/tenants/"+wsID+"/status", `{"status":"read_only","reason":" unpaid invoice "}`)
+	rec := e.do(suppID, "POST", "/api/platform/workspaces/"+wsID+"/status", `{"status":"read_only","reason":" unpaid invoice "}`)
 	wantStatus(t, rec, 200)
 
 	if len(e.ws.calls) != 1 {
@@ -394,7 +411,7 @@ func TestTenantStatusCallsWorkspaceStatusSet(t *testing.T) {
 
 func TestTenantStatusRefusals(t *testing.T) {
 	e := newEnv(t)
-	path := "/api/platform/tenants/" + wsID + "/status"
+	path := "/api/platform/workspaces/" + wsID + "/status"
 	wantCode(t, e.do(adminID, "POST", path, `{"status":"suspended"}`), 400, "reason_required")
 	wantCode(t, e.do(adminID, "POST", path, `{"status":"suspended","reason":"  "}`), 400, "reason_required")
 	wantCode(t, e.do(adminID, "POST", path, `{"status":"deleted","reason":"r"}`), 400, "invalid_status")
@@ -402,7 +419,7 @@ func TestTenantStatusRefusals(t *testing.T) {
 	wantCode(t, e.do(adminID, "POST", path, `{"status":"suspended","reason":"r","extra":1}`), 400, "invalid_body")
 	wantCode(t, e.do(adminID, "POST", path, `not json`), 400, "invalid_body")
 	wantCode(t, e.do(adminID, "POST", path, `{"status":"suspended","reason":"r"} {}`), 400, "invalid_body")
-	wantCode(t, e.do(adminID, "POST", "/api/platform/tenants/"+noOneID+"/status", `{"status":"suspended","reason":"r"}`), 404, "not_found")
+	wantCode(t, e.do(adminID, "POST", "/api/platform/workspaces/"+noOneID+"/status", `{"status":"suspended","reason":"r"}`), 404, "not_found")
 	if len(e.ws.calls) != 0 {
 		t.Fatalf("a refused request called Set %d times", len(e.ws.calls))
 	}
@@ -433,7 +450,7 @@ func TestAccountRefusalsChangeNothing(t *testing.T) {
 
 func TestAddNoteAuditsTheNoteWithoutItsText(t *testing.T) {
 	e := newEnv(t)
-	rec := e.do(suppID, "POST", "/api/platform/tenants/"+wsID+"/notes", `{"body":"  Owner called; wants a refund.  "}`)
+	rec := e.do(suppID, "POST", "/api/platform/workspaces/"+wsID+"/notes", `{"body":"  Owner called; wants a refund.  "}`)
 	wantStatus(t, rec, 201)
 	m := decode(t, rec)
 	if m["body"] != "Owner called; wants a refund." || m["author_id"] != suppID || m["author_email"] != suppMail || m["workspace_id"] != wsID {
@@ -457,12 +474,12 @@ func TestAddNoteAuditsTheNoteWithoutItsText(t *testing.T) {
 
 func TestAddNoteRefusals(t *testing.T) {
 	e := newEnv(t)
-	path := "/api/platform/tenants/" + wsID + "/notes"
+	path := "/api/platform/workspaces/" + wsID + "/notes"
 	wantCode(t, e.do(adminID, "POST", path, `{"body":""}`), 400, "body_required")
 	wantCode(t, e.do(adminID, "POST", path, `{"body":"   \n"}`), 400, "body_required")
 	wantCode(t, e.do(adminID, "POST", path, `{}`), 400, "body_required")
 	wantCode(t, e.do(adminID, "POST", path, `{"body":"`+strings.Repeat("x", 4001)+`"}`), 400, "body_too_long")
-	wantCode(t, e.do(adminID, "POST", "/api/platform/tenants/"+noOneID+"/notes", `{"body":"x"}`), 404, "not_found")
+	wantCode(t, e.do(adminID, "POST", "/api/platform/workspaces/"+noOneID+"/notes", `{"body":"x"}`), 404, "not_found")
 	if len(e.store.notes) != 0 || len(e.store.audits) != 0 {
 		t.Fatal("a refused note left a trace")
 	}
@@ -492,11 +509,11 @@ func TestAddStaff(t *testing.T) {
 func TestAddStaffReactivatesARevokedRow(t *testing.T) {
 	e := newEnv(t)
 	e.store.staffRows = append(e.store.staffRows, fakeStaffRow{user: custID, role: "support", revoked: true})
-	wantStatus(t, e.do(adminID, "POST", "/api/platform/staff", `{"email":"`+custMail+`","role":"admin"}`), 201)
-	if n := len(e.store.staffRows); n != 4 {
+	wantStatus(t, e.do(adminID, "POST", "/api/platform/staff", `{"email":"`+custMail+`","role":"system_admin"}`), 201)
+	if n := len(e.store.staffRows); n != defaultStaffRows+1 {
 		t.Fatalf("staff rows = %d, want the revoked row reused", n)
 	}
-	if r, ok := e.store.activeRole(custID); !ok || r != "admin" {
+	if r, ok := e.store.activeRole(custID); !ok || r != "system_admin" {
 		t.Fatalf("role = %q %v", r, ok)
 	}
 	if a := onlyAudit(t, e); a.Detail["reactivated"] != true {
@@ -507,11 +524,11 @@ func TestAddStaffReactivatesARevokedRow(t *testing.T) {
 func TestAddStaffRefusals(t *testing.T) {
 	e := newEnv(t)
 	wantCode(t, e.do(adminID, "POST", "/api/platform/staff", `{"email":"nobody@example.com","role":"support"}`), 404, "no_such_account")
-	wantCode(t, e.do(adminID, "POST", "/api/platform/staff", `{"email":"`+suppMail+`","role":"admin"}`), 409, "already_staff")
+	wantCode(t, e.do(adminID, "POST", "/api/platform/staff", `{"email":"`+suppMail+`","role":"system_admin"}`), 409, "already_staff")
 	wantCode(t, e.do(adminID, "POST", "/api/platform/staff", `{"email":"x","role":"support"}`), 400, "invalid_email")
 	wantCode(t, e.do(adminID, "POST", "/api/platform/staff", `{"email":"`+custMail+`","role":"root"}`), 400, "invalid_role")
 	wantCode(t, e.do(adminID, "POST", "/api/platform/staff", `{"email":"`+custMail+`"}`), 400, "invalid_role")
-	if len(e.store.audits) != 0 || len(e.store.staffRows) != 3 {
+	if len(e.store.audits) != 0 || len(e.store.staffRows) != defaultStaffRows {
 		t.Fatal("a refused request changed staff")
 	}
 }
@@ -535,70 +552,28 @@ func TestRemoveStaff(t *testing.T) {
 func TestLastAdminCannotBeRemoved(t *testing.T) {
 	e := newEnv(t)
 	// The only active admin, removing themselves.
-	wantCode(t, e.do(adminID, "DELETE", "/api/platform/staff/"+adminID, ""), 400, "last_admin")
+	wantCode(t, e.do(adminID, "DELETE", "/api/platform/staff/"+adminID, ""), 400, "last_system_admin")
 	if _, ok := e.store.activeRole(adminID); !ok || len(e.store.audits) != 0 {
 		t.Fatal("the last admin was removed")
 	}
 
 	// With a second admin, one can go; then the other cannot.
-	e.store.staffRows = append(e.store.staffRows, fakeStaffRow{user: custID, role: "admin"})
+	e.store.staffRows = append(e.store.staffRows, fakeStaffRow{user: custID, role: "system_admin"})
 	wantStatus(t, e.do(adminID, "DELETE", "/api/platform/staff/"+custID, ""), 200)
-	wantCode(t, e.do(adminID, "DELETE", "/api/platform/staff/"+adminID, ""), 400, "last_admin")
+	wantCode(t, e.do(adminID, "DELETE", "/api/platform/staff/"+adminID, ""), 400, "last_system_admin")
 
 	// A revoked admin row does not count as an admin.
-	e.store.staffRows = append(e.store.staffRows, fakeStaffRow{user: custID, role: "admin", revoked: true})
-	wantCode(t, e.do(adminID, "DELETE", "/api/platform/staff/"+adminID, ""), 400, "last_admin")
+	e.store.staffRows = append(e.store.staffRows, fakeStaffRow{user: custID, role: "system_admin", revoked: true})
+	wantCode(t, e.do(adminID, "DELETE", "/api/platform/staff/"+adminID, ""), 400, "last_system_admin")
 }
 
 // --- reads ---
 
-func TestListTenantsPassesFiltersAndPages(t *testing.T) {
-	e := newEnv(t)
-	e.reader.tenants = []TenantRow{
-		{ID: "bbbbbbbb-0000-0000-0000-000000000003", Name: "C", Slug: "c", Status: "active", MemberCount: 3, CreatedAt: t0.Add(2 * time.Hour), LastActivityAt: t0},
-		{ID: "bbbbbbbb-0000-0000-0000-000000000002", Name: "B", Slug: "b", Status: "suspended", CreatedAt: t0.Add(time.Hour), LastActivityAt: t0},
-		{ID: "bbbbbbbb-0000-0000-0000-000000000001", Name: "A", Slug: "a", Status: "active", CreatedAt: t0, LastActivityAt: t0},
-	}
-	rec := e.do(suppID, "GET", "/api/platform/tenants?q=50%25_off&limit=2", "")
-	wantStatus(t, rec, 200)
-	if e.reader.lastTenants.Limit != 2 || e.reader.lastTenants.Pattern == nil || *e.reader.lastTenants.Pattern != `%50\%\_off%` {
-		t.Fatalf("search = %+v", e.reader.lastTenants)
-	}
-	m := decode(t, rec)
-	rows, _ := m["tenants"].([]any)
-	if len(rows) != 2 {
-		t.Fatalf("rows = %d, want the page of 2", len(rows))
-	}
-	first, _ := rows[0].(map[string]any)
-	if first["name"] != "C" || first["member_count"] != float64(3) || first["status"] != "active" || first["last_activity_at"] == nil {
-		t.Fatalf("row = %v", first)
-	}
-	next, _ := m["next_cursor"].(string)
-	cur, err := decodeCursor(next)
-	if err != nil || cur.ID != "bbbbbbbb-0000-0000-0000-000000000002" || !cur.CreatedAt.Equal(t0.Add(time.Hour)) {
-		t.Fatalf("next cursor = %q %+v %v", next, cur, err)
-	}
-
-	// The cursor goes back to the reader; a page that fits has no next cursor.
-	e.reader.tenants = e.reader.tenants[2:]
-	rec = e.do(adminID, "GET", "/api/platform/tenants?limit=2&cursor="+next, "")
-	wantStatus(t, rec, 200)
-	if e.reader.lastTenants.Cursor == nil || e.reader.lastTenants.Cursor.ID != cur.ID {
-		t.Fatalf("cursor was not passed: %+v", e.reader.lastTenants)
-	}
-	if decode(t, rec)["next_cursor"] != nil {
-		t.Fatal("the last page has a next cursor")
-	}
-
-	wantCode(t, e.do(adminID, "GET", "/api/platform/tenants?limit=0", ""), 400, "invalid_filter")
-	wantCode(t, e.do(adminID, "GET", "/api/platform/tenants?cursor=zzz", ""), 400, "invalid_cursor")
-}
-
-func TestGetTenantReturnsStateNotesCountAndOwner(t *testing.T) {
+func TestGetWorkspaceReturnsStateNotesCountAndOwner(t *testing.T) {
 	e := newEnv(t)
 	sched := t0.Add(30 * 24 * time.Hour)
-	e.reader.details[wsID] = TenantDetail{
-		TenantRow:           TenantRow{ID: wsID, Name: wsName, Slug: "acme", Status: "pending_deletion", MemberCount: 4, CreatedAt: t0, LastActivityAt: t0.Add(time.Hour)},
+	e.reader.details[wsID] = WorkspaceDetail{
+		WorkspaceRow:        WorkspaceRow{ID: wsID, Name: wsName, Slug: "acme", Status: "pending_deletion", MemberCount: 4, CreatedAt: t0, LastActivityAt: t0.Add(time.Hour)},
 		StateReason:         "owner request",
 		StateChangedBy:      adminID,
 		StateChangedAt:      &t0,
@@ -607,7 +582,7 @@ func TestGetTenantReturnsStateNotesCountAndOwner(t *testing.T) {
 		OwnerID:             custID,
 		OwnerEmail:          custMail,
 	}
-	m := decode(t, e.do(billID, "GET", "/api/platform/tenants/"+wsID, ""))
+	m := decode(t, e.do(billID, "GET", "/api/platform/workspaces/"+wsID, ""))
 	state, _ := m["state"].(map[string]any)
 	owner, _ := m["owner"].(map[string]any)
 	if m["id"] != wsID || m["status"] != "pending_deletion" || m["member_count"] != float64(4) || m["notes_count"] != float64(2) ||
@@ -620,14 +595,14 @@ func TestGetTenantReturnsStateNotesCountAndOwner(t *testing.T) {
 	}
 
 	// No platform row and no owner: the state record is empty and the owner null.
-	e.reader.details[wsID] = TenantDetail{TenantRow: TenantRow{ID: wsID, Name: wsName, Status: "active", CreatedAt: t0, LastActivityAt: t0}}
-	m = decode(t, e.do(billID, "GET", "/api/platform/tenants/"+wsID, ""))
+	e.reader.details[wsID] = WorkspaceDetail{WorkspaceRow: WorkspaceRow{ID: wsID, Name: wsName, Status: "active", CreatedAt: t0, LastActivityAt: t0}}
+	m = decode(t, e.do(billID, "GET", "/api/platform/workspaces/"+wsID, ""))
 	state, _ = m["state"].(map[string]any)
 	if m["owner"] != nil || state["status"] != "active" || state["changed_at"] != nil || state["changed_by"] != nil {
 		t.Fatalf("tenant = %v", m)
 	}
 
-	wantCode(t, e.do(adminID, "GET", "/api/platform/tenants/"+noOneID, ""), 404, "not_found")
+	wantCode(t, e.do(adminID, "GET", "/api/platform/workspaces/"+noOneID, ""), 404, "not_found")
 }
 
 func TestUsersListAndDetail(t *testing.T) {
@@ -666,7 +641,7 @@ func TestUsersListAndDetail(t *testing.T) {
 func TestListNotes(t *testing.T) {
 	e := newEnv(t)
 	e.reader.notes = []Note{{ID: "eeeeeeee-0000-0000-0000-000000000001", WorkspaceID: wsID, AuthorID: suppID, AuthorEmail: suppMail, Body: "hi", CreatedAt: t0}}
-	rec := e.do(billID, "GET", "/api/platform/tenants/"+wsID+"/notes", "")
+	rec := e.do(billID, "GET", "/api/platform/workspaces/"+wsID+"/notes", "")
 	wantStatus(t, rec, 200)
 	notes, _ := decode(t, rec)["notes"].([]any)
 	n, _ := notes[0].(map[string]any)
@@ -725,12 +700,12 @@ func TestAuditEventsFiltersAndShape(t *testing.T) {
 
 func TestTenantAuditEventsAreScopedToTheWorkspace(t *testing.T) {
 	e := newEnv(t)
-	wantStatus(t, e.do(billID, "GET", "/api/platform/tenants/"+wsID+"/audit-events?action=workspace.status_changed", ""), 200)
+	wantStatus(t, e.do(billID, "GET", "/api/platform/workspaces/"+wsID+"/audit-events?action=workspace.status_changed", ""), 200)
 	if e.reader.lastAudit.WorkspaceID != wsID || e.reader.lastAudit.Action == nil || *e.reader.lastAudit.Action != "workspace.status_changed" {
 		t.Fatalf("query = %+v", e.reader.lastAudit)
 	}
 	// The rows of a workspace that no longer exists are still readable.
-	wantStatus(t, e.do(billID, "GET", "/api/platform/tenants/"+noOneID+"/audit-events", ""), 200)
+	wantStatus(t, e.do(billID, "GET", "/api/platform/workspaces/"+noOneID+"/audit-events", ""), 200)
 	if e.reader.lastAudit.WorkspaceID != noOneID {
 		t.Fatalf("query = %+v", e.reader.lastAudit)
 	}
@@ -777,8 +752,8 @@ func TestOverviewByPlanIsAnObjectWhenEmpty(t *testing.T) {
 func TestReadErrorsAreNotLeaked(t *testing.T) {
 	e := newEnv(t)
 	e.reader.err = errors.New("pq: relation platform_note does not exist")
-	for _, p := range []string{"/api/platform/tenants", "/api/platform/users", "/api/platform/staff", "/api/platform/audit-events", "/api/platform/overview",
-		"/api/platform/tenants/" + wsID, "/api/platform/users/" + custID, "/api/platform/tenants/" + wsID + "/notes"} {
+	for _, p := range []string{"/api/platform/tenants", "/api/platform/tenants/" + tenantID, "/api/platform/users", "/api/platform/staff", "/api/platform/audit-events", "/api/platform/overview",
+		"/api/platform/workspaces/" + wsID, "/api/platform/users/" + custID, "/api/platform/workspaces/" + wsID + "/notes"} {
 		rec := e.do(adminID, "GET", p, "")
 		wantCode(t, rec, 500, "internal")
 		if strings.Contains(rec.Body.String(), "relation") {
@@ -798,7 +773,7 @@ func TestResponsesAreNotCached(t *testing.T) {
 // deletion. The middleware admits support to the route, so the handler answers
 // 403.
 func TestPendingDeletionNeedsAdmin(t *testing.T) {
-	path := "/api/platform/tenants/" + wsID + "/status"
+	path := "/api/platform/workspaces/" + wsID + "/status"
 
 	e := newEnv(t)
 	wantCode(t, e.do(suppID, "POST", path, `{"status":"pending_deletion","reason":"owner request"}`), 403, "forbidden")
@@ -824,9 +799,9 @@ func TestPendingDeletionNeedsAdmin(t *testing.T) {
 
 // Leaving pending_deletion cancels the deletion, which is also admin's.
 func TestCancellingADeletionNeedsAdmin(t *testing.T) {
-	path := "/api/platform/tenants/" + wsID + "/status"
+	path := "/api/platform/workspaces/" + wsID + "/status"
 	pending := func(e *env) {
-		e.reader.details[wsID] = TenantDetail{TenantRow: TenantRow{ID: wsID, Name: wsName, Status: "pending_deletion", CreatedAt: t0, LastActivityAt: t0}}
+		e.reader.details[wsID] = WorkspaceDetail{WorkspaceRow: WorkspaceRow{ID: wsID, Name: wsName, Status: "pending_deletion", CreatedAt: t0, LastActivityAt: t0}}
 	}
 
 	e := newEnv(t)

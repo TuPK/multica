@@ -16,7 +16,7 @@ import (
 
 const uniqueViolation = "23505"
 
-// Seeder gives the people in PLATFORM_ADMIN_EMAILS an active admin row. It is
+// Seeder gives the people in PLATFORM_ADMIN_EMAILS an active system_admin row. It is
 // how the first administrator gets in, and it cannot lock itself out: a
 // revoked row of such a person is re-activated.
 type Seeder struct {
@@ -66,7 +66,7 @@ func (s *Seeder) SeedEmail(ctx context.Context, email string) error {
 		return fmt.Errorf("seed staff: read staff row: %w", err)
 	}
 
-	n, err := s.q.ReactivateStaff(ctx, db.ReactivateStaffParams{UserID: userID, Role: string(RoleAdmin)})
+	n, err := s.q.ReactivateStaff(ctx, db.ReactivateStaffParams{UserID: userID, Role: string(RoleSystemAdmin)})
 	if isUniqueViolation(err) {
 		// Another instance gave this user an active row between the two steps.
 		return nil
@@ -79,7 +79,7 @@ func (s *Seeder) SeedEmail(ctx context.Context, email string) error {
 		return nil
 	}
 
-	n, err = s.q.InsertStaff(ctx, db.InsertStaffParams{UserID: userID, Role: string(RoleAdmin), CreatedBy: pgtype.UUID{}})
+	n, err = s.q.InsertStaff(ctx, db.InsertStaffParams{UserID: userID, Role: string(RoleSystemAdmin), CreatedBy: pgtype.UUID{}})
 	if err != nil {
 		return fmt.Errorf("seed staff: insert: %w", err)
 	}

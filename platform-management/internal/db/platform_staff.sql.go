@@ -29,7 +29,7 @@ func (q *Queries) GetAccountState(ctx context.Context, userID pgtype.UUID) (GetA
 }
 
 const getActiveStaffByUserID = `-- name: GetActiveStaffByUserID :one
-SELECT user_id, role, created_by, created_at, revoked_at FROM platform_staff
+SELECT user_id, role, created_by, created_at, revoked_at, tenant_id FROM platform_staff
 WHERE user_id = $1 AND revoked_at IS NULL
 `
 
@@ -42,6 +42,7 @@ func (q *Queries) GetActiveStaffByUserID(ctx context.Context, userID pgtype.UUID
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.RevokedAt,
+		&i.TenantID,
 	)
 	return i, err
 }
@@ -73,8 +74,8 @@ func (q *Queries) GetUserIDByEmail(ctx context.Context, email string) (pgtype.UU
 }
 
 const insertStaff = `-- name: InsertStaff :execrows
-INSERT INTO platform_staff (user_id, role, created_by)
-VALUES ($1, $2, $3)
+INSERT INTO platform_staff (user_id, role, created_by, tenant_id)
+VALUES ($1, $2, $3, $4)
 ON CONFLICT (user_id) WHERE revoked_at IS NULL DO NOTHING
 `
 
@@ -82,11 +83,17 @@ type InsertStaffParams struct {
 	UserID    pgtype.UUID `json:"user_id"`
 	Role      string      `json:"role"`
 	CreatedBy pgtype.UUID `json:"created_by"`
+	TenantID  pgtype.UUID `json:"tenant_id"`
 }
 
 // Does nothing when the user already has an active row.
 func (q *Queries) InsertStaff(ctx context.Context, arg InsertStaffParams) (int64, error) {
-	result, err := q.db.Exec(ctx, insertStaff, arg.UserID, arg.Role, arg.CreatedBy)
+	result, err := q.db.Exec(ctx, insertStaff,
+		arg.UserID,
+		arg.Role,
+		arg.CreatedBy,
+		arg.TenantID,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -94,7 +101,7 @@ func (q *Queries) InsertStaff(ctx context.Context, arg InsertStaffParams) (int64
 }
 
 const listStaff = `-- name: ListStaff :many
-SELECT user_id, role, created_by, created_at, revoked_at FROM platform_staff
+SELECT user_id, role, created_by, created_at, revoked_at, tenant_id FROM platform_staff
 WHERE revoked_at IS NULL
 ORDER BY created_at, user_id
 `
@@ -115,6 +122,7 @@ func (q *Queries) ListStaff(ctx context.Context) ([]PlatformStaff, error) {
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.RevokedAt,
+			&i.TenantID,
 		); err != nil {
 			return nil, err
 		}
@@ -128,7 +136,7 @@ func (q *Queries) ListStaff(ctx context.Context) ([]PlatformStaff, error) {
 
 const reactivateStaff = `-- name: ReactivateStaff :execrows
 UPDATE platform_staff
-SET revoked_at = NULL, role = $2
+SET revoked_at = NULL, role = $2, tenant_id = $3
 WHERE ctid = (
     SELECT s.ctid FROM platform_staff s
     WHERE s.user_id = $1 AND s.revoked_at IS NOT NULL
@@ -138,15 +146,16 @@ WHERE ctid = (
 `
 
 type ReactivateStaffParams struct {
-	UserID pgtype.UUID `json:"user_id"`
-	Role   string      `json:"role"`
+	UserID   pgtype.UUID `json:"user_id"`
+	Role     string      `json:"role"`
+	TenantID pgtype.UUID `json:"tenant_id"`
 }
 
 // Re-activates the user's most recently created revoked row with the given
-// role. It changes nothing when the user has no revoked row, and fails on the
+// role and tenant (null unless the role is admin). It changes nothing when the user has no revoked row, and fails on the
 // unique index when the user already has an active row.
 func (q *Queries) ReactivateStaff(ctx context.Context, arg ReactivateStaffParams) (int64, error) {
-	result, err := q.db.Exec(ctx, reactivateStaff, arg.UserID, arg.Role)
+	result, err := q.db.Exec(ctx, reactivateStaff, arg.UserID, arg.Role, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -161,6 +170,27 @@ WHERE user_id = $1 AND revoked_at IS NULL
 
 func (q *Queries) RevokeStaff(ctx context.Context, userID pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, revokeStaff, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateStaffRoleAndTenant = `-- name: UpdateStaffRoleAndTenant :execrows
+UPDATE platform_staff
+SET role = $2, tenant_id = $3
+WHERE user_id = $1 AND revoked_at IS NULL
+`
+
+type UpdateStaffRoleAndTenantParams struct {
+	UserID   pgtype.UUID `json:"user_id"`
+	Role     string      `json:"role"`
+	TenantID pgtype.UUID `json:"tenant_id"`
+}
+
+// Changes the role and tenant of the user's active row.
+func (q *Queries) UpdateStaffRoleAndTenant(ctx context.Context, arg UpdateStaffRoleAndTenantParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateStaffRoleAndTenant, arg.UserID, arg.Role, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}

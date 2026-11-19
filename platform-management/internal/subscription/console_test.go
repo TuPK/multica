@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -41,9 +42,9 @@ func (d *fakeDirectory) UserIDByEmail(context.Context, string) (string, bool, er
 	return "", false, nil
 }
 
-func (d *fakeDirectory) ActiveStaff(_ context.Context, id string) (staff.Role, bool, error) {
+func (d *fakeDirectory) ActiveStaff(_ context.Context, id string) (staff.Role, string, bool, error) {
 	r, ok := d.roles[id]
-	return r, ok, nil
+	return r, "", ok, nil
 }
 
 func (d *fakeDirectory) EmailByUserID(_ context.Context, id string) (string, error) {
@@ -167,7 +168,7 @@ func newConsoleEnvWithCurrencies(t *testing.T, currencies []string) *consoleEnv 
 func buildConsole(t *testing.T, e *consoleEnv, plans plan.Reader, runner plan.Runner, currencies []string) http.Handler {
 	t.Helper()
 	dir := &fakeDirectory{
-		roles:  map[string]staff.Role{adminUser: staff.RoleAdmin, suppUser: staff.RoleSupport, billUser: staff.RoleBilling},
+		roles:  map[string]staff.Role{adminUser: staff.RoleSystemAdmin, suppUser: staff.RoleSupport, billUser: staff.RoleBilling},
 		emails: map[string]string{adminUser: adminMail, suppUser: "support@example.com", billUser: staffEm},
 	}
 	auth := platformauth.New(platformauth.Deps{
@@ -229,7 +230,7 @@ func wantCode(t *testing.T, rec *httptest.ResponseRecorder, status int, code str
 	}
 }
 
-const subPath = "/api/platform/tenants/" + wsID + "/subscription"
+const subPath = "/api/platform/workspaces/" + wsID + "/subscription"
 
 const proBody = `{"plan_key":"pro","seats":5,"interval":"month","reason":"bank transfer 1234"}`
 
@@ -298,10 +299,10 @@ func TestOtherMethodsOnTheseRoutesAre404(t *testing.T) {
 
 func TestPatternsListTheRoutesTheServerMounts(t *testing.T) {
 	want := map[string]bool{
-		"/api/platform/plans": true, "/api/platform/plans/{key}": true, "/api/platform/tenants/{id}/subscription": true,
-		"/api/platform/tenants/{id}/billing-profile":          true,
-		"/api/platform/tenants/{id}/billing-profile/verify":   true,
-		"/api/platform/tenants/{id}/billing-profile/unverify": true,
+		"/api/platform/plans": true, "/api/platform/plans/{key}": true, "/api/platform/workspaces/{id}/subscription": true,
+		"/api/platform/workspaces/{id}/billing-profile":          true,
+		"/api/platform/workspaces/{id}/billing-profile/verify":   true,
+		"/api/platform/workspaces/{id}/billing-profile/unverify": true,
 	}
 	got := ConsolePatterns()
 	if len(got) != len(want) {
@@ -314,7 +315,7 @@ func TestPatternsListTheRoutesTheServerMounts(t *testing.T) {
 	}
 }
 
-// --- PUT /tenants/{id}/subscription
+// --- PUT /workspaces/{id}/subscription
 
 func TestPutSubscriptionIncrementsTheVersionByOne(t *testing.T) {
 	e := newConsoleEnv(t)
@@ -424,8 +425,8 @@ func TestPutSubscriptionErrors(t *testing.T) {
 		{"two values", subPath, `{"plan_key":"pro","interval":"month","reason":"r"} {}`, 400, "invalid_body"},
 		{"bad time", subPath, `{"plan_key":"pro","interval":"month","reason":"r","trial_end":"tomorrow"}`, 400, "invalid_body"},
 		{"zero issue override", subPath, `{"plan_key":"pro","interval":"month","reason":"r","limit_overrides":{"issue_count":0}}`, 400, "invalid_subscription"},
-		{"unknown workspace", "/api/platform/tenants/" + otherWS + "/subscription", proBody, 404, "not_found"},
-		{"bad workspace id", "/api/platform/tenants/acme/subscription", proBody, 404, "not_found"},
+		{"unknown workspace", "/api/platform/workspaces/" + otherWS + "/subscription", proBody, 404, "not_found"},
+		{"bad workspace id", "/api/platform/workspaces/acme/subscription", proBody, 404, "not_found"},
 	}
 	for _, tc := range cases {
 		e := newConsoleEnv(t)
@@ -775,11 +776,11 @@ func TestNameOnlyPutKeepsTheStoredPricesAndCurrency(t *testing.T) {
 	}
 }
 
-// --- POST /tenants/{id}/billing-profile/verify and /unverify
+// --- POST /workspaces/{id}/billing-profile/verify and /unverify
 
 const (
-	verifyPath   = "/api/platform/tenants/" + wsID + "/billing-profile/verify"
-	unverifyPath = "/api/platform/tenants/" + wsID + "/billing-profile/unverify"
+	verifyPath   = "/api/platform/workspaces/" + wsID + "/billing-profile/verify"
+	unverifyPath = "/api/platform/workspaces/" + wsID + "/billing-profile/unverify"
 )
 
 func TestVerifyRouteAllowsBillingAndAdminOnly(t *testing.T) {
@@ -830,8 +831,8 @@ func TestVerifyRouteErrors(t *testing.T) {
 	if f, _ := decodeMap(t, rec)["fields"].([]any); len(f) != 4 {
 		t.Fatalf("fields = %v", f)
 	}
-	wantCode(t, e.do(billUser, "POST", "/api/platform/tenants/"+otherWS+"/billing-profile/verify", ""), 404, "not_found")
-	wantCode(t, e.do(billUser, "POST", "/api/platform/tenants/acme/billing-profile/verify", ""), 404, "not_found")
+	wantCode(t, e.do(billUser, "POST", "/api/platform/workspaces/"+otherWS+"/billing-profile/verify", ""), 404, "not_found")
+	wantCode(t, e.do(billUser, "POST", "/api/platform/workspaces/acme/billing-profile/verify", ""), 404, "not_found")
 }
 
 func TestVerifyRouteRefusesGET(t *testing.T) {
@@ -910,9 +911,9 @@ func TestPutPlanWithoutCurrencyKeepsItOnAPlanInUse(t *testing.T) {
 	}
 }
 
-// --- GET /tenants/{id}/billing-profile
+// --- GET /workspaces/{id}/billing-profile
 
-const readProfilePath = "/api/platform/tenants/" + wsID + "/billing-profile"
+const readProfilePath = "/api/platform/workspaces/" + wsID + "/billing-profile"
 
 func TestReadProfileRouteAllowsEveryStaffRole(t *testing.T) {
 	for _, tc := range []struct {
@@ -965,7 +966,7 @@ func TestReadProfileRouteErrors(t *testing.T) {
 	e := newConsoleEnv(t)
 	e.profs.profiles[otherWS] = businessProfile()
 	for _, id := range []string{otherWS, "acme"} {
-		rec := e.do(suppUser, "GET", "/api/platform/tenants/"+id+"/billing-profile", "")
+		rec := e.do(suppUser, "GET", "/api/platform/workspaces/"+id+"/billing-profile", "")
 		wantCode(t, rec, 404, "not_found")
 		if strings.Contains(rec.Body.String(), "Acme") {
 			t.Errorf("%s: the profile leaked: %s", id, rec.Body)
@@ -980,7 +981,7 @@ func TestReadProfileRouteIsGETOnly(t *testing.T) {
 	}
 }
 
-// --- PUT /tenants/{id}/billing-profile
+// --- PUT /workspaces/{id}/billing-profile
 
 func putBody(over map[string]any) string {
 	m := businessBody()
@@ -1135,8 +1136,8 @@ func TestPutProfileUnchangedWritesNothing(t *testing.T) {
 
 func TestPutProfileOfUnknownTenantIs404(t *testing.T) {
 	e := newConsoleEnv(t)
-	wantCode(t, e.do(adminUser, "PUT", "/api/platform/tenants/"+otherWS+"/billing-profile", putBody(nil)), 404, "not_found")
-	wantCode(t, e.do(adminUser, "PUT", "/api/platform/tenants/acme/billing-profile", putBody(nil)), 404, "not_found")
+	wantCode(t, e.do(adminUser, "PUT", "/api/platform/workspaces/"+otherWS+"/billing-profile", putBody(nil)), 404, "not_found")
+	wantCode(t, e.do(adminUser, "PUT", "/api/platform/workspaces/acme/billing-profile", putBody(nil)), 404, "not_found")
 }
 
 func TestPutProfileDoesNotLeakInternalErrors(t *testing.T) {
@@ -1154,5 +1155,56 @@ func TestPutProfileKindChangeWithFieldChangeWritesOneRow(t *testing.T) {
 	wantStatus(t, e.do(adminUser, "PUT", readProfilePath, putBody(nil)), 200)
 	if len(e.profs.audits) != 1 || e.profs.audits[0].Action != audit.ActionWorkspaceAccountKindChanged {
 		t.Fatalf("audits = %+v", e.profs.audits)
+	}
+}
+
+// Every route of the table, for every method it answers, names an action of the
+// matrix and lists at least one role, so no route is open to every staff role.
+func TestEveryRouteInEveryRouteTableHasAMatrixRow(t *testing.T) {
+	known := map[string]bool{}
+	for _, a := range staff.Actions() {
+		known[a] = true
+	}
+	for _, rt := range routeTable() {
+		for method := range rt.methods {
+			if a := rt.actionFor(method); !known[a] {
+				t.Errorf("%s %s has action %q, which is not a row of the matrix", method, rt.pattern, a)
+			}
+			if len(rt.rolesFor(method)) == 0 {
+				t.Errorf("%s %s lists no role", method, rt.pattern)
+			}
+		}
+	}
+}
+
+// The roles of each route as they were before the matrix, with system_admin in
+// place of the old admin.
+func TestRouteRolesFollowTheMatrix(t *testing.T) {
+	sa, billing, support := staff.RoleSystemAdmin, staff.RoleBilling, staff.RoleSupport
+	type key struct{ method, pattern string }
+	want := map[key][]staff.Role{
+		{"GET", "/api/platform/plans"}:                                     {sa},
+		{"POST", "/api/platform/plans"}:                                    {sa},
+		{"PUT", "/api/platform/plans/{key}"}:                               {sa},
+		{"DELETE", "/api/platform/plans/{key}"}:                            {sa},
+		{"PUT", "/api/platform/workspaces/{id}/subscription"}:              {sa, billing},
+		{"GET", "/api/platform/workspaces/{id}/billing-profile"}:           {sa, support, billing},
+		{"PUT", "/api/platform/workspaces/{id}/billing-profile"}:           {sa, billing},
+		{"POST", "/api/platform/workspaces/{id}/billing-profile/verify"}:   {sa, billing},
+		{"POST", "/api/platform/workspaces/{id}/billing-profile/unverify"}: {sa, billing},
+	}
+	got := map[key][]staff.Role{}
+	for _, rt := range routeTable() {
+		for method := range rt.methods {
+			got[key{method, rt.pattern}] = rt.rolesFor(method)
+		}
+	}
+	if len(got) != len(want) {
+		t.Fatalf("route table has %d routes, want %d: %v", len(got), len(want), got)
+	}
+	for k, roles := range want {
+		if fmt.Sprint(got[k]) != fmt.Sprint(roles) {
+			t.Errorf("%s %s roles = %v, want %v", k.method, k.pattern, got[k], roles)
+		}
 	}
 }

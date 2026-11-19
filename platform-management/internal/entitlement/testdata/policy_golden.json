@@ -34,6 +34,9 @@
       "issue_count": {
         "action": "off"
       },
+      "max_workspaces": {
+        "action": "off"
+      },
       "member_groups": {
         "action": "enforce",
         "limit": 50
@@ -90,6 +93,9 @@
         }
       },
       "issue_count": {
+        "action": "off"
+      },
+      "max_workspaces": {
         "action": "off"
       },
       "member_groups": {
@@ -151,6 +157,9 @@
         "action": "enforce",
         "limit": 200
       },
+      "max_workspaces": {
+        "action": "off"
+      },
       "member_groups": {
         "action": "enforce",
         "limit": 0
@@ -210,6 +219,9 @@
         }
       },
       "issue_count": {
+        "action": "off"
+      },
+      "max_workspaces": {
         "action": "off"
       },
       "member_groups": {

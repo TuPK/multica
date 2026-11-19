@@ -66,6 +66,11 @@ type Inputs struct {
 	Overrides plan.Limits
 	// WorkspaceStatus is the platform_workspace status: "active" with no row.
 	WorkspaceStatus string
+	// HasTenant is whether the workspace is linked to a tenant. Without a link the
+	// max_workspaces gate is off.
+	HasTenant bool
+	// MaxWorkspaces is the tenant's limit (TenantMaxWorkspaces); nil is no limit.
+	MaxWorkspaces *int64
 	// APIRateCeiling is the rate a limited plan gets when it leaves the API
 	// rate empty. Zero means plan.DefaultAPIRateCeiling.
 	APIRateCeiling int64
@@ -101,6 +106,15 @@ func Build(in Inputs, now time.Time) Policy {
 	// The gates of spec 5.7. A limit the plan leaves out is unlimited, so off.
 	for _, name := range planLimitGates {
 		gates[name] = gate(plan.EffectiveLimit(in.Plan.Limits, in.Overrides, name))
+	}
+	// The tenant's limit goes to every workspace of the tenant. A workspace with
+	// no tenant link (not backfilled yet) has the gate off. The gate is always
+	// served: the client reads it, and the contract fixtures hold every gate it
+	// reads.
+	if in.HasTenant {
+		gates[plan.GateMaxWorkspaces] = gate(in.MaxWorkspaces)
+	} else {
+		gates[plan.GateMaxWorkspaces] = Gate{Action: ActionOff}
 	}
 	ceiling := in.APIRateCeiling
 	if ceiling == 0 {

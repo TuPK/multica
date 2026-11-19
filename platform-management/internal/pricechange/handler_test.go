@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -37,16 +38,16 @@ func (fakeDirectory) UserIDByEmail(context.Context, string) (string, bool, error
 	return "", false, nil
 }
 
-func (fakeDirectory) ActiveStaff(_ context.Context, id string) (staff.Role, bool, error) {
+func (fakeDirectory) ActiveStaff(_ context.Context, id string) (staff.Role, string, bool, error) {
 	switch id {
 	case adminUser:
-		return staff.RoleAdmin, true, nil
+		return staff.RoleSystemAdmin, "", true, nil
 	case suppUser:
-		return staff.RoleSupport, true, nil
+		return staff.RoleSupport, "", true, nil
 	case billUser:
-		return staff.RoleBilling, true, nil
+		return staff.RoleBilling, "", true, nil
 	}
-	return "", false, nil
+	return "", "", false, nil
 }
 
 func (fakeDirectory) EmailByUserID(_ context.Context, id string) (string, error) {
@@ -376,6 +377,48 @@ func TestRefusePriceFieldsPassesOtherBodiesAndMethodsOn(t *testing.T) {
 		h.ServeHTTP(httptest.NewRecorder(), req)
 		if got != c[0]+" "+c[1] {
 			t.Errorf("%s %q: next saw %q", c[0], c[1], got)
+		}
+	}
+}
+
+// Every route of the handler names an action of the matrix: system_admin
+// schedules and cancels, billing and system_admin read the history.
+func TestEveryRouteInEveryRouteTableHasAMatrixRow(t *testing.T) {
+	known := map[string]bool{}
+	for _, a := range staff.Actions() {
+		known[a] = true
+	}
+	seen := 0
+	for _, rt := range routes(nil) {
+		for method, ep := range rt.methods {
+			seen++
+			if !known[ep.action] {
+				t.Errorf("%s %s has action %q, which is not a row of the matrix", method, rt.pattern, ep.action)
+			}
+			if len(staff.RolesWith(ep.action)) == 0 {
+				t.Errorf("%s %s lists no role", method, rt.pattern)
+			}
+		}
+	}
+	if seen != 3 {
+		t.Errorf("route table has %d routes, want 3", seen)
+	}
+}
+
+func TestRouteRolesFollowTheMatrix(t *testing.T) {
+	roles := map[string][]staff.Role{}
+	for _, rt := range routes(nil) {
+		for method, ep := range rt.methods {
+			roles[method+" "+rt.pattern] = staff.RolesWith(ep.action)
+		}
+	}
+	for route, want := range map[string][]staff.Role{
+		"GET " + Patterns[0]:    {staff.RoleSystemAdmin, staff.RoleBilling},
+		"POST " + Patterns[0]:   {staff.RoleSystemAdmin},
+		"DELETE " + Patterns[1]: {staff.RoleSystemAdmin},
+	} {
+		if fmt.Sprint(roles[route]) != fmt.Sprint(want) {
+			t.Errorf("%s roles = %v, want %v", route, roles[route], want)
 		}
 	}
 }

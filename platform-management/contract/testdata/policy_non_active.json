@@ -30,6 +30,9 @@
     "issue_count": {
       "action": "off"
     },
+    "max_workspaces": {
+      "action": "off"
+    },
     "member_groups": {
       "action": "enforce",
       "limit": 0

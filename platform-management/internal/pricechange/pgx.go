@@ -348,6 +348,12 @@ func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 	if err != nil {
 		return err
 	}
+	var tenant pgtype.UUID
+	if e.TenantID != "" {
+		if err := tenant.Scan(e.TenantID); err != nil {
+			return err
+		}
+	}
 	return t.q.InsertAuditEvent(ctx, db.InsertAuditEventParams{
 		WorkspaceID: ws,
 		ActorType:   e.ActorType,
@@ -361,6 +367,7 @@ func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 		Ip:          e.IP,
 		UserAgent:   e.UserAgent,
 		RequestID:   e.RequestID,
+		TenantID:    tenant,
 	})
 }
 

@@ -81,6 +81,12 @@ func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 	if err != nil {
 		return err
 	}
+	var tenant pgtype.UUID
+	if e.TenantID != "" {
+		if err := tenant.Scan(e.TenantID); err != nil {
+			return err
+		}
+	}
 	return t.q.InsertAuditEvent(ctx, db.InsertAuditEventParams{
 		WorkspaceID: ws,
 		ActorType:   e.ActorType,
@@ -94,6 +100,7 @@ func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 		Ip:          e.IP,
 		UserAgent:   e.UserAgent,
 		RequestID:   e.RequestID,
+		TenantID:    tenant,
 	})
 }
 
@@ -113,4 +120,55 @@ func marshalDetail(detail map[string]any) ([]byte, error) {
 		detail = map[string]any{}
 	}
 	return json.Marshal(detail)
+}
+
+// PgxTenantRunner is the TenantRunner over a Postgres pool.
+type PgxTenantRunner struct{ pool Beginner }
+
+// NewPgxTenantRunner returns a TenantRunner that opens one transaction per batch.
+func NewPgxTenantRunner(pool Beginner) *PgxTenantRunner { return &PgxTenantRunner{pool: pool} }
+
+// InTx implements TenantRunner.
+func (r *PgxTenantRunner) InTx(ctx context.Context, fn func(TenantTx) error) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }() // a no-op once committed
+	if err := fn(&pgxTenantTx{q: db.New(tx)}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+type pgxTenantTx struct{ q *db.Queries }
+
+func (t *pgxTenantTx) WithoutTenant(ctx context.Context, limit int) ([]Candidate, error) {
+	rows, err := t.q.ListWorkspacesWithoutTenant(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Candidate, len(rows))
+	for i, r := range rows {
+		out[i] = Candidate{ID: r.ID.String(), Name: r.Name}
+	}
+	return out, nil
+}
+
+func (t *pgxTenantTx) InsertTenant(ctx context.Context, workspaceID string) (bool, error) {
+	uid, err := parseOptionalUUID(workspaceID)
+	if err != nil || !uid.Valid {
+		return false, fmt.Errorf("invalid workspace id %q", workspaceID)
+	}
+	n, err := t.q.InsertTenantOfWorkspace(ctx, uid)
+	return n > 0, err
+}
+
+func (t *pgxTenantTx) LinkWorkspace(ctx context.Context, workspaceID string) (bool, error) {
+	uid, err := parseOptionalUUID(workspaceID)
+	if err != nil || !uid.Valid {
+		return false, fmt.Errorf("invalid workspace id %q", workspaceID)
+	}
+	n, err := t.q.LinkWorkspaceToOwnTenant(ctx, uid)
+	return n > 0, err
 }

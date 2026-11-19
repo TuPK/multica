@@ -78,6 +78,8 @@ type Deps struct {
 	// Reconciler decides payment notices. *billing.Reconciler is one.
 	Reconciler NoticeResolver
 	Accounts   AccountRequests
+	// Members serves the staff add-member routes (spec R6 section 4).
+	Members MemberRequests
 	// Einvoices serves the retry route. *invoice.Service is one.
 	Einvoices EinvoiceOps
 	Logins    LoginLookup
@@ -98,63 +100,83 @@ type Handler struct {
 
 type handlerFunc func(*Handler, http.ResponseWriter, *http.Request)
 
-// routeSpec is one path with the staff roles it admits (any role when empty)
+// routeSpec is one path with the matrix action it needs (spec R6 section 3.6)
 // and a handler for each method it answers. A method that is not listed is a
 // 404, the same answer as an unknown route.
 type routeSpec struct {
 	pattern string
-	roles   []staff.Role
-	methods map[string]handlerFunc
+	action  string
+	// methodActions overrides action for the methods it names.
+	methodActions map[string]string
+	methods       map[string]handlerFunc
 }
 
-var (
-	supportAndAdmin = []staff.Role{staff.RoleSupport, staff.RoleAdmin}
-	billingAndAdmin = []staff.Role{staff.RoleBilling, staff.RoleAdmin}
-	adminOnly       = []staff.Role{staff.RoleAdmin}
-)
+// actionFor returns the matrix action of the route for method.
+func (rt routeSpec) actionFor(method string) string {
+	if a, ok := rt.methodActions[method]; ok {
+		return a
+	}
+	return rt.action
+}
+
+// rolesFor returns the staff roles that may call the route with method: the
+// roles the matrix gives access to every object, and those it gives access to
+// their own tenant, because every handler of this package applies the Scope of
+// the request (spec R6 section 3.5, rule 4).
+func (rt routeSpec) rolesFor(method string) []staff.Role {
+	return staff.RolesScoped(rt.actionFor(method))
+}
 
 // routeTable is the route table of the contract, section 4.
 func routeTable() []routeSpec {
 	const base = "/api/platform"
 	return []routeSpec{
-		{base + "/tenants", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listTenants}},
-		{base + "/tenants/{id}", nil, map[string]handlerFunc{http.MethodGet: (*Handler).getTenant}},
-		{base + "/tenants/{id}/status", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).setTenantStatus}},
-		{base + "/tenants/{id}/usage", nil, map[string]handlerFunc{http.MethodGet: (*Handler).getTenantUsage}},
-		{base + "/tenants/{id}/audit-events", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listTenantAuditEvents}},
-		{base + "/tenants/{id}/notes", nil, map[string]handlerFunc{
+		{base + "/tenants", staff.ActionTenantsList, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listTenants}},
+		{base + "/tenants/{id}", staff.ActionTenantsRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getTenant}},
+		{base + "/workspaces/{id}", staff.ActionWorkspacesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getWorkspace}},
+		{base + "/workspaces/{id}/status", staff.ActionWorkspacesLock, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setWorkspaceStatus}},
+		{base + "/workspaces/{id}/usage", staff.ActionWorkspacesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getWorkspaceUsage}},
+		{base + "/workspaces/{id}/audit-events", staff.ActionAuditRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listWorkspaceAuditEvents}},
+		{base + "/workspaces/{id}/notes", staff.ActionWorkspacesRead, map[string]string{http.MethodPost: staff.ActionNotesWrite}, map[string]handlerFunc{
 			http.MethodGet:  (*Handler).listNotes,
 			http.MethodPost: (*Handler).addNote,
 		}},
-		{base + "/users", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listUsers}},
-		{base + "/users/{id}", nil, map[string]handlerFunc{http.MethodGet: (*Handler).getUser}},
-		{base + "/users/{id}/status", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).setUserStatus}},
-		{base + "/users/{id}/revoke-sessions", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).revokeSessions}},
-		{base + "/users/{id}/mfa-reset", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).resetUserMFA}},
-		{base + "/staff", adminOnly, map[string]handlerFunc{
+		{base + "/users", staff.ActionUsersRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listUsers}},
+		{base + "/users/{id}", staff.ActionUsersRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getUser}},
+		{base + "/users/{id}/status", staff.ActionAccountsControl, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setUserStatus}},
+		{base + "/users/{id}/revoke-sessions", staff.ActionAccountsControl, nil, map[string]handlerFunc{http.MethodPost: (*Handler).revokeSessions}},
+		{base + "/users/{id}/mfa-reset", staff.ActionAccountsControl, nil, map[string]handlerFunc{http.MethodPost: (*Handler).resetUserMFA}},
+		{base + "/staff", staff.ActionStaffManage, nil, map[string]handlerFunc{
 			http.MethodGet:  (*Handler).listStaff,
 			http.MethodPost: (*Handler).addStaff,
 		}},
-		{base + "/staff/{user_id}", adminOnly, map[string]handlerFunc{http.MethodDelete: (*Handler).removeStaff}},
-		{base + "/audit-events", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listAuditEvents}},
-		{base + "/orders", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listOrders}},
-		{base + "/orders/{id}/einvoices", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listOrderEinvoices}},
-		{base + "/orders/{id}/confirm", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).confirmOrder}},
-		{base + "/orders/{id}/cancel", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).cancelOrder}},
-		{base + "/payment-notices", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listPaymentNotices}},
-		{base + "/payment-notices/{id}", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).getPaymentNotice}},
-		{base + "/payment-notices/{id}/resolve", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).resolvePaymentNotice}},
-		{base + "/payment-notices/{id}/dismiss", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).dismissPaymentNotice}},
-		{base + "/einvoices", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listEinvoices}},
-		{base + "/einvoices/{orderId}/retry", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).retryEinvoice}},
-		{base + "/accounts", adminOnly, map[string]handlerFunc{
+		{base + "/staff/{user_id}", staff.ActionStaffManage, nil, map[string]handlerFunc{
+			http.MethodPut:    (*Handler).updateStaff,
+			http.MethodDelete: (*Handler).removeStaff,
+		}},
+		{base + "/audit-events", staff.ActionAuditRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listAuditEvents}},
+		{base + "/orders", staff.ActionOrdersRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listOrders}},
+		{base + "/orders/{id}/einvoices", staff.ActionOrdersRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listOrderEinvoices}},
+		{base + "/orders/{id}/confirm", staff.ActionOrdersDecide, nil, map[string]handlerFunc{http.MethodPost: (*Handler).confirmOrder}},
+		{base + "/orders/{id}/cancel", staff.ActionOrdersDecide, nil, map[string]handlerFunc{http.MethodPost: (*Handler).cancelOrder}},
+		{base + "/payment-notices", staff.ActionPaymentsManage, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listPaymentNotices}},
+		{base + "/payment-notices/{id}", staff.ActionPaymentsManage, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getPaymentNotice}},
+		{base + "/payment-notices/{id}/resolve", staff.ActionPaymentsManage, nil, map[string]handlerFunc{http.MethodPost: (*Handler).resolvePaymentNotice}},
+		{base + "/payment-notices/{id}/dismiss", staff.ActionPaymentsManage, nil, map[string]handlerFunc{http.MethodPost: (*Handler).dismissPaymentNotice}},
+		{base + "/einvoices", staff.ActionPaymentsManage, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listEinvoices}},
+		{base + "/einvoices/{orderId}/retry", staff.ActionPaymentsManage, nil, map[string]handlerFunc{http.MethodPost: (*Handler).retryEinvoice}},
+		{base + "/accounts", staff.ActionAccountRequests, nil, map[string]handlerFunc{
 			http.MethodGet:  (*Handler).listAccountRequests,
 			http.MethodPost: (*Handler).createAccountRequest,
 		}},
-		{base + "/accounts/{id}", adminOnly, map[string]handlerFunc{http.MethodGet: (*Handler).getAccountRequest}},
-		{base + "/accounts/{id}/cancel", adminOnly, map[string]handlerFunc{http.MethodPost: (*Handler).cancelAccountRequest}},
-		{base + "/accounts/{id}/resend-welcome", adminOnly, map[string]handlerFunc{http.MethodPost: (*Handler).resendWelcome}},
-		{base + "/overview", nil, map[string]handlerFunc{http.MethodGet: (*Handler).overview}},
+		{base + "/accounts/{id}", staff.ActionAccountRequests, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getAccountRequest}},
+		{base + "/accounts/{id}/cancel", staff.ActionAccountRequests, nil, map[string]handlerFunc{http.MethodPost: (*Handler).cancelAccountRequest}},
+		{base + "/accounts/{id}/resend-welcome", staff.ActionAccountRequests, nil, map[string]handlerFunc{http.MethodPost: (*Handler).resendWelcome}},
+		{base + "/workspaces/{id}/members", staff.ActionMembersAdd, nil, map[string]handlerFunc{http.MethodPost: (*Handler).addMember}},
+		{base + "/workspaces/{id}/member-requests", staff.ActionMemberRequests, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listMemberRequests}},
+		{base + "/member-requests/{id}", staff.ActionMemberRequests, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getMemberRequest}},
+		{base + "/member-requests/{id}/cancel", staff.ActionMemberRequests, nil, map[string]handlerFunc{http.MethodPost: (*Handler).cancelMemberRequest}},
+		{base + "/overview", staff.ActionOverviewRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).overview}},
 	}
 }
 
@@ -167,9 +189,9 @@ func Patterns() []string {
 	return out
 }
 
-// New builds the Handler. Every route is wrapped by the staff middleware
-// outside its method switch, so a refused request and a wrong method both get
-// the 404 of an unknown route.
+// New builds the Handler. Every method of every route is wrapped by the staff
+// middleware for the roles of its action, so a refused request and a wrong
+// method both get the 404 of an unknown route.
 func New(d Deps) *Handler {
 	if d.Log == nil {
 		d.Log = slog.Default()
@@ -179,7 +201,7 @@ func New(d Deps) *Handler {
 	}
 	h := &Handler{Deps: d, mux: http.NewServeMux()}
 	for _, rt := range routeTable() {
-		h.mux.Handle(rt.pattern, d.RequireStaff(rt.roles...)(h.methodSwitch(rt)))
+		h.mux.Handle(rt.pattern, h.methodSwitch(rt))
 	}
 	return h
 }
@@ -187,18 +209,27 @@ func New(d Deps) *Handler {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.mux.ServeHTTP(w, r) }
 
 func (h *Handler) methodSwitch(rt routeSpec) http.Handler {
+	calls := map[string]http.Handler{}
+	for method, fn := range rt.methods {
+		roles := rt.rolesFor(method)
+		if len(roles) == 0 {
+			// An empty list would admit every staff role.
+			panic("console: " + method + " " + rt.pattern + " lists no staff role")
+		}
+		call := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fn(h, w, r) })
+		var inner http.Handler = call
+		if method != http.MethodGet {
+			inner = h.RequireOrigin(call)
+		}
+		calls[method] = h.RequireStaff(roles...)(inner)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fn, ok := rt.methods[r.Method]
+		call, ok := calls[r.Method]
 		if !ok {
 			http.NotFound(w, r)
 			return
 		}
-		call := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fn(h, w, r) })
-		if r.Method == http.MethodGet {
-			call.ServeHTTP(w, r)
-			return
-		}
-		h.RequireOrigin(call).ServeHTTP(w, r)
+		call.ServeHTTP(w, r)
 	})
 }
 

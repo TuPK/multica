@@ -146,12 +146,16 @@ func parseOrderStatus(r *http.Request) (billing.Status, *apiError) {
 // listOrders returns the orders in one status. The pending queue is oldest
 // first, so the longest wait is at the top; the others are newest first.
 func (h *Handler) listOrders(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionOrdersRead)
+	if !ok {
+		return
+	}
 	status, perr := parseOrderStatus(r)
 	if perr != nil {
 		writeError(w, perr)
 		return
 	}
-	rows, err := h.Reader.ListOrders(r.Context(), status, status != billing.StatusPending, orderListLimit)
+	rows, err := h.Reader.ListOrders(r.Context(), status, status != billing.StatusPending, orderListLimit, scope)
 	if err != nil {
 		h.fail(w, r, "list orders", err)
 		return
@@ -316,11 +320,11 @@ func (h *Handler) cancelOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 // writeOffUsage cancels a usage invoice, the debt it records, as a write-off:
-// admin only, with the reason (spec 7b.3, rule 14). billing.Service writes the
+// system_admin only, with the reason (spec 7b.3, rule 14; spec R6 row M15). billing.Service writes the
 // order, billing.usage_written_off and the restore of the workspace in one
 // transaction.
 func (h *Handler) writeOffUsage(w http.ResponseWriter, r *http.Request, a actor, id, reason string) {
-	if a.Role != staff.RoleAdmin {
+	if staff.Allowed(a.Role, staff.ActionUsageWriteOff) != staff.All {
 		writeError(w, &apiError{Status: http.StatusForbidden, Code: "usage_cancel_admin_only", Message: "only an admin can write off a usage invoice"})
 		return
 	}

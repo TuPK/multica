@@ -128,19 +128,19 @@ func logger() (*slog.Logger, *bytes.Buffer) {
 	return slog.New(slog.NewTextHandler(&buf, nil)), &buf
 }
 
-func TestSeedGivesAnAccountHolderAnAdminRow(t *testing.T) {
+func TestSeedMakesEnvEmailsSystemAdmin(t *testing.T) {
 	q := newFakeQueries()
 	id := q.addUser(t, "ops@example.com")
 	log, _ := logger()
 	if err := NewSeeder(q, []string{"ops@example.com"}, log).SeedAll(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if len(q.inserted) != 1 || q.inserted[0].UserID != id || q.inserted[0].Role != "admin" || q.inserted[0].CreatedBy.Valid {
+	if len(q.inserted) != 1 || q.inserted[0].UserID != id || q.inserted[0].Role != "system_admin" || q.inserted[0].TenantID.Valid || q.inserted[0].CreatedBy.Valid {
 		t.Fatalf("inserted = %+v", q.inserted)
 	}
 }
 
-func TestSeedReactivatesARevokedRowAsAdmin(t *testing.T) {
+func TestSeedReactivatesRevokedEnvEmailAsSystemAdmin(t *testing.T) {
 	q := newFakeQueries()
 	id := q.addUser(t, "ops@example.com")
 	q.revoked[id] = 1
@@ -148,7 +148,7 @@ func TestSeedReactivatesARevokedRowAsAdmin(t *testing.T) {
 	if err := NewSeeder(q, []string{"ops@example.com"}, log).SeedEmail(context.Background(), "ops@example.com"); err != nil {
 		t.Fatal(err)
 	}
-	if len(q.reactivate) != 1 || q.reactivate[0].Role != "admin" {
+	if len(q.reactivate) != 1 || q.reactivate[0].Role != "system_admin" || q.reactivate[0].TenantID.Valid {
 		t.Fatalf("reactivate = %+v", q.reactivate)
 	}
 	if len(q.inserted) != 0 {
@@ -232,23 +232,19 @@ func TestStoreActiveStaff(t *testing.T) {
 	s := NewStore(q)
 	ctx := context.Background()
 
-	if _, found, err := s.ActiveStaff(ctx, uidText); err != nil || found {
+	if _, _, found, err := s.ActiveStaff(ctx, uidText); err != nil || found {
 		t.Fatalf("no row: found=%v err=%v", found, err)
 	}
 	q.active[id] = db.PlatformStaff{UserID: id, Role: "billing"}
-	role, found, err := s.ActiveStaff(ctx, uidText)
-	if err != nil || !found || role != RoleBilling {
-		t.Fatalf("role=%q found=%v err=%v", role, found, err)
-	}
-	q.active[id] = db.PlatformStaff{UserID: id, Role: "owner"}
-	if _, found, err := s.ActiveStaff(ctx, uidText); err != nil || found {
-		t.Fatalf("unknown role: found=%v err=%v", found, err)
+	role, tenant, found, err := s.ActiveStaff(ctx, uidText)
+	if err != nil || !found || role != RoleBilling || tenant != "" {
+		t.Fatalf("role=%q tenant=%q found=%v err=%v", role, tenant, found, err)
 	}
 	q.activeErr = errors.New("db down")
-	if _, _, err := s.ActiveStaff(ctx, uidText); err == nil {
+	if _, _, _, err := s.ActiveStaff(ctx, uidText); err == nil {
 		t.Fatal("a database error was swallowed")
 	}
-	if _, _, err := s.ActiveStaff(ctx, "not-a-uuid"); err == nil {
+	if _, _, _, err := s.ActiveStaff(ctx, "not-a-uuid"); err == nil {
 		t.Fatal("a bad user id was accepted")
 	}
 }
@@ -296,3 +292,27 @@ func TestStoreAccountState(t *testing.T) {
 }
 
 var testTime = time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+
+func TestStoreActiveStaffReturnsTenantID(t *testing.T) {
+	q := newFakeQueries()
+	id := q.addUser(t, "ops@example.com")
+	tenant := pgtype.UUID{Bytes: [16]byte{0xaa, 1}, Valid: true}
+	q.active[id] = db.PlatformStaff{UserID: id, Role: "admin", TenantID: tenant}
+	role, got, found, err := NewStore(q).ActiveStaff(context.Background(), uidText)
+	if err != nil || !found || role != RoleAdmin || got != uuidString(tenant) {
+		t.Fatalf("role=%q tenant=%q found=%v err=%v", role, got, found, err)
+	}
+}
+
+// A role this build does not know, such as one a newer platform wrote, is not
+// found: the user gets the 404 of a non-staff user.
+func TestUnknownRoleInDatabaseIsNotFound(t *testing.T) {
+	q := newFakeQueries()
+	id := q.addUser(t, "ops@example.com")
+	for _, role := range []string{"owner", "superuser", "", "Admin"} {
+		q.active[id] = db.PlatformStaff{UserID: id, Role: role}
+		if _, _, found, err := NewStore(q).ActiveStaff(context.Background(), uidText); err != nil || found {
+			t.Errorf("role %q: found=%v err=%v", role, found, err)
+		}
+	}
+}

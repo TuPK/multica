@@ -446,3 +446,65 @@ func TestUsageInvoiceExpiryMigrationIsRequired(t *testing.T) {
 		t.Errorf("Required does not list %s", version)
 	}
 }
+
+// The staff role and tenant migrations of spec R6 (3.8): the platform reads
+// platform_staff.tenant_id, role system_admin and audit_event.tenant_id.
+func TestStaffTenantMigrationsAreRequired(t *testing.T) {
+	for _, version := range []string{
+		"942_platform_staff_tenant",
+		"943_platform_staff_tenant_idx",
+		"944_platform_staff_system_admin",
+		"945_audit_event_tenant",
+		"946_audit_event_tenant_created_idx",
+	} {
+		if !slices.Contains(Required, version) {
+			t.Errorf("Required does not list %s", version)
+		}
+	}
+}
+
+// The tenant migrations of spec R6 (5.4): the platform reads tenant and
+// tenant_workspace and the max_workspaces key of plan.limits.
+func TestTenantMigrationsAreRequired(t *testing.T) {
+	for _, version := range []string{
+		"941_plan_max_workspaces",
+		"1016_tenant",
+		"1017_tenant_id_uidx",
+		"1018_tenant_workspace",
+		"1019_tenant_workspace_ws_uidx",
+		"1020_tenant_workspace_tenant_idx",
+		"1021_tenant_backfill",
+	} {
+		if !slices.Contains(Required, version) {
+			t.Errorf("Required does not list %s", version)
+		}
+	}
+}
+
+// The staff add-member request migrations of spec R6 section 4.3: the platform
+// writes platform_member_request.
+func TestMemberRequestMigrationsAreRequired(t *testing.T) {
+	for _, version := range []string{
+		"1022_platform_member_request",
+		"1023_platform_member_request_id_uidx",
+		"1024_platform_member_request_live_uidx",
+	} {
+		if !slices.Contains(Required, version) {
+			t.Errorf("Required does not list %s", version)
+		}
+	}
+}
+
+// The staff immediate deletion request migrations of spec R6 section 6: the
+// platform writes platform_deletion_request.
+func TestDeletionRequestMigrationsAreRequired(t *testing.T) {
+	for _, version := range []string{
+		"1025_platform_deletion_request",
+		"1026_platform_deletion_request_id_uidx",
+		"1027_platform_deletion_request_live_uidx",
+	} {
+		if !slices.Contains(Required, version) {
+			t.Errorf("Required does not list %s", version)
+		}
+	}
+}

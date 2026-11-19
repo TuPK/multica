@@ -34,6 +34,11 @@ const (
 // GateMemberGroups caps the member groups of a workspace (spec 7b.2, 7b.7).
 const GateMemberGroups = "member_groups"
 
+// GateMaxWorkspaces caps the workspaces of a tenant (spec R6 section 5.6): a
+// whole number of at least 1, or empty for no limit. The policy gives a tenant
+// the largest effective value among its workspaces.
+const GateMaxWorkspaces = "max_workspaces"
+
 // Audiences: the kind of workspace that may buy a plan (spec 7b.1, rule 2).
 const (
 	AudienceIndividual = "individual"
@@ -61,7 +66,7 @@ const UnlimitedKey = "unlimited"
 // the audit retention are plan values, not counted limits.
 var CountedGates = []string{
 	GateIssueCount, GateAutopilotRuns, GateAgents, GateRuntimes,
-	GateStorageBytes, GateMemberGroups,
+	GateStorageBytes, GateMemberGroups, GateMaxWorkspaces,
 }
 
 // IsUnlimited reports whether p sets no counted limit.
@@ -81,7 +86,7 @@ const FreeKey = "free"
 var LimitGates = []string{
 	GateIssueCount, GateAutopilotRuns, GateAgents, GateRuntimes,
 	GateStorageBytes, GateAPIRatePerMinute, GateAuditRetentionDay,
-	GateMemberGroups,
+	GateMemberGroups, GateMaxWorkspaces,
 }
 
 // FeatureKeys lists every key a plan's features may use.
@@ -171,6 +176,9 @@ func ValidateLimits(l Limits) error {
 		}
 		if *v < 0 {
 			return fmt.Errorf("limit %s must not be negative", gate)
+		}
+		if *v < 1 && gate == GateMaxWorkspaces {
+			return fmt.Errorf("limit %s must be at least 1, or null for unlimited", gate)
 		}
 		if *v == 0 && summaryGate(gate) {
 			return fmt.Errorf("limit %s must be positive, or null for unlimited", gate)

@@ -324,7 +324,7 @@ func TestDismissNeedsReason(t *testing.T) {
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"state":"dismissed"`) {
 		t.Fatalf("got %d %s", rec.Code, rec.Body)
 	}
-	if c := rc.dismiss[len(rc.dismiss)-1]; c.actor.ID != adminID || c.actor.Label != adminMail || c.actor.Role != "admin" || c.why != "refunded" {
+	if c := rc.dismiss[len(rc.dismiss)-1]; c.actor.ID != adminID || c.actor.Label != adminMail || c.actor.Role != "system_admin" || c.why != "refunded" {
 		t.Errorf("call = %+v", c)
 	}
 }

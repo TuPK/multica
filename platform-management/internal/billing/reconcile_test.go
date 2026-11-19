@@ -73,7 +73,7 @@ func TestDismissRequiresReason(t *testing.T) {
 		if _, err := r.Dismiss(context.Background(), Actor{ID: tStaff, Role: staff.RoleBilling}, tStaff, reason); !errors.Is(err, ErrReasonRequired) {
 			t.Fatalf("Dismiss(%q) = %v, want ErrReasonRequired", reason, err)
 		}
-		if _, err := r.Resolve(context.Background(), Actor{ID: tStaff, Role: staff.RoleAdmin}, tStaff, tStaff, reason); !errors.Is(err, ErrReasonRequired) {
+		if _, err := r.Resolve(context.Background(), Actor{ID: tStaff, Role: staff.RoleSystemAdmin}, tStaff, tStaff, reason); !errors.Is(err, ErrReasonRequired) {
 			t.Fatalf("Resolve(%q) = %v, want ErrReasonRequired", reason, err)
 		}
 	}
@@ -150,5 +150,17 @@ func TestNoticeDecisionRollsBackWithPayment(t *testing.T) {
 	}
 	if m.orders[o.ID].Status != StatusPending {
 		t.Fatalf("order status = %s, want pending", m.orders[o.ID].Status)
+	}
+}
+
+// Deciding a payment notice is row M16 of the matrix: billing and system_admin.
+func TestActorAllowedFollowsTheMatrix(t *testing.T) {
+	for role, want := range map[staff.Role]bool{
+		staff.RoleSystemAdmin: true, staff.RoleBilling: true,
+		staff.RoleAdmin: false, staff.RoleSupport: false, "": false,
+	} {
+		if got := (Actor{Role: role}).allowed(); got != want {
+			t.Errorf("Actor{%q}.allowed() = %v, want %v", role, got, want)
+		}
 	}
 }

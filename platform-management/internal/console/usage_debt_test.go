@@ -79,7 +79,7 @@ func (d *usageDebt) workspaceStatus() (status, reason string) {
 func TestWriteOffUsageOrderAdminOnlyWithReason(t *testing.T) {
 	d := newUsageDebt(t)
 	billID, _ := d.staffUser(staff.RoleBilling)
-	adminID, adminEmail := d.staffUser(staff.RoleAdmin)
+	adminID, adminEmail := d.staffUser(staff.RoleSystemAdmin)
 	path := "/api/platform/orders/" + d.orderID + "/cancel"
 
 	wantError(t, d.do(billID, "POST", path, `{"reason":"customer dispute"}`), 403, "usage_cancel_admin_only")
@@ -141,7 +141,7 @@ func TestUsageDebtWriteOffRefusedForEveryRoleButAdmin(t *testing.T) {
 	}
 	billID, _ := d.staffUser(staff.RoleBilling)
 	wantError(t, d.do(billID, "POST", path, `{"reason":"customer dispute"}`), 403, "usage_cancel_admin_only")
-	adminID, _ := d.staffUser(staff.RoleAdmin)
+	adminID, _ := d.staffUser(staff.RoleSystemAdmin)
 	for _, body := range []string{`{}`, `{"reason":""}`, `{"reason":"   "}`} {
 		wantError(t, d.do(adminID, "POST", path, body), 400, "reason_required")
 	}
@@ -158,7 +158,7 @@ func TestUsageDebtWriteOffRefusedForEveryRoleButAdmin(t *testing.T) {
 
 func TestWriteOffKeepsLinesOutOfNextInvoice(t *testing.T) {
 	d := newUsageDebt(t)
-	adminID, _ := d.staffUser(staff.RoleAdmin)
+	adminID, _ := d.staffUser(staff.RoleSystemAdmin)
 	wantStatus(t, d.do(adminID, "POST", "/api/platform/orders/"+d.orderID+"/cancel", `{"reason":"goodwill"}`), 200)
 
 	inv := usage.NewInvoicer(d.pool, usage.InvoicerConfig{VATRate: billing.DefaultVATRate, MinInvoice: 1})
@@ -187,7 +187,7 @@ func TestTenantUsageShowsMonthRowsMissingDaysAndUnpaidOrders(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rec := d.do(supportID, "GET", "/api/platform/tenants/"+d.ws+"/usage", "")
+	rec := d.do(supportID, "GET", "/api/platform/workspaces/"+d.ws+"/usage", "")
 	wantStatus(t, rec, 200)
 	var body struct {
 		WorkspaceID string `json:"workspace_id"`
@@ -240,12 +240,12 @@ func TestTenantUsageShowsMonthRowsMissingDaysAndUnpaidOrders(t *testing.T) {
 	if _, err := d.pool.Exec(ctx, `UPDATE workspace_subscription SET plan_key = 'free' WHERE workspace_id = $1`, d.ws); err != nil {
 		t.Fatal(err)
 	}
-	seat := decodeJSON(t, d.do(supportID, "GET", "/api/platform/tenants/"+d.ws+"/usage", ""))
+	seat := decodeJSON(t, d.do(supportID, "GET", "/api/platform/workspaces/"+d.ws+"/usage", ""))
 	if rows, ok := seat["rows"].([]any); !ok || len(rows) != 0 {
 		t.Errorf("rows of a seat plan = %v, want []", seat["rows"])
 	}
 	if days, ok := seat["missing_days"].([]any); !ok || len(days) != 0 {
 		t.Errorf("missing_days of a seat plan = %v, want []", seat["missing_days"])
 	}
-	wantError(t, d.do(supportID, "GET", "/api/platform/tenants/00000000-0000-4000-8000-000000000000/usage", ""), 404, "not_found")
+	wantError(t, d.do(supportID, "GET", "/api/platform/workspaces/00000000-0000-4000-8000-000000000000/usage", ""), 404, "not_found")
 }

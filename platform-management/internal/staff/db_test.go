@@ -65,7 +65,7 @@ func (f *dbFixture) rows(id pgtype.UUID) (active, revoked int) {
 	return active, revoked
 }
 
-func TestDBSeedGivesAnAccountHolderAnActiveAdminRow(t *testing.T) {
+func TestDBSeedMakesEnvEmailsSystemAdmin(t *testing.T) {
 	f := newDBFixture(t)
 	ctx := context.Background()
 	id, email := f.user()
@@ -77,7 +77,7 @@ func TestDBSeedGivesAnAccountHolderAnActiveAdminRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no active row: %v", err)
 	}
-	if row.Role != "admin" || row.CreatedBy.Valid {
+	if row.Role != "system_admin" || row.TenantID.Valid || row.CreatedBy.Valid {
 		t.Errorf("row = %+v", row)
 	}
 	// A second run adds nothing.
@@ -107,7 +107,7 @@ func TestDBSeedReactivatesARevokedRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no active row: %v", err)
 	}
-	if row.Role != "admin" || row.RevokedAt.Valid {
+	if row.Role != "system_admin" || row.TenantID.Valid || row.RevokedAt.Valid {
 		t.Errorf("row = %+v", row)
 	}
 	if active, revoked := f.rows(id); active != 1 || revoked != 0 {
@@ -197,13 +197,13 @@ func TestDBQueriesAgainstTheRealSchema(t *testing.T) {
 		t.Fatalf("unknown email: found=%v err=%v", found, err)
 	}
 
-	if _, found, err := store.ActiveStaff(ctx, uuidString(id)); err != nil || found {
+	if _, _, found, err := store.ActiveStaff(ctx, uuidString(id)); err != nil || found {
 		t.Fatalf("ActiveStaff before insert: found=%v err=%v", found, err)
 	}
 	if _, err := f.q.InsertStaff(ctx, db.InsertStaffParams{UserID: id, Role: "billing", CreatedBy: id}); err != nil {
 		t.Fatal(err)
 	}
-	role, found, err := store.ActiveStaff(ctx, uuidString(id))
+	role, _, found, err := store.ActiveStaff(ctx, uuidString(id))
 	if err != nil || !found || role != RoleBilling {
 		t.Fatalf("ActiveStaff: %q %v %v", role, found, err)
 	}

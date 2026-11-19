@@ -47,10 +47,37 @@ const (
 	ActionAccountSessionsRevoked = "account.sessions_revoked"
 	ActionStaffAdded             = "staff.added"
 	ActionStaffRemoved           = "staff.removed"
+	ActionStaffRoleChanged       = "staff.role_changed"
+	ActionStaffTenantAssigned    = "staff.tenant_assigned"
 	ActionNoteAdded              = "note.added"
 	ActionSubscriptionChanged    = "subscription.changed"
 	ActionPlanChanged            = "plan.changed"
 	ActionUserMFAReset           = "user.mfa_reset"
+)
+
+// Staff add-member actions (spec R6 section 4.5). member.staff_added has
+// actor_type staff: the actor is the staff member who made the request, written
+// by Multica's member_provisioning job. All four carry the workspace_id and the
+// tenant_id of the workspace's tenant.
+const (
+	ActionMemberStaffAddRequested = "member.staff_add_requested"
+	ActionMemberStaffAdded        = "member.staff_added"
+	ActionMemberStaffAddFailed    = "member.staff_add_failed"
+	ActionMemberStaffAddCanceled  = "member.staff_add_canceled"
+)
+
+// Staff immediate deletion actions (spec R6 section 6.6). The requested actions
+// are written in phase 1 by staff and carry the tenant_id of the target's tenant,
+// so an admin still reads them after the workspace is gone. tenant.deleted is
+// written by Multica's staff_deletion job when the last workspace of the tenant
+// has gone. deletion.request_failed has actor_type system; the other two staff.
+const (
+	ActionWorkspaceImmediateDeletionRequested = "workspace.immediate_deletion_requested"
+	ActionTenantImmediateDeletionRequested    = "tenant.immediate_deletion_requested"
+	ActionTenantDeleted                       = "tenant.deleted"
+	ActionDeletionRequestFailed               = "deletion.request_failed"
+	ActionDeletionRequestCanceled             = "deletion.request_canceled"
+	ActionDeletionRequestRetried              = "deletion.request_retried"
 )
 
 // Billing actions (spec 5.14): written when an order is created, paid, canceled
@@ -153,6 +180,18 @@ var Catalog = []string{
 	ActionAccountSessionsRevoked,
 	ActionStaffAdded,
 	ActionStaffRemoved,
+	ActionStaffRoleChanged,
+	ActionStaffTenantAssigned,
+	ActionMemberStaffAddRequested,
+	ActionMemberStaffAdded,
+	ActionMemberStaffAddFailed,
+	ActionMemberStaffAddCanceled,
+	ActionWorkspaceImmediateDeletionRequested,
+	ActionTenantImmediateDeletionRequested,
+	ActionTenantDeleted,
+	ActionDeletionRequestFailed,
+	ActionDeletionRequestCanceled,
+	ActionDeletionRequestRetried,
 	ActionNoteAdded,
 	ActionSubscriptionChanged,
 	ActionPlanChanged,
@@ -324,10 +363,11 @@ const (
 const Redacted = "[redacted]"
 
 // Entry mirrors the audit_event columns. IDs are plain strings. An empty
-// WorkspaceID or ActorID is stored as NULL.
+// WorkspaceID, TenantID or ActorID is stored as NULL.
 type Entry struct {
 	ID          string
 	WorkspaceID string
+	TenantID    string
 	ActorType   string
 	ActorID     string
 	ActorLabel  string

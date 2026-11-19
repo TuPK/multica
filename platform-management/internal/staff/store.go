@@ -54,22 +54,30 @@ func (s *Store) UserIDByEmail(ctx context.Context, email string) (string, bool, 
 	return uuidString(id), true, nil
 }
 
-// ActiveStaff returns the role of the user's active row. A role this build
-// does not know counts as no row.
-func (s *Store) ActiveStaff(ctx context.Context, userID string) (Role, bool, error) {
+// ActiveStaff returns the role and tenant of the user's active row. The tenant
+// is empty unless the role is admin. A role this build does not know counts as
+// no row.
+func (s *Store) ActiveStaff(ctx context.Context, userID string) (Role, string, bool, error) {
 	id, err := parseUUID(userID)
 	if err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
 	row, err := s.q.GetActiveStaffByUserID(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", false, nil
+		return "", "", false, nil
 	}
 	if err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
 	role, ok := ParseRole(row.Role)
-	return role, ok, nil
+	if !ok {
+		return "", "", false, nil
+	}
+	tenant := ""
+	if row.TenantID.Valid {
+		tenant = uuidString(row.TenantID)
+	}
+	return role, tenant, true, nil
 }
 
 func (s *Store) EmailByUserID(ctx context.Context, userID string) (string, error) {

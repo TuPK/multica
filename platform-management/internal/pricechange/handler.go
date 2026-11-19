@@ -45,15 +45,32 @@ var Patterns = []string{
 
 type handler struct{ HandlerDeps }
 
+// endpoint is a handler with the matrix action it needs (spec R6 section 3.6).
 type endpoint struct {
-	roles []staff.Role
-	fn    http.HandlerFunc
+	action string
+	fn     http.HandlerFunc
+}
+
+type route struct {
+	pattern string
+	methods map[string]endpoint
+}
+
+// routes is the route table. h may be nil when only the actions are read.
+func routes(h *handler) []route {
+	return []route{
+		{Patterns[0], map[string]endpoint{
+			http.MethodGet:  {staff.ActionPriceChangeRead, h.history},
+			http.MethodPost: {staff.ActionPriceChangeManage, h.schedule},
+		}},
+		{Patterns[1], map[string]endpoint{http.MethodDelete: {staff.ActionPriceChangeManage, h.cancel}}},
+	}
 }
 
 // NewHandler returns the staff routes of the price-change schedule. Every route
 // is wrapped by the staff middleware outside its method switch, so a refused
-// request and a wrong method both get the 404 of an unknown route. Only admin
-// schedules and cancels; billing and admin read the history (spec 7b.4 rule 1).
+// request and a wrong method both get the 404 of an unknown route. Only system_admin
+// schedules and cancels; billing and system_admin read the history (spec 7b.4 rule 1).
 func NewHandler(d HandlerDeps) http.Handler {
 	if d.Log == nil {
 		d.Log = slog.Default()
@@ -62,26 +79,22 @@ func NewHandler(d HandlerDeps) http.Handler {
 		d.Now = time.Now
 	}
 	h := &handler{d}
-	admin := []staff.Role{staff.RoleAdmin}
-	reader := []staff.Role{staff.RoleBilling, staff.RoleAdmin}
-	routes := map[string]map[string]endpoint{
-		Patterns[0]: {
-			http.MethodGet:  {reader, h.history},
-			http.MethodPost: {admin, h.schedule},
-		},
-		Patterns[1]: {http.MethodDelete: {admin, h.cancel}},
-	}
 	mux := http.NewServeMux()
-	for pattern, methods := range routes {
+	for _, rt := range routes(h) {
 		calls := map[string]http.Handler{}
-		for method, ep := range methods {
+		for method, ep := range rt.methods {
+			roles := staff.RolesWith(ep.action)
+			if len(roles) == 0 {
+				// An empty list would admit every staff role.
+				panic("pricechange: " + method + " " + rt.pattern + " lists no staff role")
+			}
 			var call http.Handler = ep.fn
 			if method != http.MethodGet {
 				call = d.RequireOrigin(call)
 			}
-			calls[method] = d.RequireStaff(ep.roles...)(call)
+			calls[method] = d.RequireStaff(roles...)(call)
 		}
-		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc(rt.pattern, func(w http.ResponseWriter, r *http.Request) {
 			call, ok := calls[r.Method]
 			if !ok {
 				http.NotFound(w, r)

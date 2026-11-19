@@ -29,7 +29,7 @@ func TestDBTenantDetailCountsAccountGroupsWithoutTheirNames(t *testing.T) {
 	}
 	t.Cleanup(func() { f.pool.Exec(ctx, `DELETE FROM member_group WHERE workspace_id = $1`, ws) })
 
-	rec := f.do(supportID, "GET", "/api/platform/tenants/"+ws, "")
+	rec := f.do(supportID, "GET", "/api/platform/workspaces/"+ws, "")
 	if rec.Code != 200 {
 		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -53,7 +53,7 @@ func TestDBTenantDetailReadsZeroGroupsForAWorkspaceWithNone(t *testing.T) {
 	memberID, _ := f.user("member")
 	ws := f.workspace(ownerID, memberID)
 
-	rec := f.do(supportID, "GET", "/api/platform/tenants/"+ws, "")
+	rec := f.do(supportID, "GET", "/api/platform/workspaces/"+ws, "")
 	if rec.Code != 200 {
 		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 	}

@@ -53,12 +53,12 @@ test.describe("staff gate", () => {
 
 test.describe("reason and note checks", () => {
   test("flow 260: a status change without a reason is refused with reason_required", async () => {
-    await expectCode(await post(`/api/platform/tenants/${UNKNOWN_ID}/status`, { status: "read_only" }), 400, "reason_required");
+    await expectCode(await post(`/api/platform/workspaces/${UNKNOWN_ID}/status`, { status: "read_only" }), 400, "reason_required");
   });
 
   test("flow 260: a blank reason is refused with reason_required", async () => {
     await expectCode(
-      await post(`/api/platform/tenants/${UNKNOWN_ID}/status`, { status: "read_only", reason: "   " }),
+      await post(`/api/platform/workspaces/${UNKNOWN_ID}/status`, { status: "read_only", reason: "   " }),
       400,
       "reason_required",
     );
@@ -66,36 +66,36 @@ test.describe("reason and note checks", () => {
 
   test("flow 261: a reason over 1000 characters is refused with reason_too_long", async () => {
     await expectCode(
-      await post(`/api/platform/tenants/${UNKNOWN_ID}/status`, { status: "read_only", reason: "x".repeat(1001) }),
+      await post(`/api/platform/workspaces/${UNKNOWN_ID}/status`, { status: "read_only", reason: "x".repeat(1001) }),
       400,
       "reason_too_long",
     );
   });
 
   test("flow 263: an empty internal tenant note is refused with body_required", async () => {
-    await expectCode(await post(`/api/platform/tenants/${UNKNOWN_ID}/notes`, { body: "   " }), 400, "body_required");
+    await expectCode(await post(`/api/platform/workspaces/${UNKNOWN_ID}/notes`, { body: "   " }), 400, "body_required");
   });
 
   test("flow 264: an internal tenant note over 4000 characters is refused with body_too_long", async () => {
-    await expectCode(await post(`/api/platform/tenants/${UNKNOWN_ID}/notes`, { body: "x".repeat(4001) }), 400, "body_too_long");
+    await expectCode(await post(`/api/platform/workspaces/${UNKNOWN_ID}/notes`, { body: "x".repeat(4001) }), 400, "body_too_long");
   });
 });
 
 test.describe("body checks", () => {
   test("flow 265: a body that is not JSON is refused with invalid_body", async () => {
-    await expectCode(await postRaw(`/api/platform/tenants/${UNKNOWN_ID}/notes`, "{"), 400, "invalid_body");
+    await expectCode(await postRaw(`/api/platform/workspaces/${UNKNOWN_ID}/notes`, "{"), 400, "invalid_body");
   });
 
   test("flow 265: trailing data after the JSON object is refused with invalid_body", async () => {
-    await expectCode(await postRaw(`/api/platform/tenants/${UNKNOWN_ID}/notes`, '{"body":"a"} {}'), 400, "invalid_body");
+    await expectCode(await postRaw(`/api/platform/workspaces/${UNKNOWN_ID}/notes`, '{"body":"a"} {}'), 400, "invalid_body");
   });
 
   test("flow 265: an unknown field is refused with invalid_body", async () => {
-    await expectCode(await post(`/api/platform/tenants/${UNKNOWN_ID}/notes`, { body: "a", extra: 1 }), 400, "invalid_body");
+    await expectCode(await post(`/api/platform/workspaces/${UNKNOWN_ID}/notes`, { body: "a", extra: 1 }), 400, "invalid_body");
   });
 
   test("flow 265: a NUL byte in the body is refused with invalid_body", async () => {
-    await expectCode(await post(`/api/platform/tenants/${UNKNOWN_ID}/notes`, { body: "a\u0000b" }), 400, "invalid_body");
+    await expectCode(await post(`/api/platform/workspaces/${UNKNOWN_ID}/notes`, { body: "a\u0000b" }), 400, "invalid_body");
   });
 });
 
@@ -121,7 +121,7 @@ test.describe("query and id checks", () => {
   });
 
   test("flow 270: an unknown tenant status is refused with invalid_status", async () => {
-    await expectCode(await post(`/api/platform/tenants/${UNKNOWN_ID}/status`, { status: "bogus", reason: "e2e" }), 400, "invalid_status");
+    await expectCode(await post(`/api/platform/workspaces/${UNKNOWN_ID}/status`, { status: "bogus", reason: "e2e" }), 400, "invalid_status");
   });
 
   test("flow 270: an unknown order status filter is refused with invalid_status", async () => {

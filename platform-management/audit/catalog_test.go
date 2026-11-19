@@ -4,10 +4,109 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 )
+
+// The staff management actions of spec R6 section 3.7. Their names are stored in
+// audit_event.action, so a rename is a data change.
+func TestAuditCatalogHasStaffRoleActions(t *testing.T) {
+	for want, got := range map[string]string{
+		"staff.role_changed":    ActionStaffRoleChanged,
+		"staff.tenant_assigned": ActionStaffTenantAssigned,
+	} {
+		if got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+		listed := false
+		for _, a := range Catalog {
+			listed = listed || a == want
+		}
+		if !listed {
+			t.Errorf("Catalog does not list %s", want)
+		}
+	}
+}
+
+// The staff add-member actions of spec R6 section 4.5.
+func TestAuditCatalogHasMemberStaffActions(t *testing.T) {
+	for want, got := range map[string]string{
+		"member.staff_add_requested": ActionMemberStaffAddRequested,
+		"member.staff_added":         ActionMemberStaffAdded,
+		"member.staff_add_failed":    ActionMemberStaffAddFailed,
+		"member.staff_add_canceled":  ActionMemberStaffAddCanceled,
+	} {
+		if got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+		listed := false
+		for _, a := range Catalog {
+			listed = listed || a == want
+		}
+		if !listed {
+			t.Errorf("Catalog does not list %s", want)
+		}
+	}
+}
+
+func TestAuditCatalogHasDeletionActions(t *testing.T) {
+	for want, got := range map[string]string{
+		"workspace.immediate_deletion_requested": ActionWorkspaceImmediateDeletionRequested,
+		"tenant.immediate_deletion_requested":    ActionTenantImmediateDeletionRequested,
+		"tenant.deleted":                         ActionTenantDeleted,
+		"deletion.request_failed":                ActionDeletionRequestFailed,
+		"deletion.request_canceled":              ActionDeletionRequestCanceled,
+		"deletion.request_retried":               ActionDeletionRequestRetried,
+	} {
+		if got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+		listed := false
+		for _, a := range Catalog {
+			listed = listed || a == want
+		}
+		if !listed {
+			t.Errorf("Catalog does not list %s", want)
+		}
+	}
+}
+
+// Every platform writer of audit_event passes the entry's tenant to the query,
+// so a row about a tenant keeps its tenant_id (spec R6 section 3.5, D84). A
+// writer that builds InsertAuditEventParams without TenantID would drop it.
+func TestAuditEntryTenantIDReachesTheWriter(t *testing.T) {
+	var writers []string
+	err := filepath.WalkDir(filepath.Join("..", "internal"), func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return err
+		}
+		src, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return rerr
+		}
+		if !strings.Contains(string(src), "db.InsertAuditEventParams{") {
+			return nil
+		}
+		writers = append(writers, path)
+		body := string(src)
+		start := strings.Index(body, "db.InsertAuditEventParams{")
+		end := start + strings.Index(body[start:], "\n\t})")
+		if end < start || !strings.Contains(body[start:end], "TenantID:") {
+			t.Errorf("%s builds InsertAuditEventParams without TenantID", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(writers) < 8 {
+		t.Errorf("found %d audit writers, want at least the 8 of the platform: %v", len(writers), writers)
+	}
+}
 
 // The R1 catalog: every name must be a non-empty constant of this package.
 func TestR1CatalogActionsAreDefined(t *testing.T) {

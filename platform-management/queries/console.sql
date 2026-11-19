@@ -8,41 +8,7 @@
 -- callers ask for one row more than they return to learn whether another page
 -- exists.
 
--- name: SearchTenants :many
-SELECT
-    w.id,
-    w.name,
-    w.slug,
-    COALESCE(pw.status, 'active')::text AS status,
-    (SELECT count(*) FROM member m WHERE m.workspace_id = w.id)::bigint AS member_count,
-    w.created_at,
-    COALESCE(
-        (SELECT max(e.created_at) FROM audit_event e WHERE e.workspace_id = w.id),
-        w.created_at
-    )::timestamptz AS last_activity_at
-FROM workspace w
-LEFT JOIN platform_workspace pw ON pw.workspace_id = w.id
-WHERE (
-        sqlc.narg('pattern')::text IS NULL
-        OR w.name ILIKE sqlc.narg('pattern')::text
-        OR w.slug ILIKE sqlc.narg('pattern')::text
-        OR EXISTS (
-            SELECT 1
-            FROM member o
-            JOIN "user" ou ON ou.id = o.user_id
-            WHERE o.workspace_id = w.id
-              AND o.role = 'owner'
-              AND ou.email ILIKE sqlc.narg('pattern')::text
-        )
-    )
-  AND (
-        sqlc.narg('cursor_created_at')::timestamptz IS NULL
-        OR (w.created_at, w.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
-    )
-ORDER BY w.created_at DESC, w.id DESC
-LIMIT sqlc.arg('row_limit');
-
--- name: GetTenant :one
+-- name: GetWorkspace :one
 SELECT
     w.id,
     w.name,
@@ -91,6 +57,15 @@ WHERE (
         sqlc.narg('pattern')::text IS NULL
         OR u.email ILIKE sqlc.narg('pattern')::text
         OR u.name ILIKE sqlc.narg('pattern')::text
+    )
+  AND (
+        NOT sqlc.arg('scoped')::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM member sm
+            JOIN tenant_workspace stw ON stw.workspace_id = sm.workspace_id
+            WHERE sm.user_id = u.id AND stw.tenant_id = sqlc.narg('scope_tenant')::uuid
+        )
     )
   AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
@@ -146,16 +121,16 @@ VALUES ($1, 'active', '', $2, $3)
 ON CONFLICT (user_id) DO UPDATE
 SET sessions_valid_after = EXCLUDED.sessions_valid_after;
 
--- name: LockActiveAdmins :many
--- Locks every active administrator row, so two removals cannot each see the
--- other administrator still in place.
+-- name: LockActiveSystemAdmins :many
+-- Locks every active system administrator row, so two removals or demotions
+-- cannot each see the other administrator still in place.
 SELECT user_id FROM platform_staff
-WHERE role = 'admin' AND revoked_at IS NULL
+WHERE role = 'system_admin' AND revoked_at IS NULL
 ORDER BY user_id
 FOR UPDATE;
 
 -- name: ListActiveStaffWithEmail :many
-SELECT s.user_id, u.email, s.role, s.created_by, s.created_at
+SELECT s.user_id, u.email, s.role, s.tenant_id, s.created_by, s.created_at
 FROM platform_staff s
 JOIN "user" u ON u.id = s.user_id
 WHERE s.revoked_at IS NULL
@@ -177,9 +152,16 @@ ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg('row_limit');
 
 -- name: ListAllAuditEvents :many
--- Every workspace's rows and the account-level rows.
+-- Every workspace's rows and the account-level rows. A scoped caller (an admin)
+-- reads the rows of its tenant: those that carry its tenant_id, and those of its
+-- workspaces (spec R6 section 3.5, D84).
 SELECT * FROM audit_event
-WHERE (sqlc.narg('action')::text IS NULL OR action = sqlc.narg('action')::text)
+WHERE (
+        NOT sqlc.arg('scoped')::boolean
+        OR tenant_id = sqlc.narg('scope_tenant')::uuid
+        OR workspace_id IN (SELECT tw.workspace_id FROM tenant_workspace tw WHERE tw.tenant_id = sqlc.narg('scope_tenant')::uuid)
+    )
+  AND (sqlc.narg('action')::text IS NULL OR action = sqlc.narg('action')::text)
   AND (sqlc.narg('actor_id')::text IS NULL OR actor_id = sqlc.narg('actor_id')::text)
   AND (sqlc.narg('created_from')::timestamptz IS NULL OR created_at >= sqlc.narg('created_from')::timestamptz)
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR created_at < sqlc.narg('created_to')::timestamptz)

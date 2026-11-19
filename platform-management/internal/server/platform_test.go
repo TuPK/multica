@@ -96,8 +96,12 @@ func TestPlatformHandlerRoutesPlanAndSubscriptionPathsToBilling(t *testing.T) {
 		}
 	}
 
-	// A tenant path that is not the subscription's still goes to the console.
-	for _, path := range []string{"/api/platform/tenants/" + id, "/api/platform/tenants/" + id + "/status", "/api/platform/tenants/" + id + "/notes"} {
+	// A workspace or tenant path that is not the subscription's still goes to the
+	// console.
+	for _, path := range []string{
+		"/api/platform/tenants/" + id, "/api/platform/workspaces/" + id,
+		"/api/platform/workspaces/" + id + "/status", "/api/platform/workspaces/" + id + "/notes",
+	} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
 		if got := rec.Body.String(); got != "console" {

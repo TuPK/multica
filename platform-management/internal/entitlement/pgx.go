@@ -41,5 +41,29 @@ func NewPgxLoader(pool db.DBTX) Loader {
 		Plans:         plan.NewPgxReader(pool),
 		Subscriptions: subscription.NewPgxReader(pool),
 		Status:        NewPgxStatus(pool),
+		Tenants:       NewPgxTenants(pool),
 	}
+}
+
+// PgxTenants is the TenantReader over tenant_workspace.
+type PgxTenants struct{ q *db.Queries }
+
+// NewPgxTenants returns a TenantReader over pool.
+func NewPgxTenants(pool db.DBTX) *PgxTenants { return &PgxTenants{q: db.New(pool)} }
+
+// SiblingIDs implements TenantReader.
+func (t *PgxTenants) SiblingIDs(ctx context.Context, workspaceID string) ([]string, error) {
+	var id pgtype.UUID
+	if err := id.Scan(workspaceID); err != nil || !id.Valid {
+		return nil, fmt.Errorf("invalid workspace id %q", workspaceID)
+	}
+	rows, err := t.q.ListTenantWorkspaceIDs(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, len(rows))
+	for i, r := range rows {
+		out[i] = fmt.Sprintf("%x-%x-%x-%x-%x", r.Bytes[0:4], r.Bytes[4:6], r.Bytes[6:8], r.Bytes[8:10], r.Bytes[10:16])
+	}
+	return out, nil
 }

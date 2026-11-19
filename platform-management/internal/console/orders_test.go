@@ -418,7 +418,7 @@ func TestPlatformBillingTenantDetailReturnsTheRecentOrders(t *testing.T) {
 
 	// Every staff role reads it.
 	for _, who := range []string{suppID, billID, adminID} {
-		rec := e.do(who, "GET", "/api/platform/tenants/"+wsID, "")
+		rec := e.do(who, "GET", "/api/platform/workspaces/"+wsID, "")
 		wantStatus(t, rec, 200)
 		var body struct {
 			RecentOrders []map[string]any `json:"recent_orders"`
@@ -437,7 +437,7 @@ func TestPlatformBillingTenantDetailReturnsTheRecentOrders(t *testing.T) {
 
 func TestPlatformBillingTenantDetailWithNoOrdersHasAnEmptyList(t *testing.T) {
 	e := newEnv(t)
-	rec := e.do(suppID, "GET", "/api/platform/tenants/"+wsID, "")
+	rec := e.do(suppID, "GET", "/api/platform/workspaces/"+wsID, "")
 	wantStatus(t, rec, 200)
 	if !strings.Contains(rec.Body.String(), `"recent_orders":[]`) {
 		t.Errorf("body = %s", rec.Body)

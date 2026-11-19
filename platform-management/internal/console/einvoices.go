@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/platform-management/internal/invoice"
+	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
 
 // EinvoiceRow is an e-invoice record as the console lists it. It has no buyer:
@@ -175,6 +176,10 @@ func toHistoryJSON(h EinvoiceHistoryRow) map[string]any {
 // listOrderEinvoices returns every revision of one order's e-invoice, newest
 // first. An order without a record answers 200 with an empty list.
 func (h *Handler) listOrderEinvoices(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionOrdersRead)
+	if !ok {
+		return
+	}
 	id, perr := pathID(r, "id")
 	if perr != nil {
 		writeError(w, perr)
@@ -185,10 +190,20 @@ func (h *Handler) listOrderEinvoices(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "list order e-invoices", errNoEinvoiceReader)
 		return
 	}
-	if _, found, err := h.Reader.GetOrder(r.Context(), id); err != nil {
+	order, found, err := h.Reader.GetOrder(r.Context(), id)
+	if err != nil {
 		h.fail(w, r, "read order", err)
 		return
-	} else if !found {
+	}
+	if !found {
+		writeError(w, orderNotFound())
+		return
+	}
+	// An order of another tenant reads as one that does not exist.
+	if visible, err := h.workspaceVisible(r.Context(), scope, order.WorkspaceID); err != nil {
+		h.fail(w, r, "check order scope", err)
+		return
+	} else if !visible {
 		writeError(w, orderNotFound())
 		return
 	}

@@ -13,6 +13,8 @@ import (
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/db"
+	"github.com/multica-ai/multica/platform-management/internal/entitlement"
+	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/usage"
 )
 
@@ -110,66 +112,225 @@ func textArg(s *string) pgtype.Text {
 	return pgtype.Text{String: *s, Valid: true}
 }
 
+// scopeArgs turns a Scope into the arguments of the scoped queries. A scoped
+// caller with no usable tenant id gets a null tenant, which matches nothing.
+func scopeArgs(s Scope) (scoped bool, tenant pgtype.UUID) {
+	if s.All {
+		return false, pgtype.UUID{}
+	}
+	u, err := parseUUID(s.TenantID)
+	if err != nil {
+		return true, pgtype.UUID{}
+	}
+	return true, u
+}
+
+func parseLimits(raw []byte) (plan.Limits, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var l plan.Limits
+	if err := json.Unmarshal(raw, &l); err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
+// tenantSummary is what the console shows of the workspaces of one tenant.
+type tenantSummary struct {
+	max        *int64
+	bestPlan   string
+	status     map[string]int64
+	workspaces []TenantWorkspace
+}
+
+// summarize reduces the workspaces of one tenant: the effective max_workspaces
+// (the largest among them, nil when any has none), the plan of the
+// highest-ranked one, and the count of workspaces by status.
+func summarize(rows []db.ListTenantWorkspaceSummariesRow) (tenantSummary, error) {
+	out := tenantSummary{status: map[string]int64{}}
+	var siblings []entitlement.Sibling
+	bestSort := -1
+	for _, row := range rows {
+		limits, err := parseLimits(row.PlanLimits)
+		if err != nil {
+			return tenantSummary{}, fmt.Errorf("plan %q limits: %w", row.PlanKey, err)
+		}
+		overrides, err := parseLimits(row.LimitOverrides)
+		if err != nil {
+			return tenantSummary{}, fmt.Errorf("limit overrides of workspace %s: %w", uuidText(row.WorkspaceID), err)
+		}
+		siblings = append(siblings, entitlement.Sibling{Plan: plan.Plan{Key: row.PlanKey, Limits: limits}, Overrides: overrides})
+		if rank := int(row.PlanSort); rank > bestSort || (rank == bestSort && row.PlanKey < out.bestPlan) {
+			bestSort, out.bestPlan = rank, row.PlanKey
+		}
+		out.status[row.Status]++
+		out.workspaces = append(out.workspaces, TenantWorkspace{
+			ID: uuidText(row.WorkspaceID), Name: row.Name, Slug: row.Slug, Status: row.Status, PlanKey: row.PlanKey,
+			MemberCount: row.MemberCount, OwnerID: uuidText(row.OwnerID), OwnerEmail: row.OwnerEmail.String,
+			CreatedAt: row.CreatedAt.Time,
+		})
+	}
+	if len(siblings) > 0 {
+		out.max = entitlement.TenantMaxWorkspaces(siblings)
+	}
+	return out, nil
+}
+
+// summaries reads the workspaces of the tenants and groups them by tenant.
+func (r *PgxReader) summaries(ctx context.Context, tenantIDs []pgtype.UUID) (map[string]tenantSummary, error) {
+	out := map[string]tenantSummary{}
+	if len(tenantIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.q.ListTenantWorkspaceSummaries(ctx, tenantIDs)
+	if err != nil {
+		return nil, err
+	}
+	byTenant := map[string][]db.ListTenantWorkspaceSummariesRow{}
+	for _, row := range rows {
+		key := uuidText(row.TenantID)
+		byTenant[key] = append(byTenant[key], row)
+	}
+	for key, group := range byTenant {
+		sum, err := summarize(group)
+		if err != nil {
+			return nil, err
+		}
+		out[key] = sum
+	}
+	return out, nil
+}
+
+func tenantRow(id pgtype.UUID, name, status string, createdAt, lastActivity pgtype.Timestamptz, count int64, sum tenantSummary) TenantRow {
+	if sum.status == nil {
+		sum.status = map[string]int64{}
+	}
+	return TenantRow{
+		ID: uuidText(id), Name: name, Status: status, WorkspaceCount: count, MaxWorkspaces: sum.max,
+		BestPlanKey: sum.bestPlan, StatusSummary: sum.status, CreatedAt: createdAt.Time, LastActivityAt: lastActivity.Time,
+	}
+}
+
 func (r *PgxReader) SearchTenants(ctx context.Context, q TenantSearch) ([]TenantRow, error) {
 	at, id, err := cursorArgs(q.Cursor)
 	if err != nil {
 		return nil, err
 	}
+	scoped, scopeTenant := scopeArgs(q.Scope)
 	rows, err := r.q.SearchTenants(ctx, db.SearchTenantsParams{
+		Scoped: scoped, ScopeTenant: scopeTenant,
 		Pattern: textArg(q.Pattern), CursorCreatedAt: at, CursorID: id, RowLimit: int32(q.Limit + 1),
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]TenantRow, len(rows))
+	ids := make([]pgtype.UUID, len(rows))
 	for i, row := range rows {
-		out[i] = TenantRow{
-			ID: uuidText(row.ID), Name: row.Name, Slug: row.Slug, Status: row.Status,
-			MemberCount: row.MemberCount, CreatedAt: row.CreatedAt.Time, LastActivityAt: row.LastActivityAt.Time,
-		}
+		ids[i] = row.ID
 	}
-	// A workspace with no usage row keeps the zero Snapshot.
-	ids := make([]string, len(out))
-	for i, t := range out {
-		ids[i] = t.ID
-	}
-	latest, err := r.usage.Latest(ctx, ids)
+	sums, err := r.summaries(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	for i := range out {
-		out[i].Usage = latest[out[i].ID]
+	out := make([]TenantRow, len(rows))
+	for i, row := range rows {
+		out[i] = tenantRow(row.ID, row.Name, row.Status, row.CreatedAt, row.LastActivityAt, row.WorkspaceCount, sums[uuidText(row.ID)])
 	}
 	return out, nil
 }
 
-func (r *PgxReader) GetTenant(ctx context.Context, id string) (TenantDetail, bool, error) {
+func (r *PgxReader) GetTenant(ctx context.Context, id string, scope Scope) (TenantDetail, bool, error) {
 	uid, err := parseUUID(id)
 	if err != nil {
 		return TenantDetail{}, false, err
 	}
-	row, err := r.q.GetTenant(ctx, uid)
+	scoped, scopeTenant := scopeArgs(scope)
+	row, err := r.q.GetTenant(ctx, db.GetTenantParams{ID: uid, Scoped: scoped, ScopeTenant: scopeTenant})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return TenantDetail{}, false, nil
 	}
 	if err != nil {
 		return TenantDetail{}, false, err
 	}
-	latest, err := r.usage.Latest(ctx, []string{uuidText(row.ID)})
+	sums, err := r.summaries(ctx, []pgtype.UUID{row.ID})
 	if err != nil {
 		return TenantDetail{}, false, err
+	}
+	sum := sums[uuidText(row.ID)]
+	d := TenantDetail{
+		TenantRow:  tenantRow(row.ID, row.Name, row.Status, row.CreatedAt, row.LastActivityAt, row.WorkspaceCount, sum),
+		CreatedBy:  uuidText(row.CreatedBy),
+		Workspaces: sum.workspaces,
+	}
+	ids := make([]string, len(d.Workspaces))
+	for i, w := range d.Workspaces {
+		ids[i] = w.ID
+	}
+	latest, err := r.usage.Latest(ctx, ids)
+	if err != nil {
+		return TenantDetail{}, false, err
+	}
+	for i := range d.Workspaces {
+		d.Workspaces[i].Usage = latest[d.Workspaces[i].ID]
+	}
+	if d.Workspaces == nil {
+		d.Workspaces = []TenantWorkspace{}
+	}
+	return d, true, nil
+}
+
+func (r *PgxReader) WorkspaceInScope(ctx context.Context, workspaceID string, scope Scope) (bool, error) {
+	if scope.All {
+		return true, nil
+	}
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return false, nil
+	}
+	_, tenant := scopeArgs(scope)
+	return r.q.WorkspaceInScope(ctx, db.WorkspaceInScopeParams{WorkspaceID: ws, ScopeTenant: tenant})
+}
+
+func (r *PgxReader) UserInScope(ctx context.Context, userID string, scope Scope) (bool, error) {
+	if scope.All {
+		return true, nil
+	}
+	uid, err := parseUUID(userID)
+	if err != nil {
+		return false, nil
+	}
+	_, tenant := scopeArgs(scope)
+	return r.q.UserInScope(ctx, db.UserInScopeParams{UserID: uid, ScopeTenant: tenant})
+}
+
+func (r *PgxReader) GetWorkspace(ctx context.Context, id string) (WorkspaceDetail, bool, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return WorkspaceDetail{}, false, err
+	}
+	row, err := r.q.GetWorkspace(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return WorkspaceDetail{}, false, nil
+	}
+	if err != nil {
+		return WorkspaceDetail{}, false, err
+	}
+	latest, err := r.usage.Latest(ctx, []string{uuidText(row.ID)})
+	if err != nil {
+		return WorkspaceDetail{}, false, err
 	}
 	current, err := r.usage.Current(ctx, uuidText(row.ID))
 	if err != nil {
-		return TenantDetail{}, false, err
+		return WorkspaceDetail{}, false, err
 	}
 	groups, err := r.groupCount(ctx, row.ID)
 	if err != nil {
-		return TenantDetail{}, false, err
+		return WorkspaceDetail{}, false, err
 	}
-	return TenantDetail{
+	return WorkspaceDetail{
 		GroupCount: groups,
-		TenantRow: TenantRow{
+		WorkspaceRow: WorkspaceRow{
 			ID: uuidText(row.ID), Name: row.Name, Slug: row.Slug, Status: row.Status,
 			MemberCount: row.MemberCount, CreatedAt: row.CreatedAt.Time, LastActivityAt: row.LastActivityAt.Time,
 			Usage: latest[uuidText(row.ID)],
@@ -190,7 +351,9 @@ func (r *PgxReader) SearchUsers(ctx context.Context, q UserSearch) ([]UserRow, e
 	if err != nil {
 		return nil, err
 	}
+	scoped, scopeTenant := scopeArgs(q.Scope)
 	rows, err := r.q.SearchUsers(ctx, db.SearchUsersParams{
+		Scoped: scoped, ScopeTenant: scopeTenant,
 		Pattern: textArg(q.Pattern), CursorCreatedAt: at, CursorID: id, RowLimit: int32(q.Limit + 1),
 	})
 	if err != nil {
@@ -271,7 +434,7 @@ func (r *PgxReader) ListStaff(ctx context.Context) ([]StaffRow, error) {
 	out := make([]StaffRow, len(rows))
 	for i, row := range rows {
 		out[i] = StaffRow{
-			UserID: uuidText(row.UserID), Email: row.Email, Role: row.Role,
+			UserID: uuidText(row.UserID), Email: row.Email, Role: row.Role, TenantID: optionalUUIDText(row.TenantID),
 			CreatedBy: uuidText(row.CreatedBy), CreatedAt: row.CreatedAt.Time,
 		}
 	}
@@ -302,7 +465,9 @@ func (r *PgxReader) ListAuditEvents(ctx context.Context, q AuditQuery) ([]AuditR
 	}
 	var events []db.AuditEvent
 	if q.WorkspaceID == "" {
+		scoped, scopeTenant := scopeArgs(q.Scope)
 		events, err = r.q.ListAllAuditEvents(ctx, db.ListAllAuditEventsParams{
+			Scoped: scoped, ScopeTenant: scopeTenant,
 			Action: textArg(q.Action), ActorID: textArg(q.ActorID),
 			CreatedFrom: timeArg(q.From), CreatedTo: timeArg(q.To),
 			CursorCreatedAt: at, CursorID: id, RowLimit: int32(q.Limit + 1),
@@ -357,8 +522,13 @@ func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overv
 	if err != nil {
 		return Overview{}, err
 	}
+	withoutTenant, err := r.q.CountWorkspacesWithoutTenant(ctx)
+	if err != nil {
+		return Overview{}, err
+	}
 	o := Overview{
-		PendingOrders: pending, PendingByCurrency: byCurrency, Usage: totals,
+		WorkspacesWithoutTenant: withoutTenant,
+		PendingOrders:           pending, PendingByCurrency: byCurrency, Usage: totals,
 		WorkspacesTotal: total, NonActive: make(map[string]int64, len(rows)), Signups: signups,
 		ByPlan: make(map[string]int64, len(plans)),
 	}
@@ -423,16 +593,20 @@ const listOrdersSQL = `SELECT o.id, o.workspace_id, o.kind, o.plan_key, o.interv
 		SELECT e.state FROM einvoice_issuance e WHERE e.order_id = o.id ORDER BY e.revision DESC LIMIT 1
 	) inv ON true
 	WHERE o.status = $1
+	  AND (NOT $3::boolean OR EXISTS (
+		SELECT 1 FROM tenant_workspace tw WHERE tw.workspace_id = o.workspace_id AND tw.tenant_id = $4::uuid
+	  ))
 	ORDER BY o.created_at %[1]s, o.id %[1]s
 	LIMIT $2`
 
 // ListOrders implements Reader. The pending queue is oldest first.
-func (r *PgxReader) ListOrders(ctx context.Context, status billing.Status, newestFirst bool, limit int) ([]OrderRow, error) {
+func (r *PgxReader) ListOrders(ctx context.Context, status billing.Status, newestFirst bool, limit int, scope Scope) ([]OrderRow, error) {
 	dir := "ASC"
 	if newestFirst {
 		dir = "DESC"
 	}
-	rows, err := r.pool.Query(ctx, fmt.Sprintf(listOrdersSQL, dir), string(status), int32(limit))
+	scoped, scopeTenant := scopeArgs(scope)
+	rows, err := r.pool.Query(ctx, fmt.Sprintf(listOrdersSQL, dir), string(status), int32(limit), scoped, scopeTenant)
 	if err != nil {
 		return nil, err
 	}
@@ -479,8 +653,8 @@ func (r *PgxReader) GetOrder(ctx context.Context, id string) (OrderRow, bool, er
 	return orderFromRow(row.BillingOrder, row.WorkspaceName), true, nil
 }
 
-// TenantUsage implements Reader.
-func (r *PgxReader) TenantUsage(ctx context.Context, workspaceID string, now time.Time) (usage.Month, error) {
+// WorkspaceUsage implements Reader.
+func (r *PgxReader) WorkspaceUsage(ctx context.Context, workspaceID string, now time.Time) (usage.Month, error) {
 	return r.usage.Month(ctx, workspaceID, now)
 }
 
@@ -628,8 +802,16 @@ func (t *pgxTx) SetSessionsValidAfter(ctx context.Context, userID, changedBy str
 	})
 }
 
-func (t *pgxTx) ActiveAdmins(ctx context.Context) ([]string, error) {
-	ids, err := t.q.LockActiveAdmins(ctx)
+func (t *pgxTx) TenantExists(ctx context.Context, id string) (bool, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return false, nil
+	}
+	return t.q.TenantExists(ctx, uid)
+}
+
+func (t *pgxTx) ActiveSystemAdmins(ctx context.Context) ([]string, error) {
+	ids, err := t.q.LockActiveSystemAdmins(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -640,31 +822,35 @@ func (t *pgxTx) ActiveAdmins(ctx context.Context) ([]string, error) {
 	return out, nil
 }
 
-func (t *pgxTx) ActiveStaffRole(ctx context.Context, userID string) (string, bool, error) {
+func (t *pgxTx) ActiveStaffRole(ctx context.Context, userID string) (string, string, bool, error) {
 	uid, err := parseUUID(userID)
 	if err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
 	row, err := t.q.GetActiveStaffByUserID(ctx, uid)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", false, nil
+		return "", "", false, nil
 	}
 	if err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
-	return row.Role, true, nil
+	return row.Role, optionalUUIDText(row.TenantID), true, nil
 }
 
-func (t *pgxTx) ReactivateStaff(ctx context.Context, userID, role string) (bool, error) {
+func (t *pgxTx) ReactivateStaff(ctx context.Context, userID, role, tenantID string) (bool, error) {
 	uid, err := parseUUID(userID)
 	if err != nil {
 		return false, err
 	}
-	n, err := t.q.ReactivateStaff(ctx, db.ReactivateStaffParams{UserID: uid, Role: role})
+	tenant, err := optionalUUID(tenantID)
+	if err != nil {
+		return false, err
+	}
+	n, err := t.q.ReactivateStaff(ctx, db.ReactivateStaffParams{UserID: uid, Role: role, TenantID: tenant})
 	return n > 0, err
 }
 
-func (t *pgxTx) InsertStaff(ctx context.Context, userID, role, createdBy string) (bool, error) {
+func (t *pgxTx) InsertStaff(ctx context.Context, userID, role, tenantID, createdBy string) (bool, error) {
 	uid, err := parseUUID(userID)
 	if err != nil {
 		return false, err
@@ -673,8 +859,41 @@ func (t *pgxTx) InsertStaff(ctx context.Context, userID, role, createdBy string)
 	if err != nil {
 		return false, err
 	}
-	n, err := t.q.InsertStaff(ctx, db.InsertStaffParams{UserID: uid, Role: role, CreatedBy: by})
+	tenant, err := optionalUUID(tenantID)
+	if err != nil {
+		return false, err
+	}
+	n, err := t.q.InsertStaff(ctx, db.InsertStaffParams{UserID: uid, Role: role, CreatedBy: by, TenantID: tenant})
 	return n > 0, err
+}
+
+func (t *pgxTx) UpdateStaff(ctx context.Context, userID, role, tenantID string) (bool, error) {
+	uid, err := parseUUID(userID)
+	if err != nil {
+		return false, err
+	}
+	tenant, err := optionalUUID(tenantID)
+	if err != nil {
+		return false, err
+	}
+	n, err := t.q.UpdateStaffRoleAndTenant(ctx, db.UpdateStaffRoleAndTenantParams{UserID: uid, Role: role, TenantID: tenant})
+	return n > 0, err
+}
+
+// optionalUUID parses a UUID, and returns NULL for empty text.
+func optionalUUID(s string) (pgtype.UUID, error) {
+	if s == "" {
+		return pgtype.UUID{}, nil
+	}
+	return parseUUID(s)
+}
+
+// optionalUUIDText is the text of a UUID, and "" for NULL.
+func optionalUUIDText(u pgtype.UUID) string {
+	if !u.Valid {
+		return ""
+	}
+	return uuidText(u)
 }
 
 func (t *pgxTx) RevokeStaff(ctx context.Context, userID string) (bool, error) {
@@ -706,6 +925,10 @@ func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 		}
 		ws = u
 	}
+	tenant, err := optionalUUID(e.TenantID)
+	if err != nil {
+		return err
+	}
 	detail := e.Detail
 	if detail == nil {
 		detail = map[string]any{}
@@ -727,6 +950,7 @@ func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 		Ip:          e.IP,
 		UserAgent:   e.UserAgent,
 		RequestID:   e.RequestID,
+		TenantID:    tenant,
 	})
 }
 

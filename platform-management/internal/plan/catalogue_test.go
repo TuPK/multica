@@ -220,7 +220,7 @@ func TestEmbeddedCatalogueMatchesTheSpecTable(t *testing.T) {
 		cmp.Audience, cmp.BillingModel = "", ""
 		cmp.Limits = Limits{}
 		for gate, v := range have.Limits {
-			if gate != GateMemberGroups {
+			if gate != GateMemberGroups && gate != GateMaxWorkspaces {
 				cmp.Limits[gate] = v
 			}
 		}
@@ -320,13 +320,14 @@ func TestEnterpriseIsPrivateAndTakesBusinessLimits(t *testing.T) {
 	}
 	// member_groups is the one limit that differs: Business caps it, Enterprise does not.
 	entLimits, bizLimits := Limits{}, Limits{}
+	// max_workspaces differs too: Business allows 10, Enterprise has no limit.
 	for g, v := range ent.Limits {
-		if g != GateMemberGroups {
+		if g != GateMemberGroups && g != GateMaxWorkspaces {
 			entLimits[g] = v
 		}
 	}
 	for g, v := range biz.Limits {
-		if g != GateMemberGroups {
+		if g != GateMemberGroups && g != GateMaxWorkspaces {
 			bizLimits[g] = v
 		}
 	}
@@ -391,7 +392,7 @@ func TestCatalogueUnlimitedPlanMatchesSpec7b3(t *testing.T) {
 		Key: "unlimited", Name: "Unlimited", Currency: "vnd",
 		Limits: Limits{
 			GateIssueCount: nil, GateAutopilotRuns: nil, GateAgents: nil, GateRuntimes: nil,
-			GateStorageBytes: nil, GateMemberGroups: nil,
+			GateStorageBytes: nil, GateMemberGroups: nil, GateMaxWorkspaces: nil,
 			GateAPIRatePerMinute: nil, GateAuditRetentionDay: n(180), // the rate cap is off (contract 2)
 		},
 		Features:       map[string]bool{"audit_export": true, "sso": false, "workspace_policies": false, "viewer_role": false},
@@ -408,16 +409,32 @@ func TestCatalogueUnlimitedPlanMatchesSpec7b3(t *testing.T) {
 	}
 }
 
-// Counted limits are all empty on exactly two plans: unlimited, and payg, whose
-// usage is paid for by the meter instead of capped (spec 7b.3, D42).
+// resourceUnlimited reports whether p leaves every counted limit empty except
+// max_workspaces, which spec R6 section 5.6 gives payg (5) as a count of
+// workspaces, not a cap on what the meter bills.
+func resourceUnlimited(p Plan) bool {
+	for _, gate := range CountedGates {
+		if gate != GateMaxWorkspaces && p.Limits[gate] != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// The resource limits are all empty on exactly two plans: unlimited, and payg,
+// whose usage is paid for by the meter instead of capped (spec 7b.3, D42).
+// IsUnlimited, which also looks at max_workspaces, holds for unlimited alone.
 func TestCatalogueOnlyUnlimitedAndPaygLeaveEveryCountedLimitEmpty(t *testing.T) {
 	all, err := Catalogue()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range all {
-		if got, want := IsUnlimited(p), p.Key == UnlimitedKey || p.Key == "payg"; got != want {
-			t.Errorf("%s IsUnlimited = %v, want %v", p.Key, got, want)
+		if got, want := resourceUnlimited(p), p.Key == UnlimitedKey || p.Key == "payg"; got != want {
+			t.Errorf("%s resourceUnlimited = %v, want %v", p.Key, got, want)
+		}
+		if got, want := IsUnlimited(p), p.Key == UnlimitedKey; got != want {
+			t.Errorf("%s IsUnlimited = %v, want %v (payg carries max_workspaces 5)", p.Key, got, want)
 		}
 	}
 }
@@ -435,7 +452,7 @@ func TestCataloguePaygPlanMatchesSpec7b3(t *testing.T) {
 	n := func(v int64) *int64 { return &v }
 	wantLimits := Limits{
 		GateIssueCount: nil, GateAutopilotRuns: nil, GateAgents: nil, GateRuntimes: nil,
-		GateStorageBytes: nil, GateMemberGroups: nil,
+		GateStorageBytes: nil, GateMemberGroups: nil, GateMaxWorkspaces: n(5),
 		GateAPIRatePerMinute: n(1200), GateAuditRetentionDay: n(180),
 	}
 	if !reflect.DeepEqual(p.Limits, wantLimits) {
@@ -447,8 +464,8 @@ func TestCataloguePaygPlanMatchesSpec7b3(t *testing.T) {
 	if !reflect.DeepEqual(p.Features, wantFeatures) {
 		t.Errorf("payg features = %v, want %v", p.Features, wantFeatures)
 	}
-	if !IsUnlimited(p) {
-		t.Error("payg has a counted limit set")
+	if !resourceUnlimited(p) {
+		t.Error("payg has a counted resource limit set")
 	}
 }
 

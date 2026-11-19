@@ -102,7 +102,7 @@ func parseAccountStatus(s string) (accountguard.State, *apiError) {
 func parseStaffRole(s string) (staff.Role, *apiError) {
 	r, ok := staff.ParseRole(s)
 	if !ok {
-		return "", badRequest("invalid_role", "role must be support, billing or admin")
+		return "", badRequest("invalid_role", "role must be system_admin, admin, support or billing")
 	}
 	return r, nil
 }

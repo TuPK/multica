@@ -28,24 +28,25 @@ func TestDBTenantListShowsWorkspacesWithAndWithoutAUsageRow(t *testing.T) {
 	}
 	t.Cleanup(func() { f.pool.Exec(ctx, `DELETE FROM platform_usage_daily WHERE workspace_id = $1`, withRow) })
 
-	rec := f.do(supportID, "GET", "/api/platform/tenants?limit=100", "")
-	if rec.Code != 200 {
-		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	// Each workspace is in a tenant of its own; the tenant detail summarises it.
+	summary := func(ws string) map[string]any {
+		t.Helper()
+		rec := f.do(supportID, "GET", "/api/platform/tenants/"+ws, "")
+		if rec.Code != 200 {
+			t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+		}
+		var body struct {
+			Workspaces []map[string]any `json:"workspaces"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Workspaces) != 1 || body.Workspaces[0]["id"] != ws {
+			t.Fatalf("workspaces = %v, want the one workspace %s", body.Workspaces, ws)
+		}
+		return body.Workspaces[0]
 	}
-	var body struct {
-		Tenants []map[string]any `json:"tenants"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatal(err)
-	}
-	byID := map[string]map[string]any{}
-	for _, tn := range body.Tenants {
-		byID[tn["id"].(string)] = tn
-	}
-	with, without := byID[withRow], byID[withoutRow]
-	if with == nil || without == nil {
-		t.Fatalf("list lacks a workspace: with=%v without=%v", with != nil, without != nil)
-	}
+	with, without := summary(withRow), summary(withoutRow)
 	if with["usage_day"] != "2026-11-14" || with["usage_members"] != 2.0 || with["usage_storage_bytes"] != 2048.0 {
 		t.Errorf("workspace with rows shows %v, want the newest row", with)
 	}
@@ -53,7 +54,7 @@ func TestDBTenantListShowsWorkspacesWithAndWithoutAUsageRow(t *testing.T) {
 		t.Errorf("workspace with no row shows %v, want a null day and zeros", without)
 	}
 
-	detail := decodeJSON(t, f.do(supportID, "GET", "/api/platform/tenants/"+withoutRow, ""))
+	detail := decodeJSON(t, f.do(supportID, "GET", "/api/platform/workspaces/"+withoutRow, ""))
 	cur, _ := detail["usage_current"].(map[string]any)
 	if cur["members"] != 2.0 {
 		t.Errorf("usage_current = %v, want the 2 members counted now", detail["usage_current"])

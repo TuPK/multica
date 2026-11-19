@@ -25,10 +25,14 @@ type statusBody struct {
 	Reason string `json:"reason"`
 }
 
-// setTenantStatus moves a workspace to a state through workspacestatus.Set,
+// setWorkspaceStatus moves a workspace to a state through workspacestatus.Set,
 // which writes the platform row and its audit row in one transaction and drops
 // the cache key the Multica server reads.
-func (h *Handler) setTenantStatus(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) setWorkspaceStatus(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionWorkspacesLock)
+	if !ok {
+		return
+	}
 	id, perr := pathID(r, "id")
 	if perr != nil {
 		writeError(w, perr)
@@ -54,15 +58,22 @@ func (h *Handler) setTenantStatus(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "resolve staff actor", err)
 		return
 	}
-	// The route admits support for lock and unlock. Scheduling a deletion is
-	// admin's (spec 5.2).
-	if status == workspacestate.PendingDeletion && !a.Role.Permits("workspaces.schedule_deletion") {
+	// The route admits support for lock and unlock. Scheduling a deletion is not
+	// support's (spec 5.2).
+	if status == workspacestate.PendingDeletion && staff.Allowed(a.Role, staff.ActionWorkspacesDeletion) == staff.None {
 		writeError(w, forbidden())
+		return
+	}
+	if visible, err := h.workspaceVisible(r.Context(), scope, id); err != nil {
+		h.fail(w, r, "check workspace scope", err)
+		return
+	} else if !visible {
+		writeError(w, notFound())
 		return
 	}
 	// Set does not check that the workspace exists; without this a typo in the
 	// id would create a state row for nothing.
-	current, found, err := h.Reader.GetTenant(r.Context(), id)
+	current, found, err := h.Reader.GetWorkspace(r.Context(), id)
 	if err != nil {
 		h.fail(w, r, "get tenant", err)
 		return
@@ -73,7 +84,7 @@ func (h *Handler) setTenantStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	// Leaving pending_deletion cancels the deletion, which is admin's as well.
 	if workspacestate.Status(current.Status) == workspacestate.PendingDeletion && status != workspacestate.PendingDeletion &&
-		!a.Role.Permits("workspaces.cancel_deletion") {
+		staff.Allowed(a.Role, staff.ActionWorkspacesDeletion) == staff.None {
 		writeError(w, forbidden())
 		return
 	}
@@ -84,7 +95,7 @@ func (h *Handler) setTenantStatus(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "set workspace state", err)
 		return
 	}
-	d, found, err := h.Reader.GetTenant(r.Context(), id)
+	d, found, err := h.Reader.GetWorkspace(r.Context(), id)
 	if err != nil {
 		h.fail(w, r, "get tenant", err)
 		return
@@ -104,6 +115,10 @@ type noteBody struct {
 // carry its text: the workspace's owners read the workspace audit log, and
 // notes are never shown to them.
 func (h *Handler) addNote(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionNotesWrite)
+	if !ok {
+		return
+	}
 	id, perr := pathID(r, "id")
 	if perr != nil {
 		writeError(w, perr)
@@ -122,6 +137,13 @@ func (h *Handler) addNote(w http.ResponseWriter, r *http.Request) {
 	a, err := h.currentActor(r)
 	if err != nil {
 		h.fail(w, r, "resolve staff actor", err)
+		return
+	}
+	if visible, err := h.workspaceVisible(r.Context(), scope, id); err != nil {
+		h.fail(w, r, "check workspace scope", err)
+		return
+	} else if !visible {
+		writeError(w, notFound())
 		return
 	}
 	var note Note
@@ -377,13 +399,17 @@ func (h *Handler) mailMFAReset(ctx context.Context, userID, email string) {
 }
 
 type addStaffBody struct {
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	TenantID string `json:"tenant_id"`
 }
 
 // addStaff gives an existing Multica account a staff role, and re-activates
 // the account's revoked row when it has one.
 func (h *Handler) addStaff(w http.ResponseWriter, r *http.Request) {
+	if !h.requireStaffManager(w, r) {
+		return
+	}
 	var body addStaffBody
 	if perr := decodeBody(w, r, &body); perr != nil {
 		writeError(w, perr)
@@ -394,7 +420,7 @@ func (h *Handler) addStaff(w http.ResponseWriter, r *http.Request) {
 		writeError(w, perr)
 		return
 	}
-	role, perr := parseStaffRole(body.Role)
+	target, perr := validateStaffTarget(body.Role, body.TenantID)
 	if perr != nil {
 		writeError(w, perr)
 		return
@@ -407,6 +433,9 @@ func (h *Handler) addStaff(w http.ResponseWriter, r *http.Request) {
 
 	var userID string
 	err = h.Runner.InTx(r.Context(), func(tx Tx) error {
+		if err := tenantMustExist(r.Context(), tx, target.TenantID); err != nil {
+			return err
+		}
 		id, found, err := tx.UserIDByEmail(r.Context(), email)
 		if err != nil {
 			return err
@@ -415,17 +444,17 @@ func (h *Handler) addStaff(w http.ResponseWriter, r *http.Request) {
 			return &apiError{Status: http.StatusNotFound, Code: "no_such_account", Message: "no Multica account has this email"}
 		}
 		userID = id
-		if _, active, err := tx.ActiveStaffRole(r.Context(), id); err != nil {
+		if _, _, active, err := tx.ActiveStaffRole(r.Context(), id); err != nil {
 			return err
 		} else if active {
 			return alreadyStaff()
 		}
-		reactivated, err := tx.ReactivateStaff(r.Context(), id, string(role))
+		reactivated, err := tx.ReactivateStaff(r.Context(), id, string(target.Role), target.TenantID)
 		if err != nil {
 			return err
 		}
 		if !reactivated {
-			inserted, err := tx.InsertStaff(r.Context(), id, string(role), a.ID)
+			inserted, err := tx.InsertStaff(r.Context(), id, string(target.Role), target.TenantID, a.ID)
 			if err != nil {
 				return err
 			}
@@ -435,26 +464,32 @@ func (h *Handler) addStaff(w http.ResponseWriter, r *http.Request) {
 		}
 		return audit.Record(r.Context(), tx, a.staffEntry(audit.Entry{
 			Action:      audit.ActionStaffAdded,
+			TenantID:    target.TenantID,
 			TargetType:  targetUser,
 			TargetID:    id,
 			TargetLabel: email,
-			Detail:      map[string]any{"role": string(role), "reactivated": reactivated},
+			Detail:      map[string]any{"role": string(target.Role), "tenant_id": target.TenantID, "reactivated": reactivated},
 		}))
 	})
 	if err != nil {
 		h.fail(w, r, "add staff", err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]string{"user_id": userID, "email": email, "role": string(role)})
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"user_id": userID, "email": email, "role": string(target.Role), "tenant_id": tenantOrNull(target.TenantID),
+	})
 }
 
 func alreadyStaff() *apiError {
 	return &apiError{Status: http.StatusConflict, Code: "already_staff", Message: "the account already has an active staff role"}
 }
 
-// removeStaff revokes a staff row. The last active administrator cannot be
-// removed.
+// removeStaff revokes a staff row. The last active system administrator cannot
+// be removed.
 func (h *Handler) removeStaff(w http.ResponseWriter, r *http.Request) {
+	if !h.requireStaffManager(w, r) {
+		return
+	}
 	id, perr := pathID(r, "user_id")
 	if perr != nil {
 		writeError(w, perr)
@@ -468,29 +503,21 @@ func (h *Handler) removeStaff(w http.ResponseWriter, r *http.Request) {
 
 	var removedRole string
 	err = h.Runner.InTx(r.Context(), func(tx Tx) error {
-		// Locking the administrators first makes two removals queue up, so each
-		// one counts the administrators that remain.
-		admins, err := tx.ActiveAdmins(r.Context())
+		// Locking the system administrators first makes two removals queue up,
+		// so each one counts the system administrators that remain.
+		admins, err := tx.ActiveSystemAdmins(r.Context())
 		if err != nil {
 			return err
 		}
-		role, found, err := tx.ActiveStaffRole(r.Context(), id)
+		role, tenant, found, err := tx.ActiveStaffRole(r.Context(), id)
 		if err != nil {
 			return err
 		}
 		if !found {
 			return notFound()
 		}
-		if role == string(staff.RoleAdmin) {
-			others := 0
-			for _, admin := range admins {
-				if admin != id {
-					others++
-				}
-			}
-			if others == 0 {
-				return badRequest("last_admin", "the last active administrator cannot be removed")
-			}
+		if role == string(staff.RoleSystemAdmin) && !otherThan(admins, id) {
+			return lastSystemAdmin()
 		}
 		email, _, err := tx.UserEmail(r.Context(), id)
 		if err != nil {
@@ -506,10 +533,11 @@ func (h *Handler) removeStaff(w http.ResponseWriter, r *http.Request) {
 		removedRole = role
 		return audit.Record(r.Context(), tx, a.staffEntry(audit.Entry{
 			Action:      audit.ActionStaffRemoved,
+			TenantID:    tenant,
 			TargetType:  targetUser,
 			TargetID:    id,
 			TargetLabel: email,
-			Detail:      map[string]any{"role": role},
+			Detail:      map[string]any{"role": role, "tenant_id": tenant},
 		}))
 	})
 	if err != nil {
