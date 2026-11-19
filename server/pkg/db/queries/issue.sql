@@ -406,9 +406,16 @@ WHERE id = $1 AND workspace_id = $2;
 -- GetIssueRefInWorkspace for a page: every original the page's duplicates
 -- point at, in one read. project_id lets the caller drop an original the viewer
 -- cannot see.
-SELECT id, number, title, status, project_id FROM issue
-WHERE workspace_id = sqlc.arg('workspace_id')
-  AND id = ANY(sqlc.arg('ids')::uuid[]);
+SELECT issue.id, issue.number, issue.title, issue.status, issue.project_id FROM issue
+WHERE issue.workspace_id = sqlc.arg('workspace_id')
+  AND issue.id = ANY(sqlc.arg('ids')::uuid[])
+-- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')));
 
 -- name: ClearIssueDuplicatesOf :many
 -- Deleting an issue clears the pointers of its duplicates, the way deleting a
