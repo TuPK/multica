@@ -29,7 +29,8 @@ export const SEPAY_SECRET = "e2e-sepay-webhook-secret";
 
 // Playwright runs from the repository root; the repo is ESM, so no __dirname.
 const REPO_ROOT = process.cwd();
-const BIN_DIR = resolve(REPO_ROOT, "test-results", "platform");
+// Outside test-results/: Playwright clears that folder at the start of every run, which would force a rebuild.
+const BIN_DIR = resolve(REPO_ROOT, "platform-management", "bin");
 const BIN = resolve(BIN_DIR, "platform-server");
 const REDIS_CONTAINER = `multica-platform-e2e-redis-${process.pid}`;
 
@@ -69,6 +70,14 @@ function buildServer(): void {
 }
 
 function startRedis(): void {
+  // A run that died before its teardown leaves its container holding the fixed port; clear those first.
+  const stale = execFileSync("docker", ["ps", "-aq", "--filter", "name=multica-platform-e2e-redis-"], {
+    encoding: "utf8",
+    timeout: 60_000,
+  }).trim();
+  if (stale) {
+    execFileSync("docker", ["rm", "-f", ...stale.split("\n")], { stdio: "ignore", timeout: 120_000 });
+  }
   execFileSync(
     "docker",
     ["run", "-d", "--rm", "--name", REDIS_CONTAINER, "-p", `127.0.0.1:${REDIS_HOST_PORT}:6379`, "redis:7.0-alpine"],
@@ -181,6 +190,11 @@ export async function startPlatform(role: StaffSeed["role"] = "admin"): Promise<
   const totpKey = randomBytes(20);
   const pool = new pg.Pool({ connectionString: dbUrl, max: 2 });
   try {
+    // The server refuses to start when any confirmed second factor cannot be opened with this run's key.
+    // Rows left by killed runs use an older key, so clear this suite's leftover staff factors first.
+    await pool.query(
+      `DELETE FROM user_mfa WHERE user_id IN (SELECT id FROM "user" WHERE email LIKE 'e2e-%@example.test')`,
+    );
     await pool.query(
       `INSERT INTO "user" (id, name, email, avatar_url, created_at, updated_at, timezone)
        VALUES ($1, 'E2E Staff', $2, '', now(), now(), 'UTC')`,
