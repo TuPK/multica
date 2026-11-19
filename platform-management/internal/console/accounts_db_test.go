@@ -55,7 +55,7 @@ func accountsDBFixture(t *testing.T, perHour int) *dbFixture {
 
 func TestAccountRequestDBAdminCreatesListsAndCancels(t *testing.T) {
 	f := accountsDBFixture(t, 30)
-	adminUser, adminEmail := f.staffUser(staff.RoleAdmin)
+	adminUser, adminEmail := f.staffUser(staff.RoleSystemAdmin)
 	supportUser, _ := f.staffUser(staff.RoleSupport)
 	billingUser, _ := f.staffUser(staff.RoleBilling)
 	email := "acct-db-" + randomHex(t) + "@example.test"
@@ -109,7 +109,7 @@ func TestAccountRequestDBAdminCreatesListsAndCancels(t *testing.T) {
 // create an account request, and the refused request writes no row (spec 7b.5).
 func TestAccountCreateDBRefusesAnAdminSessionWithoutMFA(t *testing.T) {
 	f := accountsDBFixture(t, 30)
-	adminUser, _ := f.staffUser(staff.RoleAdmin)
+	adminUser, _ := f.staffUser(staff.RoleSystemAdmin)
 	email := "acct-db-" + randomHex(t) + "@example.test"
 	body := `{"kind":"individual","email":"` + email + `","display_name":"Ana","workspace_name":"Ana space"}`
 	post := func(sign func(secret, userID string, authTime time.Time) (string, error)) *httptest.ResponseRecorder {
@@ -140,7 +140,7 @@ func TestAccountCreateDBRefusesAnAdminSessionWithoutMFA(t *testing.T) {
 
 func TestAccountCreateDBRateLimitAnswers429WithRetryAfter(t *testing.T) {
 	f := accountsDBFixture(t, 1)
-	adminUser, _ := f.staffUser(staff.RoleAdmin)
+	adminUser, _ := f.staffUser(staff.RoleSystemAdmin)
 	mk := func(n string) string {
 		return `{"kind":"individual","email":"acct-db-` + randomHex(t) + n + `@example.test","display_name":"A","workspace_name":"W"}`
 	}
@@ -156,7 +156,7 @@ func TestAccountCreateDBRateLimitAnswers429WithRetryAfter(t *testing.T) {
 // one whose user has only other audit rows shows false (spec 7b.5).
 func TestAccountRequestDBShowsWhetherTheUserEverLoggedIn(t *testing.T) {
 	f := accountsDBFixture(t, 30)
-	adminUser, _ := f.staffUser(staff.RoleAdmin)
+	adminUser, _ := f.staffUser(staff.RoleSystemAdmin)
 	used, _ := f.user("acct-db-used")
 	unused, _ := f.user("acct-db-unused")
 	ctx := context.Background()

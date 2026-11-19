@@ -15,7 +15,7 @@ const cancelDeletionRequest = `-- name: CancelDeletionRequest :one
 UPDATE platform_deletion_request
 SET state = 'canceled', updated_at = now(), completed_at = now()
 WHERE id = $1 AND state IN ('pending', 'failed')
-RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at
+RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
 `
 
 func (q *Queries) CancelDeletionRequest(ctx context.Context, id pgtype.UUID) (PlatformDeletionRequest, error) {
@@ -41,12 +41,13 @@ func (q *Queries) CancelDeletionRequest(ctx context.Context, id pgtype.UUID) (Pl
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompletedAt,
+		&i.TenantID,
 	)
 	return i, err
 }
 
 const getDeletionRequest = `-- name: GetDeletionRequest :one
-SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at FROM platform_deletion_request
+SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id FROM platform_deletion_request
 WHERE id = $1
 `
 
@@ -73,12 +74,61 @@ func (q *Queries) GetDeletionRequest(ctx context.Context, id pgtype.UUID) (Platf
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompletedAt,
+		&i.TenantID,
+	)
+	return i, err
+}
+
+const getDeletionTenant = `-- name: GetDeletionTenant :one
+SELECT id, name, status FROM tenant WHERE id = $1
+`
+
+type GetDeletionTenantRow struct {
+	ID     pgtype.UUID `json:"id"`
+	Name   string      `json:"name"`
+	Status string      `json:"status"`
+}
+
+func (q *Queries) GetDeletionTenant(ctx context.Context, id pgtype.UUID) (GetDeletionTenantRow, error) {
+	row := q.db.QueryRow(ctx, getDeletionTenant, id)
+	var i GetDeletionTenantRow
+	err := row.Scan(&i.ID, &i.Name, &i.Status)
+	return i, err
+}
+
+const getDeletionWorkspace = `-- name: GetDeletionWorkspace :one
+SELECT w.id, w.name, w.slug, COALESCE(pw.status, 'active')::text AS status, tw.tenant_id
+FROM workspace w
+LEFT JOIN platform_workspace pw ON pw.workspace_id = w.id
+LEFT JOIN tenant_workspace tw ON tw.workspace_id = w.id
+WHERE w.id = $1
+`
+
+type GetDeletionWorkspaceRow struct {
+	ID       pgtype.UUID `json:"id"`
+	Name     string      `json:"name"`
+	Slug     string      `json:"slug"`
+	Status   string      `json:"status"`
+	TenantID pgtype.UUID `json:"tenant_id"`
+}
+
+// The workspace a deletion request targets: its name, slug, platform status
+// (active when it has no row) and its tenant (null when it has none).
+func (q *Queries) GetDeletionWorkspace(ctx context.Context, id pgtype.UUID) (GetDeletionWorkspaceRow, error) {
+	row := q.db.QueryRow(ctx, getDeletionWorkspace, id)
+	var i GetDeletionWorkspaceRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Status,
+		&i.TenantID,
 	)
 	return i, err
 }
 
 const getLiveDeletionRequest = `-- name: GetLiveDeletionRequest :one
-SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at FROM platform_deletion_request
+SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id FROM platform_deletion_request
 WHERE kind = $1 AND target_id = $2 AND state IN ('awaiting_approval', 'pending', 'running', 'failed')
 `
 
@@ -110,6 +160,7 @@ func (q *Queries) GetLiveDeletionRequest(ctx context.Context, arg GetLiveDeletio
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompletedAt,
+		&i.TenantID,
 	)
 	return i, err
 }
@@ -117,12 +168,12 @@ func (q *Queries) GetLiveDeletionRequest(ctx context.Context, arg GetLiveDeletio
 const insertDeletionRequest = `-- name: InsertDeletionRequest :one
 
 INSERT INTO platform_deletion_request (
-    id, kind, target_id, target_label, reason, state, requested_by, requested_by_label, export_first, resolutions, parent_id
+    id, kind, target_id, target_label, reason, state, requested_by, requested_by_label, export_first, resolutions, parent_id, tenant_id
 ) VALUES (
-    gen_random_uuid(), $1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9
+    gen_random_uuid(), $1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9, $10
 )
 ON CONFLICT (kind, target_id) WHERE state IN ('awaiting_approval', 'pending', 'running', 'failed') DO NOTHING
-RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at
+RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
 `
 
 type InsertDeletionRequestParams struct {
@@ -135,6 +186,7 @@ type InsertDeletionRequestParams struct {
 	ExportFirst      bool        `json:"export_first"`
 	Resolutions      []byte      `json:"resolutions"`
 	ParentID         pgtype.UUID `json:"parent_id"`
+	TenantID         pgtype.UUID `json:"tenant_id"`
 }
 
 // Staff deletion requests (spec R6 section 6). The platform writes the request
@@ -154,6 +206,7 @@ func (q *Queries) InsertDeletionRequest(ctx context.Context, arg InsertDeletionR
 		arg.ExportFirst,
 		arg.Resolutions,
 		arg.ParentID,
+		arg.TenantID,
 	)
 	var i PlatformDeletionRequest
 	err := row.Scan(
@@ -176,12 +229,13 @@ func (q *Queries) InsertDeletionRequest(ctx context.Context, arg InsertDeletionR
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompletedAt,
+		&i.TenantID,
 	)
 	return i, err
 }
 
 const listDeletionRequests = `-- name: ListDeletionRequests :many
-SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at FROM platform_deletion_request
+SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id FROM platform_deletion_request
 WHERE ($1::text = '' OR kind = $1)
   AND ($2::text = '' OR state = $2)
 ORDER BY created_at DESC, id DESC
@@ -194,8 +248,7 @@ type ListDeletionRequestsParams struct {
 	Limit   int32  `json:"limit"`
 }
 
-// The newest requests first. kind and state filter when non-empty; the
-// admin's tenant filter is applied by the caller through the target lists.
+// The newest requests first, for system_admin. kind and state filter when non-empty.
 func (q *Queries) ListDeletionRequests(ctx context.Context, arg ListDeletionRequestsParams) ([]PlatformDeletionRequest, error) {
 	rows, err := q.db.Query(ctx, listDeletionRequests, arg.Column1, arg.Column2, arg.Limit)
 	if err != nil {
@@ -225,6 +278,7 @@ func (q *Queries) ListDeletionRequests(ctx context.Context, arg ListDeletionRequ
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CompletedAt,
+			&i.TenantID,
 		); err != nil {
 			return nil, err
 		}
@@ -236,8 +290,99 @@ func (q *Queries) ListDeletionRequests(ctx context.Context, arg ListDeletionRequ
 	return items, nil
 }
 
+const listDeletionRequestsInTenant = `-- name: ListDeletionRequestsInTenant :many
+SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id FROM platform_deletion_request
+WHERE tenant_id = $1
+  AND kind IN ('workspace', 'tenant')
+  AND ($2::text = '' OR kind = $2)
+  AND ($3::text = '' OR state = $3)
+ORDER BY created_at DESC, id DESC
+LIMIT $4
+`
+
+type ListDeletionRequestsInTenantParams struct {
+	TenantID pgtype.UUID `json:"tenant_id"`
+	Column2  string      `json:"column_2"`
+	Column3  string      `json:"column_3"`
+	Limit    int32       `json:"limit"`
+}
+
+// The newest workspace and tenant requests of one tenant, for its admin. Account
+// requests carry no tenant_id and never match.
+func (q *Queries) ListDeletionRequestsInTenant(ctx context.Context, arg ListDeletionRequestsInTenantParams) ([]PlatformDeletionRequest, error) {
+	rows, err := q.db.Query(ctx, listDeletionRequestsInTenant,
+		arg.TenantID,
+		arg.Column2,
+		arg.Column3,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PlatformDeletionRequest{}
+	for rows.Next() {
+		var i PlatformDeletionRequest
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.TargetID,
+			&i.TargetLabel,
+			&i.Reason,
+			&i.State,
+			&i.ErrorCode,
+			&i.Attempts,
+			&i.ApprovedBy,
+			&i.ApprovedAt,
+			&i.ExportFirst,
+			&i.NoticeSentAt,
+			&i.Resolutions,
+			&i.ParentID,
+			&i.RequestedBy,
+			&i.RequestedByLabel,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
+			&i.TenantID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDeletionTenantWorkspaces = `-- name: ListDeletionTenantWorkspaces :many
+SELECT workspace_id FROM tenant_workspace WHERE tenant_id = $1 ORDER BY workspace_id
+`
+
+// The workspaces of a tenant, in a fixed order. The caller takes LockDeletionTenant
+// first, so the list is final for the transaction.
+func (q *Queries) ListDeletionTenantWorkspaces(ctx context.Context, tenantID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listDeletionTenantWorkspaces, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var workspace_id pgtype.UUID
+		if err := rows.Scan(&workspace_id); err != nil {
+			return nil, err
+		}
+		items = append(items, workspace_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockDeletionRequest = `-- name: LockDeletionRequest :one
-SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at FROM platform_deletion_request
+SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id FROM platform_deletion_request
 WHERE id = $1
 FOR UPDATE
 `
@@ -265,15 +410,27 @@ func (q *Queries) LockDeletionRequest(ctx context.Context, id pgtype.UUID) (Plat
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompletedAt,
+		&i.TenantID,
 	)
 	return i, err
+}
+
+const lockDeletionTenant = `-- name: LockDeletionTenant :exec
+SELECT pg_advisory_xact_lock(hashtext($1::text), hashtext('max_workspaces'))
+`
+
+// The max_workspaces gate lock of the tenant (server plan_limit.sql LockPlanGate),
+// so a workspace creation and this request queue on the same lock.
+func (q *Queries) LockDeletionTenant(ctx context.Context, dollar_1 string) error {
+	_, err := q.db.Exec(ctx, lockDeletionTenant, dollar_1)
+	return err
 }
 
 const retryDeletionRequest = `-- name: RetryDeletionRequest :one
 UPDATE platform_deletion_request
 SET state = 'pending', error_code = '', attempts = 0, updated_at = now()
 WHERE id = $1 AND state = 'failed'
-RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at
+RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
 `
 
 func (q *Queries) RetryDeletionRequest(ctx context.Context, id pgtype.UUID) (PlatformDeletionRequest, error) {
@@ -299,6 +456,7 @@ func (q *Queries) RetryDeletionRequest(ctx context.Context, id pgtype.UUID) (Pla
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompletedAt,
+		&i.TenantID,
 	)
 	return i, err
 }

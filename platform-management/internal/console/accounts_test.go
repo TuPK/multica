@@ -118,7 +118,7 @@ func newAccountsEnv(t *testing.T) *accountsEnv {
 	e := &accountsEnv{
 		t: t,
 		dir: &fakeDirectory{
-			roles:  map[string]staff.Role{adminID: staff.RoleAdmin, suppID: staff.RoleSupport, billID: staff.RoleBilling},
+			roles:  map[string]staff.Role{adminID: staff.RoleSystemAdmin, suppID: staff.RoleSupport, billID: staff.RoleBilling},
 			emails: map[string]string{adminID: adminMail, suppID: suppMail, billID: billMail, custID: custMail},
 		},
 		log: &fakeLogins{users: map[string]bool{}},

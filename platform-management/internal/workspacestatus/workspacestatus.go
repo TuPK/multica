@@ -113,6 +113,13 @@ func normalize(c Change) (Change, error) {
 	return c, nil
 }
 
+// movesDeletion reports whether c moves an already pending deletion to another
+// date. An immediate deletion of a workspace that is already scheduled brings
+// the date forward to now (spec R6 section 6.3, step 4).
+func movesDeletion(c Change) bool {
+	return c.Status == workspacestate.PendingDeletion && !c.DeletionScheduledAt.IsZero()
+}
+
 // apply is the body of one state change, inside the caller's transaction.
 func apply(ctx context.Context, tx Tx, c Change) (changed bool, err error) {
 	cur, found, err := tx.Current(ctx, c.WorkspaceID)
@@ -123,7 +130,7 @@ func apply(ctx context.Context, tx Tx, c Change) (changed bool, err error) {
 	if found {
 		from = cur.Status
 	}
-	if from == c.Status {
+	if from == c.Status && !movesDeletion(c) {
 		return false, nil
 	}
 	written, err := tx.Write(ctx, c)

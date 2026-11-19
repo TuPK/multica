@@ -26,12 +26,14 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/config"
 	"github.com/multica-ai/multica/platform-management/internal/console"
 	"github.com/multica-ai/multica/platform-management/internal/db"
+	"github.com/multica-ai/multica/platform-management/internal/deletionrequest"
 	"github.com/multica-ai/multica/platform-management/internal/einvoice"
 	"github.com/multica-ai/multica/platform-management/internal/entitlement"
 	"github.com/multica-ai/multica/platform-management/internal/invoice"
 	"github.com/multica-ai/multica/platform-management/internal/jobs"
 	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 	"github.com/multica-ai/multica/platform-management/internal/mailer"
+	"github.com/multica-ai/multica/platform-management/internal/memberrequest"
 	"github.com/multica-ai/multica/platform-management/internal/mfa"
 	"github.com/multica-ai/multica/platform-management/internal/money"
 	"github.com/multica-ai/multica/platform-management/internal/paymentnotice"
@@ -259,6 +261,14 @@ func run() error {
 		Notifier:   accountcache.NewPublisher(rdb),
 		Payments:   orders,
 		Reconciler: reconciler,
+		Members: memberrequest.New(memberrequest.Deps{
+			Runner: memberrequest.NewPgxRunner(pool), Reader: memberrequest.NewPgxReader(pool),
+			Seats: memberSeats{seat.NewService(seat.NewPgxRunner(pool), time.Now)}, Log: slog.Default(),
+		}),
+		Deletions: deletionrequest.New(deletionrequest.Deps{
+			Runner: deletionrequest.NewPgxRunner(pool), Reader: deletionrequest.NewPgxReader(pool),
+			Cache: guard, Log: slog.Default(),
+		}),
 		Accounts: accountrequest.New(accountrequest.Deps{
 			Runner: accountrequest.NewPgxRunner(pool), Reader: accountrequest.NewPgxReader(pool),
 			Plans: plan.NewPgxReader(pool), Limiter: platformauth.NewRedisLimiter(rdb),
@@ -467,4 +477,13 @@ func newEinvoiceService(cfg config.Config, store invoice.Store) (*invoice.Servic
 		return nil, err
 	}
 	return invoice.NewService(store, provider, invoice.Config{StartAt: e.StartAt, MaxAttempts: e.MaxAttempts}), nil
+}
+
+// memberSeats frees the seat a canceled member request may hold, through the
+// platform's own seat service.
+type memberSeats struct{ svc *seat.Service }
+
+func (m memberSeats) Release(ctx context.Context, workspaceID, token string) error {
+	_, err := m.svc.Release(ctx, workspaceID, token)
+	return err
 }

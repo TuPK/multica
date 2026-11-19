@@ -99,6 +99,12 @@ func matrix() []matrixRoute {
 		{"GET", "/api/platform/workspaces/" + wsID + "/member-requests", "", systemTenant, 200},
 		{"GET", "/api/platform/member-requests/" + memReqID, "", systemTenant, 200},
 		{"POST", "/api/platform/member-requests/" + memReqID + "/cancel", "", systemTenant, 200},
+		{"POST", "/api/platform/workspaces/" + wsID + "/delete-now", `{"reason":"r","confirm":"acme"}`, systemTenant, 202},
+		{"POST", "/api/platform/tenants/" + tenantID + "/delete-now", `{"reason":"r","confirm":"Acme"}`, systemOnly, 202},
+		{"GET", "/api/platform/deletion-requests", "", systemTenant, 200},
+		{"GET", "/api/platform/deletion-requests/" + delReqID, "", systemTenant, 200},
+		{"POST", "/api/platform/deletion-requests/" + delReqID + "/cancel", "", systemTenant, 200},
+		{"POST", "/api/platform/deletion-requests/" + delReqID + "/retry", "", systemTenant, 200},
 		{"GET", "/api/platform/overview", "", all, 200},
 	}
 }

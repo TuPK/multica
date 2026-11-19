@@ -434,6 +434,7 @@ func (h *Handler) DeleteAccount(ctx context.Context, userID string, now time.Tim
 			return qtx.DeleteUserInvitations(ctx, db.DeleteUserInvitationsParams{UserID: uid, Email: user.Email})
 		}},
 		{"anonymize account requests", func() error { return qtx.AnonymizeAccountRequestsForUser(ctx, uid) }},
+		{"anonymize member requests", func() error { return qtx.AnonymizeMemberRequestsForUser(ctx, uid) }},
 		{"anonymize user", func() error { return qtx.AnonymizeDeletedUser(ctx, uid) }},
 		{"anonymize audit actor", func() error {
 			return qtx.AnonymizeAuditActor(ctx, pgtype.Text{String: userID, Valid: true})

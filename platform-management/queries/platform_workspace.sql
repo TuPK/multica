@@ -10,7 +10,9 @@ WHERE workspace_id = $1
 FOR UPDATE;
 
 -- name: UpsertPlatformWorkspaceStatus :execrows
--- Writes only when the status changes, and returns the rows written (0 or 1).
+-- Writes only when the status changes or a pending deletion moves to another
+-- date (an immediate deletion of an already scheduled workspace), and returns
+-- the rows written (0 or 1).
 INSERT INTO platform_workspace (workspace_id, status, reason, changed_by, deletion_scheduled_at)
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (workspace_id) DO UPDATE
@@ -19,7 +21,8 @@ SET status = EXCLUDED.status,
     changed_by = EXCLUDED.changed_by,
     changed_at = now(),
     deletion_scheduled_at = EXCLUDED.deletion_scheduled_at
-WHERE platform_workspace.status IS DISTINCT FROM EXCLUDED.status;
+WHERE platform_workspace.status IS DISTINCT FROM EXCLUDED.status
+   OR platform_workspace.deletion_scheduled_at IS DISTINCT FROM EXCLUDED.deletion_scheduled_at;
 
 -- name: ListNonActivePlatformWorkspaces :many
 SELECT * FROM platform_workspace

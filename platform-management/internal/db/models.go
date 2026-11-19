@@ -2131,6 +2131,7 @@ type PlatformDeletionRequest struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	CompletedAt      pgtype.Timestamptz `json:"completed_at"`
+	TenantID         pgtype.UUID        `json:"tenant_id"`
 }
 
 type PlatformMemberRequest struct {

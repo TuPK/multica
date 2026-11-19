@@ -643,6 +643,7 @@ type env struct {
 	mail   *fakeMailer
 	logs   *bytes.Buffer
 	member *fakeMembers
+	delete *fakeDeletions
 }
 
 func newEnv(t *testing.T) *env { return newEnvMail(t, true) }
@@ -675,6 +676,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		mail:   &fakeMailer{},
 		logs:   &bytes.Buffer{},
 		member: newFakeMembers(),
+		delete: newFakeDeletions(),
 	}
 	e.reader.store = e.store
 	payments, err := billing.New(billing.Deps{
@@ -709,6 +711,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		Payments:      payments,
 		Emails:        e.dir,
 		Members:       e.member,
+		Deletions:     e.delete,
 		Log:           log,
 		Now:           func() time.Time { return t0 },
 	})

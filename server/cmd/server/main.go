@@ -26,6 +26,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/integrations/wecom"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/maintenance"
+	"github.com/multica-ai/multica/server/internal/memberprovision"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/profiling"
@@ -1054,6 +1055,18 @@ func main() {
 	}
 	if err := schedulerMgr.Register(accountprovision.Job(accountprovision.New(accountDeps))); err != nil {
 		slog.Error("scheduler: register account provisioning job", "error", err)
+	}
+	// Staff add-member requests from platform management become members. The
+	// job takes its seats from the same executor the handlers use.
+	if err := schedulerMgr.Register(memberprovision.Job(memberprovision.New(memberprovision.Deps{
+		Pool:                pool,
+		Queries:             queries,
+		BlockedEmailDomains: planlimit.ParseBlockedDomains(os.Getenv(planlimit.BlockedDomainsEnv)),
+		Seats:               h.SeatCapacity,
+		Bus:                 bus,
+		MemberPayload:       h.MemberAddedPayload,
+	}))); err != nil {
+		slog.Error("scheduler: register member provisioning job", "error", err)
 	}
 	go func() {
 		_ = schedulerMgr.Run(sweepCtx)

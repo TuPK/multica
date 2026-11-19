@@ -140,6 +140,7 @@ SET status = EXCLUDED.status,
     changed_at = now(),
     deletion_scheduled_at = EXCLUDED.deletion_scheduled_at
 WHERE platform_workspace.status IS DISTINCT FROM EXCLUDED.status
+   OR platform_workspace.deletion_scheduled_at IS DISTINCT FROM EXCLUDED.deletion_scheduled_at
 `
 
 type UpsertPlatformWorkspaceStatusParams struct {
@@ -150,7 +151,9 @@ type UpsertPlatformWorkspaceStatusParams struct {
 	DeletionScheduledAt pgtype.Timestamptz `json:"deletion_scheduled_at"`
 }
 
-// Writes only when the status changes, and returns the rows written (0 or 1).
+// Writes only when the status changes or a pending deletion moves to another
+// date (an immediate deletion of an already scheduled workspace), and returns
+// the rows written (0 or 1).
 func (q *Queries) UpsertPlatformWorkspaceStatus(ctx context.Context, arg UpsertPlatformWorkspaceStatusParams) (int64, error) {
 	result, err := q.db.Exec(ctx, upsertPlatformWorkspaceStatus,
 		arg.WorkspaceID,

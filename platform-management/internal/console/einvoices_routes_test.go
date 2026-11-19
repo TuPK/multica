@@ -208,7 +208,7 @@ func TestEinvoiceRetryMovesFailedToPending(t *testing.T) {
 
 func TestEinvoiceRetryMovesNeedsInfoToPendingWhenBuyerComplete(t *testing.T) {
 	x := newEinvoiceDB(t)
-	admin, _ := x.staffUser(staff.RoleAdmin)
+	admin, _ := x.staffUser(staff.RoleSystemAdmin)
 	order := x.seed(invoice.StateNeedsInfo, fullBuyer)
 	rec := x.post(admin, order, "retry", "")
 	if rec.Code != http.StatusOK {
@@ -225,7 +225,7 @@ func TestEinvoiceRetryMovesNeedsInfoToPendingWhenBuyerComplete(t *testing.T) {
 
 func TestEinvoiceRetryJobPicksUpRetriedRecord(t *testing.T) {
 	x := newEinvoiceDB(t)
-	admin, _ := x.staffUser(staff.RoleAdmin)
+	admin, _ := x.staffUser(staff.RoleSystemAdmin)
 	order := x.seed(invoice.StateFailed, fullBuyer)
 	if rec := x.post(admin, order, "retry", ""); rec.Code != http.StatusOK {
 		t.Fatalf("got %d %s", rec.Code, rec.Body)
@@ -244,7 +244,7 @@ func TestEinvoiceRetryJobPicksUpRetriedRecord(t *testing.T) {
 
 func TestEinvoiceRetryWithIncompleteBuyerReturns409AndKeepsState(t *testing.T) {
 	x := newEinvoiceDB(t)
-	admin, _ := x.staffUser(staff.RoleAdmin)
+	admin, _ := x.staffUser(staff.RoleSystemAdmin)
 	order := x.seed(invoice.StateNeedsInfo, noTaxCodeBuyer)
 	rec := x.post(admin, order, "retry", "")
 	if rec.Code != http.StatusConflict {
@@ -268,7 +268,7 @@ func TestEinvoiceRetryWithIncompleteBuyerReturns409AndKeepsState(t *testing.T) {
 
 func TestEinvoiceRetryOnIssuedReturns409(t *testing.T) {
 	x := newEinvoiceDB(t)
-	admin, _ := x.staffUser(staff.RoleAdmin)
+	admin, _ := x.staffUser(staff.RoleSystemAdmin)
 	order := x.seed(invoice.StateIssued, fullBuyer)
 	rec := x.post(admin, order, "retry", "")
 	if rec.Code != http.StatusConflict || decodeMap(t, rec)["code"] != "einvoice_state_conflict" {
@@ -284,7 +284,7 @@ func TestEinvoiceRetryOnIssuedReturns409(t *testing.T) {
 
 func TestEinvoiceRetryWithoutRecordReturns404(t *testing.T) {
 	x := newEinvoiceDB(t)
-	admin, _ := x.staffUser(staff.RoleAdmin)
+	admin, _ := x.staffUser(staff.RoleSystemAdmin)
 	var order string
 	if err := x.pool.QueryRow(context.Background(), `SELECT gen_random_uuid()::text`).Scan(&order); err != nil {
 		t.Fatal(err)

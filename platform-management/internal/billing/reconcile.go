@@ -132,7 +132,9 @@ type Actor struct {
 	Role  staff.Role
 }
 
-func (a Actor) allowed() bool { return a.Role == staff.RoleBilling || a.Role == staff.RoleAdmin }
+// allowed reports whether the actor may decide payment notices: row M16 of the
+// matrix of spec R6 section 3.6.
+func (a Actor) allowed() bool { return staff.Allowed(a.Role, staff.ActionPaymentsManage) == staff.All }
 
 // Reconciler matches payment notices to orders (spec 7.2). A notice that
 // matches exactly pays its order through ApplyPayment; any other leaves every

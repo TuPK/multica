@@ -31,6 +31,9 @@ func TestConsoleRoutesDoNotReadWorkspaceContent(t *testing.T) {
 	tenantResources := map[string]bool{
 		"status": true, "usage": true, "audit-events": true, "notes": true,
 		"subscription": true, "billing-profile": true,
+		// POST /tenants/{id}/delete-now (spec R6 section 6.5) deletes the tenant's
+		// workspaces through Multica's deletion path; it reads no workspace content.
+		"delete-now": true,
 	}
 	for _, pattern := range patterns {
 		rest, ok := strings.CutPrefix(pattern, "/api/platform/")

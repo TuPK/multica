@@ -80,6 +80,8 @@ type Deps struct {
 	Accounts   AccountRequests
 	// Members serves the staff add-member routes (spec R6 section 4).
 	Members MemberRequests
+	// Deletions serves the immediate deletion routes (spec R6 section 6).
+	Deletions DeletionRequests
 	// Einvoices serves the retry route. *invoice.Service is one.
 	Einvoices EinvoiceOps
 	Logins    LoginLookup
@@ -176,6 +178,12 @@ func routeTable() []routeSpec {
 		{base + "/workspaces/{id}/member-requests", staff.ActionMemberRequests, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listMemberRequests}},
 		{base + "/member-requests/{id}", staff.ActionMemberRequests, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getMemberRequest}},
 		{base + "/member-requests/{id}/cancel", staff.ActionMemberRequests, nil, map[string]handlerFunc{http.MethodPost: (*Handler).cancelMemberRequest}},
+		{base + "/workspaces/{id}/delete-now", staff.ActionWorkspaceDeleteNow, nil, map[string]handlerFunc{http.MethodPost: (*Handler).deleteWorkspaceNow}},
+		{base + "/tenants/{id}/delete-now", staff.ActionTenantDeleteNow, nil, map[string]handlerFunc{http.MethodPost: (*Handler).deleteTenantNow}},
+		{base + "/deletion-requests", staff.ActionDeletionRequestsRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listDeletionRequests}},
+		{base + "/deletion-requests/{id}", staff.ActionDeletionRequestsRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getDeletionRequest}},
+		{base + "/deletion-requests/{id}/cancel", staff.ActionDeletionRequestsAct, nil, map[string]handlerFunc{http.MethodPost: (*Handler).cancelDeletionRequest}},
+		{base + "/deletion-requests/{id}/retry", staff.ActionDeletionRequestsAct, nil, map[string]handlerFunc{http.MethodPost: (*Handler).retryDeletionRequest}},
 		{base + "/overview", staff.ActionOverviewRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).overview}},
 	}
 }
