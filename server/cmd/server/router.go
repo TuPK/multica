@@ -1714,6 +1714,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	r.With(authRL).Post("/auth/sso/discover", ssoHandler.Discover)
 	r.With(authVerifyRL).Get("/auth/sso/start", ssoHandler.Start)
 	r.With(authVerifyRL).Get("/auth/sso/callback", ssoHandler.Callback)
+	r.With(authVerifyRL).Post("/auth/sso/mobile/exchange", ssoHandler.MobileExchange)
 	r.Post("/auth/logout", h.Logout)
 
 	// Public API

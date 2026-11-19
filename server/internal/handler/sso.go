@@ -2,6 +2,9 @@ package handler
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -69,6 +72,7 @@ func (s *SSOHandler) AuthRoutes(r chi.Router) {
 	r.Post("/discover", s.Discover)
 	r.Get("/start", s.Start)
 	r.Get("/callback", s.Callback)
+	r.Post("/mobile/exchange", s.MobileExchange)
 }
 
 // publicBase is where the identity provider and the browser reach this server:
@@ -334,6 +338,16 @@ func (s *SSOHandler) Discover(w http.ResponseWriter, r *http.Request) {
 // ssoLoginFailure sends the browser back to the sign-in page with a code. The
 // callback is a browser navigation, so a JSON error would be a blank page.
 func ssoLoginFailure(w http.ResponseWriter, r *http.Request, code string) {
+	ssoLoginFailureFor(w, r, code, false)
+}
+
+// ssoLoginFailureFor is ssoLoginFailure that sends a mobile login back to the
+// app instead of the web sign-in page.
+func ssoLoginFailureFor(w http.ResponseWriter, r *http.Request, code string, mobile bool) {
+	if mobile {
+		http.Redirect(w, r, ssoMobileRedirect+"?error="+url.QueryEscape(code), http.StatusFound)
+		return
+	}
 	http.Redirect(w, r, resolveFrontendAppURL()+"/login?sso_error="+url.QueryEscape(code), http.StatusFound)
 }
 
@@ -362,6 +376,12 @@ func (s *SSOHandler) Start(w http.ResponseWriter, r *http.Request) {
 		writeErrorCode(w, http.StatusBadRequest, "invalid_connection", "invalid connection")
 		return
 	}
+	mobile := r.URL.Query().Get("client") == "mobile"
+	challenge := r.URL.Query().Get("challenge")
+	if mobile && !validSSOChallenge(challenge) {
+		writeErrorCode(w, http.StatusBadRequest, "invalid_challenge", "invalid challenge")
+		return
+	}
 	base := ssoPublicBase()
 	crypto, cryptoErr := mfa.LoadCrypto()
 	if base == "" || cryptoErr != nil {
@@ -383,6 +403,9 @@ func (s *SSOHandler) Start(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start the sign-in")
 		return
+	}
+	if mobile {
+		pend.Mobile, pend.Challenge = true, challenge
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), ssoProviderTimeout)
 	defer cancel()
@@ -415,7 +438,8 @@ func (s *SSOHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	secure := strings.HasPrefix(ssoPublicBase(), "https://")
 	clearSSOPending(w, secure)
 	w.Header().Set("Cache-Control", "no-store")
-	fail := func(code string) { ssoLoginFailure(w, r, code) }
+	mobile := false // known once the pending cookie is open
+	fail := func(code string) { ssoLoginFailureFor(w, r, code, mobile) }
 
 	q := r.URL.Query()
 	if q.Get("error") != "" {
@@ -439,6 +463,7 @@ func (s *SSOHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		fail("sso_login_failed")
 		return
 	}
+	mobile = pend.Mobile
 	connID, err := util.ParseUUID(pend.ConnectionID)
 	if err != nil {
 		fail("sso_login_failed")
@@ -528,6 +553,20 @@ func (s *SSOHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	if !s.h.recordLogin(w, r, user, "sso") {
 		return
 	}
+	if pend.Mobile {
+		sealed, err := sealSSOHandoff(crypto, ssoHandoff{
+			Purpose: ssoHandoffPurpose, Token: token, User: s.h.userToResponse(user),
+			Challenge: pend.Challenge, ExpiresAt: time.Now().Add(ssoHandoffTTL).Unix(),
+		})
+		if err != nil {
+			slog.Warn("sso handoff failed", append(logger.RequestAttrs(r), "error", err)...)
+			fail("sso_login_failed")
+			return
+		}
+		slog.Info("user logged in with sso (mobile)", append(logger.RequestAttrs(r), "user_id", uuidToString(user.ID), "connection_id", uuidToString(conn.ID))...)
+		http.Redirect(w, r, ssoMobileRedirect+"?code="+url.QueryEscape(sealed), http.StatusFound)
+		return
+	}
 	if err := auth.SetAuthCookies(w, token); err != nil {
 		slog.Warn("failed to set auth cookies", "error", err)
 	}
@@ -538,6 +577,98 @@ func (s *SSOHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("user logged in with sso", append(logger.RequestAttrs(r), "user_id", uuidToString(user.ID), "connection_id", uuidToString(conn.ID))...)
 	http.Redirect(w, r, resolveFrontendAppURL()+safeNext(pend.Next), http.StatusFound)
+}
+
+// ---- mobile handoff ----
+
+const (
+	// ssoMobileRedirect is the only place a mobile login returns to.
+	ssoMobileRedirect = "multica://sso-complete"
+	ssoHandoffTTL     = 60 * time.Second
+	// ssoHandoffPurpose tells a handoff from a pending login: both are sealed
+	// with the same key, and a pending login has no such field.
+	ssoHandoffPurpose = "sso_mobile_handoff"
+)
+
+// ssoHandoff is the session a mobile login carries from the callback to the
+// exchange, sealed so the browser and the app can neither read nor change it.
+type ssoHandoff struct {
+	Purpose   string       `json:"purpose"`
+	Token     string       `json:"token"`
+	User      UserResponse `json:"user"`
+	Challenge string       `json:"challenge"`
+	ExpiresAt int64        `json:"expires_at"`
+}
+
+// validSSOChallenge accepts the unpadded base64url of a 32-byte SHA-256 digest.
+func validSSOChallenge(c string) bool {
+	b, err := base64.RawURLEncoding.DecodeString(c)
+	return err == nil && len(b) == sha256.Size
+}
+
+func sealSSOHandoff(c *mfa.Crypto, h ssoHandoff) (string, error) {
+	raw, err := json.Marshal(h)
+	if err != nil {
+		return "", err
+	}
+	sealed, err := c.Seal(string(raw))
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(sealed), nil
+}
+
+var errSSOHandoffInvalid = errors.New("sso: handoff is invalid or expired")
+
+func openSSOHandoff(c *mfa.Crypto, value string, now time.Time) (ssoHandoff, error) {
+	sealed, err := base64.RawURLEncoding.DecodeString(value)
+	if err != nil || len(sealed) == 0 {
+		return ssoHandoff{}, errSSOHandoffInvalid
+	}
+	raw, err := c.Open(sealed)
+	if err != nil {
+		return ssoHandoff{}, errSSOHandoffInvalid
+	}
+	var h ssoHandoff
+	if err := json.Unmarshal([]byte(raw), &h); err != nil || h.Purpose != ssoHandoffPurpose || h.Token == "" || now.Unix() >= h.ExpiresAt {
+		return ssoHandoff{}, errSSOHandoffInvalid
+	}
+	return h, nil
+}
+
+// MobileExchange trades a handoff code and the PKCE-style verifier for the
+// same {token, user} body /auth/verify-code returns.
+// POST /auth/sso/mobile/exchange
+func (s *SSOHandler) MobileExchange(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Code     string `json:"code"`
+		Verifier string `json:"verifier"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	invalid := func() {
+		writeErrorCode(w, http.StatusBadRequest, "sso_exchange_invalid", "the sign-in code is invalid or expired")
+	}
+	crypto, err := mfa.LoadCrypto()
+	if err != nil {
+		writeErrorCode(w, http.StatusServiceUnavailable, "sso_unavailable", "single sign-on is not configured on this server")
+		return
+	}
+	h, err := openSSOHandoff(crypto, req.Code, time.Now())
+	if err != nil {
+		invalid()
+		return
+	}
+	sum := sha256.Sum256([]byte(req.Verifier))
+	got := base64.RawURLEncoding.EncodeToString(sum[:])
+	if subtle.ConstantTimeCompare([]byte(got), []byte(h.Challenge)) != 1 {
+		invalid()
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, LoginResponse{Token: h.Token, User: h.User})
 }
 
 // logSignInFailure records why a sign-in failed. The sentinel errors carry no

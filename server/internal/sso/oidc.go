@@ -50,6 +50,10 @@ type Pending struct {
 	Verifier     string `json:"v"`
 	Next         string `json:"x"`
 	ExpiresAt    int64  `json:"e"`
+	// Mobile and Challenge mark a login the mobile app started: the callback
+	// hands the session to the app, bound to the PKCE-style challenge.
+	Mobile    bool   `json:"m,omitempty"`
+	Challenge string `json:"k,omitempty"`
 }
 
 // Provider is what a connection holds, with the secret in the clear.
