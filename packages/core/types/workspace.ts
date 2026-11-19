@@ -24,6 +24,11 @@ export interface Workspace {
    * installed client keeps working against a backend that predates it.
    */
   secretary_agent_id?: string | null;
+  /**
+   * Tenant the workspace belongs to. Optional so an installed client keeps
+   * working against backends or list payloads that omit it.
+   */
+  tenant_id?: string;
   created_at: string;
   updated_at: string;
   pinned_at?: string | null;

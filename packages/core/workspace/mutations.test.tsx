@@ -49,13 +49,11 @@ const makeWorkspace = (id: string, slug: string): Workspace => ({
 
 describe("useCreateWorkspace", () => {
   let qc: QueryClient;
-  let createWorkspace: ReturnType<
-    typeof vi.fn<(data: { name: string; slug: string }) => Promise<Workspace>>
-  >;
+  let createWorkspace: ReturnType<typeof vi.fn<ApiClient["createWorkspace"]>>;
 
   beforeEach(() => {
     qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    createWorkspace = vi.fn();
+    createWorkspace = vi.fn<ApiClient["createWorkspace"]>();
     setApiInstance({ createWorkspace } as unknown as ApiClient);
     qc.setQueryData<Workspace[]>(workspaceKeys.list(), [
       makeWorkspace("ws-1", "existing"),
@@ -104,6 +102,56 @@ describe("useCreateWorkspace", () => {
         .getQueryData<Workspace[]>(workspaceKeys.list())
         ?.map((workspace) => workspace.id),
     ).toEqual(["ws-1"]);
+  });
+
+  it("useCreateWorkspace sends tenant_id only when given", async () => {
+    createWorkspace.mockResolvedValue(makeWorkspace("ws-2", "created"));
+    const { result } = renderHook(() => useCreateWorkspace(), {
+      wrapper: createWrapper(qc),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ name: "Without", slug: "without" });
+      await result.current.mutateAsync({
+        name: "Undefined",
+        slug: "undefined",
+        tenant_id: undefined,
+      });
+      await result.current.mutateAsync({
+        name: "Empty",
+        slug: "empty",
+        tenant_id: "",
+      });
+      await result.current.mutateAsync({
+        name: "With",
+        slug: "with",
+        tenant_id: "tenant-1",
+      });
+    });
+
+    expect(createWorkspace).toHaveBeenNthCalledWith(1, {
+      name: "Without",
+      slug: "without",
+    });
+    expect("tenant_id" in createWorkspace.mock.calls[0]![0]).toBe(false);
+
+    expect(createWorkspace).toHaveBeenNthCalledWith(2, {
+      name: "Undefined",
+      slug: "undefined",
+    });
+    expect("tenant_id" in createWorkspace.mock.calls[1]![0]).toBe(false);
+
+    expect(createWorkspace).toHaveBeenNthCalledWith(3, {
+      name: "Empty",
+      slug: "empty",
+    });
+    expect("tenant_id" in createWorkspace.mock.calls[2]![0]).toBe(false);
+
+    expect(createWorkspace).toHaveBeenNthCalledWith(4, {
+      name: "With",
+      slug: "with",
+      tenant_id: "tenant-1",
+    });
   });
 });
 

@@ -161,6 +161,8 @@
     "slug_reserved_error": "該工作區 URL 是系統保留的，無法使用。",
     "slug_conflict_toast": "請換一個工作區 URL",
     "create_failed_toast": "建立工作區失敗",
+    "same_tenant_label": "與 {{name}} 同一租戶",
+    "workspace_limit_toast": "此租戶已達到工作區數量上限",
     "creation_disabled_headline": "請聯絡管理員邀請你加入工作區。",
     "creation_disabled_lede": "該 Multica 例項不允許建立新的工作區。等管理員把你邀請到某個工作區後，接受邀請並重新整理即可繼續。",
     "creation_disabled_logout": "退出登入",

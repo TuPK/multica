@@ -172,6 +172,7 @@ import type {
   TimelineEntry,
   User,
   WebhookDelivery,
+  Workspace,
   WorkspaceMcpServer,
 } from "../types";
 import type { CloudRuntimeNode } from "../runtimes/cloud-runtime";
@@ -5194,14 +5195,59 @@ export const EMPTY_LIST_LARK_INSTALLATIONS_RESPONSE: ListLarkInstallationsRespon
   configured: false,
 };
 
-// Only `pinned_at` is new here; every other field keeps its pre-schema
-// leniency so one odd workspace can never empty the whole switcher.
+const WorkspaceRepoSchema = z.object({
+  url: z.string(),
+  description: z.string().optional(),
+}).loose();
+
+// Optional tenant ID: present only when the response carries a non-empty string.
+// Missing or malformed values degrade to undefined rather than failing the workspace parse.
+const OptionalTenantIdSchema = z
+  .string()
+  .refine((value) => value.trim().length > 0)
+  .optional()
+  .catch(undefined);
+
+export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().nullable().default(null),
+  context: z.string().nullable().default(null),
+  settings: z.record(z.string(), z.unknown()).default({}).catch({}),
+  repos: z.array(WorkspaceRepoSchema).default([]).catch([]),
+  issue_prefix: z.string().default(""),
+  avatar_url: z.string().nullable().default(null),
+  secretary_agent_id: z.string().nullable().optional().catch(undefined),
+  tenant_id: OptionalTenantIdSchema,
+  created_at: z.string().default(""),
+  updated_at: z.string().default(""),
+  pinned_at: z.iso.datetime({ offset: true }).nullable().optional().catch(undefined),
+}).loose();
+
+export const EMPTY_WORKSPACE: Workspace = {
+  id: "",
+  name: "",
+  slug: "",
+  description: null,
+  context: null,
+  settings: {},
+  repos: [],
+  issue_prefix: "",
+  avatar_url: null,
+  created_at: "",
+  updated_at: "",
+};
+
+// Only `pinned_at` and `tenant_id` are validated here; every other field keeps its
+// pre-schema leniency so one odd workspace can never empty the whole switcher.
 export const WorkspaceListItemSchema = z.object({
   id: z.string(),
   name: z.string(),
   slug: z.string(),
   created_at: z.string(),
   pinned_at: z.iso.datetime({ offset: true }).nullable().optional().catch(null).default(null),
+  tenant_id: OptionalTenantIdSchema,
 }).loose();
 
 export const WorkspacePinnedSchema = z.object({

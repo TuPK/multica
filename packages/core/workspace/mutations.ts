@@ -20,7 +20,12 @@ export function useCreateWorkspace() {
       description?: string;
       /** Omit to let the server derive it from the slug. */
       issue_prefix?: string;
-    }) => api.createWorkspace(data),
+      /** Set only when creating in the same tenant as an existing workspace. */
+      tenant_id?: string;
+    }) => {
+      const { tenant_id, ...rest } = data;
+      return api.createWorkspace(tenant_id ? { ...rest, tenant_id } : rest);
+    },
     // Seed the workspace list cache BEFORE callers navigate to /{newWs.slug}/issues.
     // The destination [workspaceSlug]/layout queries by slug from this cache;
     // without seeding, it would briefly show "loading" before the background

@@ -1078,6 +1078,7 @@ import {
   EMPTY_JOIN_SHARE_LINK_RESPONSE,
   WorkspaceListItemSchema,
   WorkspacePinnedSchema,
+  WorkspaceSchema,
   type IssueView,
   type IssueViewPreference,
   type CreateIssueViewRequest,
@@ -4413,11 +4414,18 @@ export class ApiClient {
     return this.fetch(`/api/workspaces/${id}`);
   }
 
-  async createWorkspace(data: { name: string; slug: string; description?: string; context?: string; issue_prefix?: string }): Promise<Workspace> {
-    return this.fetch("/api/workspaces", {
+  async createWorkspace(data: { name: string; slug: string; description?: string; context?: string; issue_prefix?: string; tenant_id?: string }): Promise<Workspace> {
+    const raw = await this.fetch<unknown>("/api/workspaces", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    const workspace = parseWithFallback<Workspace | null>(raw, WorkspaceSchema, null, {
+      endpoint: "POST /api/workspaces",
+    });
+    if (!workspace) {
+      throw new Error("Invalid workspace response");
+    }
+    return workspace;
   }
 
   async updateWorkspace(id: string, data: { name?: string; description?: string; context?: string; settings?: Record<string, unknown>; repos?: WorkspaceRepo[]; issue_prefix?: string; avatar_url?: string; secretary_agent_id?: string | null }): Promise<Workspace> {

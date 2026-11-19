@@ -161,6 +161,8 @@
     "slug_reserved_error": "That workspace URL is reserved and cannot be used.",
     "slug_conflict_toast": "Choose a different workspace URL",
     "create_failed_toast": "Failed to create workspace",
+    "same_tenant_label": "Same tenant as {{name}}",
+    "workspace_limit_toast": "This tenant reached its workspace limit",
     "creation_disabled_headline": "Ask your administrator for an invitation.",
     "creation_disabled_lede": "This Multica instance does not allow new workspaces to be created. Once an administrator invites you to a workspace, accept the invitation and refresh to continue.",
     "creation_disabled_logout": "Log out",

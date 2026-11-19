@@ -5,6 +5,7 @@ import { Dices, Plus } from "@multica/ui/icons";
 import { toast } from "sonner";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
+import { Switch } from "@multica/ui/components/ui/switch";
 import {
   Field,
   FieldDescription,
@@ -13,6 +14,7 @@ import {
   FieldLabel,
 } from "@multica/ui/components/ui/field";
 import { cn } from "@multica/ui/lib/utils";
+import { ApiError, errorCode, planLimitReached } from "@multica/core/api";
 import { useCreateWorkspace } from "@multica/core/workspace/mutations";
 import type { Workspace } from "@multica/core/types";
 import { isImeComposing } from "@multica/core/utils";
@@ -86,6 +88,18 @@ function normalizePrefix(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
 }
 
+function isMaxWorkspacesLimitError(error: unknown): boolean {
+  const limit = planLimitReached(error);
+  if (limit) return limit.gate === "max_workspaces";
+  if (errorCode(error) !== "plan_limit_reached") return false;
+  const body = (error as ApiError).body;
+  return Boolean(
+    body &&
+      typeof body === "object" &&
+      (body as { gate?: unknown }).gate === "max_workspaces",
+  );
+}
+
 export function StepWorkspace({
   existing,
   onCreated,
@@ -139,6 +153,8 @@ export function StepWorkspace({
   // default would never go looking.
   const [prefix, setPrefix] = useState("");
   const prefixTouched = useRef(false);
+  const existingTenantId = reusing?.tenant_id;
+  const [sameTenant, setSameTenant] = useState(false);
 
   const slugValidationError =
     slug.length > 0 && !WORKSPACE_SLUG_REGEX.test(slug)
@@ -208,6 +224,7 @@ export function StepWorkspace({
         // created workspace agree either way — but submitting it explicitly
         // is what makes an edited prefix stick.
         issue_prefix: effectivePrefix,
+        ...(sameTenant && existingTenantId ? { tenant_id: existingTenantId } : {}),
       },
       {
         onSuccess: onCreated,
@@ -215,6 +232,18 @@ export function StepWorkspace({
           if (isWorkspaceSlugConflict(error)) {
             setSlugServerError(t(($) => $.step_workspace.slug_taken_error));
             toast.error(t(($) => $.step_workspace.slug_conflict_toast));
+            return;
+          }
+          if (isMaxWorkspacesLimitError(error)) {
+            toast.error(t(($) => $.step_workspace.workspace_limit_toast));
+            return;
+          }
+          if (
+            error instanceof ApiError &&
+            error.status === 404 &&
+            errorCode(error) === "tenant_not_found"
+          ) {
+            toast.error(t(($) => $.step_workspace.create_failed_toast));
             return;
           }
           toast.error(
@@ -280,6 +309,10 @@ export function StepWorkspace({
     continueDisabled = true;
     onContinue = () => {};
   }
+
+  const sameTenantLabel = reusing?.tenant_id
+    ? t(($) => $.step_workspace.same_tenant_label, { name: reusing.name })
+    : null;
 
   // Built on the Field primitives rather than hand-rolled label/hint/error
   // markup: three `flex flex-col gap-1.5` stacks with their own label sizing
@@ -385,6 +418,18 @@ export function StepWorkspace({
           )}
         </FieldDescription>
       </Field>
+      {sameTenantLabel ? (
+        <Field orientation="horizontal">
+          <FieldLabel htmlFor="ws-same-tenant">{sameTenantLabel}</FieldLabel>
+          <Switch
+            id="ws-same-tenant"
+            checked={sameTenant}
+            disabled={isCreating}
+            aria-label={sameTenantLabel}
+            onCheckedChange={setSameTenant}
+          />
+        </Field>
+      ) : null}
     </FieldGroup>
   );
 

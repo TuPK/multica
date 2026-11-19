@@ -161,6 +161,8 @@
     "slug_reserved_error": "Esa URL de espacio de trabajo está reservada y no se puede usar.",
     "slug_conflict_toast": "Elige otra URL de espacio de trabajo",
     "create_failed_toast": "Error al crear el espacio de trabajo",
+    "same_tenant_label": "Mismo tenant que {{name}}",
+    "workspace_limit_toast": "Este tenant alcanzó el límite de espacios de trabajo",
     "creation_disabled_headline": "Pide una invitación a tu administrador.",
     "creation_disabled_lede": "Esta instancia de Multica no permite crear espacios de trabajo nuevos. Cuando un administrador te invite a uno, acepta la invitación y recarga para continuar.",
     "creation_disabled_logout": "Cerrar sesión",

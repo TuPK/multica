@@ -1766,3 +1766,53 @@ describe("workspace subscription contract", () => {
     );
   });
 });
+
+describe("createWorkspace schema fallback", () => {
+  const baseWorkspace = {
+    id: "ws-1",
+    name: "Acme",
+    slug: "acme",
+    description: null,
+    context: null,
+    settings: {},
+    repos: [],
+    issue_prefix: "ACM",
+    avatar_url: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  };
+
+  it("sends tenant_id when provided and parses missing or malformed tenant_id safely", async () => {
+    const client = new ApiClient("https://api.example.test");
+
+    stubFetchJson({ ...baseWorkspace, tenant_id: "tenant-1" }, 201);
+    const createdWithTenant = await client.createWorkspace({
+      name: "Acme",
+      slug: "acme",
+      tenant_id: "tenant-1",
+    });
+    expect(createdWithTenant.tenant_id).toBe("tenant-1");
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toEqual({
+      name: "Acme",
+      slug: "acme",
+      tenant_id: "tenant-1",
+    });
+
+    stubFetchJson({ ...baseWorkspace, tenant_id: 123 }, 201);
+    const createdMalformedTenant = await client.createWorkspace({
+      name: "Acme",
+      slug: "acme",
+    });
+    expect(createdMalformedTenant.id).toBe("ws-1");
+    expect(createdMalformedTenant.tenant_id).toBeUndefined();
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toEqual({
+      name: "Acme",
+      slug: "acme",
+    });
+
+    stubFetchJson({ not: "a workspace" }, 201);
+    await expect(
+      client.createWorkspace({ name: "Acme", slug: "acme" }),
+    ).rejects.toThrow();
+  });
+});

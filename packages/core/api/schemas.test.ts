@@ -100,8 +100,12 @@ import {
   MemberWithUserListSchema,
   InvitationSchema,
   EMPTY_INVITATION,
+  WorkspaceSchema,
+  EMPTY_WORKSPACE,
+  WorkspaceListItemSchema,
   type MemberWithGuest,
 } from "./schemas";
+import type { Workspace } from "../types";
 import { parseWithFallback } from "./schema";
 
 describe("IssueUnreadPageSchema", () => {
@@ -3091,5 +3095,86 @@ describe("Restricted project and guest schemas (P41.9)", () => {
         { endpoint: "POST /api/workspaces/:id/members" },
       ),
     ).toEqual(EMPTY_INVITATION);
+  });
+});
+
+describe("WorkspaceSchema", () => {
+  const baseWorkspace = {
+    id: "ws-1",
+    name: "Acme",
+    slug: "acme",
+    description: null,
+    context: null,
+    settings: {},
+    repos: [],
+    issue_prefix: "ACM",
+    avatar_url: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  };
+
+  it("workspace schema accepts a missing tenant_id and ignores a malformed one", () => {
+    const withoutTenant = parseWithFallback(
+      baseWorkspace,
+      WorkspaceSchema,
+      EMPTY_WORKSPACE,
+      { endpoint: "POST /api/workspaces" },
+    );
+    expect(withoutTenant.id).toBe("ws-1");
+    expect(withoutTenant.tenant_id).toBeUndefined();
+
+    const withTenant = parseWithFallback(
+      { ...baseWorkspace, tenant_id: "tenant-1" },
+      WorkspaceSchema,
+      EMPTY_WORKSPACE,
+      { endpoint: "POST /api/workspaces" },
+    );
+    expect(withTenant.id).toBe("ws-1");
+    expect(withTenant.tenant_id).toBe("tenant-1");
+
+    for (const malformed of [null, 123, "", "   ", true, {}, []]) {
+      const parsed = parseWithFallback(
+        { ...baseWorkspace, tenant_id: malformed },
+        WorkspaceSchema,
+        EMPTY_WORKSPACE,
+        { endpoint: "POST /api/workspaces" },
+      );
+      expect(parsed.id).toBe("ws-1");
+      expect(parsed.slug).toBe("acme");
+      expect(parsed.tenant_id).toBeUndefined();
+    }
+
+    expect(
+      parseWithFallback(
+        { id: 123 },
+        WorkspaceSchema,
+        EMPTY_WORKSPACE,
+        { endpoint: "GET /api/workspaces/{id}" },
+      ),
+    ).toEqual(EMPTY_WORKSPACE);
+  });
+
+  it("workspace list item schema accepts a missing tenant_id and ignores a malformed one", () => {
+    const listItem = {
+      id: "ws-1",
+      name: "Acme",
+      slug: "acme",
+      created_at: "2026-01-01T00:00:00Z",
+    };
+    const fallbackList: Workspace[] = [];
+    const parsed = parseWithFallback(
+      [
+        listItem,
+        { ...listItem, id: "ws-2", tenant_id: "tenant-2" },
+        { ...listItem, id: "ws-3", tenant_id: 123 },
+      ],
+      WorkspaceListItemSchema.array(),
+      fallbackList,
+      { endpoint: "GET /api/workspaces" },
+    );
+    expect(parsed).toHaveLength(3);
+    expect(parsed[0]?.tenant_id).toBeUndefined();
+    expect(parsed[1]?.tenant_id).toBe("tenant-2");
+    expect(parsed[2]?.tenant_id).toBeUndefined();
   });
 });

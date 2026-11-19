@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { ApiError, PlanLimitReachedError } from "@multica/core/api";
 import { I18nProvider } from "@multica/core/i18n/react";
 import enCommon from "../../locales/en/common.json";
 import enOnboarding from "../../locales/en/onboarding.json";
@@ -37,14 +38,30 @@ vi.mock("@multica/core/config", () => ({
 }));
 
 const mockCreateMutate = vi.hoisted(() => vi.fn());
+const mockToastError = vi.hoisted(() => vi.fn());
+
+vi.mock("sonner", () => ({
+  toast: { error: mockToastError },
+}));
 
 vi.mock("@multica/core/workspace/mutations", () => ({
   useCreateWorkspace: () => ({ mutate: mockCreateMutate, isPending: false }),
 }));
 
-vi.mock("@multica/core/api", () => ({
-  api: { getBaseUrl: () => "http://127.0.0.1:8080" },
-}));
+vi.mock("@multica/core/api", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>(
+    "@multica/core/api",
+  );
+  return {
+    ...actual,
+    api: { getBaseUrl: () => "http://127.0.0.1:8080" },
+  };
+});
+
+beforeEach(() => {
+  mockCreateMutate.mockReset();
+  mockToastError.mockReset();
+});
 
 import { StepWorkspace } from "./step-workspace";
 
@@ -326,5 +343,153 @@ describe("StepWorkspace — issue prefix", () => {
     expect(mockCreateMutate.mock.calls[0]![0]).toMatchObject({
       issue_prefix: "ACME",
     });
+  });
+});
+
+describe("StepWorkspace — tenant selection and errors", () => {
+  const EXISTING_WITH_TENANT: Workspace = {
+    ...EXISTING_WORKSPACE,
+    tenant_id: "tenant-1",
+  };
+
+  function expandCreateCard() {
+    fireEvent.click(
+      screen.getByRole("radio", { name: /create a new workspace/i }),
+    );
+  }
+
+  it("shows the same-tenant switch only when the existing workspace has a tenant_id", () => {
+    renderStep({ existing: null, disabled: false });
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+
+    cleanup();
+    renderStep({ existing: EXISTING_WORKSPACE, disabled: false });
+    expandCreateCard();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+
+    cleanup();
+    renderStep({ existing: EXISTING_WITH_TENANT, disabled: false });
+    expandCreateCard();
+    const sameTenantSwitch = screen.getByRole("switch", {
+      name: "Same tenant as Acme",
+    });
+    expect(sameTenantSwitch).toBeInTheDocument();
+    expect(sameTenantSwitch).not.toBeChecked();
+  });
+
+  it("sends tenant_id when the switch is on", () => {
+    renderStep({ existing: EXISTING_WITH_TENANT, disabled: false });
+    expandCreateCard();
+
+    fireEvent.change(screen.getByLabelText("Workspace name"), {
+      target: { value: "Beta" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Create Beta$/ }));
+    expect(mockCreateMutate.mock.calls[0]![0]).toEqual({
+      name: "Beta",
+      slug: "beta",
+      issue_prefix: "BETA",
+    });
+    expect("tenant_id" in mockCreateMutate.mock.calls[0]![0]).toBe(false);
+
+    const sameTenantSwitch = screen.getByRole("switch", {
+      name: "Same tenant as Acme",
+    });
+    fireEvent.click(sameTenantSwitch);
+    expect(sameTenantSwitch).toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Create Beta$/ }));
+    expect(mockCreateMutate.mock.calls[1]![0]).toEqual({
+      name: "Beta",
+      slug: "beta",
+      issue_prefix: "BETA",
+      tenant_id: "tenant-1",
+    });
+  });
+
+  it("maps plan_limit_reached for max_workspaces to the limit toast", () => {
+    mockCreateMutate.mockImplementationOnce((_data, opts) => {
+      opts?.onError?.(
+        new PlanLimitReachedError(
+          "tenant workspace limit reached",
+          "Payment Required",
+          {
+            code: "plan_limit_reached",
+            gate: "max_workspaces",
+            limit: 1,
+            used: 1,
+          },
+          { gate: "max_workspaces", limit: 1, used: 1 },
+        ),
+      );
+    });
+    mockCreateMutate.mockImplementationOnce((_data, opts) => {
+      opts?.onError?.(
+        new ApiError("limit reached", 402, "Payment Required", {
+          code: "plan_limit_reached",
+          gate: "max_workspaces",
+        }),
+      );
+    });
+    mockCreateMutate.mockImplementationOnce((_data, opts) => {
+      opts?.onError?.(
+        new PlanLimitReachedError(
+          "agent limit reached",
+          "Payment Required",
+          {
+            code: "plan_limit_reached",
+            gate: "agents",
+            limit: 3,
+            used: 3,
+          },
+          { gate: "agents", limit: 3, used: 3 },
+        ),
+      );
+    });
+
+    renderStep({ existing: null, disabled: false });
+    fireEvent.change(screen.getByLabelText("Workspace name"), {
+      target: { value: "Beta" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Create Beta$/ }));
+    expect(mockToastError).toHaveBeenNthCalledWith(
+      1,
+      "This tenant reached its workspace limit",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^Create Beta$/ }));
+    expect(mockToastError).toHaveBeenNthCalledWith(
+      2,
+      "This tenant reached its workspace limit",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^Create Beta$/ }));
+    expect(mockToastError).toHaveBeenNthCalledWith(3, "agent limit reached");
+  });
+
+  it("404 tenant_not_found shows the generic create-failed toast", () => {
+    mockCreateMutate.mockImplementation((_data, opts) => {
+      opts?.onError?.(
+        new ApiError("tenant not found", 404, "Not Found", {
+          error: "tenant not found",
+          code: "tenant_not_found",
+        }),
+      );
+    });
+
+    renderStep({ existing: EXISTING_WITH_TENANT, disabled: false });
+    expandCreateCard();
+    fireEvent.change(screen.getByLabelText("Workspace name"), {
+      target: { value: "Beta" },
+    });
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Same tenant as Acme" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Create Beta$/ }));
+
+    expect(mockToastError).toHaveBeenCalledTimes(1);
+    expect(mockToastError).toHaveBeenCalledWith("Failed to create workspace");
   });
 });
