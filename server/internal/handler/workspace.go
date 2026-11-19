@@ -2088,6 +2088,12 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 			run:  func() error { return qtx.DeleteWorkspaceAgents(ctx, wsID) },
 		},
 		{
+			// Staff disable rows of this workspace's runtimes; they go before the
+			// runtimes do, while the runtime ids still match.
+			name: "delete platform runtime states",
+			run:  func() error { return qtx.DeleteWorkspacePlatformRuntimes(ctx, wsID) },
+		},
+		{
 			name: "delete runtimes and projects",
 			run:  func() error { return qtx.DeleteWorkspaceRuntimesAndProjects(ctx, wsID) },
 		},

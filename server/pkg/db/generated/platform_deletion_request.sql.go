@@ -15,7 +15,7 @@ const claimStaffDeletionRequest = `-- name: ClaimStaffDeletionRequest :one
 UPDATE platform_deletion_request
 SET state = 'running', updated_at = now()
 WHERE id = $1
-  AND kind IN ('workspace', 'tenant', 'account')
+  AND kind IN ('workspace', 'tenant', 'account', 'runtime')
   AND (state = 'pending' OR (state = 'running' AND updated_at < now() - interval '30 minutes'))
 RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
 `
@@ -126,7 +126,7 @@ func (q *Queries) HasLiveTenantDeletionRequest(ctx context.Context, tenantID pgt
 const listPendingStaffDeletionIDs = `-- name: ListPendingStaffDeletionIDs :many
 
 SELECT id FROM platform_deletion_request
-WHERE kind IN ('workspace', 'tenant', 'account')
+WHERE kind IN ('workspace', 'tenant', 'account', 'runtime')
   AND (state = 'pending' OR (state = 'running' AND updated_at < now() - interval '30 minutes'))
 ORDER BY created_at, id
 LIMIT $1
@@ -135,7 +135,7 @@ LIMIT $1
 // platform_deletion_request: a staff member's request to delete a workspace or a
 // tenant now (spec R6 section 6). The platform writes the request and cancels or
 // retries it; the staff_deletion job owns state, error_code, attempts, updated_at
-// and completed_at. Account and runtime requests belong to later slices.
+// and completed_at. Runtime requests unregister the runtime through the owner's teardown.
 func (q *Queries) ListPendingStaffDeletionIDs(ctx context.Context, limit int32) ([]pgtype.UUID, error) {
 	rows, err := q.db.Query(ctx, listPendingStaffDeletionIDs, limit)
 	if err != nil {

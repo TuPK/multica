@@ -777,3 +777,8 @@ DELETE FROM workspace_export WHERE workspace_id = $1;
 -- name: DetachWorkspaceAuditEvents :exec
 -- Audit rows outlive the workspace. The retention job removes them later.
 UPDATE audit_event SET workspace_id = NULL WHERE workspace_id = $1;
+
+-- name: DeleteWorkspacePlatformRuntimes :exec
+-- platform_runtime has no workspace_id: its rows go with the workspace's runtimes.
+-- Runs before the runtimes are deleted, so their ids are still there to match.
+DELETE FROM platform_runtime WHERE runtime_id IN (SELECT id FROM agent_runtime WHERE workspace_id = $1);

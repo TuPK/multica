@@ -33,6 +33,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
+	"github.com/multica-ai/multica/server/internal/runtimeguard"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
@@ -198,7 +199,30 @@ func (h *Handler) requireDaemonRuntimeAccess(w http.ResponseWriter, r *http.Requ
 	if !h.requireDaemonRuntimeAuthorized(w, r, uuidToString(rt.WorkspaceID), rt.DaemonID, rt.OwnerID, "runtime not found") {
 		return db.AgentRuntime{}, false
 	}
+	if h.refuseDisabledRuntime(r.Context(), w, rt.ID) {
+		return db.AgentRuntime{}, false
+	}
 	return rt, true
+}
+
+// refuseDisabledRuntime answers the request and returns true when staff disabled
+// the runtime (403 runtime_disabled), or when that state cannot be read (503: the
+// guard fails closed rather than letting a disabled runtime through).
+func (h *Handler) refuseDisabledRuntime(ctx context.Context, w http.ResponseWriter, runtimeID pgtype.UUID) bool {
+	disabled, err := runtimeguard.Disabled(ctx, h.Queries, runtimeID)
+	if err != nil {
+		slog.Warn("read platform runtime state failed", "runtime_id", uuidToString(runtimeID), "error", err)
+		writeError(w, http.StatusServiceUnavailable, "runtime state unavailable")
+		return true
+	}
+	if disabled {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "runtime is disabled",
+			"code":  "runtime_disabled",
+		})
+		return true
+	}
+	return false
 }
 
 // requireDaemonTaskAccess looks up a task and verifies the caller may act as
@@ -954,6 +978,9 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 		// A brand-new runtime on an already-named machine inherits the machine's
 		// shared custom name so the machine title stays stable as providers come
 		// and go (MUL-4217). Shared with the failed-profile path below.
+		if h.refuseDisabledRuntime(r.Context(), w, registered.ID) {
+			return
+		}
 		registered = h.inheritMachineCustomName(r.Context(), qtx, registered, inserted)
 
 		// Inserted is false for normal daemon reconnects/upserts, so
@@ -1576,6 +1603,10 @@ func (h *Handler) DaemonHeartbeat(w http.ResponseWriter, r *http.Request) {
 	workspaceCheckMs = time.Since(wsCheckStart).Milliseconds()
 	if !wsOK {
 		outcome = "workspace_denied"
+		return
+	}
+	if h.refuseDisabledRuntime(r.Context(), w, rt.ID) {
+		outcome = "runtime_disabled"
 		return
 	}
 	authMs = time.Since(start).Milliseconds()

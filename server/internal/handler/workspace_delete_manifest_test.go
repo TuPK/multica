@@ -236,6 +236,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"platform_account":          workspaceDeleteKeep,
 	"platform_account_request":  workspaceDeleteDetach, // the request row survives as the record; workspace teardown clears its workspace_id
 	"platform_deletion_request": workspaceDeleteKeep,   // staff deletion requests are the record of who asked; no workspace_id column, and the tenant admin reads them after the workspace is gone (spec R6 section 6.5)
+	"platform_runtime":          workspaceDelete,       // staff disable rows keyed by runtime_id; the workspace teardown deletes the rows of its runtimes (no workspace_id column)
 	"platform_member_request":   workspaceDelete,       // the pending and finished add-member requests of the workspace; they hold the email of people who were never members
 	"platform_note":             workspaceDelete,
 	"platform_seat_operation":   workspaceDelete,

@@ -1,11 +1,11 @@
 -- platform_deletion_request: a staff member's request to delete a workspace or a
 -- tenant now (spec R6 section 6). The platform writes the request and cancels or
 -- retries it; the staff_deletion job owns state, error_code, attempts, updated_at
--- and completed_at. Account and runtime requests belong to later slices.
+-- and completed_at. Runtime requests unregister the runtime through the owner's teardown.
 
 -- name: ListPendingStaffDeletionIDs :many
 SELECT id FROM platform_deletion_request
-WHERE kind IN ('workspace', 'tenant', 'account')
+WHERE kind IN ('workspace', 'tenant', 'account', 'runtime')
   AND (state = 'pending' OR (state = 'running' AND updated_at < now() - interval '30 minutes'))
 ORDER BY created_at, id
 LIMIT $1;
@@ -17,7 +17,7 @@ LIMIT $1;
 UPDATE platform_deletion_request
 SET state = 'running', updated_at = now()
 WHERE id = $1
-  AND kind IN ('workspace', 'tenant', 'account')
+  AND kind IN ('workspace', 'tenant', 'account', 'runtime')
   AND (state = 'pending' OR (state = 'running' AND updated_at < now() - interval '30 minutes'))
 RETURNING *;
 

@@ -36,6 +36,7 @@ const (
 	kindWorkspace = "workspace"
 	kindTenant    = "tenant"
 	kindAccount   = "account"
+	kindRuntime   = "runtime"
 )
 
 // TxStarter opens transactions; *pgxpool.Pool satisfies it.
@@ -48,6 +49,7 @@ type TxStarter interface {
 type Eraser interface {
 	DeleteWorkspaceForStaff(ctx context.Context, workspaceID string, origin handler.DeletionOrigin, inject func(stage string) error) (bool, error)
 	DeleteAccountForOrigin(ctx context.Context, userID string, now time.Time, origin handler.DeletionOrigin) (bool, error)
+	DeleteRuntimeForStaff(ctx context.Context, runtimeID string, origin handler.DeletionOrigin) (bool, error)
 }
 
 // Deps are the collaborators of a Runner.
@@ -143,8 +145,7 @@ func (r *Runner) process(ctx context.Context, id pgtype.UUID) (bool, error) {
 	return true, nil
 }
 
-// run carries out a claimed request. Runtime requests are not handled here;
-// the claim query leaves them alone.
+// run carries out a claimed request.
 func (r *Runner) run(ctx context.Context, req db.PlatformDeletionRequest) error {
 	origin := handler.DeletionOrigin{
 		Kind:       handler.DeletionOriginStaff,
@@ -160,6 +161,8 @@ func (r *Runner) run(ctx context.Context, req db.PlatformDeletionRequest) error 
 		return r.runTenant(ctx, req, origin)
 	case kindAccount:
 		return r.runAccount(ctx, req, origin)
+	case kindRuntime:
+		return r.runRuntime(ctx, req, origin)
 	}
 	return fmt.Errorf("staff deletion: unsupported kind %q", req.Kind)
 }

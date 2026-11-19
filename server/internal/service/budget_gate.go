@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/events"
+	"github.com/multica-ai/multica/server/internal/runtimeguard"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -35,7 +36,8 @@ const (
 
 	// VerdictReasonBudgetHold is the reason a run is held for its budget. It is
 	// the dispatch reason code of the same name.
-	VerdictReasonBudgetHold = "budget_hold"
+	VerdictReasonBudgetHold      = "budget_hold"
+	VerdictReasonRuntimeDisabled = "runtime_disabled"
 
 	// budgetEventHold is the realtime event a new hold publishes.
 	budgetEventHold = "budget:hold"
@@ -325,6 +327,17 @@ func (s *TaskService) claimRefusalFor(ctx context.Context, q *db.Queries, ws pgt
 		}
 		if code != "" {
 			return &claimRefusal{WorkspaceID: ws, Task: task, Reason: code}, nil
+		}
+	}
+	// A runtime staff disabled claims nothing; the task stays queued until it is
+	// enabled again (spec R6 section 3b.5, D98).
+	if task.RuntimeID.Valid {
+		disabled, err := runtimeguard.Disabled(ctx, q, task.RuntimeID)
+		if err != nil {
+			return nil, err
+		}
+		if disabled {
+			return &claimRefusal{WorkspaceID: ws, Task: task, Reason: VerdictReasonRuntimeDisabled}, nil
 		}
 	}
 	// A run has the visibility of the person who started it (spec 7.1 rule 12,

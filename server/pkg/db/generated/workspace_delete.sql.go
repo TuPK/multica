@@ -584,6 +584,17 @@ func (q *Queries) DeleteWorkspacePlatformNotes(ctx context.Context, workspaceID 
 	return err
 }
 
+const deleteWorkspacePlatformRuntimes = `-- name: DeleteWorkspacePlatformRuntimes :exec
+DELETE FROM platform_runtime WHERE runtime_id IN (SELECT id FROM agent_runtime WHERE workspace_id = $1)
+`
+
+// platform_runtime has no workspace_id: its rows go with the workspace's runtimes.
+// Runs before the runtimes are deleted, so their ids are still there to match.
+func (q *Queries) DeleteWorkspacePlatformRuntimes(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspacePlatformRuntimes, workspaceID)
+	return err
+}
+
 const deleteWorkspacePlatformSeatOperations = `-- name: DeleteWorkspacePlatformSeatOperations :exec
 DELETE FROM platform_seat_operation WHERE workspace_id = $1
 `
