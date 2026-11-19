@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/multica-ai/multica/platform-management/internal/tenantpolicy"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -1289,4 +1290,78 @@ func optionalUUIDs(a, b string) (pgtype.UUID, pgtype.UUID, error) {
 		}
 	}
 	return ua, ub, nil
+}
+
+// TenantPolicy implements Reader.
+func (r *PgxReader) TenantPolicy(ctx context.Context, tenantID string) (tenantpolicy.Stored, bool, error) {
+	id, err := parseUUID(tenantID)
+	if err != nil {
+		return tenantpolicy.Stored{}, false, err
+	}
+	row, err := r.q.GetTenantPolicy(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return tenantpolicy.Stored{}, false, nil
+	}
+	if err != nil {
+		return tenantpolicy.Stored{}, false, err
+	}
+	return storedFromRow(row.AllowedInviteDomains, row.ShareLinksEnabled, row.RequireSso, row.RequireMfa, row.SessionMaxAgeHours, row.Version), true, nil
+}
+
+// TenantHasPolicyFeature implements Reader.
+func (r *PgxReader) TenantHasPolicyFeature(ctx context.Context, tenantID string) (bool, error) {
+	id, err := parseUUID(tenantID)
+	if err != nil {
+		return false, err
+	}
+	return r.q.TenantHasPolicyFeature(ctx, id)
+}
+
+// TenantPolicyForUpdate implements Tx.
+func (t *pgxTx) TenantPolicyForUpdate(ctx context.Context, tenantID string) (tenantpolicy.Stored, bool, error) {
+	id, err := parseUUID(tenantID)
+	if err != nil {
+		return tenantpolicy.Stored{}, false, err
+	}
+	row, err := t.q.GetTenantPolicyForUpdate(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return tenantpolicy.Stored{}, false, nil
+	}
+	if err != nil {
+		return tenantpolicy.Stored{}, false, err
+	}
+	return storedFromRow(row.AllowedInviteDomains, row.ShareLinksEnabled, row.RequireSso, row.RequireMfa, row.SessionMaxAgeHours, row.Version), true, nil
+}
+
+// SaveTenantPolicy implements Tx.
+func (t *pgxTx) SaveTenantPolicy(ctx context.Context, tenantID string, s tenantpolicy.Stored, byID string) error {
+	id, err := parseUUID(tenantID)
+	if err != nil {
+		return err
+	}
+	by, err := parseUUID(byID)
+	if err != nil {
+		return err
+	}
+	domains := s.AllowedInviteDomains
+	if domains == nil {
+		domains = []string{}
+	}
+	return t.q.UpsertTenantPolicy(ctx, db.UpsertTenantPolicyParams{
+		TenantID: id, AllowedInviteDomains: domains, ShareLinksEnabled: s.ShareLinksEnabled,
+		RequireSso: s.RequireSSO, RequireMfa: s.RequireMFA, SessionMaxAgeHours: s.SessionMaxAgeHours,
+		Version: s.Version, UpdatedBy: by,
+	})
+}
+
+func storedFromRow(domains []string, share, sso, mfa bool, hours int32, version int64) tenantpolicy.Stored {
+	if domains == nil {
+		domains = []string{}
+	}
+	return tenantpolicy.Stored{
+		Policy: tenantpolicy.Policy{
+			AllowedInviteDomains: domains, ShareLinksEnabled: share, RequireSSO: sso, RequireMFA: mfa, SessionMaxAgeHours: hours,
+		},
+		Version: version,
+	}
 }

@@ -2918,6 +2918,18 @@ type Tenant struct {
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
+type TenantPolicy struct {
+	TenantID             pgtype.UUID        `json:"tenant_id"`
+	AllowedInviteDomains []string           `json:"allowed_invite_domains"`
+	ShareLinksEnabled    bool               `json:"share_links_enabled"`
+	RequireSso           bool               `json:"require_sso"`
+	RequireMfa           bool               `json:"require_mfa"`
+	SessionMaxAgeHours   int32              `json:"session_max_age_hours"`
+	Version              int64              `json:"version"`
+	UpdatedBy            pgtype.UUID        `json:"updated_by"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
 type TenantWorkspace struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	TenantID    pgtype.UUID        `json:"tenant_id"`

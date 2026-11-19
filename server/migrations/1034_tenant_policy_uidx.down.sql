@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS tenant_policy_uidx;

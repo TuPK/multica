@@ -273,6 +273,7 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/workspaces":                               scopedAll,
 		"/api/platform/workspaces/{id}":                          scopedAll,
 		"/api/platform/workspaces/{id}/export":                   systemTenant,
+		"/api/platform/tenants/{id}/policy":                      systemTenant,
 		"/api/platform/runtimes":                                 scopedLock,
 		"/api/platform/runtimes/{id}":                            scopedLock,
 		"/api/platform/runtimes/{id}/status":                     systemTenant,
@@ -322,6 +323,9 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/accounts/{id}/cancel":                     systemOnly,
 		"/api/platform/accounts/{id}/resend-welcome":             systemOnly,
 	}
+	methodRoles := map[string][]staff.Role{
+		"GET /api/platform/tenants/{id}/policy": {sa, ta, support},
+	}
 	seen := map[string]bool{}
 	for _, rt := range routeTable() {
 		roles, ok := want[rt.pattern]
@@ -331,8 +335,14 @@ func TestRouteRoles(t *testing.T) {
 		}
 		seen[rt.pattern] = true
 		for method := range rt.methods {
-			if g := rt.rolesFor(method); strings.Join(roleNames(g), ",") != strings.Join(roleNames(roles), ",") {
-				t.Errorf("%s %s roles = %v, want %v", method, rt.pattern, g, roles)
+			expect := roles
+			// A path can read and write under different actions (spec R6 section 3c.4,
+			// M44 and M45); the read roles are listed here.
+			if o, ok := methodRoles[method+" "+rt.pattern]; ok {
+				expect = o
+			}
+			if g := rt.rolesFor(method); strings.Join(roleNames(g), ",") != strings.Join(roleNames(expect), ",") {
+				t.Errorf("%s %s roles = %v, want %v", method, rt.pattern, g, expect)
 			}
 		}
 	}

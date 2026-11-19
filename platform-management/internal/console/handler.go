@@ -181,6 +181,10 @@ func routeTable() []routeSpec {
 		{base + "/workspaces/{id}/delete-now", staff.ActionWorkspaceDeleteNow, nil, map[string]handlerFunc{http.MethodPost: (*Handler).deleteWorkspaceNow}},
 		{base + "/tenants/{id}/delete-now", staff.ActionTenantDeleteNow, nil, map[string]handlerFunc{http.MethodPost: (*Handler).deleteTenantNow}},
 		{base + "/workspaces", staff.ActionWorkspacesList, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listWorkspaces}},
+		{base + "/tenants/{id}/policy", staff.ActionTenantPolicyWrite, map[string]string{http.MethodGet: staff.ActionTenantPolicyRead}, map[string]handlerFunc{
+			http.MethodGet: (*Handler).getTenantPolicy,
+			http.MethodPut: (*Handler).putTenantPolicy,
+		}},
 		{base + "/runtimes", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listRuntimes}},
 		{base + "/runtimes/{id}", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getRuntime}},
 		{base + "/runtimes/{id}/status", staff.ActionRuntimeStatus, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setRuntimeStatus}},

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
+	"github.com/multica-ai/multica/platform-management/internal/tenantpolicy"
 	"io"
 	"log/slog"
 	"maps"
@@ -120,6 +121,9 @@ type fakeReader struct {
 	runtimes       []RuntimeRow
 	runtimeTasks   map[string][]RuntimeTask
 	runtimeFailed  int64
+	// policies are the tenant floors; policyFeature says whether a tenant has the feature.
+	policies      map[string]tenantpolicy.Stored
+	policyFeature bool
 	// memberRoles is keyed workspace id + "/" + user id; staffUsers holds active staff.
 	memberRoles        map[string]string
 	memberMail         map[string]string
@@ -191,6 +195,32 @@ func sortOrders(rows []OrderRow, newestFirst bool) {
 		}
 		return rows[i].CreatedAt.Before(rows[j].CreatedAt)
 	})
+}
+
+// TenantPolicy returns the fake floor of a tenant.
+func (r *fakeReader) TenantPolicy(_ context.Context, id string) (tenantpolicy.Stored, bool, error) {
+	v, ok := r.policies[id]
+	return v, ok, nil
+}
+
+// TenantHasPolicyFeature returns the fake feature answer.
+func (r *fakeReader) TenantHasPolicyFeature(context.Context, string) (bool, error) {
+	return r.policyFeature, nil
+}
+
+// TenantPolicyForUpdate reads the fake floor from the store.
+func (t *fakeTx) TenantPolicyForUpdate(_ context.Context, id string) (tenantpolicy.Stored, bool, error) {
+	v, ok := t.s.tenantPolicy[id]
+	return v, ok, nil
+}
+
+// SaveTenantPolicy writes the fake floor to the store.
+func (t *fakeTx) SaveTenantPolicy(_ context.Context, id string, v tenantpolicy.Stored, _ string) error {
+	if t.s.tenantPolicy == nil {
+		t.s.tenantPolicy = map[string]tenantpolicy.Stored{}
+	}
+	t.s.tenantPolicy[id] = v
+	return nil
 }
 
 // SearchRuntimes returns the fake runtimes within the scope and status filter.
@@ -388,6 +418,8 @@ type fakeStore struct {
 	memberChanges []MemberChange
 	// runtimeDisabled is the disabled state of each runtime id.
 	runtimeDisabled map[string]bool
+	// tenantPolicy is the stored floor of each tenant id.
+	tenantPolicy map[string]tenantpolicy.Stored
 }
 
 type fakeExport struct {

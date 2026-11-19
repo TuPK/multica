@@ -41,6 +41,8 @@ var Required = []string{
 	"1030_plan_description",                     // plan: description column (R6 3b.1)
 	"1031_platform_runtime",                     // platform_runtime: table (R6 3b.5)
 	"1032_platform_runtime_uidx",                // platform_runtime: unique index on runtime_id
+	"1033_tenant_policy",                        // tenant_policy: table (R6 3c.4)
+	"1034_tenant_policy_uidx",                   // tenant_policy: unique index on tenant_id
 	"651_platform_account",                      // platform_account: table
 	"652_platform_account_user_idx",             // platform_account: unique index on user_id
 	"653_platform_account_status_idx",           // platform_account: partial index on status

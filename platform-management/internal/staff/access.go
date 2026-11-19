@@ -54,6 +54,8 @@ const (
 	ActionRuntimesRead         = "runtimes.read"            // M41
 	ActionRuntimeStatus        = "runtimes.status"          // M42
 	ActionRuntimeUnregister    = "runtimes.unregister"      // M43
+	ActionTenantPolicyRead     = "tenant_policy.read"       // M44
+	ActionTenantPolicyWrite    = "tenant_policy.write"      // M45
 )
 
 // roleOrder is the order of RolesWith and of the columns of matrix.
@@ -76,6 +78,8 @@ var matrix = map[string][4]Access{
 	ActionRuntimesRead:         {All, Own, All, None},
 	ActionRuntimeStatus:        {All, Own, None, None},
 	ActionRuntimeUnregister:    {All, Own, None, None},
+	ActionTenantPolicyRead:     {All, Own, All, None},
+	ActionTenantPolicyWrite:    {All, Own, None, None},
 	ActionPriceChangeManage:    {All, None, None, None},
 	ActionPriceChangeRead:      {All, None, None, All},
 	ActionAccountRequests:      {All, None, None, None},

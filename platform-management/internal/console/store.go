@@ -2,6 +2,8 @@ package console
 
 import (
 	"context"
+
+	"github.com/multica-ai/multica/platform-management/internal/tenantpolicy"
 	"time"
 
 	"github.com/multica-ai/multica/platform-management/audit"
@@ -304,6 +306,10 @@ type Reader interface {
 	SearchWorkspaces(ctx context.Context, q WorkspaceSearch) ([]WorkspaceListRow, error)
 	// WorkspaceTenant returns the tenant id of a workspace, or "" when it has none.
 	WorkspaceTenant(ctx context.Context, workspaceID string) (string, error)
+	// TenantPolicy returns the tenant's stored policy floor; found is false for a tenant with no row.
+	TenantPolicy(ctx context.Context, tenantID string) (tenantpolicy.Stored, bool, error)
+	// TenantHasPolicyFeature reports whether a workspace of the tenant has the workspace_policies feature (spec R6 section 3c.4, rule 4).
+	TenantHasPolicyFeature(ctx context.Context, tenantID string) (bool, error)
 	// SearchRuntimes pages the runtimes, newest first, within q.Scope (spec R6 section 3b.5).
 	SearchRuntimes(ctx context.Context, q RuntimeSearch) ([]RuntimeRow, error)
 	// RuntimeDetail returns found == false for an unknown runtime.
@@ -357,6 +363,10 @@ type Account struct {
 // Tx is the writes of one console operation, all inside one transaction with
 // its audit row.
 type Tx interface {
+	// TenantPolicyForUpdate reads the tenant's floor and locks its row; found is false without a row.
+	TenantPolicyForUpdate(ctx context.Context, tenantID string) (tenantpolicy.Stored, bool, error)
+	// SaveTenantPolicy writes the floor with its version and the actor.
+	SaveTenantPolicy(ctx context.Context, tenantID string, s tenantpolicy.Stored, byID string) error
 	// SetRuntimeDisabled writes or clears the disabled row of a runtime and reports
 	// whether the state changed (spec R6 section 3b.5, rule 4).
 	SetRuntimeDisabled(ctx context.Context, runtimeID string, disabled bool, reason, byID string) (bool, error)

@@ -58,6 +58,7 @@ func TestAuditCatalogHasDeletionActions(t *testing.T) {
 		"workspace.immediate_deletion_requested": ActionWorkspaceImmediateDeletionRequested,
 		"account.immediate_deletion_requested":   ActionAccountImmediateDeletionRequested,
 		"runtime.unregister_requested":           ActionRuntimeUnregisterRequested,
+		"tenant.policy_changed":                  ActionTenantPolicyChanged,
 		"runtime.disabled":                       ActionRuntimeDisabled,
 		"runtime.enabled":                        ActionRuntimeEnabled,
 		"member.staff_remove_requested":          ActionMemberStaffRemoveRequested,
