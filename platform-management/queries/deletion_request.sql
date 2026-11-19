@@ -128,3 +128,42 @@ SELECT r.id, r.name, r.workspace_id, COALESCE(tw.tenant_id::text, '')::text AS t
 FROM agent_runtime r
 LEFT JOIN tenant_workspace tw ON tw.workspace_id = r.workspace_id
 WHERE r.id = $1;
+
+-- name: AwaitDeletionApproval :one
+-- Holds a pending request for a second system_admin (spec R6 section 3c.6, rule 2).
+UPDATE platform_deletion_request
+SET state = 'awaiting_approval', updated_at = now()
+WHERE id = $1 AND state = 'pending'
+RETURNING *;
+
+-- name: ApproveDeletionRequest :one
+-- Moves an awaiting request to pending, with its approver (rule 3).
+UPDATE platform_deletion_request
+SET state = 'pending', approved_by = $2, approved_at = now(), updated_at = now()
+WHERE id = $1 AND state = 'awaiting_approval'
+RETURNING *;
+
+-- name: RevertDeletionApproval :one
+-- Puts an approved request back to awaiting when its phase 1 fails.
+UPDATE platform_deletion_request
+SET state = 'awaiting_approval', approved_by = NULL, approved_at = NULL, updated_at = now()
+WHERE id = $1 AND state = 'pending' AND approved_by IS NOT NULL
+RETURNING *;
+
+-- name: RejectDeletionApproval :one
+UPDATE platform_deletion_request
+SET state = 'canceled', error_code = 'rejected', updated_at = now(), completed_at = now()
+WHERE id = $1 AND state = 'awaiting_approval'
+RETURNING *;
+
+-- name: ExpireDeletionApprovals :many
+-- Cancels the awaiting requests older than the cutoff (rule 4).
+UPDATE platform_deletion_request
+SET state = 'canceled', error_code = 'approval_expired', updated_at = now(), completed_at = now()
+WHERE state = 'awaiting_approval' AND created_at < $1
+RETURNING *;
+
+-- name: CountActiveSystemAdmins :one
+-- Active system administrators (rule 5): an approval needs one besides the requester.
+SELECT count(*)::bigint FROM platform_staff
+WHERE role = 'system_admin' AND revoked_at IS NULL;

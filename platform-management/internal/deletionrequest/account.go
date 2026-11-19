@@ -221,9 +221,12 @@ func (s *Service) RequestAccount(ctx context.Context, by Actor, userID string, i
 		if !EmailMatches(in.Confirm, acc.Email) {
 			return &Error{Status: 400, Code: CodeConfirmationMismatch, Message: "the confirmation does not match the account email"}
 		}
-		if live, ok, err := tx.Live(ctx, KindAccount, acc.ID); err != nil {
+		resume := resumeID(ctx)
+		live, hasLive, err := tx.Live(ctx, KindAccount, acc.ID)
+		if err != nil {
 			return err
-		} else if ok {
+		}
+		if hasLive && live.ID != resume {
 			out = live
 			return nil
 		}
@@ -254,21 +257,38 @@ func (s *Service) RequestAccount(ctx context.Context, by Actor, userID string, i
 		if err != nil {
 			return fmt.Errorf("encode resolutions: %w", err)
 		}
-		row, inserted, err := tx.Insert(ctx, NewRequest{
-			Kind: KindAccount, TargetID: acc.ID, TargetLabel: acc.Email, Reason: reason, Resolutions: resJSON, By: by,
-		})
-		if err != nil {
-			return err
-		}
-		if !inserted {
-			winner, ok, err := tx.Live(ctx, KindAccount, acc.ID)
+		row := live
+		if !hasLive {
+			if s.needsApproval(KindAccount) && resume == "" {
+				if err := s.requireSecondAdmin(ctx, tx); err != nil {
+					return err
+				}
+			}
+			var inserted bool
+			row, inserted, err = tx.Insert(ctx, NewRequest{
+				Kind: KindAccount, TargetID: acc.ID, TargetLabel: acc.Email, Reason: reason, Resolutions: resJSON, By: by,
+			})
 			if err != nil {
 				return err
 			}
-			if !ok {
-				return fmt.Errorf("deletion request for account %s conflicted but no live request is visible", acc.ID)
+			if !inserted {
+				winner, ok, err := tx.Live(ctx, KindAccount, acc.ID)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return fmt.Errorf("deletion request for account %s conflicted but no live request is visible", acc.ID)
+				}
+				out = winner
+				return nil
 			}
-			out = winner
+		}
+		if s.needsApproval(KindAccount) && resume == "" {
+			awaiting, err := s.holdForApproval(ctx, tx, by, row, KindAccount, acc.ID, "")
+			if err != nil {
+				return err
+			}
+			out, created = awaiting, true
 			return nil
 		}
 		out, created = row, true

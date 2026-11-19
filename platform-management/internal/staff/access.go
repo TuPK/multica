@@ -61,6 +61,7 @@ const (
 	ActionQuotaRequestCreate   = "quota_requests.create"    // M48
 	ActionAuditExport          = "audit.export"             // M51
 	ActionLegalHoldManage      = "legal_holds.manage"       // M50
+	ActionApprovalsDecide      = "approvals.decide"         // M49
 	ActionTenantStatus         = "tenants.status"           // M52
 )
 
@@ -91,6 +92,7 @@ var matrix = map[string][4]Access{
 	ActionQuotaRequestCreate:   {All, Own, None, None},
 	ActionAuditExport:          {All, Own, None, None},
 	ActionLegalHoldManage:      {All, None, None, None},
+	ActionApprovalsDecide:      {All, None, None, None},
 	ActionTenantStatus:         {All, Own, All, None},
 	ActionPriceChangeManage:    {All, None, None, None},
 	ActionPriceChangeRead:      {All, None, None, All},

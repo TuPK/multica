@@ -23,11 +23,13 @@ const (
 
 // States of a request (spec R6 section 6.3 and the platform_deletion_request table).
 const (
-	StatePending   = "pending"
-	StateRunning   = "running"
-	StateCompleted = "completed"
-	StateFailed    = "failed"
-	StateCanceled  = "canceled"
+	StatePending = "pending"
+	// StateAwaitingApproval holds a request that a second system_admin must approve (spec R6 section 3c.6).
+	StateAwaitingApproval = "awaiting_approval"
+	StateRunning          = "running"
+	StateCompleted        = "completed"
+	StateFailed           = "failed"
+	StateCanceled         = "canceled"
 )
 
 // ReasonImmediate is the workspace status reason of an immediate deletion (spec R6 section 6.3, step 4).
@@ -92,6 +94,11 @@ type Request struct {
 	RequestedByLabel string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	// ExportFirst and Resolutions are what the request was made with, kept so an
+	// approval can run phase 1 with the same choices (spec R6 section 3c.6).
+	ExportFirst bool
+	Resolutions []byte
+	ApprovedBy  string
 }
 
 // Input is what staff submit: the reason, the typed confirmation, and whether
@@ -149,6 +156,18 @@ type Tx interface {
 	// creation and a tenant deletion queue on it (spec R6 section 5.7).
 	LockTenant(ctx context.Context, tenantID string) error
 	TenantWorkspaces(ctx context.Context, tenantID string) ([]string, error)
+	// CountSystemAdmins counts the active system administrators (spec R6 section 3c.6, rule 5).
+	CountSystemAdmins(ctx context.Context) (int64, error)
+	// AwaitApproval holds a pending request for a second system_admin.
+	AwaitApproval(ctx context.Context, id string) (Request, error)
+	// ApproveRequest moves an awaiting request to pending with its approver; ok is false when it is not awaiting.
+	ApproveRequest(ctx context.Context, id, approverID string) (r Request, ok bool, err error)
+	// RevertApproval puts an approved request back to awaiting.
+	RevertApproval(ctx context.Context, id string) error
+	// RejectApproval cancels an awaiting request; ok is false when it is not awaiting.
+	RejectApproval(ctx context.Context, id string) (r Request, ok bool, err error)
+	// ExpireApprovals cancels the awaiting requests created before cutoff.
+	ExpireApprovals(ctx context.Context, cutoff time.Time) ([]Request, error)
 	// ActiveLegalHold returns the id of a live hold on the workspace or on its tenant.
 	ActiveLegalHold(ctx context.Context, workspaceID, tenantID string) (holdID string, held bool, err error)
 	// ActiveTenantHold returns the id of a live hold on the tenant.

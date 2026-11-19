@@ -87,6 +87,10 @@ const (
 	ActionLegalHoldPlaced                     = "legal_hold.placed"
 	ActionLegalHoldReleased                   = "legal_hold.released"
 	ActionDeletionBlockedByHold               = "deletion.blocked_by_hold"
+	ActionDeletionApprovalRequested           = "deletion.approval_requested"
+	ActionDeletionApproved                    = "deletion.approved"
+	ActionDeletionRejected                    = "deletion.rejected"
+	ActionDeletionApprovalExpired             = "deletion.approval_expired"
 	ActionRuntimeDisabled                     = "runtime.disabled"
 	ActionRuntimeEnabled                      = "runtime.enabled"
 	ActionMemberStaffRemoveRequested          = "member.staff_remove_requested"
@@ -216,6 +220,10 @@ var Catalog = []string{
 	ActionLegalHoldPlaced,
 	ActionLegalHoldReleased,
 	ActionDeletionBlockedByHold,
+	ActionDeletionApprovalRequested,
+	ActionDeletionApproved,
+	ActionDeletionRejected,
+	ActionDeletionApprovalExpired,
 	ActionQuotaRequestApproved,
 	ActionQuotaRequestDenied,
 	ActionRuntimeDisabled,

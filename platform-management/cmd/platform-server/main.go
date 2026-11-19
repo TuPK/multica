@@ -257,6 +257,16 @@ func run() error {
 	}
 
 	// The console confirms orders through the same service that creates them.
+	approvalActions := map[string]bool{}
+	for _, name := range cfg.ApprovalActions {
+		approvalActions[name] = true
+	}
+	deletions := deletionrequest.New(deletionrequest.Deps{
+		Runner: deletionrequest.NewPgxRunner(pool), Reader: deletionrequest.NewPgxReader(pool),
+		Cache: guard, Accounts: accountChanges{cache: guard, pub: accountcache.NewPublisher(rdb)},
+		Owners: deletionrequest.NewPgxReader(pool), Mail: deletionMail, Log: slog.Default(),
+		ApprovalActions: approvalActions,
+	})
 	consoleAPI := console.New(console.Deps{
 		RequireStaff:  auth.RequirePlatformStaff,
 		RequireOrigin: auth.RequireOrigin,
@@ -272,11 +282,7 @@ func run() error {
 			Runner: memberrequest.NewPgxRunner(pool), Reader: memberrequest.NewPgxReader(pool),
 			Seats: memberSeats{seat.NewService(seat.NewPgxRunner(pool), time.Now)}, Log: slog.Default(),
 		}),
-		Deletions: deletionrequest.New(deletionrequest.Deps{
-			Runner: deletionrequest.NewPgxRunner(pool), Reader: deletionrequest.NewPgxReader(pool),
-			Cache: guard, Accounts: accountChanges{cache: guard, pub: accountcache.NewPublisher(rdb)},
-			Owners: deletionrequest.NewPgxReader(pool), Mail: deletionMail, Log: slog.Default(),
-		}),
+		Deletions:      deletions,
 		Quota:          quota.New(quota.Deps{Pool: pool, Cache: policy}),
 		TenantStatuses: tenantstatus.New(pool, guard),
 		LegalHolds:     legalhold.New(pool),
@@ -329,6 +335,13 @@ func run() error {
 	// The background jobs. Each takes an advisory lock by name, so several
 	// platform instances share one schedule.
 	runner := jobs.New(jobs.NewPoolLocker(pool))
+	// The approval expiry runs every minute (spec R6 section 3c.6, rule 4).
+	if err := runner.Register("deletion_approval_expiry", time.Minute, func(ctx context.Context) error {
+		_, err := deletions.ExpireApprovals(ctx)
+		return err
+	}); err != nil {
+		return err
+	}
 	orderExpiry, err := lifecycle.NewOrderExpirer(lifecycle.NewPgxStore(pool), slog.Default())
 	if err != nil {
 		return err

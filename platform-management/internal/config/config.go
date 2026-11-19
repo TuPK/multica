@@ -208,6 +208,11 @@ type Config struct {
 	// IndividualMaxSeats is PLATFORM_INDIVIDUAL_MAX_SEATS: the most seats an
 	// individual account may be created with (spec 7b.1, 7b.5 rule 6).
 	IndividualMaxSeats int
+	// ApprovalActions is PLATFORM_APPROVAL_ACTIONS: the immediate-deletion actions
+	// that a second system_admin must approve (spec R6 section 3c.6). Empty by
+	// default, which keeps the direct deletion; only tenant.delete_now and
+	// account.delete_now are allowed.
+	ApprovalActions []string
 }
 
 // Load reads the configuration through getenv and reports every problem it
@@ -344,6 +349,8 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	cfg.Einvoice = loadEinvoice(get, fail)
+
+	cfg.ApprovalActions = approvalActions(get("PLATFORM_APPROVAL_ACTIONS"), fail)
 
 	if len(errs) > 0 {
 		return Config{}, errors.Join(errs...)
@@ -656,4 +663,23 @@ func normalizeOrigin(raw string) (string, bool) {
 		return "", false
 	}
 	return u.Scheme + "://" + strings.ToLower(u.Host), true
+}
+
+// approvalActions parses PLATFORM_APPROVAL_ACTIONS, a comma-separated list. An
+// unknown name fails the start, so a typo cannot silently turn approval off.
+func approvalActions(raw string, fail func(variable, reason string)) []string {
+	var out []string
+	for _, name := range strings.Split(raw, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		switch name {
+		case "tenant.delete_now", "account.delete_now":
+			out = append(out, name)
+		default:
+			fail("PLATFORM_APPROVAL_ACTIONS", "unknown action "+name+"; allowed: tenant.delete_now, account.delete_now")
+		}
+	}
+	return out
 }

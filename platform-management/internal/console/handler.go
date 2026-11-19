@@ -198,6 +198,9 @@ func routeTable() []routeSpec {
 		{base + "/workspaces/{id}/quota-requests", staff.ActionQuotaRequestCreate, nil, map[string]handlerFunc{http.MethodPost: (*Handler).createQuotaRequest}},
 		{base + "/audit-events/export", staff.ActionAuditExport, nil, map[string]handlerFunc{http.MethodGet: (*Handler).exportAudit}},
 		{base + "/tenants/{id}/status", staff.ActionTenantStatus, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setTenantStatus}},
+		{base + "/approvals", staff.ActionApprovalsDecide, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listApprovals}},
+		{base + "/approvals/{id}/approve", staff.ActionApprovalsDecide, nil, map[string]handlerFunc{http.MethodPost: (*Handler).approveApproval}},
+		{base + "/approvals/{id}/reject", staff.ActionApprovalsDecide, nil, map[string]handlerFunc{http.MethodPost: (*Handler).rejectApproval}},
 		{base + "/legal-holds", staff.ActionLegalHoldManage, map[string]string{}, map[string]handlerFunc{
 			http.MethodGet:  (*Handler).listLegalHolds,
 			http.MethodPost: (*Handler).placeLegalHold,

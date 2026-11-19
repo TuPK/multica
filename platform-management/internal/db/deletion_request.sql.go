@@ -11,6 +11,83 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const approveDeletionRequest = `-- name: ApproveDeletionRequest :one
+UPDATE platform_deletion_request
+SET state = 'pending', approved_by = $2, approved_at = now(), updated_at = now()
+WHERE id = $1 AND state = 'awaiting_approval'
+RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
+`
+
+type ApproveDeletionRequestParams struct {
+	ID         pgtype.UUID `json:"id"`
+	ApprovedBy pgtype.UUID `json:"approved_by"`
+}
+
+// Moves an awaiting request to pending, with its approver (rule 3).
+func (q *Queries) ApproveDeletionRequest(ctx context.Context, arg ApproveDeletionRequestParams) (PlatformDeletionRequest, error) {
+	row := q.db.QueryRow(ctx, approveDeletionRequest, arg.ID, arg.ApprovedBy)
+	var i PlatformDeletionRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.TargetID,
+		&i.TargetLabel,
+		&i.Reason,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.ApprovedBy,
+		&i.ApprovedAt,
+		&i.ExportFirst,
+		&i.NoticeSentAt,
+		&i.Resolutions,
+		&i.ParentID,
+		&i.RequestedBy,
+		&i.RequestedByLabel,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.TenantID,
+	)
+	return i, err
+}
+
+const awaitDeletionApproval = `-- name: AwaitDeletionApproval :one
+UPDATE platform_deletion_request
+SET state = 'awaiting_approval', updated_at = now()
+WHERE id = $1 AND state = 'pending'
+RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
+`
+
+// Holds a pending request for a second system_admin (spec R6 section 3c.6, rule 2).
+func (q *Queries) AwaitDeletionApproval(ctx context.Context, id pgtype.UUID) (PlatformDeletionRequest, error) {
+	row := q.db.QueryRow(ctx, awaitDeletionApproval, id)
+	var i PlatformDeletionRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.TargetID,
+		&i.TargetLabel,
+		&i.Reason,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.ApprovedBy,
+		&i.ApprovedAt,
+		&i.ExportFirst,
+		&i.NoticeSentAt,
+		&i.Resolutions,
+		&i.ParentID,
+		&i.RequestedBy,
+		&i.RequestedByLabel,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.TenantID,
+	)
+	return i, err
+}
+
 const cancelDeletionRequest = `-- name: CancelDeletionRequest :one
 UPDATE platform_deletion_request
 SET state = 'canceled', updated_at = now(), completed_at = now()
@@ -44,6 +121,68 @@ func (q *Queries) CancelDeletionRequest(ctx context.Context, id pgtype.UUID) (Pl
 		&i.TenantID,
 	)
 	return i, err
+}
+
+const countActiveSystemAdmins = `-- name: CountActiveSystemAdmins :one
+SELECT count(*)::bigint FROM platform_staff
+WHERE role = 'system_admin' AND revoked_at IS NULL
+`
+
+// Active system administrators (rule 5): an approval needs one besides the requester.
+func (q *Queries) CountActiveSystemAdmins(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveSystemAdmins)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const expireDeletionApprovals = `-- name: ExpireDeletionApprovals :many
+UPDATE platform_deletion_request
+SET state = 'canceled', error_code = 'approval_expired', updated_at = now(), completed_at = now()
+WHERE state = 'awaiting_approval' AND created_at < $1
+RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
+`
+
+// Cancels the awaiting requests older than the cutoff (rule 4).
+func (q *Queries) ExpireDeletionApprovals(ctx context.Context, createdAt pgtype.Timestamptz) ([]PlatformDeletionRequest, error) {
+	rows, err := q.db.Query(ctx, expireDeletionApprovals, createdAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PlatformDeletionRequest{}
+	for rows.Next() {
+		var i PlatformDeletionRequest
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.TargetID,
+			&i.TargetLabel,
+			&i.Reason,
+			&i.State,
+			&i.ErrorCode,
+			&i.Attempts,
+			&i.ApprovedBy,
+			&i.ApprovedAt,
+			&i.ExportFirst,
+			&i.NoticeSentAt,
+			&i.Resolutions,
+			&i.ParentID,
+			&i.RequestedBy,
+			&i.RequestedByLabel,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
+			&i.TenantID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getDeletionAccount = `-- name: GetDeletionAccount :one
@@ -555,6 +694,41 @@ func (q *Queries) LockDeletionTenant(ctx context.Context, dollar_1 string) error
 	return err
 }
 
+const rejectDeletionApproval = `-- name: RejectDeletionApproval :one
+UPDATE platform_deletion_request
+SET state = 'canceled', error_code = 'rejected', updated_at = now(), completed_at = now()
+WHERE id = $1 AND state = 'awaiting_approval'
+RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
+`
+
+func (q *Queries) RejectDeletionApproval(ctx context.Context, id pgtype.UUID) (PlatformDeletionRequest, error) {
+	row := q.db.QueryRow(ctx, rejectDeletionApproval, id)
+	var i PlatformDeletionRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.TargetID,
+		&i.TargetLabel,
+		&i.Reason,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.ApprovedBy,
+		&i.ApprovedAt,
+		&i.ExportFirst,
+		&i.NoticeSentAt,
+		&i.Resolutions,
+		&i.ParentID,
+		&i.RequestedBy,
+		&i.RequestedByLabel,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.TenantID,
+	)
+	return i, err
+}
+
 const retryDeletionRequest = `-- name: RetryDeletionRequest :one
 UPDATE platform_deletion_request
 SET state = 'pending', error_code = '', attempts = 0, updated_at = now()
@@ -564,6 +738,42 @@ RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts
 
 func (q *Queries) RetryDeletionRequest(ctx context.Context, id pgtype.UUID) (PlatformDeletionRequest, error) {
 	row := q.db.QueryRow(ctx, retryDeletionRequest, id)
+	var i PlatformDeletionRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.TargetID,
+		&i.TargetLabel,
+		&i.Reason,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.ApprovedBy,
+		&i.ApprovedAt,
+		&i.ExportFirst,
+		&i.NoticeSentAt,
+		&i.Resolutions,
+		&i.ParentID,
+		&i.RequestedBy,
+		&i.RequestedByLabel,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.TenantID,
+	)
+	return i, err
+}
+
+const revertDeletionApproval = `-- name: RevertDeletionApproval :one
+UPDATE platform_deletion_request
+SET state = 'awaiting_approval', approved_by = NULL, approved_at = NULL, updated_at = now()
+WHERE id = $1 AND state = 'pending' AND approved_by IS NOT NULL
+RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
+`
+
+// Puts an approved request back to awaiting when its phase 1 fails.
+func (q *Queries) RevertDeletionApproval(ctx context.Context, id pgtype.UUID) (PlatformDeletionRequest, error) {
+	row := q.db.QueryRow(ctx, revertDeletionApproval, id)
 	var i PlatformDeletionRequest
 	err := row.Scan(
 		&i.ID,

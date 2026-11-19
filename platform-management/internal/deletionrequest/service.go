@@ -19,6 +19,9 @@ type Deps struct {
 	// Accounts serves account requests (spec R6 section 7). Nil skips the
 	// after-commit notices, as in tests of workspace and tenant requests.
 	Accounts AccountNotifier
+	// ApprovalActions names the deletion actions a second system_admin must approve
+	// (spec R6 section 3c.6, rule 1). Empty by default.
+	ApprovalActions map[string]bool
 	// Owners and Mail send the notice of an immediate deletion to each owner of a
 	// workspace after the commit (spec R6 section 3c.9, rule 4). Nil skips them.
 	Owners OwnerLookup
@@ -160,28 +163,49 @@ func (s *Service) RequestTenant(ctx context.Context, by Actor, tenantID string, 
 		} else if held {
 			return holdError(id)
 		}
-		if live, ok, err := tx.Live(ctx, KindTenant, tn.ID); err != nil {
-			return err
-		} else if ok {
-			out = live
-			return nil
-		}
-		row, inserted, err := tx.Insert(ctx, NewRequest{
-			Kind: KindTenant, TargetID: tn.ID, TargetLabel: tn.Name, Reason: reason, TenantID: tn.ID,
-			ExportFirst: in.ExportFirst, By: by,
-		})
+		resume := resumeID(ctx)
+		live, hasLive, err := tx.Live(ctx, KindTenant, tn.ID)
 		if err != nil {
 			return err
 		}
-		if !inserted {
-			winner, ok, err := tx.Live(ctx, KindTenant, tn.ID)
+		if hasLive && live.ID != resume {
+			out = live
+			return nil
+		}
+		needApproval := s.needsApproval(KindTenant) && resume == ""
+		row := live
+		if !hasLive {
+			if needApproval {
+				if err := s.requireSecondAdmin(ctx, tx); err != nil {
+					return err
+				}
+			}
+			var inserted bool
+			row, inserted, err = tx.Insert(ctx, NewRequest{
+				Kind: KindTenant, TargetID: tn.ID, TargetLabel: tn.Name, Reason: reason, TenantID: tn.ID,
+				ExportFirst: in.ExportFirst, By: by,
+			})
 			if err != nil {
 				return err
 			}
-			if !ok {
-				return fmt.Errorf("deletion request for tenant %s conflicted but no live request is visible", tn.ID)
+			if !inserted {
+				winner, ok, err := tx.Live(ctx, KindTenant, tn.ID)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return fmt.Errorf("deletion request for tenant %s conflicted but no live request is visible", tn.ID)
+				}
+				out = winner
+				return nil
 			}
-			out = winner
+		}
+		if needApproval {
+			awaiting, err := s.holdForApproval(ctx, tx, by, row, KindTenant, tn.ID, tn.ID)
+			if err != nil {
+				return err
+			}
+			out, created = awaiting, true
 			return nil
 		}
 		out, created = row, true

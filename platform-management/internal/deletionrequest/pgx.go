@@ -239,6 +239,9 @@ func (r *PgxReader) Get(ctx context.Context, id string) (Request, bool, error) {
 
 func fromRow(r db.PlatformDeletionRequest) Request {
 	return Request{
+		ExportFirst:      r.ExportFirst,
+		Resolutions:      r.Resolutions,
+		ApprovedBy:       uuidText(r.ApprovedBy),
 		ID:               uuidText(r.ID),
 		Kind:             r.Kind,
 		TargetID:         uuidText(r.TargetID),
@@ -439,4 +442,84 @@ func holdResult(id pgtype.UUID, err error) (string, bool, error) {
 		return "", false, fmt.Errorf("read legal hold: %w", err)
 	}
 	return uuidText(id), true, nil
+}
+
+// CountSystemAdmins implements Tx.
+func (t *pgxTx) CountSystemAdmins(ctx context.Context) (int64, error) {
+	return t.q.CountActiveSystemAdmins(ctx)
+}
+
+// AwaitApproval implements Tx.
+func (t *pgxTx) AwaitApproval(ctx context.Context, id string) (Request, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return Request{}, err
+	}
+	row, err := t.q.AwaitDeletionApproval(ctx, u)
+	if err != nil {
+		return Request{}, fmt.Errorf("await approval: %w", err)
+	}
+	return fromRow(row), nil
+}
+
+// ApproveRequest implements Tx.
+func (t *pgxTx) ApproveRequest(ctx context.Context, id, approverID string) (Request, bool, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return Request{}, false, err
+	}
+	by, err := parseUUID(approverID)
+	if err != nil {
+		return Request{}, false, err
+	}
+	row, err := t.q.ApproveDeletionRequest(ctx, db.ApproveDeletionRequestParams{ID: u, ApprovedBy: by})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Request{}, false, nil
+	}
+	if err != nil {
+		return Request{}, false, fmt.Errorf("approve request: %w", err)
+	}
+	return fromRow(row), true, nil
+}
+
+// RevertApproval implements Tx.
+func (t *pgxTx) RevertApproval(ctx context.Context, id string) error {
+	u, err := parseUUID(id)
+	if err != nil {
+		return err
+	}
+	_, err = t.q.RevertDeletionApproval(ctx, u)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	return err
+}
+
+// RejectApproval implements Tx.
+func (t *pgxTx) RejectApproval(ctx context.Context, id string) (Request, bool, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return Request{}, false, err
+	}
+	row, err := t.q.RejectDeletionApproval(ctx, u)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Request{}, false, nil
+	}
+	if err != nil {
+		return Request{}, false, fmt.Errorf("reject approval: %w", err)
+	}
+	return fromRow(row), true, nil
+}
+
+// ExpireApprovals implements Tx.
+func (t *pgxTx) ExpireApprovals(ctx context.Context, cutoff time.Time) ([]Request, error) {
+	rows, err := t.q.ExpireDeletionApprovals(ctx, pgtype.Timestamptz{Time: cutoff, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("expire approvals: %w", err)
+	}
+	out := make([]Request, len(rows))
+	for i, r := range rows {
+		out[i] = fromRow(r)
+	}
+	return out, nil
 }

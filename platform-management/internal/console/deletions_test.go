@@ -28,6 +28,7 @@ type fakeDeletions struct {
 	filters    []deletionrequest.Filter
 	accounts   []fakeDelAccount
 	runtimes   []fakeDelRuntime
+	approvals  []string
 	preview    deletionrequest.AccountPreview
 }
 
@@ -119,6 +120,23 @@ func (f *fakeDeletions) RequestTenant(_ context.Context, by deletionrequest.Acto
 	r := f.rows[delReqID]
 	r.Kind, r.TargetID = deletionrequest.KindTenant, tenant
 	return r, f.created, nil
+}
+
+// Approve and Reject answer with the delete fake's row, recording the call.
+func (f *fakeDeletions) Approve(_ context.Context, by deletionrequest.Actor, id string) (deletionrequest.Request, error) {
+	f.approvals = append(f.approvals, "approve "+id+" by "+by.ID)
+	if f.err != nil {
+		return deletionrequest.Request{}, f.err
+	}
+	return f.rows[delReqID], nil
+}
+
+func (f *fakeDeletions) Reject(_ context.Context, by deletionrequest.Actor, id string) (deletionrequest.Request, error) {
+	f.approvals = append(f.approvals, "reject "+id+" by "+by.ID)
+	if f.err != nil {
+		return deletionrequest.Request{}, f.err
+	}
+	return f.rows[delReqID], nil
 }
 
 func (f *fakeDeletions) Cancel(_ context.Context, _ deletionrequest.Actor, id string) (deletionrequest.Request, error) {
