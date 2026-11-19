@@ -1,11 +1,19 @@
 -- name: GetRequestUsageSummary :one
 -- Runs and tokens spent on a request issue and its direct children. The scope
 -- is one level deep, matching the Secretary's request shape; a child's own
--- children are not summed here.
+-- children are not summed here. Only issues the viewer sees are summed.
 WITH scope AS (
     SELECT i.id
     FROM issue i
-    WHERE i.workspace_id = $1 AND (i.id = $2 OR i.parent_issue_id = $2)
+    WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
+      AND (i.id = sqlc.arg('id')::uuid OR i.parent_issue_id = sqlc.arg('id')::uuid)
+      -- projectaccess:scope
+      AND (sqlc.arg(scope_mode)::text = 'all'
+          OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+          OR (sqlc.arg(scope_mode)::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 )
 SELECT
     COUNT(DISTINCT atq.id)::int AS run_count,

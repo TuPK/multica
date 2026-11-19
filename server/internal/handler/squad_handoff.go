@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -77,7 +78,8 @@ func (h *Handler) handoffRuleResponse(r *http.Request, ws pgtype.UUID, squad pgt
 	return out
 }
 
-func (h *Handler) handoffResponse(r *http.Request, ws pgtype.UUID, row *db.SquadHandoff) *HandoffResponse {
+// handoffResponse omits target_issue_id when the target request sits in a project the viewer cannot see.
+func (h *Handler) handoffResponse(r *http.Request, ws pgtype.UUID, row *db.SquadHandoff, scope projectaccess.Scope) *HandoffResponse {
 	if row == nil {
 		return nil
 	}
@@ -90,8 +92,11 @@ func (h *Handler) handoffResponse(r *http.Request, ws pgtype.UUID, row *db.Squad
 		CreatedAt:     row.CreatedAt.Time.UTC().Format(time.RFC3339),
 	}
 	if row.TargetIssueID.Valid {
-		id := uuidToString(row.TargetIssueID)
-		out.TargetIssueID = &id
+		target, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: row.TargetIssueID, WorkspaceID: ws})
+		if err == nil && scope.Allows(target.ProjectID) {
+			id := uuidToString(row.TargetIssueID)
+			out.TargetIssueID = &id
+		}
 	}
 	if row.DecidedAt.Valid {
 		at := row.DecidedAt.Time.UTC().Format(time.RFC3339)
@@ -195,6 +200,10 @@ func (h *Handler) GetIssueHandoff(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
 	svc := h.squadHandoffService()
 	out := IssueHandoffResponse{Status: "none"}
 	if issue.AssigneeType.Valid && issue.AssigneeType.String == "squad" && issue.AssigneeID.Valid {
@@ -218,7 +227,7 @@ func (h *Handler) GetIssueHandoff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if row != nil {
-		out.Handoff = h.handoffResponse(r, issue.WorkspaceID, row)
+		out.Handoff = h.handoffResponse(r, issue.WorkspaceID, row, scope)
 		out.Status = row.Status
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -308,7 +317,11 @@ func (h *Handler) writeHandoffResult(w http.ResponseWriter, r *http.Request, iss
 		writeError(w, http.StatusInternalServerError, "failed to hand the request off")
 		return
 	}
-	out := IssueHandoffResponse{Status: res.Status, Reason: res.Reason, Handoff: h.handoffResponse(r, issue.WorkspaceID, res.Handoff)}
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
+	out := IssueHandoffResponse{Status: res.Status, Reason: res.Reason, Handoff: h.handoffResponse(r, issue.WorkspaceID, res.Handoff, scope)}
 	if rule, rerr := h.squadHandoffService().GetRule(r.Context(), issue.WorkspaceID, issue.AssigneeID); rerr == nil && rule != nil {
 		resp := h.handoffRuleResponse(r, issue.WorkspaceID, issue.AssigneeID, rule)
 		out.Rule = &resp

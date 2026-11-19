@@ -53,9 +53,15 @@ func (h *Handler) GetCompanyRequestUsage(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
 	row, err := h.Queries.GetRequestUsageSummary(r.Context(), db.GetRequestUsageSummaryParams{
 		WorkspaceID: issue.WorkspaceID,
 		ID:          issue.ID,
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to read request usage")
