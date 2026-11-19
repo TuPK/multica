@@ -384,11 +384,10 @@ build: catalog-build ## Build the server, CLI, and migrate binaries into server/
 	cd server && go build -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildCommit=$(BUILD_COMMIT) -X main.date=$(DATE)" -o bin/multica$(EXE) ./cmd/multica
 	cd server && go build -o bin/migrate$(EXE) ./cmd/migrate
 
-test: catalog-build ## Run Go tests after ensuring the target DB exists and migrations are applied
+test: catalog-build ## Run Go tests against the <name>_test database (migrations applied there)
 	$(REQUIRE_ENV)
 	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
-	cd server && go run ./cmd/migrate up
-	bash scripts/test-go.sh --race
+	DATABASE_URL="$(DATABASE_URL)" bash scripts/test-go.sh --race
 
 # Database
 ##@ Database

@@ -8,6 +8,19 @@ GUARD_SCRIPT="$SCRIPT_DIR/go-test-with-agent-cli-guard.sh"
 # The server embeds data generated from catalog/ (not committed); the tests read it.
 node "$REPO_ROOT/scripts/catalog/cli.mjs" build --target go >/dev/null || exit 1
 
+# DB-backed tests write fixtures (workspaces, knowledge keys, proposals) that outlive
+# the run, so they get a dedicated <name>_test database beside the development one.
+# A DATABASE_URL on the development database is redirected; the guard then refuses
+# anything that is not a *_test database.
+test_db_url=$(printf '%s' "${DATABASE_URL:-}" | sed -E 's#^((postgres|postgresql)://[^?]*/)multica(\?|$)#\1multica_test\3#')
+DATABASE_URL="$test_db_url" bash "$SCRIPT_DIR/require-test-database.sh" >/dev/null || exit 1
+admin_db_url=$(printf '%s' "$test_db_url" | sed -E 's#/multica_test(\?|$)#/postgres\1#')
+if [ "$(psql "$admin_db_url" -Atqc "SELECT 1 FROM pg_database WHERE datname = 'multica_test'")" != 1 ]; then
+  psql "$admin_db_url" -v ON_ERROR_STOP=1 -qc 'CREATE DATABASE multica_test' >/dev/null
+fi
+(cd "$REPO_ROOT/server" && DATABASE_URL="$test_db_url" go run ./cmd/migrate up) || exit 1
+export DATABASE_URL="$test_db_url"
+
 usage() {
   echo "usage: $0 [--race] [--only regular|agent]" >&2
 }
