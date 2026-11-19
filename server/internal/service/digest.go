@@ -880,7 +880,7 @@ func (s *DigestService) computeAutoApproved(ctx context.Context, workspaceID pgt
 	if sc.floor {
 		squadIDs = sc.squadIDs
 	}
-	rows, err := (&ApprovalPolicyService{Queries: s.Queries}).ListRecentAutoApprovals(ctx, workspaceID, since, DigestAutoApprovalMax, squadIDs)
+	rows, err := (&ApprovalPolicyService{Queries: s.Queries, Scope: s.Scope}).ListRecentAutoApprovals(ctx, workspaceID, since, DigestAutoApprovalMax, squadIDs)
 	if err != nil {
 		return nil, fmt.Errorf("digest auto-approvals: %w", err)
 	}

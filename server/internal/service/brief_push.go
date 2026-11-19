@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/integrations/channel"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -254,7 +255,7 @@ func (s *BriefPushService) deliver(ctx context.Context, d db.BriefDelivery) erro
 		return s.settleUnsent(ctx, d, briefStateFailed, briefPushReasonNoChannel, time.Time{})
 	}
 
-	msg, err := s.composeMessage(ctx, ws, brief, channel.Type(binding.ChannelType))
+	msg, err := s.composeMessage(ctx, ws, d.MemberID, brief, channel.Type(binding.ChannelType))
 	if err != nil {
 		return err
 	}
@@ -356,8 +357,10 @@ func (s *BriefPushService) memberLocation(ctx context.Context, userID pgtype.UUI
 // composeMessage builds the push: the headline, the pending decisions the brief
 // raises, and a link to the brief. It reads the proposals at send time, so a
 // decision answered since publish is not named. chat is the app the message is
-// for, which decides whether its decisions carry buttons.
-func (s *BriefPushService) composeMessage(ctx context.Context, ws pgtype.UUID, brief db.Brief, chat channel.Type) (channel.Message, error) {
+// for, which decides whether its decisions carry buttons. The push goes to one
+// member's chat, so a decision whose issue sits in a project that member cannot
+// see is not named (spec 7.1 rule 5).
+func (s *BriefPushService) composeMessage(ctx context.Context, ws, memberID pgtype.UUID, brief db.Brief, chat channel.Type) (channel.Message, error) {
 	ordered := make([]pgtype.UUID, 0, len(brief.ProposalIds))
 	seen := map[string]bool{}
 	for _, id := range brief.ProposalIds {
@@ -368,8 +371,13 @@ func (s *BriefPushService) composeMessage(ctx context.Context, ws pgtype.UUID, b
 	}
 	var decisions []briefPushDecision
 	if len(ordered) > 0 {
+		scope, err := projectaccess.ForViewer(ctx, s.Queries, ws, memberID)
+		if err != nil {
+			return channel.Message{}, fmt.Errorf("compute recipient scope: %w", err)
+		}
 		rows, err := s.Queries.ListBriefPendingDecisions(ctx, db.ListBriefPendingDecisionsParams{
 			WorkspaceID: ws, ProposalIds: ordered, Now: briefPushTimestamp(s.clock()),
+			ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
 		})
 		if err != nil {
 			return channel.Message{}, fmt.Errorf("load pending decisions: %w", err)

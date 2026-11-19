@@ -267,13 +267,22 @@ FROM proposal p
 JOIN issue i ON i.id = p.issue_id
 WHERE p.workspace_id = $1::uuid
   AND p.decided_by_policy_id = $2::uuid
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (i.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.decided_at DESC, p.id DESC
-LIMIT $3::integer
+LIMIT $5::integer
 `
 
 type ListPolicyAutoApprovalsParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	PolicyID    pgtype.UUID `json:"policy_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 	RowLimit    int32       `json:"row_limit"`
 }
 
@@ -293,7 +302,13 @@ type ListPolicyAutoApprovalsRow struct {
 // Recent auto-approvals of one policy, newest first, with the backing issue's
 // title and number for the history.
 func (q *Queries) ListPolicyAutoApprovals(ctx context.Context, arg ListPolicyAutoApprovalsParams) ([]ListPolicyAutoApprovalsRow, error) {
-	rows, err := q.db.Query(ctx, listPolicyAutoApprovals, arg.WorkspaceID, arg.PolicyID, arg.RowLimit)
+	rows, err := q.db.Query(ctx, listPolicyAutoApprovals,
+		arg.WorkspaceID,
+		arg.PolicyID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -332,12 +347,21 @@ WHERE p.workspace_id = $1::uuid
   AND p.decided_by_policy_id IS NOT NULL
   AND p.reversed_at IS NOT NULL
   AND p.reversed_at >= $2::timestamptz
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (i.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.reversed_at DESC, p.id DESC
 `
 
 type ListPolicyReversalsParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Since       pgtype.Timestamptz `json:"since"`
+	ScopeMode   string             `json:"scope_mode"`
+	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
 }
 
 type ListPolicyReversalsRow struct {
@@ -353,7 +377,12 @@ type ListPolicyReversalsRow struct {
 // Auto-approvals a review reversed, newest reversal first. The weekly review
 // reads it with since; the Policies list reads the policies it names.
 func (q *Queries) ListPolicyReversals(ctx context.Context, arg ListPolicyReversalsParams) ([]ListPolicyReversalsRow, error) {
-	rows, err := q.db.Query(ctx, listPolicyReversals, arg.WorkspaceID, arg.Since)
+	rows, err := q.db.Query(ctx, listPolicyReversals,
+		arg.WorkspaceID,
+		arg.Since,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -390,14 +419,23 @@ WHERE p.workspace_id = $1::uuid
   AND p.decided_by_policy_id IS NOT NULL
   AND p.decided_at >= $2::timestamptz
   AND ($3::uuid[] IS NULL OR p.squad_id = ANY($3::uuid[]))
+  -- projectaccess:scope
+  AND ($4::text = 'all'
+      OR (i.project_id IS NULL AND $4::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $5::uuid)
+      OR ($4::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.decided_at DESC, p.id DESC
-LIMIT $4::integer
+LIMIT $6::integer
 `
 
 type ListRecentPolicyApprovalsParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Since       pgtype.Timestamptz `json:"since"`
 	SquadIds    []pgtype.UUID      `json:"squad_ids"`
+	ScopeMode   string             `json:"scope_mode"`
+	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
 	RowLimit    int32              `json:"row_limit"`
 }
 
@@ -418,6 +456,8 @@ func (q *Queries) ListRecentPolicyApprovals(ctx context.Context, arg ListRecentP
 		arg.WorkspaceID,
 		arg.Since,
 		arg.SquadIds,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 		arg.RowLimit,
 	)
 	if err != nil {
