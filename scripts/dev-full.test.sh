@@ -462,6 +462,10 @@ if grep -Fq "run -d" "$docker_log"; then
   fail "an existing platform Redis container must be started, not created again"
 fi
 
+# ---------- System admin second factor ----------
+# RFC 6238 (SHA-1): the secret "12345678901234567890" at time 59 gives 94287082 as eight digits.
+[ "$(totp_code GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ 59)" = 287082 ] || fail "totp_code must match the RFC 6238 SHA-1 vector"
+
 # ---------- Startup order ----------
 # The platform starts after the Multica API answers and before the web app is awaited: it needs
 # the migrated database and the system admin, not the web app.

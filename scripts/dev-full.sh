@@ -816,10 +816,59 @@ seed_system_admin() {
   curl -fsS -o /dev/null -H 'Content-Type: application/json' -d "$body" "http://localhost:${PORT}/auth/verify-code" \
     || fail "Multica did not accept the development code for $DEV_ADMIN_EMAIL."
   ok "Multica account $DEV_ADMIN_EMAIL is ready"
+  seed_system_admin_mfa
 }
 
-# Starts the platform's API and staff console. It needs the database that make dev has
-# migrated, so it starts after the Multica API answers. The console is built if it is missing.
+# The 6-digit TOTP code for a base32 secret at a unix time (default: now), per RFC 6238 with
+# SHA-1, 30-second steps and 6 digits. Node is a prerequisite of this script.
+totp_code() {
+  node -e '
+const crypto = require("crypto");
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const bits = [...process.argv[1].toUpperCase().replace(/=+$/, "")]
+  .map((c) => alphabet.indexOf(c).toString(2).padStart(5, "0")).join("");
+const key = Buffer.from((bits.match(/.{8}/g) || []).map((b) => parseInt(b, 2)));
+const step = Math.floor((process.argv[2] ? Number(process.argv[2]) : Date.now() / 1000) / 30);
+const counter = Buffer.alloc(8);
+counter.writeBigUInt64BE(BigInt(step));
+const hmac = crypto.createHmac("sha1", key).update(counter).digest();
+const offset = hmac[hmac.length - 1] & 0x0f;
+const code = ((hmac[offset] & 0x7f) << 24 | hmac[offset + 1] << 16 | hmac[offset + 2] << 8 | hmac[offset + 3]) % 1000000;
+process.stdout.write(String(code).padStart(6, "0"));
+' "$1" "${2:-}"
+}
+
+# The development system admin's authenticator secret. It is fixed, so every dev machine has the
+# same code. Development only: this value is published in this file, so never reuse it elsewhere.
+DEV_ADMIN_TOTP_SECRET_DEFAULT="3W2GCFUWYRKKLRADVF5SFWKM3EAHPQYO"
+
+# Writes the system admin's confirmed second factor into Multica's user_mfa, sealed the way Multica
+# seals its own secrets (AES-256-GCM under MULTICA_MFA_SECRET_KEY, laid out nonce||ciphertext||tag,
+# see server/internal/util/secretbox). The platform reads that row when the admin signs in. Node
+# does the sealing, so the script needs no Go toolchain step for it.
+seed_system_admin_mfa() {
+  local secret key sealed
+  secret=$(env_value "$ENV_FILE" DEV_ADMIN_TOTP_SECRET)
+  secret=${secret:-$DEV_ADMIN_TOTP_SECRET_DEFAULT}
+  key=$(env_value "$ENV_FILE" MULTICA_MFA_SECRET_KEY)
+  [ -n "$key" ] || fail "MULTICA_MFA_SECRET_KEY is empty, so the system admin's second factor cannot be sealed."
+  sealed=$(node -e '
+const crypto = require("crypto");
+const nonce = crypto.randomBytes(12);
+const cipher = crypto.createCipheriv("aes-256-gcm", Buffer.from(process.argv[1], "base64"), nonce);
+const body = Buffer.concat([cipher.update(process.argv[2], "utf8"), cipher.final()]);
+process.stdout.write(Buffer.concat([nonce, body, cipher.getAuthTag()]).toString("hex"));
+' "$key" "$secret") || fail "Could not seal the system admin's second factor."
+  docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -q <<SQL \
+    || fail "Could not write the system admin's second factor to Multica's database."
+DELETE FROM user_mfa WHERE user_id = (SELECT id FROM "user" WHERE email = '$DEV_ADMIN_EMAIL');
+INSERT INTO user_mfa (user_id, secret_enc, confirmed_at)
+  SELECT id, decode('$sealed', 'hex'), now() FROM "user" WHERE email = '$DEV_ADMIN_EMAIL';
+SQL
+  set_env_value DEV_ADMIN_TOTP_SECRET "$secret"
+  ok "Second factor for $DEV_ADMIN_EMAIL is on (fixed development secret, DEV_ADMIN_TOTP_SECRET in $ENV_FILE)"
+}
+
 # The platform's rate limiter and health check use Redis. On this machine that is a loopback
 # container of its own, so it does not depend on the WeKnora Redis or any host install.
 PLATFORM_REDIS_CONTAINER="${PLATFORM_REDIS_CONTAINER:-multica-platform-redis}"
@@ -845,6 +894,8 @@ start_platform_redis() {
   ok "Redis serves the platform at $PLATFORM_REDIS_BIND"
 }
 
+# Starts the platform's API and staff console. It needs the database that make dev has
+# migrated, so it starts after the Multica API answers. The console is built if it is missing.
 start_platform() {
   info "Starting the platform console and API (platform-management)"
   start_platform_redis
