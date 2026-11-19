@@ -396,3 +396,47 @@ func (r *PgxReader) OwnerEmails(ctx context.Context, workspaceID string) ([]stri
 	}
 	return r.q.ListWorkspaceOwnerEmails(ctx, ws)
 }
+
+// ActiveLegalHold implements Tx.
+func (t *pgxTx) ActiveLegalHold(ctx context.Context, workspaceID, tenantID string) (string, bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return "", false, err
+	}
+	tenant, err := optionalUUID(tenantID)
+	if err != nil {
+		return "", false, err
+	}
+	id, err := t.q.ActiveLegalHoldForWorkspace(ctx, db.ActiveLegalHoldForWorkspaceParams{WorkspaceID: ws, TenantID: tenant})
+	return holdResult(id, err)
+}
+
+// ActiveTenantHold implements Tx.
+func (t *pgxTx) ActiveTenantHold(ctx context.Context, tenantID string) (string, bool, error) {
+	tn, err := parseUUID(tenantID)
+	if err != nil {
+		return "", false, err
+	}
+	id, err := t.q.ActiveLegalHoldForTenant(ctx, tn)
+	return holdResult(id, err)
+}
+
+// ActiveAccountHold implements Tx.
+func (t *pgxTx) ActiveAccountHold(ctx context.Context, userID string) (string, bool, error) {
+	u, err := parseUUID(userID)
+	if err != nil {
+		return "", false, err
+	}
+	id, err := t.q.ActiveLegalHoldForAccount(ctx, u)
+	return holdResult(id, err)
+}
+
+func holdResult(id pgtype.UUID, err error) (string, bool, error) {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("read legal hold: %w", err)
+	}
+	return uuidText(id), true, nil
+}

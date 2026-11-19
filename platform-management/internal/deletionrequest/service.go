@@ -74,6 +74,9 @@ func (s *Service) RequestWorkspace(ctx context.Context, by Actor, workspaceID st
 		if !ConfirmMatches(in.Confirm, ws.Slug) {
 			return &Error{Status: 400, Code: CodeConfirmationMismatch, Message: "the confirmation does not match the workspace slug"}
 		}
+		if err := checkWorkspaceHold(ctx, tx, ws); err != nil {
+			return err
+		}
 		if live, ok, err := tx.Live(ctx, KindWorkspace, ws.ID); err != nil {
 			return err
 		} else if ok {
@@ -115,6 +118,9 @@ func (s *Service) RequestWorkspace(ctx context.Context, by Actor, workspaceID st
 		return nil
 	})
 	if err != nil {
+		if refusal, ok := isHoldRefusal(err); ok {
+			s.recordBlocked(ctx, by, KindWorkspace, workspaceID, "", workspaceID, refusal)
+		}
 		return Request{}, false, err
 	}
 	s.invalidate(ctx, changed)
@@ -148,6 +154,11 @@ func (s *Service) RequestTenant(ctx context.Context, by Actor, tenantID string, 
 		}
 		if !ConfirmMatches(in.Confirm, tn.Name) {
 			return &Error{Status: 400, Code: CodeConfirmationMismatch, Message: "the confirmation does not match the tenant name"}
+		}
+		if id, held, err := tx.ActiveTenantHold(ctx, tn.ID); err != nil {
+			return err
+		} else if held {
+			return holdError(id)
 		}
 		if live, ok, err := tx.Live(ctx, KindTenant, tn.ID); err != nil {
 			return err
@@ -186,6 +197,9 @@ func (s *Service) RequestTenant(ctx context.Context, by Actor, tenantID string, 
 			if !ok {
 				continue
 			}
+			if err := checkWorkspaceHold(ctx, tx, ws); err != nil {
+				return err
+			}
 			moved, err := s.setPending(ctx, tx, by, ws, row, reason)
 			if err != nil {
 				return err
@@ -206,6 +220,9 @@ func (s *Service) RequestTenant(ctx context.Context, by Actor, tenantID string, 
 		}))
 	})
 	if err != nil {
+		if refusal, ok := isHoldRefusal(err); ok {
+			s.recordBlocked(ctx, by, KindTenant, tenantID, tenantID, "", refusal)
+		}
 		return Request{}, false, err
 	}
 	s.invalidate(ctx, changed)

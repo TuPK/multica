@@ -63,6 +63,14 @@ func (h *Handler) failDeletion(w http.ResponseWriter, r *http.Request, op string
 		for k, v := range de.Extra {
 			body[k] = v
 		}
+		if de.Code == deletionrequest.CodeLegalHold {
+			a, aerr := h.currentActor(r)
+			if aerr != nil {
+				delete(body, "legal_hold_id")
+			} else {
+				hideHoldID(body, a.Role)
+			}
+		}
 		writeJSON(w, de.Status, body)
 	case errors.Is(err, deletionrequest.ErrNotFound):
 		writeError(w, notFound())

@@ -51,6 +51,9 @@ const (
 	// CodeWorkspaceRequestLive refuses an account request whose workspace choice
 	// (B) already has a live request of its own.
 	CodeWorkspaceRequestLive = "workspace_request_live"
+	// CodeLegalHold refuses a deletion that a legal hold covers (spec R6 section 3c.7).
+	// legal_hold_id is in the body only for system_admin.
+	CodeLegalHold = "legal_hold"
 )
 
 // ErrNotFound is returned for an unknown target or request id.
@@ -146,6 +149,12 @@ type Tx interface {
 	// creation and a tenant deletion queue on it (spec R6 section 5.7).
 	LockTenant(ctx context.Context, tenantID string) error
 	TenantWorkspaces(ctx context.Context, tenantID string) ([]string, error)
+	// ActiveLegalHold returns the id of a live hold on the workspace or on its tenant.
+	ActiveLegalHold(ctx context.Context, workspaceID, tenantID string) (holdID string, held bool, err error)
+	// ActiveTenantHold returns the id of a live hold on the tenant.
+	ActiveTenantHold(ctx context.Context, tenantID string) (holdID string, held bool, err error)
+	// ActiveAccountHold returns the id of a live hold on the account.
+	ActiveAccountHold(ctx context.Context, userID string) (holdID string, held bool, err error)
 	// Runtime returns found == false for an unknown runtime (spec R6 section 3b.5, rule 5).
 	Runtime(ctx context.Context, id string) (RuntimeTarget, bool, error)
 	// AccountUser returns found == false for an unknown user and for a deleted one.

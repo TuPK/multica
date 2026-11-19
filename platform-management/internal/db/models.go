@@ -1845,6 +1845,18 @@ type LarkUserBinding struct {
 	BoundAt        pgtype.Timestamptz `json:"bound_at"`
 }
 
+type LegalHold struct {
+	ID         pgtype.UUID        `json:"id"`
+	ScopeKind  string             `json:"scope_kind"`
+	ScopeID    pgtype.UUID        `json:"scope_id"`
+	Reason     string             `json:"reason"`
+	CaseRef    string             `json:"case_ref"`
+	PlacedBy   pgtype.UUID        `json:"placed_by"`
+	PlacedAt   pgtype.Timestamptz `json:"placed_at"`
+	ReleasedBy pgtype.UUID        `json:"released_by"`
+	ReleasedAt pgtype.Timestamptz `json:"released_at"`
+}
+
 type MaintenanceJob struct {
 	ID             pgtype.UUID        `json:"id"`
 	JobType        string             `json:"job_type"`

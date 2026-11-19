@@ -84,6 +84,9 @@ const (
 	ActionTenantStatusChanged                 = "tenant.status_changed"
 	ActionDeletionNoticeSent                  = "deletion.notice_sent"
 	ActionDeletionNoticeFailed                = "deletion.notice_failed"
+	ActionLegalHoldPlaced                     = "legal_hold.placed"
+	ActionLegalHoldReleased                   = "legal_hold.released"
+	ActionDeletionBlockedByHold               = "deletion.blocked_by_hold"
 	ActionRuntimeDisabled                     = "runtime.disabled"
 	ActionRuntimeEnabled                      = "runtime.enabled"
 	ActionMemberStaffRemoveRequested          = "member.staff_remove_requested"
@@ -210,6 +213,9 @@ var Catalog = []string{
 	ActionTenantStatusChanged,
 	ActionDeletionNoticeSent,
 	ActionDeletionNoticeFailed,
+	ActionLegalHoldPlaced,
+	ActionLegalHoldReleased,
+	ActionDeletionBlockedByHold,
 	ActionQuotaRequestApproved,
 	ActionQuotaRequestDenied,
 	ActionRuntimeDisabled,

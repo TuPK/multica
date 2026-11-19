@@ -213,6 +213,11 @@ func (s *Service) RequestAccount(ctx context.Context, by Actor, userID string, i
 		if err := refuseAccount(by, acc); err != nil {
 			return err
 		}
+		if id, held, err := tx.ActiveAccountHold(ctx, acc.ID); err != nil {
+			return err
+		} else if held {
+			return holdError(id)
+		}
 		if !EmailMatches(in.Confirm, acc.Email) {
 			return &Error{Status: 400, Code: CodeConfirmationMismatch, Message: "the confirmation does not match the account email"}
 		}
@@ -288,6 +293,9 @@ func (s *Service) RequestAccount(ctx context.Context, by Actor, userID string, i
 		return tx.ScheduleAccount(ctx, acc.ID, reason, by, s.Now().UTC())
 	})
 	if err != nil {
+		if refusal, ok := isHoldRefusal(err); ok {
+			s.recordBlocked(ctx, by, KindAccount, userID, "", "", refusal)
+		}
 		return Request{}, false, err
 	}
 	s.invalidate(ctx, changed)

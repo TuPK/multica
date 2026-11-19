@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/multica-ai/multica/platform-management/internal/legalhold"
 	"github.com/multica-ai/multica/platform-management/internal/quota"
 	"github.com/multica-ai/multica/platform-management/internal/tenantstatus"
 	"log/slog"
@@ -278,6 +279,7 @@ func run() error {
 		}),
 		Quota:          quota.New(quota.Deps{Pool: pool, Cache: policy}),
 		TenantStatuses: tenantstatus.New(pool, guard),
+		LegalHolds:     legalhold.New(pool),
 		Accounts: accountrequest.New(accountrequest.Deps{
 			Runner: accountrequest.NewPgxRunner(pool), Reader: accountrequest.NewPgxReader(pool),
 			Plans: plan.NewPgxReader(pool), Limiter: platformauth.NewRedisLimiter(rdb),

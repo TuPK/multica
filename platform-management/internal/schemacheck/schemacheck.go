@@ -46,6 +46,8 @@ var Required = []string{
 	"1035_quota_request",                        // quota_request: table (R6 3c.5)
 	"1036_quota_request_id_uidx",                // quota_request: unique index on id
 	"1037_quota_request_live_uidx",              // quota_request: one pending per workspace and gate
+	"1038_legal_hold",                           // legal_hold: table (R6 3c.7)
+	"1039_legal_hold_live_uidx",                 // legal_hold: one live hold per scope
 	"651_platform_account",                      // platform_account: table
 	"652_platform_account_user_idx",             // platform_account: unique index on user_id
 	"653_platform_account_status_idx",           // platform_account: partial index on status

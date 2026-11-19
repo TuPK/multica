@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS legal_hold_live_uidx;

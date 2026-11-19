@@ -86,6 +86,8 @@ type Deps struct {
 	Quota QuotaRequests
 	// TenantStatuses locks and unlocks whole tenants (spec R6 section 3c.9).
 	TenantStatuses TenantStatuses
+	// LegalHolds places and releases legal holds (spec R6 section 3c.7).
+	LegalHolds LegalHolds
 	// Einvoices serves the retry route. *invoice.Service is one.
 	Einvoices EinvoiceOps
 	Logins    LoginLookup
@@ -196,6 +198,11 @@ func routeTable() []routeSpec {
 		{base + "/workspaces/{id}/quota-requests", staff.ActionQuotaRequestCreate, nil, map[string]handlerFunc{http.MethodPost: (*Handler).createQuotaRequest}},
 		{base + "/audit-events/export", staff.ActionAuditExport, nil, map[string]handlerFunc{http.MethodGet: (*Handler).exportAudit}},
 		{base + "/tenants/{id}/status", staff.ActionTenantStatus, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setTenantStatus}},
+		{base + "/legal-holds", staff.ActionLegalHoldManage, map[string]string{}, map[string]handlerFunc{
+			http.MethodGet:  (*Handler).listLegalHolds,
+			http.MethodPost: (*Handler).placeLegalHold,
+		}},
+		{base + "/legal-holds/{id}/release", staff.ActionLegalHoldManage, nil, map[string]handlerFunc{http.MethodPost: (*Handler).releaseLegalHold}},
 		{base + "/runtimes", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listRuntimes}},
 		{base + "/runtimes/{id}", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getRuntime}},
 		{base + "/runtimes/{id}/status", staff.ActionRuntimeStatus, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setRuntimeStatus}},

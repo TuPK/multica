@@ -844,6 +844,7 @@ type env struct {
 	delete *fakeDeletions
 	quota  *fakeQuota
 	tstat  *fakeTenantStatus
+	holds  *fakeLegalHolds
 }
 
 func newEnv(t *testing.T) *env { return newEnvMail(t, true) }
@@ -879,6 +880,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		delete: newFakeDeletions(),
 		quota:  &fakeQuota{},
 		tstat:  &fakeTenantStatus{},
+		holds:  &fakeLegalHolds{},
 	}
 	e.reader.store = e.store
 	payments, err := billing.New(billing.Deps{
@@ -916,6 +918,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		Deletions:      e.delete,
 		Quota:          e.quota,
 		TenantStatuses: e.tstat,
+		LegalHolds:     e.holds,
 		Log:            log,
 		Now:            func() time.Time { return t0 },
 	})
