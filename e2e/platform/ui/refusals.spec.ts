@@ -50,6 +50,36 @@ async function openNav(page: Page, name: string): Promise<void> {
   await page.getByRole("navigation", { name: "Main Navigation" }).getByRole("button", { name }).click();
 }
 
+test.describe("last admin", () => {
+  test("flow 257: removing the last active admin is refused in the remove dialog", async ({ page }) => {
+    // The test database may hold other active admins. Revoke them for this test only and restore them in finally.
+    const pool = new pg.Pool({ connectionString: testDatabaseUrl(), max: 1 });
+    let revoked: string[] = [];
+    try {
+      const others = await pool.query(
+        "SELECT user_id FROM platform_staff WHERE role = 'admin' AND revoked_at IS NULL AND user_id <> $1",
+        [seed.userId],
+      );
+      revoked = others.rows.map((r) => r.user_id);
+      if (revoked.length > 0) {
+        await pool.query("UPDATE platform_staff SET revoked_at = now() WHERE role = 'admin' AND user_id = ANY($1)", [revoked]);
+      }
+      await openNav(page, "Staff");
+      await page.getByRole("button", { name: `Remove staff member ${seed.email}` }).click();
+      const dialog = page.getByRole("dialog", { name: "Remove staff member" });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("button", { name: "Remove", exact: true }).click();
+      await expect(dialog.getByRole("alert").filter({ hasText: "the last active administrator cannot be removed" })).toBeVisible();
+      await expect(dialog).toBeVisible();
+    } finally {
+      if (revoked.length > 0) {
+        await pool.query("UPDATE platform_staff SET revoked_at = NULL WHERE role = 'admin' AND user_id = ANY($1)", [revoked]);
+      }
+      await pool.end();
+    }
+  });
+});
+
 test.describe("billing profile", () => {
   test("flow 190: verifying a tenant whose billing profile is incomplete is refused and names the missing fields", async ({ page }) => {
     await openNav(page, "Tenants");
