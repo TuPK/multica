@@ -51,12 +51,12 @@ export function PageHeader({
             {badge}
           </div>
           {meta && (
-            <Text type="supporting" as="div">
+            <Text type="supporting" as="div" className="block">
               {meta}
             </Text>
           )}
           {description && (
-            <Text type="body" color="secondary" as="p" className="max-w-2xl">
+            <Text type="body" color="secondary" as="p" className="block max-w-2xl">
               {description}
             </Text>
           )}

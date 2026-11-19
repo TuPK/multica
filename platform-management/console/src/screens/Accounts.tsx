@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Card } from "@astryxdesign/core/Card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
@@ -575,124 +568,159 @@ export function Accounts({ userRole }: AccountsProps) {
 
       {!isLoading && !isError && requestList.length > 0 && (
         <Card padding={0} className="overflow-x-auto">
-          <Table density="compact" dividers="rows" hasHover>
-            <TableHeader>
-              <TableRow isHeaderRow>
-                <TableHeaderCell>State</TableHeaderCell>
-                <TableHeaderCell>Email</TableHeaderCell>
-                <TableHeaderCell>Kind</TableHeaderCell>
-                <TableHeaderCell>Plan</TableHeaderCell>
-                <TableHeaderCell>Workspace Name</TableHeaderCell>
-                <TableHeaderCell>Error Code</TableHeaderCell>
-                <TableHeaderCell className="text-right">Attempts</TableHeaderCell>
-                <TableHeaderCell>Created</TableHeaderCell>
-                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requestList.map((req) => {
-                const canCancel = req.state === "pending";
-                const canResend =
-                  req.state === "completed" ||
-                  (req.state === "failed" && req.error_code === "finalize_failed");
-                const isResending = resendingId === req.id;
-
-                return (
-                  <TableRow key={req.id}>
-                    <TableCell>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <AccountStateBadge req={req} />
-                        {req.logged_in === false && (
-                          <Badge variant="neutral" label="Never logged in" />
-                        )}
+          <Table
+            data={requestList}
+            idKey="id"
+            density="compact"
+            dividers="rows"
+            hasHover
+            columns={[
+              {
+                key: "state",
+                header: "State",
+                width: proportional(2, { minWidth: 170 }),
+                renderCell: (req) => (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <AccountStateBadge req={req} />
+                    {req.logged_in === false && <Badge variant="neutral" label="Never logged in" />}
+                  </div>
+                ),
+              },
+              {
+                key: "email",
+                header: "Email",
+                width: proportional(3, { minWidth: 200 }),
+                renderCell: (req) => (
+                  <>
+                    <Text type="body" weight="medium" as="div" className="block">
+                      {req.email}
+                    </Text>
+                    {req.display_name && (
+                      <Text type="supporting" as="div" className="block">
+                        {req.display_name}
+                      </Text>
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: "kind",
+                header: "Kind",
+                width: proportional(1, { minWidth: 90 }),
+                renderCell: (req) => <Text type="body" className="capitalize">{req.kind}</Text>,
+              },
+              {
+                key: "plan_key",
+                header: "Plan",
+                width: proportional(2, { minWidth: 150 }),
+                renderCell: (req) => (
+                  <>
+                    <Text type="body" weight="medium" as="div" className="block">
+                      {req.plan_key}
+                    </Text>
+                    <Text type="supporting" hasTabularNumbers as="div" className="block">
+                      {req.seats} seats &bull; {req.interval}
+                    </Text>
+                  </>
+                ),
+              },
+              {
+                key: "workspace_name",
+                header: "Workspace Name",
+                width: proportional(2, { minWidth: 170 }),
+                renderCell: (req) => (
+                  <>
+                    <div className="truncate font-medium" title={req.workspace_name}>
+                      {req.workspace_name}
+                    </div>
+                    {req.workspace_slug && (
+                      <div
+                        className="truncate font-mono text-caption text-muted-foreground"
+                        title={req.workspace_slug}
+                      >
+                        {req.workspace_slug}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Text type="body" weight="medium" as="div">
-                        {req.email}
-                      </Text>
-                      {req.display_name && (
-                        <Text type="supporting" as="div">
-                          {req.display_name}
-                        </Text>
-                      )}
-                    </TableCell>
-                    <TableCell className="capitalize">
-                      <Text type="body">{req.kind}</Text>
-                    </TableCell>
-                    <TableCell>
-                      <Text type="body" weight="medium" as="div">
-                        {req.plan_key}
-                      </Text>
-                      <Text type="supporting" hasTabularNumbers as="div">
-                        {req.seats} seats &bull; {req.interval}
-                      </Text>
-                    </TableCell>
-                    <TableCell>
-                      <div className="max-w-52 truncate font-medium" title={req.workspace_name}>
-                        {req.workspace_name}
-                      </div>
-                      {req.workspace_slug && (
-                        <div
-                          className="max-w-40 truncate font-mono text-caption text-muted-foreground"
-                          title={req.workspace_slug}
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: "error_code",
+                header: "Error Code",
+                width: proportional(2, { minWidth: 140 }),
+                renderCell: (req) =>
+                  req.error_code ? (
+                    <Text type="supporting" color="inherit" className="text-destructive">
+                      {formatErrorCode(req.error_code)}
+                    </Text>
+                  ) : (
+                    <Text type="supporting">-</Text>
+                  ),
+              },
+              {
+                key: "attempts",
+                header: "Attempts",
+                width: pixel(96),
+                align: "end",
+                renderCell: (req) => (
+                  <Text type="body" hasTabularNumbers>
+                    {req.attempts}
+                  </Text>
+                ),
+              },
+              {
+                key: "created_at",
+                header: "Created",
+                width: proportional(2, { minWidth: 180 }),
+                renderCell: (req) => (
+                  <Text type="supporting" hasTabularNumbers>
+                    {req.created_at ? new Date(req.created_at).toLocaleString() : "-"}
+                  </Text>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                width: proportional(2, { minWidth: 240 }),
+                align: "end",
+                renderCell: (req) => {
+                  const canCancel = req.state === "pending";
+                  const canResend =
+                    req.state === "completed" ||
+                    (req.state === "failed" && req.error_code === "finalize_failed");
+                  const isResending = resendingId === req.id;
+                  return (
+                    <div className="flex items-center justify-end gap-2">
+                      {canCancel && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            setCancelTarget(req);
+                            setCancelError(null);
+                          }}
                         >
-                          {req.workspace_slug}
-                        </div>
+                          Cancel
+                        </Button>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      {req.error_code ? (
-                        <Text type="supporting" color="inherit" className="text-destructive">
-                          {formatErrorCode(req.error_code)}
-                        </Text>
-                      ) : (
-                        <Text type="supporting">-</Text>
+                      {canResend && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isResending}
+                          aria-busy={isResending}
+                          onClick={() => handleResendWelcome(req)}
+                        >
+                          {isResending && <Spinner className="size-3.5" />}
+                          Resend welcome
+                        </Button>
                       )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Text type="body" hasTabularNumbers>
-                        {req.attempts}
-                      </Text>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <Text type="supporting" hasTabularNumbers>
-                        {req.created_at ? new Date(req.created_at).toLocaleString() : "-"}
-                      </Text>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {canCancel && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              setCancelTarget(req);
-                              setCancelError(null);
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        )}
-                        {canResend && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={isResending}
-                            aria-busy={isResending}
-                            onClick={() => handleResendWelcome(req)}
-                          >
-                            {isResending && <Spinner className="size-3.5" />}
-                            Resend welcome
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                    </div>
+                  );
+                },
+              },
+            ]}
+          />
         </Card>
       )}
 
