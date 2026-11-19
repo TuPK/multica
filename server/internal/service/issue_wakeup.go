@@ -447,7 +447,7 @@ func (s *IssueWakeupService) save(ctx context.Context, issueID, member, source, 
 	onTimeout := pgtype.Text{String: in.OnTimeout, Valid: in.OnTimeout != ""}
 	var condition []byte
 	if hasWakeupCondition(in.Condition) {
-		normalized, hints, e := validateCondition(ctx, tx, issue, in.Condition)
+		normalized, hints, e := validateCondition(ctx, tx, issue, member, in.Condition)
 		if e != nil {
 			return out, e
 		}

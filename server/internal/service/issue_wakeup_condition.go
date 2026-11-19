@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -75,9 +76,25 @@ func badCondition(msg string) error {
 	return fmt.Errorf("%w: %w: %s", ErrWakeupInput, errBadCondition, msg)
 }
 
+// creatorSees reports whether the rule's creator sees an issue of projectID.
+// A creator who is no longer a member sees nothing, so the answer is closed.
+func creatorSees(ctx context.Context, q projectaccess.Querier, workspaceID, creator, projectID pgtype.UUID) (bool, error) {
+	if !creator.Valid {
+		return false, nil
+	}
+	scope, err := projectaccess.ForViewer(ctx, q, workspaceID, creator)
+	if errors.Is(err, projectaccess.ErrNotMember) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return scope.Allows(projectID), nil
+}
+
 // validateCondition normalizes a condition against the issue's workspace and
 // returns the same-issue events that should trigger an early evaluation.
-func validateCondition(ctx context.Context, tx pgx.Tx, issue db.Issue, raw json.RawMessage) (json.RawMessage, []string, error) {
+func validateCondition(ctx context.Context, tx pgx.Tx, issue db.Issue, creator pgtype.UUID, raw json.RawMessage) (json.RawMessage, []string, error) {
 	var c WakeupCondition
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
@@ -203,7 +220,15 @@ func validateCondition(ctx context.Context, tx pgx.Tx, issue db.Issue, raw json.
 			return nil, nil, badCondition("state must be done, ended, in_review or blocked")
 		}
 		var identifier string
-		err = tx.QueryRow(ctx, "SELECT ws.issue_prefix||'-'||i.number FROM issue i JOIN workspace ws ON ws.id=i.workspace_id WHERE i.workspace_id=$1 AND i.id=$2", ws, id).Scan(&identifier)
+		var otherProject pgtype.UUID
+		err = tx.QueryRow(ctx, "SELECT ws.issue_prefix||'-'||i.number, i.project_id FROM issue i JOIN workspace ws ON ws.id=i.workspace_id WHERE i.workspace_id=$1 AND i.id=$2", ws, id).Scan(&identifier, &otherProject)
+		if err == nil {
+			// A hidden issue is unknown to its watcher (spec 7.1 rule 5).
+			var seen bool
+			if seen, err = creatorSees(ctx, db.New(tx), ws, creator, otherProject); err == nil && !seen {
+				err = pgx.ErrNoRows
+			}
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil, badCondition("unknown issue")
 		}
@@ -395,7 +420,16 @@ func (s *IssueWakeupService) evaluateCondition(ctx context.Context, tx pgx.Tx, q
 	case "other_issue":
 		var status string
 		var number int32
-		err := tx.QueryRow(ctx, "SELECT status,number FROM issue WHERE id=$1 AND workspace_id=$2", c.IssueID, w.WorkspaceID).Scan(&status, &number)
+		var otherProject pgtype.UUID
+		err := tx.QueryRow(ctx, "SELECT status,number,project_id FROM issue WHERE id=$1 AND workspace_id=$2", c.IssueID, w.WorkspaceID).Scan(&status, &number, &otherProject)
+		if err == nil {
+			// The rule reads as the person who made it; an issue they no longer
+			// see reads like a deleted one.
+			var seen bool
+			if seen, err = creatorSees(ctx, q, w.WorkspaceID, w.CreatedBy, otherProject); err == nil && !seen {
+				err = pgx.ErrNoRows
+			}
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, "", map[string]any{"deleted": true}, nil
 		}

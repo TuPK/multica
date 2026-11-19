@@ -120,20 +120,37 @@ func (q *Queries) DeleteWorkspaceBriefInquiries(ctx context.Context, workspaceID
 }
 
 const listBriefInquiriesForDigest = `-- name: ListBriefInquiriesForDigest :many
-SELECT id, workspace_id, asked_by_agent_id, squad_id, issue_id, comment_id, question, asked_on, answered_at, answer_excerpt, created_at FROM brief_inquiry
-WHERE workspace_id = $1 AND asked_on >= $2
-ORDER BY asked_on DESC, created_at DESC
+SELECT bi.id, bi.workspace_id, bi.asked_by_agent_id, bi.squad_id, bi.issue_id, bi.comment_id, bi.question, bi.asked_on, bi.answered_at, bi.answer_excerpt, bi.created_at FROM brief_inquiry bi
+LEFT JOIN issue scope_i ON scope_i.id = bi.issue_id
+WHERE bi.workspace_id = $1::uuid AND bi.asked_on >= $2::date
+  AND (bi.issue_id IS NULL OR scope_i.id IS NOT NULL)
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (scope_i.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))
+ORDER BY bi.asked_on DESC, bi.created_at DESC
 `
 
 type ListBriefInquiriesForDigestParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	AskedOn     pgtype.Date `json:"asked_on"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 // Inquiries asked on or after the given UTC day, newest first. The cap bounds
 // each day to a few rows, so the digest takes them all.
+// An inquiry about an issue of a project the viewer cannot see is left out.
 func (q *Queries) ListBriefInquiriesForDigest(ctx context.Context, arg ListBriefInquiriesForDigestParams) ([]BriefInquiry, error) {
-	rows, err := q.db.Query(ctx, listBriefInquiriesForDigest, arg.WorkspaceID, arg.AskedOn)
+	rows, err := q.db.Query(ctx, listBriefInquiriesForDigest,
+		arg.WorkspaceID,
+		arg.AskedOn,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

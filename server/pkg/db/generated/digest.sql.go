@@ -766,11 +766,20 @@ SELECT
 FROM task_usage_hourly
 WHERE workspace_id = $1::uuid
   AND bucket_hour >= date_trunc('hour', $2::timestamptz)
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (task_usage_hourly.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = task_usage_hourly.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = task_usage_hourly.project_id AND scope_p.access = 'workspace')))
 `
 
 type DigestWorkspaceUsageParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Since       pgtype.Timestamptz `json:"since"`
+	ScopeMode   string             `json:"scope_mode"`
+	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
 }
 
 type DigestWorkspaceUsageRow struct {
@@ -783,7 +792,12 @@ type DigestWorkspaceUsageRow struct {
 // hourly rollup. Runs without a provider-reported cost are priced client-side
 // from a rate table, so they add tokens here but nothing to the cost.
 func (q *Queries) DigestWorkspaceUsage(ctx context.Context, arg DigestWorkspaceUsageParams) (DigestWorkspaceUsageRow, error) {
-	row := q.db.QueryRow(ctx, digestWorkspaceUsage, arg.WorkspaceID, arg.Since)
+	row := q.db.QueryRow(ctx, digestWorkspaceUsage,
+		arg.WorkspaceID,
+		arg.Since,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	var i DigestWorkspaceUsageRow
 	err := row.Scan(&i.InputTokens, &i.OutputTokens, &i.CostUsdTicks)
 	return i, err
