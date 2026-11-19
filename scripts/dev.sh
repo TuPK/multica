@@ -44,10 +44,11 @@ set +a
 . scripts/local-env.sh
 
 # ---------- Install dependencies ----------
-if [ ! -d node_modules ]; then
-  echo "==> Installing dependencies..."
-  pnpm install
-fi
+# Always run: pnpm is incremental, and a node_modules left half-linked by an
+# earlier install (a dangling next symlink) passes a directory check but fails
+# at `pnpm dev:web`.
+echo "==> Installing dependencies..."
+pnpm install
 
 # ---------- Database ----------
 bash scripts/ensure-postgres.sh "$ENV_FILE"
