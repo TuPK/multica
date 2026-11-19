@@ -53,6 +53,14 @@ const SCREEN_PATHS: Record<
   audit: "/audit",
 };
 
+function safeDecodeSegment(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
+
 function parseRoute(pathname: string): RouteState {
   const clean = pathname.replace(/\/+$/, "") || "/";
   if (clean === "/") {
@@ -62,7 +70,7 @@ function parseRoute(pathname: string): RouteState {
     return { screen: "tenants", tenantId: null, userId: null };
   }
   if (clean.startsWith("/tenants/")) {
-    const id = decodeURIComponent(clean.slice("/tenants/".length));
+    const id = safeDecodeSegment(clean.slice("/tenants/".length));
     if (id && !id.includes("/")) {
       return { screen: "tenant-detail", tenantId: id, userId: null };
     }
@@ -71,7 +79,7 @@ function parseRoute(pathname: string): RouteState {
     return { screen: "users", tenantId: null, userId: null };
   }
   if (clean.startsWith("/users/")) {
-    const id = decodeURIComponent(clean.slice("/users/".length));
+    const id = safeDecodeSegment(clean.slice("/users/".length));
     if (id && !id.includes("/")) {
       return { screen: "user-detail", tenantId: null, userId: id };
     }
@@ -125,6 +133,15 @@ export function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  const isUnauthorizedRoute = Boolean(me && !canAccessScreen(route.screen, me.role));
+
+  useEffect(() => {
+    if (!isUnauthorizedRoute) return;
+    if (window.location.pathname !== "/") {
+      window.history.replaceState(null, "", "/");
+    }
+  }, [isUnauthorizedRoute]);
 
   if (isLoading) {
     return (

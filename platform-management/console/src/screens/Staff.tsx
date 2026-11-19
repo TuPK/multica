@@ -153,7 +153,7 @@ export function Staff() {
       )}
 
       {!isLoading && !isError && staffList.length > 0 && (
-        <div className="rounded-lg border border-surface-border bg-surface">
+        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
           <Table>
             <TableHeader>
               <TableRow>

@@ -146,7 +146,7 @@ function MonthlyUsageSection({
                   <TableBody>
                     {usageData.rows.map((row) => (
                       <TableRow key={`${row.day}-${row.meter}`}>
-                        <TableCell className="font-mono text-caption">{row.day}</TableCell>
+                        <TableCell className="font-mono text-caption tabular-nums">{row.day}</TableCell>
                         <TableCell className="font-mono text-caption">{row.meter}</TableCell>
                         <TableCell
                           className="text-right tabular-nums"
@@ -219,7 +219,7 @@ function MonthlyUsageSection({
                     {usageData.unpaid_orders.map((order) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-mono text-caption">{order.id}</TableCell>
-                        <TableCell className="font-mono text-caption text-muted-foreground">
+                        <TableCell className="font-mono text-caption text-muted-foreground tabular-nums">
                           {order.period_start && order.period_end
                             ? `${order.period_start.slice(0, 10)} – ${order.period_end.slice(0, 10)}`
                             : "-"}

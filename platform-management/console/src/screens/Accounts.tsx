@@ -620,9 +620,14 @@ export function Accounts({ userRole }: AccountsProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">{req.workspace_name}</div>
+                      <div className="max-w-52 truncate font-medium" title={req.workspace_name}>
+                        {req.workspace_name}
+                      </div>
                       {req.workspace_slug && (
-                        <div className="font-mono text-caption text-muted-foreground">
+                        <div
+                          className="max-w-40 truncate font-mono text-caption text-muted-foreground"
+                          title={req.workspace_slug}
+                        >
                           {req.workspace_slug}
                         </div>
                       )}

@@ -21,7 +21,20 @@ vi.mock("./api/hooks", () => ({
     isError: false,
   }),
   useTenants: () => ({
-    data: { tenants: [], next_cursor: null },
+    data: {
+      tenants: [
+        {
+          id: "t-7",
+          name: "Acme Workspace",
+          slug: "acme",
+          status: "active",
+          member_count: 4,
+          created_at: "2026-11-01T00:00:00Z",
+          last_activity_at: "2026-11-02T00:00:00Z",
+        },
+      ],
+      next_cursor: null,
+    },
     isLoading: false,
     isError: false,
   }),
@@ -55,7 +68,19 @@ vi.mock("./api/hooks", () => ({
   useSetBillingProfileVerified: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateTenantBillingProfile: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUsers: () => ({
-    data: { users: [], next_cursor: null },
+    data: {
+      users: [
+        {
+          id: "u-7",
+          email: "jane@example.com",
+          name: "Jane Doe",
+          status: "active",
+          memberships_count: 2,
+          created_at: "2026-11-01T00:00:00Z",
+        },
+      ],
+      next_cursor: null,
+    },
     isLoading: false,
     isError: false,
   }),
@@ -308,7 +333,7 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Orders" })).toBeInTheDocument();
   });
 
-  it("redirects unauthorized direct URL access to Overview", () => {
+  it("redirects unauthorized direct URL access to Overview and resets pathname", () => {
     window.history.replaceState(null, "", "/staff");
     mockUseMe.mockReturnValue({
       data: { user_id: "u-support", email: "support@example.com", role: "support" },
@@ -319,6 +344,56 @@ describe("App", () => {
     render(<App />);
     expect(screen.getByRole("heading", { name: "Platform Overview" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Staff Management" })).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe("/");
+  });
+
+  it("navigates from SideNav into TenantDetail and UserDetail routes and back", () => {
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<App />);
+    const nav = screen.getByRole("navigation", { name: "Main Navigation" });
+
+    fireEvent.click(within(nav).getByRole("button", { name: /^Tenants$/i }));
+    expect(window.location.pathname).toBe("/tenants");
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    expect(window.location.pathname).toBe("/tenants/t-7");
+    expect(screen.getByRole("heading", { name: "Workspace t-7" })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /^Tenants$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Back to tenants/i }));
+    expect(window.location.pathname).toBe("/tenants");
+    expect(screen.getByRole("heading", { name: "Tenants" })).toBeInTheDocument();
+
+    fireEvent.click(within(nav).getByRole("button", { name: /^Users$/i }));
+    expect(window.location.pathname).toBe("/users");
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    expect(window.location.pathname).toBe("/users/u-7");
+    expect(screen.getByRole("heading", { name: "User u-7" })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /^Users$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Back to users/i }));
+    expect(window.location.pathname).toBe("/users");
+    expect(screen.getByRole("heading", { name: "Users" })).toBeInTheDocument();
+  });
+
+  it("falls back safely to Overview on malformed percent-encoded URLs", () => {
+    window.history.replaceState(null, "", "/tenants/%E0%A4%A");
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<App />);
+    expect(screen.getByRole("heading", { name: "Platform Overview" })).toBeInTheDocument();
   });
 
   it("handles logout", async () => {

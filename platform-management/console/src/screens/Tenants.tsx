@@ -132,7 +132,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
 
       {!isLoading && !isError && tenants.length > 0 && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-surface-border bg-surface">
+          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -149,13 +149,23 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                 {tenants.map((tenant: Tenant) => (
                   <TableRow key={tenant.id}>
                     <TableCell>
-                      <div className="font-medium text-foreground">{tenant.name}</div>
-                      <div className="font-mono text-caption text-muted-foreground">
+                      <div className="max-w-56 truncate font-medium text-foreground" title={tenant.name}>
+                        {tenant.name}
+                      </div>
+                      <div
+                        className="max-w-44 truncate font-mono text-caption text-muted-foreground"
+                        title={tenant.id}
+                      >
                         {tenant.id}
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-caption text-muted-foreground">
-                      {tenant.slug}
+                    <TableCell>
+                      <div
+                        className="max-w-40 truncate font-mono text-caption text-muted-foreground"
+                        title={tenant.slug}
+                      >
+                        {tenant.slug}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={tenant.status} />
