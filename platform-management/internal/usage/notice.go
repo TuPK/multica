@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/platform-management/internal/billing"
+	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 )
 
@@ -24,6 +25,10 @@ const maxRecipients = 50
 // fails, as the lifecycle notices are, so the month has at most one email.
 func (r *Rater) noticeEighty(ctx context.Context, ws pgtype.UUID, accrued, limit int64, now time.Time) error {
 	id := uuidText(ws)
+	terms, err := db.New(r.pool).GetUsageTerms(ctx, ws)
+	if err != nil {
+		return err
+	}
 	n := lifecycle.Notice{WorkspaceID: id, Key: "usage_80:" + now.UTC().Format("2006-01"), Kind: billing.NoticeKindUsage80}
 	inserted, err := r.notices.InsertNotice(ctx, n)
 	if err != nil || !inserted {
@@ -31,7 +36,7 @@ func (r *Rater) noticeEighty(ctx context.Context, ws pgtype.UUID, accrued, limit
 	}
 	c, err := r.notices.Contact(ctx, id)
 	if err == nil && len(c.Emails) > 0 {
-		subject, body := noticeText(c, r.cfg.AppURL, accrued, limit)
+		subject, body := noticeText(c, r.cfg.AppURL, terms.Currency, accrued, limit)
 		err = r.cfg.Mail.Send(ctx, lifecycle.Message{To: c.Emails[:min(len(c.Emails), maxRecipients)], Subject: subject, Body: body})
 	}
 	if err != nil || len(c.Emails) == 0 {
@@ -45,13 +50,14 @@ func (r *Rater) noticeEighty(ctx context.Context, ws pgtype.UUID, accrued, limit
 
 // noticeText is a first draft of the copy, for the owner to review: a Vietnamese
 // body and a subject in English and in Vietnamese.
-func noticeText(c lifecycle.Contact, appURL string, accrued, limit int64) (subject, body string) {
+func noticeText(c lifecycle.Contact, appURL, currency string, accrued, limit int64) (subject, body string) {
 	name := oneLine(c.Name)
+	code := strings.ToUpper(currency)
 	settings := strings.TrimRight(appURL, "/") + "/" + url.PathEscape(c.Slug) + "/settings"
 	subject = fmt.Sprintf("[Multica] %s: usage reached 80%% of the credit limit / Mức dùng đạt 80%% hạn mức công nợ", name)
 	body = fmt.Sprintf(`Xin chào,
 
-Mức dùng chưa lập hóa đơn của workspace "%s" là %d VND, đã đạt 80%% hạn mức công nợ %d VND.
+Mức dùng chưa lập hóa đơn của workspace "%s" là %d %s, đã đạt 80%% hạn mức công nợ %d %s.
 
 Khi đạt hạn mức, hệ thống lập ngay một hóa đơn tạm cho phần đã dùng. Việc dùng không bị chặn.
 
@@ -59,7 +65,7 @@ Xem mức dùng tại: %s
 
 Bạn nhận thư này vì bạn là chủ sở hữu hoặc quản trị viên của workspace.
 Multica
-`, name, accrued, limit, settings)
+`, name, accrued, code, limit, code, settings)
 	return subject, body
 }
 

@@ -74,7 +74,8 @@ type Billing struct {
 	// VATRate is BILLING_VAT_RATE; 0.10 when it is not set.
 	VATRate billing.Rate
 	// Currencies is PLATFORM_CURRENCIES: the currencies the platform sells in,
-	// lower case, in the order given; ["vnd"] when it is not set.
+	// lower case, in the order given; only the default currency when it is not
+	// set. Amounts are minor units of the plan currency.
 	Currencies []string
 	// BusinessDiscountRequiresVerification is PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION;
 	// true when it is not set. With it on, the Business discount on usage
@@ -93,7 +94,8 @@ type Billing struct {
 
 // VATRateOf returns the VAT rate for a currency. Only the default currency has
 // BILLING_VAT_RATE; any other currency is 0 (spec 7.4 rule 4). No
-// BILLING_VAT_RATE_<CURRENCY> variable is read yet, as vnd is the only enabled currency.
+// BILLING_VAT_RATE_<CURRENCY> variable is read yet, as the default currency is
+// the only one enabled by default.
 func (b Billing) VATRateOf(currency string) billing.Rate {
 	if currency == money.Default {
 		return b.VATRate
@@ -479,8 +481,8 @@ const (
 
 // loadPayments reads the payment providers, the webhook port and the webhook
 // body limit. A provider that needs a webhook secret refuses the start when the
-// secret is missing, and the platform must have a provider for vnd, the only
-// currency this release bills.
+// secret is missing, and the platform must have a provider for the default
+// currency, which amounts are billed in as minor units of the plan currency.
 func loadPayments(get func(string) string, getenv func(string) string, fail func(variable, reason string), bank billing.BankDetails, apiPort, consolePort string) Payments {
 	secret := func(provider string) string {
 		return strings.TrimSpace(getenv("PAYMENT_WEBHOOK_SECRET_" + strings.ToUpper(provider)))

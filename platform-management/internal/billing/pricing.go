@@ -87,8 +87,9 @@ func daysCeil(d time.Duration) int64 {
 //
 //	planSeatPrice x seats x R / P
 //
-// rounded half up to whole VND. It is before VAT. now must fall inside the
-// period: a purchase before the start or at or after the end is refused.
+// rounded half up to whole minor units of the plan currency. It is before VAT.
+// now must fall inside the period: a purchase before the start or at or after
+// the end is refused.
 func ProrateAdditionalSeats(planSeatPrice int64, seats int, periodStart, periodEnd, now time.Time) (int64, error) {
 	if planSeatPrice <= 0 {
 		return 0, errors.New("billing: the seat price must be positive")

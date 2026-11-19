@@ -349,12 +349,16 @@ func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overv
 	if err != nil {
 		return Overview{}, err
 	}
+	byCurrency, err := r.pendingByCurrency(ctx)
+	if err != nil {
+		return Overview{}, err
+	}
 	totals, err := r.usage.Totals(ctx, time.Now())
 	if err != nil {
 		return Overview{}, err
 	}
 	o := Overview{
-		PendingOrders: pending, Usage: totals,
+		PendingOrders: pending, PendingByCurrency: byCurrency, Usage: totals,
 		WorkspacesTotal: total, NonActive: make(map[string]int64, len(rows)), Signups: signups,
 		ByPlan: make(map[string]int64, len(plans)),
 	}
@@ -365,6 +369,30 @@ func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overv
 		o.ByPlan[row.PlanKey] = row.Workspaces
 	}
 	return o, nil
+}
+
+// pendingByCurrencySQL sums the pending orders once per currency.
+const pendingByCurrencySQL = `SELECT currency, count(*)::bigint, COALESCE(sum(amount), 0)::bigint, COALESCE(sum(vat_amount), 0)::bigint
+	FROM billing_order WHERE status = 'pending' GROUP BY currency`
+
+func (r *PgxReader) pendingByCurrency(ctx context.Context) (map[string]CurrencyTotal, error) {
+	rows, err := r.pool.Query(ctx, pendingByCurrencySQL)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]CurrencyTotal{}
+	for rows.Next() {
+		var (
+			currency string
+			t        CurrencyTotal
+		)
+		if err := rows.Scan(&currency, &t.Orders, &t.Amount, &t.VATAmount); err != nil {
+			return nil, err
+		}
+		out[currency] = t
+	}
+	return out, rows.Err()
 }
 
 func orderFromRow(r db.BillingOrder, workspaceName pgtype.Text) OrderRow {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/money"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
@@ -27,10 +28,12 @@ type UsageActivation struct {
 	IdempotencyKey string
 	// Buyer is a JSON object snapshot of the billing profile. Empty means {}.
 	Buyer json.RawMessage
+	// Currency is the plan's currency; empty means money.Default.
+	Currency string
 }
 
 // ActivateUsage makes the workspace's subscription active on a usage plan for
-// the current UTC calendar month, and writes a subscribe order for 0 VND that is
+// the current UTC calendar month, and writes a subscribe order for 0 in the plan's currency that is
 // already paid, so the activation has a row in the order history. It runs in
 // one transaction with its audit rows. A repeated idempotency key returns the
 // first order with created == false and writes nothing.
@@ -46,6 +49,10 @@ func (s *Service) ActivateUsage(ctx context.Context, a UsageActivation) (o Order
 	if a.PlanKey == "" || a.IdempotencyKey == "" {
 		return Order{}, false, errors.New("billing: plan key and idempotency key are required")
 	}
+	currency := a.Currency
+	if currency == "" {
+		currency = money.Default
+	}
 	buyer := a.Buyer
 	if len(buyer) == 0 {
 		buyer = json.RawMessage(`{}`)
@@ -60,7 +67,7 @@ func (s *Service) ActivateUsage(ctx context.Context, a UsageActivation) (o Order
 	n := NewOrder{
 		Draft: Draft{
 			WorkspaceID: ws, Kind: KindSubscribe, PlanKey: a.PlanKey, Interval: IntervalMonth,
-			Seats: 0, Amount: 0, VATAmount: 0, Currency: "vnd", Buyer: buyer,
+			Seats: 0, Amount: 0, VATAmount: 0, Currency: currency, Buyer: buyer,
 			PeriodStart: &start, PeriodEnd: &end, IdempotencyKey: a.IdempotencyKey, CreatedBy: by,
 		},
 		Provider: s.d.Provider, TransferCode: code, CreatedAt: now, ExpiresAt: now.Add(OrderLifetime),

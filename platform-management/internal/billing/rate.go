@@ -3,7 +3,8 @@
 // implementation, and the transaction that applies a confirmed payment to a
 // workspace's subscription (spec 5.8).
 //
-// Money is integer VND. No amount is ever held in a floating-point number.
+// Money is integer minor units of the plan currency. No amount is ever held in
+// a floating-point number.
 package billing
 
 import (

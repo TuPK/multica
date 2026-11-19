@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/multica-ai/multica/platform-management/internal/money"
 )
 
 // ProviderSePay names the SePay bank-transfer webhook provider.
@@ -25,21 +27,22 @@ var (
 	ErrTransferCodeAmbiguous = errors.New("billing: note contains more than one transfer code")
 )
 
-const sepayCurrency = "VND"
-
 var sepayZone = time.FixedZone("UTC+7", 7*3600)
 
 // SePay is the SePay provider: it confirms payment from a signed webhook.
 type SePay struct {
 	bank   BankDetails
 	secret []byte
+	// currency is the currency of every notice, in upper case. The SePay payload
+	// carries none, so it is the currency the registry maps to this provider.
+	currency string
 }
 
 var _ PaymentProvider = (*SePay)(nil)
 
 // NewSePayProvider returns the SePay provider for the bank account and webhook secret.
 func NewSePayProvider(bank BankDetails, secret string) *SePay {
-	return &SePay{bank: bank, secret: []byte(secret)}
+	return &SePay{bank: bank, secret: []byte(secret), currency: strings.ToUpper(money.Default)}
 }
 
 // CreatePaymentRequest returns the manual instructions, named for SePay.
@@ -93,7 +96,7 @@ func (p *SePay) ParseNotification(body []byte, headers http.Header) (Notificatio
 		ProviderRef:  id,
 		Amount:       in.Amount,
 		EventID:      id,
-		Currency:     sepayCurrency,
+		Currency:     p.currency,
 		OccurredAt:   at,
 	}, nil
 }

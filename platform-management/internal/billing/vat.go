@@ -7,8 +7,9 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/money"
 )
 
-// WithVAT returns the VAT on amount and the total, in whole VND. The VAT is
-// amount x rate rounded half up. amount is the price before VAT.
+// WithVAT returns the VAT on amount and the total, in whole minor units of the
+// order currency. The VAT is amount x rate rounded half up. amount is the price
+// before VAT.
 func WithVAT(amount int64, rate Rate) (vat, total int64, err error) {
 	if amount < 0 {
 		return 0, 0, errors.New("billing: amount must not be negative")

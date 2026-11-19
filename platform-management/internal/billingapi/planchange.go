@@ -178,12 +178,7 @@ func (h *Handler) quotePlanChange(w http.ResponseWriter, r *http.Request, ws str
 			h.internalError(w, r, "read current plan", err)
 			return quotedChange{}, false
 		}
-		// Spec 7.4, rule 1: a paid subscription cannot move to a plan in another currency.
-		if cur.PlanKey != plan.FreeKey && target.Currency != curPlan.Currency {
-			writeJSON(w, http.StatusConflict, map[string]any{
-				"error": "the plan is priced in another currency than the current paid plan",
-				"code":  codePlanChangeUnavailable, "reason": "currency_mismatch",
-			})
+		if refuseCurrencyChange(w, cur, curPlan, target) {
 			return quotedChange{}, false
 		}
 	}
@@ -199,6 +194,20 @@ func (h *Handler) quotePlanChange(w http.ResponseWriter, r *http.Request, ws str
 		return quotedChange{}, false
 	}
 	return quotedChange{Quote: q, target: target, cur: cur}, true
+}
+
+// refuseCurrencyChange answers 409 plan_change_unavailable when a paid
+// subscription would move to a plan priced in another currency (spec 7.4,
+// rule 1). It reports whether it answered.
+func refuseCurrencyChange(w http.ResponseWriter, cur subscription.Subscription, curPlan, target plan.Plan) bool {
+	if cur.PlanKey == plan.FreeKey || target.Currency == curPlan.Currency {
+		return false
+	}
+	writeJSON(w, http.StatusConflict, map[string]any{
+		"error": "the plan is priced in another currency than the current paid plan",
+		"code":  codePlanChangeUnavailable, "reason": "currency_mismatch",
+	})
+	return true
 }
 
 // withinAccountSeats refuses seats above PLATFORM_INDIVIDUAL_MAX_SEATS for an

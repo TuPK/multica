@@ -59,15 +59,14 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 
 | File | Term | Function or field | Kind | Holds | Status | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| `platform-management/cmd/platform-server/main.go` | `currency` | `run` | literal | code | todo | Line 219 looks up the usage provider with the literal "vnd" (ForCurrency("vnd")). P44.2b slice (boot wiring): use money.Default. |
-| `platform-management/cmd/platform-server/main.go` | `vnd` | `run` | literal | code | todo | Literals "vnd" at line 219 (ForCurrency) and line 454 (VATRateOf("vnd")), plus the comment at line 217. P44.2b slice (boot wiring): use money.Default and the usage plan currency. |
+| `platform-management/cmd/platform-server/main.go` | `currency` | `run` | field | code | ruled | The usage provider lookup and the e-invoice VAT rate take money.Default (ForCurrency, VATRateOf); no literal. |
 | `platform-management/internal/accountrequest/finalize.go` | `currency` | `writeGrant`, `orderDetail` | field | code | ruled | Lower-cases the plan currency; an empty one falls back to money.Default (P44.2). |
 | `platform-management/internal/billing/changeorder.go` | `currency` | `CreateChangeOrder`, `RenewalDraft` | field | code | ruled | Change order and renewal drafts take Currency from the target or current plan; no literal. |
 | `platform-management/internal/billing/order.go` | `currency` | `Order.Currency` | field | code | ruled | Order.Currency declaration only; orders take the currency from the plan (billingapi.go:483) or the change order. The usage.go literal is its own row. |
 | `platform-management/internal/billing/pgx.go` | `currency` | `orderFromRow`, `InsertOrder` | field | code | todo | Stores the provider's notice currency as received; no check against PLATFORM_CURRENCIES on receipt. matchNotice (reconcile_match.go:29) compares it with the order only. P44.2b slice (notice check): validate it against the rule set when the notice arrives. |
-| `platform-management/internal/billing/pricing.go` | `vnd` | `daysCeil` | text | comment | todo | Comment at line 90 says amounts round "to whole VND". P44.2b slice (comment reword): say whole minor units of the plan currency. |
+| `platform-management/internal/billing/pricing.go` | `currency` | `daysCeil` | text | comment | ruled | Comment says amounts round to whole minor units of the plan currency. |
 | `platform-management/internal/billing/provider.go` | `currency` | `Instructions.Currency`, `file-level comment`, `Notification.Currency`, `CreatePaymentRequest` | field | code | todo | Stores the provider's notice currency as received; no check against PLATFORM_CURRENCIES on receipt. matchNotice (reconcile_match.go:29) compares it with the order only. P44.2b slice (notice check): validate it against the rule set when the notice arrives. |
-| `platform-management/internal/billing/rate.go` | `vnd` | `file-level comment` | text | comment | todo | Package comment at line 6 says "Money is integer VND". P44.2b slice (comment reword): say integer minor units. |
+| `platform-management/internal/billing/rate.go` | `currency` | `file-level comment` | text | comment | ruled | Package comment says money is integer minor units of the plan currency. |
 | `platform-management/internal/money/exponent.go` | `currency` | `Exponent` | field | code | ruled | The rule set itself: the exponent table of enabled currencies (P44.2). |
 | `platform-management/internal/money/exponent.go` | `vnd` | `exponents` | literal | code | ruled | The rule set itself: the one place the vnd exponent (0) lives (P44.2). |
 | `platform-management/internal/money/money.go` | `currency` | `Default` | field | code | ruled | The rule set itself: the package doc and the default currency constant (P44.2). |
@@ -75,23 +74,20 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 | `platform-management/internal/billing/reconcile.go` | `currency` | `noticeEntry` | field | code | todo | Stores the provider's notice currency as received; no check against PLATFORM_CURRENCIES on receipt. matchNotice (reconcile_match.go:29) compares it with the order only. P44.2b slice (notice check): validate it against the rule set when the notice arrives. |
 | `platform-management/internal/billing/reconcile_match.go` | `currency` | `matchNotice` | field | code | todo | Stores the provider's notice currency as received; no check against PLATFORM_CURRENCIES on receipt. matchNotice (reconcile_match.go:29) compares it with the order only. P44.2b slice (notice check): validate it against the rule set when the notice arrives. |
 | `platform-management/internal/billing/registry.go` | `currency` | `file-level comment`, `ErrNoProvider`, `NewRegistry`, `ForCurrency` | field | code | ruled | Registry maps a currency to a provider; CurrencyGate looks up the draft currency (line 84) and refuses with ErrNoProvider. No literal on these lines. |
-| `platform-management/internal/billing/registry.go` | `vnd` | `file-level comment`, `NewRegistry` | literal | code | todo | Empty PAYMENT_PROVIDERS becomes the literal "vnd=manual" (line 24, comment line 20). P44.2b slice (registry default): build the default spec from money.Default. |
-| `platform-management/internal/billing/sepay.go` | `currency` | `sepayCurrency`, `ParseNotification` | literal | code | todo | sepayCurrency = "VND" (line 28) is the currency of every SePay notice (line 96). P44.2b slice (SePay adapter): take the currency from the provider mapping or the matched order. |
-| `platform-management/internal/billing/sepay.go` | `vnd` | `sepayCurrency` | literal | code | todo | sepayCurrency = "VND" (line 28). P44.2b slice (SePay adapter): take the currency from the provider mapping or the matched order. |
+| `platform-management/internal/billing/sepay.go` | `currency` | `SePay`, `ParseNotification` | field | code | ruled | SePay.currency is set by the registry from the currency mapped to the provider (default money.Default); ParseNotification copies it into every notice. No literal. |
 | `platform-management/internal/billing/service.go` | `currency` | `currencyPattern`, `Draft.Currency`, `validate`, `orderDetail` | field | code | ruled | Draft.Currency comes from the plan or order; validate checks the three-letter shape (line 206) and holds no code. Enabled set: plan.ValidateCurrency at plan save, CurrencyGate at order creation. |
-| `platform-management/internal/billing/usage.go` | `currency` | `ActivateUsage` | literal | code | todo | ActivateUsage sets Currency: "vnd" on the zero-amount order (line 63). P44.3 (usage currency): read the plan currency for a.PlanKey. |
-| `platform-management/internal/billing/usage.go` | `vnd` | `file-level comment`, `ActivateUsage` | literal | code | todo | Literal "vnd" at line 63 and the comment "0 VND" at line 33. P44.3 (usage currency): read the plan currency for a.PlanKey and reword the comment. |
-| `platform-management/internal/billing/vat.go` | `vnd` | `file-level comment` | text | comment | todo | Comment at line 10 says VAT is "in whole VND". P44.2b slice (comment reword): say minor units of the order currency. |
+| `platform-management/internal/billing/usage.go` | `currency` | `ActivateUsage` | field | code | ruled | ActivateUsage writes UsageActivation.Currency, which checkoutUsage takes from the plan; an empty one falls back to money.Default. No literal. |
+| `platform-management/internal/billing/vat.go` | `currency` | `file-level comment` | text | comment | ruled | Comment says VAT is in whole minor units of the order currency. |
 | `platform-management/internal/billing/webhook.go` | `currency` | `serve` | field | code | todo | Stores the provider's notice currency as received; no check against PLATFORM_CURRENCIES on receipt. matchNotice (reconcile_match.go:29) compares it with the order only. P44.2b slice (notice check): validate it against the rule set when the notice arrives. |
 | `platform-management/internal/billingapi/billingapi.go` | `currency` | `checkout`, `previewResponse.Currency`, `preview`, `purchaseRequest.Currency`, `purchaseResponse.Currency`, `purchase` | field | code | ruled | Order and response currency come from the plan (lines 483, 622, 669); the purchase request currency is compared with the plan currency (line 670). No literal on these lines. |
-| `platform-management/internal/billingapi/billingapi.go` | `vnd` | `refuseUnpaidUsage` | text | comment | todo | Comment at line 332 says the activation order is "paid for 0 VND". P44.2b slice (comment reword) with the usage.go row: say 0 in the plan currency. |
 | `platform-management/internal/billingapi/planchange.go` | `currency` | `planChangePreviewResponse.Currency`, `planChangeOrderResponse.Currency`, `previewPlanChange`, `writeChangeOrder` | field | code | ruled | Plan-change preview and order responses take Currency from the target plan or the order; the paid-plan check compares with the current plan. |
-| `platform-management/internal/config/config.go` | `currency` | `Error`, `EmptyBankVariables`, `loadBilling`, `loadPayments` | literal | code | todo | Lines 77-98 and 406-415 use money.Default and money.Exponent, but the VATRateOf comment at line 96 still says "as vnd is the only enabled currency". P44.2b slice (comment reword). |
-| `platform-management/internal/config/config.go` | `vnd` | `loadBilling`, `loadPayments` | literal | code | todo | Comments at lines 77, 96 and 482 name vnd as the default or only currency. The code uses money.Default. P44.2b slice (comment reword). |
+| `platform-management/internal/config/config.go` | `currency` | `Error`, `EmptyBankVariables`, `loadBilling`, `loadPayments` | field | code | ruled | Uses money.Default and money.Exponent; the comments say minor units of the plan currency. No literal. |
 | `platform-management/internal/console/einvoices.go` | `currency` | `ListEinvoices`, `toEinvoiceJSON` | field | code | ruled | List row and JSON currency come from the issuance row (lines 78, 103, 232); no literal. File has uncommitted edits from another session; classified as in the working tree. |
 | `platform-management/internal/console/orders.go` | `currency` | `orderJSON.Currency`, `toOrderJSON`, `cancelOrder` | field | code | ruled | Order JSON and the cancel audit detail take Currency from the order row; no literal. |
 | `platform-management/internal/console/payment_notices.go` | `currency` | `listEinvoices`, `noticeColumns` | field | code | ruled | List columns and the candidate lookup use the stored notice and order currency (lines 59, 73, 133); no literal. |
 | `platform-management/internal/console/pgx.go` | `currency` | `orderFromRow` | field | code | ruled | orderFromRow maps the stored order currency; no literal. |
+| `platform-management/internal/console/read.go` | `currency` | `overview` | field | code | ruled | Overview JSON groups the pending orders by their own order currency (pending_by_currency); no literal and no cross-currency sum. |
+| `platform-management/internal/console/store.go` | `currency` | `Overview.PendingByCurrency`, `CurrencyTotal` | field | code | ruled | Overview and CurrencyTotal hold the pending order sums keyed by order currency; no literal. |
 | `platform-management/internal/db/models.go` | `currency` | `BillingOrder.Currency`, `EinvoiceIssuance.Currency`, `PaymentNotice.Currency`, `Plan.Currency` | field | code | ruled | sqlc model fields generated from the SQL (lines 394, 935, 1986, 2036); no literal. |
 | `platform-management/internal/db/models.go` | `usd` | `file-level comment` | text | comment | exempt | Comment on provider-reported AI cost in 1e-10 USD; agent cost, not platform billing. |
 | `platform-management/internal/invoice/pgx.go` | `currency` | `insert`, `ReplaceIssued`, `fromRow` | field | code | ruled | Insert and row mapping copy the order currency (lines 137, 318, 380); no literal. |
@@ -107,13 +103,12 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 | `platform-management/internal/plan/pgx.go` | `currency` | `InsertIfAbsent`, `FromRow`, `insertParams.Currency`, `toInsertParams` | field | code | todo | Seed insert path (InsertIfAbsent) writes the catalogue currency without a check against PLATFORM_CURRENCIES. P44.2b slice (plan seed): validate it before insert. |
 | `platform-management/internal/plan/currency.go` | `currency` | `ValidateCurrency` | field | code | ruled | The enabled-set check on plan save: a currency outside PLATFORM_CURRENCIES is refused (P44.2b slice 3a). |
 | `platform-management/internal/plan/plan.go` | `currency` | `IsUnlimited`, `Plan.Currency`, `Catalogue`, `Validate` | field | code | todo | Plan.Currency is checked by pattern only; Catalogue seeds "vnd" unchecked. Save-time check is plan.ValidateCurrency (subscription/console.go:529). P44.2b slice (plan seed): validate the catalogue currency against the enabled set. |
-| `platform-management/internal/plan/plan.go` | `vnd` | `IsUnlimited` | text | comment | todo | Comment at line 96 says "VND has no decimals". P44.2b slice (comment reword): refer to money.Exponent. |
 | `platform-management/internal/subscription/api.go` | `currency` | `priceJSON.Currency`, `listedPlanJSON.Currency`, `buildPrices` | field | code | ruled | Price and listed-plan JSON take Currency from the plan; no literal. |
 | `platform-management/internal/subscription/console.go` | `currency` | `putPlanBody.Currency`, `putPlan` | field | code | ruled | Plan save keeps the stored currency when the body omits it, refuses a change while in use, and checks the code with plan.ValidateCurrency against PLATFORM_CURRENCIES. |
-| `platform-management/internal/subscription/quote.go` | `vnd` | `conflict` | text | comment | todo | Comment at line 197 says proration rounds "to whole VND". P44.2b slice (comment reword): say whole minor units. |
+| `platform-management/internal/subscription/quote.go` | `currency` | `conflict` | text | comment | ruled | Comment says proration rounds to whole minor units of the order currency. |
 | `platform-management/internal/subscription/usage.go` | `currency` | `Usage.Currency` | field | code | ruled | Usage.Currency declaration; usage/view.go fills it from the plan. No literal. |
 | `platform-management/internal/usage/invoicing.go` | `currency` | `invoice`, `invoiceDraft` | field | code | ruled | Usage invoice draft takes the plan currency from GetUsageTerms (P44.3). The "vnd" literal row is removed with its last literal. |
-| `platform-management/internal/usage/notice.go` | `vnd` | `noticeText` | literal | amount with code in message text | todo | noticeText prints the literal "VND" twice in the body (line 54). P44.3 (usage currency): pass the plan currency into noticeText. |
+| `platform-management/internal/usage/notice.go` | `currency` | `noticeEighty`, `noticeText` | field | amount with code in message text | ruled | noticeText prints the plan currency (from GetUsageTerms) beside both amounts; no literal. |
 | `platform-management/internal/usage/view.go` | `currency` | `UsageInput.Currency`, `BuildUsage`, `Usage` | field | code | ruled | Usage block takes Currency from the plan (p.Currency); no literal. |
 | `server/cmd/multica/cmd_company_usage.go` | `usd` | `file-level comment`, `runCompanyUsage` | text | UI label | exempt | CLI heading 'COST (USD TICKS)' for provider-reported AI cost; not platform billing. |
 | `server/internal/cli/update.go` | `vnd` | `fetchReleaseByTag`, `FetchLatestRelease` | text | media type | exempt | HTTP Accept media type application/vnd.github+json; not a currency. |
@@ -220,25 +215,15 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 
 ## Count
 
-- Scanned units: 163. Rows: 163.
-- Rows by Kind: field 64, literal 27, formatter 22, text 50.
-- Rows by Status: todo 64, ruled 42, exempt 57.
+- Scanned units: 158. Rows: 158.
+- Rows by Kind: field 71, literal 17, formatter 22, text 48.
+- Rows by Status: todo 48, ruled 53, exempt 57.
 
 ## Not yet in the currency rule set
 
-The rule set (`platform-management/internal/money`) exists. These 33 rows of Kind `literal` or `formatter` still hold a
+The rule set (`platform-management/internal/money`) exists. These 23 rows of Kind `literal` or `formatter` still hold a
 hard-coded code or format an amount, so P44.2 has to move them onto the rule set:
 
-- `platform-management/cmd/platform-server/main.go` `currency` (literal)
-- `platform-management/cmd/platform-server/main.go` `vnd` (literal)
-- `platform-management/internal/billing/registry.go` `vnd` (literal)
-- `platform-management/internal/billing/sepay.go` `currency` (literal)
-- `platform-management/internal/billing/sepay.go` `vnd` (literal)
-- `platform-management/internal/billing/usage.go` `currency` (literal)
-- `platform-management/internal/billing/usage.go` `vnd` (literal)
-- `platform-management/internal/config/config.go` `currency` (literal)
-- `platform-management/internal/config/config.go` `vnd` (literal)
-- `platform-management/internal/usage/notice.go` `vnd` (literal)
 - `packages/core/api/schemas.ts` `usd` (literal)
 - `packages/views/billing/billing-test-page.tsx` `currency` (formatter)
 - `packages/views/billing/billing-test-page.tsx` `money-format` (formatter)

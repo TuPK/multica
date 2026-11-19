@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/multica-ai/multica/platform-management/internal/money"
 )
 
 // ErrNoProvider means no payment provider is configured for the currency.
@@ -17,11 +19,12 @@ type Registry struct {
 }
 
 // NewRegistry builds a registry from a spec of "currency=provider" pairs
-// separated by commas; an empty spec means "vnd=manual". secret returns the
+// separated by commas; an empty spec maps the default currency to the manual
+// provider. secret returns the
 // webhook secret of an automatic provider, which must not be empty.
 func NewRegistry(spec string, bank BankDetails, secret func(provider string) string) (*Registry, error) {
 	if strings.TrimSpace(spec) == "" {
-		spec = "vnd=" + ProviderManual
+		spec = money.Default + "=" + ProviderManual
 	}
 	r := &Registry{byCurrency: map[string]string{}, providers: map[string]PaymentProvider{}}
 	for _, pair := range strings.Split(spec, ",") {
@@ -43,7 +46,9 @@ func NewRegistry(spec string, bank BankDetails, secret func(provider string) str
 				if s == "" {
 					return nil, fmt.Errorf("billing: provider %q needs a webhook secret", name)
 				}
-				r.providers[name] = NewSePayProvider(bank, s)
+				sepay := NewSePayProvider(bank, s)
+				sepay.currency = strings.ToUpper(cur)
+				r.providers[name] = sepay
 			default:
 				return nil, fmt.Errorf("billing: unknown payment provider %q", name)
 			}

@@ -194,7 +194,7 @@ func conflict(code, msg string) *Error {
 // ProrateChange is the price of a change worth delta before VAT, for the days
 // left in [periodStart, periodEnd) from now: delta x R / P, with P and R the days
 // in the period and the days left, both rounded up, rounded half up to whole
-// VND.
+// minor units of the order currency.
 func ProrateChange(delta int64, periodStart, periodEnd, now time.Time) (int64, error) {
 	if delta <= 0 {
 		return 0, errors.New("subscription: the change must add to the price")

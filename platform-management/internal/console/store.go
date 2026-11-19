@@ -115,8 +115,19 @@ type Overview struct {
 	ByPlan map[string]int64
 	// PendingOrders counts the orders waiting for a payment confirmation.
 	PendingOrders int64
+	// PendingByCurrency sums the pending orders per order currency. Amounts of
+	// different currencies are never added together (spec 7.4, rule 5).
+	PendingByCurrency map[string]CurrencyTotal
 	// Usage sums the newest daily usage row of each workspace that has one.
 	Usage usage.Totals
+}
+
+// CurrencyTotal is the count and the amounts, in minor units of one currency,
+// of a group of orders.
+type CurrencyTotal struct {
+	Orders    int64
+	Amount    int64
+	VATAmount int64
 }
 
 // OrderRow is a billing order with the name of its workspace, which is empty

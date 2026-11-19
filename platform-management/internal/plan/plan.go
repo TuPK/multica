@@ -93,7 +93,7 @@ var FeatureKeys = []string{"audit_export", "sso", "workspace_policies", "viewer_
 type Limits map[string]*int64
 
 // Plan is one row of the plan table. Prices are whole units of the currency's
-// smallest denomination; VND has no decimals.
+// smallest denomination.
 //
 // Audience and BillingModel may be empty on a write, which means "not given":
 // a new plan takes the defaults (any, seat) and an existing plan keeps its value.

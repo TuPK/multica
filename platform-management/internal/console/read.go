@@ -396,8 +396,8 @@ func (h *Handler) listAuditEvents(w http.ResponseWriter, r *http.Request) {
 
 const signupWindow = 7 * 24 * time.Hour
 
-// overview returns the workspace counts by state and by plan and the last
-// week's sign-ups.
+// overview returns the workspace counts by state and by plan, the last week's
+// sign-ups, and the pending orders' amounts grouped by currency.
 // Active is the rest: the total less the workspaces in another state.
 func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	o, err := h.Reader.Overview(r.Context(), h.Now().Add(-signupWindow))
@@ -419,8 +419,13 @@ func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	for key, n := range o.ByPlan {
 		byPlan[key] = n
 	}
+	pendingByCurrency := make(map[string]any, len(o.PendingByCurrency))
+	for currency, t := range o.PendingByCurrency {
+		pendingByCurrency[currency] = map[string]int64{"orders": t.Orders, "amount": t.Amount, "vat_amount": t.VATAmount}
+	}
 	body := map[string]any{
 		"workspaces_by_status": byStatus, "signups_7d": o.Signups, "by_plan": byPlan, "pending_orders": o.PendingOrders,
+		"pending_by_currency": pendingByCurrency,
 	}
 	for k, v := range o.Usage.Map() {
 		body[k] = v

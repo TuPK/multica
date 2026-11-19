@@ -329,7 +329,7 @@ func (h *Handler) refuseUnpaidUsage(w http.ResponseWriter, r *http.Request, ws s
 }
 
 // checkoutUsage activates a pay as you go plan at once (spec 7b.3, rule 6): no
-// order waits for payment, and the activation's own order is paid for 0 VND. A
+// order waits for payment, and the activation's own order is paid for 0 in the plan currency. A
 // workspace on a paid plan cannot switch here: that switch waits for the end of
 // the paid period and goes through plan-changes (spec 7b.1, rule 7).
 func (h *Handler) checkoutUsage(w http.ResponseWriter, r *http.Request, ws, user, key string, p plan.Plan, sub *subscription.Subscription) {
@@ -363,7 +363,7 @@ func (h *Handler) checkoutUsage(w http.ResponseWriter, r *http.Request, ws, user
 		return
 	}
 	order, _, err := h.Activator.ActivateUsage(r.Context(), billing.UsageActivation{
-		WorkspaceID: ws, PlanKey: p.Key, CreatedBy: user, IdempotencyKey: key,
+		WorkspaceID: ws, PlanKey: p.Key, CreatedBy: user, IdempotencyKey: key, Currency: p.Currency,
 	})
 	if err != nil {
 		h.internalError(w, r, "activate usage plan", err)
@@ -442,7 +442,13 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 	var current *plan.Plan
 	if sub != nil {
 		for i := range plans {
-			if plans[i].Key == sub.PlanKey && subscription.SellsSeats(plans[i]) {
+			if plans[i].Key != sub.PlanKey {
+				continue
+			}
+			if refuseCurrencyChange(w, *sub, plans[i], p) {
+				return
+			}
+			if subscription.SellsSeats(plans[i]) {
 				kind, current = billing.KindChangePlan, &plans[i]
 			}
 		}

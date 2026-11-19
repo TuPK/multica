@@ -33,6 +33,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 	"github.com/multica-ai/multica/platform-management/internal/mailer"
 	"github.com/multica-ai/multica/platform-management/internal/mfa"
+	"github.com/multica-ai/multica/platform-management/internal/money"
 	"github.com/multica-ai/multica/platform-management/internal/paymentnotice"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
@@ -214,14 +215,14 @@ func run() error {
 	routes = append(routes,
 		server.Route{Pattern: subscription.ProfilePattern, Handler: billingProfile},
 		server.Route{Pattern: subscription.ProfileReadPattern, Handler: billingProfile})
-	// New orders take the name of the vnd provider. Confirmation by the webhook
+	// New orders take the name of the default currency's provider. Confirmation by the webhook
 	// is wired in P42.4 and P42.5; until then staff confirm them in the console.
-	_, vndProvider, err := cfg.Payments.Registry.ForCurrency("vnd")
+	_, defaultProvider, err := cfg.Payments.Registry.ForCurrency(money.Default)
 	if err != nil {
 		return err
 	}
 	orders, err := billing.New(billing.Deps{
-		Runner: billing.NewPgxRunner(pool), Provider: vndProvider,
+		Runner: billing.NewPgxRunner(pool), Provider: defaultProvider,
 		Workspaces: workspacestate.New(nil, accountCache), Entitlements: policy, Log: slog.Default(),
 	})
 	if err != nil {
@@ -451,7 +452,7 @@ func newEinvoiceService(cfg config.Config, store invoice.Store) (*invoice.Servic
 	if e.Provider != "sepay" {
 		return invoice.NewService(store, nil, invoice.Config{}), nil
 	}
-	taxRate, err := cfg.Billing.VATRateOf("vnd").Percent()
+	taxRate, err := cfg.Billing.VATRateOf(money.Default).Percent()
 	if err != nil {
 		return nil, fmt.Errorf("BILLING_VAT_RATE: %w", err)
 	}
