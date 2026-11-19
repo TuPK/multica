@@ -81,6 +81,7 @@ const (
 	ActionQuotaRequestDenied                  = "quota.request_denied"
 	ActionQuotaRequestCreated                 = "quota.request_created"
 	ActionAuditExported                       = "audit.exported"
+	ActionTenantStatusChanged                 = "tenant.status_changed"
 	ActionRuntimeDisabled                     = "runtime.disabled"
 	ActionRuntimeEnabled                      = "runtime.enabled"
 	ActionMemberStaffRemoveRequested          = "member.staff_remove_requested"
@@ -204,6 +205,7 @@ var Catalog = []string{
 	ActionTenantPolicyChanged,
 	ActionQuotaRequestCreated,
 	ActionAuditExported,
+	ActionTenantStatusChanged,
 	ActionQuotaRequestApproved,
 	ActionQuotaRequestDenied,
 	ActionRuntimeDisabled,

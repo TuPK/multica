@@ -843,6 +843,7 @@ type env struct {
 	member *fakeMembers
 	delete *fakeDeletions
 	quota  *fakeQuota
+	tstat  *fakeTenantStatus
 }
 
 func newEnv(t *testing.T) *env { return newEnvMail(t, true) }
@@ -877,6 +878,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		member: newFakeMembers(),
 		delete: newFakeDeletions(),
 		quota:  &fakeQuota{},
+		tstat:  &fakeTenantStatus{},
 	}
 	e.reader.store = e.store
 	payments, err := billing.New(billing.Deps{
@@ -900,21 +902,22 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		mail = e.mail
 	}
 	e.h = New(Deps{
-		Mailer:        mail,
-		RequireStaff:  auth.RequirePlatformStaff,
-		RequireOrigin: auth.RequireOrigin,
-		Reader:        e.reader,
-		Runner:        e.store,
-		Workspaces:    e.ws,
-		Cache:         e.cache,
-		Notifier:      e.pub,
-		Payments:      payments,
-		Emails:        e.dir,
-		Members:       e.member,
-		Deletions:     e.delete,
-		Quota:         e.quota,
-		Log:           log,
-		Now:           func() time.Time { return t0 },
+		Mailer:         mail,
+		RequireStaff:   auth.RequirePlatformStaff,
+		RequireOrigin:  auth.RequireOrigin,
+		Reader:         e.reader,
+		Runner:         e.store,
+		Workspaces:     e.ws,
+		Cache:          e.cache,
+		Notifier:       e.pub,
+		Payments:       payments,
+		Emails:         e.dir,
+		Members:        e.member,
+		Deletions:      e.delete,
+		Quota:          e.quota,
+		TenantStatuses: e.tstat,
+		Log:            log,
+		Now:            func() time.Time { return t0 },
 	})
 	return e
 }

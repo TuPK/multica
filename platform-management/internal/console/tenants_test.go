@@ -16,7 +16,8 @@ func TestOldTenantSubroutesAreNotFound(t *testing.T) {
 	for _, who := range []string{adminID, tadminID, suppID, billID} {
 		e := newEnv(t)
 		for _, c := range []struct{ method, path, body string }{
-			{"POST", "/api/platform/tenants/" + wsID + "/status", `{"status":"read_only","reason":"r"}`},
+			// POST /tenants/{id}/status is the tenant lock of spec R6 section 3c.9 (M52),
+			// not an old route: it is covered by tenant_status_test.go.
 			{"GET", "/api/platform/tenants/" + wsID + "/usage", ""},
 			{"GET", "/api/platform/tenants/" + wsID + "/audit-events", ""},
 			{"GET", "/api/platform/tenants/" + wsID + "/notes", ""},

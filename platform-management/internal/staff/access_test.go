@@ -60,6 +60,7 @@ func specMatrix() []matrixRow {
 		{"M47", ActionQuotaRequestDecide, All, None, None, None},
 		{"M48", ActionQuotaRequestCreate, All, Own, None, None},
 		{"M51", ActionAuditExport, All, Own, None, None},
+		{"M52", ActionTenantStatus, All, Own, All, None},
 		{"M42", ActionRuntimeStatus, All, Own, None, None},
 		{"M43", ActionRuntimeUnregister, All, Own, None, None},
 	}
@@ -67,7 +68,7 @@ func specMatrix() []matrixRow {
 
 func TestPermissionMatrixMatchesSpec(t *testing.T) {
 	rows := specMatrix()
-	if len(rows) != 46 {
+	if len(rows) != 47 {
 		t.Fatalf("the hand-written matrix has %d rows, want M1 to M32", len(rows))
 	}
 	for _, r := range rows {
@@ -127,7 +128,7 @@ func TestSupportAndBillingAccessUnchangedFromSpec52(t *testing.T) {
 	supportAll := []string{
 		ActionTenantsList, ActionTenantsRead, ActionWorkspacesRead, ActionNotesWrite,
 		ActionWorkspacesLock, ActionOverviewRead, ActionUsersRead, ActionAccountsControl, ActionAuditRead,
-		ActionConsoleSignIn, ActionWorkspacesList, ActionTenantUsersRead, ActionRuntimesRead, ActionTenantPolicyRead,
+		ActionConsoleSignIn, ActionWorkspacesList, ActionTenantUsersRead, ActionRuntimesRead, ActionTenantPolicyRead, ActionTenantStatus,
 	}
 	billingAll := []string{
 		ActionPriceChangeRead, ActionTenantsList, ActionTenantsRead, ActionWorkspacesRead, ActionNotesWrite,

@@ -84,6 +84,8 @@ type Deps struct {
 	Deletions DeletionRequests
 	// Quota serves the quota requests of QT7 (spec R6 section 3c.5).
 	Quota QuotaRequests
+	// TenantStatuses locks and unlocks whole tenants (spec R6 section 3c.9).
+	TenantStatuses TenantStatuses
 	// Einvoices serves the retry route. *invoice.Service is one.
 	Einvoices EinvoiceOps
 	Logins    LoginLookup
@@ -193,6 +195,7 @@ func routeTable() []routeSpec {
 		{base + "/quota-requests/{id}/deny", staff.ActionQuotaRequestDecide, nil, map[string]handlerFunc{http.MethodPost: (*Handler).denyQuotaRequest}},
 		{base + "/workspaces/{id}/quota-requests", staff.ActionQuotaRequestCreate, nil, map[string]handlerFunc{http.MethodPost: (*Handler).createQuotaRequest}},
 		{base + "/audit-events/export", staff.ActionAuditExport, nil, map[string]handlerFunc{http.MethodGet: (*Handler).exportAudit}},
+		{base + "/tenants/{id}/status", staff.ActionTenantStatus, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setTenantStatus}},
 		{base + "/runtimes", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listRuntimes}},
 		{base + "/runtimes/{id}", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getRuntime}},
 		{base + "/runtimes/{id}/status", staff.ActionRuntimeStatus, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setRuntimeStatus}},

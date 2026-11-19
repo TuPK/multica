@@ -60,6 +60,7 @@ const (
 	ActionQuotaRequestDecide   = "quota_requests.decide"    // M47
 	ActionQuotaRequestCreate   = "quota_requests.create"    // M48
 	ActionAuditExport          = "audit.export"             // M51
+	ActionTenantStatus         = "tenants.status"           // M52
 )
 
 // roleOrder is the order of RolesWith and of the columns of matrix.
@@ -88,6 +89,7 @@ var matrix = map[string][4]Access{
 	ActionQuotaRequestDecide:   {All, None, None, None},
 	ActionQuotaRequestCreate:   {All, Own, None, None},
 	ActionAuditExport:          {All, Own, None, None},
+	ActionTenantStatus:         {All, Own, All, None},
 	ActionPriceChangeManage:    {All, None, None, None},
 	ActionPriceChangeRead:      {All, None, None, All},
 	ActionAccountRequests:      {All, None, None, None},
