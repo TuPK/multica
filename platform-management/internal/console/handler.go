@@ -82,6 +82,8 @@ type Deps struct {
 	Members MemberRequests
 	// Deletions serves the immediate deletion routes (spec R6 section 6).
 	Deletions DeletionRequests
+	// Quota serves the quota requests of QT7 (spec R6 section 3c.5).
+	Quota QuotaRequests
 	// Einvoices serves the retry route. *invoice.Service is one.
 	Einvoices EinvoiceOps
 	Logins    LoginLookup
@@ -185,6 +187,11 @@ func routeTable() []routeSpec {
 			http.MethodGet: (*Handler).getTenantPolicy,
 			http.MethodPut: (*Handler).putTenantPolicy,
 		}},
+		{base + "/quota-requests", staff.ActionQuotaRequestsRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listQuotaRequests}},
+		{base + "/quota-requests/{id}", staff.ActionQuotaRequestsRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getQuotaRequest}},
+		{base + "/quota-requests/{id}/approve", staff.ActionQuotaRequestDecide, nil, map[string]handlerFunc{http.MethodPost: (*Handler).approveQuotaRequest}},
+		{base + "/quota-requests/{id}/deny", staff.ActionQuotaRequestDecide, nil, map[string]handlerFunc{http.MethodPost: (*Handler).denyQuotaRequest}},
+		{base + "/workspaces/{id}/quota-requests", staff.ActionQuotaRequestCreate, nil, map[string]handlerFunc{http.MethodPost: (*Handler).createQuotaRequest}},
 		{base + "/runtimes", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listRuntimes}},
 		{base + "/runtimes/{id}", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getRuntime}},
 		{base + "/runtimes/{id}/status", staff.ActionRuntimeStatus, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setRuntimeStatus}},

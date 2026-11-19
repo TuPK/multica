@@ -43,6 +43,9 @@ var Required = []string{
 	"1032_platform_runtime_uidx",                // platform_runtime: unique index on runtime_id
 	"1033_tenant_policy",                        // tenant_policy: table (R6 3c.4)
 	"1034_tenant_policy_uidx",                   // tenant_policy: unique index on tenant_id
+	"1035_quota_request",                        // quota_request: table (R6 3c.5)
+	"1036_quota_request_id_uidx",                // quota_request: unique index on id
+	"1037_quota_request_live_uidx",              // quota_request: one pending per workspace and gate
 	"651_platform_account",                      // platform_account: table
 	"652_platform_account_user_idx",             // platform_account: unique index on user_id
 	"653_platform_account_status_idx",           // platform_account: partial index on status

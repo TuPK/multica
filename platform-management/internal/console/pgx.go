@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/multica-ai/multica/platform-management/internal/quota"
 	"github.com/multica-ai/multica/platform-management/internal/tenantpolicy"
 	"time"
 
@@ -1364,4 +1365,63 @@ func storedFromRow(domains []string, share, sso, mfa bool, hours int32, version 
 		},
 		Version: version,
 	}
+}
+
+// ListQuotaRequests implements Reader.
+func (r *PgxReader) ListQuotaRequests(ctx context.Context, q QuotaSearch) ([]quota.Request, error) {
+	at, id, err := cursorArgs(q.Cursor)
+	if err != nil {
+		return nil, err
+	}
+	scoped, scopeTenant := scopeArgs(q.Scope)
+	rows, err := r.q.ListQuotaRequests(ctx, db.ListQuotaRequestsParams{
+		Scoped: scoped, ScopeTenant: scopeTenant, State: q.State,
+		CursorCreatedAt: at, CursorID: id, RowLimit: int32(q.Limit + 1),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]quota.Request, len(rows))
+	for i, x := range rows {
+		out[i] = quotaFromRow(x)
+	}
+	return out, nil
+}
+
+// GetQuotaRequest implements Reader.
+func (r *PgxReader) GetQuotaRequest(ctx context.Context, id string) (quota.Request, bool, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return quota.Request{}, false, err
+	}
+	x, err := r.q.GetQuotaRequest(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return quota.Request{}, false, nil
+	}
+	if err != nil {
+		return quota.Request{}, false, err
+	}
+	return quotaFromRow(x), true, nil
+}
+
+func quotaFromRow(x db.QuotaRequest) quota.Request {
+	out := quota.Request{
+		ID: uuidText(x.ID), WorkspaceID: uuidText(x.WorkspaceID), TenantID: uuidText(x.TenantID), Gate: x.Gate,
+		RequestedValue: x.RequestedValue, State: x.State, Reason: x.Reason, DecisionReason: x.DecisionReason,
+		RequestedBy: uuidText(x.RequestedBy), RequestedByLabel: x.RequestedByLabel, DecidedBy: uuidText(x.DecidedBy),
+		CreatedAt: x.CreatedAt.Time,
+	}
+	if x.CurrentValue.Valid {
+		v := x.CurrentValue.Int64
+		out.CurrentValue = &v
+	}
+	if x.ApprovedValue.Valid {
+		v := x.ApprovedValue.Int64
+		out.ApprovedValue = &v
+	}
+	if x.DecidedAt.Valid {
+		t := x.DecidedAt.Time
+		out.DecidedAt = &t
+	}
+	return out
 }

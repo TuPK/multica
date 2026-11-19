@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/multica-ai/multica/platform-management/internal/quota"
 	"log/slog"
 	"net"
 	"net/http"
@@ -271,6 +272,7 @@ func run() error {
 			Runner: deletionrequest.NewPgxRunner(pool), Reader: deletionrequest.NewPgxReader(pool),
 			Cache: guard, Accounts: accountChanges{cache: guard, pub: accountcache.NewPublisher(rdb)}, Log: slog.Default(),
 		}),
+		Quota: quota.New(quota.Deps{Pool: pool, Cache: policy}),
 		Accounts: accountrequest.New(accountrequest.Deps{
 			Runner: accountrequest.NewPgxRunner(pool), Reader: accountrequest.NewPgxReader(pool),
 			Plans: plan.NewPgxReader(pool), Limiter: platformauth.NewRedisLimiter(rdb),

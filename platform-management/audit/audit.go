@@ -77,6 +77,9 @@ const (
 	ActionAccountImmediateDeletionRequested   = "account.immediate_deletion_requested"
 	ActionRuntimeUnregisterRequested          = "runtime.unregister_requested"
 	ActionTenantPolicyChanged                 = "tenant.policy_changed"
+	ActionQuotaRequestApproved                = "quota.request_approved"
+	ActionQuotaRequestDenied                  = "quota.request_denied"
+	ActionQuotaRequestCreated                 = "quota.request_created"
 	ActionRuntimeDisabled                     = "runtime.disabled"
 	ActionRuntimeEnabled                      = "runtime.enabled"
 	ActionMemberStaffRemoveRequested          = "member.staff_remove_requested"
@@ -198,6 +201,9 @@ var Catalog = []string{
 	ActionAccountImmediateDeletionRequested,
 	ActionRuntimeUnregisterRequested,
 	ActionTenantPolicyChanged,
+	ActionQuotaRequestCreated,
+	ActionQuotaRequestApproved,
+	ActionQuotaRequestDenied,
 	ActionRuntimeDisabled,
 	ActionRuntimeEnabled,
 	ActionMemberStaffRemoveRequested,

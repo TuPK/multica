@@ -6,7 +6,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 )
 
@@ -85,18 +88,48 @@ func (s *Service) SetLimitOverride(ctx context.Context, tenantID string, workspa
 	}
 	var changed []string
 	err := s.runner.InTx(ctx, func(tx Tx) error {
-		changed = nil
+		var err error
+		changed, err = applyLimitOverrides(ctx, tx, tenantID, workspaceIDs, o, reason, by)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	for _, ws := range changed {
+		s.cache.Invalidate(ws)
+	}
+	return nil
+}
+
+// SetLimitOverrideIn applies one workspace's override inside the caller's pgx
+// transaction, so a quota approval writes its request row and the override
+// together (spec R6 section 3c.5, rule 3). It returns the workspace changed; the
+// caller drops the cached policy after the commit.
+func SetLimitOverrideIn(ctx context.Context, tx pgx.Tx, tenantID, workspaceID string, o LimitOverride, reason string, by OverrideActor) error {
+	reason, rerr := checkOverride(o, reason)
+	if rerr != nil {
+		return rerr
+	}
+	_, err := applyLimitOverrides(ctx, &pgxTx{q: db.New(tx)}, tenantID, []string{workspaceID}, o, reason, by)
+	return err
+}
+
+// applyLimitOverrides writes o on each workspace inside tx and returns the
+// workspaces written. It does not commit and does not drop caches.
+func applyLimitOverrides(ctx context.Context, tx Tx, tenantID string, workspaceIDs []string, o LimitOverride, reason string, by OverrideActor) ([]string, error) {
+	var changed []string
+	{
 		for _, ws := range workspaceIDs {
 			name, found, err := tx.WorkspaceName(ctx, ws)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if !found {
-				return NotFound()
+				return nil, NotFound()
 			}
 			current, exists, err := tx.Get(ctx, ws)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			before := current
 			if !exists {
@@ -108,16 +141,16 @@ func (s *Service) SetLimitOverride(ctx context.Context, tenantID string, workspa
 			if exists {
 				written, err = tx.Update(ctx, next)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			} else {
 				var ok bool
 				written, ok, err = tx.Insert(ctx, next)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				if !ok {
-					return &Error{Status: http.StatusConflict, Code: "concurrent_change",
+					return nil, &Error{Status: http.StatusConflict, Code: "concurrent_change",
 						Message: "the subscription was changed by someone else; read it again and retry"}
 				}
 			}
@@ -130,17 +163,10 @@ func (s *Service) SetLimitOverride(ctx context.Context, tenantID string, workspa
 					"reason": reason, "version": written.Version,
 				},
 			}); err != nil {
-				return err
+				return nil, err
 			}
 			changed = append(changed, ws)
 		}
-		return nil
-	})
-	if err != nil {
-		return err
 	}
-	for _, ws := range changed {
-		s.cache.Invalidate(ws)
-	}
-	return nil
+	return changed, nil
 }

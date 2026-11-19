@@ -3,6 +3,7 @@ package console
 import (
 	"context"
 
+	"github.com/multica-ai/multica/platform-management/internal/quota"
 	"github.com/multica-ai/multica/platform-management/internal/tenantpolicy"
 	"time"
 
@@ -310,6 +311,10 @@ type Reader interface {
 	TenantPolicy(ctx context.Context, tenantID string) (tenantpolicy.Stored, bool, error)
 	// TenantHasPolicyFeature reports whether a workspace of the tenant has the workspace_policies feature (spec R6 section 3c.4, rule 4).
 	TenantHasPolicyFeature(ctx context.Context, tenantID string) (bool, error)
+	// ListQuotaRequests pages the quota requests, newest first, within q.Scope (spec R6 section 3c.5).
+	ListQuotaRequests(ctx context.Context, q QuotaSearch) ([]quota.Request, error)
+	// GetQuotaRequest returns found == false for an unknown request.
+	GetQuotaRequest(ctx context.Context, id string) (quota.Request, bool, error)
 	// SearchRuntimes pages the runtimes, newest first, within q.Scope (spec R6 section 3b.5).
 	SearchRuntimes(ctx context.Context, q RuntimeSearch) ([]RuntimeRow, error)
 	// RuntimeDetail returns found == false for an unknown runtime.

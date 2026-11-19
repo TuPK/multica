@@ -2459,6 +2459,24 @@ type QuickAction struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
+type QuotaRequest struct {
+	ID               pgtype.UUID        `json:"id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	TenantID         pgtype.UUID        `json:"tenant_id"`
+	Gate             string             `json:"gate"`
+	CurrentValue     pgtype.Int8        `json:"current_value"`
+	RequestedValue   int64              `json:"requested_value"`
+	ApprovedValue    pgtype.Int8        `json:"approved_value"`
+	State            string             `json:"state"`
+	Reason           string             `json:"reason"`
+	DecisionReason   string             `json:"decision_reason"`
+	RequestedBy      pgtype.UUID        `json:"requested_by"`
+	RequestedByLabel string             `json:"requested_by_label"`
+	DecidedBy        pgtype.UUID        `json:"decided_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	DecidedAt        pgtype.Timestamptz `json:"decided_at"`
+}
+
 type ResearchSetting struct {
 	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
 	OpenalexKeySealed []byte             `json:"openalex_key_sealed"`

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
+	"github.com/multica-ai/multica/platform-management/internal/quota"
 	"github.com/multica-ai/multica/platform-management/internal/tenantpolicy"
 	"io"
 	"log/slog"
@@ -121,6 +122,7 @@ type fakeReader struct {
 	runtimes       []RuntimeRow
 	runtimeTasks   map[string][]RuntimeTask
 	runtimeFailed  int64
+	quotaRows      []quota.Request
 	// policies are the tenant floors; policyFeature says whether a tenant has the feature.
 	policies      map[string]tenantpolicy.Stored
 	policyFeature bool
@@ -221,6 +223,28 @@ func (t *fakeTx) SaveTenantPolicy(_ context.Context, id string, v tenantpolicy.S
 	}
 	t.s.tenantPolicy[id] = v
 	return nil
+}
+
+// ListQuotaRequests returns the fake quota requests within the scope.
+func (r *fakeReader) ListQuotaRequests(_ context.Context, q QuotaSearch) ([]quota.Request, error) {
+	var out []quota.Request
+	for _, x := range r.quotaRows {
+		if !tenantVisible(q.Scope, x.TenantID) {
+			continue
+		}
+		out = append(out, x)
+	}
+	return out, nil
+}
+
+// GetQuotaRequest returns a fake quota request by id.
+func (r *fakeReader) GetQuotaRequest(_ context.Context, id string) (quota.Request, bool, error) {
+	for _, x := range r.quotaRows {
+		if x.ID == id {
+			return x, true, nil
+		}
+	}
+	return quota.Request{}, false, nil
 }
 
 // SearchRuntimes returns the fake runtimes within the scope and status filter.
@@ -818,6 +842,7 @@ type env struct {
 	logs   *bytes.Buffer
 	member *fakeMembers
 	delete *fakeDeletions
+	quota  *fakeQuota
 }
 
 func newEnv(t *testing.T) *env { return newEnvMail(t, true) }
@@ -851,6 +876,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		logs:   &bytes.Buffer{},
 		member: newFakeMembers(),
 		delete: newFakeDeletions(),
+		quota:  &fakeQuota{},
 	}
 	e.reader.store = e.store
 	payments, err := billing.New(billing.Deps{
@@ -886,6 +912,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		Emails:        e.dir,
 		Members:       e.member,
 		Deletions:     e.delete,
+		Quota:         e.quota,
 		Log:           log,
 		Now:           func() time.Time { return t0 },
 	})
