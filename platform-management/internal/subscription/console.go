@@ -80,7 +80,10 @@ func routeTable() []routeSpec {
 	const base = "/api/platform"
 	admin := []staff.Role{staff.RoleAdmin}
 	return []routeSpec{
-		{base + "/plans", admin, nil, map[string]handlerFunc{http.MethodGet: (*Console).listPlans}},
+		{base + "/plans", admin, nil, map[string]handlerFunc{
+			http.MethodGet:  (*Console).listPlans,
+			http.MethodPost: (*Console).postPlan,
+		}},
 		{base + "/plans/{key}", admin, nil, map[string]handlerFunc{
 			http.MethodPut:    (*Console).putPlan,
 			http.MethodDelete: (*Console).deletePlan,
@@ -566,6 +569,89 @@ func (c *Console) putPlan(w http.ResponseWriter, r *http.Request) {
 		c.Cache.InvalidateAll()
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"changed": changed, "plan": stored})
+}
+
+type postPlanBody struct {
+	Key            string          `json:"key"`
+	Name           string          `json:"name"`
+	Limits         plan.Limits     `json:"limits"`
+	Features       map[string]bool `json:"features"`
+	Currency       string          `json:"currency"`
+	SeatPriceMonth *int64          `json:"seat_price_month"`
+	SeatPriceYear  *int64          `json:"seat_price_year"`
+	SeatsFixed     *int            `json:"seats_fixed"`
+	MinSeats       *int            `json:"min_seats"`
+	TrialDays      int             `json:"trial_days"`
+	IsPublic       bool            `json:"is_public"`
+	Sort           int             `json:"sort"`
+	Audience       string          `json:"audience"`
+	BillingModel   string          `json:"billing_model"`
+}
+
+// postPlan creates a plan, a private one included, with its initial prices
+// (spec 7b.4 rules 2 and 13). A key that exists is a 409; changing a plan is PUT.
+func (c *Console) postPlan(w http.ResponseWriter, r *http.Request) {
+	var body postPlanBody
+	if perr := decodeBody(w, r, &body); perr != nil {
+		c.fail(w, r, "decode plan", perr)
+		return
+	}
+	a, err := c.currentActor(r)
+	if err != nil {
+		c.fail(w, r, "resolve staff actor", err)
+		return
+	}
+	next := plan.Plan{
+		Key: body.Key, Name: body.Name, Limits: body.Limits, Features: body.Features, Currency: body.Currency,
+		SeatPriceMonth: body.SeatPriceMonth, SeatPriceYear: body.SeatPriceYear, SeatsFixed: body.SeatsFixed,
+		MinSeats: body.MinSeats, TrialDays: body.TrialDays, IsPublic: body.IsPublic, Sort: body.Sort,
+		Audience: body.Audience, BillingModel: body.BillingModel,
+	}
+	if next.Limits == nil {
+		next.Limits = plan.Limits{}
+	}
+	if next.Features == nil {
+		next.Features = map[string]bool{}
+	}
+	if err := plan.Validate(next); err != nil {
+		c.fail(w, r, "post plan", badRequest("invalid_plan", err.Error()))
+		return
+	}
+	if err := plan.ValidateCurrency(next.Currency, c.EnabledCurrencies); err != nil {
+		e := badRequest("price_invalid", err.Error())
+		e.Detail = map[string]any{"field": "currency"}
+		c.fail(w, r, "post plan", e)
+		return
+	}
+	diff, err := planChanges(nil, next)
+	if err != nil {
+		c.fail(w, r, "post plan", err)
+		return
+	}
+	err = c.PlanRunner.InTx(r.Context(), func(tx plan.Tx) error {
+		inserted, err := tx.InsertIfAbsent(r.Context(), next)
+		if err != nil {
+			return err
+		}
+		if !inserted {
+			return &Error{Status: http.StatusConflict, Code: "plan_exists", Message: "a plan with this key exists; change it with PUT"}
+		}
+		return audit.Record(r.Context(), tx, a.entry(audit.Entry{
+			Action: audit.ActionPlanChanged, TargetType: targetPlan, TargetID: next.Key, TargetLabel: next.Name,
+			Detail: map[string]any{"created": true, "changes": diff},
+		}))
+	})
+	if err != nil {
+		c.fail(w, r, "post plan", err)
+		return
+	}
+	c.Cache.InvalidateAll()
+	stored, _, err := c.Plans.Get(r.Context(), next.Key)
+	if err != nil {
+		c.fail(w, r, "read created plan", err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"plan": stored})
 }
 
 func planInUse(msg string) *Error {
