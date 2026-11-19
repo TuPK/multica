@@ -8,13 +8,15 @@ import { expect, request as playwrightRequest, test, type APIRequestContext, typ
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { CONSOLE_BASE, signInApi, startPlatform, stopPlatform, testDatabaseUrl, type StaffSeed } from "../harness";
-import { saveSignedInState, useSignedIn } from "./session";
+import { cleanupRows, saveSignedInState, seedAccount, seedWorkspace, useSignedIn } from "./session";
 
 type RequestState = "pending" | "provisioned" | "completed" | "canceled" | "failed";
 
 let seed: StaffSeed;
 let admin: APIRequestContext;
 const requestIds: string[] = [];
+const accountUserIds: string[] = [];
+const workspaceIds: string[] = [];
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(300_000);
@@ -35,6 +37,7 @@ test.afterAll(async () => {
   } finally {
     await pool.end();
   }
+  await cleanupRows(workspaceIds, accountUserIds);
   await stopPlatform(seed ?? null);
 });
 
@@ -45,7 +48,7 @@ test.beforeEach(async ({ page }) => {
 /** Inserts one account request in the given state. The email is unique per call, so the test finds its own row. */
 async function seedRequest(
   state: RequestState,
-  extra: { error_code?: string; welcome_sent_at?: Date | null } = {},
+  extra: { error_code?: string; welcome_sent_at?: Date | null; account?: { userId: string; workspaceId: string } } = {},
 ): Promise<{ id: string; email: string }> {
   const id = randomUUID();
   const email = `e2e-acct-${id.slice(0, 8)}@example.test`;
@@ -54,10 +57,11 @@ async function seedRequest(
     await pool.query(
       `INSERT INTO platform_account_request (id, kind, email, display_name, workspace_name, workspace_slug,
                                              plan_key, seats, interval, trial, comp_reason, state, error_code,
-                                             attempts, created_by, created_at, updated_at, completed_at, welcome_sent_at)
+                                             attempts, created_by, created_at, updated_at, completed_at, welcome_sent_at,
+                                             user_id, workspace_id)
        VALUES ($1, 'individual', $2, 'E2E Request Person', 'E2E Request Co', $3,
                'pro', 1, 'month', false, 'e2e seeded request', $4, $5,
-               1, $6, now(), now(), $7, $8)`,
+               1, $6, now(), now(), $7, $8, $9, $10)`,
       [
         id,
         email,
@@ -67,6 +71,8 @@ async function seedRequest(
         seed.userId,
         state === "completed" ? new Date() : null,
         extra.welcome_sent_at ?? null,
+        extra.account?.userId ?? null,
+        extra.account?.workspaceId ?? null,
       ],
     );
   } finally {
@@ -127,6 +133,86 @@ test.describe("cancel a pending request", () => {
     await openAccounts(page);
     await expect(rowFor(page, req.email)).toContainText("Completed");
     await expect(rowFor(page, req.email).getByRole("button", { name: "Cancel", exact: true })).toHaveCount(0);
+  });
+});
+
+test.describe("resend welcome, daily limit", () => {
+  test("flow 250: a fourth welcome resend in one day is refused by the daily limit", async ({ page }) => {
+    const account = await seedAccount("E2E Limit Person");
+    const workspace = await seedWorkspace("E2E Limit Co");
+    accountUserIds.push(account.id);
+    workspaceIds.push(workspace.id);
+    const req = await seedRequest("completed", { account: { userId: account.id, workspaceId: workspace.id } });
+    await openAccounts(page);
+    for (let i = 0; i < 3; i++) {
+      await rowFor(page, req.email).getByRole("button", { name: "Resend welcome" }).click();
+      await expect(page.getByRole("alert").filter({ hasText: "Failed to send welcome email. Please try again later." })).toBeVisible();
+    }
+    await rowFor(page, req.email).getByRole("button", { name: "Resend welcome" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: /rate limit reached/i })).toBeVisible();
+  });
+});
+
+test.describe("create account limit", () => {
+  test("flow 248: a create past the hourly cap is refused in the create dialog", async ({ page }) => {
+    // Fill the actor's hourly budget through the API (setup), then submit one more request in the dialog.
+    const origin = { Origin: CONSOLE_BASE, "Content-Type": "application/json" };
+    const createBody = (email: string) => ({
+      kind: "individual",
+      email,
+      display_name: "E2E Cap Person",
+      workspace_name: "E2E Cap Co",
+      workspace_slug: "",
+      plan_key: "free",
+      seats: 1,
+      interval: "month",
+      trial: false,
+      comp_reason: "",
+    });
+    let limited = false;
+    for (let i = 0; i < 60 && !limited; i++) {
+      const email = `e2e-cap-${randomUUID().slice(0, 8)}@example.test`;
+      const res = await admin.post(`${CONSOLE_BASE}/api/platform/accounts`, {
+        headers: { ...origin, "Idempotency-Key": randomUUID() },
+        data: createBody(email),
+      });
+      if (res.status() === 429) {
+        limited = true;
+      } else {
+        expect(res.status()).toBeLessThan(300);
+        const created = (await res.json()) as { id?: string };
+        if (created.id) requestIds.push(created.id);
+      }
+    }
+    expect(limited, "the hourly cap was never reached").toBe(true);
+
+    await openAccounts(page);
+    await page.getByRole("button", { name: "Create account" }).click();
+    const dialog = page.getByRole("dialog", { name: "Create account" });
+    await expect(dialog).toBeVisible();
+    const email = `e2e-cap-ui-${randomUUID().slice(0, 8)}@example.test`;
+    await dialog.locator("#account-plan-key").selectOption("free");
+    await dialog.locator("#account-email").fill(email);
+    await dialog.locator("#account-confirm-email").fill(email);
+    await dialog.locator("#account-display-name").fill("E2E Cap Person");
+    await dialog.locator("#account-workspace-name").fill("E2E Cap Co");
+    await dialog.getByRole("button", { name: "Submit request" }).click();
+    await expect(dialog.getByText(/rate limit reached/i)).toBeVisible();
+    await expect(dialog).toBeVisible();
+  });
+});
+
+test.describe("resend welcome, send failure", () => {
+  test("flow 251: a welcome resend that the mail provider refuses shows the send-failed message", async ({ page }) => {
+    // The harness has no working mail provider, so the send fails with a transport error.
+    const account = await seedAccount("E2E Welcome Person");
+    const workspace = await seedWorkspace("E2E Welcome Co");
+    accountUserIds.push(account.id);
+    workspaceIds.push(workspace.id);
+    const req = await seedRequest("completed", { account: { userId: account.id, workspaceId: workspace.id } });
+    await openAccounts(page);
+    await rowFor(page, req.email).getByRole("button", { name: "Resend welcome" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Failed to send welcome email. Please try again later." })).toBeVisible();
   });
 });
 
