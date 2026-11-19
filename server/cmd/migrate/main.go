@@ -158,6 +158,7 @@ var concurrentIndexCleanups = map[string]string{
 	"1026_platform_deletion_request_id_uidx":                    "platform_deletion_request_id_uidx",
 	"1027_platform_deletion_request_live_uidx":                  "platform_deletion_request_live_uidx",
 	"1029_platform_deletion_request_tenant_idx":                 "platform_deletion_request_tenant_idx",
+	"1032_platform_runtime_uidx":                                "platform_runtime_uidx",
 	"666_platform_workspace_uidx":                               "platform_workspace_uidx",
 	"667_platform_workspace_status_idx":                         "platform_workspace_status_idx",
 	"669_platform_note_workspace_idx":                           "platform_note_workspace_idx",

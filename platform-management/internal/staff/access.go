@@ -51,6 +51,9 @@ const (
 	ActionMembersRemove        = "members.remove"           // M36
 	ActionMembersChangeRole    = "members.change_role"      // M37
 	ActionTenantLimitOverride  = "tenants.limit_override"   // M40
+	ActionRuntimesRead         = "runtimes.read"            // M41
+	ActionRuntimeStatus        = "runtimes.status"          // M42
+	ActionRuntimeUnregister    = "runtimes.unregister"      // M43
 )
 
 // roleOrder is the order of RolesWith and of the columns of matrix.
@@ -70,6 +73,9 @@ var matrix = map[string][4]Access{
 	ActionMembersRemove:        {All, Own, None, None},
 	ActionMembersChangeRole:    {All, Own, None, None},
 	ActionTenantLimitOverride:  {All, None, None, All},
+	ActionRuntimesRead:         {All, Own, All, None},
+	ActionRuntimeStatus:        {All, Own, None, None},
+	ActionRuntimeUnregister:    {All, Own, None, None},
 	ActionPriceChangeManage:    {All, None, None, None},
 	ActionPriceChangeRead:      {All, None, None, All},
 	ActionAccountRequests:      {All, None, None, None},

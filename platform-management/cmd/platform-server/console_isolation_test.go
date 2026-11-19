@@ -44,6 +44,11 @@ func TestConsoleRoutesDoNotReadWorkspaceContent(t *testing.T) {
 			t.Errorf("pattern %q is outside /api/platform", pattern)
 			continue
 		}
+		// The runtime routes (spec R6 section 3b.5) read the daemon's registry row:
+		// its state, versions and task counts, never content, and rule 2 hides the rest.
+		if strings.HasPrefix(rest, "runtimes") {
+			continue
+		}
 		segments := strings.Split(rest, "/")
 		for _, seg := range segments {
 			if strings.HasPrefix(seg, "{") {

@@ -134,6 +134,34 @@ func (q *Queries) GetDeletionRequest(ctx context.Context, id pgtype.UUID) (Platf
 	return i, err
 }
 
+const getDeletionRuntime = `-- name: GetDeletionRuntime :one
+SELECT r.id, r.name, r.workspace_id, COALESCE(tw.tenant_id::text, '')::text AS tenant_id
+FROM agent_runtime r
+LEFT JOIN tenant_workspace tw ON tw.workspace_id = r.workspace_id
+WHERE r.id = $1
+`
+
+type GetDeletionRuntimeRow struct {
+	ID          pgtype.UUID `json:"id"`
+	Name        string      `json:"name"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	TenantID    string      `json:"tenant_id"`
+}
+
+// The runtime a runtime deletion request targets: its name, workspace and tenant
+// (empty when the workspace has none). No row when the runtime is unknown.
+func (q *Queries) GetDeletionRuntime(ctx context.Context, id pgtype.UUID) (GetDeletionRuntimeRow, error) {
+	row := q.db.QueryRow(ctx, getDeletionRuntime, id)
+	var i GetDeletionRuntimeRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.WorkspaceID,
+		&i.TenantID,
+	)
+	return i, err
+}
+
 const getDeletionTenant = `-- name: GetDeletionTenant :one
 SELECT id, name, status FROM tenant WHERE id = $1
 `

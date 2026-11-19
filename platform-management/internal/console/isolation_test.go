@@ -65,6 +65,14 @@ func scanSQL(sql string) []string {
 // scanGo checks the string literals of one Go file, where a table name would
 // have to be written, and every db.<Name> reference, where a generated type or
 // query for a content table would be named.
+// specFields are literal names the spec gives to runtime and task fields that
+// staff read: a runtime's agent CLI version and the count of its recent tasks
+// (spec R6 sections 3b.5, rules 1 and 3). They name metadata, not content.
+var specFields = map[string]bool{
+	"agent_version": true, "daemon_version": true, "tasks": true, "failed_tasks_7d": true,
+	"running_tasks": true,
+}
+
 func scanGo(t *testing.T, name string, src []byte) []string {
 	t.Helper()
 	f, err := parser.ParseFile(token.NewFileSet(), name, src, 0)
@@ -81,6 +89,9 @@ func scanGo(t *testing.T, name string, src []byte) []string {
 			text, err := strconv.Unquote(x.Value)
 			if err != nil {
 				text = x.Value
+			}
+			if specFields[text] {
+				return true
 			}
 			out = append(out, contentWords(text)...)
 		case *ast.SelectorExpr:

@@ -15,6 +15,7 @@ import (
 type DeletionRequests interface {
 	RequestWorkspace(ctx context.Context, by deletionrequest.Actor, workspaceID string, in deletionrequest.Input) (deletionrequest.Request, bool, error)
 	RequestTenant(ctx context.Context, by deletionrequest.Actor, tenantID string, in deletionrequest.Input) (deletionrequest.Request, bool, error)
+	RequestRuntime(ctx context.Context, by deletionrequest.Actor, runtimeID string, in deletionrequest.Input) (deletionrequest.Request, bool, error)
 	RequestAccount(ctx context.Context, by deletionrequest.Actor, userID string, in deletionrequest.AccountInput) (deletionrequest.Request, bool, error)
 	PreviewAccount(ctx context.Context, by deletionrequest.Actor, userID string) (deletionrequest.AccountPreview, error)
 	Cancel(ctx context.Context, by deletionrequest.Actor, id string) (deletionrequest.Request, error)

@@ -27,7 +27,23 @@ type fakeDeletions struct {
 	acts       []string
 	filters    []deletionrequest.Filter
 	accounts   []fakeDelAccount
+	runtimes   []fakeDelRuntime
 	preview    deletionrequest.AccountPreview
+}
+
+type fakeDelRuntime struct {
+	by deletionrequest.Actor
+	id string
+	in deletionrequest.Input
+}
+
+// RequestRuntime records the runtime request and answers with the delete fake's row.
+func (f *fakeDeletions) RequestRuntime(_ context.Context, by deletionrequest.Actor, runtimeID string, in deletionrequest.Input) (deletionrequest.Request, bool, error) {
+	f.runtimes = append(f.runtimes, fakeDelRuntime{by: by, id: runtimeID, in: in})
+	if f.err != nil {
+		return deletionrequest.Request{}, false, f.err
+	}
+	return f.rows[delReqID], f.created, nil
 }
 
 type fakeDelAccount struct {

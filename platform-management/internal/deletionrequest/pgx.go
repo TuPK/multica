@@ -347,3 +347,19 @@ func (t *pgxTx) ScheduleAccount(ctx context.Context, userID, reason string, by A
 		UserID: u, Reason: reason, ChangedBy: b, At: pgtype.Timestamptz{Time: at, Valid: true},
 	})
 }
+
+// Runtime implements Tx.
+func (t *pgxTx) Runtime(ctx context.Context, id string) (RuntimeTarget, bool, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return RuntimeTarget{}, false, err
+	}
+	row, err := t.q.GetDeletionRuntime(ctx, u)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return RuntimeTarget{}, false, nil
+	}
+	if err != nil {
+		return RuntimeTarget{}, false, fmt.Errorf("read runtime: %w", err)
+	}
+	return RuntimeTarget{ID: uuidText(row.ID), Name: row.Name, WorkspaceID: uuidText(row.WorkspaceID), TenantID: row.TenantID}, true, nil
+}

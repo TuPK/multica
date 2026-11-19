@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS platform_runtime_uidx;

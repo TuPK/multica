@@ -75,6 +75,9 @@ const (
 const (
 	ActionWorkspaceImmediateDeletionRequested = "workspace.immediate_deletion_requested"
 	ActionAccountImmediateDeletionRequested   = "account.immediate_deletion_requested"
+	ActionRuntimeUnregisterRequested          = "runtime.unregister_requested"
+	ActionRuntimeDisabled                     = "runtime.disabled"
+	ActionRuntimeEnabled                      = "runtime.enabled"
 	ActionMemberStaffRemoveRequested          = "member.staff_remove_requested"
 	ActionMemberStaffRoleChangeRequested      = "member.staff_role_change_requested"
 	ActionTenantImmediateDeletionRequested    = "tenant.immediate_deletion_requested"
@@ -192,6 +195,9 @@ var Catalog = []string{
 	ActionMemberStaffAddCanceled,
 	ActionWorkspaceImmediateDeletionRequested,
 	ActionAccountImmediateDeletionRequested,
+	ActionRuntimeUnregisterRequested,
+	ActionRuntimeDisabled,
+	ActionRuntimeEnabled,
 	ActionMemberStaffRemoveRequested,
 	ActionMemberStaffRoleChangeRequested,
 	ActionTenantImmediateDeletionRequested,

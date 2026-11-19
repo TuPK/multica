@@ -120,3 +120,11 @@ SET status = 'pending_deletion',
     changed_at = now(),
     sessions_valid_after = EXCLUDED.sessions_valid_after,
     deletion_scheduled_at = EXCLUDED.deletion_scheduled_at;
+
+-- name: GetDeletionRuntime :one
+-- The runtime a runtime deletion request targets: its name, workspace and tenant
+-- (empty when the workspace has none). No row when the runtime is unknown.
+SELECT r.id, r.name, r.workspace_id, COALESCE(tw.tenant_id::text, '')::text AS tenant_id
+FROM agent_runtime r
+LEFT JOIN tenant_workspace tw ON tw.workspace_id = r.workspace_id
+WHERE r.id = $1;

@@ -2164,6 +2164,14 @@ type PlatformNote struct {
 	ID          pgtype.UUID        `json:"id"`
 }
 
+type PlatformRuntime struct {
+	RuntimeID pgtype.UUID        `json:"runtime_id"`
+	Status    string             `json:"status"`
+	Reason    string             `json:"reason"`
+	ChangedBy pgtype.UUID        `json:"changed_by"`
+	ChangedAt pgtype.Timestamptz `json:"changed_at"`
+}
+
 type PlatformSeatOperation struct {
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
 	OperationToken pgtype.UUID        `json:"operation_token"`

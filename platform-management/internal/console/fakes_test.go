@@ -117,6 +117,9 @@ type fakeReader struct {
 	workspaceList  []WorkspaceListRow
 	lastWorkspaces WorkspaceSearch
 	tenantUsers    []TenantUser
+	runtimes       []RuntimeRow
+	runtimeTasks   map[string][]RuntimeTask
+	runtimeFailed  int64
 	// memberRoles is keyed workspace id + "/" + user id; staffUsers holds active staff.
 	memberRoles        map[string]string
 	memberMail         map[string]string
@@ -188,6 +191,45 @@ func sortOrders(rows []OrderRow, newestFirst bool) {
 		}
 		return rows[i].CreatedAt.Before(rows[j].CreatedAt)
 	})
+}
+
+// SearchRuntimes returns the fake runtimes within the scope and status filter.
+func (r *fakeReader) SearchRuntimes(_ context.Context, q RuntimeSearch) ([]RuntimeRow, error) {
+	var out []RuntimeRow
+	for _, x := range r.runtimes {
+		if !runtimeVisible(q.Scope, x.TenantID) || (q.Status != "" && x.Status != q.Status) {
+			continue
+		}
+		out = append(out, x)
+	}
+	return out, nil
+}
+
+// RuntimeDetail returns a fake runtime by id.
+func (r *fakeReader) RuntimeDetail(_ context.Context, id string) (RuntimeRow, bool, error) {
+	for _, x := range r.runtimes {
+		if x.ID == id {
+			return x, true, nil
+		}
+	}
+	return RuntimeRow{}, false, nil
+}
+
+// RuntimeTasks returns the fake tasks and failure count of a runtime.
+func (r *fakeReader) RuntimeTasks(_ context.Context, id string) ([]RuntimeTask, int64, error) {
+	return r.runtimeTasks[id], r.runtimeFailed, nil
+}
+
+// SetRuntimeDisabled records the disabled state on the fake store and reports a change.
+func (t *fakeTx) SetRuntimeDisabled(_ context.Context, id string, disabled bool, _, _ string) (bool, error) {
+	if t.s.runtimeDisabled == nil {
+		t.s.runtimeDisabled = map[string]bool{}
+	}
+	if t.s.runtimeDisabled[id] == disabled {
+		return false, nil
+	}
+	t.s.runtimeDisabled[id] = disabled
+	return true, nil
 }
 
 // TenantUsers returns the fake tenant users; the handler filters staff.
@@ -344,6 +386,8 @@ type fakeStore struct {
 	running map[string]bool
 	// memberChanges are the remove and change_role requests written.
 	memberChanges []MemberChange
+	// runtimeDisabled is the disabled state of each runtime id.
+	runtimeDisabled map[string]bool
 }
 
 type fakeExport struct {

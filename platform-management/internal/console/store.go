@@ -232,6 +232,46 @@ type AuditQuery struct {
 	Limit       int
 }
 
+// RuntimeRow is one runtime of the staff list. Device details are reduced to the
+// operating system (spec R6 section 3b.5, rule 2): no device_info, metadata or IP.
+type RuntimeRow struct {
+	ID            string
+	Name          string
+	WorkspaceID   string
+	TenantID      string
+	Status        string
+	OS            string
+	DaemonVersion string
+	AgentVersion  string
+	OwnerID       string
+	Disabled      bool
+	RunningTasks  int64
+	LastSeenAt    *time.Time
+	CreatedAt     time.Time
+}
+
+// RuntimeSearch is one page of the runtime list.
+type RuntimeSearch struct {
+	Pattern         *string
+	Status          string
+	TenantFilter    string
+	WorkspaceFilter string
+	DisabledOnly    bool
+	Cursor          *Cursor
+	Limit           int
+	Scope           Scope
+}
+
+// RuntimeTask is a task of a runtime: its state and times, and whether it failed
+// with an error. Its content is never read (spec R6 section 3b.5, rule 3).
+type RuntimeTask struct {
+	ID          string
+	Status      string
+	HasError    bool
+	CreatedAt   time.Time
+	CompletedAt *time.Time
+}
+
 // WorkspaceListRow is one workspace of the staff list (spec R6 section 3b.2).
 type WorkspaceListRow struct {
 	ID          string
@@ -264,6 +304,12 @@ type Reader interface {
 	SearchWorkspaces(ctx context.Context, q WorkspaceSearch) ([]WorkspaceListRow, error)
 	// WorkspaceTenant returns the tenant id of a workspace, or "" when it has none.
 	WorkspaceTenant(ctx context.Context, workspaceID string) (string, error)
+	// SearchRuntimes pages the runtimes, newest first, within q.Scope (spec R6 section 3b.5).
+	SearchRuntimes(ctx context.Context, q RuntimeSearch) ([]RuntimeRow, error)
+	// RuntimeDetail returns found == false for an unknown runtime.
+	RuntimeDetail(ctx context.Context, id string) (RuntimeRow, bool, error)
+	// RuntimeTasks returns the newest tasks of a runtime and its failed count of the last seven days.
+	RuntimeTasks(ctx context.Context, id string) ([]RuntimeTask, int64, error)
 	// TenantUsers pages the users of a tenant, by user id (spec R6 section 3b.3).
 	TenantUsers(ctx context.Context, q TenantUserSearch) ([]TenantUser, error)
 	// TenantUser returns found == false when the user is in no workspace of the tenant.
@@ -311,6 +357,9 @@ type Account struct {
 // Tx is the writes of one console operation, all inside one transaction with
 // its audit row.
 type Tx interface {
+	// SetRuntimeDisabled writes or clears the disabled row of a runtime and reports
+	// whether the state changed (spec R6 section 3b.5, rule 4).
+	SetRuntimeDisabled(ctx context.Context, runtimeID string, disabled bool, reason, byID string) (bool, error)
 	// InsertMemberChange queues a remove or change_role request. A live request
 	// for the same workspace, kind and email is returned with inserted == false.
 	InsertMemberChange(ctx context.Context, c MemberChange, byID, byLabel string) (id string, inserted bool, err error)

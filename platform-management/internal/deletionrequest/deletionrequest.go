@@ -18,6 +18,7 @@ const (
 	KindWorkspace = "workspace"
 	KindTenant    = "tenant"
 	KindAccount   = "account"
+	KindRuntime   = "runtime"
 )
 
 // States of a request (spec R6 section 6.3 and the platform_deletion_request table).
@@ -105,6 +106,14 @@ type Workspace struct {
 	TenantID string
 }
 
+// RuntimeTarget is the target row of a runtime request.
+type RuntimeTarget struct {
+	ID          string
+	Name        string
+	WorkspaceID string
+	TenantID    string
+}
+
 // Tenant is the target row of a tenant request.
 type Tenant struct {
 	ID     string
@@ -134,6 +143,8 @@ type Tx interface {
 	// creation and a tenant deletion queue on it (spec R6 section 5.7).
 	LockTenant(ctx context.Context, tenantID string) error
 	TenantWorkspaces(ctx context.Context, tenantID string) ([]string, error)
+	// Runtime returns found == false for an unknown runtime (spec R6 section 3b.5, rule 5).
+	Runtime(ctx context.Context, id string) (RuntimeTarget, bool, error)
 	// AccountUser returns found == false for an unknown user and for a deleted one.
 	AccountUser(ctx context.Context, id string) (AccountUser, bool, error)
 	// AccountWorkspaces lists the workspaces the user belongs to (spec R6 section 7.3).

@@ -1167,3 +1167,126 @@ func (t *pgxTx) InsertMemberChange(ctx context.Context, c MemberChange, byID, by
 	}
 	return uuidText(live.ID), false, nil
 }
+
+// SearchRuntimes implements Reader.
+func (r *PgxReader) SearchRuntimes(ctx context.Context, q RuntimeSearch) ([]RuntimeRow, error) {
+	at, id, err := cursorArgs(q.Cursor)
+	if err != nil {
+		return nil, err
+	}
+	tenantFilter, wsFilter, err := optionalUUIDs(q.TenantFilter, q.WorkspaceFilter)
+	if err != nil {
+		return nil, err
+	}
+	scoped, scopeTenant := scopeArgs(q.Scope)
+	rows, err := r.q.SearchRuntimes(ctx, db.SearchRuntimesParams{
+		Pattern: textArg(q.Pattern), Status: q.Status, Scoped: scoped, ScopeTenant: scopeTenant,
+		TenantFilter: tenantFilter, WorkspaceFilter: wsFilter, DisabledOnly: q.DisabledOnly,
+		CursorCreatedAt: at, CursorID: id, RowLimit: int32(q.Limit + 1),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]RuntimeRow, len(rows))
+	for i, x := range rows {
+		out[i] = RuntimeRow{
+			ID: uuidText(x.ID), Name: x.Name, WorkspaceID: uuidText(x.WorkspaceID), TenantID: x.TenantID,
+			Status: x.Status, OS: osOf(x.DeviceInfo), DaemonVersion: x.DaemonVersion, AgentVersion: x.AgentVersion,
+			OwnerID: uuidText(x.OwnerID), Disabled: x.Disabled, RunningTasks: x.RunningTasks,
+			LastSeenAt: timePtr(x.LastSeenAt), CreatedAt: x.CreatedAt.Time,
+		}
+	}
+	return out, nil
+}
+
+// RuntimeDetail implements Reader.
+func (r *PgxReader) RuntimeDetail(ctx context.Context, id string) (RuntimeRow, bool, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return RuntimeRow{}, false, err
+	}
+	x, err := r.q.GetRuntimeForAdmin(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return RuntimeRow{}, false, nil
+	}
+	if err != nil {
+		return RuntimeRow{}, false, err
+	}
+	return RuntimeRow{
+		ID: uuidText(x.ID), Name: x.Name, WorkspaceID: uuidText(x.WorkspaceID), TenantID: x.TenantID,
+		Status: x.Status, OS: osOf(x.DeviceInfo), DaemonVersion: x.DaemonVersion, AgentVersion: x.AgentVersion,
+		OwnerID: uuidText(x.OwnerID), Disabled: x.Disabled, RunningTasks: x.RunningTasks,
+		LastSeenAt: timePtr(x.LastSeenAt), CreatedAt: x.CreatedAt.Time,
+	}, true, nil
+}
+
+// RuntimeTasks implements Reader.
+func (r *PgxReader) RuntimeTasks(ctx context.Context, id string) ([]RuntimeTask, int64, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := r.q.ListRuntimeRecentTasks(ctx, uid)
+	if err != nil {
+		return nil, 0, err
+	}
+	failed, err := r.q.CountRuntimeFailedTasks(ctx, uid)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := make([]RuntimeTask, len(rows))
+	for i, x := range rows {
+		out[i] = RuntimeTask{
+			ID: uuidText(x.ID), Status: x.Status, HasError: x.Error.Valid && x.Error.String != "",
+			CreatedAt: x.CreatedAt.Time, CompletedAt: timePtr(x.CompletedAt),
+		}
+	}
+	return out, failed, nil
+}
+
+// SetRuntimeDisabled implements Tx. It reports whether the state changed.
+func (t *pgxTx) SetRuntimeDisabled(ctx context.Context, runtimeID string, disabled bool, reason, byID string) (bool, error) {
+	rt, err := parseUUID(runtimeID)
+	if err != nil {
+		return false, err
+	}
+	was, err := t.q.PlatformRuntimeDisabled(ctx, rt)
+	if err != nil {
+		return false, err
+	}
+	if disabled {
+		if was {
+			return false, nil
+		}
+		by, err := parseUUID(byID)
+		if err != nil {
+			return false, err
+		}
+		if err := t.q.DisablePlatformRuntime(ctx, db.DisablePlatformRuntimeParams{RuntimeID: rt, Reason: reason, ChangedBy: by}); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	if !was {
+		return false, nil
+	}
+	n, err := t.q.EnablePlatformRuntime(ctx, rt)
+	return n > 0, err
+}
+
+// optionalUUIDs parses two optional ids; an empty one is null.
+func optionalUUIDs(a, b string) (pgtype.UUID, pgtype.UUID, error) {
+	var ua, ub pgtype.UUID
+	var err error
+	if a != "" {
+		if ua, err = parseUUID(a); err != nil {
+			return ua, ub, err
+		}
+	}
+	if b != "" {
+		if ub, err = parseUUID(b); err != nil {
+			return ua, ub, err
+		}
+	}
+	return ua, ub, nil
+}
