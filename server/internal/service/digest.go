@@ -980,6 +980,7 @@ func (s *DigestService) computeInquiries(ctx context.Context, workspaceID pgtype
 	yesterday := briefInquiryDay(now).AddDate(0, 0, -1)
 	rows, err := s.Queries.ListBriefInquiriesForDigest(ctx, db.ListBriefInquiriesForDigestParams{
 		WorkspaceID: workspaceID, AskedOn: pgtype.Date{Time: yesterday, Valid: true},
+		ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("digest inquiries: %w", err)
@@ -1165,7 +1166,7 @@ func (s *DigestService) computeWorkspace(ctx context.Context, workspaceID pgtype
 		}
 		ws.Runs, ws.FailedRuns = int(runs.Runs), int(runs.FailedRuns)
 
-		usage, err := s.Queries.DigestWorkspaceUsage(ctx, db.DigestWorkspaceUsageParams{WorkspaceID: workspaceID, Since: since})
+		usage, err := s.Queries.DigestWorkspaceUsage(ctx, db.DigestWorkspaceUsageParams{WorkspaceID: workspaceID, Since: since, ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID()})
 		if err != nil {
 			return ws, fmt.Errorf("digest workspace usage: %w", err)
 		}

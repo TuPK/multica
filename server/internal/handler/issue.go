@@ -516,9 +516,17 @@ func (h *Handler) loadDuplicateOriginals(ctx context.Context, wsID pgtype.UUID, 
 	if len(missing) == 0 {
 		return
 	}
+	// No scope means the caller builds a response no viewer reads from (a
+	// broadcast payload, a worker's note), which sees every project.
+	sqlScope := projectaccess.System()
+	if scope != nil {
+		sqlScope = *scope
+	}
 	rows, err := h.Queries.ListIssueRefsInWorkspace(ctx, db.ListIssueRefsInWorkspaceParams{
 		WorkspaceID: wsID,
 		Ids:         missing,
+		ScopeMode:   sqlScope.Mode(),
+		ScopeUserID: sqlScope.UserID(),
 	})
 	if err != nil {
 		slog.Warn("resolve duplicate originals failed", "error", err, "count", len(missing))
