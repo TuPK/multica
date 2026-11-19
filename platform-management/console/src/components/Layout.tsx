@@ -172,7 +172,7 @@ export function Layout({
                 const Icon = item.icon;
                 const isActive =
                   currentScreen === item.id ||
-                  (item.id === "tenants" && currentScreen === "tenant-detail") ||
+                  (item.id === "tenants" && (currentScreen === "tenant-detail" || currentScreen === "workspace-detail")) ||
                   (item.id === "users" && currentScreen === "user-detail");
                 return (
                   <SideNavItem

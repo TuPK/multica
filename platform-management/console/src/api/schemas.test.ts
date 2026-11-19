@@ -11,6 +11,7 @@ import {
   parseNotePage,
   parseOverview,
   parseStaffList,
+  parseWorkspaceDetail,
   parseTenantDetail,
   parseTenantPage,
   parseUserDetail,
@@ -26,7 +27,7 @@ import {
   parseAccountRequestList,
   parseAccountRequest,
   parseResendWelcomeResponse,
-  parseTenantUsage,
+  parseWorkspaceUsage,
   parsePriceChangeList,
   parsePriceChangeDryRunResponse,
   parseSchedulePriceChangeResponse,
@@ -40,7 +41,7 @@ import {
   parseOrderEinvoiceList,
 } from "./schemas";
 
-const tenant = {
+const workspace = {
   id: "t1",
   name: "Acme",
   slug: "acme",
@@ -87,6 +88,18 @@ describe("me", () => {
   });
 });
 
+const tenant = {
+  id: "t1",
+  name: "Acme",
+  status: "active",
+  workspace_count: 2,
+  max_workspaces: 3,
+  best_plan_key: "pro",
+  status_summary: { active: 1, suspended: 1 },
+  created_at: "2026-01-01T00:00:00Z",
+  last_activity_at: "2026-02-01T00:00:00Z",
+};
+
 describe("tenants", () => {
   it("parses a page and keeps the cursor", () => {
     const page = parseTenantPage({ tenants: [tenant], next_cursor: "abc" });
@@ -106,22 +119,62 @@ describe("tenants", () => {
     expect(page.tenants[0]).toEqual({
       id: "t1",
       name: "",
-      slug: "",
       status: "unknown",
-      member_count: 0,
+      workspace_count: 0,
+      max_workspaces: null,
+      best_plan_key: "",
+      status_summary: {},
       created_at: "",
       last_activity_at: "",
     });
     expect(page.next_cursor).toBeNull();
   });
 
-  it("maps an unknown status to unknown", () => {
-    expect(parseTenantPage({ tenants: [{ ...tenant, status: "archived" }] }).tenants[0]?.status).toBe("unknown");
+  it("tenant schema falls back for unknown fields and null max_workspaces", () => {
+    // A null limit is no limit; an unknown field is ignored; an unknown status is unknown (I9).
+    const parsed = parseTenantPage({
+      tenants: [{ ...tenant, max_workspaces: null, status: "archived", added_by_a_newer_server: { x: 1 } }],
+    }).tenants[0];
+    expect(parsed?.max_workspaces).toBeNull();
+    expect(parsed?.status).toBe("unknown");
+    expect(parsed).not.toHaveProperty("added_by_a_newer_server");
+    // A string where a number belongs makes the page malformed, not a zero limit.
+    expect(parseTenantPage({ tenants: [{ ...tenant, max_workspaces: "ten" }] })).toEqual({ tenants: [], next_cursor: null });
   });
 
-  it("parses a detail with its state and owner", () => {
+  it("parses a tenant detail with its workspaces and their usage", () => {
     const detail = parseTenantDetail({
       ...tenant,
+      created_by: "u1",
+      workspaces: [
+        {
+          id: "w1",
+          name: "Main",
+          slug: "main",
+          status: "active",
+          plan_key: "pro",
+          member_count: 3,
+          owner: { id: "u1", email: "a@example.com" },
+          created_at: "2026-01-01T00:00:00Z",
+          usage_day: "2026-11-14",
+          usage_members: 3,
+        },
+        { id: "w2" },
+      ],
+    });
+    expect(detail?.workspaces).toHaveLength(2);
+    expect(detail?.workspaces[0]?.owner).toEqual({ id: "u1", email: "a@example.com" });
+    expect(detail?.workspaces[0]?.usage_members).toBe(3);
+    expect(detail?.workspaces[1]).toMatchObject({ name: "", plan_key: "", owner: null, status: "unknown" });
+    expect(parseTenantDetail(tenant)?.workspaces).toEqual([]);
+    for (const body of [null, "x", {}, { id: 7 }]) expect(parseTenantDetail(body)).toBeNull();
+  });
+});
+
+describe("workspaces", () => {
+  it("parses a detail with its state and owner", () => {
+    const detail = parseWorkspaceDetail({
+      ...workspace,
       state: { status: "suspended", reason: "abuse", changed_by: "u9", changed_at: "2026-02-02T00:00:00Z", deletion_scheduled_at: null },
       notes_count: 2,
       group_count: 4,
@@ -135,7 +188,7 @@ describe("tenants", () => {
   });
 
   it("defaults a missing state, owner, group count and notes count in a detail", () => {
-    const detail = parseTenantDetail(tenant);
+    const detail = parseWorkspaceDetail(workspace);
     expect(detail?.state).toEqual({
       status: "unknown",
       reason: "",
@@ -149,11 +202,11 @@ describe("tenants", () => {
   });
 
   it("falls back to null for a malformed detail", () => {
-    for (const body of [null, "x", {}, { id: 7 }]) expect(parseTenantDetail(body)).toBeNull();
+    for (const body of [null, "x", {}, { id: 7 }]) expect(parseWorkspaceDetail(body)).toBeNull();
   });
 });
 
-describe("tenant usage", () => {
+describe("workspace usage", () => {
   const usage = {
     usage_day: "2026-11-14",
     usage_members: 3,
@@ -176,40 +229,38 @@ describe("tenant usage", () => {
   };
 
   it("parses the usage of a workspace that has a row", () => {
-    expect(parseTenantPage({ tenants: [{ ...tenant, ...usage }] }).tenants[0]).toEqual({ ...tenant, ...usage });
+    expect(parseWorkspaceDetail({ ...workspace, ...usage })).toMatchObject(usage);
   });
 
   it("accepts a workspace with no row: a null day and zeros", () => {
-    const parsed = parseTenantPage({ tenants: [{ ...tenant, ...noRow }] }).tenants[0];
+    const parsed = parseWorkspaceDetail({ ...workspace, ...noRow });
     expect(parsed?.usage_day).toBeNull();
     expect(parsed?.usage_storage_bytes).toBe(0);
   });
 
-  it("accepts a tenant that carries no usage fields at all", () => {
-    const parsed = parseTenantPage({ tenants: [tenant] }).tenants[0];
-    expect(parsed).toEqual(tenant);
+  it("accepts a workspace that carries no usage fields at all", () => {
+    const parsed = parseWorkspaceDetail(workspace);
     expect(parsed?.usage_day).toBeUndefined();
   });
 
-  it("refuses a page whose usage fields are malformed", () => {
-    const empty = { tenants: [], next_cursor: null };
+  it("refuses a detail whose usage fields are malformed", () => {
     for (const bad of [{ usage_members: "many" }, { usage_storage_bytes: null }, { usage_day: 20261114 }]) {
-      expect(parseTenantPage({ tenants: [{ ...tenant, ...bad }] })).toEqual(empty);
+      expect(parseWorkspaceDetail({ ...workspace, ...bad })).toBeNull();
     }
   });
 
   it("parses the current counts of a detail and leaves a missing block out", () => {
     const current = { members: 4, agents: 2, runtimes: 1, issues_total: 41, storage_bytes: 4096 };
-    expect(parseTenantDetail({ ...tenant, ...usage, usage_current: current })?.usage_current).toEqual(current);
-    expect(parseTenantDetail({ ...tenant, usage_current: { members: 4 } })?.usage_current).toEqual({
+    expect(parseWorkspaceDetail({ ...workspace, ...usage, usage_current: current })?.usage_current).toEqual(current);
+    expect(parseWorkspaceDetail({ ...workspace, usage_current: { members: 4 } })?.usage_current).toEqual({
       members: 4,
       agents: 0,
       runtimes: 0,
       issues_total: 0,
       storage_bytes: 0,
     });
-    expect(parseTenantDetail(tenant)?.usage_current).toBeUndefined();
-    expect(parseTenantDetail({ ...tenant, usage_current: { members: "x" } })).toBeNull();
+    expect(parseWorkspaceDetail(workspace)?.usage_current).toBeUndefined();
+    expect(parseWorkspaceDetail({ ...workspace, usage_current: { members: "x" } })).toBeNull();
   });
 
   it("parses the usage totals of the overview and leaves them out when absent", () => {
@@ -663,7 +714,7 @@ describe("account requests", () => {
   });
 });
 
-describe("tenant monthly usage (GET /tenants/{id}/usage)", () => {
+describe("workspace monthly usage (GET /workspaces/{id}/usage)", () => {
   const validUsage = {
     workspace_id: "t1",
     period_start: "2026-11-01T00:00:00Z",
@@ -706,8 +757,8 @@ describe("tenant monthly usage (GET /tenants/{id}/usage)", () => {
     ],
   };
 
-  it("parses a well-formed tenant usage response", () => {
-    expect(parseTenantUsage(validUsage)).toEqual(validUsage);
+  it("parses a well-formed workspace usage response", () => {
+    expect(parseWorkspaceUsage(validUsage)).toEqual(validUsage);
   });
 
   it("parses an empty seat-plan response and nullable period bounds on unpaid orders", () => {
@@ -729,11 +780,11 @@ describe("tenant monthly usage (GET /tenants/{id}/usage)", () => {
         },
       ],
     };
-    expect(parseTenantUsage(emptyUsage)).toEqual(emptyUsage);
+    expect(parseWorkspaceUsage(emptyUsage)).toEqual(emptyUsage);
   });
 
   it("maps an unknown unpaid order status to unknown", () => {
-    const parsed = parseTenantUsage({
+    const parsed = parseWorkspaceUsage({
       ...validUsage,
       unpaid_orders: [{ ...validUsage.unpaid_orders[0], status: "in_collection" }],
     });
@@ -764,7 +815,7 @@ describe("tenant monthly usage (GET /tenants/{id}/usage)", () => {
       { ...validUsage, unpaid_orders: [{ id: "ord-u1" }] },
     ];
     for (const body of malformedBodies) {
-      expect(parseTenantUsage(body)).toBeNull();
+      expect(parseWorkspaceUsage(body)).toBeNull();
     }
   });
 });
@@ -992,7 +1043,7 @@ describe("billing profile verification", () => {
   });
 });
 
-describe("tenant billing profile (GET /tenants/{id}/billing-profile)", () => {
+describe("workspace billing profile (GET /workspaces/{id}/billing-profile)", () => {
   const validBusiness = {
     workspace_id: "ws-1",
     account_kind: "business",
@@ -1044,7 +1095,7 @@ describe("tenant billing profile (GET /tenants/{id}/billing-profile)", () => {
   });
 });
 
-describe("put billing profile response (PUT /tenants/{id}/billing-profile)", () => {
+describe("put billing profile response (PUT /workspaces/{id}/billing-profile)", () => {
   const validPut = {
     workspace_id: "ws-1",
     account_kind: "business",

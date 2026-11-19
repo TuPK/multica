@@ -38,7 +38,7 @@ describe("platformFetch request", () => {
 
   it("sends a body as JSON with a content type, and no body otherwise", async () => {
     const fn = mockFetch(json(200, {}));
-    await platformFetch("/tenants/1/status", { method: "POST", body: { status: "suspended", reason: "abuse" } });
+    await platformFetch("/workspaces/1/status", { method: "POST", body: { status: "suspended", reason: "abuse" } });
     const [, withBody] = fn.mock.calls[0]!;
     expect(withBody?.method).toBe("POST");
     expect(withBody?.body).toBe(JSON.stringify({ status: "suspended", reason: "abuse" }));

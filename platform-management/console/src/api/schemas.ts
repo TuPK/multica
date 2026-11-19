@@ -5,7 +5,7 @@ import { parseWithFallback } from "@multica/core/api/schema";
 // default, and a string enum the console does not know becomes "unknown", so
 // a newer server cannot blank a screen. Unknown keys are dropped.
 
-export const TENANT_STATUSES = ["active", "read_only", "suspended", "pending_deletion"] as const;
+export const WORKSPACE_STATUSES = ["active", "read_only", "suspended", "pending_deletion"] as const;
 export const ACCOUNT_STATUSES = ["active", "suspended", "pending_deletion", "deleted"] as const;
 export const STAFF_ROLES = ["support", "billing", "admin"] as const;
 export const ACTOR_TYPES = ["member", "agent", "system", "staff"] as const;
@@ -44,6 +44,18 @@ export const AUDIT_ACTIONS = [
   "account.sessions_revoked",
   "staff.added",
   "staff.removed",
+  "staff.role_changed",
+  "staff.tenant_assigned",
+  "member.staff_add_requested",
+  "member.staff_added",
+  "member.staff_add_failed",
+  "member.staff_add_canceled",
+  "workspace.immediate_deletion_requested",
+  "tenant.immediate_deletion_requested",
+  "tenant.deleted",
+  "deletion.request_failed",
+  "deletion.request_canceled",
+  "deletion.request_retried",
   "note.added",
   "subscription.changed",
   "plan.changed",
@@ -115,7 +127,7 @@ export const AUDIT_ACTIONS = [
   "einvoice.retried",
 ] as const;
 
-export type TenantStatus = (typeof TENANT_STATUSES)[number] | "unknown";
+export type WorkspaceStatus = (typeof WORKSPACE_STATUSES)[number] | "unknown";
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number] | "unknown";
 export type StaffRole = (typeof STAFF_ROLES)[number] | "unknown";
 export type ActorType = (typeof ACTOR_TYPES)[number] | "unknown";
@@ -141,7 +153,7 @@ export const MeSchema = z.object({
 });
 export type Me = z.output<typeof MeSchema>;
 
-// Tenants
+// Workspaces
 
 // The newest daily usage row of a workspace. A workspace with no row has a null
 // day and zeros. The fields are optional, not defaulted, so a response from a
@@ -169,26 +181,26 @@ export const UsageCurrentSchema = z.object({
 });
 export type UsageCurrent = z.output<typeof UsageCurrentSchema>;
 
-export const TenantSchema = z.object({
+export const WorkspaceSchema = z.object({
   id: z.string(),
   name: text,
   slug: text,
-  status: enumOf(TENANT_STATUSES),
+  status: enumOf(WORKSPACE_STATUSES),
   member_count: count,
   created_at: text,
   last_activity_at: text,
   ...usageFields,
 });
-export type Tenant = z.output<typeof TenantSchema>;
+export type Workspace = z.output<typeof WorkspaceSchema>;
 
-const TenantStateSchema = z.object({
-  status: enumOf(TENANT_STATUSES),
+const WorkspaceStateSchema = z.object({
+  status: enumOf(WORKSPACE_STATUSES),
   reason: text,
   changed_by: nullableText,
   changed_at: nullableText,
   deletion_scheduled_at: nullableText,
 });
-export type TenantState = z.output<typeof TenantStateSchema>;
+export type WorkspaceState = z.output<typeof WorkspaceStateSchema>;
 
 // Billing & Orders
 
@@ -386,12 +398,12 @@ export const ResetMfaResponseSchema = z.object({
 });
 export type ResetMfaResponse = z.output<typeof ResetMfaResponseSchema>;
 
-export const TenantBillingProfileSchema = z.object({
+export const WorkspaceBillingProfileSchema = z.object({
   account_kind: enumOf(ACCOUNT_KINDS),
   verified: z.boolean().default(false),
   verified_at: nullableText,
 });
-export type TenantBillingProfile = z.output<typeof TenantBillingProfileSchema>;
+export type WorkspaceBillingProfile = z.output<typeof WorkspaceBillingProfileSchema>;
 
 export const BillingProfileSchema = z.object({
   workspace_id: text,
@@ -418,19 +430,19 @@ export const PutBillingProfileResponseSchema = BillingProfileSchema.extend({
 });
 export type PutBillingProfileResponse = z.output<typeof PutBillingProfileResponseSchema>;
 
-export const TenantDetailSchema = TenantSchema.extend({
-  state: TenantStateSchema.prefault({}),
+export const WorkspaceDetailSchema = WorkspaceSchema.extend({
+  state: WorkspaceStateSchema.prefault({}),
   notes_count: count,
   group_count: count,
   owner: z.object({ id: z.string(), email: text }).nullable().default(null),
   subscription: SubscriptionSchema.nullable().default(null),
-  billing_profile: TenantBillingProfileSchema.nullable().optional(),
+  billing_profile: WorkspaceBillingProfileSchema.nullable().optional(),
   recent_orders: z.array(OrderSchema).default([]),
   usage_current: UsageCurrentSchema.optional(),
 });
-export type TenantDetail = z.output<typeof TenantDetailSchema>;
+export type WorkspaceDetail = z.output<typeof WorkspaceDetailSchema>;
 
-export const TenantUsageRowSchema = z.object({
+export const WorkspaceUsageRowSchema = z.object({
   day: z.string(),
   meter: z.string(),
   quantity: z.number(),
@@ -441,9 +453,9 @@ export const TenantUsageRowSchema = z.object({
   note: text,
   order_id: nullableText,
 });
-export type TenantUsageRow = z.output<typeof TenantUsageRowSchema>;
+export type WorkspaceUsageRow = z.output<typeof WorkspaceUsageRowSchema>;
 
-export const TenantUsageUnpaidOrderSchema = z.object({
+export const WorkspaceUsageUnpaidOrderSchema = z.object({
   id: z.string(),
   amount: z.number(),
   vat_amount: count,
@@ -452,17 +464,52 @@ export const TenantUsageUnpaidOrderSchema = z.object({
   period_start: nullableText,
   period_end: nullableText,
 });
-export type TenantUsageUnpaidOrder = z.output<typeof TenantUsageUnpaidOrderSchema>;
+export type WorkspaceUsageUnpaidOrder = z.output<typeof WorkspaceUsageUnpaidOrderSchema>;
 
-export const TenantUsageSchema = z.object({
+export const WorkspaceUsageSchema = z.object({
   workspace_id: z.string(),
   period_start: z.string(),
   period_end: z.string(),
-  rows: z.array(TenantUsageRowSchema),
+  rows: z.array(WorkspaceUsageRowSchema),
   missing_days: z.array(z.string()),
-  unpaid_orders: z.array(TenantUsageUnpaidOrderSchema),
+  unpaid_orders: z.array(WorkspaceUsageUnpaidOrderSchema),
 });
-export type TenantUsage = z.output<typeof TenantUsageSchema>;
+export type WorkspaceUsage = z.output<typeof WorkspaceUsageSchema>;
+
+// A tenant holds one or more workspaces (spec R6 section 5). max_workspaces is
+// the tenant's effective limit; null, like an absent value, is no limit (I9).
+export const TenantSchema = z.object({
+  id: z.string(),
+  name: text,
+  status: enumOf(WORKSPACE_STATUSES),
+  workspace_count: count,
+  max_workspaces: z.number().nullable().default(null),
+  best_plan_key: text,
+  status_summary: z.record(z.string(), z.number()).default({}),
+  created_at: text,
+  last_activity_at: text,
+});
+export type Tenant = z.output<typeof TenantSchema>;
+
+// One workspace of a tenant: names and counts only.
+export const TenantWorkspaceSchema = z.object({
+  id: z.string(),
+  name: text,
+  slug: text,
+  status: enumOf(WORKSPACE_STATUSES),
+  plan_key: text,
+  member_count: count,
+  owner: z.object({ id: z.string(), email: text }).nullable().default(null),
+  created_at: text,
+  ...usageFields,
+});
+export type TenantWorkspace = z.output<typeof TenantWorkspaceSchema>;
+
+export const TenantDetailSchema = TenantSchema.extend({
+  created_by: nullableText,
+  workspaces: z.array(TenantWorkspaceSchema).default([]),
+});
+export type TenantDetail = z.output<typeof TenantDetailSchema>;
 
 export const TenantPageSchema = z.object({
   tenants: z.array(TenantSchema).default([]),
@@ -645,7 +692,7 @@ export function parseNotice(data: unknown, endpoint: string): Notice | null {
 
 export function parsePutSubscriptionResponse(data: unknown): PutSubscriptionResponse | null {
   return parseWithFallback<PutSubscriptionResponse | null>(data, PutSubscriptionResponseSchema, null, {
-    endpoint: "PUT /api/platform/tenants/{id}/subscription",
+    endpoint: "PUT /api/platform/workspaces/{id}/subscription",
   });
 }
 
@@ -695,15 +742,21 @@ export function parseTenantDetail(data: unknown): TenantDetail | null {
   });
 }
 
+export function parseWorkspaceDetail(data: unknown): WorkspaceDetail | null {
+  return parseWithFallback<WorkspaceDetail | null>(data, WorkspaceDetailSchema, null, {
+    endpoint: "GET /api/platform/workspaces/{id}",
+  });
+}
+
 export function parseBillingProfile(data: unknown): BillingProfile | null {
   return parseWithFallback<BillingProfile | null>(data, BillingProfileSchema, null, {
-    endpoint: "GET /api/platform/tenants/{id}/billing-profile",
+    endpoint: "GET /api/platform/workspaces/{id}/billing-profile",
   });
 }
 
 export function parseBillingProfileVerifyResponse(
   data: unknown,
-  endpoint = "POST /api/platform/tenants/{id}/billing-profile/verify",
+  endpoint = "POST /api/platform/workspaces/{id}/billing-profile/verify",
 ): BillingProfileVerifyResponse | null {
   return parseWithFallback<BillingProfileVerifyResponse | null>(
     data,
@@ -718,13 +771,13 @@ export function parsePutBillingProfileResponse(data: unknown): PutBillingProfile
     data,
     PutBillingProfileResponseSchema,
     null,
-    { endpoint: "PUT /api/platform/tenants/{id}/billing-profile" },
+    { endpoint: "PUT /api/platform/workspaces/{id}/billing-profile" },
   );
 }
 
-export function parseTenantUsage(data: unknown): TenantUsage | null {
-  return parseWithFallback<TenantUsage | null>(data, TenantUsageSchema, null, {
-    endpoint: "GET /api/platform/tenants/{id}/usage",
+export function parseWorkspaceUsage(data: unknown): WorkspaceUsage | null {
+  return parseWithFallback<WorkspaceUsage | null>(data, WorkspaceUsageSchema, null, {
+    endpoint: "GET /api/platform/workspaces/{id}/usage",
   });
 }
 
@@ -742,7 +795,7 @@ export function parseUserDetail(data: unknown): UserDetail | null {
 
 export function parseNotePage(data: unknown): NotePage {
   return parseWithFallback<NotePage>(data, NotePageSchema, { notes: [], next_cursor: null }, {
-    endpoint: "GET /api/platform/tenants/{id}/notes",
+    endpoint: "GET /api/platform/workspaces/{id}/notes",
   });
 }
 

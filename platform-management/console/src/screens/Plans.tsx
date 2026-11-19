@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Card } from "@astryxdesign/core/Card";
-import { proportional, Table } from "@astryxdesign/core/Table";
+import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
@@ -258,14 +258,14 @@ export function Plans({ userRole }: PlansProps) {
         <Table
           data={plans}
           idKey="key"
-          density="balanced"
+          density="compact"
           dividers="rows"
           hasHover
           columns={[
             {
               key: "name",
               header: "Plan",
-              width: proportional(2, { minWidth: 150 }),
+              width: proportional(2, { minWidth: 110 }),
               renderCell: (plan) => (
                 <>
                   <Text type="body" weight="medium" as="div" className="block">
@@ -280,7 +280,7 @@ export function Plans({ userRole }: PlansProps) {
             {
               key: "audience",
               header: "Audience",
-              width: proportional(1, { minWidth: 100 }),
+              width: proportional(1, { minWidth: 90 }),
               renderCell: (plan) => {
                 const audience = plan.audience ?? "any";
                 return <Badge variant="neutral" label={AUDIENCE_LABELS[audience] ?? audience} />;
@@ -289,7 +289,7 @@ export function Plans({ userRole }: PlansProps) {
             {
               key: "billing_model",
               header: "Billing Model",
-              width: proportional(1, { minWidth: 110 }),
+              width: proportional(1, { minWidth: 96 }),
               renderCell: (plan) => {
                 const billingModel = plan.billing_model ?? "seat";
                 return (
@@ -300,7 +300,7 @@ export function Plans({ userRole }: PlansProps) {
             {
               key: "pricing",
               header: "Pricing (Monthly / Yearly)",
-              width: proportional(2, { minWidth: 170 }),
+              width: proportional(2, { minWidth: 120 }),
               renderCell: (plan) => (
                 <>
                   <Text type="body" weight="medium" hasTabularNumbers as="div" className="block">
@@ -319,7 +319,7 @@ export function Plans({ userRole }: PlansProps) {
             {
               key: "seats",
               header: "Seats Configuration",
-              width: proportional(1.5, { minWidth: 130 }),
+              width: proportional(1.5, { minWidth: 96 }),
               renderCell: (plan) => (
                 <Text type="body" hasTabularNumbers>
                   {plan.seats_fixed !== null
@@ -331,7 +331,7 @@ export function Plans({ userRole }: PlansProps) {
             {
               key: "trial_days",
               header: "Trial",
-              width: proportional(1, { minWidth: 90 }),
+              width: proportional(1, { minWidth: 64 }),
               renderCell: (plan) => (
                 <Text type="body" hasTabularNumbers>
                   {plan.trial_days > 0 ? `${plan.trial_days} days` : "No trial"}
@@ -341,7 +341,7 @@ export function Plans({ userRole }: PlansProps) {
             {
               key: "is_public",
               header: "Visibility",
-              width: proportional(1, { minWidth: 100 }),
+              width: proportional(1, { minWidth: 84 }),
               renderCell: (plan) => (
                 <Badge
                   variant={plan.is_public ? "teal" : "neutral"}
@@ -352,7 +352,7 @@ export function Plans({ userRole }: PlansProps) {
             {
               key: "status",
               header: "Status",
-              width: proportional(1, { minWidth: 100 }),
+              width: proportional(1, { minWidth: 76 }),
               renderCell: (plan) => (
                 <StatusBadge status={plan.archived_at ? "archived" : "active"} />
               ),
@@ -360,42 +360,40 @@ export function Plans({ userRole }: PlansProps) {
             {
               key: "actions",
               header: "Actions",
-              width: proportional(3, { minWidth: 330 }),
+              width: pixel(128),
               align: "end",
               renderCell: (plan) => (
                 <div className="flex items-center justify-end gap-1">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon-sm"
+                    title="Price schedule"
                     onClick={() => {
                       setSelectedSchedulePlan(plan);
                       setSchedulePlanKey(plan.key);
                     }}
                     aria-label={`Schedule price for ${plan.name}`}
-                    className="gap-1.5"
                   >
                     <CalendarClock className="size-3.5" aria-hidden="true" />
-                    <span>Price schedule</span>
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon-sm"
+                    title="Edit"
                     onClick={() => handleOpenEdit(plan)}
                     aria-label={`Edit plan ${plan.name}`}
-                    className="gap-1.5"
                   >
                     <Pencil className="size-3.5" aria-hidden="true" />
-                    <span>Edit</span>
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon-sm"
+                    title="Delete"
                     onClick={() => handleOpenDelete(plan)}
                     aria-label={`Delete plan ${plan.name}`}
-                    className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="size-3.5" aria-hidden="true" />
-                    <span>Delete</span>
                   </Button>
                 </div>
               ),

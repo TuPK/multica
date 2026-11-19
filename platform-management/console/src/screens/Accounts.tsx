@@ -578,7 +578,7 @@ export function Accounts({ userRole }: AccountsProps) {
               {
                 key: "state",
                 header: "State",
-                width: proportional(2, { minWidth: 170 }),
+                width: proportional(1, { minWidth: 100 }),
                 renderCell: (req) => (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <AccountStateBadge req={req} />
@@ -589,7 +589,7 @@ export function Accounts({ userRole }: AccountsProps) {
               {
                 key: "email",
                 header: "Email",
-                width: proportional(3, { minWidth: 200 }),
+                width: proportional(1.4, { minWidth: 120 }),
                 renderCell: (req) => (
                   <>
                     <Text type="body" weight="medium" as="div" className="block">
@@ -606,13 +606,13 @@ export function Accounts({ userRole }: AccountsProps) {
               {
                 key: "kind",
                 header: "Kind",
-                width: proportional(1, { minWidth: 90 }),
+                width: proportional(0.6, { minWidth: 56 }),
                 renderCell: (req) => <Text type="body" className="capitalize">{req.kind}</Text>,
               },
               {
                 key: "plan_key",
                 header: "Plan",
-                width: proportional(2, { minWidth: 150 }),
+                width: proportional(1, { minWidth: 90 }),
                 renderCell: (req) => (
                   <>
                     <Text type="body" weight="medium" as="div" className="block">
@@ -627,7 +627,7 @@ export function Accounts({ userRole }: AccountsProps) {
               {
                 key: "workspace_name",
                 header: "Workspace Name",
-                width: proportional(2, { minWidth: 170 }),
+                width: proportional(1, { minWidth: 90 }),
                 renderCell: (req) => (
                   <>
                     <div className="truncate font-medium" title={req.workspace_name}>
@@ -647,7 +647,7 @@ export function Accounts({ userRole }: AccountsProps) {
               {
                 key: "error_code",
                 header: "Error Code",
-                width: proportional(2, { minWidth: 140 }),
+                width: proportional(1, { minWidth: 84 }),
                 renderCell: (req) =>
                   req.error_code ? (
                     <Text type="supporting" color="inherit" className="text-destructive">
@@ -660,7 +660,7 @@ export function Accounts({ userRole }: AccountsProps) {
               {
                 key: "attempts",
                 header: "Attempts",
-                width: pixel(96),
+                width: pixel(56),
                 align: "end",
                 renderCell: (req) => (
                   <Text type="body" hasTabularNumbers>
@@ -671,7 +671,7 @@ export function Accounts({ userRole }: AccountsProps) {
               {
                 key: "created_at",
                 header: "Created",
-                width: proportional(2, { minWidth: 180 }),
+                width: proportional(1.2, { minWidth: 116 }),
                 renderCell: (req) => (
                   <Text type="supporting" hasTabularNumbers>
                     {req.created_at ? new Date(req.created_at).toLocaleString() : "-"}
@@ -681,7 +681,7 @@ export function Accounts({ userRole }: AccountsProps) {
               {
                 key: "actions",
                 header: "Actions",
-                width: proportional(2, { minWidth: 240 }),
+                width: pixel(200),
                 align: "end",
                 renderCell: (req) => {
                   const canCancel = req.state === "pending";

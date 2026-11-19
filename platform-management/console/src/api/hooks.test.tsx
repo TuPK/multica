@@ -6,9 +6,9 @@ import { PlatformApiError } from "./client";
 import {
   platformKeys,
   useAddStaff,
-  useAddTenantNote,
+  useAddWorkspaceNote,
   useAuditEvents,
-  useChangeTenantStatus,
+  useChangeWorkspaceStatus,
   useChangeUserStatus,
   useLogout,
   useMe,
@@ -18,12 +18,13 @@ import {
   useResetUserMfa,
   useSendCode,
   useStaff,
-  useTenant,
-  useTenantAudit,
-  useTenantNotes,
-  useTenantUsage,
-  useTenantBillingProfile,
+  useWorkspace,
+  useWorkspaceAudit,
+  useWorkspaceNotes,
+  useWorkspaceUsage,
+  useWorkspaceBillingProfile,
   useTenants,
+  useTenant,
   useUser,
   useUsers,
   useVerifyCode,
@@ -38,7 +39,7 @@ import {
   useCancelScheduledPriceChange,
   useUpdateSubscription,
   useSetBillingProfileVerified,
-  useUpdateTenantBillingProfile,
+  useUpdateWorkspaceBillingProfile,
   accountKeys,
   AccountApiError,
   useAccountRequests,
@@ -92,7 +93,8 @@ function setup() {
   return { queryClient, wrapper };
 }
 
-const tenant = { id: "t1", name: "Acme", slug: "acme", status: "active", member_count: 2, created_at: "", last_activity_at: "" };
+const workspace = { id: "t1", name: "Acme", slug: "acme", status: "active", member_count: 2, created_at: "", last_activity_at: "" };
+const tenant = { id: "t1", name: "Acme", status: "active", workspace_count: 2, max_workspaces: 3, best_plan_key: "pro", status_summary: { active: 2 }, created_at: "", last_activity_at: "" };
 const user = { id: "u1", email: "a@example.com", name: "A", status: "active", memberships_count: 1, created_at: "" };
 const event = (id: string) => ({ id, workspace_id: "t1", actor_type: "staff", action: "note.added", created_at: "" });
 
@@ -147,26 +149,26 @@ describe("query keys", () => {
   it("include the filters", () => {
     expect(platformKeys.tenantList({ q: "a" })).not.toEqual(platformKeys.tenantList({ q: "b" }));
     expect(platformKeys.audit({ action: "note.added" })).not.toEqual(platformKeys.audit({ action: "staff.added" }));
-    expect(platformKeys.tenantAudit("t1", { actor_id: "u1" })).not.toEqual(platformKeys.tenantAudit("t1", {}));
+    expect(platformKeys.workspaceAudit("t1", { actor_id: "u1" })).not.toEqual(platformKeys.workspaceAudit("t1", {}));
   });
 
 
   it("keep one workspace's audit under its own prefix", () => {
-    const key = platformKeys.tenantAudit("t1", { action: "note.added" });
-    expect(key.slice(0, platformKeys.tenantAudits("t1").length)).toEqual(platformKeys.tenantAudits("t1"));
-    expect(key.slice(0, platformKeys.tenantAudits("t2").length)).not.toEqual(platformKeys.tenantAudits("t2"));
+    const key = platformKeys.workspaceAudit("t1", { action: "note.added" });
+    expect(key.slice(0, platformKeys.workspaceAudits("t1").length)).toEqual(platformKeys.workspaceAudits("t1"));
+    expect(key.slice(0, platformKeys.workspaceAudits("t2").length)).not.toEqual(platformKeys.workspaceAudits("t2"));
   });
 
-  it("keeps tenant usage keys under platform/tenants", () => {
-    const key = platformKeys.tenantUsage("t1");
-    expect(key.slice(0, platformKeys.tenants().length)).toEqual(platformKeys.tenants());
-    expect(key).not.toEqual(platformKeys.tenantUsage("t2"));
+  it("keeps workspace usage keys under platform/workspaces", () => {
+    const key = platformKeys.workspaceUsage("t1");
+    expect(key.slice(0, platformKeys.workspaces().length)).toEqual(platformKeys.workspaces());
+    expect(key).not.toEqual(platformKeys.workspaceUsage("t2"));
   });
 
-  it("keeps tenant billing profile keys under platform/tenants", () => {
-    const key = platformKeys.tenantBillingProfile("t1");
-    expect(key.slice(0, platformKeys.tenants().length)).toEqual(platformKeys.tenants());
-    expect(key).not.toEqual(platformKeys.tenantBillingProfile("t2"));
+  it("keeps workspace billing profile keys under platform/workspaces", () => {
+    const key = platformKeys.workspaceBillingProfile("t1");
+    expect(key.slice(0, platformKeys.workspaces().length)).toEqual(platformKeys.workspaces());
+    expect(key).not.toEqual(platformKeys.workspaceBillingProfile("t2"));
   });
 });
 
@@ -208,25 +210,34 @@ describe("reads", () => {
     expect(result.current.data).toEqual([]);
   });
 
-  it("useTenant uses the detail key and is an error for a malformed body", async () => {
-    stubFetch({ "GET /api/platform/tenants/t1": json(200, tenant), "GET /api/platform/tenants/t2": json(200, [1]) });
+  it("useTenant reads /tenants/{id} under the tenant detail key", async () => {
+    const calls = stubFetch({ "GET /api/platform/tenants/t1": json(200, { ...tenant, workspaces: [] }) });
     const { queryClient, wrapper } = setup();
-    const ok = renderHook(() => useTenant("t1"), { wrapper });
-    const bad = renderHook(() => useTenant("t2"), { wrapper });
+    const { result } = renderHook(() => useTenant("t1"), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(calls[0]?.path).toBe("/api/platform/tenants/t1");
+    expect(queryClient.getQueryState(platformKeys.tenant("t1"))?.status).toBe("success");
+  });
+
+  it("useWorkspace uses the detail key and is an error for a malformed body", async () => {
+    stubFetch({ "GET /api/platform/workspaces/t1": json(200, workspace), "GET /api/platform/workspaces/t2": json(200, [1]) });
+    const { queryClient, wrapper } = setup();
+    const ok = renderHook(() => useWorkspace("t1"), { wrapper });
+    const bad = renderHook(() => useWorkspace("t2"), { wrapper });
     await waitFor(() => expect(ok.result.current.isSuccess).toBe(true));
     await waitFor(() => expect(bad.result.current.isError).toBe(true));
-    expect(queryClient.getQueryState(platformKeys.tenant("t1"))?.status).toBe("success");
+    expect(queryClient.getQueryState(platformKeys.workspace("t1"))?.status).toBe("success");
     expect((bad.result.current.error as PlatformApiError).code).toBe("malformed_response");
   });
 
-  it("useTenant does not fetch without an id", () => {
+  it("useWorkspace does not fetch without an id", () => {
     const calls = stubFetch({});
     const { wrapper } = setup();
-    renderHook(() => useTenant(undefined), { wrapper });
+    renderHook(() => useWorkspace(undefined), { wrapper });
     expect(calls).toHaveLength(0);
   });
 
-  it("useTenantUsage fetches under the tenant usage key and errors on a malformed body", async () => {
+  it("useWorkspaceUsage fetches under the workspace usage key and errors on a malformed body", async () => {
     const validUsage = {
       workspace_id: "t1",
       period_start: "2026-11-01T00:00:00Z",
@@ -248,28 +259,28 @@ describe("reads", () => {
       unpaid_orders: [],
     };
     const calls = stubFetch({
-      "GET /api/platform/tenants/t1/usage": json(200, validUsage),
-      "GET /api/platform/tenants/t2/usage": json(200, { workspace_id: "t2" }),
-      "GET /api/platform/tenants/a%2Fb/usage": json(200, { ...validUsage, workspace_id: "a/b" }),
+      "GET /api/platform/workspaces/t1/usage": json(200, validUsage),
+      "GET /api/platform/workspaces/t2/usage": json(200, { workspace_id: "t2" }),
+      "GET /api/platform/workspaces/a%2Fb/usage": json(200, { ...validUsage, workspace_id: "a/b" }),
     });
     const { queryClient, wrapper } = setup();
-    const ok = renderHook(() => useTenantUsage("t1"), { wrapper });
-    const bad = renderHook(() => useTenantUsage("t2"), { wrapper });
-    const encoded = renderHook(() => useTenantUsage("a/b"), { wrapper });
-    renderHook(() => useTenantUsage(undefined), { wrapper });
+    const ok = renderHook(() => useWorkspaceUsage("t1"), { wrapper });
+    const bad = renderHook(() => useWorkspaceUsage("t2"), { wrapper });
+    const encoded = renderHook(() => useWorkspaceUsage("a/b"), { wrapper });
+    renderHook(() => useWorkspaceUsage(undefined), { wrapper });
 
     await waitFor(() => expect(ok.result.current.isSuccess).toBe(true));
     await waitFor(() => expect(bad.result.current.isError).toBe(true));
     await waitFor(() => expect(encoded.result.current.isSuccess).toBe(true));
 
     expect(ok.result.current.data).toEqual(validUsage);
-    expect(queryClient.getQueryState(platformKeys.tenantUsage("t1"))?.status).toBe("success");
+    expect(queryClient.getQueryState(platformKeys.workspaceUsage("t1"))?.status).toBe("success");
     expect((bad.result.current.error as PlatformApiError).code).toBe("malformed_response");
-    expect(calls.map((c) => c.path)).toContain("/api/platform/tenants/a%2Fb/usage");
+    expect(calls.map((c) => c.path)).toContain("/api/platform/workspaces/a%2Fb/usage");
     expect(calls).toHaveLength(3);
   });
 
-  it("useTenantBillingProfile fetches under the billing profile key and errors on a malformed body", async () => {
+  it("useWorkspaceBillingProfile fetches under the billing profile key and errors on a malformed body", async () => {
     const validProfile = {
       workspace_id: "t1",
       account_kind: "business",
@@ -281,9 +292,9 @@ describe("reads", () => {
       verified_at: "2026-11-17T00:00:00Z",
     };
     const calls = stubFetch({
-      "GET /api/platform/tenants/t1/billing-profile": json(200, validProfile),
-      "GET /api/platform/tenants/t2/billing-profile": json(200, { workspace_id: "t2" }),
-      "GET /api/platform/tenants/a%2Fb/billing-profile": json(200, {
+      "GET /api/platform/workspaces/t1/billing-profile": json(200, validProfile),
+      "GET /api/platform/workspaces/t2/billing-profile": json(200, { workspace_id: "t2" }),
+      "GET /api/platform/workspaces/a%2Fb/billing-profile": json(200, {
         ...validProfile,
         workspace_id: "a/b",
         verified: false,
@@ -291,45 +302,45 @@ describe("reads", () => {
       }),
     });
     const { queryClient, wrapper } = setup();
-    const ok = renderHook(() => useTenantBillingProfile("t1"), { wrapper });
-    const bad = renderHook(() => useTenantBillingProfile("t2"), { wrapper });
-    const encoded = renderHook(() => useTenantBillingProfile("a/b"), { wrapper });
-    renderHook(() => useTenantBillingProfile(undefined), { wrapper });
+    const ok = renderHook(() => useWorkspaceBillingProfile("t1"), { wrapper });
+    const bad = renderHook(() => useWorkspaceBillingProfile("t2"), { wrapper });
+    const encoded = renderHook(() => useWorkspaceBillingProfile("a/b"), { wrapper });
+    renderHook(() => useWorkspaceBillingProfile(undefined), { wrapper });
 
     await waitFor(() => expect(ok.result.current.isSuccess).toBe(true));
     await waitFor(() => expect(bad.result.current.isError).toBe(true));
     await waitFor(() => expect(encoded.result.current.isSuccess).toBe(true));
 
     expect(ok.result.current.data).toEqual(validProfile);
-    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("t1"))?.status).toBe("success");
+    expect(queryClient.getQueryState(platformKeys.workspaceBillingProfile("t1"))?.status).toBe("success");
     expect((bad.result.current.error as PlatformApiError).code).toBe("malformed_response");
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toContain("GET /api/platform/tenants/a%2Fb/billing-profile");
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toContain("GET /api/platform/workspaces/a%2Fb/billing-profile");
     expect(calls).toHaveLength(3);
   });
 
-  it("useTenantAudit sends the filters and keys by workspace and filters", async () => {
+  it("useWorkspaceAudit sends the filters and keys by workspace and filters", async () => {
     const calls = stubFetch({
-      "GET /api/platform/tenants/t1/audit-events": json(200, { events: [event("e1")], next_cursor: null }),
+      "GET /api/platform/workspaces/t1/audit-events": json(200, { events: [event("e1")], next_cursor: null }),
     });
     const { queryClient, wrapper } = setup();
     const filters = { action: "note.added", from: "2026-01-01T00:00:00Z" };
-    const { result } = renderHook(() => useTenantAudit("t1", filters), { wrapper });
+    const { result } = renderHook(() => useWorkspaceAudit("t1", filters), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.map((e) => e.id)).toEqual(["e1"]);
     expect(new URLSearchParams(calls[0]?.search).get("action")).toBe("note.added");
     expect(new URLSearchParams(calls[0]?.search).get("from")).toBe("2026-01-01T00:00:00Z");
-    expect(queryClient.getQueryState(platformKeys.tenantAudit("t1", filters))?.status).toBe("success");
+    expect(queryClient.getQueryState(platformKeys.workspaceAudit("t1", filters))?.status).toBe("success");
   });
 
-  it("useTenantNotes uses the notes key", async () => {
+  it("useWorkspaceNotes uses the notes key", async () => {
     stubFetch({
-      "GET /api/platform/tenants/t1/notes": json(200, { notes: [{ id: "n1", body: "hi" }], next_cursor: null }),
+      "GET /api/platform/workspaces/t1/notes": json(200, { notes: [{ id: "n1", body: "hi" }], next_cursor: null }),
     });
     const { queryClient, wrapper } = setup();
-    const { result } = renderHook(() => useTenantNotes("t1"), { wrapper });
+    const { result } = renderHook(() => useWorkspaceNotes("t1"), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[0]?.body).toBe("hi");
-    expect(queryClient.getQueryState(platformKeys.tenantNotes("t1"))?.status).toBe("success");
+    expect(queryClient.getQueryState(platformKeys.workspaceNotes("t1"))?.status).toBe("success");
   });
 
   it("useUsers and useUser use the user keys", async () => {
@@ -472,7 +483,7 @@ describe("session mutations", () => {
     const calls = stubFetch({ "POST /api/platform/auth/logout": noContent() });
     const { queryClient, wrapper } = setup();
     queryClient.setQueryData(platformKeys.me(), { user_id: "u1", email: "a@example.com", role: "admin" });
-    queryClient.setQueryData(platformKeys.tenant("t1"), tenant);
+    queryClient.setQueryData(platformKeys.workspace("t1"), workspace);
     queryClient.setQueryData(platformKeys.staff(), []);
     queryClient.setQueryData(["unrelated"], 1);
     const { result } = renderHook(() => useLogout(), { wrapper });
@@ -481,7 +492,7 @@ describe("session mutations", () => {
     });
     expect(calls[0]).toMatchObject({ method: "POST", path: "/api/platform/auth/logout" });
     expect(queryClient.getQueryData(platformKeys.me())).toBeNull();
-    expect(queryClient.getQueryData(platformKeys.tenant("t1"))).toBeUndefined();
+    expect(queryClient.getQueryData(platformKeys.workspace("t1"))).toBeUndefined();
     expect(queryClient.getQueryData(platformKeys.staff())).toBeUndefined();
     expect(queryClient.getQueryData(["unrelated"])).toBe(1);
   });
@@ -495,13 +506,13 @@ const seeded: Record<string, QueryKey> = {
   me: platformKeys.me(),
   tenantList: platformKeys.tenantList({ q: "acme" }),
   tenantListAll: platformKeys.tenantList({}),
-  tenant: platformKeys.tenant("t1"),
-  otherTenant: platformKeys.tenant("t2"),
-  tenantAudit: platformKeys.tenantAudit("t1", {}),
-  tenantAuditFiltered: platformKeys.tenantAudit("t1", { action: "note.added" }),
-  otherTenantAudit: platformKeys.tenantAudit("t2", {}),
-  tenantNotes: platformKeys.tenantNotes("t1"),
-  otherTenantNotes: platformKeys.tenantNotes("t2"),
+  workspace: platformKeys.workspace("t1"),
+  otherWorkspace: platformKeys.workspace("t2"),
+  workspaceAudit: platformKeys.workspaceAudit("t1", {}),
+  workspaceAuditFiltered: platformKeys.workspaceAudit("t1", { action: "note.added" }),
+  otherWorkspaceAudit: platformKeys.workspaceAudit("t2", {}),
+  workspaceNotes: platformKeys.workspaceNotes("t1"),
+  otherWorkspaceNotes: platformKeys.workspaceNotes("t2"),
   userList: platformKeys.userList({}),
   user: platformKeys.user("u1"),
   otherUser: platformKeys.user("u2"),
@@ -522,8 +533,8 @@ interface MutationCase {
 
 function useAllMutations() {
   return {
-    changeTenantStatus: useChangeTenantStatus(),
-    addTenantNote: useAddTenantNote(),
+    changeWorkspaceStatus: useChangeWorkspaceStatus(),
+    addWorkspaceNote: useAddWorkspaceNote(),
     changeUserStatus: useChangeUserStatus(),
     revokeUserSessions: useRevokeUserSessions(),
     resetUserMfa: useResetUserMfa(),
@@ -534,20 +545,20 @@ function useAllMutations() {
 
 const mutationCases: MutationCase[] = [
   {
-    name: "useChangeTenantStatus",
-    route: "POST /api/platform/tenants/t1/status",
+    name: "useChangeWorkspaceStatus",
+    route: "POST /api/platform/workspaces/t1/status",
     response: json(200, { changed: true, state: {} }),
-    run: (h) => h.changeTenantStatus.mutateAsync({ tenantId: "t1", status: "suspended", reason: "abuse" }),
-    request: { method: "POST", path: "/api/platform/tenants/t1/status", body: { status: "suspended", reason: "abuse" } },
-    invalidates: ["tenant", "tenantList", "tenantListAll", "tenantAudit", "tenantAuditFiltered", "audit", "auditFiltered", "overview"],
+    run: (h) => h.changeWorkspaceStatus.mutateAsync({ workspaceId: "t1", status: "suspended", reason: "abuse" }),
+    request: { method: "POST", path: "/api/platform/workspaces/t1/status", body: { status: "suspended", reason: "abuse" } },
+    invalidates: ["workspace", "tenantList", "tenantListAll", "workspaceAudit", "workspaceAuditFiltered", "audit", "auditFiltered", "overview"],
   },
   {
-    name: "useAddTenantNote",
-    route: "POST /api/platform/tenants/t1/notes",
+    name: "useAddWorkspaceNote",
+    route: "POST /api/platform/workspaces/t1/notes",
     response: json(201, { id: "n1" }),
-    run: (h) => h.addTenantNote.mutateAsync({ tenantId: "t1", body: "called" }),
-    request: { method: "POST", path: "/api/platform/tenants/t1/notes", body: { body: "called" } },
-    invalidates: ["tenantNotes", "tenant", "tenantAudit", "tenantAuditFiltered", "audit", "auditFiltered"],
+    run: (h) => h.addWorkspaceNote.mutateAsync({ workspaceId: "t1", body: "called" }),
+    request: { method: "POST", path: "/api/platform/workspaces/t1/notes", body: { body: "called" } },
+    invalidates: ["workspaceNotes", "workspace", "workspaceAudit", "workspaceAuditFiltered", "audit", "auditFiltered"],
   },
   {
     name: "useChangeUserStatus",
@@ -629,13 +640,13 @@ describe("mutations", () => {
   });
 
   it("encodes an id that is not path-safe", async () => {
-    const calls = stubFetch({ "POST /api/platform/tenants/a%2Fb/status": json(200, {}) });
+    const calls = stubFetch({ "POST /api/platform/workspaces/a%2Fb/status": json(200, {}) });
     const { wrapper } = setup();
-    const { result } = renderHook(() => useChangeTenantStatus(), { wrapper });
+    const { result } = renderHook(() => useChangeWorkspaceStatus(), { wrapper });
     await act(async () => {
-      await result.current.mutateAsync({ tenantId: "a/b", status: "active", reason: "ok" });
+      await result.current.mutateAsync({ workspaceId: "a/b", status: "active", reason: "ok" });
     });
-    expect(calls[0]?.path).toBe("/api/platform/tenants/a%2Fb/status");
+    expect(calls[0]?.path).toBe("/api/platform/workspaces/a%2Fb/status");
   });
 });
 
@@ -697,12 +708,12 @@ describe("orders and billing hooks", () => {
     expect(calls[0]?.body).toEqual({ reason: "wire received", transfer_reference: "REF123" });
   });
 
-  it("useCancelOrder sends reason and invalidates tenant usage", async () => {
+  it("useCancelOrder sends reason and invalidates workspace usage", async () => {
     const calls = stubFetch({
       "POST /api/platform/orders/ord-1/cancel": json(200, { order: { ...mockOrder, status: "canceled" }, applied: true }),
     });
     const { queryClient, wrapper } = setup();
-    queryClient.setQueryData(platformKeys.tenantUsage("ws-1"), null);
+    queryClient.setQueryData(platformKeys.workspaceUsage("ws-1"), null);
     const { result } = renderHook(() => useCancelOrder(), { wrapper });
 
     await act(async () => {
@@ -711,7 +722,7 @@ describe("orders and billing hooks", () => {
 
     expect(calls[0]?.path).toBe("/api/platform/orders/ord-1/cancel");
     expect(calls[0]?.body).toEqual({ reason: "user request" });
-    expect(queryClient.getQueryState(platformKeys.tenantUsage("ws-1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.workspaceUsage("ws-1"))?.isInvalidated).toBe(true);
   });
 });
 
@@ -926,9 +937,9 @@ describe("price change hooks", () => {
 });
 
 describe("subscription hook", () => {
-  it("useUpdateSubscription sends PUT to /tenants/{id}/subscription", async () => {
+  it("useUpdateSubscription sends PUT to /workspaces/{id}/subscription", async () => {
     const calls = stubFetch({
-      "PUT /api/platform/tenants/ws-1/subscription": json(200, {
+      "PUT /api/platform/workspaces/ws-1/subscription": json(200, {
         changed: true,
         subscription: { workspace_id: "ws-1", plan_key: "business", seats: 10, interval: "month", version: 2 },
       }),
@@ -938,7 +949,7 @@ describe("subscription hook", () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        tenantId: "ws-1",
+        workspaceId: "ws-1",
         planKey: "business",
         seats: 10,
         interval: "month",
@@ -946,7 +957,7 @@ describe("subscription hook", () => {
       });
     });
 
-    expect(calls[0]?.path).toBe("/api/platform/tenants/ws-1/subscription");
+    expect(calls[0]?.path).toBe("/api/platform/workspaces/ws-1/subscription");
     expect(calls[0]?.body).toEqual({
       plan_key: "business",
       seats: 10,
@@ -1127,35 +1138,35 @@ describe("account request hooks", () => {
 });
 
 describe("billing profile verification hook", () => {
-  it("useSetBillingProfileVerified posts verify/unverify, invalidates tenant, and preserves incomplete fields", async () => {
+  it("useSetBillingProfileVerified posts verify/unverify, invalidates workspace, and preserves incomplete fields", async () => {
     const calls = stubFetch({
-      "POST /api/platform/tenants/ws-1/billing-profile/verify": json(200, {
+      "POST /api/platform/workspaces/ws-1/billing-profile/verify": json(200, {
         workspace_id: "ws-1",
         account_kind: "business",
         verified: true,
         verified_at: "2026-11-17T00:00:00Z",
       }),
-      "POST /api/platform/tenants/ws-1/billing-profile/unverify": json(200, {
+      "POST /api/platform/workspaces/ws-1/billing-profile/unverify": json(200, {
         workspace_id: "ws-1",
         account_kind: "business",
         verified: false,
         verified_at: null,
       }),
-      "POST /api/platform/tenants/ws-2/billing-profile/verify": json(409, {
+      "POST /api/platform/workspaces/ws-2/billing-profile/verify": json(409, {
         error: "billing profile is incomplete",
         code: "billing_profile_incomplete",
         fields: ["tax_code", "address"],
       }),
     });
     const { queryClient, wrapper } = setup();
-    queryClient.setQueryData(platformKeys.tenant("ws-1"), null);
-    queryClient.setQueryData(platformKeys.tenant("ws-2"), null);
+    queryClient.setQueryData(platformKeys.workspace("ws-1"), null);
+    queryClient.setQueryData(platformKeys.workspace("ws-2"), null);
 
     const { result } = renderHook(() => useSetBillingProfileVerified(), { wrapper });
 
     let verifiedRes: unknown;
     await act(async () => {
-      verifiedRes = await result.current.mutateAsync({ tenantId: "ws-1", verified: true });
+      verifiedRes = await result.current.mutateAsync({ workspaceId: "ws-1", verified: true });
     });
     expect(verifiedRes).toEqual({
       workspace_id: "ws-1",
@@ -1163,11 +1174,11 @@ describe("billing profile verification hook", () => {
       verified: true,
       verified_at: "2026-11-17T00:00:00Z",
     });
-    expect(queryClient.getQueryState(platformKeys.tenant("ws-1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.workspace("ws-1"))?.isInvalidated).toBe(true);
 
     let unverifiedRes: unknown;
     await act(async () => {
-      unverifiedRes = await result.current.mutateAsync({ tenantId: "ws-1", verified: false });
+      unverifiedRes = await result.current.mutateAsync({ workspaceId: "ws-1", verified: false });
     });
     expect(unverifiedRes).toEqual({
       workspace_id: "ws-1",
@@ -1178,30 +1189,30 @@ describe("billing profile verification hook", () => {
 
     await act(async () => {
       await expect(
-        result.current.mutateAsync({ tenantId: "ws-2", verified: true }),
+        result.current.mutateAsync({ workspaceId: "ws-2", verified: true }),
       ).rejects.toMatchObject({
         status: 409,
         code: "billing_profile_incomplete",
         details: { fields: ["tax_code", "address"] },
       });
     });
-    expect(queryClient.getQueryState(platformKeys.tenant("ws-2"))?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(platformKeys.workspace("ws-2"))?.isInvalidated).toBe(false);
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
-      "POST /api/platform/tenants/ws-1/billing-profile/verify",
-      "POST /api/platform/tenants/ws-1/billing-profile/unverify",
-      "POST /api/platform/tenants/ws-2/billing-profile/verify",
+      "POST /api/platform/workspaces/ws-1/billing-profile/verify",
+      "POST /api/platform/workspaces/ws-1/billing-profile/unverify",
+      "POST /api/platform/workspaces/ws-2/billing-profile/verify",
     ]);
   });
 
-  it("useSetBillingProfileVerified invalidates the tenant billing profile query key", async () => {
+  it("useSetBillingProfileVerified invalidates the workspace billing profile query key", async () => {
     stubFetch({
-      "POST /api/platform/tenants/ws-1/billing-profile/verify": json(200, {
+      "POST /api/platform/workspaces/ws-1/billing-profile/verify": json(200, {
         workspace_id: "ws-1",
         account_kind: "business",
         verified: true,
         verified_at: "2026-11-17T00:00:00Z",
       }),
-      "POST /api/platform/tenants/ws-1/billing-profile/unverify": json(200, {
+      "POST /api/platform/workspaces/ws-1/billing-profile/unverify": json(200, {
         workspace_id: "ws-1",
         account_kind: "business",
         verified: false,
@@ -1209,7 +1220,7 @@ describe("billing profile verification hook", () => {
       }),
     });
     const { queryClient, wrapper } = setup();
-    queryClient.setQueryData(platformKeys.tenantBillingProfile("ws-1"), {
+    queryClient.setQueryData(platformKeys.workspaceBillingProfile("ws-1"), {
       workspace_id: "ws-1",
       account_kind: "business",
       legal_name: "Acme Co",
@@ -1219,23 +1230,23 @@ describe("billing profile verification hook", () => {
       verified: false,
       verified_at: null,
     });
-    queryClient.setQueryData(platformKeys.tenantBillingProfile("ws-2"), null);
+    queryClient.setQueryData(platformKeys.workspaceBillingProfile("ws-2"), null);
 
     const { result } = renderHook(() => useSetBillingProfileVerified(), { wrapper });
 
     await act(async () => {
-      await result.current.mutateAsync({ tenantId: "ws-1", verified: true });
+      await result.current.mutateAsync({ workspaceId: "ws-1", verified: true });
     });
-    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-1"))?.isInvalidated).toBe(true);
-    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-2"))?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(platformKeys.workspaceBillingProfile("ws-1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.workspaceBillingProfile("ws-2"))?.isInvalidated).toBe(false);
 
     await act(async () => {
-      await result.current.mutateAsync({ tenantId: "ws-1", verified: false });
+      await result.current.mutateAsync({ workspaceId: "ws-1", verified: false });
     });
-    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.workspaceBillingProfile("ws-1"))?.isInvalidated).toBe(true);
   });
 
-  it("useUpdateTenantBillingProfile sends PUT, updates/invalidates tenant and billing profile caches, and surfaces field errors", async () => {
+  it("useUpdateWorkspaceBillingProfile sends PUT, updates/invalidates workspace and billing profile caches, and surfaces field errors", async () => {
     const updated = {
       workspace_id: "ws-1",
       account_kind: "business" as const,
@@ -1248,23 +1259,23 @@ describe("billing profile verification hook", () => {
       changed: true,
     };
     const calls = stubFetch({
-      "PUT /api/platform/tenants/ws-1/billing-profile": json(200, updated),
-      "PUT /api/platform/tenants/a%2Fb/billing-profile": json(200, { ...updated, workspace_id: "a/b" }),
-      "PUT /api/platform/tenants/ws-incomplete/billing-profile": json(409, {
+      "PUT /api/platform/workspaces/ws-1/billing-profile": json(200, updated),
+      "PUT /api/platform/workspaces/a%2Fb/billing-profile": json(200, { ...updated, workspace_id: "a/b" }),
+      "PUT /api/platform/workspaces/ws-incomplete/billing-profile": json(409, {
         error: "billing profile is incomplete",
         code: "billing_profile_incomplete",
         fields: ["legal_name", "tax_code"],
       }),
-      "PUT /api/platform/tenants/ws-invalid/billing-profile": json(400, {
+      "PUT /api/platform/workspaces/ws-invalid/billing-profile": json(400, {
         error: "billing profile has invalid fields",
         code: "billing_profile_invalid",
         fields: ["tax_code"],
       }),
-      "PUT /api/platform/tenants/ws-bad/billing-profile": json(200, { nope: true }),
+      "PUT /api/platform/workspaces/ws-bad/billing-profile": json(200, { nope: true }),
     });
     const { queryClient, wrapper } = setup();
-    queryClient.setQueryData(platformKeys.tenant("ws-1"), null);
-    queryClient.setQueryData(platformKeys.tenantBillingProfile("ws-1"), {
+    queryClient.setQueryData(platformKeys.workspace("ws-1"), null);
+    queryClient.setQueryData(platformKeys.workspaceBillingProfile("ws-1"), {
       workspace_id: "ws-1",
       account_kind: "business",
       legal_name: "Acme Co",
@@ -1274,18 +1285,18 @@ describe("billing profile verification hook", () => {
       verified: true,
       verified_at: "2026-11-17T00:00:00Z",
     });
-    queryClient.setQueryData(platformKeys.tenantAudit("ws-1", {}), { pages: [], pageParams: [] });
+    queryClient.setQueryData(platformKeys.workspaceAudit("ws-1", {}), { pages: [], pageParams: [] });
     queryClient.setQueryData(platformKeys.audit({}), { pages: [], pageParams: [] });
-    queryClient.setQueryData(platformKeys.tenant("ws-2"), null);
-    queryClient.setQueryData(platformKeys.tenantBillingProfile("ws-2"), null);
-    queryClient.setQueryData(platformKeys.tenant("ws-incomplete"), null);
+    queryClient.setQueryData(platformKeys.workspace("ws-2"), null);
+    queryClient.setQueryData(platformKeys.workspaceBillingProfile("ws-2"), null);
+    queryClient.setQueryData(platformKeys.workspace("ws-incomplete"), null);
 
-    const { result } = renderHook(() => useUpdateTenantBillingProfile(), { wrapper });
+    const { result } = renderHook(() => useUpdateWorkspaceBillingProfile(), { wrapper });
 
     let res: unknown;
     await act(async () => {
       res = await result.current.mutateAsync({
-        tenantId: "ws-1",
+        workspaceId: "ws-1",
         account_kind: "business",
         legal_name: "Beta Co",
         tax_code: "0123456789",
@@ -1297,7 +1308,7 @@ describe("billing profile verification hook", () => {
     expect(res).toEqual(updated);
     expect(calls[0]).toMatchObject({
       method: "PUT",
-      path: "/api/platform/tenants/ws-1/billing-profile",
+      path: "/api/platform/workspaces/ws-1/billing-profile",
       body: {
         account_kind: "business",
         legal_name: "Beta Co",
@@ -1306,7 +1317,7 @@ describe("billing profile verification hook", () => {
         invoice_email: "ap@beta.test",
       },
     });
-    expect(queryClient.getQueryData(platformKeys.tenantBillingProfile("ws-1"))).toEqual({
+    expect(queryClient.getQueryData(platformKeys.workspaceBillingProfile("ws-1"))).toEqual({
       workspace_id: "ws-1",
       account_kind: "business",
       legal_name: "Beta Co",
@@ -1316,26 +1327,26 @@ describe("billing profile verification hook", () => {
       verified: false,
       verified_at: null,
     });
-    expect(queryClient.getQueryState(platformKeys.tenant("ws-1"))?.isInvalidated).toBe(true);
-    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-1"))?.isInvalidated).toBe(true);
-    expect(queryClient.getQueryState(platformKeys.tenantAudit("ws-1", {}))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.workspace("ws-1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.workspaceBillingProfile("ws-1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.workspaceAudit("ws-1", {}))?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(platformKeys.audit({}))?.isInvalidated).toBe(true);
-    expect(queryClient.getQueryState(platformKeys.tenant("ws-2"))?.isInvalidated).toBe(false);
-    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-2"))?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(platformKeys.workspace("ws-2"))?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(platformKeys.workspaceBillingProfile("ws-2"))?.isInvalidated).toBe(false);
 
     await act(async () => {
       await result.current.mutateAsync({
-        tenantId: "a/b",
+        workspaceId: "a/b",
         account_kind: "individual",
       });
     });
-    expect(calls[1]?.path).toBe("/api/platform/tenants/a%2Fb/billing-profile");
+    expect(calls[1]?.path).toBe("/api/platform/workspaces/a%2Fb/billing-profile");
     expect(calls[1]?.body).toEqual({ account_kind: "individual" });
 
     await act(async () => {
       await expect(
         result.current.mutateAsync({
-          tenantId: "ws-incomplete",
+          workspaceId: "ws-incomplete",
           account_kind: "business",
           legal_name: "",
           tax_code: "",
@@ -1348,12 +1359,12 @@ describe("billing profile verification hook", () => {
         details: { fields: ["legal_name", "tax_code"] },
       });
     });
-    expect(queryClient.getQueryState(platformKeys.tenant("ws-incomplete"))?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(platformKeys.workspace("ws-incomplete"))?.isInvalidated).toBe(false);
 
     await act(async () => {
       await expect(
         result.current.mutateAsync({
-          tenantId: "ws-invalid",
+          workspaceId: "ws-invalid",
           account_kind: "business",
           legal_name: "Acme Co",
           tax_code: "123",
@@ -1370,7 +1381,7 @@ describe("billing profile verification hook", () => {
     await act(async () => {
       await expect(
         result.current.mutateAsync({
-          tenantId: "ws-bad",
+          workspaceId: "ws-bad",
           account_kind: "individual",
           legal_name: "",
           tax_code: "",

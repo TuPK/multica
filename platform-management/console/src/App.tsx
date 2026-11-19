@@ -9,6 +9,7 @@ import { Login } from "./screens/Login";
 import { Overview } from "./screens/Overview";
 import { Tenants } from "./screens/Tenants";
 import { TenantDetail } from "./screens/TenantDetail";
+import { WorkspaceDetail } from "./screens/WorkspaceDetail";
 import { Users } from "./screens/Users";
 import { UserDetail } from "./screens/UserDetail";
 import { Staff } from "./screens/Staff";
@@ -23,6 +24,7 @@ type Screen =
   | "overview"
   | "tenants"
   | "tenant-detail"
+  | "workspace-detail"
   | "users"
   | "user-detail"
   | "payment-notices"
@@ -35,12 +37,14 @@ type Screen =
 
 interface RouteState {
   screen: Screen;
+  // The tenant on screen, or for a workspace the tenant it was opened from.
   tenantId: string | null;
+  workspaceId: string | null;
   userId: string | null;
 }
 
 const SCREEN_PATHS: Record<
-  Exclude<Screen, "tenant-detail" | "user-detail">,
+  Exclude<Screen, "tenant-detail" | "workspace-detail" | "user-detail">,
   string
 > = {
   overview: "/",
@@ -66,42 +70,51 @@ function safeDecodeSegment(raw: string): string | null {
 function parseRoute(pathname: string): RouteState {
   const clean = pathname.replace(/\/+$/, "") || "/";
   if (clean === "/") {
-    return { screen: "overview", tenantId: null, userId: null };
+    return { screen: "overview", tenantId: null, workspaceId: null, userId: null };
   }
   if (clean === "/tenants") {
-    return { screen: "tenants", tenantId: null, userId: null };
+    return { screen: "tenants", tenantId: null, workspaceId: null, userId: null };
   }
   if (clean.startsWith("/tenants/")) {
     const id = safeDecodeSegment(clean.slice("/tenants/".length));
     if (id && !id.includes("/")) {
-      return { screen: "tenant-detail", tenantId: id, userId: null };
+      return { screen: "tenant-detail", tenantId: id, workspaceId: null, userId: null };
+    }
+  }
+  if (clean.startsWith("/workspaces/")) {
+    const id = safeDecodeSegment(clean.slice("/workspaces/".length));
+    if (id && !id.includes("/")) {
+      return { screen: "workspace-detail", tenantId: null, workspaceId: id, userId: null };
     }
   }
   if (clean === "/users") {
-    return { screen: "users", tenantId: null, userId: null };
+    return { screen: "users", tenantId: null, workspaceId: null, userId: null };
   }
   if (clean.startsWith("/users/")) {
     const id = safeDecodeSegment(clean.slice("/users/".length));
     if (id && !id.includes("/")) {
-      return { screen: "user-detail", tenantId: null, userId: id };
+      return { screen: "user-detail", tenantId: null, workspaceId: null, userId: id };
     }
   }
   for (const [screen, path] of Object.entries(SCREEN_PATHS)) {
     if (path !== "/" && clean === path) {
-      return { screen: screen as Screen, tenantId: null, userId: null };
+      return { screen: screen as Screen, tenantId: null, workspaceId: null, userId: null };
     }
   }
-  return { screen: "overview", tenantId: null, userId: null };
+  return { screen: "overview", tenantId: null, workspaceId: null, userId: null };
 }
 
 function routeToPath(route: RouteState): string {
   if (route.screen === "tenant-detail" && route.tenantId) {
     return `/tenants/${encodeURIComponent(route.tenantId)}`;
   }
+  if (route.screen === "workspace-detail" && route.workspaceId) {
+    return `/workspaces/${encodeURIComponent(route.workspaceId)}`;
+  }
   if (route.screen === "user-detail" && route.userId) {
     return `/users/${encodeURIComponent(route.userId)}`;
   }
-  if (route.screen === "tenant-detail") return "/tenants";
+  if (route.screen === "tenant-detail" || route.screen === "workspace-detail") return "/tenants";
   if (route.screen === "user-detail") return "/users";
   return SCREEN_PATHS[route.screen];
 }
@@ -165,12 +178,12 @@ export function App() {
 
   const effectiveRoute: RouteState = canAccessScreen(route.screen, me.role)
     ? route
-    : { screen: "overview", tenantId: null, userId: null };
+    : { screen: "overview", tenantId: null, workspaceId: null, userId: null };
 
   const navigateTo = (next: RouteState) => {
     const resolved: RouteState = canAccessScreen(next.screen, me.role)
       ? next
-      : { screen: "overview", tenantId: null, userId: null };
+      : { screen: "overview", tenantId: null, workspaceId: null, userId: null };
     setRoute(resolved);
     const nextPath = routeToPath(resolved);
     if (window.location.pathname !== nextPath) {
@@ -181,8 +194,8 @@ export function App() {
   const handleNavigate = (screen: string) => {
     const targetScreen = (
       screen in SCREEN_PATHS ? screen : "overview"
-    ) as Exclude<Screen, "tenant-detail" | "user-detail">;
-    navigateTo({ screen: targetScreen, tenantId: null, userId: null });
+    ) as Exclude<Screen, "tenant-detail" | "workspace-detail" | "user-detail">;
+    navigateTo({ screen: targetScreen, tenantId: null, workspaceId: null, userId: null });
   };
 
   const handleLogout = async () => {
@@ -194,9 +207,11 @@ export function App() {
   };
 
   const openTenant = (id: string) =>
-    navigateTo({ screen: "tenant-detail", tenantId: id, userId: null });
+    navigateTo({ screen: "tenant-detail", tenantId: id, workspaceId: null, userId: null });
+  const openWorkspace = (id: string, fromTenantId: string | null) =>
+    navigateTo({ screen: "workspace-detail", tenantId: fromTenantId, workspaceId: id, userId: null });
   const openUser = (id: string) =>
-    navigateTo({ screen: "user-detail", tenantId: null, userId: id });
+    navigateTo({ screen: "user-detail", tenantId: null, workspaceId: null, userId: id });
 
   const renderScreen = () => {
     switch (effectiveRoute.screen) {
@@ -212,11 +227,29 @@ export function App() {
           <TenantDetail
             tenantId={effectiveRoute.tenantId}
             onBack={() =>
-              navigateTo({ screen: "tenants", tenantId: null, userId: null })
+              navigateTo({ screen: "tenants", tenantId: null, workspaceId: null, userId: null })
+            }
+            onSelectWorkspace={(id) => openWorkspace(id, effectiveRoute.tenantId)}
+          />
+        );
+      case "workspace-detail": {
+        if (!effectiveRoute.workspaceId) {
+          return <Tenants onSelectTenant={openTenant} />;
+        }
+        const fromTenant = effectiveRoute.tenantId;
+        return (
+          <WorkspaceDetail
+            workspaceId={effectiveRoute.workspaceId}
+            backLabel={fromTenant ? "Back to tenant" : "Back to tenants"}
+            onBack={() =>
+              fromTenant
+                ? openTenant(fromTenant)
+                : navigateTo({ screen: "tenants", tenantId: null, workspaceId: null, userId: null })
             }
             userRole={me.role}
           />
         );
+      }
       case "users":
         return <Users onSelectUser={openUser} />;
       case "user-detail":
@@ -227,7 +260,7 @@ export function App() {
           <UserDetail
             userId={effectiveRoute.userId}
             onBack={() =>
-              navigateTo({ screen: "users", tenantId: null, userId: null })
+              navigateTo({ screen: "users", tenantId: null, workspaceId: null, userId: null })
             }
           />
         );

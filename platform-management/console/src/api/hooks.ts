@@ -12,9 +12,10 @@ import {
   parseNotePage,
   parseOverview,
   parseStaffList,
+  parseWorkspaceDetail,
   parseTenantDetail,
   parseTenantPage,
-  parseTenantUsage,
+  parseWorkspaceUsage,
   parseUserDetail,
   parseUserPage,
   parseOrderList,
@@ -44,8 +45,9 @@ import {
   type Overview,
   type StaffRole,
   type TenantDetail,
-  type TenantStatus,
-  type TenantUsage,
+  type WorkspaceDetail,
+  type WorkspaceStatus,
+  type WorkspaceUsage,
   type UserDetail,
   type Order,
   type OrderInvoiceState,
@@ -90,7 +92,7 @@ export type {
   EinvoiceState,
   Plan,
   Limits,
-  TenantUsage,
+  WorkspaceUsage,
   PriceChange,
   PriceChangeState,
   PriceSnapshot,
@@ -100,7 +102,7 @@ export type {
 };
 
 /** The states staff may set on a workspace. */
-export type SettableTenantStatus = Exclude<TenantStatus, "unknown">;
+export type SettableWorkspaceStatus = Exclude<WorkspaceStatus, "unknown">;
 /** The states staff may set on an account. */
 export type SettableAccountStatus = "active" | "suspended";
 /** The roles staff may grant. */
@@ -150,15 +152,17 @@ function pathSegment(id: string): string {
 export const platformKeys = {
   all: ["platform"] as const,
   me: () => ["platform", "me"] as const,
+  workspaces: () => ["platform", "workspaces"] as const,
   tenants: () => ["platform", "tenants"] as const,
   tenantLists: () => ["platform", "tenants", "list"] as const,
   tenantList: (filters: SearchFilters) => ["platform", "tenants", "list", clean(filters)] as const,
   tenant: (id: string) => ["platform", "tenants", "detail", id] as const,
-  tenantUsage: (id: string) => ["platform", "tenants", "usage", id] as const,
-  tenantBillingProfile: (id: string) => ["platform", "tenants", "billing-profile", id] as const,
-  tenantAudits: (id: string) => ["platform", "tenants", "audit", id] as const,
-  tenantAudit: (id: string, filters: AuditFilters) => ["platform", "tenants", "audit", id, clean(filters)] as const,
-  tenantNotes: (id: string) => ["platform", "tenants", "notes", id] as const,
+  workspace: (id: string) => ["platform", "workspaces", "detail", id] as const,
+  workspaceUsage: (id: string) => ["platform", "workspaces", "usage", id] as const,
+  workspaceBillingProfile: (id: string) => ["platform", "workspaces", "billing-profile", id] as const,
+  workspaceAudits: (id: string) => ["platform", "workspaces", "audit", id] as const,
+  workspaceAudit: (id: string, filters: AuditFilters) => ["platform", "workspaces", "audit", id, clean(filters)] as const,
+  workspaceNotes: (id: string) => ["platform", "workspaces", "notes", id] as const,
   users: () => ["platform", "users"] as const,
   userLists: () => ["platform", "users", "list"] as const,
   userList: (filters: SearchFilters) => ["platform", "users", "list", clean(filters)] as const,
@@ -259,7 +263,7 @@ export function useLogout() {
   });
 }
 
-// Tenants
+// Workspaces
 
 // The lists below are infinite queries, so a screen can load more without
 // losing the pages it has. `data` is the flat array of every loaded row; page
@@ -286,23 +290,32 @@ export function useTenant(id: string | undefined) {
   });
 }
 
-export function useTenantUsage(id: string | undefined) {
+export function useWorkspace(id: string | undefined) {
   return useQuery({
-    queryKey: platformKeys.tenantUsage(id ?? ""),
+    queryKey: platformKeys.workspace(id ?? ""),
     enabled: !!id,
-    queryFn: async ({ signal }): Promise<TenantUsage> =>
-      orMalformed(parseTenantUsage(await platformFetch(`/tenants/${pathSegment(id ?? "")}/usage`, { signal }))),
+    queryFn: async ({ signal }): Promise<WorkspaceDetail> =>
+      orMalformed(parseWorkspaceDetail(await platformFetch(`/workspaces/${pathSegment(id ?? "")}`, { signal }))),
   });
 }
 
-export function useTenantBillingProfile(id: string | undefined) {
+export function useWorkspaceUsage(id: string | undefined) {
   return useQuery({
-    queryKey: platformKeys.tenantBillingProfile(id ?? ""),
+    queryKey: platformKeys.workspaceUsage(id ?? ""),
+    enabled: !!id,
+    queryFn: async ({ signal }): Promise<WorkspaceUsage> =>
+      orMalformed(parseWorkspaceUsage(await platformFetch(`/workspaces/${pathSegment(id ?? "")}/usage`, { signal }))),
+  });
+}
+
+export function useWorkspaceBillingProfile(id: string | undefined) {
+  return useQuery({
+    queryKey: platformKeys.workspaceBillingProfile(id ?? ""),
     enabled: !!id,
     queryFn: async ({ signal }): Promise<BillingProfile> =>
       orMalformed(
         parseBillingProfile(
-          await platformFetch(`/tenants/${pathSegment(id ?? "")}/billing-profile`, { signal }),
+          await platformFetch(`/workspaces/${pathSegment(id ?? "")}/billing-profile`, { signal }),
         ),
       ),
   });
@@ -312,21 +325,21 @@ function invalidateAll(queryClient: QueryClient, keys: readonly (readonly unknow
   return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
 }
 
-/** Variables: `{ tenantId, status, reason }`. The reason is required. */
-export function useChangeTenantStatus() {
+/** Variables: `{ workspaceId, status, reason }`. The reason is required. */
+export function useChangeWorkspaceStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: { tenantId: string; status: SettableTenantStatus; reason: string }): Promise<void> => {
-      await platformFetch(`/tenants/${pathSegment(vars.tenantId)}/status`, {
+    mutationFn: async (vars: { workspaceId: string; status: SettableWorkspaceStatus; reason: string }): Promise<void> => {
+      await platformFetch(`/workspaces/${pathSegment(vars.workspaceId)}/status`, {
         method: "POST",
         body: { status: vars.status, reason: vars.reason },
       });
     },
     onSuccess: (_data, vars) =>
       invalidateAll(queryClient, [
-        platformKeys.tenant(vars.tenantId),
-        platformKeys.tenantLists(),
-        platformKeys.tenantAudits(vars.tenantId),
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.tenants(),
+        platformKeys.workspaceAudits(vars.workspaceId),
         platformKeys.audits(),
         platformKeys.overview(),
       ]),
@@ -334,18 +347,18 @@ export function useChangeTenantStatus() {
 }
 
 /** A workspace's audit events, newest first. */
-export function useTenantAudit(id: string | undefined, filters: AuditFilters = {}) {
+export function useWorkspaceAudit(id: string | undefined, filters: AuditFilters = {}) {
   const f = clean(filters);
   return useInfiniteQuery({
-    queryKey: platformKeys.tenantAudit(id ?? "", f),
+    queryKey: platformKeys.workspaceAudit(id ?? "", f),
     enabled: !!id,
     queryFn: async ({ pageParam, signal }) =>
       parseAuditPage(
         await platformFetch(
-          `/tenants/${pathSegment(id ?? "")}/audit-events${queryString({ ...f, cursor: pageParam })}`,
+          `/workspaces/${pathSegment(id ?? "")}/audit-events${queryString({ ...f, cursor: pageParam })}`,
           { signal },
         ),
-        "GET /api/platform/tenants/{id}/audit-events",
+        "GET /api/platform/workspaces/{id}/audit-events",
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
@@ -354,13 +367,13 @@ export function useTenantAudit(id: string | undefined, filters: AuditFilters = {
 }
 
 /** A workspace's notes, newest first. */
-export function useTenantNotes(id: string | undefined) {
+export function useWorkspaceNotes(id: string | undefined) {
   return useInfiniteQuery({
-    queryKey: platformKeys.tenantNotes(id ?? ""),
+    queryKey: platformKeys.workspaceNotes(id ?? ""),
     enabled: !!id,
     queryFn: async ({ pageParam, signal }) =>
       parseNotePage(
-        await platformFetch(`/tenants/${pathSegment(id ?? "")}/notes${queryString({ cursor: pageParam })}`, { signal }),
+        await platformFetch(`/workspaces/${pathSegment(id ?? "")}/notes${queryString({ cursor: pageParam })}`, { signal }),
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
@@ -368,21 +381,21 @@ export function useTenantNotes(id: string | undefined) {
   });
 }
 
-/** Variables: `{ tenantId, body }`. */
-export function useAddTenantNote() {
+/** Variables: `{ workspaceId, body }`. */
+export function useAddWorkspaceNote() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: { tenantId: string; body: string }): Promise<void> => {
-      await platformFetch(`/tenants/${pathSegment(vars.tenantId)}/notes`, {
+    mutationFn: async (vars: { workspaceId: string; body: string }): Promise<void> => {
+      await platformFetch(`/workspaces/${pathSegment(vars.workspaceId)}/notes`, {
         method: "POST",
         body: { body: vars.body },
       });
     },
     onSuccess: (_data, vars) =>
       invalidateAll(queryClient, [
-        platformKeys.tenantNotes(vars.tenantId),
-        platformKeys.tenant(vars.tenantId),
-        platformKeys.tenantAudits(vars.tenantId),
+        platformKeys.workspaceNotes(vars.workspaceId),
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.workspaceAudits(vars.workspaceId),
         platformKeys.audits(),
       ]),
   });
@@ -547,6 +560,7 @@ export function useConfirmOrder() {
     onSuccess: () =>
       invalidateAll(queryClient, [
         platformKeys.orders(),
+        platformKeys.workspaces(),
         platformKeys.tenants(),
         platformKeys.overview(),
         platformKeys.audits(),
@@ -568,7 +582,7 @@ export function useCancelOrder() {
     onSuccess: () =>
       invalidateAll(queryClient, [
         platformKeys.orders(),
-        platformKeys.tenants(),
+        platformKeys.workspaces(),
         platformKeys.overview(),
         platformKeys.audits(),
       ]),
@@ -814,7 +828,7 @@ export function useCancelScheduledPriceChange() {
 // Subscription
 
 export interface UpdateSubscriptionInput {
-  tenantId: string;
+  workspaceId: string;
   planKey: string;
   seats: number;
   interval: string;
@@ -845,7 +859,7 @@ export function useUpdateSubscription() {
       if (vars.cancelAtPeriodEnd !== undefined) body.cancel_at_period_end = vars.cancelAtPeriodEnd;
       if (vars.limitOverrides !== undefined) body.limit_overrides = vars.limitOverrides;
 
-      const res = await platformFetch(`/tenants/${pathSegment(vars.tenantId)}/subscription`, {
+      const res = await platformFetch(`/workspaces/${pathSegment(vars.workspaceId)}/subscription`, {
         method: "PUT",
         body,
       });
@@ -853,7 +867,8 @@ export function useUpdateSubscription() {
     },
     onSuccess: (_data, vars) =>
       invalidateAll(queryClient, [
-        platformKeys.tenant(vars.tenantId),
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.workspaces(),
         platformKeys.tenants(),
         platformKeys.overview(),
         platformKeys.audits(),
@@ -866,38 +881,38 @@ export function useSetBillingProfileVerified() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (vars: {
-      tenantId: string;
+      workspaceId: string;
       verified: boolean;
     }): Promise<BillingProfileVerifyResponse> => {
       const action = vars.verified ? "verify" : "unverify";
       const res = await platformFetch(
-        `/tenants/${pathSegment(vars.tenantId)}/billing-profile/${action}`,
+        `/workspaces/${pathSegment(vars.workspaceId)}/billing-profile/${action}`,
         { method: "POST" },
       );
       return orMalformed(
         parseBillingProfileVerifyResponse(
           res,
-          `POST /api/platform/tenants/{id}/billing-profile/${action}`,
+          `POST /api/platform/workspaces/{id}/billing-profile/${action}`,
         ),
       );
     },
     onSuccess: (data, vars) => {
       queryClient.setQueryData<BillingProfile>(
-        platformKeys.tenantBillingProfile(vars.tenantId),
+        platformKeys.workspaceBillingProfile(vars.workspaceId),
         (prev) => (prev ? { ...prev, ...data } : prev),
       );
       return invalidateAll(queryClient, [
-        platformKeys.tenant(vars.tenantId),
-        platformKeys.tenantBillingProfile(vars.tenantId),
-        platformKeys.tenantAudits(vars.tenantId),
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.workspaceBillingProfile(vars.workspaceId),
+        platformKeys.workspaceAudits(vars.workspaceId),
         platformKeys.audits(),
       ]);
     },
   });
 }
 
-export interface UpdateTenantBillingProfileInput {
-  tenantId: string;
+export interface UpdateWorkspaceBillingProfileInput {
+  workspaceId: string;
   account_kind: "individual" | "business";
   legal_name?: string;
   tax_code?: string;
@@ -906,11 +921,11 @@ export interface UpdateTenantBillingProfileInput {
 }
 
 /** Update a workspace's billing profile. Billing or Admin only. */
-export function useUpdateTenantBillingProfile() {
+export function useUpdateWorkspaceBillingProfile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (
-      vars: UpdateTenantBillingProfileInput,
+      vars: UpdateWorkspaceBillingProfileInput,
     ): Promise<PutBillingProfileResponse> => {
       const body: Record<string, unknown> = {
         account_kind: vars.account_kind,
@@ -921,7 +936,7 @@ export function useUpdateTenantBillingProfile() {
       if (vars.invoice_email !== undefined) body.invoice_email = vars.invoice_email;
 
       const res = await platformFetch(
-        `/tenants/${pathSegment(vars.tenantId)}/billing-profile`,
+        `/workspaces/${pathSegment(vars.workspaceId)}/billing-profile`,
         {
           method: "PUT",
           body,
@@ -932,13 +947,13 @@ export function useUpdateTenantBillingProfile() {
     onSuccess: (data, vars) => {
       const { changed: _changed, ...profile } = data;
       queryClient.setQueryData<BillingProfile>(
-        platformKeys.tenantBillingProfile(vars.tenantId),
+        platformKeys.workspaceBillingProfile(vars.workspaceId),
         profile,
       );
       return invalidateAll(queryClient, [
-        platformKeys.tenant(vars.tenantId),
-        platformKeys.tenantBillingProfile(vars.tenantId),
-        platformKeys.tenantAudits(vars.tenantId),
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.workspaceBillingProfile(vars.workspaceId),
+        platformKeys.workspaceAudits(vars.workspaceId),
         platformKeys.audits(),
       ]);
     },

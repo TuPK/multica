@@ -25,10 +25,12 @@ vi.mock("./api/hooks", () => ({
       tenants: [
         {
           id: "t-7",
-          name: "Acme Workspace",
-          slug: "acme",
+          name: "Acme Tenant",
           status: "active",
-          member_count: 4,
+          workspace_count: 1,
+          max_workspaces: 3,
+          best_plan_key: "pro",
+          status_summary: { active: 1 },
           created_at: "2026-11-01T00:00:00Z",
           last_activity_at: "2026-11-02T00:00:00Z",
         },
@@ -39,6 +41,35 @@ vi.mock("./api/hooks", () => ({
     isError: false,
   }),
   useTenant: (id: string) => ({
+    data: {
+      id,
+      name: `Tenant ${id}`,
+      status: "active",
+      workspace_count: 1,
+      max_workspaces: null,
+      best_plan_key: "pro",
+      status_summary: { active: 1 },
+      created_by: null,
+      created_at: "2026-11-01T00:00:00Z",
+      last_activity_at: "2026-11-01T00:00:00Z",
+      workspaces: [
+        {
+          id: "w-3",
+          name: "Acme Workspace",
+          slug: "acme",
+          status: "active",
+          plan_key: "pro",
+          member_count: 4,
+          owner: null,
+          created_at: "2026-11-01T00:00:00Z",
+        },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useWorkspace: (id: string) => ({
     data: {
       id,
       name: `Workspace ${id}`,
@@ -58,15 +89,15 @@ vi.mock("./api/hooks", () => ({
     isError: false,
     refetch: vi.fn(),
   }),
-  useTenantUsage: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
-  useTenantBillingProfile: () => ({ data: null, isLoading: false, isError: false }),
-  useTenantNotes: () => ({ data: [], isLoading: false }),
-  useTenantAudit: () => ({ data: [], isLoading: false }),
-  useChangeTenantStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useAddTenantNote: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useWorkspaceUsage: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
+  useWorkspaceBillingProfile: () => ({ data: null, isLoading: false, isError: false }),
+  useWorkspaceNotes: () => ({ data: [], isLoading: false }),
+  useWorkspaceAudit: () => ({ data: [], isLoading: false }),
+  useChangeWorkspaceStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddWorkspaceNote: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSetBillingProfileVerified: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useUpdateTenantBillingProfile: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateWorkspaceBillingProfile: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUsers: () => ({
     data: {
       users: [
@@ -322,7 +353,11 @@ describe("App", () => {
     });
 
     render(<App />);
-    expect(screen.getByRole("heading", { name: "Workspace t-42" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tenant t-42" })).toBeInTheDocument();
+
+    window.history.pushState(null, "", "/workspaces/w-42");
+    fireEvent(window, new PopStateEvent("popstate"));
+    expect(screen.getByRole("heading", { name: "Workspace w-42" })).toBeInTheDocument();
 
     window.history.pushState(null, "", "/users/u-9");
     fireEvent(window, new PopStateEvent("popstate"));
@@ -361,11 +396,21 @@ describe("App", () => {
     expect(window.location.pathname).toBe("/tenants");
     fireEvent.click(screen.getByRole("button", { name: "View" }));
     expect(window.location.pathname).toBe("/tenants/t-7");
-    expect(screen.getByRole("heading", { name: "Workspace t-7" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tenant t-7" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /^Tenants$/i })).toHaveAttribute(
       "aria-current",
       "page",
     );
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    expect(window.location.pathname).toBe("/workspaces/w-3");
+    expect(screen.getByRole("heading", { name: "Workspace w-3" })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /^Tenants$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // The workspace goes back to the tenant it was opened from.
+    fireEvent.click(screen.getByRole("button", { name: /Back to tenant$/i }));
+    expect(window.location.pathname).toBe("/tenants/t-7");
     fireEvent.click(screen.getByRole("button", { name: /Back to tenants/i }));
     expect(window.location.pathname).toBe("/tenants");
     expect(screen.getByRole("heading", { name: "Tenants" })).toBeInTheDocument();

@@ -1,20 +1,12 @@
 import { useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Building2, Search, X } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
-import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
@@ -34,18 +26,18 @@ export function formatBytes(bytes: number): string {
   return unit === 0 ? `${value} B` : `${value.toFixed(1)} ${BYTE_UNITS[unit]}`;
 }
 
-/**
- * The usage cell text of a tenant. A tenant with no daily row has a null (or
- * missing) usage day and shows "-", not zeros.
- */
-function usageSummary(tenant: Tenant): string {
-  if (!tenant.usage_day) return "-";
-  return [
-    `${tenant.usage_members ?? 0} members`,
-    `${tenant.usage_agents ?? 0} agents`,
-    `${tenant.usage_tasks_run ?? 0} tasks run`,
-    formatBytes(tenant.usage_storage_bytes ?? 0),
-  ].join(" · ");
+/** The limit a tenant's plans allow: a number, or "Unlimited" when there is none. */
+export function maxWorkspacesLabel(max: number | null): string {
+  return max === null ? "Unlimited" : String(max);
+}
+
+/** "2 active, 1 suspended": the tenant's workspaces by status, largest group first. */
+export function statusSummaryText(summary: Record<string, number>): string {
+  const parts = Object.entries(summary)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([status, n]) => `${n} ${status.replace(/_/g, " ")}`);
+  return parts.length ? parts.join(", ") : "-";
 }
 
 interface TenantsProps {
@@ -86,7 +78,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
             aria-label="Search tenants"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or slug..."
+            placeholder="Search by tenant, workspace or owner email..."
             className="pr-8 pl-9"
           />
           {search && (
@@ -136,82 +128,89 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
       {!isLoading && !isError && tenants.length > 0 && (
         <div className="space-y-4">
           <Card padding={0} className="overflow-x-auto">
-            <Table density="balanced" dividers="rows" hasHover>
-              <TableHeader>
-                <TableRow isHeaderRow>
-                  <TableHeaderCell>Name</TableHeaderCell>
-                  <TableHeaderCell>Slug</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Members</TableHeaderCell>
-                  <TableHeaderCell>Usage</TableHeaderCell>
-                  <TableHeaderCell>Last Activity</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Action</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tenants.map((tenant: Tenant) => (
-                  <TableRow key={tenant.id}>
-                    <TableCell>
-                      <div className="max-w-56 truncate font-medium text-foreground" title={tenant.name}>
+            <Table
+              data={tenants}
+              idKey="id"
+              density="balanced"
+              dividers="rows"
+              hasHover
+              columns={[
+                {
+                  key: "name",
+                  header: "Name",
+                  width: proportional(2, { minWidth: 200 }),
+                  renderCell: (tenant) => (
+                    <>
+                      <div className="truncate font-medium text-foreground" title={tenant.name}>
                         {tenant.name}
                       </div>
-                      <div
-                        className="max-w-44 truncate font-mono text-caption text-muted-foreground"
-                        title={tenant.id}
-                      >
+                      <div className="truncate font-mono text-caption text-muted-foreground" title={tenant.id}>
                         {tenant.id}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div
-                        className="max-w-40 truncate font-mono text-caption text-muted-foreground"
-                        title={tenant.slug}
-                      >
-                        {tenant.slug}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={tenant.status} />
-                    </TableCell>
-                    <TableCell className="text-right">
+                    </>
+                  ),
+                },
+                {
+                  key: "workspace_count",
+                  header: "Workspaces",
+                  width: pixel(120),
+                  align: "end",
+                  renderCell: (tenant) => (
+                    <div data-testid="tenant-workspace-count">
                       <Text type="body" hasTabularNumbers>
-                        {tenant.member_count}
+                        {tenant.workspace_count}
                       </Text>
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        data-testid="tenant-usage"
-                        title={
-                          tenant.usage_day
-                            ? `Usage on ${tenant.usage_day} (UTC)`
-                            : "No usage recorded yet"
-                        }
-                      >
-                        <Text type="supporting" hasTabularNumbers>
-                          {usageSummary(tenant)}
-                        </Text>
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Text type="supporting" hasTabularNumbers>
-                        {tenant.last_activity_at
-                          ? new Date(tenant.last_activity_at).toLocaleString()
-                          : "-"}
+                    </div>
+                  ),
+                },
+                {
+                  key: "max_workspaces",
+                  header: "Max workspaces",
+                  width: proportional(1, { minWidth: 120 }),
+                  align: "end",
+                  renderCell: (tenant) => (
+                    <div data-testid="tenant-max-workspaces">
+                      <Text type="body" hasTabularNumbers>
+                        {maxWorkspacesLabel(tenant.max_workspaces)}
                       </Text>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onSelectTenant(tenant.id)}
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  ),
+                },
+                {
+                  key: "best_plan_key",
+                  header: "Best plan",
+                  width: proportional(1, { minWidth: 110 }),
+                  renderCell: (tenant) => <Text type="supporting">{tenant.best_plan_key || "-"}</Text>,
+                },
+                {
+                  key: "status_summary",
+                  header: "Workspace status",
+                  width: proportional(1.5, { minWidth: 160 }),
+                  renderCell: (tenant) => <Text type="supporting">{statusSummaryText(tenant.status_summary)}</Text>,
+                },
+                {
+                  key: "last_activity_at",
+                  header: "Last Activity",
+                  width: proportional(1.3, { minWidth: 150 }),
+                  renderCell: (tenant) => (
+                    <Text type="supporting" hasTabularNumbers>
+                      {tenant.last_activity_at ? new Date(tenant.last_activity_at).toLocaleString() : "-"}
+                    </Text>
+                  ),
+                },
+                {
+                  key: "actions",
+                  header: "Action",
+                  width: pixel(96),
+                  align: "end",
+                  renderCell: (tenant) => (
+                    <Button variant="outline" size="sm" onClick={() => onSelectTenant(tenant.id)}>
+                      View
+                    </Button>
+                  ),
+                },
+              ]}
+            />
           </Card>
 
           {hasNextPage && (
