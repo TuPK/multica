@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issueposition"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	proposalkinds "github.com/multica-ai/multica/server/internal/service/proposal_kinds"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -214,6 +215,9 @@ type ProposalCreateParams struct {
 	// A standing approval needs it to fit a policy's cost limit and the squad's
 	// remaining budget (spec 4.4).
 	EstimatedCostMicros *int64
+	// Scope is what the filer may see; prior art names only proposals on issues
+	// within it (spec 7.1 rule 5). The zero value sees no restricted project.
+	Scope projectaccess.Scope
 }
 
 // ProposalCreateResult carries the new rows. Events are the caller's to
@@ -391,7 +395,7 @@ func (s *ProposalService) Create(ctx context.Context, p ProposalCreateParams) (P
 		res.Issue = decided.Issue
 		res.AutoDecision = decided
 	}
-	res.Related = s.findPriorArt(ctx, p.WorkspaceID, res.Proposal.ID, p.Content.Title, p.Content.Summary)
+	res.Related = s.findPriorArt(ctx, p.WorkspaceID, res.Proposal.ID, p.Content.Title, p.Content.Summary, p.Scope)
 	return res, nil
 }
 

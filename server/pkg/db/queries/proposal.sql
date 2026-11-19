@@ -126,11 +126,20 @@ RETURNING *;
 
 -- name: ListRecentProposalsForPriorArt :many
 -- Proposals of the workspace filed since the given time, whatever their state,
--- with the title of each backing issue. The service scores titles in Go.
+-- with the title of each backing issue. The service scores titles in Go. Only
+-- proposals whose backing issue the viewer sees are returned: a hidden title
+-- must not reach related[] (spec 7.1 rule 5).
 SELECT p.id, p.squad_id, p.state, p.created_at, i.title, i.number
 FROM proposal p
 JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
-WHERE p.workspace_id = $1 AND p.created_at >= $2
+WHERE p.workspace_id = sqlc.arg('workspace_id')::uuid AND p.created_at >= sqlc.arg('created_at')::timestamptz
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.created_at DESC, p.id DESC
 LIMIT 500;
 

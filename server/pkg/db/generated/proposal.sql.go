@@ -539,7 +539,14 @@ const listRecentProposalsForPriorArt = `-- name: ListRecentProposalsForPriorArt 
 SELECT p.id, p.squad_id, p.state, p.created_at, i.title, i.number
 FROM proposal p
 JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
-WHERE p.workspace_id = $1 AND p.created_at >= $2
+WHERE p.workspace_id = $1::uuid AND p.created_at >= $2::timestamptz
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (i.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.created_at DESC, p.id DESC
 LIMIT 500
 `
@@ -547,6 +554,8 @@ LIMIT 500
 type ListRecentProposalsForPriorArtParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ScopeMode   string             `json:"scope_mode"`
+	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
 }
 
 type ListRecentProposalsForPriorArtRow struct {
@@ -559,9 +568,16 @@ type ListRecentProposalsForPriorArtRow struct {
 }
 
 // Proposals of the workspace filed since the given time, whatever their state,
-// with the title of each backing issue. The service scores titles in Go.
+// with the title of each backing issue. The service scores titles in Go. Only
+// proposals whose backing issue the viewer sees are returned: a hidden title
+// must not reach related[] (spec 7.1 rule 5).
 func (q *Queries) ListRecentProposalsForPriorArt(ctx context.Context, arg ListRecentProposalsForPriorArtParams) ([]ListRecentProposalsForPriorArtRow, error) {
-	rows, err := q.db.Query(ctx, listRecentProposalsForPriorArt, arg.WorkspaceID, arg.CreatedAt)
+	rows, err := q.db.Query(ctx, listRecentProposalsForPriorArt,
+		arg.WorkspaceID,
+		arg.CreatedAt,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
