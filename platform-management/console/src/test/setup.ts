@@ -24,7 +24,35 @@ if (typeof window !== "undefined") {
 
   if (typeof globalThis.ResizeObserver === "undefined") {
     globalThis.ResizeObserver = class ResizeObserver {
-      observe() {}
+      private callback: ResizeObserverCallback;
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+      observe(target: Element) {
+        const rect = {
+          x: 0,
+          y: 0,
+          width: 640,
+          height: 240,
+          top: 0,
+          right: 640,
+          bottom: 240,
+          left: 0,
+          toJSON: () => ({}),
+        } as DOMRectReadOnly;
+        this.callback(
+          [
+            {
+              target,
+              contentRect: rect,
+              borderBoxSize: [],
+              contentBoxSize: [],
+              devicePixelContentBoxSize: [],
+            } as ResizeObserverEntry,
+          ],
+          this as unknown as globalThis.ResizeObserver,
+        );
+      }
       unobserve() {}
       disconnect() {}
     } as unknown as typeof ResizeObserver;
@@ -32,5 +60,19 @@ if (typeof window !== "undefined") {
 
   if (typeof Element.prototype.scrollIntoView !== "function") {
     Element.prototype.scrollIntoView = () => {};
+  }
+
+  // jsdom lacks native <dialog> showModal/close used by Astryx MobileNav.
+  if (typeof HTMLDialogElement !== "undefined") {
+    if (typeof HTMLDialogElement.prototype.showModal !== "function") {
+      HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+        this.setAttribute("open", "");
+      };
+    }
+    if (typeof HTMLDialogElement.prototype.close !== "function") {
+      HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+        this.removeAttribute("open");
+      };
+    }
   }
 }

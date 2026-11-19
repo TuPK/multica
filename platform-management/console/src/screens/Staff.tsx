@@ -1,4 +1,14 @@
 import { useState } from "react";
+import { Card } from "@astryxdesign/core/Card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
 import {
@@ -20,15 +30,7 @@ import {
   SelectValue,
 } from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
-import { AlertCircle, Trash2, UserPlus } from "@multica/ui/icons";
+import { AlertCircle, Shield, Trash2, UserPlus } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -142,6 +144,7 @@ export function Staff() {
 
       {!isLoading && !isError && staffList.length === 0 && (
         <EmptyState
+          icon={<Shield className="size-5" aria-hidden="true" />}
           title="No staff members"
           description="There are currently no staff members configured."
           actions={
@@ -153,29 +156,35 @@ export function Staff() {
       )}
 
       {!isLoading && !isError && staffList.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-          <Table>
+        <Card padding={0} className="overflow-x-auto">
+          <Table density="balanced" dividers="rows" hasHover>
             <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Created By</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+              <TableRow isHeaderRow>
+                <TableHeaderCell>Email</TableHeaderCell>
+                <TableHeaderCell>Role</TableHeaderCell>
+                <TableHeaderCell>Created By</TableHeaderCell>
+                <TableHeaderCell>Created At</TableHeaderCell>
+                <TableHeaderCell className="text-right">Action</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
               {staffList.map((member: StaffMember) => (
                 <TableRow key={member.user_id}>
-                  <TableCell className="font-medium">{member.email}</TableCell>
+                  <TableCell>
+                    <Text type="body" weight="medium">
+                      {member.email}
+                    </Text>
+                  </TableCell>
                   <TableCell>
                     <StatusBadge status={member.role} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {member.created_by || "System"}
+                  <TableCell>
+                    <Text type="supporting">{member.created_by || "System"}</Text>
                   </TableCell>
-                  <TableCell className="text-muted-foreground tabular-nums">
-                    {member.created_at ? new Date(member.created_at).toLocaleString() : "-"}
+                  <TableCell>
+                    <Text type="supporting" hasTabularNumbers>
+                      {member.created_at ? new Date(member.created_at).toLocaleString() : "-"}
+                    </Text>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -193,7 +202,7 @@ export function Staff() {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       )}
 
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>

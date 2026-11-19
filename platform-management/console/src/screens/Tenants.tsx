@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Input } from "@multica/ui/components/ui/input";
-import { Button } from "@multica/ui/components/ui/button";
+import { Card } from "@astryxdesign/core/Card";
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableRow,
-  TableHead,
   TableCell,
-} from "@multica/ui/components/ui/table";
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
+import { Button } from "@multica/ui/components/ui/button";
+import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Search, X } from "@multica/ui/icons";
+import { Building2, Search, X } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
@@ -114,6 +116,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
 
       {!isLoading && !isError && tenants.length === 0 && (
         <EmptyState
+          icon={<Building2 className="size-5" aria-hidden="true" />}
           title="No tenants found"
           description={
             search
@@ -132,17 +135,17 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
 
       {!isLoading && !isError && tenants.length > 0 && (
         <div className="space-y-4">
-          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-            <Table>
+          <Card padding={0} className="overflow-x-auto">
+            <Table density="balanced" dividers="rows" hasHover>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Members</TableHead>
-                  <TableHead>Usage</TableHead>
-                  <TableHead>Last Activity</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>Name</TableHeaderCell>
+                  <TableHeaderCell>Slug</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Members</TableHeaderCell>
+                  <TableHeaderCell>Usage</TableHeaderCell>
+                  <TableHeaderCell>Last Activity</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Action</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -170,24 +173,31 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                     <TableCell>
                       <StatusBadge status={tenant.status} />
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {tenant.member_count}
+                    <TableCell className="text-right">
+                      <Text type="body" hasTabularNumbers>
+                        {tenant.member_count}
+                      </Text>
                     </TableCell>
-                    <TableCell
-                      data-testid="tenant-usage"
-                      className="text-muted-foreground tabular-nums"
-                      title={
-                        tenant.usage_day
-                          ? `Usage on ${tenant.usage_day} (UTC)`
-                          : "No usage recorded yet"
-                      }
-                    >
-                      {usageSummary(tenant)}
+                    <TableCell>
+                      <span
+                        data-testid="tenant-usage"
+                        title={
+                          tenant.usage_day
+                            ? `Usage on ${tenant.usage_day} (UTC)`
+                            : "No usage recorded yet"
+                        }
+                      >
+                        <Text type="supporting" hasTabularNumbers>
+                          {usageSummary(tenant)}
+                        </Text>
+                      </span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground tabular-nums">
-                      {tenant.last_activity_at
-                        ? new Date(tenant.last_activity_at).toLocaleString()
-                        : "-"}
+                    <TableCell>
+                      <Text type="supporting" hasTabularNumbers>
+                        {tenant.last_activity_at
+                          ? new Date(tenant.last_activity_at).toLocaleString()
+                          : "-"}
+                      </Text>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -202,7 +212,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </Card>
 
           {hasNextPage && (
             <div className="flex justify-center pt-2">

@@ -1,6 +1,19 @@
 import { useState } from "react";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Card } from "@astryxdesign/core/Card";
+import { Divider } from "@astryxdesign/core/Divider";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Section } from "@astryxdesign/core/Section";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
-import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import {
   Dialog,
@@ -20,18 +33,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@multica/ui/components/ui/select";
-import { Separator } from "@multica/ui/components/ui/separator";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
 import { Textarea } from "@multica/ui/components/ui/textarea";
-import { AlertCircle, AlertTriangle, Info, Plus } from "@multica/ui/icons";
+import { Activity, AlertCircle, AlertTriangle, CreditCard, Info, Plus } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -101,15 +105,13 @@ function MonthlyUsageSection({
   onWriteOff,
 }: MonthlyUsageSectionProps) {
   return (
-    <section data-testid="usage-month" className="space-y-4">
+    <Section variant="transparent" padding={0} data-testid="usage-month" className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-heading text-title-sm font-semibold text-foreground">
-          Monthly Usage
-        </h2>
+        <Heading level={2}>Monthly Usage</Heading>
         {usageData && (
-          <span className="font-mono text-caption text-muted-foreground">
+          <Text type="code" color="secondary">
             {usageData.period_start.slice(0, 10)} to {usageData.period_end.slice(0, 10)} (UTC)
-          </span>
+          </Text>
         )}
       </div>
 
@@ -124,71 +126,86 @@ function MonthlyUsageSection({
       {!isLoading && !isError && usageData && (
         <div className="space-y-6">
           <div data-testid="usage-rows" className="space-y-2">
-            <h3 className="text-label font-medium text-foreground">Daily charges</h3>
+            <Heading level={3}>Daily charges</Heading>
             {usageData.rows.length === 0 ? (
-              <p className="text-caption text-muted-foreground">
+              <Text type="supporting" as="p">
                 No rated usage rows for this month.
-              </p>
+              </Text>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-                <Table>
+              <Card padding={0} className="overflow-x-auto">
+                <Table density="compact" dividers="rows" hasHover>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Day</TableHead>
-                      <TableHead>Meter</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Unit price</TableHead>
-                      <TableHead className="text-right">Discount</TableHead>
-                      <TableHead className="text-right">Net amount</TableHead>
-                      <TableHead>Note</TableHead>
+                    <TableRow isHeaderRow>
+                      <TableHeaderCell>Day</TableHeaderCell>
+                      <TableHeaderCell>Meter</TableHeaderCell>
+                      <TableHeaderCell className="text-right">Quantity</TableHeaderCell>
+                      <TableHeaderCell className="text-right">Unit price</TableHeaderCell>
+                      <TableHeaderCell className="text-right">Discount</TableHeaderCell>
+                      <TableHeaderCell className="text-right">Net amount</TableHeaderCell>
+                      <TableHeaderCell>Note</TableHeaderCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {usageData.rows.map((row) => (
                       <TableRow key={`${row.day}-${row.meter}`}>
-                        <TableCell className="font-mono text-caption tabular-nums">{row.day}</TableCell>
-                        <TableCell className="font-mono text-caption">{row.meter}</TableCell>
-                        <TableCell
-                          className="text-right tabular-nums"
-                          title={
-                            row.meter === "storage_bytes"
-                              ? `${row.quantity.toLocaleString()} bytes`
-                              : undefined
-                          }
-                        >
-                          {formatUsageQuantity(row)}
+                        <TableCell>
+                          <Text type="code" hasTabularNumbers>
+                            {row.day}
+                          </Text>
                         </TableCell>
-                        <TableCell className="text-right text-muted-foreground tabular-nums">
-                          {row.unit_price.toLocaleString()} / {row.per.toLocaleString()}
+                        <TableCell>
+                          <Text type="code">{row.meter}</Text>
                         </TableCell>
-                        <TableCell className="text-right text-muted-foreground tabular-nums">
-                          {row.discount_pct > 0 ? `${row.discount_pct}%` : "-"}
+                        <TableCell className="text-right">
+                          <span
+                            title={
+                              row.meter === "storage_bytes"
+                                ? `${row.quantity.toLocaleString()} bytes`
+                                : undefined
+                            }
+                          >
+                            <Text type="body" hasTabularNumbers>
+                              {formatUsageQuantity(row)}
+                            </Text>
+                          </span>
                         </TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">
-                          {row.net_amount.toLocaleString()}
+                        <TableCell className="text-right">
+                          <Text type="supporting" hasTabularNumbers>
+                            {row.unit_price.toLocaleString()} / {row.per.toLocaleString()}
+                          </Text>
                         </TableCell>
-                        <TableCell className="text-caption text-muted-foreground">
-                          {row.note || "-"}
+                        <TableCell className="text-right">
+                          <Text type="supporting" hasTabularNumbers>
+                            {row.discount_pct > 0 ? `${row.discount_pct}%` : "-"}
+                          </Text>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Text type="body" weight="medium" hasTabularNumbers>
+                            {row.net_amount.toLocaleString()}
+                          </Text>
+                        </TableCell>
+                        <TableCell>
+                          <Text type="supporting">{row.note || "-"}</Text>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </Card>
             )}
           </div>
 
           {usageData.missing_days.length > 0 && (
             <div data-testid="usage-missing-days" className="space-y-2">
-              <h3 className="text-label font-medium text-foreground">Missing days</h3>
+              <Heading level={3}>Missing days</Heading>
               <ul className="flex flex-wrap gap-2">
                 {usageData.missing_days.map((day) => (
                   <li
                     key={day}
                     className="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-muted/40 px-2.5 py-1 text-caption"
                   >
-                    <span className="font-mono">{day}</span>
-                    <Badge variant="outline">missing</Badge>
+                    <Text type="code">{day}</Text>
+                    <Badge variant="neutral" label="missing" />
                   </li>
                 ))}
               </ul>
@@ -196,42 +213,52 @@ function MonthlyUsageSection({
           )}
 
           <div data-testid="usage-unpaid-orders" className="space-y-2">
-            <h3 className="text-label font-medium text-foreground">Unpaid usage orders</h3>
+            <Heading level={3}>Unpaid usage orders</Heading>
             {usageData.unpaid_orders.length === 0 ? (
-              <p className="text-caption text-muted-foreground">
+              <Text type="supporting" as="p">
                 No unpaid usage orders.
-              </p>
+              </Text>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-                <Table>
+              <Card padding={0} className="overflow-x-auto">
+                <Table density="compact" dividers="rows" hasHover>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Order</TableHead>
-                      <TableHead>Period</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">VAT</TableHead>
-                      <TableHead>Status</TableHead>
-                      {canWriteOff && <TableHead className="text-right">Action</TableHead>}
+                    <TableRow isHeaderRow>
+                      <TableHeaderCell>Order</TableHeaderCell>
+                      <TableHeaderCell>Period</TableHeaderCell>
+                      <TableHeaderCell>Created</TableHeaderCell>
+                      <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+                      <TableHeaderCell className="text-right">VAT</TableHeaderCell>
+                      <TableHeaderCell>Status</TableHeaderCell>
+                      {canWriteOff && <TableHeaderCell className="text-right">Action</TableHeaderCell>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {usageData.unpaid_orders.map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell className="font-mono text-caption">{order.id}</TableCell>
-                        <TableCell className="font-mono text-caption text-muted-foreground tabular-nums">
-                          {order.period_start && order.period_end
-                            ? `${order.period_start.slice(0, 10)} – ${order.period_end.slice(0, 10)}`
-                            : "-"}
+                        <TableCell>
+                          <Text type="code">{order.id}</Text>
                         </TableCell>
-                        <TableCell className="text-muted-foreground tabular-nums">
-                          {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
+                        <TableCell>
+                          <Text type="code" color="secondary" hasTabularNumbers>
+                            {order.period_start && order.period_end
+                              ? `${order.period_start.slice(0, 10)} – ${order.period_end.slice(0, 10)}`
+                              : "-"}
+                          </Text>
                         </TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">
-                          {order.amount.toLocaleString()}
+                        <TableCell>
+                          <Text type="supporting" hasTabularNumbers>
+                            {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
+                          </Text>
                         </TableCell>
-                        <TableCell className="text-right text-muted-foreground tabular-nums">
-                          {order.vat_amount.toLocaleString()}
+                        <TableCell className="text-right">
+                          <Text type="body" weight="medium" hasTabularNumbers>
+                            {order.amount.toLocaleString()}
+                          </Text>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Text type="supporting" hasTabularNumbers>
+                            {order.vat_amount.toLocaleString()}
+                          </Text>
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={order.status} />
@@ -251,12 +278,12 @@ function MonthlyUsageSection({
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </Card>
             )}
           </div>
         </div>
       )}
-    </section>
+    </Section>
   );
 }
 
@@ -695,10 +722,8 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
       )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <section className="space-y-4 lg:col-span-2">
-          <h2 className="font-heading text-title-sm font-semibold text-foreground">
-            Workspace State
-          </h2>
+        <Section variant="transparent" padding={0} className="space-y-4 lg:col-span-2">
+          <Heading level={2}>Workspace State</Heading>
           <MetadataList columns={3}>
             <MetadataListItem label="Status">
               <StatusBadge status={currentStatus} />
@@ -726,12 +751,10 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
               </MetadataListItem>
             )}
           </MetadataList>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2 className="font-heading text-title-sm font-semibold text-foreground">
-            Internal Notes
-          </h2>
+        <Section variant="transparent" padding={0} className="space-y-4">
+          <Heading level={2}>Internal Notes</Heading>
           <form onSubmit={handleAddNote} className="space-y-2">
             <Textarea
               value={noteBody}
@@ -765,37 +788,37 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
           <div className="space-y-2">
             {notesLoading && <LoadingState message="Loading notes..." />}
             {!notesLoading && notes.length === 0 && (
-              <p className="py-4 text-center text-caption text-muted-foreground">
+              <Text type="supporting" as="p" justify="center" className="py-4">
                 No internal notes yet.
-              </p>
+              </Text>
             )}
             {!notesLoading && notes.length > 0 && (
-              <div className="divide-y divide-surface-border rounded-lg border border-surface-border bg-surface">
+              <Card padding={0} className="divide-y divide-surface-border">
                 {notes.map((note: Note) => (
-                  <div key={note.id} className="p-3 text-caption">
-                    <p className="whitespace-pre-wrap text-body text-foreground">{note.body}</p>
-                    <div className="mt-2 flex items-center justify-between text-muted-foreground tabular-nums">
-                      <span>{note.author_email || "Staff"}</span>
-                      <span>
+                  <div key={note.id} className="p-3">
+                    <Text type="body" as="p" className="whitespace-pre-wrap">
+                      {note.body}
+                    </Text>
+                    <div className="mt-2 flex items-center justify-between">
+                      <Text type="supporting">{note.author_email || "Staff"}</Text>
+                      <Text type="supporting" hasTabularNumbers>
                         {note.created_at ? new Date(note.created_at).toLocaleDateString() : ""}
-                      </span>
+                      </Text>
                     </div>
                   </div>
                 ))}
-              </div>
+              </Card>
             )}
           </div>
-        </section>
+        </Section>
       </div>
 
-      <Separator />
+      <Divider />
 
       {/* Subscription Section */}
-      <section className="space-y-4">
+      <Section variant="transparent" padding={0} className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-heading text-title-sm font-semibold text-foreground">
-            Subscription
-          </h2>
+          <Heading level={2}>Subscription</Heading>
           {tenant.subscription?.status && (
             <StatusBadge status={tenant.subscription.status} />
           )}
@@ -816,16 +839,14 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
               : "-"}
           </MetadataListItem>
         </MetadataList>
-      </section>
+      </Section>
 
-      <Separator />
+      <Divider />
 
       {/* Billing Profile Section */}
-      <section className="space-y-4">
+      <Section variant="transparent" padding={0} className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-heading text-title-sm font-semibold text-foreground">
-            Billing profile
-          </h2>
+          <Heading level={2}>Billing profile</Heading>
           {canEditSubscription && (
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleOpenProfileDialog}>
@@ -875,15 +896,13 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
             <AlertDescription className="text-caption">{activeProfileError}</AlertDescription>
           </Alert>
         )}
-      </section>
+      </Section>
 
-      <Separator />
+      <Divider />
 
       {/* Usage Section */}
-      <section className="space-y-4">
-        <h2 className="font-heading text-title-sm font-semibold text-foreground">
-          Usage
-        </h2>
+      <Section variant="transparent" padding={0} className="space-y-4">
+        <Heading level={2}>Usage</Heading>
         <MetadataList data-testid="usage-current" columns={4}>
           <MetadataListItem label="Members now" tabular>
             {tenant.usage_current?.members ?? 0}
@@ -904,9 +923,9 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
 
         {tenant.usage_day ? (
           <div data-testid="usage-daily" className="space-y-3 pt-2">
-            <span className="block font-mono text-caption text-muted-foreground">
+            <Text type="code" color="secondary" as="div">
               Daily snapshot for {tenant.usage_day} (UTC)
-            </span>
+            </Text>
             <MetadataList columns={4}>
               <MetadataListItem label="Members" tabular>
                 {tenant.usage_members ?? 0}
@@ -932,13 +951,13 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
             </MetadataList>
           </div>
         ) : (
-          <p data-testid="usage-daily" className="text-caption text-muted-foreground">
+          <Text type="supporting" as="p" data-testid="usage-daily">
             No daily snapshot yet.
-          </p>
+          </Text>
         )}
-      </section>
+      </Section>
 
-      <Separator />
+      <Divider />
 
       {/* Monthly Usage Section */}
       <MonthlyUsageSection
@@ -951,41 +970,51 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
         onWriteOff={handleOpenWriteOffDialog}
       />
 
-      <Separator />
+      <Divider />
 
       {/* Recent Orders Section */}
-      <section className="space-y-4">
-        <h2 className="font-heading text-title-sm font-semibold text-foreground">
-          Recent Orders
-        </h2>
+      <Section variant="transparent" padding={0} className="space-y-4">
+        <Heading level={2}>Recent Orders</Heading>
         {!tenant.recent_orders || tenant.recent_orders.length === 0 ? (
-          <EmptyState title="No recent orders" isCompact />
+          <EmptyState
+            icon={<CreditCard className="size-5" aria-hidden="true" />}
+            title="No recent orders"
+            isCompact
+          />
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-            <Table>
+          <Card padding={0} className="overflow-x-auto">
+            <Table density="compact" dividers="rows" hasHover>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Transfer Code</TableHead>
-                  <TableHead>Plan & Seats</TableHead>
-                  <TableHead>Total (incl. VAT)</TableHead>
-                  <TableHead>Status</TableHead>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>Time</TableHeaderCell>
+                  <TableHeaderCell>Transfer Code</TableHeaderCell>
+                  <TableHeaderCell>Plan & Seats</TableHeaderCell>
+                  <TableHeaderCell>Total (incl. VAT)</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tenant.recent_orders.map((order: Order) => (
                   <TableRow key={order.id}>
-                    <TableCell className="text-muted-foreground tabular-nums">
-                      {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
+                    <TableCell>
+                      <Text type="supporting" hasTabularNumbers>
+                        {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
+                      </Text>
                     </TableCell>
-                    <TableCell className="font-mono text-body font-semibold">
-                      {order.transfer_code}
+                    <TableCell>
+                      <Text type="code" weight="semibold">
+                        {order.transfer_code}
+                      </Text>
                     </TableCell>
                     <TableCell className="capitalize">
-                      {order.plan_key} &bull; {order.seats} seats ({order.interval})
+                      <Text type="body">
+                        {order.plan_key} &bull; {order.seats} seats ({order.interval})
+                      </Text>
                     </TableCell>
-                    <TableCell className="font-medium tabular-nums">
-                      {formatMinorAmount(order.amount + order.vat_amount, order.currency)}
+                    <TableCell>
+                      <Text type="body" weight="medium" hasTabularNumbers>
+                        {formatMinorAmount(order.amount + order.vat_amount, order.currency)}
+                      </Text>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={order.status} />
@@ -994,52 +1023,59 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </Card>
         )}
-      </section>
+      </Section>
 
-      <Separator />
+      <Divider />
 
       {/* Workspace Audit Log Section */}
-      <section className="space-y-4">
-        <h2 className="font-heading text-title-sm font-semibold text-foreground">
-          Workspace Audit Log
-        </h2>
+      <Section variant="transparent" padding={0} className="space-y-4">
+        <Heading level={2}>Workspace Audit Log</Heading>
         {auditLoading && <LoadingState message="Loading audit events..." />}
         {!auditLoading && auditEvents.length === 0 && (
           <EmptyState
+            icon={<Activity className="size-5" aria-hidden="true" />}
             title="No audit events"
             description="No events found for this workspace."
             isCompact
           />
         )}
         {!auditLoading && auditEvents.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-            <Table>
+          <Card padding={0} className="overflow-x-auto">
+            <Table density="compact" dividers="rows" hasHover>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Actor</TableHead>
-                  <TableHead>Target</TableHead>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>Time</TableHeaderCell>
+                  <TableHeaderCell>Action</TableHeaderCell>
+                  <TableHeaderCell>Actor</TableHeaderCell>
+                  <TableHeaderCell>Target</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {auditEvents.map((event: AuditEvent) => (
                   <TableRow key={event.id}>
-                    <TableCell className="text-muted-foreground tabular-nums">
-                      {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
+                    <TableCell>
+                      <Text type="supporting" hasTabularNumbers>
+                        {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
+                      </Text>
                     </TableCell>
-                    <TableCell className="font-mono text-caption">{event.action}</TableCell>
-                    <TableCell>{event.actor_label}</TableCell>
-                    <TableCell>{event.target_label || event.target_id}</TableCell>
+                    <TableCell>
+                      <Text type="code">{event.action}</Text>
+                    </TableCell>
+                    <TableCell>
+                      <Text type="body">{event.actor_label}</Text>
+                    </TableCell>
+                    <TableCell>
+                      <Text type="body">{event.target_label || event.target_id}</Text>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </Card>
         )}
-      </section>
+      </Section>
 
       <ConfirmReasonDialog
         open={statusDialogOpen}

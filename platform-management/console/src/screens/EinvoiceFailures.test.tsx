@@ -81,6 +81,22 @@ describe("EinvoiceFailures screen", () => {
     expect(table.getByText("provider_rejected")).toBeInTheDocument();
     expect(table.getByText("tax_code, address")).toBeInTheDocument();
     expect(table.getByText(/660,000/)).toBeInTheDocument();
+    expect(screen.getByText("1 failed")).toBeInTheDocument();
+    expect(screen.getByText("1 missing buyer details")).toBeInTheDocument();
+  });
+
+  it("opens and closes the e-invoice inspector when clicking a queue row", () => {
+    render(<EinvoiceFailures userRole="billing" />);
+
+    expect(screen.queryByRole("complementary", { name: "E-invoice details" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(ORDER_FAILED_ID));
+    const inspector = screen.getByRole("complementary", { name: "E-invoice details" });
+    expect(inspector).toBeInTheDocument();
+    expect(within(inspector).getByText("provider_rejected")).toBeInTheDocument();
+
+    fireEvent.click(within(inspector).getByRole("button", { name: "Close details" }));
+    expect(screen.queryByRole("complementary", { name: "E-invoice details" })).not.toBeInTheDocument();
   });
 
   it("switches state filter tabs", () => {

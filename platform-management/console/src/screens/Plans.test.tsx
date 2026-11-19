@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { Plans } from "./Plans";
 import { PlatformApiError } from "../api/client";
 
@@ -220,8 +220,9 @@ describe("Plans screen", () => {
     const confirmDeleteBtn = screen.getByRole("button", { name: "Confirm delete" });
     fireEvent.click(confirmDeleteBtn);
 
+    const dialog = screen.getByRole("dialog");
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent("subscriptions use this plan; archive it instead");
+      expect(within(dialog).getByRole("alert")).toHaveTextContent("subscriptions use this plan; archive it instead");
     });
   });
 
@@ -271,8 +272,9 @@ describe("Plans screen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
+    const dialog = screen.getByRole("dialog");
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(
+      expect(within(dialog).getByRole("alert")).toHaveTextContent(
         "currency must be a three-letter lower-case code",
       );
     });

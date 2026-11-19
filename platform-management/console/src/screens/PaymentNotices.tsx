@@ -1,15 +1,20 @@
 import { useState } from "react";
-import { Badge } from "@multica/ui/components/ui/badge";
-import { Button } from "@multica/ui/components/ui/button";
-import { Separator } from "@multica/ui/components/ui/separator";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Card } from "@astryxdesign/core/Card";
+import { Divider } from "@astryxdesign/core/Divider";
+import { Heading } from "@astryxdesign/core/Heading";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
+  TableHeaderCell,
   TableRow,
-} from "@multica/ui/components/ui/table";
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
+import { Button } from "@multica/ui/components/ui/button";
+import { Spinner } from "@multica/ui/components/ui/spinner";
+import { Inbox, RefreshCw, X } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -59,12 +64,16 @@ function getErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-/** Staff review queue for bank transfer notices that could not be applied automatically. */
+/**
+ * Staff review queue for bank transfer notices that could not be applied
+ * automatically. Follows the Astryx incident-console master-detail queue +
+ * docked inspector pattern.
+ */
 export function PaymentNotices({ userRole }: PaymentNoticesProps) {
   const { data: me } = useMe();
   const effectiveRole = userRole || me?.role;
 
-  const { data: notices, isLoading, isError, error, refetch } = usePaymentNotices();
+  const { data: notices, isLoading, isFetching, isError, error, refetch } = usePaymentNotices();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const {
     data: detail,
@@ -143,11 +152,40 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
     }
   };
 
+  const queueCount = notices?.length ?? 0;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Payment notices"
+        meta={
+          !isLoading && !isError ? (
+            <span className="tabular-nums">
+              {queueCount} {queueCount === 1 ? "notice" : "notices"} awaiting review
+            </span>
+          ) : undefined
+        }
         description="Match incoming bank transfers to pending orders or dismiss unmatched notices."
+        actions={
+          queueCount > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={Boolean(isFetching)}
+              aria-busy={Boolean(isFetching)}
+              className="gap-1.5"
+            >
+              {isFetching ? (
+                <Spinner className="size-3.5" />
+              ) : (
+                <RefreshCw className="size-3.5" aria-hidden="true" />
+              )}
+              <span>Refresh</span>
+            </Button>
+          ) : undefined
+        }
       />
 
       {isLoading && <LoadingState message="Loading payment notices..." />}
@@ -162,7 +200,9 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
 
       {!isLoading && !isError && (!notices || notices.length === 0) && (
         <EmptyState
+          icon={<Inbox className="size-4" />}
           title="No payment notices need review"
+          description="Incoming transfers that cannot be matched automatically will appear in this queue."
           actions={
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Refresh
@@ -172,197 +212,228 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
       )}
 
       {!isLoading && !isError && notices && notices.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Received</TableHead>
-                <TableHead>Transfer code</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {notices.map((notice: Notice) => {
-                const isSelected = selectedId === notice.id;
-                return (
-                  <TableRow
-                    key={notice.id}
-                    className={isSelected ? "bg-surface-selected" : undefined}
-                  >
-                    <TableCell className="text-caption tabular-nums text-muted-foreground">
-                      {formatDateTime(notice.received_at)}
-                    </TableCell>
-                    <TableCell className="font-mono text-body font-semibold">
-                      {notice.transfer_code || "-"}
-                    </TableCell>
-                    <TableCell className="font-medium tabular-nums">
-                      {formatMinorAmount(notice.amount, notice.currency)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={notice.state} />
-                    </TableCell>
-                    <TableCell>{formatReviewReason(notice.review_reason)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant={isSelected ? "secondary" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedId(notice.id)}
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      {selectedId !== null && (
-        <>
-          <Separator />
-          <section aria-label="Notice details" className="space-y-6">
-            {detailLoading && <LoadingState message="Loading payment notice..." />}
-
-            {!detailLoading && (detailIsError || !detail) && (
-              <ErrorState
-                title="Failed to load payment notice"
-                message={getErrorMessage(detailError, "An error occurred while loading the payment notice.")}
-                onRetry={refetchDetail}
-              />
-            )}
-
-            {!detailLoading && !detailIsError && detail && (
-              <>
-                <div className="flex flex-row items-start justify-between gap-4">
-                  <h2 className="font-heading text-title-sm font-semibold">Notice details</h2>
-                  <div className="flex items-center gap-2">
-                    {detail.state === "needs_review" && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleOpenDismissDialog}
-                      >
-                        Dismiss
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedId(null)}
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_27rem]">
+          {/* Queue list */}
+          <Card padding={0} className="overflow-x-auto">
+            <Table density="compact" dividers="rows" hasHover>
+              <TableHeader>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>Received</TableHeaderCell>
+                  <TableHeaderCell>Transfer code</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+                  <TableHeaderCell>State</TableHeaderCell>
+                  <TableHeaderCell>Reason</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Action</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {notices.map((notice: Notice) => {
+                  const isSelected = selectedId === notice.id;
+                  return (
+                    <TableRow
+                      key={notice.id}
+                      data-state={isSelected ? "selected" : undefined}
                     >
-                      Close
-                    </Button>
+                      <TableCell>
+                        <Text type="supporting" hasTabularNumbers>
+                          {formatDateTime(notice.received_at)}
+                        </Text>
+                      </TableCell>
+                      <TableCell>
+                        <Text type="code" weight="semibold">
+                          {notice.transfer_code || "-"}
+                        </Text>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Text type="body" weight="medium" hasTabularNumbers>
+                          {formatMinorAmount(notice.amount, notice.currency)}
+                        </Text>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={notice.state} />
+                      </TableCell>
+                      <TableCell>
+                        <Text type="body" color="secondary">
+                          {formatReviewReason(notice.review_reason)}
+                        </Text>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant={isSelected ? "secondary" : "outline"}
+                          size="sm"
+                          onClick={() => setSelectedId(notice.id)}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Card>
+
+          {/* Docked Inspector Rail */}
+          <aside aria-label="Notice details">
+            <Card padding={5}>
+              {selectedId === null ? (
+                <EmptyState
+                  isCompact
+                  icon={<Inbox className="size-5" aria-hidden="true" />}
+                  title="No notice selected"
+                  description="Select a payment notice from the queue to inspect candidate orders."
+                />
+              ) : detailLoading ? (
+                <LoadingState message="Loading payment notice..." />
+              ) : detailIsError || !detail ? (
+                <ErrorState
+                  title="Failed to load payment notice"
+                  message={getErrorMessage(detailError, "An error occurred while loading the payment notice.")}
+                  onRetry={refetchDetail}
+                />
+              ) : (
+                <div className="space-y-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Heading level={2}>Notice details</Heading>
+                        <StatusBadge status={detail.state} />
+                      </div>
+                      <Text type="code" color="secondary" as="p">
+                        {detail.transfer_code || "-"}
+                      </Text>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {detail.state === "needs_review" && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleOpenDismissDialog}
+                        >
+                          Dismiss
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Close"
+                        onClick={() => setSelectedId(null)}
+                      >
+                        <X className="size-4" aria-hidden="true" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                <MetadataList columns={4}>
-                  <MetadataListItem label="State">
-                    <StatusBadge status={detail.state} />
-                  </MetadataListItem>
-                  <MetadataListItem label="Provider">
-                    {detail.provider || "-"}
-                  </MetadataListItem>
-                  <MetadataListItem label="Provider event ID" mono className="break-all">
-                    {detail.provider_event_id || "-"}
-                  </MetadataListItem>
-                  <MetadataListItem label="Transfer code" mono>
-                    {detail.transfer_code || "-"}
-                  </MetadataListItem>
-                  <MetadataListItem label="Amount" tabular>
-                    {formatMinorAmount(detail.amount, detail.currency)}
-                  </MetadataListItem>
-                  <MetadataListItem label="Received" tabular>
-                    <span className="font-normal text-muted-foreground">
-                      {formatDateTime(detail.received_at)}
-                    </span>
-                  </MetadataListItem>
-                  <MetadataListItem label="Reason">
-                    {formatReviewReason(detail.review_reason)}
-                  </MetadataListItem>
-                  {detail.order_id && (
-                    <MetadataListItem label="Order ID" mono className="break-all">
-                      {detail.order_id}
+                  <Divider />
+
+                  <MetadataList columns={2}>
+                    <MetadataListItem label="Amount" tabular>
+                      {formatMinorAmount(detail.amount, detail.currency)}
                     </MetadataListItem>
-                  )}
-                </MetadataList>
+                    <MetadataListItem label="Provider">
+                      {detail.provider || "-"}
+                    </MetadataListItem>
+                    <MetadataListItem label="Reason">
+                      {formatReviewReason(detail.review_reason)}
+                    </MetadataListItem>
+                    <MetadataListItem label="Received" tabular>
+                      <Text type="supporting">{formatDateTime(detail.received_at)}</Text>
+                    </MetadataListItem>
+                    <MetadataListItem
+                      label="Provider event ID"
+                      mono
+                      className="break-all sm:col-span-2"
+                    >
+                      {detail.provider_event_id || "-"}
+                    </MetadataListItem>
+                    {detail.order_id && (
+                      <MetadataListItem
+                        label="Order ID"
+                        mono
+                        className="break-all sm:col-span-2"
+                      >
+                        {detail.order_id}
+                      </MetadataListItem>
+                    )}
+                  </MetadataList>
 
-                <div className="space-y-3">
-                  <h3 className="font-heading text-title-sm font-semibold">Candidate orders</h3>
-                  {detail.candidates.length === 0 ? (
-                    <EmptyState isCompact title="No matching orders" />
-                  ) : (
-                    <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Order ID</TableHead>
-                            <TableHead>Workspace ID</TableHead>
-                            <TableHead>Transfer code</TableHead>
-                            <TableHead>Total incl. VAT</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead>Match</TableHead>
-                            {detail.state === "needs_review" && (
-                              <TableHead className="text-right">Action</TableHead>
-                            )}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {detail.candidates.map((candidate: NoticeCandidate) => (
-                            <TableRow key={candidate.order_id}>
-                              <TableCell>
-                                <div
-                                  className="max-w-40 truncate font-mono text-caption"
+                  <Divider />
+
+                  <div className="space-y-3">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <Heading level={3}>Candidate orders</Heading>
+                      <Text type="supporting" hasTabularNumbers>
+                        {detail.candidates.length}
+                      </Text>
+                    </div>
+
+                    {detail.candidates.length === 0 ? (
+                      <EmptyState isCompact title="No matching orders" />
+                    ) : (
+                      <ul className="divide-y divide-surface-border rounded-lg border border-surface-border bg-page-canvas/50">
+                        {detail.candidates.map((candidate: NoticeCandidate) => (
+                          <li key={candidate.order_id} className="space-y-2.5 p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 space-y-0.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Text type="code" weight="semibold">
+                                    {candidate.transfer_code || "-"}
+                                  </Text>
+                                  <Badge variant="neutral" label={candidate.match} />
+                                </div>
+                                <Text type="body" weight="medium" hasTabularNumbers as="div">
+                                  {formatMinorAmount(
+                                    candidate.amount + candidate.vat_amount,
+                                    candidate.currency,
+                                  )}
+                                </Text>
+                              </div>
+                              {detail.state === "needs_review" && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleOpenMatchDialog(candidate)}
+                                >
+                                  Match
+                                </Button>
+                              )}
+                            </div>
+
+                            <dl className="grid grid-cols-1 gap-1.5 text-caption">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <dt className="shrink-0 text-muted-foreground">Order</dt>
+                                <dd
+                                  className="min-w-0 truncate font-mono text-foreground"
                                   title={candidate.order_id}
                                 >
                                   {candidate.order_id}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div
-                                  className="max-w-40 truncate font-mono text-caption"
+                                </dd>
+                              </div>
+                              <div className="flex items-baseline justify-between gap-2">
+                                <dt className="shrink-0 text-muted-foreground">Workspace</dt>
+                                <dd
+                                  className="min-w-0 truncate font-mono text-muted-foreground"
                                   title={candidate.workspace_id}
                                 >
                                   {candidate.workspace_id}
-                                </div>
-                              </TableCell>
-                              <TableCell className="font-mono text-body font-medium">
-                                {candidate.transfer_code || "-"}
-                              </TableCell>
-                              <TableCell className="font-medium tabular-nums">
-                                {formatMinorAmount(candidate.amount + candidate.vat_amount, candidate.currency)}
-                              </TableCell>
-                              <TableCell className="text-caption tabular-nums text-muted-foreground">
-                                {formatDateTime(candidate.created_at)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline">{candidate.match}</Badge>
-                              </TableCell>
-                              {detail.state === "needs_review" && (
-                                <TableCell className="text-right">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleOpenMatchDialog(candidate)}
-                                  >
-                                    Match
-                                  </Button>
-                                </TableCell>
-                              )}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
+                                </dd>
+                              </div>
+                              <div className="flex items-baseline justify-between gap-2">
+                                <dt className="shrink-0 text-muted-foreground">Created</dt>
+                                <dd className="tabular-nums text-muted-foreground">
+                                  {formatDateTime(candidate.created_at)}
+                                </dd>
+                              </div>
+                            </dl>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
-              </>
-            )}
-          </section>
-        </>
+              )}
+            </Card>
+          </aside>
+        </div>
       )}
 
       {/* Match Reason Dialog */}

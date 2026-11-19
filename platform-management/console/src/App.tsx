@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Theme } from "@astryxdesign/core/theme";
+import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 import { useMe, useLogout } from "./api/hooks";
 import { LoadingState } from "./components/LoadingState";
 import { Layout } from "./components/Layout";
@@ -145,14 +147,20 @@ export function App() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-app-shell">
-        <LoadingState message="Loading platform console..." />
-      </div>
+      <Theme theme={neutralTheme}>
+        <div className="flex min-h-screen items-center justify-center bg-app-shell">
+          <LoadingState message="Loading platform console..." />
+        </div>
+      </Theme>
     );
   }
 
   if (!me) {
-    return <Login onSuccess={() => refetch()} />;
+    return (
+      <Theme theme={neutralTheme}>
+        <Login onSuccess={() => refetch()} />
+      </Theme>
+    );
   }
 
   const effectiveRoute: RouteState = canAccessScreen(route.screen, me.role)
@@ -243,14 +251,16 @@ export function App() {
   };
 
   return (
-    <Layout
-      currentScreen={effectiveRoute.screen}
-      onNavigate={handleNavigate}
-      user={me}
-      onLogout={handleLogout}
-    >
-      {renderScreen()}
-    </Layout>
+    <Theme theme={neutralTheme}>
+      <Layout
+        currentScreen={effectiveRoute.screen}
+        onNavigate={handleNavigate}
+        user={me}
+        onLogout={handleLogout}
+      >
+        {renderScreen()}
+      </Layout>
+    </Theme>
   );
 }
 

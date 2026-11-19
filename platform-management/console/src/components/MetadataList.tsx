@@ -1,14 +1,12 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import {
+  MetadataList as AstryxMetadataList,
+  MetadataListItem as AstryxMetadataListItem,
+} from "@astryxdesign/core/MetadataList";
+import { Text } from "@astryxdesign/core/Text";
 import { cn } from "@multica/ui/lib/utils";
 
-const COLUMN_CLASSES: Record<1 | 2 | 3 | 4, string> = {
-  1: "grid-cols-1",
-  2: "grid-cols-1 sm:grid-cols-2",
-  3: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-  4: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
-};
-
-interface MetadataListProps extends HTMLAttributes<HTMLDListElement> {
+interface MetadataListProps extends HTMLAttributes<HTMLDivElement> {
   columns?: 1 | 2 | 3 | 4;
   children: ReactNode;
 }
@@ -20,12 +18,14 @@ export function MetadataList({
   ...props
 }: MetadataListProps) {
   return (
-    <dl
-      className={cn("grid gap-x-6 gap-y-4", COLUMN_CLASSES[columns], className)}
+    <AstryxMetadataList
+      columns={columns === 1 ? "single" : columns}
+      label={{ position: "top" }}
+      className={className}
       {...props}
     >
       {children}
-    </dl>
+    </AstryxMetadataList>
   );
 }
 
@@ -45,17 +45,18 @@ export function MetadataListItem({
   ...props
 }: MetadataListItemProps) {
   return (
-    <div className={cn("min-w-0", className)} {...props}>
-      <dt className="text-label font-medium text-muted-foreground">{label}</dt>
-      <dd
-        className={cn(
-          "mt-1 text-body font-medium text-foreground break-words",
-          mono && "font-mono text-caption",
-          tabular && "tabular-nums",
-        )}
-      >
-        {children}
-      </dd>
-    </div>
+    <AstryxMetadataListItem label={label} className={cn("min-w-0", className)} {...props}>
+      {mono || tabular ? (
+        <Text
+          type={mono ? "code" : "body"}
+          hasTabularNumbers={tabular}
+          className="break-words"
+        >
+          {children}
+        </Text>
+      ) : (
+        children
+      )}
+    </AstryxMetadataListItem>
   );
 }

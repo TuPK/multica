@@ -1,29 +1,74 @@
+import { Card } from "@astryxdesign/core/Card";
+import { Divider } from "@astryxdesign/core/Divider";
+import { Heading } from "@astryxdesign/core/Heading";
+import { ProgressBar } from "@astryxdesign/core/ProgressBar";
+import { Section } from "@astryxdesign/core/Section";
+import { StatusDot } from "@astryxdesign/core/StatusDot";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@multica/ui/components/ui/card";
-import { Separator } from "@multica/ui/components/ui/separator";
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
 import {
-  Building2,
-  Users,
-  Shield,
+  Chart,
+  ChartAxis,
+  ChartGrid,
+  ChartSwatch,
+  bar,
+} from "@astryxdesign/charts";
+import { Button } from "@multica/ui/components/ui/button";
+import { Spinner } from "@multica/ui/components/ui/spinner";
+import {
   Activity,
   AlertTriangle,
+  BarChart3,
+  Building2,
   CreditCard,
+  RefreshCw,
+  Shield,
+  Users,
 } from "@multica/ui/icons";
-import { PageHeader } from "../components/PageHeader";
-import { MetadataList, MetadataListItem } from "../components/MetadataList";
-import { LoadingState } from "../components/LoadingState";
-import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { LoadingState } from "../components/LoadingState";
+import { PageHeader } from "../components/PageHeader";
 import { useOverview } from "../api/hooks";
 import { formatMinorAmount } from "../money";
 import { formatBytes } from "./Tenants";
 
+const PLAN_SERIES_COLORS = [
+  "var(--data-color-1, #0171e3)",
+  "var(--data-color-2, #eb6e00)",
+  "var(--data-color-3, #0b991f)",
+  "var(--data-color-4, #6b1efd)",
+  "var(--data-color-5, #08a3a3)",
+] as const;
+
+interface StatusDatum {
+  key: string;
+  status: string;
+  count: number;
+  color: string;
+}
+
+interface PlanDatum {
+  plan: string;
+  count: number;
+  color: string;
+}
+
+function formatShare(value: number, total: number): string {
+  if (total <= 0) return "0%";
+  const pct = (value / total) * 100;
+  return pct >= 10 || Number.isInteger(pct) ? `${pct.toFixed(0)}%` : `${pct.toFixed(1)}%`;
+}
+
 export function Overview() {
-  const { data, isLoading, isError, error, refetch } = useOverview();
+  const { data, isLoading, isFetching, isError, error, refetch } = useOverview();
 
   if (isLoading) {
     return <LoadingState message="Loading overview..." />;
@@ -42,8 +87,14 @@ export function Overview() {
   if (!data) {
     return (
       <EmptyState
+        icon={<BarChart3 className="size-5" aria-hidden="true" />}
         title="No overview data"
         description="Unable to load workspace metrics."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Refresh
+          </Button>
+        }
       />
     );
   }
@@ -56,10 +107,47 @@ export function Overview() {
   const totalWorkspaces =
     activeCount + readOnlyCount + suspendedCount + pendingDeletionCount;
 
-  const planEntries = data.by_plan ? Object.entries(data.by_plan) : [];
+  const statusData: StatusDatum[] = [
+    {
+      key: "active",
+      status: "Active",
+      count: activeCount,
+      color: "var(--color-success)",
+    },
+    {
+      key: "read_only",
+      status: "Read-only",
+      count: readOnlyCount,
+      color: "var(--data-color-5, #08a3a3)",
+    },
+    {
+      key: "suspended",
+      status: "Suspended",
+      count: suspendedCount,
+      color: "var(--color-warning)",
+    },
+    {
+      key: "pending_deletion",
+      status: "Pending deletion",
+      count: pendingDeletionCount,
+      color: "var(--color-error)",
+    },
+  ];
+
+  const planEntries = data.by_plan
+    ? Object.entries(data.by_plan).sort(([, a], [, b]) => b - a)
+    : [];
+  const totalPlanSubscriptions = planEntries.reduce((sum, [, count]) => sum + count, 0);
+  const planData: PlanDatum[] = planEntries.map(([planKey, count], index) => ({
+    plan: planKey,
+    count,
+    color: PLAN_SERIES_COLORS[index % PLAN_SERIES_COLORS.length]!,
+  }));
+
   const pendingCurrencyEntries = data.pending_by_currency
     ? Object.entries(data.pending_by_currency)
     : [];
+
   const hasUsageSnapshot =
     data.usage_day != null ||
     data.usage_workspaces !== undefined ||
@@ -71,184 +159,448 @@ export function Overview() {
     data.usage_tasks_run !== undefined ||
     data.usage_storage_bytes !== undefined;
 
+  const usageRows = hasUsageSnapshot
+    ? [
+        { label: "Usage Workspaces", raw: data.usage_workspaces ?? 0, formatted: String(data.usage_workspaces ?? 0) },
+        { label: "Members", raw: data.usage_members ?? 0, formatted: String(data.usage_members ?? 0) },
+        { label: "Agents", raw: data.usage_agents ?? 0, formatted: String(data.usage_agents ?? 0) },
+        { label: "Runtimes", raw: data.usage_runtimes ?? 0, formatted: String(data.usage_runtimes ?? 0) },
+        { label: "Total Issues", raw: data.usage_issues_total ?? 0, formatted: String(data.usage_issues_total ?? 0) },
+        { label: "Issues Created", raw: data.usage_issues_created ?? 0, formatted: String(data.usage_issues_created ?? 0) },
+        { label: "Tasks Run", raw: data.usage_tasks_run ?? 0, formatted: String(data.usage_tasks_run ?? 0) },
+        { label: "Storage", raw: null as number | null, formatted: formatBytes(data.usage_storage_bytes ?? 0) },
+      ]
+    : [];
+  const maxUsageCount = Math.max(
+    ...usageRows.map((row) => (row.raw !== null ? row.raw : 0)),
+    1,
+  );
+
+  const hasSupportingTables = hasUsageSnapshot || pendingCurrencyEntries.length > 0;
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Platform Overview" />
+      <PageHeader
+        title="Platform Overview"
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={Boolean(isFetching)}
+            aria-busy={Boolean(isFetching)}
+            className="gap-1.5"
+          >
+            {isFetching ? (
+              <Spinner className="size-3.5" />
+            ) : (
+              <RefreshCw className="size-3.5" aria-hidden="true" />
+            )}
+            <span>Refresh</span>
+          </Button>
+        }
+      />
 
-      <section aria-label="Workspace metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-surface-border shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-body font-medium text-muted-foreground">
-              Total Workspaces
-            </CardTitle>
-            <Building2 className="size-4 text-muted-foreground" aria-hidden="true" />
-          </CardHeader>
-          <CardContent>
-            <div className="font-heading text-display-sm font-semibold tabular-nums">
-              {totalWorkspaces}
+      {/* Band 1: Headline KPI tiles */}
+      <Section variant="transparent" padding={0} aria-label="Workspace metrics" className="space-y-4">
+        <div
+          className={
+            data.pending_orders !== undefined
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+              : "grid grid-cols-1 gap-4 sm:grid-cols-3"
+          }
+        >
+          <Card padding={4}>
+            <div className="flex items-center justify-between gap-2">
+              <Text type="label" color="secondary">
+                Total Workspaces
+              </Text>
+              <Building2 className="size-4 text-faint-foreground" aria-hidden="true" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-surface-border shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-body font-medium text-muted-foreground">
-              Active Workspaces
-            </CardTitle>
-            <Activity className="size-4 text-success" aria-hidden="true" />
-          </CardHeader>
-          <CardContent>
-            <div className="font-heading text-display-sm font-semibold tabular-nums text-success">
-              {activeCount}
+            <div className="mt-2 space-y-1">
+              <Text type="display-3" weight="semibold" hasTabularNumbers as="div">
+                {totalWorkspaces}
+              </Text>
+              <Text type="supporting" hasTabularNumbers as="p">
+                {formatShare(activeCount, totalWorkspaces)} active across platform
+              </Text>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
 
-        <Card className="border-surface-border shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-body font-medium text-muted-foreground">
-              Sign-ups (7 Days)
-            </CardTitle>
-            <Users className="size-4 text-primary" aria-hidden="true" />
-          </CardHeader>
-          <CardContent>
-            <div className="font-heading text-display-sm font-semibold tabular-nums">
-              {data.signups_7d}
+          <Card padding={4}>
+            <div className="flex items-center justify-between gap-2">
+              <Text type="label" color="secondary">
+                Active Workspaces
+              </Text>
+              <Activity className="size-4 text-success" aria-hidden="true" />
             </div>
-          </CardContent>
-        </Card>
-
-        {data.pending_orders !== undefined && (
-          <Card className="border-surface-border shadow-none">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-body font-medium text-muted-foreground">
-                Pending Orders
-              </CardTitle>
-              <CreditCard className="size-4 text-warning" aria-hidden="true" />
-            </CardHeader>
-            <CardContent className="space-y-1">
-              <div className="font-heading text-display-sm font-semibold tabular-nums">
-                {data.pending_orders}
+            <div className="mt-2 space-y-1">
+              <Text
+                type="display-3"
+                weight="semibold"
+                color="inherit"
+                hasTabularNumbers
+                as="div"
+                className="text-success"
+              >
+                {activeCount}
+              </Text>
+              <div className="inline-flex items-center gap-1.5">
+                <StatusDot variant="success" label="Active" aria-hidden="true" />
+                <Text type="supporting">Operating normally</Text>
               </div>
-              {pendingCurrencyEntries.length > 0 && (
-                <div className="space-y-0.5 text-caption text-muted-foreground tabular-nums">
-                  {pendingCurrencyEntries.map(([currency, summary]) => (
-                    <div key={currency}>
-                      {summary.orders} ·{" "}
-                      {formatMinorAmount(
-                        summary.amount + summary.vat_amount,
-                        currency,
-                      )}
-                    </div>
-                  ))}
+            </div>
+          </Card>
+
+          <Card padding={4}>
+            <div className="flex items-center justify-between gap-2">
+              <Text type="label" color="secondary">
+                Sign-ups (7 Days)
+              </Text>
+              <Users className="size-4 text-brand" aria-hidden="true" />
+            </div>
+            <div className="mt-2 space-y-1">
+              <Text type="display-3" weight="semibold" hasTabularNumbers as="div">
+                {data.signups_7d}
+              </Text>
+              <Text type="supporting" as="p">
+                New registrations
+              </Text>
+            </div>
+          </Card>
+
+          {data.pending_orders !== undefined && (
+            <Card padding={4}>
+              <div className="flex items-center justify-between gap-2">
+                <Text type="label" color="secondary">
+                  Pending Orders
+                </Text>
+                <CreditCard className="size-4 text-warning" aria-hidden="true" />
+              </div>
+              <div className="mt-2 space-y-1">
+                <Text type="display-3" weight="semibold" hasTabularNumbers as="div">
+                  {data.pending_orders}
+                </Text>
+                <Text type="supporting" hasTabularNumbers as="p">
+                  {pendingCurrencyEntries.length > 0
+                    ? `${pendingCurrencyEntries.length} ${pendingCurrencyEntries.length === 1 ? "currency" : "currencies"} awaiting settlement`
+                    : "Awaiting settlement"}
+                </Text>
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* Operational exception counters */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card padding={4}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-1.5">
+                <StatusDot variant="neutral" label="Read-Only" aria-hidden="true" />
+                <Text type="label" color="secondary">
+                  Read-Only
+                </Text>
+              </div>
+              <Shield className="size-4 text-faint-foreground" aria-hidden="true" />
+            </div>
+            <div className="mt-2">
+              <Text type="large" size="xl" weight="semibold" hasTabularNumbers as="div">
+                {readOnlyCount}
+              </Text>
+            </div>
+          </Card>
+
+          <Card padding={4}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-1.5">
+                <StatusDot
+                  variant={suspendedCount > 0 ? "error" : "neutral"}
+                  label="Suspended"
+                  aria-hidden="true"
+                />
+                <Text type="label" color="secondary">
+                  Suspended
+                </Text>
+              </div>
+              <AlertTriangle
+                className={suspendedCount > 0 ? "size-4 text-destructive" : "size-4 text-faint-foreground"}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="mt-2">
+              <Text
+                type="large"
+                size="xl"
+                weight="semibold"
+                color={suspendedCount > 0 ? "inherit" : "primary"}
+                hasTabularNumbers
+                as="div"
+                className={suspendedCount > 0 ? "text-destructive" : undefined}
+              >
+                {suspendedCount}
+              </Text>
+            </div>
+          </Card>
+
+          <Card padding={4}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-1.5">
+                <StatusDot
+                  variant={pendingDeletionCount > 0 ? "error" : "neutral"}
+                  label="Pending Deletion"
+                  aria-hidden="true"
+                />
+                <Text type="label" color="secondary">
+                  Pending Deletion
+                </Text>
+              </div>
+              <AlertTriangle
+                className={pendingDeletionCount > 0 ? "size-4 text-destructive" : "size-4 text-faint-foreground"}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="mt-2">
+              <Text
+                type="large"
+                size="xl"
+                weight="semibold"
+                color={pendingDeletionCount > 0 ? "inherit" : "primary"}
+                hasTabularNumbers
+                as="div"
+                className={pendingDeletionCount > 0 ? "text-destructive" : undefined}
+              >
+                {pendingDeletionCount}
+              </Text>
+            </div>
+          </Card>
+        </div>
+      </Section>
+
+      <Divider />
+
+      {/* Band 2: Charts band using @astryxdesign/charts */}
+      <Section variant="transparent" padding={0} aria-label="Distribution charts" className="space-y-4">
+        <div
+          className={
+            planEntries.length > 0
+              ? "grid grid-cols-1 gap-4 lg:grid-cols-2"
+              : "grid grid-cols-1 gap-4"
+          }
+        >
+          <Card padding={4} className="space-y-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <Heading level={2}>Workspace Status Distribution</Heading>
+              <Text type="supporting" hasTabularNumbers>
+                {totalWorkspaces.toLocaleString()} workspaces
+              </Text>
+            </div>
+            <Chart
+              data={statusData as unknown as Record<string, unknown>[]}
+              xKey="status"
+              series={[
+                bar("count", {
+                  label: "Workspaces",
+                  radius: 4,
+                  color: (datum) => String(datum.color ?? "var(--data-color-1)"),
+                }),
+              ]}
+              height={200}
+              grid={<ChartGrid horizontal />}
+              axes={
+                <>
+                  <ChartAxis position="bottom" />
+                  <ChartAxis position="left" tickCount={4} />
+                </>
+              }
+              tooltip
+              title={`Workspace status distribution (${totalWorkspaces.toLocaleString()} workspaces)`}
+            />
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {statusData.map((segment) => (
+                <div key={segment.key} className="inline-flex items-center gap-1.5">
+                  <ChartSwatch variant="square" color={segment.color} />
+                  <Text type="supporting" color="primary" hasTabularNumbers>
+                    {segment.status} · {segment.count.toLocaleString()} (
+                    {formatShare(segment.count, totalWorkspaces)})
+                  </Text>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {planData.length > 0 && (
+            <Card padding={4} className="space-y-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <Heading level={2}>Subscriptions by Plan</Heading>
+                <Text type="supporting" hasTabularNumbers>
+                  {totalPlanSubscriptions.toLocaleString()} total
+                </Text>
+              </div>
+              <Chart
+                data={planData as unknown as Record<string, unknown>[]}
+                xKey="plan"
+                series={[
+                  bar("count", {
+                    label: "Subscriptions",
+                    radius: 4,
+                    color: (datum) => String(datum.color ?? "var(--data-color-1)"),
+                  }),
+                ]}
+                height={200}
+                grid={<ChartGrid horizontal />}
+                axes={
+                  <>
+                    <ChartAxis position="bottom" />
+                    <ChartAxis position="left" tickCount={4} />
+                  </>
+                }
+                tooltip
+                title={`Subscriptions by plan (${totalPlanSubscriptions.toLocaleString()} total)`}
+              />
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                {planData.map((segment) => (
+                  <div key={segment.plan} className="inline-flex items-center gap-1.5">
+                    <ChartSwatch variant="square" color={segment.color} />
+                    <Text type="code" color="primary">
+                      {segment.plan}
+                    </Text>
+                    <Text type="supporting" hasTabularNumbers>
+                      {segment.count.toLocaleString()} ·{" "}
+                      {formatShare(segment.count, totalPlanSubscriptions)}
+                    </Text>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      </Section>
+
+      {/* Band 3: Supporting tables band */}
+      {hasSupportingTables && (
+        <>
+          <Divider />
+          <Section variant="transparent" padding={0} aria-label="Supporting tables" className="space-y-6">
+            <div
+              className={
+                hasUsageSnapshot && pendingCurrencyEntries.length > 0
+                  ? "grid grid-cols-1 gap-6 lg:grid-cols-2"
+                  : "grid grid-cols-1 gap-6"
+              }
+            >
+              {hasUsageSnapshot && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <Heading level={2}>Platform Usage Snapshot</Heading>
+                    {data.usage_day && (
+                      <Text type="code" color="secondary">
+                        {data.usage_day}
+                      </Text>
+                    )}
+                  </div>
+                  <Card padding={0} className="overflow-x-auto">
+                    <Table density="compact" dividers="rows" hasHover>
+                      <TableHeader>
+                        <TableRow isHeaderRow>
+                          <TableHeaderCell>Metric</TableHeaderCell>
+                          <TableHeaderCell className="w-40">Scale</TableHeaderCell>
+                          <TableHeaderCell className="text-right">Value</TableHeaderCell>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {usageRows.map((row) => (
+                          <TableRow key={row.label}>
+                            <TableCell>
+                              <Text type="body" weight="medium">
+                                {row.label}
+                              </Text>
+                            </TableCell>
+                            <TableCell>
+                              {row.raw !== null ? (
+                                <ProgressBar
+                                  value={row.raw}
+                                  max={maxUsageCount}
+                                  label={`${row.label} relative volume`}
+                                  isLabelHidden
+                                />
+                              ) : (
+                                <Text type="supporting">—</Text>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Text type="body" weight="medium" hasTabularNumbers>
+                                {row.formatted}
+                              </Text>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        )}
 
-        <Card className="border-surface-border shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-body font-medium text-muted-foreground">
-              Read-Only
-            </CardTitle>
-            <Shield className="size-4 text-muted-foreground" aria-hidden="true" />
-          </CardHeader>
-          <CardContent>
-            <div className="font-heading text-display-sm font-semibold tabular-nums text-muted-foreground">
-              {readOnlyCount}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-surface-border shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-body font-medium text-muted-foreground">
-              Suspended
-            </CardTitle>
-            <AlertTriangle className="size-4 text-destructive" aria-hidden="true" />
-          </CardHeader>
-          <CardContent>
-            <div className="font-heading text-display-sm font-semibold tabular-nums text-destructive">
-              {suspendedCount}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-surface-border shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-body font-medium text-muted-foreground">
-              Pending Deletion
-            </CardTitle>
-            <AlertTriangle className="size-4 text-destructive" aria-hidden="true" />
-          </CardHeader>
-          <CardContent>
-            <div className="font-heading text-display-sm font-semibold tabular-nums text-destructive">
-              {pendingDeletionCount}
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {planEntries.length > 0 && (
-        <>
-          <Separator />
-          <section className="space-y-4">
-            <h2 className="font-heading text-title-sm font-semibold text-foreground">
-              Subscriptions by Plan
-            </h2>
-            <MetadataList columns={4}>
-              {planEntries.map(([planKey, planCount]) => (
-                <MetadataListItem key={planKey} label={planKey} tabular>
-                  {planCount}
-                </MetadataListItem>
-              ))}
-            </MetadataList>
-          </section>
-        </>
-      )}
-
-      {hasUsageSnapshot && (
-        <>
-          <Separator />
-          <section className="space-y-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-heading text-title-sm font-semibold text-foreground">
-                Platform Usage Snapshot
-              </h2>
-              {data.usage_day && (
-                <span className="font-mono text-caption text-muted-foreground">
-                  {data.usage_day}
-                </span>
+              {pendingCurrencyEntries.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <Heading level={2}>Pending Orders by Currency</Heading>
+                    <Text type="supporting" hasTabularNumbers>
+                      {pendingCurrencyEntries.length}{" "}
+                      {pendingCurrencyEntries.length === 1 ? "currency" : "currencies"}
+                    </Text>
+                  </div>
+                  <Card padding={0} className="overflow-x-auto">
+                    <Table density="compact" dividers="rows" hasHover>
+                      <TableHeader>
+                        <TableRow isHeaderRow>
+                          <TableHeaderCell>Currency</TableHeaderCell>
+                          <TableHeaderCell className="text-right">Orders</TableHeaderCell>
+                          <TableHeaderCell className="text-right">Net</TableHeaderCell>
+                          <TableHeaderCell className="text-right">VAT</TableHeaderCell>
+                          <TableHeaderCell className="text-right">Total (incl. VAT)</TableHeaderCell>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingCurrencyEntries.map(([currency, summary]) => (
+                          <TableRow key={currency}>
+                            <TableCell>
+                              <Text type="code" weight="medium" className="uppercase">
+                                {currency}
+                              </Text>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Text type="body" hasTabularNumbers>
+                                {summary.orders}
+                              </Text>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Text type="body" color="secondary" hasTabularNumbers>
+                                {formatMinorAmount(summary.amount, currency)}
+                              </Text>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Text type="body" color="secondary" hasTabularNumbers>
+                                {formatMinorAmount(summary.vat_amount, currency)}
+                              </Text>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Text type="body" weight="medium" hasTabularNumbers>
+                                {formatMinorAmount(
+                                  summary.amount + summary.vat_amount,
+                                  currency,
+                                )}
+                              </Text>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                </div>
               )}
             </div>
-            <MetadataList columns={4}>
-              <MetadataListItem label="Usage Workspaces" tabular>
-                {data.usage_workspaces ?? 0}
-              </MetadataListItem>
-              <MetadataListItem label="Members" tabular>
-                {data.usage_members ?? 0}
-              </MetadataListItem>
-              <MetadataListItem label="Agents" tabular>
-                {data.usage_agents ?? 0}
-              </MetadataListItem>
-              <MetadataListItem label="Runtimes" tabular>
-                {data.usage_runtimes ?? 0}
-              </MetadataListItem>
-              <MetadataListItem label="Total Issues" tabular>
-                {data.usage_issues_total ?? 0}
-              </MetadataListItem>
-              <MetadataListItem label="Issues Created" tabular>
-                {data.usage_issues_created ?? 0}
-              </MetadataListItem>
-              <MetadataListItem label="Tasks Run" tabular>
-                {data.usage_tasks_run ?? 0}
-              </MetadataListItem>
-              <MetadataListItem label="Storage" tabular>
-                {formatBytes(data.usage_storage_bytes ?? 0)}
-              </MetadataListItem>
-            </MetadataList>
-          </section>
+          </Section>
         </>
       )}
     </div>

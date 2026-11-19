@@ -1,6 +1,16 @@
 import { useState } from "react";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Card } from "@astryxdesign/core/Card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import {
@@ -15,15 +25,7 @@ import {
 import { Field, FieldError, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
-import { AlertCircle, CalendarClock, Pencil, Trash2 } from "@multica/ui/icons";
+import { AlertCircle, CalendarClock, Layers, Pencil, Trash2 } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -252,25 +254,26 @@ export function Plans({ userRole }: PlansProps) {
 
       {!isLoading && !isError && (!plans || plans.length === 0) && (
         <EmptyState
+          icon={<Layers className="size-4" />}
           title="No plans"
           description="No plans configured in the catalogue."
         />
       )}
 
       {!isLoading && !isError && plans && plans.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-          <Table>
+        <Card padding={0} className="overflow-x-auto">
+          <Table density="balanced" dividers="rows" hasHover>
             <TableHeader>
-              <TableRow>
-                <TableHead>Plan</TableHead>
-                <TableHead>Audience</TableHead>
-                <TableHead>Billing Model</TableHead>
-                <TableHead>Pricing (Monthly / Yearly)</TableHead>
-                <TableHead>Seats Configuration</TableHead>
-                <TableHead>Trial</TableHead>
-                <TableHead>Visibility</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+              <TableRow isHeaderRow>
+                <TableHeaderCell>Plan</TableHeaderCell>
+                <TableHeaderCell>Audience</TableHeaderCell>
+                <TableHeaderCell>Billing Model</TableHeaderCell>
+                <TableHeaderCell>Pricing (Monthly / Yearly)</TableHeaderCell>
+                <TableHeaderCell>Seats Configuration</TableHeaderCell>
+                <TableHeaderCell>Trial</TableHeaderCell>
+                <TableHeaderCell>Visibility</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -282,50 +285,54 @@ export function Plans({ userRole }: PlansProps) {
                 return (
                   <TableRow key={plan.key}>
                     <TableCell>
-                      <div className="font-medium text-foreground">{plan.name}</div>
-                      <div className="font-mono text-caption text-muted-foreground">{plan.key}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {AUDIENCE_LABELS[audience] ?? audience}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {BILLING_MODEL_LABELS[billingModel] ?? billingModel}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-body font-medium tabular-nums">
-                        {plan.seat_price_month !== null
-                          ? `${formatMinorAmount(plan.seat_price_month, plan.currency)}/mo`
-                          : "Free / Fixed"}
-                      </div>
-                      <div className="text-caption text-muted-foreground tabular-nums">
-                        {plan.seat_price_year !== null
-                          ? `${formatMinorAmount(plan.seat_price_year, plan.currency)}/yr`
-                          : "-"}
-                      </div>
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      <div className="text-body">
-                        {plan.seats_fixed !== null
-                          ? `${plan.seats_fixed} fixed seats`
-                          : `${plan.min_seats || 1} min seats`}
-                      </div>
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      <div className="text-body">
-                        {plan.trial_days > 0 ? `${plan.trial_days} days` : "No trial"}
-                      </div>
+                      <Text type="body" weight="medium" as="div">
+                        {plan.name}
+                      </Text>
+                      <Text type="code" color="secondary" as="div">
+                        {plan.key}
+                      </Text>
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={plan.is_public ? "secondary" : "outline"}
-                        className={plan.is_public ? undefined : "text-muted-foreground"}
-                      >
-                        {plan.is_public ? "Public" : "Private"}
-                      </Badge>
+                        variant="neutral"
+                        label={AUDIENCE_LABELS[audience] ?? audience}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="blue"
+                        label={BILLING_MODEL_LABELS[billingModel] ?? billingModel}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Text type="body" weight="medium" hasTabularNumbers as="div">
+                        {plan.seat_price_month !== null
+                          ? `${formatMinorAmount(plan.seat_price_month, plan.currency)}/mo`
+                          : "Free / Fixed"}
+                      </Text>
+                      <Text type="supporting" hasTabularNumbers as="div">
+                        {plan.seat_price_year !== null
+                          ? `${formatMinorAmount(plan.seat_price_year, plan.currency)}/yr`
+                          : "-"}
+                      </Text>
+                    </TableCell>
+                    <TableCell>
+                      <Text type="body" hasTabularNumbers>
+                        {plan.seats_fixed !== null
+                          ? `${plan.seats_fixed} fixed seats`
+                          : `${plan.min_seats || 1} min seats`}
+                      </Text>
+                    </TableCell>
+                    <TableCell>
+                      <Text type="body" hasTabularNumbers>
+                        {plan.trial_days > 0 ? `${plan.trial_days} days` : "No trial"}
+                      </Text>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={plan.is_public ? "teal" : "neutral"}
+                        label={plan.is_public ? "Public" : "Private"}
+                      />
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={isArchived ? "archived" : "active"} />
@@ -372,7 +379,7 @@ export function Plans({ userRole }: PlansProps) {
               })}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       )}
 
       {/* Edit Plan Dialog */}
