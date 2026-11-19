@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	proposalkinds "github.com/multica-ai/multica/server/internal/service/proposal_kinds"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -118,6 +119,7 @@ func (s *InitiativeService) sweepOne(ctx context.Context, ini db.Initiative) (ad
 func (s *InitiativeService) gateIsDue(ctx context.Context, ini db.Initiative, stageKey string) (bool, error) {
 	gates, err := s.Queries.ListGateProposalsForInitiative(ctx, db.ListGateProposalsForInitiativeParams{
 		WorkspaceID: ini.WorkspaceID, InitiativeID: util.UUIDToString(ini.ID),
+		ScopeMode: projectaccess.System().Mode(),
 	})
 	if err != nil {
 		return false, fmt.Errorf("list gate proposals: %w", err)
@@ -223,6 +225,7 @@ func (s *InitiativeService) fileDueOperateGates(ctx context.Context, limit int32
 	for _, ini := range list {
 		gates, err := s.Queries.ListGateProposalsForInitiative(ctx, db.ListGateProposalsForInitiativeParams{
 			WorkspaceID: ini.WorkspaceID, InitiativeID: util.UUIDToString(ini.ID),
+			ScopeMode: projectaccess.System().Mode(),
 		})
 		if err != nil {
 			errs = append(errs, err)

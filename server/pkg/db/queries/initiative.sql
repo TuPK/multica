@@ -133,13 +133,21 @@ RETURNING *;
 
 -- name: ListGateProposalsForInitiative :many
 -- Every stage_gate proposal of one initiative, oldest first, with the backing
--- issue's title and number.
+-- issue's title and number. A gate whose backing issue sits in a project the
+-- viewer cannot see is left out.
 SELECT sqlc.embed(p), i.title AS issue_title, i.number AS issue_number, i.status AS issue_status
 FROM proposal p
 JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
 WHERE p.workspace_id = sqlc.arg('workspace_id')::uuid
   AND p.kind = 'stage_gate'
   AND p.payload->>'initiative_id' = sqlc.arg('initiative_id')::text
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.created_at, p.id;
 
 -- name: ListPendingGateProposalsForWorkspace :many
