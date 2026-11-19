@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { TenantDetail } from "./TenantDetail";
 
+const mockUseMe = vi.fn();
 const mockUseTenant = vi.fn();
+const mockDeleteTenantNowMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
+  useMe: () => mockUseMe(),
   useTenant: (id?: string) => mockUseTenant(id),
+  useDeleteTenantNow: () => ({
+    mutateAsync: mockDeleteTenantNowMutateAsync,
+    isPending: false,
+  }),
 }));
 
 const tenant = {
@@ -56,6 +63,7 @@ function loaded(data: unknown) {
 describe("TenantDetail screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseMe.mockReturnValue({ data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null } });
   });
 
   it("lists workspaces and links to the workspace detail", () => {
@@ -129,5 +137,46 @@ describe("TenantDetail screen", () => {
     loaded({ ...tenant, workspaces: [], workspace_count: 0 });
     rerender(<TenantDetail tenantId="t-1" onBack={vi.fn()} onSelectWorkspace={vi.fn()} />);
     expect(screen.getByText("This tenant has no workspaces")).toBeInTheDocument();
+  });
+
+  it("admin sees only the tenant returned by the API and no delete-tenant action", () => {
+    loaded(tenant);
+    for (const role of ["admin", "support", "billing"] as const) {
+      mockUseMe.mockReturnValue({
+        data: { user_id: `u-${role}`, email: `${role}@example.com`, role, tenant_id: role === "admin" ? "t-1" : null },
+      });
+      const { unmount } = render(
+        <TenantDetail tenantId="t-1" onBack={vi.fn()} onSelectWorkspace={vi.fn()} userRole={role} />,
+      );
+      expect(screen.getByRole("heading", { name: "Acme Group" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Delete tenant/i })).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("system_admin deletes tenant with required reason and tenant name confirmation", async () => {
+    loaded(tenant);
+    mockDeleteTenantNowMutateAsync.mockResolvedValueOnce({ request_id: "dr-9", state: "pending" });
+
+    render(<TenantDetail tenantId="t-1" onBack={vi.fn()} onSelectWorkspace={vi.fn()} userRole="system_admin" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete tenant" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "Delete tenant" })).toBeDisabled();
+
+    fireEvent.change(within(dialog).getByLabelText(/Reason/i), { target: { value: "Contract ended" } });
+    fireEvent.change(within(dialog).getByLabelText(/Tenant name/i), { target: { value: "Acme Group" } });
+
+    const confirmBtn = within(dialog).getByRole("button", { name: "Delete tenant" });
+    expect(confirmBtn).toBeEnabled();
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(mockDeleteTenantNowMutateAsync).toHaveBeenCalledWith({
+        tenantId: "t-1",
+        reason: "Contract ended",
+        confirm: "Acme Group",
+      });
+    });
   });
 });

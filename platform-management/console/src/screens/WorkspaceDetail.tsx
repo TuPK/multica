@@ -28,8 +28,9 @@ import {
 } from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Textarea } from "@multica/ui/components/ui/textarea";
-import { Activity, AlertCircle, AlertTriangle, CreditCard, Info, Plus } from "@multica/ui/icons";
+import { Activity, AlertCircle, AlertTriangle, Ban, CreditCard, Info, Plus, Trash2, UserPlus } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
+import { TypeToConfirmDialog } from "../components/TypeToConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -49,8 +50,13 @@ import {
   useSetBillingProfileVerified,
   useUpdateWorkspaceBillingProfile,
   useCancelOrder,
+  useMemberRequests,
+  useAddWorkspaceMember,
+  useCancelMemberRequest,
+  useDeleteWorkspaceNow,
+  type MemberRole,
 } from "../api/hooks";
-import { PlatformApiError } from "../api/client";
+import { getApiErrorMessage, PlatformApiError } from "../api/client";
 import { formatBytes } from "./Tenants";
 import type { StaffRole } from "../components/types";
 import type {
@@ -58,11 +64,18 @@ import type {
   AuditEvent,
   Order,
   BillingProfile,
+  MemberRequest,
   WorkspaceUsage,
   WorkspaceUsageRow,
   WorkspaceUsageUnpaidOrder,
 } from "../api/schemas";
 import { formatMinorAmount } from "../money";
+
+const MEMBER_ROLE_ITEMS: Array<{ value: MemberRole; label: string }> = [
+  { value: "admin", label: "Admin" },
+  { value: "member", label: "Member" },
+  { value: "viewer", label: "Viewer" },
+];
 
 interface WorkspaceDetailProps {
   workspaceId: string;
@@ -452,8 +465,35 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
   const [writeOffError, setWriteOffError] = useState<string | null>(null);
 
   const effectiveRole = userRole ?? me?.role;
-  const canEditSubscription = effectiveRole === "billing" || effectiveRole === "admin";
-  const canWriteOff = me === null ? false : (me?.role ?? userRole) === "admin";
+  const canEditSubscription = effectiveRole === "billing" || effectiveRole === "system_admin";
+  const canWriteOff = me === null ? false : (me?.role ?? userRole) === "system_admin";
+  const canManageMembers = effectiveRole === "system_admin" || effectiveRole === "admin";
+  const canDeleteWorkspace = effectiveRole === "system_admin" || effectiveRole === "admin";
+
+  const {
+    data: memberRequests = [],
+    isLoading: memberRequestsLoading,
+    isError: memberRequestsError,
+    error: memberRequestsErrorObj,
+    refetch: refetchMemberRequests,
+  } = useMemberRequests(workspaceId, canManageMembers);
+
+  const addWorkspaceMember = useAddWorkspaceMember();
+  const cancelMemberRequest = useCancelMemberRequest();
+  const deleteWorkspaceNow = useDeleteWorkspaceNow();
+
+  // Add member dialog state
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [memberEmail, setMemberEmail] = useState("");
+  const [memberRole, setMemberRole] = useState<MemberRole>("member");
+  const [memberError, setMemberError] = useState<string | null>(null);
+  const [cancelingRequestId, setCancelingRequestId] = useState<string | null>(null);
+  const [memberRequestError, setMemberRequestError] = useState<string | null>(null);
+
+  // Immediate workspace deletion dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
 
   if (workspaceLoading) {
     return <LoadingState message="Loading workspace details..." />;
@@ -697,10 +737,61 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
     { value: "active", label: "Active" },
     { value: "read_only", label: "Read-only" },
     { value: "suspended", label: "Suspended" },
-    ...(effectiveRole === "admin"
+    ...(effectiveRole === "system_admin" || effectiveRole === "admin"
       ? [{ value: "pending_deletion", label: "Pending deletion" }]
       : []),
   ];
+
+  const handleOpenMemberDialog = () => {
+    setMemberEmail("");
+    setMemberRole("member");
+    setMemberError(null);
+    setMemberDialogOpen(true);
+  };
+
+  const handleAddMemberSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = memberEmail.trim();
+    if (!trimmed || addWorkspaceMember.isPending) return;
+    setMemberError(null);
+    try {
+      await addWorkspaceMember.mutateAsync({
+        workspaceId,
+        email: trimmed,
+        role: memberRole,
+      });
+      setMemberDialogOpen(false);
+    } catch (err: unknown) {
+      setMemberError(getApiErrorMessage(err, "Failed to add member"));
+    }
+  };
+
+  const handleCancelMemberRequest = async (requestId: string) => {
+    setCancelingRequestId(requestId);
+    setMemberRequestError(null);
+    try {
+      await cancelMemberRequest.mutateAsync({ workspaceId, requestId });
+    } catch (err: unknown) {
+      setMemberRequestError(getApiErrorMessage(err, "Failed to cancel member request"));
+    } finally {
+      setCancelingRequestId(null);
+    }
+  };
+
+  const handleConfirmDeleteNow = async ({ reason, confirm }: { reason: string; confirm: string }) => {
+    setDeleteError(null);
+    try {
+      const res = await deleteWorkspaceNow.mutateAsync({
+        workspaceId,
+        reason,
+        confirm,
+      });
+      setDeleteDialogOpen(false);
+      setDeleteNotice(`Immediate deletion requested (${res.request_id}).`);
+    } catch (err: unknown) {
+      setDeleteError(getApiErrorMessage(err, "Failed to start workspace deletion"));
+    }
+  };
 
   const notes: Note[] = Array.isArray(notesData)
     ? notesData
@@ -732,9 +823,35 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 Edit subscription
               </Button>
             )}
+            {canManageMembers && (
+              <Button variant="outline" size="sm" onClick={handleOpenMemberDialog}>
+                <UserPlus className="size-3.5" aria-hidden="true" />
+                <span>Add member</span>
+              </Button>
+            )}
+            {canDeleteWorkspace && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setDeleteError(null);
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" />
+                <span>Delete workspace</span>
+              </Button>
+            )}
           </>
         }
       />
+
+      {deleteNotice && (
+        <Alert role="status">
+          <Info className="size-4" aria-hidden="true" />
+          <AlertDescription>{deleteNotice}</AlertDescription>
+        </Alert>
+      )}
 
       {(workspace.state?.reason || workspace.state?.deletion_scheduled_at) && (
         <div className="space-y-3">
@@ -1007,6 +1124,125 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         canWriteOff={canWriteOff}
         onWriteOff={handleOpenWriteOffDialog}
       />
+
+      {canManageMembers && (
+        <>
+          <Divider />
+          <Section variant="transparent" padding={0} className="space-y-4">
+            <Heading level={2}>Member Requests</Heading>
+            {memberRequestError && (
+              <Alert variant="destructive">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription>{memberRequestError}</AlertDescription>
+              </Alert>
+            )}
+            {memberRequestsLoading && <LoadingState message="Loading member requests..." />}
+            {memberRequestsError && (
+              <ErrorState
+                title="Failed to load member requests"
+                message={getApiErrorMessage(memberRequestsErrorObj, "Could not load member requests.")}
+                onRetry={refetchMemberRequests}
+              />
+            )}
+            {!memberRequestsLoading && !memberRequestsError && memberRequests.length === 0 && (
+              <EmptyState
+                icon={<UserPlus className="size-5" aria-hidden="true" />}
+                title="No member requests"
+                isCompact
+              />
+            )}
+            {!memberRequestsLoading && !memberRequestsError && memberRequests.length > 0 && (
+              <Card padding={0} className="overflow-x-auto">
+                <Table
+                  data={memberRequests}
+                  idKey="id"
+                  density="compact"
+                  dividers="rows"
+                  hasHover
+                  columns={[
+                    {
+                      key: "email",
+                      header: "Email",
+                      width: proportional(1.6, { minWidth: 180 }),
+                      renderCell: (req: MemberRequest) => (
+                        <Text type="body" weight="medium">
+                          {req.email}
+                        </Text>
+                      ),
+                    },
+                    {
+                      key: "role",
+                      header: "Role",
+                      width: pixel(110),
+                      renderCell: (req: MemberRequest) => <StatusBadge status={req.role} />,
+                    },
+                    {
+                      key: "state",
+                      header: "State",
+                      width: pixel(120),
+                      renderCell: (req: MemberRequest) => <StatusBadge status={req.state} />,
+                    },
+                    {
+                      key: "error_code",
+                      header: "Error",
+                      width: proportional(1.2, { minWidth: 140 }),
+                      renderCell: (req: MemberRequest) =>
+                        req.error_code ? (
+                          <span className="font-mono text-caption text-destructive">
+                            {req.error_code}
+                          </span>
+                        ) : (
+                          <Text type="supporting">—</Text>
+                        ),
+                    },
+                    {
+                      key: "attempts",
+                      header: "Attempts",
+                      width: pixel(90),
+                      renderCell: (req: MemberRequest) => (
+                        <Text type="body" hasTabularNumbers>
+                          {req.attempts}
+                        </Text>
+                      ),
+                    },
+                    {
+                      key: "created_at",
+                      header: "Requested",
+                      width: proportional(1.2, { minWidth: 160 }),
+                      renderCell: (req: MemberRequest) => (
+                        <Text type="supporting" hasTabularNumbers>
+                          {req.created_at ? new Date(req.created_at).toLocaleString() : "—"}
+                        </Text>
+                      ),
+                    },
+                    {
+                      key: "action",
+                      header: "",
+                      width: pixel(100),
+                      renderCell: (req: MemberRequest) => {
+                        if (req.state !== "pending") return null;
+                        const rowBusy = cancelingRequestId === req.id;
+                        return (
+                          <Button
+                            variant="destructive"
+                            size="xs"
+                            disabled={rowBusy}
+                            aria-busy={rowBusy || undefined}
+                            onClick={() => handleCancelMemberRequest(req.id)}
+                          >
+                            {rowBusy ? <Spinner /> : <Ban className="size-3" aria-hidden="true" />}
+                            Cancel
+                          </Button>
+                        );
+                      },
+                    },
+                  ]}
+                />
+              </Card>
+            )}
+          </Section>
+        </>
+      )}
 
       <Divider />
 
@@ -1470,6 +1706,106 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         isPending={cancelOrder.isPending}
         error={writeOffError}
         onConfirm={handleConfirmWriteOff}
+      />
+
+      <Dialog
+        open={memberDialogOpen}
+        onOpenChange={(open) => !addWorkspaceMember.isPending && setMemberDialogOpen(open)}
+      >
+        <DialogContent>
+          <form onSubmit={handleAddMemberSubmit} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Add member</DialogTitle>
+            </DialogHeader>
+
+            <Field>
+              <FieldLabel htmlFor="add-member-email" className="text-label">
+                Email address
+              </FieldLabel>
+              <Input
+                id="add-member-email"
+                type="email"
+                value={memberEmail}
+                onChange={(e) => setMemberEmail(e.target.value)}
+                placeholder="member@example.com"
+                required
+                disabled={addWorkspaceMember.isPending}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="add-member-role" className="text-label">
+                Member role
+              </FieldLabel>
+              <Select
+                items={MEMBER_ROLE_ITEMS}
+                value={memberRole}
+                onValueChange={(val) => {
+                  if (val) setMemberRole(val as MemberRole);
+                }}
+                disabled={addWorkspaceMember.isPending}
+              >
+                <SelectTrigger id="add-member-role" aria-label="Member role" className="w-full">
+                  <SelectValue>
+                    {MEMBER_ROLE_ITEMS.find((item) => item.value === memberRole)?.label ?? memberRole}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {MEMBER_ROLE_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {memberError && (
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{memberError}</AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter>
+              <DialogClose
+                render={
+                  <Button
+                    variant="outline"
+                    type="button"
+                    disabled={addWorkspaceMember.isPending}
+                  />
+                }
+              >
+                Cancel
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={!memberEmail.trim() || addWorkspaceMember.isPending}
+                aria-busy={addWorkspaceMember.isPending}
+              >
+                {addWorkspaceMember.isPending && <Spinner className="size-3.5" />}
+                Add member
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <TypeToConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setDeleteError(null);
+        }}
+        title="Delete workspace"
+        description="Immediate deletion permanently removes this workspace and cannot be undone once started."
+        expectedText={workspace.slug}
+        confirmInputLabel="Workspace slug"
+        confirmLabel="Delete workspace"
+        confirmVariant="destructive"
+        error={deleteError}
+        onConfirm={handleConfirmDeleteNow}
       />
     </div>
   );

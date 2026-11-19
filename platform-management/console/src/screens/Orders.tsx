@@ -95,8 +95,8 @@ export function Orders({ userRole }: OrdersProps) {
     refetch: refetchHistory,
   } = useOrderEinvoices(historyOrderId);
 
-  // Role gating: Only billing and admin roles can view the orders screen
-  if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "admin") {
+  // Role gating: billing, admin (read-only), and system_admin can view the orders screen
+  if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "admin" && effectiveRole !== "system_admin") {
     return (
       <div role="region" aria-label="Not found">
         <ErrorState
@@ -240,7 +240,8 @@ export function Orders({ userRole }: OrdersProps) {
                 const totalAmount = order.amount + order.vat_amount;
                 const isCopied = copiedId === order.transfer_code;
                 const isUsageOrder = order.kind === "usage";
-                const canWriteOffUsage = effectiveRole === "admin";
+                const canManageOrders = effectiveRole === "billing" || effectiveRole === "system_admin";
+                const canWriteOffUsage = effectiveRole === "system_admin";
 
                 return (
                   <TableRow key={order.id}>
@@ -322,7 +323,7 @@ export function Orders({ userRole }: OrdersProps) {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {activeTab === "pending" && (
+                        {activeTab === "pending" && canManageOrders && (
                           <>
                             <Button
                               size="sm"

@@ -401,6 +401,11 @@ describe("Orders screen", () => {
 
     mockMeRole = "admin";
     rerender(<Orders userRole="admin" />);
+    expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Write off" })).not.toBeInTheDocument();
+
+    mockMeRole = "system_admin";
+    rerender(<Orders userRole="system_admin" />);
     const writeOffBtn = screen.getByRole("button", { name: "Write off" });
     fireEvent.click(writeOffBtn);
     expect(screen.getByRole("heading", { name: "Write off usage order" })).toBeInTheDocument();

@@ -48,6 +48,17 @@ import {
   useResendWelcome,
   useEinvoices,
   useOrderEinvoices,
+  useUpdateStaff,
+  useMemberRequests,
+  useAddWorkspaceMember,
+  useCancelMemberRequest,
+  useDeleteWorkspaceNow,
+  useDeleteTenantNow,
+  useAccountDeletePreview,
+  useDeleteAccountNow,
+  useDeletionRequests,
+  useCancelDeletionRequest,
+  useRetryDeletionRequest,
 } from "./hooks";
 
 type Handler = Response | ((url: URL, init: RequestInit | undefined) => Response);
@@ -108,7 +119,7 @@ describe("useMe", () => {
     const { queryClient, wrapper } = setup();
     const { result } = renderHook(() => useMe(), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toEqual({ user_id: "u1", email: "a@example.com", role: "support" });
+    expect(result.current.data).toEqual({ user_id: "u1", email: "a@example.com", role: "support", tenant_id: null });
     expect(queryClient.getQueryData(platformKeys.me())).toEqual(result.current.data);
   });
 
@@ -1492,5 +1503,188 @@ describe("e-invoices hooks", () => {
     expect(malformedQuery.result.current.error).toMatchObject({
       code: "malformed_response",
     });
+  });
+});
+
+describe("R6 S13 hooks (staff update, member requests, immediate deletion)", () => {
+  it("useAddStaff and useUpdateStaff send tenant_id for admin and omit it for other roles", async () => {
+    const calls = stubFetch({
+      "POST /api/platform/staff": json(201, { user_id: "u2", email: "a@example.com", role: "admin", tenant_id: "t-1" }),
+      "PUT /api/platform/staff/u2": json(200, { user_id: "u2", role: "system_admin", tenant_id: null }),
+    });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.staff(), []);
+
+    const addHook = renderHook(() => useAddStaff(), { wrapper });
+    await act(async () => {
+      await addHook.result.current.mutateAsync({ email: "a@example.com", role: "admin", tenant_id: "t-1" });
+    });
+    expect(calls[0]).toMatchObject({
+      method: "POST",
+      path: "/api/platform/staff",
+      body: { email: "a@example.com", role: "admin", tenant_id: "t-1" },
+    });
+
+    const updateHook = renderHook(() => useUpdateStaff(), { wrapper });
+    await act(async () => {
+      await updateHook.result.current.mutateAsync({ userId: "u2", role: "system_admin" });
+    });
+    expect(calls[1]).toMatchObject({
+      method: "PUT",
+      path: "/api/platform/staff/u2",
+      body: { role: "system_admin" },
+    });
+    expect(queryClient.getQueryState(platformKeys.staff())?.isInvalidated).toBe(true);
+  });
+
+  it("member request hooks call /workspaces/{id}/members, /workspaces/{id}/member-requests, and /member-requests/{id}/cancel", async () => {
+    const memberReq = {
+      id: "mr-1",
+      workspace_id: "ws-1",
+      kind: "add",
+      email: "new@example.com",
+      role: "member",
+      state: "pending",
+      error_code: "",
+      attempts: 0,
+      user_created: false,
+      requested_by: "u-admin",
+      requested_by_label: "admin@example.com",
+      created_at: "2026-11-19T10:00:00Z",
+      updated_at: "2026-11-19T10:00:00Z",
+      completed_at: null,
+    };
+    const calls = stubFetch({
+      "GET /api/platform/workspaces/ws-1/member-requests": json(200, { requests: [memberReq] }),
+      "POST /api/platform/workspaces/ws-1/members": json(202, memberReq),
+      "POST /api/platform/member-requests/mr-1/cancel": json(200, { ...memberReq, state: "canceled" }),
+    });
+    const { queryClient, wrapper } = setup();
+
+    const listHook = renderHook(() => useMemberRequests("ws-1"), { wrapper });
+    await waitFor(() => expect(listHook.result.current.isSuccess).toBe(true));
+    expect(listHook.result.current.data).toHaveLength(1);
+    listHook.unmount();
+
+    const disabledHook = renderHook(() => useMemberRequests("ws-2", false), { wrapper });
+    expect(disabledHook.result.current.fetchStatus).toBe("idle");
+
+    const addHook = renderHook(() => useAddWorkspaceMember(), { wrapper });
+    await act(async () => {
+      await addHook.result.current.mutateAsync({ workspaceId: "ws-1", email: "new@example.com", role: "member" });
+    });
+    expect(calls[1]).toMatchObject({
+      method: "POST",
+      path: "/api/platform/workspaces/ws-1/members",
+      body: { email: "new@example.com", role: "member" },
+    });
+    expect(queryClient.getQueryState(platformKeys.memberRequests("ws-1"))?.isInvalidated).toBe(true);
+
+    const cancelHook = renderHook(() => useCancelMemberRequest(), { wrapper });
+    await act(async () => {
+      await cancelHook.result.current.mutateAsync({ workspaceId: "ws-1", requestId: "mr-1" });
+    });
+    expect(calls[2]).toMatchObject({
+      method: "POST",
+      path: "/api/platform/member-requests/mr-1/cancel",
+    });
+  });
+
+  it("immediate deletion and deletion-requests hooks call exact backend routes", async () => {
+    const deletionReq = {
+      id: "dr-1",
+      kind: "workspace",
+      target_id: "ws-1",
+      target_label: "acme",
+      reason: "cleanup",
+      state: "pending",
+      error_code: "",
+      attempts: 0,
+      tenant_id: "t-1",
+      requested_by: "u-sys",
+      requested_by_label: "sys@example.com",
+      created_at: "2026-11-19T10:00:00Z",
+      updated_at: "2026-11-19T10:00:00Z",
+    };
+    const accountDeletionReq = {
+      ...deletionReq,
+      id: "dr-acc",
+      kind: "account",
+      target_id: "u-9",
+      target_label: "leaver@example.com",
+      tenant_id: null,
+    };
+    const previewBody = {
+      email: "leaver@example.com",
+      need_choice: [{ workspace_id: "ws-1", slug: "acme", role: "owner", owner_count: 1, member_count: 3 }],
+      deleted_with: [],
+    };
+    const calls = stubFetch({
+      "POST /api/platform/workspaces/ws-1/delete-now": json(202, { request_id: "dr-1", state: "pending" }),
+      "POST /api/platform/tenants/t-1/delete-now": json(202, { request_id: "dr-2", state: "pending" }),
+      "GET /api/platform/users/u-9/delete-now-preview": json(200, previewBody),
+      "POST /api/platform/users/u-9/delete-now": json(202, { request_id: "dr-3", state: "pending" }),
+      "GET /api/platform/deletion-requests": json(200, { requests: [deletionReq, accountDeletionReq] }),
+      "POST /api/platform/deletion-requests/dr-1/cancel": json(200, { ...deletionReq, state: "canceled" }),
+      "POST /api/platform/deletion-requests/dr-1/retry": json(200, { ...deletionReq, state: "pending", attempts: 0 }),
+    });
+    const { wrapper } = setup();
+
+    const wsDel = renderHook(() => useDeleteWorkspaceNow(), { wrapper });
+    await act(async () => {
+      await wsDel.result.current.mutateAsync({ workspaceId: "ws-1", reason: "cleanup", confirm: "acme" });
+    });
+
+    const tenantDel = renderHook(() => useDeleteTenantNow(), { wrapper });
+    await act(async () => {
+      await tenantDel.result.current.mutateAsync({ tenantId: "t-1", reason: "offboard", confirm: "Acme" });
+    });
+
+    const preview = renderHook(() => useAccountDeletePreview("u-9", true), { wrapper });
+    await waitFor(() => expect(preview.result.current.isSuccess).toBe(true));
+    expect(preview.result.current.data?.need_choice[0]?.successors).toEqual([]);
+    preview.unmount();
+
+    const userDel = renderHook(() => useDeleteAccountNow(), { wrapper });
+    await act(async () => {
+      await userDel.result.current.mutateAsync({
+        userId: "u-9",
+        reason: "legal request",
+        confirm: "leaver@example.com",
+        resolutions: [{ workspace_id: "ws-1", action: "delete" }],
+      });
+    });
+
+    const listDel = renderHook(() => useDeletionRequests({ kind: "workspace", state: "failed" }), { wrapper });
+    await waitFor(() => expect(listDel.result.current.isSuccess).toBe(true));
+    expect(calls[4]?.search).toBe("?kind=workspace&state=failed");
+    listDel.unmount();
+
+    const accountListDel = renderHook(() => useDeletionRequests({ kind: "account" }), { wrapper });
+    await waitFor(() => expect(accountListDel.result.current.isSuccess).toBe(true));
+    expect(calls[5]?.search).toBe("");
+    expect(accountListDel.result.current.data).toEqual([accountDeletionReq]);
+    accountListDel.unmount();
+
+    const cancelDel = renderHook(() => useCancelDeletionRequest(), { wrapper });
+    await act(async () => {
+      await cancelDel.result.current.mutateAsync({ id: "dr-1" });
+    });
+
+    const retryDel = renderHook(() => useRetryDeletionRequest(), { wrapper });
+    await act(async () => {
+      await retryDel.result.current.mutateAsync({ id: "dr-1" });
+    });
+
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "POST /api/platform/workspaces/ws-1/delete-now",
+      "POST /api/platform/tenants/t-1/delete-now",
+      "GET /api/platform/users/u-9/delete-now-preview",
+      "POST /api/platform/users/u-9/delete-now",
+      "GET /api/platform/deletion-requests",
+      "GET /api/platform/deletion-requests",
+      "POST /api/platform/deletion-requests/dr-1/cancel",
+      "POST /api/platform/deletion-requests/dr-1/retry",
+    ]);
   });
 });

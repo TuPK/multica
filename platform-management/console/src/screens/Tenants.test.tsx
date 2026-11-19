@@ -168,4 +168,14 @@ describe("Tenants screen", () => {
     expect(input).toHaveValue("");
     expect(mockUseTenants).toHaveBeenLastCalledWith({ q: undefined });
   });
+
+  it("admin sees only the tenant returned by the API and no delete-tenant action", () => {
+    listOf([mockTenantsList[0]]);
+    render(<Tenants onSelectTenant={vi.fn()} />);
+
+    expect(screen.getAllByRole("row")).toHaveLength(2); // header + single scoped tenant
+    expect(screen.getByText("Beta Alpha")).toBeInTheDocument();
+    expect(screen.queryByText("Gamma Delta")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+  });
 });

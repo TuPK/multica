@@ -14,6 +14,7 @@ import { Users } from "./screens/Users";
 import { UserDetail } from "./screens/UserDetail";
 import { Staff } from "./screens/Staff";
 import { Accounts } from "./screens/Accounts";
+import { DeletionRequests } from "./screens/DeletionRequests";
 import { PaymentNotices } from "./screens/PaymentNotices";
 import { EinvoiceFailures } from "./screens/EinvoiceFailures";
 import { Audit } from "./screens/Audit";
@@ -33,6 +34,7 @@ type Screen =
   | "plans"
   | "accounts"
   | "staff"
+  | "deletion-requests"
   | "audit";
 
 interface RouteState {
@@ -56,6 +58,7 @@ const SCREEN_PATHS: Record<
   accounts: "/accounts",
   plans: "/plans",
   staff: "/staff",
+  "deletion-requests": "/deletion-requests",
   audit: "/audit",
 };
 
@@ -120,17 +123,31 @@ function routeToPath(route: RouteState): string {
 }
 
 function canAccessScreen(screen: Screen, role: StaffRole): boolean {
-  if (screen === "staff" || screen === "accounts" || screen === "plans") {
-    return role === "admin";
+  if (screen === "overview") {
+    return role !== "admin";
   }
-  if (
-    screen === "orders" ||
-    screen === "payment-notices" ||
-    screen === "einvoices"
-  ) {
-    return role === "billing" || role === "admin";
+  if (screen === "staff" || screen === "accounts" || screen === "plans") {
+    return role === "system_admin";
+  }
+  if (screen === "deletion-requests") {
+    return role === "system_admin" || role === "admin";
+  }
+  if (screen === "orders") {
+    return role === "billing" || role === "admin" || role === "system_admin";
+  }
+  if (screen === "payment-notices" || screen === "einvoices") {
+    return role === "billing" || role === "system_admin";
   }
   return true;
+}
+
+function defaultRouteForRole(role: StaffRole): RouteState {
+  return {
+    screen: role === "admin" ? "tenants" : "overview",
+    tenantId: null,
+    workspaceId: null,
+    userId: null,
+  };
 }
 
 export function App() {
@@ -178,12 +195,12 @@ export function App() {
 
   const effectiveRoute: RouteState = canAccessScreen(route.screen, me.role)
     ? route
-    : { screen: "overview", tenantId: null, workspaceId: null, userId: null };
+    : defaultRouteForRole(me.role);
 
   const navigateTo = (next: RouteState) => {
     const resolved: RouteState = canAccessScreen(next.screen, me.role)
       ? next
-      : { screen: "overview", tenantId: null, workspaceId: null, userId: null };
+      : defaultRouteForRole(me.role);
     setRoute(resolved);
     const nextPath = routeToPath(resolved);
     if (window.location.pathname !== nextPath) {
@@ -193,7 +210,7 @@ export function App() {
 
   const handleNavigate = (screen: string) => {
     const targetScreen = (
-      screen in SCREEN_PATHS ? screen : "overview"
+      screen in SCREEN_PATHS ? screen : me.role === "admin" ? "tenants" : "overview"
     ) as Exclude<Screen, "tenant-detail" | "workspace-detail" | "user-detail">;
     navigateTo({ screen: targetScreen, tenantId: null, workspaceId: null, userId: null });
   };
@@ -230,6 +247,7 @@ export function App() {
               navigateTo({ screen: "tenants", tenantId: null, workspaceId: null, userId: null })
             }
             onSelectWorkspace={(id) => openWorkspace(id, effectiveRoute.tenantId)}
+            userRole={me.role}
           />
         );
       case "workspace-detail": {
@@ -262,6 +280,7 @@ export function App() {
             onBack={() =>
               navigateTo({ screen: "users", tenantId: null, workspaceId: null, userId: null })
             }
+            userRole={me.role}
           />
         );
       case "orders":
@@ -276,10 +295,12 @@ export function App() {
         return <Accounts userRole={me.role} />;
       case "staff":
         return <Staff />;
+      case "deletion-requests":
+        return <DeletionRequests userRole={me.role} />;
       case "audit":
         return <Audit />;
       default:
-        return <Overview />;
+        return me.role === "admin" ? <Tenants onSelectTenant={openTenant} /> : <Overview />;
     }
   };
 

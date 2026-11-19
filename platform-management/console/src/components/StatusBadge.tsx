@@ -67,17 +67,20 @@ const STATUS_CONFIG: Record<string, StatusPresentation> = {
   needs_info: { kind: "badge", label: "Needs info", badgeVariant: "error", dotVariant: "error" },
 
   // Transitional / informational states — semantic info badge + dot
+  running: { kind: "badge", label: "Running", badgeVariant: "info", dotVariant: "accent" },
   trialing: { kind: "badge", label: "Trialing", badgeVariant: "info", dotVariant: "accent" },
   provisioned: { kind: "badge", label: "Provisioned", badgeVariant: "info", dotVariant: "accent" },
   scheduled: { kind: "badge", label: "Scheduled", badgeVariant: "info", dotVariant: "accent" },
   refunded: { kind: "badge", label: "Refunded", badgeVariant: "info", dotVariant: "accent" },
 
   // Staff & workspace roles — categorical badges, no dot
+  system_admin: { kind: "badge", label: "System Admin", badgeVariant: "purple" },
   admin: { kind: "badge", label: "Admin", badgeVariant: "blue" },
   support: { kind: "badge", label: "Support", badgeVariant: "neutral" },
   billing: { kind: "badge", label: "Billing", badgeVariant: "teal" },
   owner: { kind: "badge", label: "Owner", badgeVariant: "purple" },
   member: { kind: "badge", label: "Member", badgeVariant: "neutral" },
+  viewer: { kind: "badge", label: "Viewer", badgeVariant: "neutral" },
 
   unknown: { kind: "badge", label: "Unknown", badgeVariant: "neutral" },
 };

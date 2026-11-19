@@ -7,7 +7,7 @@ import { parseWithFallback } from "@multica/core/api/schema";
 
 export const WORKSPACE_STATUSES = ["active", "read_only", "suspended", "pending_deletion"] as const;
 export const ACCOUNT_STATUSES = ["active", "suspended", "pending_deletion", "deleted"] as const;
-export const STAFF_ROLES = ["support", "billing", "admin"] as const;
+export const STAFF_ROLES = ["system_admin", "admin", "support", "billing"] as const;
 export const ACTOR_TYPES = ["member", "agent", "system", "staff"] as const;
 export const ACCOUNT_KINDS = ["individual", "business"] as const;
 
@@ -51,8 +51,18 @@ export const AUDIT_ACTIONS = [
   "member.staff_add_failed",
   "member.staff_add_canceled",
   "workspace.immediate_deletion_requested",
+  "account.immediate_deletion_requested",
   "tenant.immediate_deletion_requested",
   "tenant.deleted",
+  "member.staff_remove_requested",
+  "member.staff_role_change_requested",
+  "plan.activated",
+  "plan.deactivated",
+  "runtime.disabled",
+  "runtime.enabled",
+  "runtime.unregister_requested",
+  "subscription.limit_override_changed",
+  "tenant.policy_changed",
   "deletion.request_failed",
   "deletion.request_canceled",
   "deletion.request_retried",
@@ -150,6 +160,7 @@ export const MeSchema = z.object({
   user_id: z.string(),
   email: text,
   role: enumOf(STAFF_ROLES),
+  tenant_id: nullableText,
 });
 export type Me = z.output<typeof MeSchema>;
 
@@ -581,6 +592,8 @@ export const StaffMemberSchema = z.object({
   user_id: z.string(),
   email: text,
   role: enumOf(STAFF_ROLES),
+  tenant_id: nullableText,
+  tenant_name: nullableText,
   created_by: nullableText,
   created_at: text,
 });
@@ -1059,5 +1072,146 @@ export type OrderEinvoiceList = z.output<typeof OrderEinvoiceListSchema>;
 export function parseOrderEinvoiceList(data: unknown): OrderEinvoiceList | null {
   return parseWithFallback<OrderEinvoiceList | null>(data, OrderEinvoiceListSchema, null, {
     endpoint: "GET /api/platform/orders/{id}/einvoices",
+  });
+}
+
+// Staff update, member requests, deletion requests, and account deletion preview (R6 / S13)
+
+const nullableErrorText = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((v) => v ?? "");
+
+export const UpdateStaffResponseSchema = z.object({
+  user_id: z.string(),
+  role: enumOf(STAFF_ROLES),
+  tenant_id: nullableText,
+});
+export type UpdateStaffResponse = z.output<typeof UpdateStaffResponseSchema>;
+
+export function parseUpdateStaffResponse(data: unknown): UpdateStaffResponse | null {
+  return parseWithFallback<UpdateStaffResponse | null>(data, UpdateStaffResponseSchema, null, {
+    endpoint: "PUT /api/platform/staff/{user_id}",
+  });
+}
+
+export const MEMBER_ROLES = ["admin", "member", "viewer"] as const;
+export type MemberRole = (typeof MEMBER_ROLES)[number];
+
+export const MEMBER_REQUEST_STATES = ["pending", "completed", "failed", "canceled"] as const;
+export type MemberRequestState = (typeof MEMBER_REQUEST_STATES)[number] | "unknown";
+
+export const MemberRequestSchema = z.object({
+  id: z.string(),
+  workspace_id: text,
+  kind: text,
+  email: text,
+  role: text,
+  state: enumOf(MEMBER_REQUEST_STATES),
+  error_code: nullableErrorText,
+  attempts: count,
+  user_id: text,
+  member_id: text,
+  user_created: z.boolean().default(false),
+  requested_by: text,
+  requested_by_label: text,
+  created_at: text,
+  updated_at: text,
+  completed_at: nullableText,
+});
+export type MemberRequest = z.output<typeof MemberRequestSchema>;
+
+export const MemberRequestListSchema = z.object({
+  requests: z.array(MemberRequestSchema).default([]),
+});
+export type MemberRequestList = z.output<typeof MemberRequestListSchema>;
+
+export function parseMemberRequest(data: unknown, endpoint: string): MemberRequest | null {
+  return parseWithFallback<MemberRequest | null>(data, MemberRequestSchema, null, { endpoint });
+}
+
+export function parseMemberRequestList(data: unknown): MemberRequestList {
+  return parseWithFallback<MemberRequestList>(data, MemberRequestListSchema, { requests: [] }, {
+    endpoint: "GET /api/platform/workspaces/{id}/member-requests",
+  });
+}
+
+export const DELETION_KINDS = ["workspace", "tenant", "account"] as const;
+export type DeletionKind = (typeof DELETION_KINDS)[number] | "unknown";
+
+export const DELETION_REQUEST_STATES = ["pending", "running", "completed", "failed", "canceled"] as const;
+export type DeletionRequestState = (typeof DELETION_REQUEST_STATES)[number] | "unknown";
+
+export const DeletionRequestSchema = z.object({
+  id: z.string(),
+  kind: enumOf(DELETION_KINDS),
+  target_id: text,
+  target_label: text,
+  reason: text,
+  state: enumOf(DELETION_REQUEST_STATES),
+  error_code: nullableErrorText,
+  attempts: count,
+  tenant_id: nullableText,
+  requested_by: text,
+  requested_by_label: text,
+  created_at: text,
+  updated_at: text,
+});
+export type DeletionRequest = z.output<typeof DeletionRequestSchema>;
+
+export const DeletionRequestListSchema = z.object({
+  requests: z.array(DeletionRequestSchema).default([]),
+});
+export type DeletionRequestList = z.output<typeof DeletionRequestListSchema>;
+
+export function parseDeletionRequest(data: unknown, endpoint: string): DeletionRequest | null {
+  return parseWithFallback<DeletionRequest | null>(data, DeletionRequestSchema, null, { endpoint });
+}
+
+export function parseDeletionRequestList(data: unknown): DeletionRequestList {
+  return parseWithFallback<DeletionRequestList>(data, DeletionRequestListSchema, { requests: [] }, {
+    endpoint: "GET /api/platform/deletion-requests",
+  });
+}
+
+export const DeletionStartResponseSchema = z.object({
+  request_id: z.string(),
+  state: enumOf(DELETION_REQUEST_STATES),
+});
+export type DeletionStartResponse = z.output<typeof DeletionStartResponseSchema>;
+
+export function parseDeletionStartResponse(data: unknown, endpoint: string): DeletionStartResponse | null {
+  return parseWithFallback<DeletionStartResponse | null>(data, DeletionStartResponseSchema, null, { endpoint });
+}
+
+export const AccountPreviewSuccessorSchema = z.object({
+  user_id: z.string(),
+  email: text,
+  name: text,
+  role: text,
+  status: z.string().default("active"),
+});
+export type AccountPreviewSuccessor = z.output<typeof AccountPreviewSuccessorSchema>;
+
+export const AccountPreviewWorkspaceSchema = z.object({
+  workspace_id: z.string(),
+  slug: text,
+  role: text,
+  owner_count: count,
+  member_count: count,
+  successors: z.array(AccountPreviewSuccessorSchema).default([]),
+});
+export type AccountPreviewWorkspace = z.output<typeof AccountPreviewWorkspaceSchema>;
+
+export const AccountDeletePreviewSchema = z.object({
+  email: text,
+  need_choice: z.array(AccountPreviewWorkspaceSchema).default([]),
+  deleted_with: z.array(AccountPreviewWorkspaceSchema).default([]),
+});
+export type AccountDeletePreview = z.output<typeof AccountDeletePreviewSchema>;
+
+export function parseAccountDeletePreview(data: unknown): AccountDeletePreview | null {
+  return parseWithFallback<AccountDeletePreview | null>(data, AccountDeletePreviewSchema, null, {
+    endpoint: "GET /api/platform/users/{id}/delete-now-preview",
   });
 }

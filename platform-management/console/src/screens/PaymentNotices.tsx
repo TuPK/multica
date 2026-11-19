@@ -95,8 +95,8 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
   const [dismissDialogOpen, setDismissDialogOpen] = useState(false);
   const [dismissError, setDismissError] = useState<string | null>(null);
 
-  // Role gating: Only billing and admin roles can view the payment notices queue
-  if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "admin") {
+  // Role gating: Only billing and system_admin roles can view the payment notices queue
+  if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "system_admin") {
     return (
       <div role="region" aria-label="Not found">
         <ErrorState

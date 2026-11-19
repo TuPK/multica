@@ -53,7 +53,7 @@ interface PlansProps {
 export function Plans({ userRole }: PlansProps) {
   const { data: me } = useMe();
   const effectiveRole = userRole || me?.role;
-  const isAdmin = effectiveRole === "admin";
+  const isAdmin = effectiveRole === "system_admin";
   const isBilling = effectiveRole === "billing";
 
   const { data: plans, isLoading, isError, error, refetch } = usePlans(isAdmin);

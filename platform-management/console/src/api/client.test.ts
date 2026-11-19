@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PlatformApiError, platformFetch } from "./client";
+import { getApiErrorMessage, PlatformApiError, platformFetch } from "./client";
 
 function mockFetch(response: Response) {
   const fn = vi.fn<typeof fetch>().mockResolvedValue(response);
@@ -154,5 +154,31 @@ describe("platformFetch error mapping", () => {
     );
     const fieldErr = await catchError(platformFetch("/plans/pro", { method: "PUT", body: {} }));
     expect(fieldErr.details).toEqual({ fields: ["seat_price_month", "seat_price_year"] });
+  });
+
+  it("returns 202 Accepted JSON responses and captures deletion conflict details", async () => {
+    mockFetch(json(202, { request_id: "dr-1", state: "pending" }));
+    await expect(
+      platformFetch("/workspaces/ws-1/delete-now", {
+        method: "POST",
+        body: { reason: "cleanup", confirm: "acme" },
+      }),
+    ).resolves.toEqual({ request_id: "dr-1", state: "pending" });
+
+    mockFetch(
+      json(409, {
+        error: "the account is the only owner of a workspace with other members",
+        code: "sole_owner_unresolved",
+        workspace_ids: ["ws-1", "ws-2"],
+      }),
+    );
+    const err = await catchError(platformFetch("/users/u-1/delete-now", { method: "POST", body: {} }));
+    expect(err.status).toBe(409);
+    expect(err.code).toBe("sole_owner_unresolved");
+    expect(err.details).toEqual({ workspace_ids: ["ws-1", "ws-2"] });
+    expect(getApiErrorMessage(err, "fallback")).toBe(
+      "the account is the only owner of a workspace with other members",
+    );
+    expect(getApiErrorMessage("unknown", "fallback")).toBe("fallback");
   });
 });

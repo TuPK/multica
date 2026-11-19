@@ -19,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Shield,
+  Trash2,
   UserPlus,
   Users,
 } from "@multica/ui/icons";
@@ -54,18 +55,21 @@ export function Layout({
 }: LayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const isBillingOrAdmin = user.role === "billing" || user.role === "admin";
-  const isAdmin = user.role === "admin";
+  const isSystemAdmin = user.role === "system_admin";
+  const canSeeOverview = user.role !== "admin";
+  const canSeeDeletionRequests = isSystemAdmin || user.role === "admin";
+  const canSeeOrders = isSystemAdmin || user.role === "admin" || user.role === "billing";
+  const canSeePayments = isSystemAdmin || user.role === "billing";
 
   const commercialItems: NavItem[] = [
-    ...(isBillingOrAdmin
+    ...(canSeeOrders ? [{ id: "orders", label: "Orders", icon: CreditCard }] : []),
+    ...(canSeePayments
       ? [
-          { id: "orders", label: "Orders", icon: CreditCard },
           { id: "payment-notices", label: "Payment notices", icon: Inbox },
           { id: "einvoices", label: "E-invoices", icon: FileText },
         ]
       : []),
-    ...(isAdmin
+    ...(isSystemAdmin
       ? [
           { id: "accounts", label: "Accounts", icon: UserPlus },
           { id: "plans", label: "Plans", icon: Layers },
@@ -77,7 +81,7 @@ export function Layout({
     {
       label: "Operations",
       items: [
-        { id: "overview", label: "Overview", icon: BarChart3 },
+        ...(canSeeOverview ? [{ id: "overview", label: "Overview", icon: BarChart3 }] : []),
         { id: "tenants", label: "Tenants", icon: Building2 },
         { id: "users", label: "Users", icon: Users },
       ],
@@ -88,7 +92,10 @@ export function Layout({
     {
       label: "Administration",
       items: [
-        ...(isAdmin ? [{ id: "staff", label: "Staff", icon: Shield }] : []),
+        ...(isSystemAdmin ? [{ id: "staff", label: "Staff", icon: Shield }] : []),
+        ...(canSeeDeletionRequests
+          ? [{ id: "deletion-requests", label: "Deletion requests", icon: Trash2 }]
+          : []),
         { id: "audit", label: "Audit Log", icon: Activity },
       ],
     },

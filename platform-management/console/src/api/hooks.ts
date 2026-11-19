@@ -41,6 +41,13 @@ import {
   parseCancelPriceChangeResponse,
   parseEinvoiceList,
   parseOrderEinvoiceList,
+  parseUpdateStaffResponse,
+  parseMemberRequest,
+  parseMemberRequestList,
+  parseDeletionRequest,
+  parseDeletionRequestList,
+  parseDeletionStartResponse,
+  parseAccountDeletePreview,
   type Me,
   type Overview,
   type StaffRole,
@@ -73,6 +80,12 @@ import {
   type CancelPriceChangeResponse,
   type Einvoice,
   type EinvoiceState,
+  type UpdateStaffResponse,
+  type MemberRole,
+  type MemberRequest,
+  type DeletionRequest,
+  type DeletionStartResponse,
+  type AccountDeletePreview,
 } from "./schemas";
 
 export type {
@@ -99,6 +112,12 @@ export type {
   PriceChangeDryRunResponse,
   SchedulePriceChangeResponse,
   CancelPriceChangeResponse,
+  UpdateStaffResponse,
+  MemberRole,
+  MemberRequest,
+  DeletionRequest,
+  DeletionStartResponse,
+  AccountDeletePreview,
 };
 
 /** The states staff may set on a workspace. */
@@ -123,6 +142,11 @@ export interface AuditFilters {
   from?: string;
   /** RFC 3339, exclusive. */
   to?: string;
+}
+
+export interface DeletionRequestFilters {
+  kind?: string;
+  state?: string;
 }
 
 /** Drops empty values, so `{}` and `{ q: "" }` are one query. */
@@ -163,11 +187,15 @@ export const platformKeys = {
   workspaceAudits: (id: string) => ["platform", "workspaces", "audit", id] as const,
   workspaceAudit: (id: string, filters: AuditFilters) => ["platform", "workspaces", "audit", id, clean(filters)] as const,
   workspaceNotes: (id: string) => ["platform", "workspaces", "notes", id] as const,
+  memberRequests: (workspaceId: string) => ["platform", "workspaces", "member-requests", workspaceId] as const,
   users: () => ["platform", "users"] as const,
   userLists: () => ["platform", "users", "list"] as const,
   userList: (filters: SearchFilters) => ["platform", "users", "list", clean(filters)] as const,
   user: (id: string) => ["platform", "users", "detail", id] as const,
+  accountDeletePreview: (userId: string) => ["platform", "users", "delete-now-preview", userId] as const,
   staff: () => ["platform", "staff"] as const,
+  deletionRequests: () => ["platform", "deletion-requests"] as const,
+  deletionRequestList: (filters: DeletionRequestFilters) => ["platform", "deletion-requests", clean(filters)] as const,
   orders: () => ["platform", "orders"] as const,
   orderList: (status: string) => ["platform", "orders", "list", status] as const,
   orderEinvoices: (id: string) => ["platform", "orders", "einvoices", id] as const,
@@ -482,14 +510,34 @@ export function useStaff() {
   });
 }
 
-/** Variables: `{ email, role }`. Rejects with code `no_such_account` or `already_staff`. */
+/** Variables: `{ email, role, tenant_id? }`. Rejects with `no_such_account`, `already_staff`, or `tenant_required`. */
 export function useAddStaff() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: { email: string; role: SettableStaffRole }): Promise<void> => {
-      await platformFetch("/staff", { method: "POST", body: { email: vars.email, role: vars.role } });
+    mutationFn: async (vars: { email: string; role: SettableStaffRole; tenant_id?: string }): Promise<void> => {
+      const body: Record<string, unknown> = { email: vars.email, role: vars.role };
+      if (vars.role === "admin" && vars.tenant_id) body.tenant_id = vars.tenant_id;
+      await platformFetch("/staff", { method: "POST", body });
     },
     onSuccess: () => invalidateAll(queryClient, [platformKeys.staff(), platformKeys.audits()]),
+  });
+}
+
+/** Variables: `{ userId, role, tenant_id? }`. Rejects with `tenant_required`, `tenant_not_allowed`, `tenant_invalid`, or `last_system_admin`. */
+export function useUpdateStaff() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      userId: string;
+      role: SettableStaffRole;
+      tenant_id?: string | null;
+    }): Promise<UpdateStaffResponse> => {
+      const body: Record<string, unknown> = { role: vars.role };
+      if (vars.role === "admin" && vars.tenant_id) body.tenant_id = vars.tenant_id;
+      const res = await platformFetch(`/staff/${pathSegment(vars.userId)}`, { method: "PUT", body });
+      return orMalformed(parseUpdateStaffResponse(res));
+    },
+    onSuccess: () => invalidateAll(queryClient, [platformKeys.staff(), platformKeys.audits(), platformKeys.me()]),
   });
 }
 
@@ -1156,5 +1204,204 @@ export function useOrderEinvoices(orderId: string | null) {
       const res = await platformFetch(`/orders/${pathSegment(orderId ?? "")}/einvoices`, { signal });
       return orMalformed(parseOrderEinvoiceList(res)).einvoices;
     },
+  });
+}
+
+// Workspace member requests (R6 / S13)
+
+/** List async member-add requests for a workspace (system_admin or admin). */
+export function useMemberRequests(workspaceId: string, enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.memberRequests(workspaceId),
+    enabled: enabled && workspaceId !== "",
+    queryFn: async ({ signal }): Promise<MemberRequest[]> => {
+      const res = await platformFetch(`/workspaces/${pathSegment(workspaceId)}/member-requests`, { signal });
+      return parseMemberRequestList(res).requests;
+    },
+  });
+}
+
+/** Add a member to a workspace (`admin`, `member`, or `viewer`). */
+export function useAddWorkspaceMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { workspaceId: string; email: string; role: MemberRole }): Promise<MemberRequest> => {
+      const res = await platformFetch(`/workspaces/${pathSegment(vars.workspaceId)}/members`, {
+        method: "POST",
+        body: { email: vars.email, role: vars.role },
+      });
+      return orMalformed(parseMemberRequest(res, "POST /api/platform/workspaces/{id}/members"));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.memberRequests(vars.workspaceId),
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Cancel a pending workspace member request. */
+export function useCancelMemberRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { workspaceId: string; requestId: string }): Promise<MemberRequest> => {
+      const res = await platformFetch(`/member-requests/${pathSegment(vars.requestId)}/cancel`, {
+        method: "POST",
+      });
+      return orMalformed(parseMemberRequest(res, "POST /api/platform/member-requests/{id}/cancel"));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.memberRequests(vars.workspaceId),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+// Immediate deletions & deletion requests (R6 / S13)
+
+/** Start immediate deletion of a workspace (system_admin or admin within tenant). */
+export function useDeleteWorkspaceNow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      workspaceId: string;
+      reason: string;
+      confirm: string;
+    }): Promise<DeletionStartResponse> => {
+      const res = await platformFetch(`/workspaces/${pathSegment(vars.workspaceId)}/delete-now`, {
+        method: "POST",
+        body: { reason: vars.reason, confirm: vars.confirm },
+      });
+      return orMalformed(parseDeletionStartResponse(res, "POST /api/platform/workspaces/{id}/delete-now"));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.workspaces(),
+        platformKeys.tenants(),
+        platformKeys.deletionRequests(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Start immediate deletion of a tenant (system_admin only). */
+export function useDeleteTenantNow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { tenantId: string; reason: string; confirm: string }): Promise<DeletionStartResponse> => {
+      const res = await platformFetch(`/tenants/${pathSegment(vars.tenantId)}/delete-now`, {
+        method: "POST",
+        body: { reason: vars.reason, confirm: vars.confirm },
+      });
+      return orMalformed(parseDeletionStartResponse(res, "POST /api/platform/tenants/{id}/delete-now"));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.tenant(vars.tenantId),
+        platformKeys.tenants(),
+        platformKeys.workspaces(),
+        platformKeys.deletionRequests(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Ownership impact preview before deleting an account immediately (system_admin only). */
+export function useAccountDeletePreview(userId: string, enabled = false) {
+  return useQuery({
+    queryKey: platformKeys.accountDeletePreview(userId),
+    enabled: enabled && userId !== "",
+    queryFn: async ({ signal }): Promise<AccountDeletePreview> => {
+      const res = await platformFetch(`/users/${pathSegment(userId)}/delete-now-preview`, { signal });
+      return orMalformed(parseAccountDeletePreview(res));
+    },
+  });
+}
+
+export interface DeleteAccountResolution {
+  workspace_id: string;
+  action: "transfer" | "delete";
+  successor_user_id?: string;
+}
+
+/** Start immediate deletion of an account with ownership resolutions (system_admin only). */
+export function useDeleteAccountNow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      userId: string;
+      reason: string;
+      confirm: string;
+      resolutions?: DeleteAccountResolution[];
+    }): Promise<DeletionStartResponse> => {
+      const res = await platformFetch(`/users/${pathSegment(vars.userId)}/delete-now`, {
+        method: "POST",
+        body: {
+          reason: vars.reason,
+          confirm: vars.confirm,
+          resolutions: vars.resolutions ?? [],
+        },
+      });
+      return orMalformed(parseDeletionStartResponse(res, "POST /api/platform/users/{id}/delete-now"));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.user(vars.userId),
+        platformKeys.users(),
+        platformKeys.deletionRequests(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/**
+ * List immediate deletion requests.
+ * Note: the backend's validDeletionKind currently rejects `?kind=account`, so when
+ * filtering by `account` we omit `kind` from the query and filter client-side.
+ */
+export function useDeletionRequests(filters: DeletionRequestFilters = {}) {
+  const f = clean(filters);
+  return useQuery({
+    queryKey: platformKeys.deletionRequestList(f),
+    queryFn: async ({ signal }): Promise<DeletionRequest[]> => {
+      const serverKind = f.kind && f.kind !== "account" ? f.kind : undefined;
+      const res = await platformFetch(
+        `/deletion-requests${queryString({ kind: serverKind, state: f.state })}`,
+        { signal },
+      );
+      const list = parseDeletionRequestList(res).requests;
+      return f.kind === "account" ? list.filter((r) => r.kind === "account") : list;
+    },
+  });
+}
+
+/** Cancel a pending or failed deletion request. */
+export function useCancelDeletionRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string }): Promise<DeletionRequest> => {
+      const res = await platformFetch(`/deletion-requests/${pathSegment(vars.id)}/cancel`, {
+        method: "POST",
+      });
+      return orMalformed(parseDeletionRequest(res, "POST /api/platform/deletion-requests/{id}/cancel"));
+    },
+    onSuccess: () => invalidateAll(queryClient, [platformKeys.deletionRequests(), platformKeys.audits()]),
+  });
+}
+
+/** Retry a failed deletion request. */
+export function useRetryDeletionRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string }): Promise<DeletionRequest> => {
+      const res = await platformFetch(`/deletion-requests/${pathSegment(vars.id)}/retry`, {
+        method: "POST",
+      });
+      return orMalformed(parseDeletionRequest(res, "POST /api/platform/deletion-requests/{id}/retry"));
+    },
+    onSuccess: () => invalidateAll(queryClient, [platformKeys.deletionRequests(), platformKeys.audits()]),
   });
 }

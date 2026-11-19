@@ -13,7 +13,7 @@ const mockUsePlans = vi.fn();
 const mockCreateMutateAsync = vi.fn();
 const mockCancelMutateAsync = vi.fn();
 const mockResendMutateAsync = vi.fn();
-let mockMeRole = "admin";
+let mockMeRole = "system_admin";
 let useRealHooks = false;
 
 vi.mock("../api/hooks", async (importOriginal) => {
@@ -187,7 +187,7 @@ describe("Accounts screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useRealHooks = false;
-    mockMeRole = "admin";
+    mockMeRole = "system_admin";
     mockUsePlans.mockReturnValue({
       data: mockPlans,
       isLoading: false,
@@ -206,7 +206,7 @@ describe("Accounts screen", () => {
   });
 
   it("requires the email twice and rejects a mismatch", async () => {
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
     const dialog = openCreateDialog();
 
     fireEvent.change(within(dialog).getByLabelText(/^Email$/i), { target: { value: "ana@example.com" } });
@@ -224,7 +224,7 @@ describe("Accounts screen", () => {
 
   it("requires the billing profile for a business account", async () => {
     const user = userEvent.setup();
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
     const dialog = openCreateDialog();
 
     await user.click(within(dialog).getByRole("combobox", { name: /Account kind/i }));
@@ -243,7 +243,7 @@ describe("Accounts screen", () => {
 
   it("rejects a paid plan when both trial and complimentary reason are missing", async () => {
     const user = userEvent.setup();
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
     const dialog = openCreateDialog();
 
     fillCommonIndividualFields(dialog, "pro@example.com");
@@ -263,7 +263,7 @@ describe("Accounts screen", () => {
       new AccountApiError(409, "account_email_exists", "an account with this email already exists"),
     );
 
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
     const dialog = openCreateDialog();
     fillCommonIndividualFields(dialog, "taken@example.com");
 
@@ -285,7 +285,7 @@ describe("Accounts screen", () => {
       ]),
     );
 
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
     const dialog = openCreateDialog();
     await user.click(within(dialog).getByRole("combobox", { name: /Account kind/i }));
     await user.click(await screen.findByRole("option", { name: "Business" }));
@@ -310,7 +310,7 @@ describe("Accounts screen", () => {
   it("submits with an Idempotency-Key generated per form open and closes on 202", async () => {
     mockCreateMutateAsync.mockResolvedValue({ ...baseRequest, id: "req-new", email: "ana@example.com" });
 
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
     const dialog = openCreateDialog();
     fillCommonIndividualFields(dialog, "ana@example.com");
 
@@ -347,7 +347,7 @@ describe("Accounts screen", () => {
   });
 
   it("renders rows including a finalize_failed row with its distinct error state and label", () => {
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
 
     expect(screen.getByRole("heading", { name: "Accounts" })).toBeInTheDocument();
     expect(screen.getByText("pending@example.com")).toBeInTheDocument();
@@ -367,7 +367,7 @@ describe("Accounts screen", () => {
   it("offers Cancel only on pending rows and calls cancel endpoint after confirmation", async () => {
     mockCancelMutateAsync.mockResolvedValue({ ...baseRequest, state: "canceled" });
 
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
 
     const pendingRow = screen.getByText("pending@example.com").closest("tr")!;
     const completedRow = screen.getByText("done@example.com").closest("tr")!;
@@ -396,7 +396,7 @@ describe("Accounts screen", () => {
       new AccountApiError(429, "account_welcome_rate_limited", "too many welcome emails", [], "90"),
     );
 
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
 
     const pendingRow = screen.getByText("pending@example.com").closest("tr")!;
     const completedRow = screen.getByText("done@example.com").closest("tr")!;
@@ -421,7 +421,7 @@ describe("Accounts screen", () => {
       new AccountApiError(502, "mail_send_failed", "smtp error"),
     );
 
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
     const completedRow = screen.getByText("done@example.com").closest("tr")!;
     fireEvent.click(within(completedRow).getByRole("button", { name: "Resend welcome" }));
 
@@ -438,7 +438,7 @@ describe("Accounts screen", () => {
         const url = new URL(String(input), "http://console.test");
         if (url.pathname === "/api/platform/me") {
           return new Response(
-            JSON.stringify({ user_id: "u-admin", email: "admin@example.com", role: "admin" }),
+            JSON.stringify({ user_id: "u-admin", email: "admin@example.com", role: "system_admin" }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
@@ -465,7 +465,7 @@ describe("Accounts screen", () => {
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
 
-    render(<Accounts userRole="admin" />, { wrapper });
+    render(<Accounts userRole="system_admin" />, { wrapper });
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toBeInTheDocument();
@@ -483,7 +483,7 @@ describe("Accounts screen", () => {
 
   it("switches state filter tabs and falls back to text plan input when plans are unavailable", () => {
     mockUsePlans.mockReturnValue({ data: [], isLoading: false, isError: false });
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
 
     fireEvent.click(screen.getByRole("tab", { name: "Failed" }));
     expect(mockUseAccountRequests).toHaveBeenCalledWith("failed");
@@ -494,7 +494,7 @@ describe("Accounts screen", () => {
   });
 
   it("maps account_activation_required, plan_audience_mismatch, 429 Retry-After, and generic errors on submit", async () => {
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
 
     // 400 account_activation_required
     mockCreateMutateAsync.mockRejectedValueOnce(
@@ -539,7 +539,7 @@ describe("Accounts screen", () => {
       new AccountApiError(409, "account_request_not_cancelable", "only a pending request can be canceled"),
     );
 
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
     const pendingRow = screen.getByText("pending@example.com").closest("tr")!;
     fireEvent.click(within(pendingRow).getByRole("button", { name: "Cancel" }));
 
@@ -567,7 +567,7 @@ describe("Accounts screen", () => {
       refetch: vi.fn(),
     });
 
-    render(<Accounts userRole="admin" />);
+    render(<Accounts userRole="system_admin" />);
 
     const unseenRow = screen.getByText("unseen@example.com").closest("tr")!;
     const seenRow = screen.getByText("seen@example.com").closest("tr")!;

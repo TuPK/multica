@@ -10,7 +10,7 @@ const mockPutPlanMutateAsync = vi.fn();
 const mockDeletePlanMutateAsync = vi.fn();
 const mockSchedulePriceMutateAsync = vi.fn();
 const mockCancelPriceMutateAsync = vi.fn();
-let mockMeRole = "admin";
+let mockMeRole = "system_admin";
 
 vi.mock("../api/hooks", () => ({
   usePlans: (enabled = true) => mockUsePlans(enabled),
@@ -78,7 +78,7 @@ const mockPlanList = [
 describe("Plans screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockMeRole = "admin";
+    mockMeRole = "system_admin";
     mockUsePlans.mockReturnValue({
       data: mockPlanList,
       isLoading: false,
@@ -94,7 +94,7 @@ describe("Plans screen", () => {
   });
 
   it("lists plans with their configuration and edit/schedule/delete actions for admin", () => {
-    render(<Plans userRole="admin" />);
+    render(<Plans userRole="system_admin" />);
 
     expect(screen.getByRole("heading", { name: "Plans Catalogue" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Audience" })).toBeInTheDocument();
@@ -165,7 +165,7 @@ describe("Plans screen", () => {
 
   it("edits non-price fields without sending seat_price_month or seat_price_year", async () => {
     mockPutPlanMutateAsync.mockResolvedValue({ changed: true, plan: { ...mockPlanList[0], name: "Pro Plus" } });
-    render(<Plans userRole="admin" />);
+    render(<Plans userRole="system_admin" />);
 
     const editBtn = screen.getByRole("button", { name: "Edit plan Pro Plan" });
     fireEvent.click(editBtn);
@@ -203,7 +203,7 @@ describe("Plans screen", () => {
   });
 
   it("opens PriceSchedule when admin clicks Schedule price for a plan", () => {
-    render(<Plans userRole="admin" />);
+    render(<Plans userRole="system_admin" />);
     fireEvent.click(screen.getByRole("button", { name: "Schedule price for Pro Plan" }));
     expect(screen.getByRole("heading", { name: /Price Schedule: Pro Plan/i })).toBeInTheDocument();
   });
@@ -212,7 +212,7 @@ describe("Plans screen", () => {
     const error409 = new PlatformApiError(409, "plan_in_use", "subscriptions use this plan; archive it instead");
     mockDeletePlanMutateAsync.mockRejectedValue(error409);
 
-    render(<Plans userRole="admin" />);
+    render(<Plans userRole="system_admin" />);
 
     const deleteBtn = screen.getByRole("button", { name: "Delete plan Pro Plan" });
     fireEvent.click(deleteBtn);
@@ -235,7 +235,7 @@ describe("Plans screen", () => {
       ),
     );
 
-    render(<Plans userRole="admin" />);
+    render(<Plans userRole="system_admin" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Edit plan Pro Plan" }));
 
@@ -263,7 +263,7 @@ describe("Plans screen", () => {
       new PlatformApiError(400, "invalid_plan", "currency must be a three-letter lower-case code"),
     );
 
-    render(<Plans userRole="admin" />);
+    render(<Plans userRole="system_admin" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Edit plan Pro Plan" }));
 

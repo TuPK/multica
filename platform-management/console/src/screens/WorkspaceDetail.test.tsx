@@ -11,12 +11,16 @@ const mockUseWorkspaceUsage = vi.fn();
 const mockUseWorkspaceBillingProfile = vi.fn();
 const mockUseWorkspaceNotes = vi.fn();
 const mockUseWorkspaceAudit = vi.fn();
+const mockUseMemberRequests = vi.fn();
 const mockChangeWorkspaceStatusMutateAsync = vi.fn();
 const mockAddWorkspaceNoteMutateAsync = vi.fn();
 const mockUpdateSubscriptionMutateAsync = vi.fn();
 const mockCancelOrderMutateAsync = vi.fn();
 const mockSetBillingProfileVerifiedMutateAsync = vi.fn();
 const mockUpdateWorkspaceBillingProfileMutateAsync = vi.fn();
+const mockAddWorkspaceMemberMutateAsync = vi.fn();
+const mockCancelMemberRequestMutateAsync = vi.fn();
+const mockDeleteWorkspaceNowMutateAsync = vi.fn();
 let mockUpdateBillingProfileIsPending = false;
 
 vi.mock("../api/hooks", () => ({
@@ -26,6 +30,7 @@ vi.mock("../api/hooks", () => ({
   useWorkspaceBillingProfile: (id?: string) => mockUseWorkspaceBillingProfile(id),
   useWorkspaceNotes: () => mockUseWorkspaceNotes(),
   useWorkspaceAudit: () => mockUseWorkspaceAudit(),
+  useMemberRequests: (id?: string, enabled?: boolean) => mockUseMemberRequests(id, enabled),
   useChangeWorkspaceStatus: () => ({
     mutateAsync: mockChangeWorkspaceStatusMutateAsync,
     isPending: false,
@@ -49,6 +54,18 @@ vi.mock("../api/hooks", () => ({
   useUpdateWorkspaceBillingProfile: () => ({
     mutateAsync: mockUpdateWorkspaceBillingProfileMutateAsync,
     isPending: mockUpdateBillingProfileIsPending,
+  }),
+  useAddWorkspaceMember: () => ({
+    mutateAsync: mockAddWorkspaceMemberMutateAsync,
+    isPending: false,
+  }),
+  useCancelMemberRequest: () => ({
+    mutateAsync: mockCancelMemberRequestMutateAsync,
+    isPending: false,
+  }),
+  useDeleteWorkspaceNow: () => ({
+    mutateAsync: mockDeleteWorkspaceNowMutateAsync,
+    isPending: false,
   }),
 }));
 
@@ -186,6 +203,13 @@ describe("WorkspaceDetail screen", () => {
         },
       ],
       isLoading: false,
+    });
+    mockUseMemberRequests.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
     });
   });
 
@@ -486,13 +510,13 @@ describe("WorkspaceDetail screen", () => {
         refetch: vi.fn(),
       });
 
-      for (const role of ["billing", "support"] as const) {
+      for (const role of ["billing", "support", "admin"] as const) {
         mockUseMe.mockReturnValue({
           data: { user_id: `u-${role}`, email: `${role}@example.com`, role },
         });
-        // Even if userRole prop were passed as admin, useMe governs Write off visibility.
+        // Even if userRole prop were passed as system_admin, useMe governs Write off visibility.
         const { unmount } = render(
-          <WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />,
+          <WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />,
         );
 
         const unpaidRegion = screen.getByTestId("usage-unpaid-orders");
@@ -504,13 +528,13 @@ describe("WorkspaceDetail screen", () => {
       }
     });
 
-    it("shows Write off button only for admin, requires a reason, and submits cancel with reason", async () => {
+    it("shows Write off button only for system_admin, requires a reason, and submits cancel with reason", async () => {
       mockCancelOrderMutateAsync.mockResolvedValue({
         order: { ...mockWorkspaceData.recent_orders[0], id: "ord-usage-2", status: "canceled" },
         applied: true,
       });
       mockUseMe.mockReturnValue({
-        data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+        data: { user_id: "u-admin", email: "admin@example.com", role: "system_admin" },
       });
       mockUseWorkspaceUsage.mockReturnValue({
         data: monthlyUsageData,
@@ -519,7 +543,7 @@ describe("WorkspaceDetail screen", () => {
         refetch: vi.fn(),
       });
 
-      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
 
       const unpaidRegion = screen.getByTestId("usage-unpaid-orders");
       const writeOffButtons = within(unpaidRegion).getAllByRole("button", { name: /write off/i });
@@ -553,7 +577,7 @@ describe("WorkspaceDetail screen", () => {
     it("keeps dialog open and shows alert when write-off fails", async () => {
       mockCancelOrderMutateAsync.mockRejectedValue(new Error("only an admin can write off a usage invoice"));
       mockUseMe.mockReturnValue({
-        data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+        data: { user_id: "u-admin", email: "admin@example.com", role: "system_admin" },
       });
       mockUseWorkspaceUsage.mockReturnValue({
         data: monthlyUsageData,
@@ -562,7 +586,7 @@ describe("WorkspaceDetail screen", () => {
         refetch: vi.fn(),
       });
 
-      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
 
       const unpaidRegion = screen.getByTestId("usage-unpaid-orders");
       fireEvent.click(within(unpaidRegion).getAllByRole("button", { name: /write off/i })[0]!);
@@ -571,7 +595,9 @@ describe("WorkspaceDetail screen", () => {
       fireEvent.click(screen.getByRole("button", { name: /write off order/i }));
 
       await waitFor(() => {
-        expect(screen.getByRole("alert")).toHaveTextContent("only an admin can write off a usage invoice");
+        expect(within(screen.getByRole("dialog")).getByRole("alert")).toHaveTextContent(
+          "only an admin can write off a usage invoice",
+        );
       });
       expect(screen.getByRole("heading", { name: /write off/i })).toBeInTheDocument();
     });
@@ -583,8 +609,8 @@ describe("WorkspaceDetail screen", () => {
       return heading.closest<HTMLElement>("[data-slot='card']") ?? heading.parentElement!.parentElement!;
     }
 
-    it("shows verify to billing and admin", () => {
-      for (const role of ["billing", "admin"] as const) {
+    it("shows verify to billing and system_admin", () => {
+      for (const role of ["billing", "system_admin"] as const) {
         const { unmount } = render(
           <WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole={role} />,
         );
@@ -595,13 +621,16 @@ describe("WorkspaceDetail screen", () => {
       }
     });
 
-    it("hides the verify control from support", () => {
-      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="support" />);
+    it("hides the verify control from support and admin", () => {
+      for (const role of ["support", "admin"] as const) {
+        const { unmount } = render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole={role} />);
 
-      const card = getBillingProfileCard();
-      expect(within(card).getByText("Unverified")).toBeInTheDocument();
-      expect(within(card).queryByRole("button", { name: "Verify" })).not.toBeInTheDocument();
-      expect(within(card).queryByRole("button", { name: "Unverify" })).not.toBeInTheDocument();
+        const card = getBillingProfileCard();
+        expect(within(card).getByText("Unverified")).toBeInTheDocument();
+        expect(within(card).queryByRole("button", { name: "Verify" })).not.toBeInTheDocument();
+        expect(within(card).queryByRole("button", { name: "Unverify" })).not.toBeInTheDocument();
+        unmount();
+      }
     });
 
     it("calls the verify endpoint and shows verified", async () => {
@@ -660,7 +689,7 @@ describe("WorkspaceDetail screen", () => {
         }),
       );
 
-      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
 
       const card = getBillingProfileCard();
 
@@ -751,7 +780,7 @@ describe("WorkspaceDetail screen", () => {
         verified_at: null,
       });
 
-      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
       const card = getBillingProfileCard();
       expect(within(card).getByText("Verified")).toBeInTheDocument();
 
@@ -776,12 +805,12 @@ describe("WorkspaceDetail screen", () => {
       return heading.closest<HTMLElement>("[data-slot='card']") ?? heading.parentElement!.parentElement!;
     }
 
-    it("hides the Edit button for support and shows it for billing and admin", () => {
+    it("hides the Edit button for support and shows it for billing and system_admin", () => {
       const { unmount } = render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="support" />);
       expect(within(getBillingProfileCard()).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
       unmount();
 
-      for (const role of ["billing", "admin"] as const) {
+      for (const role of ["billing", "system_admin"] as const) {
         const view = render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole={role} />);
         expect(within(getBillingProfileCard()).getByRole("button", { name: "Edit" })).toBeInTheDocument();
         view.unmount();
@@ -870,7 +899,7 @@ describe("WorkspaceDetail screen", () => {
         }),
       );
 
-      const { rerender } = render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+      const { rerender } = render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
       await user.click(within(getBillingProfileCard()).getByRole("button", { name: "Edit" }));
 
       const dialog = screen.getByRole("dialog");
@@ -895,7 +924,7 @@ describe("WorkspaceDetail screen", () => {
       expect(within(dialog).queryByText(/Tax code is required/i)).not.toBeInTheDocument();
 
       mockUpdateBillingProfileIsPending = true;
-      rerender(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+      rerender(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
       expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
@@ -914,7 +943,7 @@ describe("WorkspaceDetail screen", () => {
           ),
         );
 
-      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
       fireEvent.click(within(getBillingProfileCard()).getByRole("button", { name: "Edit" }));
 
       const dialog = screen.getByRole("dialog");
@@ -962,7 +991,7 @@ describe("WorkspaceDetail screen", () => {
         changed: true,
       });
 
-      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
       const card = getBillingProfileCard();
       expect(within(card).getByText("Verified")).toBeInTheDocument();
       expect(within(card).getByRole("button", { name: "Unverify" })).toBeInTheDocument();
@@ -997,6 +1026,159 @@ describe("WorkspaceDetail screen", () => {
         );
       });
       expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+  });
+
+  describe("R6 S13 member requests and immediate workspace deletion", () => {
+    it("add member form offers the member roles admin, member and viewer but not owner", async () => {
+      const user = userEvent.setup();
+      mockAddWorkspaceMemberMutateAsync.mockResolvedValueOnce({
+        id: "mr-1",
+        workspace_id: "t-123",
+        kind: "add",
+        email: "newbie@example.com",
+        role: "viewer",
+        state: "pending",
+        error_code: "",
+        attempts: 0,
+        user_id: "",
+        member_id: "",
+        user_created: false,
+        requested_by: "u-sys",
+        requested_by_label: "sys@example.com",
+        created_at: "2026-11-19T10:00:00Z",
+        updated_at: "2026-11-19T10:00:00Z",
+        completed_at: null,
+      });
+
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
+
+      await user.click(screen.getByRole("button", { name: "Add member" }));
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByRole("heading", { name: "Add member" })).toBeInTheDocument();
+
+      await user.click(within(dialog).getByRole("combobox", { name: /Member role/i }));
+      const options = await screen.findAllByRole("option");
+      const labels = options.map((opt) => opt.textContent);
+      expect(labels).toEqual(["Admin", "Member", "Viewer"]);
+      expect(labels).not.toContain("Owner");
+
+      await user.click(options.find((opt) => opt.textContent === "Viewer")!);
+      await user.type(within(dialog).getByLabelText(/Email address/i), "newbie@example.com");
+      await user.click(within(dialog).getByRole("button", { name: "Add member" }));
+
+      await waitFor(() => {
+        expect(mockAddWorkspaceMemberMutateAsync).toHaveBeenCalledWith({
+          workspaceId: "t-123",
+          email: "newbie@example.com",
+          role: "viewer",
+        });
+      });
+    });
+
+    it("shows request state and error_code", async () => {
+      mockUseMemberRequests.mockReturnValue({
+        data: [
+          {
+            id: "mr-1",
+            workspace_id: "t-123",
+            kind: "add",
+            email: "pending@example.com",
+            role: "member",
+            state: "pending",
+            error_code: "",
+            attempts: 0,
+            user_id: "",
+            member_id: "",
+            user_created: false,
+            requested_by: "u-admin",
+            requested_by_label: "admin@example.com",
+            created_at: "2026-11-19T10:00:00Z",
+            updated_at: "2026-11-19T10:00:00Z",
+            completed_at: null,
+          },
+          {
+            id: "mr-2",
+            workspace_id: "t-123",
+            kind: "add",
+            email: "blocked@example.com",
+            role: "admin",
+            state: "failed",
+            error_code: "seat_limit_reached",
+            attempts: 3,
+            user_id: "",
+            member_id: "",
+            user_created: false,
+            requested_by: "u-admin",
+            requested_by_label: "admin@example.com",
+            created_at: "2026-11-19T09:00:00Z",
+            updated_at: "2026-11-19T09:10:00Z",
+            completed_at: null,
+          },
+        ],
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+      mockCancelMemberRequestMutateAsync.mockResolvedValueOnce({});
+
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+
+      expect(screen.getByRole("heading", { name: "Member Requests" })).toBeInTheDocument();
+      const pendingRow = screen.getByText("pending@example.com").closest("tr") as HTMLElement;
+      expect(within(pendingRow).getByText("Pending")).toBeInTheDocument();
+
+      const failedRow = screen.getByText("blocked@example.com").closest("tr") as HTMLElement;
+      expect(within(failedRow).getByText("Failed")).toBeInTheDocument();
+      expect(within(failedRow).getByText("seat_limit_reached")).toBeInTheDocument();
+
+      fireEvent.click(within(pendingRow).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => {
+        expect(mockCancelMemberRequestMutateAsync).toHaveBeenCalledWith({
+          workspaceId: "t-123",
+          requestId: "mr-1",
+        });
+      });
+    });
+
+    it("admin sees add member and delete workspace for a workspace in scope", async () => {
+      mockDeleteWorkspaceNowMutateAsync.mockResolvedValueOnce({
+        request_id: "dr-1",
+        state: "pending",
+      });
+
+      const { unmount } = render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+      expect(screen.getByRole("button", { name: "Add member" })).toBeInTheDocument();
+      const deleteBtn = screen.getByRole("button", { name: "Delete workspace" });
+      expect(deleteBtn).toBeInTheDocument();
+
+      fireEvent.click(deleteBtn);
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByRole("button", { name: "Delete workspace" })).toBeDisabled();
+
+      fireEvent.change(within(dialog).getByLabelText(/Reason/i), { target: { value: "Customer offboarding" } });
+      fireEvent.change(within(dialog).getByLabelText(/Workspace slug/i), { target: { value: "acme" } });
+      const confirmBtn = within(dialog).getByRole("button", { name: "Delete workspace" });
+      expect(confirmBtn).toBeEnabled();
+
+      fireEvent.click(confirmBtn);
+      await waitFor(() => {
+        expect(mockDeleteWorkspaceNowMutateAsync).toHaveBeenCalledWith({
+          workspaceId: "t-123",
+          reason: "Customer offboarding",
+          confirm: "acme",
+        });
+      });
+      unmount();
+
+      for (const role of ["support", "billing"] as const) {
+        const view = render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole={role} />);
+        expect(screen.queryByRole("button", { name: "Add member" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Delete workspace" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Member Requests" })).not.toBeInTheDocument();
+        view.unmount();
+      }
     });
   });
 });

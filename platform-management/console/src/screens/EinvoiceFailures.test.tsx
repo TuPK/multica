@@ -100,7 +100,7 @@ describe("EinvoiceFailures screen", () => {
   });
 
   it("switches state filter tabs", () => {
-    render(<EinvoiceFailures userRole="admin" />);
+    render(<EinvoiceFailures userRole="system_admin" />);
 
     fireEvent.click(screen.getByRole("tab", { name: "Issued" }));
     expect(mockUseEinvoices).toHaveBeenCalledWith("issued");

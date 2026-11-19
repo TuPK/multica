@@ -39,6 +39,13 @@ import {
   parseEinvoiceList,
   OrderEinvoiceListSchema,
   parseOrderEinvoiceList,
+  parseUpdateStaffResponse,
+  parseMemberRequest,
+  parseMemberRequestList,
+  parseDeletionRequest,
+  parseDeletionRequestList,
+  parseDeletionStartResponse,
+  parseAccountDeletePreview,
 } from "./schemas";
 
 const workspace = {
@@ -71,20 +78,40 @@ describe("audit action codes", () => {
 
 describe("me", () => {
   it("parses a well-formed body", () => {
-    expect(parseMe({ user_id: "u1", email: "a@example.com", role: "admin" })).toEqual({
+    expect(parseMe({ user_id: "u1", email: "a@example.com", role: "admin", tenant_id: "t1" })).toEqual({
       user_id: "u1",
       email: "a@example.com",
       role: "admin",
+      tenant_id: "t1",
+    });
+    expect(parseMe({ user_id: "u1", email: "s@example.com", role: "system_admin", tenant_id: null })).toEqual({
+      user_id: "u1",
+      email: "s@example.com",
+      role: "system_admin",
+      tenant_id: null,
     });
   });
 
   it("falls back to null for a malformed body", () => {
-    for (const body of [null, "x", [], {}, { user_id: 7 }]) expect(parseMe(body)).toBeNull();
+    for (const body of [null, "x", [], {}, { user_id: 7 }, { user_id: "u1", tenant_id: 42 }]) {
+      expect(parseMe(body)).toBeNull();
+    }
   });
 
-  it("maps an unknown role to unknown and defaults a missing role and email", () => {
+  it("me response accepts a missing or null tenant_id and an unknown role falls back", () => {
     expect(parseMe({ user_id: "u1", role: "auditor" })?.role).toBe("unknown");
-    expect(parseMe({ user_id: "u1" })).toEqual({ user_id: "u1", email: "", role: "unknown" });
+    expect(parseMe({ user_id: "u1" })).toEqual({
+      user_id: "u1",
+      email: "",
+      role: "unknown",
+      tenant_id: null,
+    });
+    expect(parseMe({ user_id: "u1", email: "a@example.com", role: "support", tenant_id: null })).toEqual({
+      user_id: "u1",
+      email: "a@example.com",
+      role: "support",
+      tenant_id: null,
+    });
   });
 });
 
@@ -353,10 +380,27 @@ describe("notes", () => {
 });
 
 describe("staff", () => {
-  const member = { user_id: "u1", email: "a@example.com", role: "admin", created_by: null, created_at: "2026-01-01T00:00:00Z" };
+  const member = {
+    user_id: "u1",
+    email: "a@example.com",
+    role: "admin",
+    tenant_id: "t-1",
+    tenant_name: null,
+    created_by: null,
+    created_at: "2026-01-01T00:00:00Z",
+  };
 
   it("parses the list", () => {
     expect(parseStaffList({ staff: [member] })).toEqual({ staff: [member] });
+    expect(parseStaffList({ staff: [{ user_id: "u2", email: "s@example.com", role: "system_admin" }] }).staff[0]).toEqual({
+      user_id: "u2",
+      email: "s@example.com",
+      role: "system_admin",
+      tenant_id: null,
+      tenant_name: null,
+      created_by: null,
+      created_at: "",
+    });
   });
 
   it("maps an unknown role to unknown", () => {
@@ -367,6 +411,20 @@ describe("staff", () => {
     for (const body of [null, [], { staff: [{ email: "no id" }] }, { staff: "x" }]) {
       expect(parseStaffList(body)).toEqual({ staff: [] });
     }
+  });
+
+  it("parses PUT /staff/{user_id} response", () => {
+    expect(parseUpdateStaffResponse({ user_id: "u1", role: "admin", tenant_id: "t-1" })).toEqual({
+      user_id: "u1",
+      role: "admin",
+      tenant_id: "t-1",
+    });
+    expect(parseUpdateStaffResponse({ user_id: "u1", role: "future_role", tenant_id: null })).toEqual({
+      user_id: "u1",
+      role: "unknown",
+      tenant_id: null,
+    });
+    expect(parseUpdateStaffResponse({})).toBeNull();
   });
 });
 
@@ -1385,5 +1443,109 @@ describe("order e-invoice history (GET /api/platform/orders/{id}/einvoices)", ()
       expect(OrderEinvoiceListSchema.safeParse(bad).success).toBe(false);
       expect(parseOrderEinvoiceList(bad)).toBeNull();
     }
+  });
+});
+
+describe("member requests and deletion requests", () => {
+  const memberReq = {
+    id: "mr-1",
+    workspace_id: "ws-1",
+    kind: "add",
+    email: "new@example.com",
+    role: "member",
+    state: "pending",
+    error_code: "",
+    attempts: 0,
+    user_id: "",
+    member_id: "",
+    user_created: false,
+    requested_by: "u-admin",
+    requested_by_label: "admin@example.com",
+    created_at: "2026-11-19T10:00:00Z",
+    updated_at: "2026-11-19T10:00:00Z",
+    completed_at: null,
+  };
+
+  const deletionReq = {
+    id: "dr-1",
+    kind: "workspace",
+    target_id: "ws-1",
+    target_label: "acme",
+    reason: "Customer requested",
+    state: "failed",
+    error_code: "storage_cleanup_failed",
+    attempts: 3,
+    tenant_id: "t-1",
+    requested_by: "u-admin",
+    requested_by_label: "admin@example.com",
+    created_at: "2026-11-19T10:00:00Z",
+    updated_at: "2026-11-19T10:15:00Z",
+  };
+
+  it("parses member request lists and single items", () => {
+    expect(parseMemberRequestList({ requests: [memberReq] }).requests).toEqual([memberReq]);
+    expect(parseMemberRequest(memberReq, "POST /api/platform/workspaces/{id}/members")).toEqual(memberReq);
+    expect(parseMemberRequestList({ requests: "nope" })).toEqual({ requests: [] });
+    expect(parseMemberRequest(null, "GET /api/platform/member-requests/{id}")).toBeNull();
+  });
+
+  it("unknown request state and error_code fall back", () => {
+    const memberParsed = parseMemberRequest(
+      { id: "mr-2", workspace_id: "ws-1", state: "retrying_later", error_code: null },
+      "GET /api/platform/member-requests/{id}",
+    );
+    expect(memberParsed?.state).toBe("unknown");
+    expect(memberParsed?.error_code).toBe("");
+
+    const deletionParsed = parseDeletionRequest(
+      { id: "dr-2", kind: "future_kind", state: "awaiting_something", error_code: null },
+      "GET /api/platform/deletion-requests/{id}",
+    );
+    expect(deletionParsed?.kind).toBe("unknown");
+    expect(deletionParsed?.state).toBe("unknown");
+    expect(deletionParsed?.error_code).toBe("");
+
+    const listParsed = parseDeletionRequestList({
+      requests: [
+        deletionReq,
+        { id: "dr-3", state: "future_state", error_code: "new_server_code" },
+      ],
+    });
+    expect(listParsed.requests).toHaveLength(2);
+    expect(listParsed.requests[1]?.state).toBe("unknown");
+    expect(listParsed.requests[1]?.error_code).toBe("new_server_code");
+    expect(listParsed.requests[1]?.tenant_id).toBeNull();
+  });
+
+  it("parses deletion start response and account delete preview", () => {
+    expect(parseDeletionStartResponse({ request_id: "dr-1", state: "pending" }, "POST /workspaces/{id}/delete-now")).toEqual({
+      request_id: "dr-1",
+      state: "pending",
+    });
+    expect(parseDeletionStartResponse({ request_id: "dr-2", state: "future" }, "POST /tenants/{id}/delete-now")?.state).toBe("unknown");
+    expect(parseDeletionStartResponse({}, "POST /tenants/{id}/delete-now")).toBeNull();
+
+    const preview = parseAccountDeletePreview({
+      email: "leaver@example.com",
+      need_choice: [
+        { workspace_id: "ws-1", slug: "acme", role: "owner", owner_count: 1, member_count: 3 },
+      ],
+      deleted_with: [],
+    });
+    expect(preview).toEqual({
+      email: "leaver@example.com",
+      need_choice: [
+        {
+          workspace_id: "ws-1",
+          slug: "acme",
+          role: "owner",
+          owner_count: 1,
+          member_count: 3,
+          successors: [],
+        },
+      ],
+      deleted_with: [],
+    });
+    expect(parseAccountDeletePreview({ need_choice: "bad" })).toBeNull();
   });
 });

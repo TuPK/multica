@@ -53,7 +53,7 @@ describe("Layout navigation", () => {
       <Layout
         currentScreen="tenant-detail"
         onNavigate={vi.fn()}
-        user={{ user_id: "u-admin", email: "very.long.admin.address@example.com", role: "admin" }}
+        user={{ user_id: "u-admin", email: "very.long.admin.address@example.com", role: "system_admin" }}
         onLogout={vi.fn()}
       >
         <div>Content</div>
@@ -77,7 +77,7 @@ describe("Layout navigation", () => {
     const emailEl = screen.getByText("very.long.admin.address@example.com");
     expect(emailEl).toHaveClass("truncate");
     expect(emailEl).toHaveAttribute("title", "very.long.admin.address@example.com");
-    expect(screen.getByText("Admin")).toBeInTheDocument();
+    expect(screen.getByText("System Admin")).toBeInTheDocument();
   });
 
   it("collapses and reopens the desktop sidebar via the toggle buttons", () => {
@@ -86,7 +86,7 @@ describe("Layout navigation", () => {
       <Layout
         currentScreen="overview"
         onNavigate={vi.fn()}
-        user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
+        user={{ user_id: "u-admin", email: "admin@example.com", role: "system_admin" }}
         onLogout={vi.fn()}
       >
         <div>Content</div>
@@ -113,7 +113,7 @@ describe("Layout navigation", () => {
       <Layout
         currentScreen="overview"
         onNavigate={onNavigate}
-        user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
+        user={{ user_id: "u-admin", email: "admin@example.com", role: "system_admin" }}
         onLogout={vi.fn()}
       >
         <div>Content</div>
@@ -164,9 +164,10 @@ describe("Layout navigation", () => {
     expect(within(nav).queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /Plans/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /Staff/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Deletion requests/i })).not.toBeInTheDocument();
   });
 
-  it("shows Orders, Payment notices, and E-invoices to billing role, but hides Accounts, Plans, and Staff", () => {
+  it("shows Orders, Payment notices, and E-invoices to billing role, but hides Accounts, Plans, Staff, and Deletion requests", () => {
     setViewportWidth(1280);
     render(
       <Layout
@@ -187,9 +188,32 @@ describe("Layout navigation", () => {
     expect(within(nav).queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /Plans/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /Staff/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Deletion requests/i })).not.toBeInTheDocument();
   });
 
-  it("shows all admin items and invokes onNavigate / onLogout", () => {
+  it("shows tenant-scoped nav items for admin and hides system-admin-only items", () => {
+    setViewportWidth(1280);
+    render(
+      <Layout
+        currentScreen="tenants"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-tadmin", email: "tadmin@example.com", role: "admin", tenant_id: "t-1" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>,
+    );
+
+    const nav = screen.getByRole("navigation", { name: "Main Navigation" });
+    for (const name of ["Tenants", "Users", "Orders", "Deletion requests", "Audit Log"]) {
+      expect(within(nav).getByRole("button", { name })).toBeInTheDocument();
+    }
+    for (const hidden of ["Overview", "Payment notices", "E-invoices", "Accounts", "Plans", "Staff"]) {
+      expect(within(nav).queryByRole("button", { name: hidden })).not.toBeInTheDocument();
+    }
+  });
+
+  it("shows all system_admin items and invokes onNavigate / onLogout", () => {
     setViewportWidth(1280);
     const onNavigate = vi.fn();
     const onLogout = vi.fn();
@@ -197,7 +221,7 @@ describe("Layout navigation", () => {
       <Layout
         currentScreen="overview"
         onNavigate={onNavigate}
-        user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
+        user={{ user_id: "u-admin", email: "admin@example.com", role: "system_admin" }}
         onLogout={onLogout}
       >
         <div>Content</div>
@@ -215,6 +239,7 @@ describe("Layout navigation", () => {
       "Accounts",
       "Plans",
       "Staff",
+      "Deletion requests",
       "Audit Log",
     ]) {
       expect(within(nav).getByRole("button", { name })).toBeInTheDocument();

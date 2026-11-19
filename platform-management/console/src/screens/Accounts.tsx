@@ -227,7 +227,7 @@ export function Accounts({ userRole }: AccountsProps) {
   const [cancelTarget, setCancelTarget] = useState<AccountRequest | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  if (effectiveRole && effectiveRole !== "admin") {
+  if (effectiveRole && effectiveRole !== "system_admin") {
     return (
       <div role="region" aria-label="Not found">
         <ErrorState

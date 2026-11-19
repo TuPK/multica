@@ -142,10 +142,36 @@ vi.mock("./api/hooks", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useUpdateStaff: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useRemoveStaff: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useMemberRequests: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useAddWorkspaceMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCancelMemberRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteWorkspaceNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteTenantNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAccountDeletePreview: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
+  useDeleteAccountNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeletionRequests: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useCancelDeletionRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRetryDeletionRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAuditEvents: () => ({
     data: { events: [], next_cursor: null },
     isLoading: false,
@@ -292,9 +318,9 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /Staff/i })).not.toBeInTheDocument();
   });
 
-  it("role gating: admin role sees staff tab and can navigate to it", () => {
+  it("role gating: system_admin role sees staff tab and can navigate to it", () => {
     mockUseMe.mockReturnValue({
-      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null },
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -310,7 +336,7 @@ describe("App", () => {
 
   it("clicking every SideNav item opens its distinctive screen and updates URL", () => {
     mockUseMe.mockReturnValue({
-      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null },
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -325,6 +351,7 @@ describe("App", () => {
     }> = [
       { buttonName: /^Tenants$/i, expectedPath: "/tenants", headingName: "Tenants" },
       { buttonName: /^Users$/i, expectedPath: "/users", headingName: "Users" },
+      { buttonName: /^Deletion requests$/i, expectedPath: "/deletion-requests", headingName: "Deletion requests" },
       { buttonName: /^Orders$/i, expectedPath: "/orders", headingName: "Orders" },
       { buttonName: /^Payment notices$/i, expectedPath: "/payment-notices", headingName: "Payment notices" },
       { buttonName: /^E-invoices$/i, expectedPath: "/einvoices", headingName: "E-invoices" },
@@ -347,7 +374,7 @@ describe("App", () => {
   it("restores screen from initial URL (F5 reload) and responds to popstate", () => {
     window.history.replaceState(null, "", "/tenants/t-42");
     mockUseMe.mockReturnValue({
-      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null },
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -384,7 +411,7 @@ describe("App", () => {
 
   it("navigates from SideNav into TenantDetail and UserDetail routes and back", () => {
     mockUseMe.mockReturnValue({
-      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null },
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -432,7 +459,7 @@ describe("App", () => {
   it("falls back safely to Overview on malformed percent-encoded URLs", () => {
     window.history.replaceState(null, "", "/tenants/%E0%A4%A");
     mockUseMe.mockReturnValue({
-      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null },
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -444,7 +471,7 @@ describe("App", () => {
   it("handles logout", async () => {
     const mockRefetch = vi.fn();
     mockUseMe.mockReturnValue({
-      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null },
       isLoading: false,
       refetch: mockRefetch,
     });
@@ -460,7 +487,7 @@ describe("App", () => {
     });
   });
 
-  it("role gating: admin sees Accounts tab and can navigate to it, non-admins do not", () => {
+  it("role gating: system_admin sees Accounts tab and can navigate to it, non-system-admins do not", () => {
     mockUseMe.mockReturnValue({
       data: { user_id: "u-billing", email: "billing@example.com", role: "billing" },
       isLoading: false,
@@ -471,7 +498,7 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
 
     mockUseMe.mockReturnValue({
-      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null },
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -516,5 +543,89 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /^Plans$/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Orders$/i }));
     expect(screen.getByRole("heading", { name: "Orders" })).toBeInTheDocument();
+  });
+
+  it("system-admin-only nav items are hidden for admin, support and billing", () => {
+    for (const role of ["admin", "support", "billing"] as const) {
+      mockUseMe.mockReturnValue({
+        data: {
+          user_id: `u-${role}`,
+          email: `${role}@example.com`,
+          role,
+          tenant_id: role === "admin" ? "t-1" : null,
+        },
+        isLoading: false,
+        refetch: vi.fn(),
+      });
+      const { unmount } = render(<App />);
+      const nav = screen.getByRole("navigation", { name: "Main Navigation" });
+      expect(within(nav).queryByRole("button", { name: /^Staff$/i })).not.toBeInTheDocument();
+      expect(within(nav).queryByRole("button", { name: /^Plans$/i })).not.toBeInTheDocument();
+      expect(within(nav).queryByRole("button", { name: /^Accounts$/i })).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("navigation items follow the role matrix for system_admin, admin, support and billing", () => {
+    const cases: Array<{
+      role: "system_admin" | "admin" | "support" | "billing";
+      visible: string[];
+      hidden: string[];
+    }> = [
+      {
+        role: "system_admin",
+        visible: [
+          "Overview",
+          "Tenants",
+          "Users",
+          "Deletion requests",
+          "Orders",
+          "Payment notices",
+          "E-invoices",
+          "Accounts",
+          "Plans",
+          "Staff",
+          "Audit Log",
+        ],
+        hidden: [],
+      },
+      {
+        role: "admin",
+        visible: ["Tenants", "Users", "Deletion requests", "Orders", "Audit Log"],
+        hidden: ["Overview", "Payment notices", "E-invoices", "Accounts", "Plans", "Staff"],
+      },
+      {
+        role: "support",
+        visible: ["Overview", "Tenants", "Users", "Audit Log"],
+        hidden: ["Deletion requests", "Orders", "Payment notices", "E-invoices", "Accounts", "Plans", "Staff"],
+      },
+      {
+        role: "billing",
+        visible: ["Overview", "Tenants", "Users", "Orders", "Payment notices", "E-invoices", "Audit Log"],
+        hidden: ["Deletion requests", "Accounts", "Plans", "Staff"],
+      },
+    ];
+
+    for (const c of cases) {
+      mockUseMe.mockReturnValue({
+        data: {
+          user_id: `u-${c.role}`,
+          email: `${c.role}@example.com`,
+          role: c.role,
+          tenant_id: c.role === "admin" ? "t-1" : null,
+        },
+        isLoading: false,
+        refetch: vi.fn(),
+      });
+      const { unmount } = render(<App />);
+      const nav = screen.getByRole("navigation", { name: "Main Navigation" });
+      for (const label of c.visible) {
+        expect(within(nav).getByRole("button", { name: new RegExp(`^${label}$`, "i") })).toBeInTheDocument();
+      }
+      for (const label of c.hidden) {
+        expect(within(nav).queryByRole("button", { name: new RegExp(`^${label}$`, "i") })).not.toBeInTheDocument();
+      }
+      unmount();
+    }
   });
 });

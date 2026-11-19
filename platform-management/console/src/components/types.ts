@@ -1,9 +1,10 @@
-export type StaffRole = "admin" | "support" | "billing" | "unknown";
+export type StaffRole = "system_admin" | "admin" | "support" | "billing" | "unknown";
 
 export interface MeResponse {
   user_id: string;
   email: string;
   role: StaffRole;
+  tenant_id?: string | null;
 }
 
 export interface TenantRow {
@@ -75,6 +76,8 @@ export interface StaffMember {
   user_id: string;
   email: string;
   role: string;
+  tenant_id?: string | null;
+  tenant_name?: string | null;
   created_by?: string | null;
   created_at: string;
 }

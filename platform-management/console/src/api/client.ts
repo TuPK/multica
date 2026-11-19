@@ -85,3 +85,9 @@ export async function platformFetch(path: string, init: PlatformRequestInit = {}
     throw new PlatformApiError(res.status, "malformed_response", "The server answered with a body that is not JSON");
   }
 }
+
+/** Extracts a non-empty user-facing message from an API or generic error. */
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message.trim() !== "") return err.message;
+  return fallback;
+}

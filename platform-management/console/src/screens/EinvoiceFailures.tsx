@@ -74,8 +74,8 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
     refetch,
   } = useEinvoices(activeTab);
 
-  // Role gating: Only billing and admin roles can view e-invoice issuance records
-  if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "admin") {
+  // Role gating: Only billing and system_admin roles can view e-invoice issuance records
+  if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "system_admin") {
     return (
       <div role="region" aria-label="Not found">
         <ErrorState

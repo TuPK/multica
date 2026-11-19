@@ -28,6 +28,7 @@ describe("StatusBadge", () => {
     const cases: Array<{ status: string; label: string }> = [
       { status: "pending", label: "Pending" },
       { status: "paid", label: "Paid" },
+      { status: "running", label: "Running" },
       { status: "expired", label: "Expired" },
       { status: "canceled", label: "Canceled" },
       { status: "refunded", label: "Refunded" },
@@ -59,11 +60,13 @@ describe("StatusBadge", () => {
 
   it("renders staff and workspace roles as Astryx Badges without a status dot", () => {
     for (const [role, label] of [
+      ["system_admin", "System Admin"],
       ["admin", "Admin"],
       ["support", "Support"],
       ["billing", "Billing"],
       ["owner", "Owner"],
       ["member", "Member"],
+      ["viewer", "Viewer"],
     ] as const) {
       const { container, unmount } = render(<StatusBadge status={role} />);
       expect(screen.getByText(label)).toBeInTheDocument();

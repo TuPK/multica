@@ -1,22 +1,28 @@
+import { useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
+import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
-import { Building2 } from "@multica/ui/icons";
+import { Building2, Info, Trash2 } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
 import { MetadataList, MetadataListItem } from "../components/MetadataList";
-import { useTenant } from "../api/hooks";
+import { TypeToConfirmDialog } from "../components/TypeToConfirmDialog";
+import { getApiErrorMessage } from "../api/client";
+import { useDeleteTenantNow, useMe, useTenant } from "../api/hooks";
 import type { TenantWorkspace } from "../api/schemas";
+import type { StaffRole } from "../components/types";
 import { formatBytes, maxWorkspacesLabel, statusSummaryText } from "./Tenants";
 
 interface TenantDetailProps {
   tenantId: string;
   onBack: () => void;
   onSelectWorkspace: (id: string) => void;
+  userRole?: StaffRole;
 }
 
 /**
@@ -33,8 +39,17 @@ function usageSummary(workspace: TenantWorkspace): string {
   ].join(" · ");
 }
 
-export function TenantDetail({ tenantId, onBack, onSelectWorkspace }: TenantDetailProps) {
+export function TenantDetail({ tenantId, onBack, onSelectWorkspace, userRole }: TenantDetailProps) {
+  const { data: me } = useMe();
+  const effectiveRole = userRole ?? me?.role;
+  const canDeleteTenant = effectiveRole === "system_admin";
+
   const { data: tenant, isLoading, isError, error, refetch } = useTenant(tenantId);
+  const deleteTenantNow = useDeleteTenantNow();
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
   const back = { label: "Back to tenants", onClick: onBack };
 
   if (isLoading) {
@@ -59,13 +74,47 @@ export function TenantDetail({ tenantId, onBack, onSelectWorkspace }: TenantDeta
     );
   }
 
+  const handleConfirmDeleteTenant = async ({ reason, confirm }: { reason: string; confirm: string }) => {
+    setDeleteError(null);
+    try {
+      const res = await deleteTenantNow.mutateAsync({ tenantId, reason, confirm });
+      setDeleteDialogOpen(false);
+      setDeleteNotice(`Immediate deletion requested (${res.request_id}).`);
+    } catch (err) {
+      setDeleteError(getApiErrorMessage(err, "Failed to start tenant deletion"));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={tenant.name || tenant.id}
+        badge={<StatusBadge status={tenant.status} />}
         backAction={back}
         description={<span className="font-mono text-caption">{tenant.id}</span>}
+        actions={
+          canDeleteTenant ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteDialogOpen(true);
+              }}
+            >
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              <span>Delete tenant</span>
+            </Button>
+          ) : undefined
+        }
       />
+
+      {deleteNotice && (
+        <Alert role="status">
+          <Info className="size-4" aria-hidden="true" />
+          <AlertDescription>{deleteNotice}</AlertDescription>
+        </Alert>
+      )}
 
       <Card padding={4}>
         <MetadataList columns={3}>
@@ -174,6 +223,24 @@ export function TenantDetail({ tenantId, onBack, onSelectWorkspace }: TenantDeta
             ]}
           />
         </Card>
+      )}
+
+      {canDeleteTenant && (
+        <TypeToConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            setDeleteDialogOpen(open);
+            if (!open) setDeleteError(null);
+          }}
+          title="Delete tenant"
+          description="Immediate deletion permanently removes this tenant and all of its workspaces."
+          expectedText={tenant.name || tenant.id}
+          confirmInputLabel="Tenant name"
+          confirmLabel="Delete tenant"
+          confirmVariant="destructive"
+          error={deleteError}
+          onConfirm={handleConfirmDeleteTenant}
+        />
       )}
     </div>
   );
