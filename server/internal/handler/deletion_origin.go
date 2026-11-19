@@ -9,6 +9,8 @@ import (
 type DeletionOriginKind string
 
 const (
+	// DeletionOriginSelf is the user's own deletion, or the account job that runs it.
+	DeletionOriginSelf DeletionOriginKind = "self"
 	// DeletionOriginPeriodEnded is the workspace_deletion job, after the grace period.
 	DeletionOriginPeriodEnded DeletionOriginKind = "period_ended"
 	// DeletionOriginStaff is the staff_deletion job, running a platform request
@@ -55,5 +57,33 @@ func (o DeletionOrigin) workspaceDeletedEntry(workspaceID, tenantID, name string
 		TargetID:    workspaceID,
 		TargetLabel: name,
 		Detail:      map[string]any{"reason": "deletion_period_ended"},
+	}
+}
+
+// auditActor is who an audit row names for an account deletion.
+type auditActor struct {
+	Type   string
+	ID     string
+	Label  string
+	Detail map[string]any
+}
+
+// accountActor is the actor of the audit rows an account deletion writes for
+// the user's memberships and sole workspaces. A staff deletion names the staff
+// member and the origin; the user's own deletion names the deleted user, as before.
+func (o DeletionOrigin) accountActor(userID string) auditActor {
+	if o.Kind == DeletionOriginStaff {
+		return auditActor{
+			Type:   audit.ActorStaff,
+			ID:     o.StaffID,
+			Label:  o.StaffLabel,
+			Detail: map[string]any{"reason": "account_deletion", "origin": string(DeletionOriginStaff), "request_id": o.RequestID},
+		}
+	}
+	return auditActor{
+		Type:   audit.ActorMember,
+		ID:     userID,
+		Label:  deletedUserLabel,
+		Detail: map[string]any{"reason": "account_deletion"},
 	}
 }

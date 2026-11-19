@@ -339,12 +339,12 @@ func TestWorkspaceDeletionJobSkipsWorkspacesWithLiveOrFailedStaffRequest(t *test
 // Account and runtime requests are not this job's; it leaves them untouched.
 func TestStaffDeletionLeavesOtherKindsForTheirJobs(t *testing.T) {
 	ws := workspaceWithOwner(t, "staff job other kinds")
-	reqID := stageRequest(t, "account", uuid.NewString(), "", "pending")
+	reqID := stageRequest(t, "runtime", uuid.NewString(), "", "pending")
 	if _, err := newRunner(nil).RunOnce(context.Background()); err != nil {
 		t.Fatalf("RunOnce: %v", err)
 	}
 	if state, attempts, _ := requestState(t, reqID); state != "pending" || attempts != 0 {
-		t.Errorf("account request = %q attempts %d, want untouched pending/0", state, attempts)
+		t.Errorf("runtime request = %q attempts %d, want untouched pending/0", state, attempts)
 	}
 	if workspaceGone(t, ws) {
 		t.Error("an unrelated workspace was deleted")

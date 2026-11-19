@@ -15,7 +15,7 @@ const claimStaffDeletionRequest = `-- name: ClaimStaffDeletionRequest :one
 UPDATE platform_deletion_request
 SET state = 'running', updated_at = now()
 WHERE id = $1
-  AND kind IN ('workspace', 'tenant')
+  AND kind IN ('workspace', 'tenant', 'account')
   AND (state = 'pending' OR (state = 'running' AND updated_at < now() - interval '30 minutes'))
 RETURNING id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id
 `
@@ -53,10 +53,13 @@ func (q *Queries) ClaimStaffDeletionRequest(ctx context.Context, id pgtype.UUID)
 
 const completeStaffDeletionRequest = `-- name: CompleteStaffDeletionRequest :exec
 UPDATE platform_deletion_request
-SET state = 'completed', error_code = '', completed_at = now(), updated_at = now()
+SET state = 'completed', error_code = '', completed_at = now(), updated_at = now(),
+    target_label = CASE WHEN kind = 'account' THEN 'deleted user' ELSE target_label END
 WHERE id = $1 AND state = 'running'
 `
 
+// An account request drops the email it was filed with: the target label becomes
+// 'deleted user' (spec R6 section 7.4, phase 2 step 5).
 func (q *Queries) CompleteStaffDeletionRequest(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, completeStaffDeletionRequest, id)
 	return err
@@ -87,6 +90,23 @@ func (q *Queries) FailStaffDeletionAttempt(ctx context.Context, arg FailStaffDel
 	return state, err
 }
 
+const failStaffDeletionNow = `-- name: FailStaffDeletionNow :exec
+UPDATE platform_deletion_request
+SET state = 'failed', error_code = $1, attempts = attempts + 1, updated_at = now()
+WHERE id = $2 AND state = 'running'
+`
+
+type FailStaffDeletionNowParams struct {
+	ErrorCode string      `json:"error_code"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+// A failure no retry can fix: the request is failed at once with its error_code.
+func (q *Queries) FailStaffDeletionNow(ctx context.Context, arg FailStaffDeletionNowParams) error {
+	_, err := q.db.Exec(ctx, failStaffDeletionNow, arg.ErrorCode, arg.ID)
+	return err
+}
+
 const hasLiveTenantDeletionRequest = `-- name: HasLiveTenantDeletionRequest :one
 SELECT EXISTS (
     SELECT 1 FROM platform_deletion_request
@@ -106,7 +126,7 @@ func (q *Queries) HasLiveTenantDeletionRequest(ctx context.Context, tenantID pgt
 const listPendingStaffDeletionIDs = `-- name: ListPendingStaffDeletionIDs :many
 
 SELECT id FROM platform_deletion_request
-WHERE kind IN ('workspace', 'tenant')
+WHERE kind IN ('workspace', 'tenant', 'account')
   AND (state = 'pending' OR (state = 'running' AND updated_at < now() - interval '30 minutes'))
 ORDER BY created_at, id
 LIMIT $1
@@ -134,4 +154,42 @@ func (q *Queries) ListPendingStaffDeletionIDs(ctx context.Context, limit int32) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const listStaffDeletionChildStates = `-- name: ListStaffDeletionChildStates :many
+SELECT state FROM platform_deletion_request WHERE parent_id = $1
+`
+
+// The states of the workspace requests an account request owns (spec R6 section 7.4).
+func (q *Queries) ListStaffDeletionChildStates(ctx context.Context, parentID pgtype.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listStaffDeletionChildStates, parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var state string
+		if err := rows.Scan(&state); err != nil {
+			return nil, err
+		}
+		items = append(items, state)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const releaseStaffDeletionClaim = `-- name: ReleaseStaffDeletionClaim :exec
+UPDATE platform_deletion_request
+SET state = 'pending', updated_at = now()
+WHERE id = $1 AND state = 'running'
+`
+
+// Returns a claimed request to pending without counting an attempt, for a request
+// that must wait for its child requests.
+func (q *Queries) ReleaseStaffDeletionClaim(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, releaseStaffDeletionClaim, id)
+	return err
 }

@@ -1,6 +1,6 @@
 // Package staffdeletion carries out the immediate deletions that platform
-// management queues (spec R6 section 6.3, phase 2): one workspace, or a tenant
-// with every workspace in it. The platform writes the request in phase 1; this
+// management queues (spec R6 sections 6.3 and 7.4, phase 2): one workspace, a
+// tenant with every workspace in it, or an account. The platform writes the request in phase 1; this
 // job owns its state, attempts, error_code, updated_at and completed_at.
 package staffdeletion
 
@@ -35,6 +35,7 @@ const (
 
 	kindWorkspace = "workspace"
 	kindTenant    = "tenant"
+	kindAccount   = "account"
 )
 
 // TxStarter opens transactions; *pgxpool.Pool satisfies it.
@@ -42,17 +43,18 @@ type TxStarter interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
-// WorkspaceEraser runs the teardown of one workspace for a staff request. The
-// handler implements it, through the same teardown DeleteWorkspace runs.
-type WorkspaceEraser interface {
+// Eraser runs the teardowns a staff request needs. The handler implements it,
+// through the same teardowns the user's own deletions run.
+type Eraser interface {
 	DeleteWorkspaceForStaff(ctx context.Context, workspaceID string, origin handler.DeletionOrigin, inject func(stage string) error) (bool, error)
+	DeleteAccountForOrigin(ctx context.Context, userID string, now time.Time, origin handler.DeletionOrigin) (bool, error)
 }
 
 // Deps are the collaborators of a Runner.
 type Deps struct {
 	Pool    TxStarter
 	Queries *db.Queries
-	Eraser  WorkspaceEraser
+	Eraser  Eraser
 	// Inject is a test hook passed to every teardown. A non-nil error from
 	// stage "audit" fails the attempt, as a transient failure would.
 	Inject func(stage string) error
@@ -119,7 +121,15 @@ func (r *Runner) process(ctx context.Context, id pgtype.UUID) (bool, error) {
 		return false, err
 	}
 
-	if err := r.run(ctx, req); err != nil {
+	err = r.run(ctx, req)
+	var perm *permanentError
+	switch {
+	case errors.Is(err, errWaitingForChildren):
+		return false, r.d.Queries.ReleaseStaffDeletionClaim(ctx, id)
+	case errors.As(err, &perm):
+		markErr := r.d.Queries.FailStaffDeletionNow(ctx, db.FailStaffDeletionNowParams{ID: id, ErrorCode: perm.Code})
+		return false, errors.Join(err, markErr)
+	case err != nil:
 		_, markErr := r.d.Queries.FailStaffDeletionAttempt(ctx, db.FailStaffDeletionAttemptParams{
 			ID:          id,
 			ErrorCode:   errDeleteFailed,
@@ -133,8 +143,8 @@ func (r *Runner) process(ctx context.Context, id pgtype.UUID) (bool, error) {
 	return true, nil
 }
 
-// run carries out a claimed request. Account and runtime requests are not
-// handled here; the claim query leaves them alone.
+// run carries out a claimed request. Runtime requests are not handled here;
+// the claim query leaves them alone.
 func (r *Runner) run(ctx context.Context, req db.PlatformDeletionRequest) error {
 	origin := handler.DeletionOrigin{
 		Kind:       handler.DeletionOriginStaff,
@@ -148,6 +158,8 @@ func (r *Runner) run(ctx context.Context, req db.PlatformDeletionRequest) error 
 		return err
 	case kindTenant:
 		return r.runTenant(ctx, req, origin)
+	case kindAccount:
+		return r.runAccount(ctx, req, origin)
 	}
 	return fmt.Errorf("staff deletion: unsupported kind %q", req.Kind)
 }

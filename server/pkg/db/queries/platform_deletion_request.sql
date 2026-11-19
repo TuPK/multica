@@ -5,7 +5,7 @@
 
 -- name: ListPendingStaffDeletionIDs :many
 SELECT id FROM platform_deletion_request
-WHERE kind IN ('workspace', 'tenant')
+WHERE kind IN ('workspace', 'tenant', 'account')
   AND (state = 'pending' OR (state = 'running' AND updated_at < now() - interval '30 minutes'))
 ORDER BY created_at, id
 LIMIT $1;
@@ -17,14 +17,34 @@ LIMIT $1;
 UPDATE platform_deletion_request
 SET state = 'running', updated_at = now()
 WHERE id = $1
-  AND kind IN ('workspace', 'tenant')
+  AND kind IN ('workspace', 'tenant', 'account')
   AND (state = 'pending' OR (state = 'running' AND updated_at < now() - interval '30 minutes'))
 RETURNING *;
 
 -- name: CompleteStaffDeletionRequest :exec
+-- An account request drops the email it was filed with: the target label becomes
+-- 'deleted user' (spec R6 section 7.4, phase 2 step 5).
 UPDATE platform_deletion_request
-SET state = 'completed', error_code = '', completed_at = now(), updated_at = now()
+SET state = 'completed', error_code = '', completed_at = now(), updated_at = now(),
+    target_label = CASE WHEN kind = 'account' THEN 'deleted user' ELSE target_label END
 WHERE id = $1 AND state = 'running';
+
+-- name: ReleaseStaffDeletionClaim :exec
+-- Returns a claimed request to pending without counting an attempt, for a request
+-- that must wait for its child requests.
+UPDATE platform_deletion_request
+SET state = 'pending', updated_at = now()
+WHERE id = $1 AND state = 'running';
+
+-- name: FailStaffDeletionNow :exec
+-- A failure no retry can fix: the request is failed at once with its error_code.
+UPDATE platform_deletion_request
+SET state = 'failed', error_code = @error_code, attempts = attempts + 1, updated_at = now()
+WHERE id = @id AND state = 'running';
+
+-- name: ListStaffDeletionChildStates :many
+-- The states of the workspace requests an account request owns (spec R6 section 7.4).
+SELECT state FROM platform_deletion_request WHERE parent_id = $1;
 
 -- name: FailStaffDeletionAttempt :one
 -- Counts a failed run. The last allowed attempt parks the request as failed for

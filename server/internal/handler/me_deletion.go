@@ -363,6 +363,13 @@ func (h *Handler) DueAccountDeletions(ctx context.Context, now time.Time, limit 
 // pending, and the next run finishes the rest. The personal rows, the audit
 // labels, the user row and the status change commit together.
 func (h *Handler) DeleteAccount(ctx context.Context, userID string, now time.Time) (bool, error) {
+	return h.DeleteAccountForOrigin(ctx, userID, now, DeletionOrigin{Kind: DeletionOriginSelf})
+}
+
+// DeleteAccountForOrigin is DeleteAccount for a caller other than the account's
+// own scheduled deletion. The pipeline is the same; origin only sets the actor
+// of the audit rows it writes (spec R6 section 7.4, phase 2 step 4).
+func (h *Handler) DeleteAccountForOrigin(ctx context.Context, userID string, now time.Time, origin DeletionOrigin) (bool, error) {
 	uid, err := util.ParseUUID(userID)
 	if err != nil {
 		return false, fmt.Errorf("parse user id: %w", err)
@@ -393,12 +400,12 @@ func (h *Handler) DeleteAccount(ctx context.Context, userID string, now time.Tim
 	}
 	for _, row := range rows {
 		if row.MemberCount <= 1 {
-			if err := h.deleteSoleMemberWorkspace(ctx, row.WorkspaceID, user); err != nil {
+			if err := h.deleteSoleMemberWorkspace(ctx, row.WorkspaceID, user, origin); err != nil {
 				return false, fmt.Errorf("delete workspace %s: %w", uuidToString(row.WorkspaceID), err)
 			}
 			continue
 		}
-		if err := h.removeMemberForAccountDeletion(ctx, row, user); err != nil {
+		if err := h.removeMemberForAccountDeletion(ctx, row, user, origin); err != nil {
 			return false, fmt.Errorf("remove membership in %s: %w", uuidToString(row.WorkspaceID), err)
 		}
 	}
@@ -464,7 +471,7 @@ func (h *Handler) DeleteAccount(ctx context.Context, userID string, now time.Tim
 
 // removeMemberForAccountDeletion removes the user from a workspace that goes on
 // without them, through the same path as leaving it.
-func (h *Handler) removeMemberForAccountDeletion(ctx context.Context, row db.ListUserWorkspaceCountsRow, user db.User) error {
+func (h *Handler) removeMemberForAccountDeletion(ctx context.Context, row db.ListUserWorkspaceCountsRow, user db.User, origin DeletionOrigin) error {
 	workspaceID := uuidToString(row.WorkspaceID)
 	if row.Role == "owner" {
 		members, err := h.Queries.ListMembers(ctx, row.WorkspaceID)
@@ -476,17 +483,18 @@ func (h *Handler) removeMemberForAccountDeletion(ctx context.Context, row db.Lis
 			return errors.New("the user is the only owner of a workspace that has other members")
 		}
 	}
+	actor := origin.accountActor(uuidToString(user.ID))
 	result, err := h.revokeAndRemoveMember(ctx, row.WorkspaceID, user.ID, row.MemberID, user.ID, func(tx pgx.Tx) error {
 		return audit.Record(ctx, auditstore.NewTx(h.Queries, tx), audit.Entry{
 			WorkspaceID: workspaceID,
-			ActorType:   audit.ActorMember,
-			ActorID:     uuidToString(user.ID),
-			ActorLabel:  deletedUserLabel,
+			ActorType:   actor.Type,
+			ActorID:     actor.ID,
+			ActorLabel:  actor.Label,
 			Action:      audit.ActionMemberLeft,
 			TargetType:  "member",
 			TargetID:    uuidToString(user.ID),
 			TargetLabel: deletedUserLabel,
-			Detail:      map[string]any{"reason": "account_deletion"},
+			Detail:      actor.Detail,
 		})
 	})
 	if err != nil {
@@ -508,7 +516,7 @@ func (h *Handler) removeMemberForAccountDeletion(ctx context.Context, row db.Lis
 
 // deleteSoleMemberWorkspace deletes a workspace whose only member is the user,
 // through the same teardown DeleteWorkspace runs.
-func (h *Handler) deleteSoleMemberWorkspace(ctx context.Context, wsID pgtype.UUID, user db.User) error {
+func (h *Handler) deleteSoleMemberWorkspace(ctx context.Context, wsID pgtype.UUID, user db.User, origin DeletionOrigin) error {
 	workspaceID := uuidToString(wsID)
 	userID := uuidToString(user.ID)
 	if err := h.prepareQoderWorkspaceDeletion(ctx, workspaceID); err != nil {
@@ -525,16 +533,17 @@ func (h *Handler) deleteSoleMemberWorkspace(ctx context.Context, wsID pgtype.UUI
 	if err != nil {
 		return err
 	}
+	actor := origin.accountActor(userID)
 	if err := audit.Record(ctx, auditstore.NewTx(h.Queries, tx), audit.Entry{
 		WorkspaceID: workspaceID,
-		ActorType:   audit.ActorMember,
-		ActorID:     userID,
-		ActorLabel:  deletedUserLabel,
+		ActorType:   actor.Type,
+		ActorID:     actor.ID,
+		ActorLabel:  actor.Label,
 		Action:      audit.ActionWorkspaceDeleted,
 		TargetType:  "workspace",
 		TargetID:    workspaceID,
 		TargetLabel: teardown.Name,
-		Detail:      map[string]any{"reason": "account_deletion"},
+		Detail:      actor.Detail,
 	}); err != nil {
 		return fmt.Errorf("audit: %w", err)
 	}

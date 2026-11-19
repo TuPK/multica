@@ -278,6 +278,11 @@ const listDueAccountDeletions = `-- name: ListDueAccountDeletions :many
 SELECT user_id
 FROM platform_account
 WHERE status = 'pending_deletion' AND deletion_scheduled_at <= $1::timestamptz
+  AND NOT EXISTS (
+    SELECT 1 FROM platform_deletion_request r
+    WHERE r.kind = 'account' AND r.target_id = platform_account.user_id
+      AND r.state IN ('pending', 'running', 'failed')
+  )
 ORDER BY deletion_scheduled_at, user_id
 LIMIT $2
 `
