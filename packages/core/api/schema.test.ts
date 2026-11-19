@@ -1285,6 +1285,24 @@ describe("ApiClient schema fallback", () => {
       await expect(client.listCloudBillingPriceTiers()).resolves.toEqual([]);
     });
 
+    it("falls back to no price tiers when a tier currency is not three lower-case letters", async () => {
+      stubFetchJson([
+        { id: "t1", amount_cents: 1000, currency: "US Dollar", credits: 10 },
+      ]);
+      const client = new ApiClient("https://api.example.test");
+
+      await expect(client.listCloudBillingPriceTiers()).resolves.toEqual([]);
+    });
+
+    it("keeps the empty currency default when a price tier omits the currency", async () => {
+      stubFetchJson([{ id: "t1", amount_cents: 1000, credits: 10 }]);
+      const client = new ApiClient("https://api.example.test");
+
+      const tiers = await client.listCloudBillingPriceTiers();
+      expect(tiers).toHaveLength(1);
+      expect(tiers[0]?.currency).toBe("");
+    });
+
     it("falls back to an empty checkout session when the response is malformed", async () => {
       stubFetchJson({ order_id: 123 });
       const client = new ApiClient("https://api.example.test");
@@ -1637,6 +1655,17 @@ describe("workspace subscription contract", () => {
       year: { currency: "usd", unit_amount: 20000, interval: "year", interval_count: 1 },
     });
     expect(await client.getWorkspaceSubscriptionPrices()).toBeNull();
+  });
+
+  it("falls back, and does not throw, when a price currency is not three lower-case letters", async () => {
+    const client = new ApiClient("https://api.example.test");
+    for (const currency of ["US", "usdx", "USD", "u1d", ""]) {
+      stubFetchJson({
+        month: { currency, unit_amount: 2000, interval: "month", interval_count: 1 },
+        year: { currency: "usd", unit_amount: 20000, interval: "year", interval_count: 1 },
+      });
+      await expect(client.getWorkspaceSubscriptionPrices()).resolves.toBeNull();
+    }
   });
 
   it("rejects a prices response whose interval does not match its slot", async () => {

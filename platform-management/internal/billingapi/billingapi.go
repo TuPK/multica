@@ -56,6 +56,7 @@ const (
 	codeUnavailable     = "seat_purchase_unavailable"
 	codeStale           = "seat_purchase_stale"
 	codeProration       = "proration_mismatch"
+	codeCurrency        = "currency_mismatch"
 	// codePlanChangeUnavailable is spec 7b.1's plan_change_unavailable.
 	codePlanChangeUnavailable = "plan_change_unavailable"
 	// codeUsageInvoiceUnpaid is spec 7b.3's usage_invoice_unpaid.
@@ -674,7 +675,7 @@ func (h *Handler) purchase(w http.ResponseWriter, r *http.Request) {
 	}
 	currency := strings.ToLower(q.plan.Currency)
 	if strings.ToLower(in.Currency) != currency {
-		writeError(w, http.StatusBadRequest, codeInvalid, "currency does not match the plan")
+		writeError(w, http.StatusConflict, codeCurrency, "currency does not match the subscription")
 		return
 	}
 	if in.ExpectedCurrentSeats != q.sub.Seats || in.ExpectedPurchaseVersion != q.sub.Version {

@@ -102,8 +102,12 @@ type fakePlanTx struct{ s *fakePlanStore }
 func (t *fakePlanTx) Deleted(context.Context, string) (bool, error) {
 	return false, errors.New("not used")
 }
-func (t *fakePlanTx) InsertIfAbsent(context.Context, plan.Plan) (bool, error) {
-	return false, errors.New("not used")
+func (t *fakePlanTx) InsertIfAbsent(_ context.Context, p plan.Plan) (bool, error) {
+	if _, ok := t.s.rows[p.Key]; ok {
+		return false, nil
+	}
+	t.s.rows[p.Key] = p
+	return true, nil
 }
 func (t *fakePlanTx) Get(_ context.Context, key string) (plan.Plan, bool, error) {
 	p, ok := t.s.rows[key]
@@ -237,6 +241,7 @@ func TestRoutesAdmitOnlyTheirRoles(t *testing.T) {
 		allowed                  []string
 	}{
 		{"list plans", "GET", "/api/platform/plans", "", []string{adminUser}},
+		{"post plan", "POST", "/api/platform/plans", `{"key":"team","name":"Team","currency":"vnd"}`, []string{adminUser}},
 		{"put plan", "PUT", "/api/platform/plans/team", teamBody, []string{adminUser}},
 		{"delete plan", "DELETE", "/api/platform/plans/legacy", "", []string{adminUser}},
 		{"put subscription", "PUT", subPath, proBody, []string{billUser, adminUser}},
@@ -280,7 +285,6 @@ func TestWritesNeedTheConsoleOrigin(t *testing.T) {
 func TestOtherMethodsOnTheseRoutesAre404(t *testing.T) {
 	e := newConsoleEnv(t)
 	for _, tc := range []struct{ method, path string }{
-		{"POST", "/api/platform/plans"},
 		{"DELETE", "/api/platform/plans"},
 		{"GET", "/api/platform/plans/pro"},
 		{"POST", "/api/platform/plans/pro"},

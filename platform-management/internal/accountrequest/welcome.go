@@ -68,7 +68,7 @@ func (f *Finalizer) sendDue(ctx context.Context) error {
 }
 
 // deliver sends the welcome of r and records the outcome in tx: welcome_sent_at
-// and an account.welcome_sent row, or an account.welcome_failed row. A failed
+// and an account.welcome_sent (account.welcome_resent for a resend) row, or an account.welcome_failed row. A failed
 // send is the returned sendErr, not an error of the transaction, so the caller
 // commits the record. by is the staff member who asked for a resend; nil is the
 // job, whose failed sends are counted in welcome_attempts.
@@ -103,6 +103,9 @@ func (f *Finalizer) deliver(ctx context.Context, tx FinalizeTx, r Request, by *A
 		return r, nil, err
 	}
 	e.Action = audit.ActionAccountWelcomeSent
+	if resend {
+		e.Action = audit.ActionAccountWelcomeResent
+	}
 	e.Detail = map[string]any{"resend": resend}
 	return out, nil, audit.Record(ctx, tx, e)
 }

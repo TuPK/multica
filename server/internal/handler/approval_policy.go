@@ -229,7 +229,13 @@ func (h *Handler) ListPolicyAutoApprovals(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	rows, flagged, err := h.approvalPolicyService().AutoApprovals(r.Context(), wsUUID, policyID, policyAutoApprovalsLimit)
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+	svc := h.approvalPolicyService()
+	svc.Scope = scope
+	rows, flagged, err := svc.AutoApprovals(r.Context(), wsUUID, policyID, policyAutoApprovalsLimit)
 	if errors.Is(err, service.ErrPolicyNotFound) {
 		writeError(w, http.StatusNotFound, "standing approval not found")
 		return

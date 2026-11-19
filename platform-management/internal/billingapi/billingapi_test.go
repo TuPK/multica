@@ -699,7 +699,7 @@ func TestPurchaseRefusesAStaleQuote(t *testing.T) {
 		"price changed":      {func(b obj) { b["accepted_proration_amount"] = float64(297999) }, "proration_mismatch"},
 		"price waived":       {func(b obj) { b["accepted_proration_amount"] = float64(0) }, "proration_mismatch"},
 		"different seats":    {func(b obj) { b["additional_seats"] = 4 }, "proration_mismatch"},
-		"different currency": {func(b obj) { b["currency"] = "usd" }, "invalid_request"},
+		"different currency": {func(b obj) { b["currency"] = "usd" }, "currency_mismatch"},
 	}
 	for name, tc := range cases {
 		e := newEnv(t)
@@ -707,11 +707,7 @@ func TestPurchaseRefusesAStaleQuote(t *testing.T) {
 		e.paid()
 		body := confirm(e.quote(t), "k")
 		tc.edit(body)
-		status := 409
-		if tc.code == "invalid_request" {
-			status = 400
-		}
-		wantCode(t, e.do("POST", purchasePath(wsID), ownerID, nil, body), status, tc.code)
+		wantCode(t, e.do("POST", purchasePath(wsID), ownerID, nil, body), 409, tc.code)
 		if len(e.orders.drafts) != 0 {
 			t.Errorf("%s: an order was created", name)
 		}

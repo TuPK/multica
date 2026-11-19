@@ -116,6 +116,10 @@ WHERE i.workspace_id = @workspace_id
   AND (i.status = 'done' OR st.category = 'done')
   AND COALESCE(i.done_at, i.updated_at) >= @period_start::timestamptz
   AND COALESCE(i.done_at, i.updated_at) < @period_end::timestamptz
+  -- projectaccess:scope
+  -- Stored aggregate: any member reads it, so issues of restricted projects are left out.
+  AND (i.project_id IS NULL
+       OR EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'))
   AND (sqlc.narg('agent_id')::uuid IS NULL OR (i.assignee_type = 'agent' AND i.assignee_id = sqlc.narg('agent_id')::uuid))
   AND (sqlc.narg('squad_id')::uuid IS NULL OR (
         (i.assignee_type = 'squad' AND i.assignee_id = sqlc.narg('squad_id')::uuid)

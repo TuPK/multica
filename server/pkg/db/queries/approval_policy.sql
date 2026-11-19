@@ -60,6 +60,13 @@ FROM proposal p
 JOIN issue i ON i.id = p.issue_id
 WHERE p.workspace_id = sqlc.arg('workspace_id')::uuid
   AND p.decided_by_policy_id = sqlc.arg('policy_id')::uuid
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.decided_at DESC, p.id DESC
 LIMIT sqlc.arg('row_limit')::integer;
 
@@ -74,6 +81,13 @@ WHERE p.workspace_id = sqlc.arg('workspace_id')::uuid
   AND p.decided_by_policy_id IS NOT NULL
   AND p.reversed_at IS NOT NULL
   AND p.reversed_at >= sqlc.arg('since')::timestamptz
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.reversed_at DESC, p.id DESC;
 
 -- name: SetProposalPolicyDecision :exec
@@ -108,6 +122,13 @@ WHERE p.workspace_id = sqlc.arg('workspace_id')::uuid
   AND p.decided_by_policy_id IS NOT NULL
   AND p.decided_at >= sqlc.arg('since')::timestamptz
   AND (sqlc.narg('squad_ids')::uuid[] IS NULL OR p.squad_id = ANY(sqlc.narg('squad_ids')::uuid[]))
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.decided_at DESC, p.id DESC
 LIMIT sqlc.arg('row_limit')::integer;
 

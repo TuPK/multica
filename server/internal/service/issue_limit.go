@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/entitlement"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -105,9 +106,11 @@ func AllocateIssueNumber(ctx context.Context, q *db.Queries, workspaceID pgtype.
 	return number, nil
 }
 
-// CountIssueUsage performs a bounded read for a limited policy. The returned
-// value is exact while below the limit and capped at the limit once the
-// workspace is full.
+// CountIssueUsage is the enforcement count: a bounded read for a limited policy
+// that counts every issue of the workspace, hidden or not, because the quota
+// gates every write. The returned value is exact while below the limit and
+// capped at the limit once the workspace is full. A read path that shows the
+// number to a viewer uses CountVisibleIssueUsage instead.
 func CountIssueUsage(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID, policy IssueCountPolicy) (int64, error) {
 	if policy.Action != entitlement.ActionEnforce {
 		return 0, nil
@@ -127,4 +130,26 @@ func CountIssueUsage(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID
 		return policy.Limit, nil
 	}
 	return sampled, nil
+}
+
+// CountVisibleIssueUsage is the display count of GET limit-usage: the issues the
+// viewer sees, capped at the limit like CountIssueUsage (spec 7.1 rule 5). It
+// can be lower than the enforcement count, which includes issues of projects the
+// viewer cannot see. Never use it to decide whether a create is allowed.
+func CountVisibleIssueUsage(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID, policy IssueCountPolicy, scope projectaccess.Scope) (int64, error) {
+	if policy.Action != entitlement.ActionEnforce {
+		return 0, nil
+	}
+	visible, err := q.CountIssues(ctx, db.CountIssuesParams{
+		WorkspaceID: workspaceID,
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
+	})
+	if err != nil {
+		return 0, err
+	}
+	if visible > policy.Limit {
+		return policy.Limit, nil
+	}
+	return visible, nil
 }

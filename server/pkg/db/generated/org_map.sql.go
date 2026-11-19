@@ -199,6 +199,13 @@ SELECT
                 AND st.category IN ('done', 'closed')
             )
           )
+          -- projectaccess:scope
+          AND ($1::text = 'all'
+              OR (i.project_id IS NULL AND $1::text <> 'guest')
+              OR EXISTS (SELECT 1 FROM project_member scope_pm
+                         WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $2::uuid)
+              OR ($1::text = 'member'
+                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
     )::bigint AS open_issues
 FROM squad s
 LEFT JOIN squad_charter c ON c.squad_id = s.id AND c.workspace_id = s.workspace_id
@@ -209,18 +216,26 @@ LEFT JOIN LATERAL (
     SELECT p.id, p.title, p.workflow_id
     FROM project p
     WHERE p.workspace_id = s.workspace_id AND s.id = ANY(p.squad_ids)
+      -- projectaccess:scope
+      AND ($1::text = 'all'
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = p.id AND scope_pm.user_id = $2::uuid)
+          OR ($1::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.id AND scope_p.access = 'workspace')))
     ORDER BY p.created_at ASC, p.id ASC
     LIMIT 1
 ) pr ON true
 LEFT JOIN issue_workflow wf ON wf.id = pr.workflow_id AND wf.workspace_id = s.workspace_id
-WHERE s.workspace_id = $1::uuid
+WHERE s.workspace_id = $3::uuid
   AND s.archived_at IS NULL
-  AND ($2::uuid IS NULL OR s.floor_id = $2::uuid)
+  AND ($4::uuid IS NULL OR s.floor_id = $4::uuid)
 ORDER BY COALESCE(f.position, 2147483647) ASC, s.company_slot ASC NULLS LAST, s.created_at ASC, s.id ASC
-LIMIT $3::integer
+LIMIT $5::integer
 `
 
 type ListOrgMapSquadsParams struct {
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	FloorID     pgtype.UUID `json:"floor_id"`
 	RowLimit    int32       `json:"row_limit"`
@@ -248,9 +263,17 @@ type ListOrgMapSquadsRow struct {
 }
 
 // Live squads, floor order first, then seat order. The caller passes row_limit
-// one above the cap so it can tell that the list was cut short.
+// one above the cap so it can tell that the list was cut short. The open issue
+// count and the squad's project follow the viewer's scope: a project the viewer
+// cannot see is not named, and its issues are not counted.
 func (q *Queries) ListOrgMapSquads(ctx context.Context, arg ListOrgMapSquadsParams) ([]ListOrgMapSquadsRow, error) {
-	rows, err := q.db.Query(ctx, listOrgMapSquads, arg.WorkspaceID, arg.FloorID, arg.RowLimit)
+	rows, err := q.db.Query(ctx, listOrgMapSquads,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+		arg.WorkspaceID,
+		arg.FloorID,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

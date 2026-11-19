@@ -241,6 +241,11 @@ func run() error {
 		return err
 	}
 
+	einvoices, err := newEinvoiceService(cfg, invoice.NewPgxStore(pool))
+	if err != nil {
+		return err
+	}
+
 	// The console confirms orders through the same service that creates them.
 	consoleAPI := console.New(console.Deps{
 		RequireStaff:  auth.RequirePlatformStaff,
@@ -259,10 +264,11 @@ func run() error {
 			CreatePerHour: cfg.AccountCreatePerHour, IndividualMaxSeats: cfg.IndividualMaxSeats,
 			Welcome: accountFinalizer,
 		}),
-		Logins: console.NewPgxLogins(pool),
-		Emails: store,
-		Mailer: consoleMail,
-		Log:    slog.Default(),
+		Einvoices: einvoices,
+		Logins:    console.NewPgxLogins(pool),
+		Emails:    store,
+		Mailer:    consoleMail,
+		Log:       slog.Default(),
 	})
 
 	// Self-service changes and cancellations (spec 7b.1). The order of a charged
@@ -360,10 +366,6 @@ func run() error {
 		return err
 	}
 	if err := runner.Register(pricechange.JobName, pricechange.Interval, priceSvc.Job(time.Now)); err != nil {
-		return err
-	}
-	einvoices, err := newEinvoiceService(cfg, invoice.NewPgxStore(pool))
-	if err != nil {
 		return err
 	}
 	if err := registerPaymentJobs(runner, reconciler, einvoices); err != nil {

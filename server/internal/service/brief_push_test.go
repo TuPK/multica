@@ -617,7 +617,7 @@ func TestBriefPushDecisionButtonsOnlyForCallbackApps(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	msg, err := f.svc.composeMessage(context.Background(), mustBriefUUID(t, f.ws), brief, briefPushTestChat)
+	msg, err := f.svc.composeMessage(context.Background(), mustBriefUUID(t, f.ws), mustBriefUUID(t, f.owner), brief, briefPushTestChat)
 	if err != nil {
 		t.Fatalf("composeMessage: %v", err)
 	}
@@ -656,7 +656,7 @@ func TestBriefPushDecisionButtonsOnlyForCallbackApps(t *testing.T) {
 		t.Fatalf("no Revise link: %+v", msg.Buttons)
 	}
 
-	linkOnly, err := f.svc.composeMessage(context.Background(), mustBriefUUID(t, f.ws), brief, channel.Type("slack"))
+	linkOnly, err := f.svc.composeMessage(context.Background(), mustBriefUUID(t, f.ws), mustBriefUUID(t, f.owner), brief, channel.Type("slack"))
 	if err != nil {
 		t.Fatal(err)
 	}

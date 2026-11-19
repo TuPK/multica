@@ -754,6 +754,15 @@ func (h *Handler) createManualCommentSubIssue(w http.ResponseWriter, r *http.Req
 			return sourceContextBadRequest("invalid project_id")
 		}
 		projectID = parsed
+		// A project the member cannot see is missing (spec 7.1 rule 5); the
+		// create service reports it as it reports an id that names no project.
+		scope, ok := h.viewerScope(w, r, workspaceID)
+		if !ok {
+			return errSourceContextResponseWritten
+		}
+		if !scope.Allows(projectID) {
+			return service.ErrProjectNotFound
+		}
 	}
 	attachmentIDs, ok := parseUUIDSliceOrBadRequest(w, input.AttachmentIDs, "attachment_ids")
 	if !ok {
@@ -912,6 +921,13 @@ func (h *Handler) prepareAgentCommentSubIssue(w http.ResponseWriter, r *http.Req
 		parsed, err := util.ParseUUID(strings.TrimSpace(input.ProjectID))
 		if err != nil {
 			return nil, sourceContextBadRequest("invalid project_id")
+		}
+		scope, ok := h.viewerScope(w, r, workspaceID)
+		if !ok {
+			return nil, errSourceContextResponseWritten
+		}
+		if !scope.Allows(parsed) {
+			return nil, sourceContextBadRequest("project not found")
 		}
 		if _, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{ID: parsed, WorkspaceID: workspaceID}); err != nil {
 			return nil, sourceContextBadRequest("project not found")

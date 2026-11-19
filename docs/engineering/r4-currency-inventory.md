@@ -115,7 +115,7 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 | `server/internal/daemon/types.go` | `usd` | `file-level comment` | text | comment | exempt | Comment on the provider's AI cost in 1e-10 USD; agent cost, not platform billing. |
 | `server/internal/handler/agent.go` | `usd` | `attributionsOf` | text | comment | exempt | Comment on the provider's AI cost in 1e-10 USD; agent cost, not platform billing. |
 | `server/internal/handler/billing_orders.go` | `currency` | `workspacePlanJSON.Currency`, `billingBankDetails`, `workspaceOrderJSON.Currency`, `toWorkspaceOrderJSON`, `ListWorkspacePlans` | field | code | ruled | Plan JSON and order JSON take Currency from the plan and the order; no literal. |
-| `server/internal/handler/cloud_billing.go` | `currency` | `cloudSubscriptionSeatPurchaseRequest.Currency`, `GetCloudWorkspaceSubscriptionUsage`, `PurchaseCloudWorkspaceSubscriptionSeats`, `isASCIICurrency` | field | code | todo | Seat purchase request currency is lower-cased and shape-checked only (isASCIICurrency). Not checked against the plan or PLATFORM_CURRENCIES. P44.2b slice (seat purchase check): compare it with the plan currency. |
+| `server/internal/handler/cloud_billing.go` | `currency` | `cloudSubscriptionSeatPurchaseRequest.Currency`, `GetCloudWorkspaceSubscriptionUsage`, `PurchaseCloudWorkspaceSubscriptionSeats`, `isASCIICurrency` | field | code | ruled | The server forwards the currency; the platform refuses a mismatch (TestSeatPurchaseCurrencyMismatchRefused): `POST /seats/purchases` answers 409 `currency_mismatch` and writes no order when the lower-cased request currency differs from the subscription plan currency. The server keeps only the lower-case shape check (isASCIICurrency). |
 | `server/internal/handler/daemon.go` | `usd` | `formatLegacyCommentEntry` | text | comment | exempt | Comment on the provider's AI cost in 1e-10 USD; agent cost, not platform billing. |
 | `server/internal/handler/dashboard.go` | `usd` | `parseProjectIDParam`, `listDashboardUsageDaily` | text | comment | exempt | Comment on the AI cost aggregate in 1e-10 USD; agent cost, not platform billing. |
 | `server/internal/handler/github.go` | `vnd` | `fetchInstallationAccount`, `setGitHubAPIHeaders` | text | media type | exempt | HTTP Accept media type application/vnd.github+json; not a currency. |
@@ -145,7 +145,7 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 | File | Term | Function or field | Kind | Holds | Status | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | `packages/core/api/client.ts` | `currency` | `purchaseWorkspaceSeats` | field | code | ruled | purchaseWorkspaceSeats sends the preview currency (line 3445); no literal. |
-| `packages/core/api/schemas.ts` | `currency` | `BillingTopupSchema`, `BillingCheckoutSessionStatusSchema`, `EMPTY_BILLING_CHECKOUT_SESSION_STATUS`, `WorkspaceUsagePeriodSchema`, `WorkspaceSubscriptionPriceSchema`, `WorkspaceSeatPurchasePreviewSchema`, `PurchaseWorkspaceSeatsResponseSchema`, `WorkspacePlanChangePreviewSchema`, `OrderPlanChangeResponseSchema` | field | code | todo | The "usd" defaults are removed (empty-string default, no code). Field rows that carry a code from the plan stay todo until the rule set validates them (round C). |
+| `packages/core/api/schemas.ts` | `currency` | `BillingTopupSchema`, `BillingCheckoutSessionStatusSchema`, `EMPTY_BILLING_CHECKOUT_SESSION_STATUS`, `WorkspaceUsagePeriodSchema`, `WorkspaceSubscriptionPriceSchema`, `WorkspaceSeatPurchasePreviewSchema`, `PurchaseWorkspaceSeatsResponseSchema`, `WorkspacePlanChangePreviewSchema`, `OrderPlanChangeResponseSchema` | field | code | ruled | Every currency field now has `z.string().regex(/^[a-z]{3}$/)`: the three fields that had a default (top-up, price tier, checkout status) keep `.default("")` (an absent field reads as empty, a malformed one falls back), and the two `min(1)` fields (usage period, subscription price) use the regex instead. The "usd" defaults are gone. Tests: the price and price-tier cases in `schema.test.ts` (a non-three-letter code falls back, not throws). |
 | `packages/core/api/schemas.ts` | `usd` | `file-level comment` | text | comment | exempt | Comment on the provider-reported AI cost in 1e-10 USD (`cost_usd_ticks`); agent cost, not platform billing. The "usd" currency defaults are removed. |
 | `packages/core/billing/money.ts` | `cad` | `CURRENCY_EXPONENTS` | literal | code | ruled | Exponent table entry (cad=2). The table is the one place that names the enabled currencies; it holds exponents, not a default currency. |
 | `packages/core/billing/money.ts` | `currency` | `formatMinorAmount` | formatter | formatted amount | ruled | formatMinorAmount formats minor units with the table digits; an unknown code uses 2 digits and prints the code. |
@@ -156,7 +156,7 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 | `packages/core/squads/kitviet-previous-texts.ts` | `usd` | `KITVIET_PREVIOUS_AGENT_INSTRUCTIONS` | text | prompt text | exempt | Frozen agent prompt text that mentions USD; not code and not billing. |
 | `packages/core/squads/sales-starter-sources.ts` | `usd` | `SALES_STARTER_SOURCES` | text | UI copy | exempt | UI copy price hints for third-party data sources; not platform billing. |
 | `packages/core/types/agent.ts` | `usd` | `AgentTask`, `IssueUsageSummary` | text | comment | exempt | Comment on the provider's AI cost in 1e-10 USD; agent cost, not platform billing. |
-| `packages/core/types/billing.ts` | `currency` | `BillingTopup.currency`, `BillingCheckoutSessionStatus.currency`, `WorkspaceUsagePeriod.currency`, `WorkspaceSubscriptionPrice.currency`, `WorkspaceSubscriptionPrice`, `WorkspaceSeatPurchasePreview.currency`, `WorkspaceSeatPurchasePreview`, `PurchaseWorkspaceSeatsRequest.currency`, `PurchaseWorkspaceSeatsResponse.currency`, `WorkspacePlanChangePreview.currency`, `CreateWorkspacePlanChangeResponse.currency` | field | code | todo | Type fields are clean, but the comments at lines 324, 360 and 362 give "$20.00" and "Stripe's minor currency unit" as the unit. P44.2b slice (comment reword). |
+| `packages/core/types/billing.ts` | `currency` | `BillingTopup.currency`, `BillingCheckoutSessionStatus.currency`, `WorkspaceUsagePeriod.currency`, `WorkspaceSubscriptionPrice.currency`, `WorkspaceSubscriptionPrice`, `WorkspaceSeatPurchasePreview.currency`, `WorkspaceSeatPurchasePreview`, `PurchaseWorkspaceSeatsRequest.currency`, `PurchaseWorkspaceSeatsResponse.currency`, `WorkspacePlanChangePreview.currency`, `CreateWorkspacePlanChangeResponse.currency` | field | code | ruled | Type fields are clean and the comments no longer give a "$" amount or "Stripe's minor currency unit": the seat unit reads "20.00 in a two-decimal currency" and the proration reads "minor units of the order currency". No todo comment remains. |
 | `packages/core/types/billing.ts` | `usd` | `file-level comment` | text | comment | exempt | Line 9 comment defines the AI credit display unit (1 USD = 1000 credit); credits are agent spend, not the platform billing currency, and no code reads the comment. |
 | `packages/ui/components/ui/number-flow.tsx` | `currency` | `CurrencyNumberFlowProps`, `CurrencyNumberFlow`, `CappedNumberFlow` | formatter | formatted amount | exempt | CurrencyNumberFlow defaults the prefix to "$" (line 39). Its only users are dashboard-page, runtime-list and usage-section, which show AI token cost in USD; no billing view imports it. |
 | `packages/views/billing/billing-test-page.tsx` | `currency` | `CheckoutSessionStatusBanner`, `TopupRow`, `formatMoney` | formatter | formatted amount | ruled | formatMoney delegates to formatMinorAmount; the currency comes from the checkout status, top-up row or tier. |
@@ -216,15 +216,16 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 
 - Scanned units: 157. Rows: 157.
 - Rows by Kind: field 72, literal 15, formatter 24, text 46.
-- Rows by Status: todo 3, ruled 96, exempt 58.
+- Rows by Status: todo 0, ruled 99, exempt 58.
 
 ## Not yet in the currency rule set
 
 The rule set (`platform-management/internal/money`) exists. No row of Kind `literal` or `formatter` is `todo`: the
 catalogue.json rows are validated against the enabled set at Seed.
 
-Rows of Kind `field` carry a code from the plan, order or provider and stay `todo` until the rule set
-validates them. Rows of Kind `text` need no change; the ones that state "VND" in a comment should be reworded when P44.2 lands.
+No row is `todo`. The `field` rows validate the code in the rule set, in the schema or on the platform: the platform
+refuses a seat purchase whose currency differs from the subscription's, and the TypeScript schemas accept only a
+three-letter lower-case code. Rows of Kind `text` need no change; the comments that stated "VND" or "$" were reworded.
 
 ## Migration check
 

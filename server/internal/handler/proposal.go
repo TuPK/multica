@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/middleware"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	proposalkinds "github.com/multica-ai/multica/server/internal/service/proposal_kinds"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -149,8 +150,8 @@ func proposalPriorArtSubject(p db.Proposal, title string) service.ProposalPriorA
 // relatedProposalsForRead looks up the title-related proposals for the given
 // subjects. A failed lookup is logged and reads go out with empty lists, so a
 // read never fails on it.
-func (h *Handler) relatedProposalsForRead(ctx context.Context, wsUUID pgtype.UUID, subjects []service.ProposalPriorArtSubject, prefix string) map[string][]service.ProposalRelated {
-	related, err := h.proposalService().RelatedProposalsByTitle(ctx, wsUUID, subjects, prefix)
+func (h *Handler) relatedProposalsForRead(ctx context.Context, wsUUID pgtype.UUID, subjects []service.ProposalPriorArtSubject, prefix string, scope projectaccess.Scope) map[string][]service.ProposalRelated {
+	related, err := h.proposalService().RelatedProposalsByTitle(ctx, wsUUID, subjects, prefix, scope)
 	if err != nil {
 		slog.Warn("proposal read: related lookup failed; reported without it",
 			"workspace_id", uuidToString(wsUUID), "error", err)
@@ -379,6 +380,10 @@ func (h *Handler) CreateProposal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	res, err := h.proposalService().Create(r.Context(), service.ProposalCreateParams{
 		WorkspaceID:    wsUUID,
 		SquadID:        squadUUID,
@@ -395,6 +400,7 @@ func (h *Handler) CreateProposal(w http.ResponseWriter, r *http.Request) {
 		Kind:                req.Kind,
 		Payload:             req.Payload,
 		EstimatedCostMicros: req.EstimatedCostMicros,
+		Scope:               scope,
 	})
 	var limitErr *service.ProposalLimitError
 	var payloadErr *service.ProposalPayloadError
@@ -496,7 +502,7 @@ func (h *Handler) ListProposals(w http.ResponseWriter, r *http.Request) {
 		resp[i] = proposalToResponse(row.Proposal, row.IssueTitle, row.IssueStatus, prefix, row.IssueNumber)
 		subjects[i] = proposalPriorArtSubject(row.Proposal, row.IssueTitle)
 	}
-	related := h.relatedProposalsForRead(r.Context(), wsUUID, subjects, prefix)
+	related := h.relatedProposalsForRead(r.Context(), wsUUID, subjects, prefix, scope)
 	for i := range resp {
 		resp[i].Related = relatedToResponse(related[resp[i].ID])
 	}
@@ -535,7 +541,7 @@ func (h *Handler) GetProposal(w http.ResponseWriter, r *http.Request) {
 	prefix := h.getIssuePrefix(r.Context(), wsUUID)
 	resp := proposalToResponse(row.Proposal, row.IssueTitle, row.IssueStatus, prefix, row.IssueNumber)
 	related := h.relatedProposalsForRead(r.Context(), wsUUID,
-		[]service.ProposalPriorArtSubject{proposalPriorArtSubject(row.Proposal, row.IssueTitle)}, prefix)
+		[]service.ProposalPriorArtSubject{proposalPriorArtSubject(row.Proposal, row.IssueTitle)}, prefix, scope)
 	resp.Related = relatedToResponse(related[resp.ID])
 	writeJSON(w, http.StatusOK, resp)
 }

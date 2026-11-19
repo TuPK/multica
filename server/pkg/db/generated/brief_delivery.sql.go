@@ -184,12 +184,21 @@ WHERE p.workspace_id = $1
   AND p.id = ANY($2::uuid[])
   AND p.state = 'pending'
   AND (p.snoozed_until IS NULL OR p.snoozed_until <= $3)
+  -- projectaccess:scope
+  AND ($4::text = 'all'
+      OR (i.project_id IS NULL AND $4::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $5::uuid)
+      OR ($4::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 `
 
 type ListBriefPendingDecisionsParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	ProposalIds []pgtype.UUID      `json:"proposal_ids"`
 	Now         pgtype.Timestamptz `json:"now"`
+	ScopeMode   string             `json:"scope_mode"`
+	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
 }
 
 type ListBriefPendingDecisionsRow struct {
@@ -202,7 +211,13 @@ type ListBriefPendingDecisionsRow struct {
 // @now is the application clock, as in CreateBriefDelivery. The caller puts the
 // rows in the order the brief lists them.
 func (q *Queries) ListBriefPendingDecisions(ctx context.Context, arg ListBriefPendingDecisionsParams) ([]ListBriefPendingDecisionsRow, error) {
-	rows, err := q.db.Query(ctx, listBriefPendingDecisions, arg.WorkspaceID, arg.ProposalIds, arg.Now)
+	rows, err := q.db.Query(ctx, listBriefPendingDecisions,
+		arg.WorkspaceID,
+		arg.ProposalIds,
+		arg.Now,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

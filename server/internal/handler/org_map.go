@@ -31,7 +31,11 @@ func (h *Handler) GetCompanyOrgMap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	out, err := service.LoadOrgMap(r.Context(), h.Queries, wsUUID, floorID)
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+	out, err := service.LoadOrgMap(r.Context(), h.Queries, wsUUID, floorID, scope)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to read the org map")
 		return
@@ -49,9 +53,15 @@ func (h *Handler) GetCompanyRequestUsage(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
 	row, err := h.Queries.GetRequestUsageSummary(r.Context(), db.GetRequestUsageSummaryParams{
 		WorkspaceID: issue.WorkspaceID,
 		ID:          issue.ID,
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to read request usage")

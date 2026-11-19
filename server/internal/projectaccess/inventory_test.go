@@ -250,3 +250,13 @@ func TestInventoryDetectsNewQuery(t *testing.T) {
 		t.Fatalf("a new issue reader must be reported as unlisted, got %v", missing)
 	}
 }
+
+// TestNoTodoLeft fails while any row of the inventory is still todo: every read
+// path must be scoped or exempt with a written reason (spec 7.1, P41.10).
+func TestNoTodoLeft(t *testing.T) {
+	for _, r := range parseDoc(t) {
+		if r.Status == "todo" {
+			t.Errorf("still todo: %s %s", r.File, r.Func)
+		}
+	}
+}

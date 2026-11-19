@@ -197,6 +197,7 @@ var Catalog = []string{
 	ActionAccountProvisionFailed,
 	ActionAccountProvisioned,
 	ActionAccountWelcomeSent,
+	ActionAccountWelcomeResent,
 	ActionAccountWelcomeFailed,
 	ActionPlanPriceApplied,
 	ActionPlanPriceCanceled,
@@ -285,6 +286,7 @@ const (
 const (
 	ActionAccountProvisioned   = "account.provisioned"
 	ActionAccountWelcomeSent   = "account.welcome_sent"
+	ActionAccountWelcomeResent = "account.welcome_resent"
 	ActionAccountWelcomeFailed = "account.welcome_failed"
 )
 

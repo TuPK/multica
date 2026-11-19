@@ -16,7 +16,9 @@ WHERE fc.workspace_id = sqlc.arg('workspace_id')::uuid;
 
 -- name: ListOrgMapSquads :many
 -- Live squads, floor order first, then seat order. The caller passes row_limit
--- one above the cap so it can tell that the list was cut short.
+-- one above the cap so it can tell that the list was cut short. The open issue
+-- count and the squad's project follow the viewer's scope: a project the viewer
+-- cannot see is not named, and its issues are not counted.
 SELECT
     s.id AS squad_id,
     s.name,
@@ -51,6 +53,13 @@ SELECT
                 AND st.category IN ('done', 'closed')
             )
           )
+          -- projectaccess:scope
+          AND (sqlc.arg(scope_mode)::text = 'all'
+              OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+              OR EXISTS (SELECT 1 FROM project_member scope_pm
+                         WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+              OR (sqlc.arg(scope_mode)::text = 'member'
+                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
     )::bigint AS open_issues
 FROM squad s
 LEFT JOIN squad_charter c ON c.squad_id = s.id AND c.workspace_id = s.workspace_id
@@ -61,6 +70,12 @@ LEFT JOIN LATERAL (
     SELECT p.id, p.title, p.workflow_id
     FROM project p
     WHERE p.workspace_id = s.workspace_id AND s.id = ANY(p.squad_ids)
+      -- projectaccess:scope
+      AND (sqlc.arg(scope_mode)::text = 'all'
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = p.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+          OR (sqlc.arg(scope_mode)::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.id AND scope_p.access = 'workspace')))
     ORDER BY p.created_at ASC, p.id ASC
     LIMIT 1
 ) pr ON true

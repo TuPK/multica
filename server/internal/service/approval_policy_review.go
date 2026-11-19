@@ -23,7 +23,9 @@ const policyReviewDetailKey = "policy_reversals"
 // week ending at now: every auto-approval reversed on review in that week, with
 // the policy that approved it, as one review_published governance event. A week
 // with no reversal writes nothing, and a week already recorded is not recorded
-// again. It returns how many reversals the section lists.
+// again. It returns how many reversals the section lists. The event is workspace-wide,
+// so it is written with the service's Scope, which is the restrictive zero scope when
+// the caller sets none: reversals of issues in projects are left out.
 func (s *ApprovalPolicyService) RecordWeeklyPolicyReview(ctx context.Context, ws pgtype.UUID, now time.Time) (int, error) {
 	periodEnd := now.UTC().Truncate(24 * time.Hour).Format("2006-01-02")
 	recorded, err := s.Queries.CountPolicyReviewEvents(ctx, db.CountPolicyReviewEventsParams{WorkspaceID: ws, PeriodEnd: periodEnd})

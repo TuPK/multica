@@ -3703,7 +3703,7 @@ export const BillingTopupSchema = z.object({
   id: z.string(),
   owner_id: z.string(),
   amount_cents: z.number(),
-  currency: z.string().default(""),
+  currency: z.string().regex(/^[a-z]{3}$/).default(""),
   credits: z.number(),
   bonus_credits: z.number().default(0),
   status: z.string(),
@@ -3735,7 +3735,7 @@ export const BillingPriceTierSchema = z.object({
   // Cloud doc says display_name falls back to id; tolerate empty too.
   display_name: z.string().default(""),
   amount_cents: z.number(),
-  currency: z.string().default(""),
+  currency: z.string().regex(/^[a-z]{3}$/).default(""),
   credits: z.number(),
   bonus_credits: z.number().optional(),
   bonus_expires_in: z.string().optional(),
@@ -3763,7 +3763,7 @@ export const BillingCheckoutSessionStatusSchema = z.object({
   amount_cents: z.number(),
   credits: z.number(),
   bonus_credits: z.number().default(0),
-  currency: z.string().default(""),
+  currency: z.string().regex(/^[a-z]{3}$/).default(""),
   tier_id: z.string().default(""),
 }).loose();
 
@@ -3903,7 +3903,7 @@ const WorkspaceUsagePeriodSchema = z
   .object({
     period_start: z.string().min(1),
     period_end: z.string().min(1),
-    currency: z.string().min(1),
+    currency: z.string().regex(/^[a-z]{3}$/),
     accrued_amount: z.number().int().nonnegative(),
     credit_limit: z.number().int().nonnegative(),
     unpaid_order_id: z.string().nullable().optional(),
@@ -4062,7 +4062,7 @@ const WorkspaceSubscriptionPriceSchema = (
 ) =>
   z
     .object({
-      currency: z.string().min(1),
+      currency: z.string().regex(/^[a-z]{3}$/),
       // Reject 0 and negatives: a free or malformed Price must read as
       // "price unavailable", not as a real amount shown next to a purchase
       // button.

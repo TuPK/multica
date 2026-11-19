@@ -323,7 +323,7 @@ export interface WorkspaceSeatPurchaseSummary {
 /** Display-safe subset of a configured Stripe Price. IDs stay server-side. */
 export interface WorkspaceSubscriptionPrice {
   currency: string;
-  /** Minor currency units per licensed seat, e.g. 2000 for $20.00. */
+  /** Minor currency units per licensed seat, e.g. 2000 for 20.00 in a two-decimal currency. */
   unitAmount: number;
   interval: WorkspaceSubscriptionInterval;
   intervalCount: number;
@@ -359,7 +359,7 @@ export interface WorkspaceSeatPurchasePreview {
   resultingSeats: number;
   purchaseVersion: number;
   currency: string;
-  /** Estimated immediate proration in Stripe's minor currency unit. */
+  /** Estimated immediate proration in minor units of the order currency. */
   prorationAmount: number;
   /** Estimated next full recurring invoice in minor currency units. */
   nextInvoiceAmount: number;

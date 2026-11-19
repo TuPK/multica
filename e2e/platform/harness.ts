@@ -14,7 +14,7 @@
 
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { createCipheriv, createHmac, randomBytes, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { APIRequestContext } from "@playwright/test";
 import pg from "pg";
@@ -60,7 +60,7 @@ let serverProc: ChildProcess | null = null;
 let serverLog = "";
 
 function buildServer(): void {
-  if (existsSync(BIN)) return;
+  // Always rebuild: a binary left from an earlier build would test old code, and go build is cached.
   mkdirSync(BIN_DIR, { recursive: true });
   execFileSync("go", ["build", "-o", BIN, "./cmd/platform-server"], {
     cwd: resolve(REPO_ROOT, "platform-management"),
@@ -179,7 +179,17 @@ export async function freshTotp(seed: StaffSeed): Promise<string> {
 }
 
 /** Starts Redis and the platform server, and seeds one active staff user. */
-export async function startPlatform(role: StaffSeed["role"] = "admin"): Promise<StaffSeed> {
+/**
+ * Optional server settings for one test file. smtpPort points the platform's mailer at a fake SMTP
+ * (see fake-smtp.ts). einvoiceSepay configures the SePay e-invoice provider against the SePay sandbox
+ * host with placeholder credentials: the paths the tests reach validate the record locally and make no call.
+ */
+export interface PlatformOptions {
+  smtpPort?: number;
+  einvoiceSepay?: boolean;
+}
+
+export async function startPlatform(role: StaffSeed["role"] = "admin", options: PlatformOptions = {}): Promise<StaffSeed> {
   const dbUrl = testDatabaseUrl();
   const code = devVerificationCode();
   buildServer();
@@ -233,6 +243,21 @@ export async function startPlatform(role: StaffSeed["role"] = "admin"): Promise<
     PLATFORM_SECURE_COOKIES: "false",
     PLATFORM_DEV_VERIFICATION_CODE: code,
     PLATFORM_EINVOICE_PROVIDER: "",
+    ...(options.einvoiceSepay
+      ? {
+          PLATFORM_EINVOICE_PROVIDER: "sepay",
+          PLATFORM_EINVOICE_SEPAY_API_KEY: "e2e-client:e2e-secret",
+          // The server accepts only the SePay hosts; the sandbox host is used. The tests that use this
+          // configuration are refused before any call, and the credentials are placeholders.
+          PLATFORM_EINVOICE_SEPAY_BASE_URL: "https://einvoice-api-sandbox.sepay.vn",
+          PLATFORM_EINVOICE_SEPAY_PROVIDER_ACCOUNT_ID: "00000000-0000-4000-8000-0000000000e2",
+          // Orders paid before this date get no invoice, so the issue job never calls the provider.
+          PLATFORM_EINVOICE_START_AT: "2099-01-01T00:00:00Z",
+        }
+      : {}),
+    ...(options.smtpPort
+      ? { SMTP_HOST: "127.0.0.1", SMTP_PORT: String(options.smtpPort), SMTP_FROM_EMAIL: "platform-e2e@example.test" }
+      : {}),
     PAYMENT_PROVIDERS: "vnd=sepay",
     PAYMENT_WEBHOOK_SECRET_SEPAY: SEPAY_SECRET,
     BILLING_BANK_ACCOUNT_NAME: "E2E TEST ACCOUNT",

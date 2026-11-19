@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/multica-ai/multica/server/internal/events"
+	"github.com/multica-ai/multica/server/internal/inbox"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
@@ -52,7 +53,19 @@ func markIssueUnreadForRun(ctx context.Context, bus *events.Bus, queries *db.Que
 		slog.Error("issue unread: failed to mark subscribers", "issue_id", issueID, "error", err)
 		return
 	}
+	// The query marks every active subscriber; one who can no longer see the
+	// issue's project gets no mark and no event (spec 7.1 rule 4).
+	var audience *inbox.IssueAudience
 	for _, row := range rows {
+		if audience == nil {
+			audience = inbox.NewIssueAudience(ctx, queries, row.WorkspaceID, issueUUID)
+		}
+		if !audience.Sees(row.UserID) {
+			if _, err := queries.MarkIssueRead(ctx, db.MarkIssueReadParams{WorkspaceID: row.WorkspaceID, UserID: row.UserID, IssueID: issueUUID}); err != nil {
+				slog.Error("issue unread: failed to drop the mark of a subscriber who cannot see the issue", "issue_id", issueID, "error", err)
+			}
+			continue
+		}
 		workspaceID := util.UUIDToString(row.WorkspaceID)
 		bus.Publish(events.Event{
 			Type:        protocol.EventIssueUnreadChanged,

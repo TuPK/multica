@@ -444,12 +444,21 @@ JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
 WHERE p.workspace_id = $1::uuid
   AND p.kind = 'stage_gate'
   AND p.payload->>'initiative_id' = $2::text
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (i.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.created_at, p.id
 `
 
 type ListGateProposalsForInitiativeParams struct {
 	WorkspaceID  pgtype.UUID `json:"workspace_id"`
 	InitiativeID string      `json:"initiative_id"`
+	ScopeMode    string      `json:"scope_mode"`
+	ScopeUserID  pgtype.UUID `json:"scope_user_id"`
 }
 
 type ListGateProposalsForInitiativeRow struct {
@@ -460,9 +469,15 @@ type ListGateProposalsForInitiativeRow struct {
 }
 
 // Every stage_gate proposal of one initiative, oldest first, with the backing
-// issue's title and number.
+// issue's title and number. A gate whose backing issue sits in a project the
+// viewer cannot see is left out.
 func (q *Queries) ListGateProposalsForInitiative(ctx context.Context, arg ListGateProposalsForInitiativeParams) ([]ListGateProposalsForInitiativeRow, error) {
-	rows, err := q.db.Query(ctx, listGateProposalsForInitiative, arg.WorkspaceID, arg.InitiativeID)
+	rows, err := q.db.Query(ctx, listGateProposalsForInitiative,
+		arg.WorkspaceID,
+		arg.InitiativeID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

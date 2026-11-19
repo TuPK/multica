@@ -155,7 +155,14 @@ SELECT
     COALESCE(SUM(cost_usd_ticks), 0)::bigint AS cost_usd_ticks
 FROM task_usage_hourly
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
-  AND bucket_hour >= date_trunc('hour', sqlc.arg('since')::timestamptz);
+  AND bucket_hour >= date_trunc('hour', sqlc.arg('since')::timestamptz)
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (task_usage_hourly.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = task_usage_hourly.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = task_usage_hourly.project_id AND scope_p.access = 'workspace')));
 
 -- name: DigestFloorRuns :one
 -- A floor digest's runs: the runs of the floor's squads that finished since @since.

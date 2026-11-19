@@ -398,3 +398,54 @@ func TestLoaderFailsWhenThePlanIsMissing(t *testing.T) {
 		t.Fatal("no error when even the free plan is missing")
 	}
 }
+
+func TestHandlerRefusesAMalformedUserHeader(t *testing.T) {
+	src := newFakeSource(map[string]Inputs{wsA: freeInputs(t, 1)})
+	svc, _ := newService(t, src)
+	h := svc.Handler()
+	path := "/api/v1/internal/entitlement-policies/" + wsA
+
+	get := func(values ...string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		for _, v := range values {
+			req.Header.Add("X-User-ID", v)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+
+	for _, bad := range [][]string{
+		{"not-a-uuid"},
+		{"11111111111111111111111111111111"},
+		{wsA, wsB},
+	} {
+		rec := get(bad...)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("X-User-ID %q: status = %d, want 401", bad, rec.Code)
+		}
+		want := `{"code":"unauthorized","error":"X-User-ID must be one UUID"}`
+		if got := strings.TrimSpace(rec.Body.String()); got != want {
+			t.Fatalf("X-User-ID %q: body = %s", bad, got)
+		}
+		if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+			t.Fatalf("Content-Type = %q", ct)
+		}
+		if cc := rec.Header().Get("Cache-Control"); cc != "no-store" {
+			t.Fatalf("Cache-Control = %q", cc)
+		}
+	}
+	if n := src.loads[wsA]; n != 0 {
+		t.Fatalf("loads after refused requests = %d, want 0", n)
+	}
+
+	for name, values := range map[string][]string{
+		"no header": nil,
+		"lower":     {wsA},
+		"upper":     {strings.ToUpper(wsB)},
+	} {
+		if rec := get(values...); rec.Code != http.StatusOK {
+			t.Fatalf("%s: status = %d, body %s", name, rec.Code, rec.Body)
+		}
+	}
+}

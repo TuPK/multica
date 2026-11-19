@@ -1611,14 +1611,22 @@ func (q *Queries) ListIssueGCStatuses(ctx context.Context, arg ListIssueGCStatus
 }
 
 const listIssueRefsInWorkspace = `-- name: ListIssueRefsInWorkspace :many
-SELECT id, number, title, status, project_id FROM issue
-WHERE workspace_id = $1
-  AND id = ANY($2::uuid[])
+SELECT issue.id, issue.number, issue.title, issue.status, issue.project_id FROM issue
+WHERE issue.workspace_id = $1
+  AND issue.id = ANY($2::uuid[])
+  AND ($3::text = 'all'
+      OR (issue.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 `
 
 type ListIssueRefsInWorkspaceParams struct {
 	WorkspaceID pgtype.UUID   `json:"workspace_id"`
 	Ids         []pgtype.UUID `json:"ids"`
+	ScopeMode   string        `json:"scope_mode"`
+	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
 }
 
 type ListIssueRefsInWorkspaceRow struct {
@@ -1632,8 +1640,14 @@ type ListIssueRefsInWorkspaceRow struct {
 // GetIssueRefInWorkspace for a page: every original the page's duplicates
 // point at, in one read. project_id lets the caller drop an original the viewer
 // cannot see.
+// projectaccess:scope
 func (q *Queries) ListIssueRefsInWorkspace(ctx context.Context, arg ListIssueRefsInWorkspaceParams) ([]ListIssueRefsInWorkspaceRow, error) {
-	rows, err := q.db.Query(ctx, listIssueRefsInWorkspace, arg.WorkspaceID, arg.Ids)
+	rows, err := q.db.Query(ctx, listIssueRefsInWorkspace,
+		arg.WorkspaceID,
+		arg.Ids,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

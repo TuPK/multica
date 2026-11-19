@@ -516,9 +516,17 @@ func (h *Handler) loadDuplicateOriginals(ctx context.Context, wsID pgtype.UUID, 
 	if len(missing) == 0 {
 		return
 	}
+	// No scope means the caller builds a response no viewer reads from (a
+	// broadcast payload, a worker's note), which sees every project.
+	sqlScope := projectaccess.System()
+	if scope != nil {
+		sqlScope = *scope
+	}
 	rows, err := h.Queries.ListIssueRefsInWorkspace(ctx, db.ListIssueRefsInWorkspaceParams{
 		WorkspaceID: wsID,
 		Ids:         missing,
+		ScopeMode:   sqlScope.Mode(),
+		ScopeUserID: sqlScope.UserID(),
 	})
 	if err != nil {
 		slog.Warn("resolve duplicate originals failed", "error", err, "count", len(missing))
@@ -4511,7 +4519,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if touchedType || touchedID || handoff != nil {
-		if status, msg := h.validateAssigneePair(r.Context(), r, workspaceID, params.AssigneeType, params.AssigneeID); status != 0 {
+		if status, msg := h.validateAssigneePair(withWorkflowHandoff(r.Context(), handoff != nil), r, workspaceID, params.AssigneeType, params.AssigneeID); status != 0 {
 			writeError(w, status, msg)
 			return
 		}
@@ -4794,8 +4802,12 @@ func (h *Handler) validateAssigneePair(ctx context.Context, r *http.Request, wor
 // the squads it leads when it assigns an issue to an agent. The squad leader's
 // briefing lists the roster, but the handler is the trust boundary: without
 // this check a leader can assign to any agent in the workspace. An agent that
-// leads no squad, and an assignment to itself, pass unchanged.
+// leads no squad, an assignment to itself, and a handoff the workflow engine
+// makes pass unchanged.
 func (h *Handler) squadLeaderAssigneeGate(ctx context.Context, r *http.Request, wsUUID, assigneeID pgtype.UUID) (int, string) {
+	if isWorkflowHandoff(ctx) {
+		return 0, ""
+	}
 	actorType, actorID := h.resolveActor(r, requestUserID(r), util.UUIDToString(wsUUID))
 	if actorType != "agent" {
 		return 0, ""
@@ -5500,7 +5512,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			issueStatusGuard = params.Status.String
 		}
 		if batchTouchedType || batchTouchedID || handoff != nil {
-			if status, _ := h.validateAssigneePair(r.Context(), r, workspaceID, params.AssigneeType, params.AssigneeID); status != 0 {
+			if status, _ := h.validateAssigneePair(withWorkflowHandoff(r.Context(), handoff != nil), r, workspaceID, params.AssigneeType, params.AssigneeID); status != 0 {
 				continue
 			}
 			// A member who cannot see the issue's project cannot hold it; skipped like the other guards.

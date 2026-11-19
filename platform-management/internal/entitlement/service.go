@@ -121,12 +121,25 @@ func (s *Service) size() int {
 	return len(s.entries)
 }
 
-// Handler serves PolicyPattern. It takes no credential: the client sends none,
-// and the API listener is internal (see package trust).
+// Handler serves PolicyPattern. It requires no credential: the client sends
+// none, and the API listener is internal (see package trust). An X-User-ID that
+// is present must still be one UUID, as trust.RequireUser demands.
 func (s *Service) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(PolicyPattern, s.servePolicy)
-	return mux
+	return refuseMalformedUser(mux)
+}
+
+func refuseMalformedUser(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if values := r.Header.Values(trust.UserHeader); len(values) > 0 {
+			if _, ok := trust.CanonicalUUID(values[0]); !ok || len(values) != 1 {
+				writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "X-User-ID must be one UUID", "code": "unauthorized"})
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

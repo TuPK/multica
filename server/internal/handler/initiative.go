@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
@@ -236,8 +237,26 @@ func (rd *initiativeReads) stagesOf(ctx context.Context, ini db.Initiative) ([]s
 	return stages, nil
 }
 
-// view builds the response for one initiative.
-func (rd *initiativeReads) view(ctx context.Context, ini db.Initiative, now time.Time) (InitiativeResponse, error) {
+// initiativeVisible reports whether the viewer sees the initiative's backing
+// issue. A hidden initiative is missing for the viewer (spec 7.1 rule 5).
+func (h *Handler) initiativeVisible(ctx context.Context, scope projectaccess.Scope, ini db.Initiative) (bool, error) {
+	if scope.Mode() == projectaccess.ModeAll {
+		return true, nil
+	}
+	issue, err := h.Queries.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: ini.IssueID, WorkspaceID: ini.WorkspaceID})
+	if err != nil {
+		if isNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return scope.Allows(issue.ProjectID), nil
+}
+
+// view builds the response for one initiative as the scope's viewer sees it:
+// the build project is null and hidden gates are left out when the project
+// holding them is hidden.
+func (rd *initiativeReads) view(ctx context.Context, ini db.Initiative, now time.Time, scope projectaccess.Scope) (InitiativeResponse, error) {
 	stages, err := rd.stagesOf(ctx, ini)
 	if err != nil {
 		return InitiativeResponse{}, err
@@ -258,13 +277,15 @@ func (rd *initiativeReads) view(ctx context.Context, ini db.Initiative, now time
 		OwnerSquadID:   uuidToPtr(ini.OwnerSquadID),
 		Status:         ini.Status,
 		IssueID:        uuidToString(ini.IssueID),
-		BuildProjectID: uuidToPtr(ini.BuildProjectID),
 		StageEnteredAt: timestampToString(ini.StageEnteredAt),
 		DaysInStage:    days,
 		SLAState:       "ok",
 		ClosedAt:       timestampToPtr(ini.ClosedAt),
 		ClosedReason:   ini.ClosedReason,
 		CreatedAt:      timestampToString(ini.CreatedAt),
+	}
+	if ini.BuildProjectID.Valid && scope.Allows(ini.BuildProjectID) {
+		resp.BuildProjectID = uuidToPtr(ini.BuildProjectID)
 	}
 	for _, st := range stages {
 		if st.Key == ini.StageKey && st.SLADays > 0 && days > st.SLADays && ini.Status != service.InitiativeStatusClosed {
@@ -281,6 +302,7 @@ func (rd *initiativeReads) view(ctx context.Context, ini db.Initiative, now time
 	}
 	gates, err := rd.h.Queries.ListGateProposalsForInitiative(ctx, db.ListGateProposalsForInitiativeParams{
 		WorkspaceID: ini.WorkspaceID, InitiativeID: uuidToString(ini.ID),
+		ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		return InitiativeResponse{}, err
@@ -332,11 +354,23 @@ func (h *Handler) ListInitiatives(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list initiatives")
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	rd := h.newInitiativeReads(r.Context(), wsUUID)
 	now := time.Now()
 	out := make([]InitiativeResponse, 0, len(rows))
 	for _, ini := range rows {
-		view, err := rd.view(r.Context(), ini, now)
+		visible, err := h.initiativeVisible(r.Context(), scope, ini)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to read initiative")
+			return
+		}
+		if !visible {
+			continue
+		}
+		view, err := rd.view(r.Context(), ini, now, scope)
 		if err != nil {
 			slog.Warn("list initiatives: could not read one", append(logger.RequestAttrs(r), "error", err)...)
 			writeError(w, http.StatusInternalServerError, "failed to read initiative")
@@ -366,7 +400,20 @@ func (h *Handler) GetInitiative(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "initiative not found")
 		return
 	}
-	resp, status, msg := h.initiativeDetail(r.Context(), ini)
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+	visible, err := h.initiativeVisible(r.Context(), scope, ini)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to read initiative")
+		return
+	}
+	if !visible {
+		writeError(w, http.StatusNotFound, "initiative not found")
+		return
+	}
+	resp, status, msg := h.initiativeDetail(r.Context(), ini, scope)
 	if status != 0 {
 		writeError(w, status, msg)
 		return
@@ -375,9 +422,9 @@ func (h *Handler) GetInitiative(w http.ResponseWriter, r *http.Request) {
 }
 
 // initiativeDetail builds the detail response for an initiative.
-func (h *Handler) initiativeDetail(ctx context.Context, ini db.Initiative) (InitiativeDetailResponse, int, string) {
+func (h *Handler) initiativeDetail(ctx context.Context, ini db.Initiative, scope projectaccess.Scope) (InitiativeDetailResponse, int, string) {
 	rd := h.newInitiativeReads(ctx, ini.WorkspaceID)
-	view, err := rd.view(ctx, ini, time.Now())
+	view, err := rd.view(ctx, ini, time.Now(), scope)
 	if err != nil {
 		return InitiativeDetailResponse{}, http.StatusInternalServerError, "failed to read initiative"
 	}
@@ -391,6 +438,7 @@ func (h *Handler) initiativeDetail(ctx context.Context, ini db.Initiative) (Init
 	}
 	gates, err := h.Queries.ListGateProposalsForInitiative(ctx, db.ListGateProposalsForInitiativeParams{
 		WorkspaceID: ini.WorkspaceID, InitiativeID: uuidToString(ini.ID),
+		ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		return InitiativeDetailResponse{}, http.StatusInternalServerError, "failed to read gates"
@@ -847,8 +895,12 @@ func cleanInitiativeText(s string) string {
 
 // finishInitiativeWrite publishes the change and writes the initiative back.
 func (h *Handler) finishInitiativeWrite(w http.ResponseWriter, r *http.Request, wsUUID pgtype.UUID, c initiativeCaller, ini db.Initiative, status int) {
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	rd := h.newInitiativeReads(r.Context(), wsUUID)
-	view, err := rd.view(r.Context(), ini, time.Now())
+	view, err := rd.view(r.Context(), ini, time.Now(), scope)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to read initiative")
 		return
@@ -865,7 +917,11 @@ func (h *Handler) respondInitiative(w http.ResponseWriter, r *http.Request, wsUU
 		writeError(w, http.StatusInternalServerError, "failed to read initiative")
 		return
 	}
-	resp, status, msg := h.initiativeDetail(r.Context(), ini)
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+	resp, status, msg := h.initiativeDetail(r.Context(), ini, scope)
 	if status != 0 {
 		writeError(w, status, msg)
 		return
