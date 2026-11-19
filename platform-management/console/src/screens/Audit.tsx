@@ -1,13 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+import { proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@multica/ui/components/ui/button";
 import { Field, FieldLabel } from "@multica/ui/components/ui/field";
@@ -182,53 +175,70 @@ export function Audit() {
       {!isLoading && !isError && events.length > 0 && (
         <div className="space-y-4">
           <Card padding={0} className="overflow-x-auto">
-            <Table density="compact" dividers="rows" hasHover>
-              <TableHeader>
-                <TableRow isHeaderRow>
-                  <TableHeaderCell>Time</TableHeaderCell>
-                  <TableHeaderCell>Action</TableHeaderCell>
-                  <TableHeaderCell>Actor</TableHeaderCell>
-                  <TableHeaderCell>Target</TableHeaderCell>
-                  <TableHeaderCell>Details</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {events.map((event: AuditEvent) => (
-                  <TableRow key={event.id}>
-                    <TableCell className="whitespace-nowrap">
-                      <Text type="supporting" hasTabularNumbers>
-                        {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
-                      </Text>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <Text type="code" weight="medium">
-                        {event.action}
-                      </Text>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <Text type="body">{event.actor_label}</Text>
-                        <Text type="supporting">{event.actor_type}</Text>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <Text type="body">{event.target_label || event.target_id}</Text>
-                        <Text type="supporting">{event.target_type}</Text>
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <span
-                        className="block truncate font-mono text-caption text-muted-foreground"
-                        title={event.detail ? JSON.stringify(event.detail) : undefined}
-                      >
-                        {event.detail ? JSON.stringify(event.detail) : "-"}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <Table
+              data={events}
+              idKey="id"
+              density="compact"
+              dividers="rows"
+              hasHover
+              columns={[
+                {
+                  key: "created_at",
+                  header: "Time",
+                  width: proportional(1.2, { minWidth: 170 }),
+                  renderCell: (event) => (
+                    <Text type="supporting" hasTabularNumbers>
+                      {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
+                    </Text>
+                  ),
+                },
+                {
+                  key: "action",
+                  header: "Action",
+                  width: proportional(1.5, { minWidth: 160 }),
+                  renderCell: (event) => (
+                    <Text type="code" weight="medium">
+                      {event.action}
+                    </Text>
+                  ),
+                },
+                {
+                  key: "actor_label",
+                  header: "Actor",
+                  width: proportional(1.5, { minWidth: 180 }),
+                  renderCell: (event) => (
+                    <div className="flex flex-col">
+                      <Text type="body">{event.actor_label}</Text>
+                      <Text type="supporting">{event.actor_type}</Text>
+                    </div>
+                  ),
+                },
+                {
+                  key: "target_label",
+                  header: "Target",
+                  width: proportional(1.5, { minWidth: 180 }),
+                  renderCell: (event) => (
+                    <div className="flex flex-col">
+                      <Text type="body">{event.target_label || event.target_id}</Text>
+                      <Text type="supporting">{event.target_type}</Text>
+                    </div>
+                  ),
+                },
+                {
+                  key: "detail",
+                  header: "Details",
+                  width: proportional(3, { minWidth: 220 }),
+                  renderCell: (event) => (
+                    <span
+                      className="block truncate font-mono text-caption text-muted-foreground"
+                      title={event.detail ? JSON.stringify(event.detail) : undefined}
+                    >
+                      {event.detail ? JSON.stringify(event.detail) : "-"}
+                    </span>
+                  ),
+                },
+              ]}
+            />
           </Card>
 
           {hasNextPage && (

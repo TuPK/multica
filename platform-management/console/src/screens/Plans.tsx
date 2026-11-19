@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Card } from "@astryxdesign/core/Card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+import { proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
@@ -262,123 +255,153 @@ export function Plans({ userRole }: PlansProps) {
 
       {!isLoading && !isError && plans && plans.length > 0 && (
         <Card padding={0} className="overflow-x-auto">
-          <Table density="balanced" dividers="rows" hasHover>
-            <TableHeader>
-              <TableRow isHeaderRow>
-                <TableHeaderCell>Plan</TableHeaderCell>
-                <TableHeaderCell>Audience</TableHeaderCell>
-                <TableHeaderCell>Billing Model</TableHeaderCell>
-                <TableHeaderCell>Pricing (Monthly / Yearly)</TableHeaderCell>
-                <TableHeaderCell>Seats Configuration</TableHeaderCell>
-                <TableHeaderCell>Trial</TableHeaderCell>
-                <TableHeaderCell>Visibility</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {plans.map((plan: Plan) => {
-                const isArchived = Boolean(plan.archived_at);
+        <Table
+          data={plans}
+          idKey="key"
+          density="balanced"
+          dividers="rows"
+          hasHover
+          columns={[
+            {
+              key: "name",
+              header: "Plan",
+              width: proportional(2, { minWidth: 150 }),
+              renderCell: (plan) => (
+                <>
+                  <Text type="body" weight="medium" as="div" className="block">
+                    {plan.name}
+                  </Text>
+                  <Text type="code" color="secondary" as="div" className="block">
+                    {plan.key}
+                  </Text>
+                </>
+              ),
+            },
+            {
+              key: "audience",
+              header: "Audience",
+              width: proportional(1, { minWidth: 100 }),
+              renderCell: (plan) => {
                 const audience = plan.audience ?? "any";
+                return <Badge variant="neutral" label={AUDIENCE_LABELS[audience] ?? audience} />;
+              },
+            },
+            {
+              key: "billing_model",
+              header: "Billing Model",
+              width: proportional(1, { minWidth: 110 }),
+              renderCell: (plan) => {
                 const billingModel = plan.billing_model ?? "seat";
-
                 return (
-                  <TableRow key={plan.key}>
-                    <TableCell>
-                      <Text type="body" weight="medium" as="div">
-                        {plan.name}
-                      </Text>
-                      <Text type="code" color="secondary" as="div">
-                        {plan.key}
-                      </Text>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="neutral"
-                        label={AUDIENCE_LABELS[audience] ?? audience}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="blue"
-                        label={BILLING_MODEL_LABELS[billingModel] ?? billingModel}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Text type="body" weight="medium" hasTabularNumbers as="div">
-                        {plan.seat_price_month !== null
-                          ? `${formatMinorAmount(plan.seat_price_month, plan.currency)}/mo`
-                          : "Free / Fixed"}
-                      </Text>
-                      <Text type="supporting" hasTabularNumbers as="div">
-                        {plan.seat_price_year !== null
-                          ? `${formatMinorAmount(plan.seat_price_year, plan.currency)}/yr`
-                          : "-"}
-                      </Text>
-                    </TableCell>
-                    <TableCell>
-                      <Text type="body" hasTabularNumbers>
-                        {plan.seats_fixed !== null
-                          ? `${plan.seats_fixed} fixed seats`
-                          : `${plan.min_seats || 1} min seats`}
-                      </Text>
-                    </TableCell>
-                    <TableCell>
-                      <Text type="body" hasTabularNumbers>
-                        {plan.trial_days > 0 ? `${plan.trial_days} days` : "No trial"}
-                      </Text>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={plan.is_public ? "teal" : "neutral"}
-                        label={plan.is_public ? "Public" : "Private"}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={isArchived ? "archived" : "active"} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedSchedulePlan(plan);
-                            setSchedulePlanKey(plan.key);
-                          }}
-                          aria-label={`Schedule price for ${plan.name}`}
-                          className="gap-1.5"
-                        >
-                          <CalendarClock className="size-3.5" aria-hidden="true" />
-                          <span>Price schedule</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenEdit(plan)}
-                          aria-label={`Edit plan ${plan.name}`}
-                          className="gap-1.5"
-                        >
-                          <Pencil className="size-3.5" aria-hidden="true" />
-                          <span>Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDelete(plan)}
-                          aria-label={`Delete plan ${plan.name}`}
-                          className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                          <span>Delete</span>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <Badge variant="blue" label={BILLING_MODEL_LABELS[billingModel] ?? billingModel} />
                 );
-              })}
-            </TableBody>
-          </Table>
+              },
+            },
+            {
+              key: "pricing",
+              header: "Pricing (Monthly / Yearly)",
+              width: proportional(2, { minWidth: 170 }),
+              renderCell: (plan) => (
+                <>
+                  <Text type="body" weight="medium" hasTabularNumbers as="div" className="block">
+                    {plan.seat_price_month !== null
+                      ? `${formatMinorAmount(plan.seat_price_month, plan.currency)}/mo`
+                      : "Free / Fixed"}
+                  </Text>
+                  <Text type="supporting" hasTabularNumbers as="div" className="block">
+                    {plan.seat_price_year !== null
+                      ? `${formatMinorAmount(plan.seat_price_year, plan.currency)}/yr`
+                      : "-"}
+                  </Text>
+                </>
+              ),
+            },
+            {
+              key: "seats",
+              header: "Seats Configuration",
+              width: proportional(1.5, { minWidth: 130 }),
+              renderCell: (plan) => (
+                <Text type="body" hasTabularNumbers>
+                  {plan.seats_fixed !== null
+                    ? `${plan.seats_fixed} fixed seats`
+                    : `${plan.min_seats || 1} min seats`}
+                </Text>
+              ),
+            },
+            {
+              key: "trial_days",
+              header: "Trial",
+              width: proportional(1, { minWidth: 90 }),
+              renderCell: (plan) => (
+                <Text type="body" hasTabularNumbers>
+                  {plan.trial_days > 0 ? `${plan.trial_days} days` : "No trial"}
+                </Text>
+              ),
+            },
+            {
+              key: "is_public",
+              header: "Visibility",
+              width: proportional(1, { minWidth: 100 }),
+              renderCell: (plan) => (
+                <Badge
+                  variant={plan.is_public ? "teal" : "neutral"}
+                  label={plan.is_public ? "Public" : "Private"}
+                />
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              width: proportional(1, { minWidth: 100 }),
+              renderCell: (plan) => (
+                <StatusBadge status={plan.archived_at ? "archived" : "active"} />
+              ),
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              width: proportional(3, { minWidth: 330 }),
+              align: "end",
+              renderCell: (plan) => (
+                <div className="flex items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedSchedulePlan(plan);
+                      setSchedulePlanKey(plan.key);
+                    }}
+                    aria-label={`Schedule price for ${plan.name}`}
+                    className="gap-1.5"
+                  >
+                    <CalendarClock className="size-3.5" aria-hidden="true" />
+                    <span>Price schedule</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenEdit(plan)}
+                    aria-label={`Edit plan ${plan.name}`}
+                    className="gap-1.5"
+                  >
+                    <Pencil className="size-3.5" aria-hidden="true" />
+                    <span>Edit</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenDelete(plan)}
+                    aria-label={`Delete plan ${plan.name}`}
+                    className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" aria-hidden="true" />
+                    <span>Delete</span>
+                  </Button>
+                </div>
+              ),
+            },
+          ]}
+        />
         </Card>
       )}
 

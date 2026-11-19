@@ -67,6 +67,12 @@ function formatShare(value: number, total: number): string {
   return pct >= 10 || Number.isInteger(pct) ? `${pct.toFixed(0)}%` : `${pct.toFixed(1)}%`;
 }
 
+// Counts are whole numbers; hide the fractional ticks the chart picks for small maxima.
+function integerTick(value: unknown): string {
+  const n = Number(value);
+  return Number.isInteger(n) ? String(n) : "";
+}
+
 export function Overview() {
   const { data, isLoading, isFetching, isError, error, refetch } = useOverview();
 
@@ -203,7 +209,8 @@ export function Overview() {
       />
 
       {/* Band 1: Headline KPI tiles */}
-      <Section variant="transparent" padding={0} aria-label="Workspace metrics" className="space-y-4">
+      <Section variant="transparent" padding={0} aria-label="Workspace metrics">
+        <div className="flex flex-col gap-4">
         <div
           className={
             data.pending_orders !== undefined
@@ -375,6 +382,7 @@ export function Overview() {
             </div>
           </Card>
         </div>
+        </div>
       </Section>
 
       <Divider />
@@ -410,7 +418,7 @@ export function Overview() {
               axes={
                 <>
                   <ChartAxis position="bottom" />
-                  <ChartAxis position="left" tickCount={4} />
+                  <ChartAxis position="left" tickCount={4} tickFormat={integerTick} />
                 </>
               }
               tooltip
@@ -452,7 +460,7 @@ export function Overview() {
                 axes={
                   <>
                     <ChartAxis position="bottom" />
-                    <ChartAxis position="left" tickCount={4} />
+                    <ChartAxis position="left" tickCount={4} tickFormat={integerTick} />
                   </>
                 }
                 tooltip
