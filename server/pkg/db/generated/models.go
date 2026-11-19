@@ -2164,6 +2164,14 @@ type PlatformNote struct {
 	ID          pgtype.UUID        `json:"id"`
 }
 
+type PlatformRuntime struct {
+	RuntimeID pgtype.UUID        `json:"runtime_id"`
+	Status    string             `json:"status"`
+	Reason    string             `json:"reason"`
+	ChangedBy pgtype.UUID        `json:"changed_by"`
+	ChangedAt pgtype.Timestamptz `json:"changed_at"`
+}
+
 type PlatformSeatOperation struct {
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
 	OperationToken pgtype.UUID        `json:"operation_token"`
@@ -2449,6 +2457,24 @@ type QuickAction struct {
 	CreatedByID   pgtype.UUID        `json:"created_by_id"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type QuotaRequest struct {
+	ID               pgtype.UUID        `json:"id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	TenantID         pgtype.UUID        `json:"tenant_id"`
+	Gate             string             `json:"gate"`
+	CurrentValue     pgtype.Int8        `json:"current_value"`
+	RequestedValue   int64              `json:"requested_value"`
+	ApprovedValue    pgtype.Int8        `json:"approved_value"`
+	State            string             `json:"state"`
+	Reason           string             `json:"reason"`
+	DecisionReason   string             `json:"decision_reason"`
+	RequestedBy      pgtype.UUID        `json:"requested_by"`
+	RequestedByLabel string             `json:"requested_by_label"`
+	DecidedBy        pgtype.UUID        `json:"decided_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	DecidedAt        pgtype.Timestamptz `json:"decided_at"`
 }
 
 type ResearchSetting struct {
@@ -2908,6 +2934,18 @@ type Tenant struct {
 	StatusChangedBy pgtype.UUID        `json:"status_changed_by"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type TenantPolicy struct {
+	TenantID             pgtype.UUID        `json:"tenant_id"`
+	AllowedInviteDomains []string           `json:"allowed_invite_domains"`
+	ShareLinksEnabled    bool               `json:"share_links_enabled"`
+	RequireSso           bool               `json:"require_sso"`
+	RequireMfa           bool               `json:"require_mfa"`
+	SessionMaxAgeHours   int32              `json:"session_max_age_hours"`
+	Version              int64              `json:"version"`
+	UpdatedBy            pgtype.UUID        `json:"updated_by"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
 type TenantWorkspace struct {
