@@ -86,6 +86,53 @@ describe("Audit screen", () => {
     });
   });
 
+  it("uses shared calendar date pickers instead of native date inputs for From/To filters", async () => {
+    const user = userEvent.setup();
+    mockUseAuditEvents.mockReturnValue({
+      data: { events: [], next_cursor: null },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    const { container } = render(<Audit />);
+
+    expect(container.querySelector('input[type="date"]')).toBeNull();
+
+    const fromTrigger = screen.getByLabelText(/From Date/i);
+    await user.click(fromTrigger);
+
+    await screen.findByRole("button", { name: /Any date/i });
+    const day15 = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-day]")).find(
+      (btn) => btn.textContent?.trim() === "15",
+    );
+    expect(day15).toBeDefined();
+    await user.click(day15!);
+
+    const lastCall = mockUseAuditEvents.mock.calls.at(-1)?.[0] as { from?: string; to?: string };
+    expect(lastCall?.from).toMatch(/^\d{4}-\d{2}-15T00:00:00\.000Z$/);
+
+    const toTrigger = screen.getByLabelText(/To Date/i);
+    await user.click(toTrigger);
+    await screen.findByRole("button", { name: /Any date/i });
+    const day20 = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-day]")).find(
+      (btn) => btn.textContent?.trim() === "20",
+    );
+    expect(day20).toBeDefined();
+    await user.click(day20!);
+
+    const withToCall = mockUseAuditEvents.mock.calls.at(-1)?.[0] as { from?: string; to?: string };
+    expect(withToCall?.to).toMatch(/^\d{4}-\d{2}-20T00:00:00\.000Z$/);
+
+    await user.click(fromTrigger);
+    const anyDateBtn = await screen.findByRole("button", { name: /Any date/i });
+    await user.click(anyDateBtn);
+
+    expect(mockUseAuditEvents).toHaveBeenLastCalledWith(
+      expect.objectContaining({ from: undefined }),
+    );
+  });
+
   it("shows 'Load more' button when hasNextPage is true and clicking fetches next page", () => {
     const mockFetchNextPage = vi.fn();
     mockUseAuditEvents.mockReturnValue({

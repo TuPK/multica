@@ -120,4 +120,28 @@ describe("Users screen", () => {
     expect(input).toHaveValue("");
     expect(mockUseUsers).toHaveBeenLastCalledWith({ q: undefined });
   });
+
+  it("scrolls horizontally inside the table card without hiding columns", () => {
+    mockUseUsers.mockReturnValue({
+      data: { users: mockUsersList, next_cursor: null },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    const { container } = render(<Users onSelectUser={vi.fn()} />);
+
+    for (const col of ["Email", "Name", "Status", "Workspaces", "Created", "Action"]) {
+      expect(screen.getByRole("columnheader", { name: col })).toBeInTheDocument();
+    }
+
+    const tableContainer = container.querySelector('[data-slot="table-container"]');
+    expect(tableContainer).not.toBeNull();
+    expect(tableContainer).toHaveClass("overflow-x-auto");
+    expect(tableContainer?.parentElement).toHaveClass("overflow-x-auto");
+
+    const emailEl = screen.getByText("alice@example.com");
+    expect(emailEl).toHaveClass("truncate");
+    expect(emailEl).toHaveAttribute("title", "alice@example.com");
+  });
 });

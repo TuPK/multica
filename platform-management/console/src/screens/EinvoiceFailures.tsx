@@ -138,13 +138,20 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                 return (
                   <TableRow key={`${item.order_id}-${item.revision}`}>
                     <TableCell>
-                      <div className="font-mono text-caption">{item.order_id}</div>
+                      <div className="max-w-44 truncate font-mono text-caption" title={item.order_id}>
+                        {item.order_id}
+                      </div>
                       <div className="text-caption text-muted-foreground">
                         rev {item.revision}
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-caption text-muted-foreground">
-                      {item.workspace_id || "-"}
+                    <TableCell>
+                      <div
+                        className="max-w-44 truncate font-mono text-caption text-muted-foreground"
+                        title={item.workspace_id || undefined}
+                      >
+                        {item.workspace_id || "-"}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <StatusBadge
@@ -193,7 +200,7 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-primary underline underline-offset-3 hover:opacity-80"
                         >
-                          <ExternalLink className="size-3.5" />
+                          <ExternalLink className="size-3.5" aria-hidden="true" />
                           <span>View</span>
                         </a>
                       ) : null}
@@ -204,7 +211,7 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                         ? "-"
                         : null}
                     </TableCell>
-                    <TableCell className="text-caption text-muted-foreground">
+                    <TableCell className="text-caption text-muted-foreground tabular-nums">
                       {formatDateTime(item.updated_at)}
                     </TableCell>
                   </TableRow>

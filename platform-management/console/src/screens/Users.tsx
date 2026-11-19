@@ -105,7 +105,7 @@ export function Users({ onSelectUser }: UsersProps) {
 
       {!isLoading && !isError && users.length > 0 && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-surface-border bg-surface">
+          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -121,8 +121,13 @@ export function Users({ onSelectUser }: UsersProps) {
                 {users.map((user: User) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      <div className="font-medium text-foreground">{user.email}</div>
-                      <div className="font-mono text-caption text-muted-foreground">
+                      <div className="max-w-60 truncate font-medium text-foreground" title={user.email}>
+                        {user.email}
+                      </div>
+                      <div
+                        className="max-w-44 truncate font-mono text-caption text-muted-foreground"
+                        title={user.id}
+                      >
                         {user.id}
                       </div>
                     </TableCell>

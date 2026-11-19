@@ -242,8 +242,15 @@ export function Orders({ userRole }: OrdersProps) {
                 return (
                   <TableRow key={order.id}>
                     <TableCell>
-                      <div className="font-medium text-foreground">{order.workspace_name}</div>
-                      <div className="font-mono text-caption text-muted-foreground">{order.workspace_id}</div>
+                      <div className="max-w-52 truncate font-medium text-foreground" title={order.workspace_name}>
+                        {order.workspace_name}
+                      </div>
+                      <div
+                        className="max-w-44 truncate font-mono text-caption text-muted-foreground"
+                        title={order.workspace_id}
+                      >
+                        {order.workspace_id}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">

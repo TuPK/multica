@@ -314,11 +314,21 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                         <TableBody>
                           {detail.candidates.map((candidate: NoticeCandidate) => (
                             <TableRow key={candidate.order_id}>
-                              <TableCell className="font-mono text-caption">
-                                {candidate.order_id}
+                              <TableCell>
+                                <div
+                                  className="max-w-40 truncate font-mono text-caption"
+                                  title={candidate.order_id}
+                                >
+                                  {candidate.order_id}
+                                </div>
                               </TableCell>
-                              <TableCell className="font-mono text-caption">
-                                {candidate.workspace_id}
+                              <TableCell>
+                                <div
+                                  className="max-w-40 truncate font-mono text-caption"
+                                  title={candidate.workspace_id}
+                                >
+                                  {candidate.workspace_id}
+                                </div>
                               </TableCell>
                               <TableCell className="font-mono text-body font-medium">
                                 {candidate.transfer_code || "-"}

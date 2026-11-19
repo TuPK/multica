@@ -19,6 +19,7 @@ import {
 } from "@multica/ui/components/ui/table";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { PageHeader } from "../components/PageHeader";
+import { DatePickerField } from "../components/DatePickerField";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
@@ -127,11 +128,11 @@ export function Audit() {
           <FieldLabel htmlFor="audit-from-input" className="text-label">
             From Date
           </FieldLabel>
-          <Input
+          <DatePickerField
             id="audit-from-input"
-            type="date"
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={setFrom}
+            placeholder="Select start date"
           />
         </Field>
 
@@ -139,11 +140,11 @@ export function Audit() {
           <FieldLabel htmlFor="audit-to-input" className="text-label">
             To Date
           </FieldLabel>
-          <Input
+          <DatePickerField
             id="audit-to-input"
-            type="date"
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={setTo}
+            placeholder="Select end date"
           />
         </Field>
       </div>
@@ -174,7 +175,7 @@ export function Audit() {
 
       {!isLoading && !isError && events.length > 0 && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-surface-border bg-surface">
+          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -210,7 +211,10 @@ export function Audit() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-xs truncate font-mono text-caption text-muted-foreground">
+                    <TableCell
+                      className="max-w-xs truncate font-mono text-caption text-muted-foreground"
+                      title={event.detail ? JSON.stringify(event.detail) : undefined}
+                    >
                       {event.detail ? JSON.stringify(event.detail) : "-"}
                     </TableCell>
                   </TableRow>

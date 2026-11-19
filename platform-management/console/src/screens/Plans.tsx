@@ -135,7 +135,7 @@ export function Plans({ userRole }: PlansProps) {
               value={customPlanKey}
               onChange={(e) => setCustomPlanKey(e.target.value)}
               placeholder="Other plan key..."
-              className="h-8 w-44"
+              className="h-7 w-44"
             />
             <Button type="submit" size="sm" variant="outline" disabled={!customPlanKey.trim()}>
               Load
@@ -320,7 +320,10 @@ export function Plans({ userRole }: PlansProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={plan.is_public ? "default" : "outline"}>
+                      <Badge
+                        variant={plan.is_public ? "secondary" : "outline"}
+                        className={plan.is_public ? undefined : "text-muted-foreground"}
+                      >
                         {plan.is_public ? "Public" : "Private"}
                       </Badge>
                     </TableCell>
