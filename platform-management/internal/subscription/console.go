@@ -387,18 +387,19 @@ func (c *Console) listPlans(w http.ResponseWriter, r *http.Request) {
 }
 
 type putPlanBody struct {
-	Name           string          `json:"name"`
-	Limits         plan.Limits     `json:"limits"`
-	Features       map[string]bool `json:"features"`
-	Currency       string          `json:"currency"`
-	SeatPriceMonth *int64          `json:"seat_price_month"`
-	SeatPriceYear  *int64          `json:"seat_price_year"`
-	SeatsFixed     *int            `json:"seats_fixed"`
-	MinSeats       *int            `json:"min_seats"`
-	TrialDays      int             `json:"trial_days"`
-	IsPublic       bool            `json:"is_public"`
-	Sort           int             `json:"sort"`
-	Archived       bool            `json:"archived"`
+	ExpectedVersion *int64          `json:"expected_version"`
+	Name            string          `json:"name"`
+	Limits          plan.Limits     `json:"limits"`
+	Features        map[string]bool `json:"features"`
+	Currency        string          `json:"currency"`
+	SeatPriceMonth  *int64          `json:"seat_price_month"`
+	SeatPriceYear   *int64          `json:"seat_price_year"`
+	SeatsFixed      *int            `json:"seats_fixed"`
+	MinSeats        *int            `json:"min_seats"`
+	TrialDays       int             `json:"trial_days"`
+	IsPublic        bool            `json:"is_public"`
+	Sort            int             `json:"sort"`
+	Archived        bool            `json:"archived"`
 }
 
 // planDoc is a plan as the JSON object clients see, without its key, so two
@@ -479,6 +480,11 @@ func (c *Console) putPlan(w http.ResponseWriter, r *http.Request) {
 		old, exists, err := tx.Get(r.Context(), key)
 		if err != nil {
 			return err
+		}
+		// Get locked the row, so this check and the write below are one atomic step.
+		if exists && body.ExpectedVersion != nil && *body.ExpectedVersion != old.Version {
+			return &Error{Status: http.StatusConflict, Code: "plan_version_conflict",
+				Message: "the plan changed since it was read; reload it and retry"}
 		}
 		if exists && body.Currency != "" && body.Currency != old.Currency {
 			inUse, err := tx.InUse(r.Context(), key)
