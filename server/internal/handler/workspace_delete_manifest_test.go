@@ -243,6 +243,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"platform_usage_daily":      workspaceDelete,
 	"platform_workspace":        workspaceDelete,
 	"tenant":                    workspaceDelete, // deleted with the last workspace of the tenant (tenant.Detach)
+	"tenant_policy":             workspaceDelete, // the floor of the tenant, deleted with the tenant (tenant.Detach)
 	"tenant_workspace":          workspaceDelete, // the link of the deleted workspace
 	"usage_charge":              workspaceDelete, // per-workspace usage charges, rated from platform_usage_daily (spec 7b.3)
 	"user_consent":              workspaceDeleteKeep,

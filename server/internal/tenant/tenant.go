@@ -25,6 +25,7 @@ type Queries interface {
 	DeleteTenantWorkspaceLink(ctx context.Context, workspaceID pgtype.UUID) error
 	CountTenantWorkspaceLinks(ctx context.Context, tenantID pgtype.UUID) (int64, error)
 	DeleteTenant(ctx context.Context, id pgtype.UUID) error
+	DeleteTenantPolicy(ctx context.Context, tenantID pgtype.UUID) error
 }
 
 // Lock takes the transaction-scoped advisory lock of the tenant.
@@ -56,6 +57,9 @@ func Detach(ctx context.Context, q Queries, workspaceID pgtype.UUID) error {
 	}
 	if left > 0 {
 		return nil
+	}
+	if err := q.DeleteTenantPolicy(ctx, tenantID); err != nil {
+		return err
 	}
 	return q.DeleteTenant(ctx, tenantID)
 }

@@ -140,18 +140,57 @@ func (s *PolicyStore) Policy(ctx context.Context, workspaceID string) (workspace
 
 // EffectivePolicy is PolicyStore.Policy for a caller that holds the queries.
 // The row is read first, so a workspace with no row costs no plan lookup.
+//
+// The tenant floor applies whatever the plan, so the result is the merge of the
+// floor and the workspace's own policy (spec R6 D101).
 func EffectivePolicy(ctx context.Context, q *db.Queries, provider entitlement.Provider, workspaceID pgtype.UUID) (workspacepolicy.Policy, error) {
+	own := workspacepolicy.Default()
 	row, err := q.GetWorkspacePolicy(ctx, workspaceID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return workspacepolicy.Default(), nil
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+	case err != nil:
+		return workspacepolicy.Policy{}, err
+	case PolicyFeatureAvailable(ctx, provider, workspaceID):
+		own = PolicyFromRow(row)
 	}
+	floor, hasFloor, err := TenantFloor(ctx, q, workspaceID)
 	if err != nil {
 		return workspacepolicy.Policy{}, err
 	}
-	if !PolicyFeatureAvailable(ctx, provider, workspaceID) {
-		return workspacepolicy.Default(), nil
+	if !hasFloor {
+		return own, nil
 	}
-	return PolicyFromRow(row), nil
+	return workspacepolicy.Merge(floor, own), nil
+}
+
+// TenantFloor returns the policy floor of the tenant the workspace belongs to.
+// hasFloor is false when the workspace has no tenant or its tenant sets no floor.
+func TenantFloor(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID) (floor workspacepolicy.Policy, hasFloor bool, err error) {
+	tenantID, err := q.GetTenantIDByWorkspace(ctx, workspaceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return workspacepolicy.Policy{}, false, nil
+	}
+	if err != nil {
+		return workspacepolicy.Policy{}, false, err
+	}
+	row, err := q.GetTenantPolicy(ctx, tenantID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return workspacepolicy.Policy{}, false, nil
+	}
+	if err != nil {
+		return workspacepolicy.Policy{}, false, err
+	}
+	domains := row.AllowedInviteDomains
+	if domains == nil {
+		domains = []string{}
+	}
+	return workspacepolicy.Policy{
+		AllowedInviteDomains: domains,
+		ShareLinksEnabled:    row.ShareLinksEnabled,
+		RequireSSO:           row.RequireSso,
+		RequireMFA:           row.RequireMfa,
+		SessionMaxAgeHours:   row.SessionMaxAgeHours,
+	}, true, nil
 }
 
 // SSOAccess is what require_sso needs to know about one member of a workspace.

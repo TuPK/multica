@@ -57,6 +57,11 @@ func (f *fakeQueries) DeleteTenant(context.Context, pgtype.UUID) error {
 	return nil
 }
 
+func (f *fakeQueries) DeleteTenantPolicy(context.Context, pgtype.UUID) error {
+	f.calls = append(f.calls, "delete tenant policy")
+	return nil
+}
+
 func TestGateIsMaxWorkspaces(t *testing.T) {
 	if Gate != "max_workspaces" {
 		t.Fatalf("Gate = %q", Gate)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -32,7 +33,26 @@ type WorkspacePolicyResponse struct {
 	SessionMaxAgeHours   int32    `json:"session_max_age_hours"`
 	UpdatedBy            *string  `json:"updated_by"`
 	UpdatedAt            *string  `json:"updated_at"`
+	// Floor is the policy the tenant sets for every workspace in it; the
+	// workspace may only tighten it. Null when the workspace has no tenant floor.
+	Floor *PolicyFloorResponse `json:"floor"`
 }
+
+// PolicyFloorResponse is the tenant floor a workspace policy may not loosen.
+type PolicyFloorResponse struct {
+	AllowedInviteDomains []string `json:"allowed_invite_domains"`
+	ShareLinksEnabled    bool     `json:"share_links_enabled"`
+	RequireSSO           bool     `json:"require_sso"`
+	RequireMFA           bool     `json:"require_mfa"`
+	SessionMaxAgeHours   int32    `json:"session_max_age_hours"`
+}
+
+// codePolicyBelowTenantFloor refuses a policy that is looser than the tenant floor
+// in the fields the response names (spec R6 section 3c.4, D101).
+const codePolicyBelowTenantFloor = "policy_below_tenant_floor"
+
+// errBelowTenantFloor stops the write transaction; the handler answers 400.
+var errBelowTenantFloor = errors.New("policy below tenant floor")
 
 // UpdateWorkspacePolicyRequest carries the fields to change. A field that is
 // absent keeps its value.
@@ -117,7 +137,7 @@ func (h *Handler) GetWorkspacePolicy(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := h.Queries.GetWorkspacePolicy(r.Context(), workspaceUUID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		writeJSON(w, http.StatusOK, policyToResponse(workspacepolicy.Default(), nil))
+		h.writePolicyRead(w, r, workspaceUUID, policyToResponse(workspacepolicy.Default(), nil))
 		return
 	}
 	if err != nil {
@@ -127,10 +147,51 @@ func (h *Handler) GetWorkspacePolicy(w http.ResponseWriter, r *http.Request) {
 	// Without the plan feature the stored policy is not in force, and the
 	// read shows what is.
 	if !workspaceguard.PolicyFeatureAvailable(r.Context(), h.Entitlements, workspaceUUID) {
-		writeJSON(w, http.StatusOK, policyToResponse(workspacepolicy.Default(), nil))
+		h.writePolicyRead(w, r, workspaceUUID, policyToResponse(workspacepolicy.Default(), nil))
 		return
 	}
-	writeJSON(w, http.StatusOK, policyToResponse(workspaceguard.PolicyFromRow(row), &row))
+	h.writePolicyRead(w, r, workspaceUUID, policyToResponse(workspaceguard.PolicyFromRow(row), &row))
+}
+
+// writePolicyRead writes a policy read together with the tenant floor of the workspace.
+func (h *Handler) writePolicyRead(w http.ResponseWriter, r *http.Request, workspaceID pgtype.UUID, resp WorkspacePolicyResponse) {
+	floor, hasFloor, err := workspaceguard.TenantFloor(r.Context(), h.Queries, workspaceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load policy")
+		return
+	}
+	if hasFloor {
+		resp.Floor = &PolicyFloorResponse{
+			AllowedInviteDomains: floor.AllowedInviteDomains,
+			ShareLinksEnabled:    floor.ShareLinksEnabled,
+			RequireSSO:           floor.RequireSSO,
+			RequireMFA:           floor.RequireMFA,
+			SessionMaxAgeHours:   floor.SessionMaxAgeHours,
+		}
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// belowFloorFields names the fields where next is looser than the floor: the
+// merge of floor and next differs from next in exactly those fields.
+func belowFloorFields(next, merged workspacepolicy.Policy) []string {
+	var out []string
+	if !slices.Equal(next.AllowedInviteDomains, merged.AllowedInviteDomains) {
+		out = append(out, "allowed_invite_domains")
+	}
+	if next.ShareLinksEnabled != merged.ShareLinksEnabled {
+		out = append(out, "share_links_enabled")
+	}
+	if next.RequireSSO != merged.RequireSSO {
+		out = append(out, "require_sso")
+	}
+	if next.RequireMFA != merged.RequireMFA {
+		out = append(out, "require_mfa")
+	}
+	if next.SessionMaxAgeHours != merged.SessionMaxAgeHours {
+		out = append(out, "session_max_age_hours")
+	}
+	return out
 }
 
 // UpdateWorkspacePolicy changes the workspace policy; owner only. It needs the
@@ -185,6 +246,7 @@ func (h *Handler) UpdateWorkspacePolicy(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var result WorkspacePolicyResponse
+	var belowFloor []string
 	err := h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
 		old := workspacepolicy.Default()
 		stored, err := qtx.GetWorkspacePolicyForUpdate(r.Context(), workspaceUUID)
@@ -212,6 +274,15 @@ func (h *Handler) UpdateWorkspacePolicy(w http.ResponseWriter, r *http.Request) 
 		}
 		if req.SessionMaxAgeHours != nil {
 			next.SessionMaxAgeHours = int32(*req.SessionMaxAgeHours)
+		}
+
+		if floor, hasFloor, err := workspaceguard.TenantFloor(r.Context(), qtx, workspaceUUID); err != nil {
+			return audit.Entry{}, err
+		} else if hasFloor {
+			belowFloor = belowFloorFields(next, workspacepolicy.Merge(floor, next))
+			if len(belowFloor) > 0 {
+				return audit.Entry{}, errBelowTenantFloor
+			}
 		}
 
 		changes := workspacepolicy.Changes(old, next)
@@ -246,6 +317,14 @@ func (h *Handler) UpdateWorkspacePolicy(w http.ResponseWriter, r *http.Request) 
 			Detail:      map[string]any{"changes": changes},
 		}, nil
 	})
+	if errors.Is(err, errBelowTenantFloor) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error":  "the policy is looser than the tenant floor in the named fields",
+			"code":   codePolicyBelowTenantFloor,
+			"fields": belowFloor,
+		})
+		return
+	}
 	if err != nil {
 		slog.Warn("update workspace policy failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to update policy")
