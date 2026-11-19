@@ -46,6 +46,10 @@ import {
   parseDeletionRequestList,
   parseDeletionStartResponse,
   parseAccountDeletePreview,
+  parseWorkspacePage,
+  parsePlanDetail,
+  parsePlanHistory,
+  parseWorkspaceExportResponse,
 } from "./schemas";
 
 const workspace = {
@@ -606,6 +610,7 @@ describe("plans", () => {
   const plan = {
     key: "pro",
     name: "Pro",
+    description: "",
     limits: { issue_count: 500 },
     features: { sso: true },
     currency: "vnd",
@@ -1547,5 +1552,100 @@ describe("member requests and deletion requests", () => {
       deleted_with: [],
     });
     expect(parseAccountDeletePreview({ need_choice: "bad" })).toBeNull();
+  });
+});
+
+describe("R6 S23 plan lifecycle, history and workspace list schemas", () => {
+  it("unknown plan state and workspace status fall back", () => {
+    const plans = parsePlanList({
+      plans: [
+        { key: "pro", name: "Pro", state: "sunset_soon", description: "For teams" },
+        { key: "legacy", name: "Legacy", archived_at: "2026-01-01T00:00:00Z" },
+      ],
+    });
+    expect(plans.plans[0]?.state).toBe("unknown");
+    expect(plans.plans[0]?.description).toBe("For teams");
+    expect(plans.plans[1]?.description).toBe("");
+    expect(plans.plans[1]?.state).toBeUndefined();
+
+    const singlePlan = parsePlanDetail({
+      plan: { key: "pro", name: "Pro", state: "future_state" },
+    });
+    expect(singlePlan?.plan.state).toBe("unknown");
+    expect(parsePlanDetail(null)).toBeNull();
+
+    const wsPage = parseWorkspacePage({
+      workspaces: [
+        {
+          id: "ws-1",
+          name: "Acme",
+          slug: "acme",
+          tenant_id: "t-1",
+          tenant_name: "Acme Corp",
+          status: "frozen_by_future_server",
+          plan_key: "pro",
+          member_count: 5,
+          created_at: "2026-11-01T00:00:00Z",
+        },
+        { id: "ws-2" },
+      ],
+      next_cursor: "cur-2",
+    });
+    expect(wsPage.workspaces).toHaveLength(2);
+    expect(wsPage.workspaces[0]?.status).toBe("unknown");
+    expect(wsPage.workspaces[1]?.status).toBe("unknown");
+    expect(wsPage.workspaces[1]?.plan_key).toBe("");
+    expect(wsPage.next_cursor).toBe("cur-2");
+    expect(parseWorkspacePage({ workspaces: "bad" })).toEqual({ workspaces: [], next_cursor: null });
+
+    const detail = parseWorkspaceDetail({
+      ...workspace,
+      tenant: { id: "t-1", name: "Acme Corp" },
+      seats: { purchased: 10, used: 4, held: 1 },
+      allowed: ["suspend", "export"],
+      status_history: [
+        {
+          id: "sh-1",
+          status: "future_ws_state",
+          reason: "Test",
+          actor: "staff@example.com",
+          created_at: "2026-11-18T00:00:00Z",
+        },
+      ],
+    });
+    expect(detail?.tenant).toEqual({ id: "t-1", name: "Acme Corp" });
+    expect(detail?.seats).toEqual({ purchased: 10, used: 4, held: 1 });
+    expect(detail?.allowed).toEqual(["suspend", "export"]);
+    expect(detail?.status_history?.[0]?.status).toBe("unknown");
+  });
+
+  it("parses plan history and workspace export response", () => {
+    const history = parsePlanHistory({
+      history: [
+        {
+          at: "2026-11-19T09:00:00Z",
+          actor: "root@example.test",
+          action: "plan.changed",
+          changes: [{ field: "name", old: "Pro", new: "Pro Plus" }],
+          reason: "rename",
+        },
+        {
+          at: "2026-11-18T09:00:00Z",
+          actor: "root@example.test",
+          action: "plan.activated",
+        },
+      ],
+    });
+    expect(history.history).toHaveLength(2);
+    expect(history.history[0]?.changes).toEqual([{ field: "name", old: "Pro", new: "Pro Plus" }]);
+    expect(history.history[1]?.changes).toEqual([]);
+    expect(history.history[1]?.reason).toBe("");
+    expect(parsePlanHistory({ history: "bad" })).toEqual({ history: [] });
+
+    expect(parseWorkspaceExportResponse({ export_id: "exp-1", status: "queued" })).toEqual({
+      export_id: "exp-1",
+      status: "queued",
+    });
+    expect(parseWorkspaceExportResponse({})).toBeNull();
   });
 });

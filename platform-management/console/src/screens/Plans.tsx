@@ -18,17 +18,44 @@ import {
 import { Field, FieldError, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { AlertCircle, CalendarClock, Layers, Pencil, Trash2 } from "@multica/ui/icons";
+import { Textarea } from "@multica/ui/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
+import {
+  AlertCircle,
+  CalendarClock,
+  CheckCircle2,
+  CircleOff,
+  History,
+  Layers,
+  Pencil,
+  Plus,
+  Trash2,
+} from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { PlanHistory } from "./PlanHistory";
 import { PriceSchedule } from "./PriceSchedule";
-import { usePlans, usePutPlan, useDeletePlan, useMe } from "../api/hooks";
+import {
+  usePlans,
+  useCreatePlan,
+  usePutPlan,
+  useActivatePlan,
+  useDeactivatePlan,
+  useDeletePlan,
+  useMe,
+} from "../api/hooks";
 import { PlatformApiError } from "../api/client";
 import type { StaffRole } from "../components/types";
-import type { Plan, PlanAudience, PlanBillingModel } from "../api/schemas";
+import type { Limits, Plan, PlanAudience, PlanBillingModel, PlanState } from "../api/schemas";
 import { formatMinorAmount } from "../money";
 
 const HISTORY_PLAN_KEYS = ["pro", "business", "unlimited", "enterprise", "free"] as const;
@@ -46,32 +73,119 @@ const BILLING_MODEL_LABELS: Record<PlanBillingModel, string> = {
   unknown: "Unknown",
 };
 
-interface PlansProps {
-  userRole?: StaffRole;
+const LIMIT_FIELDS: ReadonlyArray<{ key: string; label: string }> = [
+  { key: "issue_count", label: "Issue limit" },
+  { key: "autopilot_runs", label: "Autopilot runs limit" },
+  { key: "agents", label: "Agents limit" },
+  { key: "runtimes", label: "Runtimes limit" },
+  { key: "storage_bytes", label: "Storage limit (bytes)" },
+  { key: "api_rate_per_minute", label: "API rate limit (/min)" },
+  { key: "audit_retention_days", label: "Audit retention (days)" },
+  { key: "member_groups", label: "Member groups limit" },
+  { key: "max_workspaces", label: "Max workspaces" },
+];
+
+interface LoweredLimitChange {
+  key: string;
+  label: string;
+  previous: number | null;
+  next: number;
 }
 
-export function Plans({ userRole }: PlansProps) {
+function getPlanState(plan: Plan): PlanState {
+  if (plan.state) return plan.state;
+  return plan.archived_at ? "inactive" : "active";
+}
+
+function findLoweredLimits(previousLimits: Limits, nextLimits: Limits): LoweredLimitChange[] {
+  const lowered: LoweredLimitChange[] = [];
+  const allKeys = new Set([
+    ...LIMIT_FIELDS.map((f) => f.key),
+    ...Object.keys(previousLimits),
+    ...Object.keys(nextLimits),
+  ]);
+
+  for (const key of allKeys) {
+    const prevVal = previousLimits[key];
+    const nextVal = nextLimits[key];
+    if (typeof nextVal !== "number" || !Number.isFinite(nextVal)) continue;
+    const isLowered =
+      prevVal === null ||
+      prevVal === undefined ||
+      (typeof prevVal === "number" && Number.isFinite(prevVal) && nextVal < prevVal);
+    if (isLowered) {
+      const label = LIMIT_FIELDS.find((f) => f.key === key)?.label ?? key;
+      lowered.push({
+        key,
+        label,
+        previous: typeof prevVal === "number" ? prevVal : null,
+        next: nextVal,
+      });
+    }
+  }
+  return lowered;
+}
+
+interface PlansProps {
+  userRole?: StaffRole;
+  onOpenHistory?: (planKey: string) => void;
+}
+
+export function Plans({ userRole, onOpenHistory }: PlansProps) {
   const { data: me } = useMe();
   const effectiveRole = userRole || me?.role;
-  const isAdmin = effectiveRole === "system_admin";
+  const isSystemAdmin = effectiveRole === "system_admin";
+  const isTenantAdmin = effectiveRole === "admin";
   const isBilling = effectiveRole === "billing";
+  const canReadPlans = isSystemAdmin || isTenantAdmin;
+  const canWritePlans = isSystemAdmin;
 
-  const { data: plans, isLoading, isError, error, refetch } = usePlans(isAdmin);
+  const { data: plans, isLoading, isError, error, refetch } = usePlans(canReadPlans);
+  const createPlan = useCreatePlan();
   const putPlan = usePutPlan();
+  const activatePlan = useActivatePlan();
+  const deactivatePlan = useDeactivatePlan();
   const deletePlan = useDeletePlan();
 
-  // Billing read-only history selection
+  // Billing read-only price history selection
   const [historyPlanKey, setHistoryPlanKey] = useState<string>("pro");
   const [customPlanKey, setCustomPlanKey] = useState<string>("");
 
-  // Price schedule view state (admin)
+  // Plan change audit history view state (fallback when standalone)
+  const [planHistoryViewKey, setPlanHistoryViewKey] = useState<string | null>(null);
+
+  // Price schedule view state (system_admin)
   const [schedulePlanKey, setSchedulePlanKey] = useState<string | null>(null);
   const [selectedSchedulePlan, setSelectedSchedulePlan] = useState<Plan | null>(null);
+
+  // Inline lifecycle toggle state
+  const [lifecyclePendingKey, setLifecyclePendingKey] = useState<string | null>(null);
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+
+  // Create dialog state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newKey, setNewKey] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [newCurrency, setNewCurrency] = useState("vnd");
+  const [newAudience, setNewAudience] = useState<Exclude<PlanAudience, "unknown">>("any");
+  const [newBillingModel, setNewBillingModel] =
+    useState<Exclude<PlanBillingModel, "unknown">>("seat");
+  const [newSeatPriceMonth, setNewSeatPriceMonth] = useState<string>("");
+  const [newSeatPriceYear, setNewSeatPriceYear] = useState<string>("");
+  const [newMinSeats, setNewMinSeats] = useState<number | null>(1);
+  const [newSeatsFixed, setNewSeatsFixed] = useState<number | null>(null);
+  const [newTrialDays, setNewTrialDays] = useState(14);
+  const [newSortOrder, setNewSortOrder] = useState(10);
+  const [newIsPublic, setNewIsPublic] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [planName, setPlanName] = useState("");
+  const [planDescription, setPlanDescription] = useState("");
+  const [draftLimits, setDraftLimits] = useState<Limits>({});
   const [currency, setCurrency] = useState("");
   const [trialDays, setTrialDays] = useState(0);
   const [minSeats, setMinSeats] = useState<number | null>(null);
@@ -79,6 +193,8 @@ export function Plans({ userRole }: PlansProps) {
   const [isPublic, setIsPublic] = useState(false);
   const [sortOrder, setSortOrder] = useState(0);
   const [archived, setArchived] = useState(false);
+  const [confirmLowerLimits, setConfirmLowerLimits] = useState(false);
+  const [affectedSubscriptions, setAffectedSubscriptions] = useState<number | null>(null);
   const [currencyError, setCurrencyError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -87,7 +203,7 @@ export function Plans({ userRole }: PlansProps) {
   const [planToDelete, setPlanToDelete] = useState<Plan | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  if (effectiveRole && !isAdmin && !isBilling) {
+  if (effectiveRole && !canReadPlans && !isBilling) {
     return (
       <div role="region" aria-label="Not found">
         <ErrorState
@@ -143,6 +259,16 @@ export function Plans({ userRole }: PlansProps) {
     );
   }
 
+  if (planHistoryViewKey) {
+    return (
+      <PlanHistory
+        planKey={planHistoryViewKey}
+        onBack={() => setPlanHistoryViewKey(null)}
+        userRole={effectiveRole}
+      />
+    );
+  }
+
   if (schedulePlanKey) {
     const currentSchedulePlan =
       plans?.find((p) => p.key === schedulePlanKey) ?? selectedSchedulePlan ?? undefined;
@@ -158,9 +284,69 @@ export function Plans({ userRole }: PlansProps) {
     );
   }
 
+  const loweredLimits = selectedPlan
+    ? findLoweredLimits(selectedPlan.limits, draftLimits)
+    : [];
+
+  const handleOpenCreate = () => {
+    setNewKey("");
+    setNewName("");
+    setNewDescription("");
+    setNewCurrency("vnd");
+    setNewAudience("any");
+    setNewBillingModel("seat");
+    setNewSeatPriceMonth("");
+    setNewSeatPriceYear("");
+    setNewMinSeats(1);
+    setNewSeatsFixed(null);
+    setNewTrialDays(14);
+    setNewSortOrder(10);
+    setNewIsPublic(false);
+    setCreateError(null);
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreatePlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canWritePlans || createPlan.isPending) return;
+    setCreateError(null);
+    try {
+      await createPlan.mutateAsync({
+        key: newKey.trim(),
+        name: newName.trim(),
+        description: newDescription.trim(),
+        limits: {},
+        features: {},
+        currency: newCurrency.trim(),
+        seat_price_month:
+          newSeatPriceMonth.trim() === "" ? null : Number(newSeatPriceMonth),
+        seat_price_year:
+          newSeatPriceYear.trim() === "" ? null : Number(newSeatPriceYear),
+        seats_fixed:
+          newSeatsFixed !== null && !isNaN(newSeatsFixed) ? Number(newSeatsFixed) : null,
+        min_seats:
+          newMinSeats !== null && !isNaN(newMinSeats) ? Number(newMinSeats) : null,
+        trial_days: Number(newTrialDays),
+        is_public: newIsPublic,
+        sort: Number(newSortOrder),
+        audience: newAudience,
+        billing_model: newBillingModel,
+      });
+      setCreateDialogOpen(false);
+    } catch (err: unknown) {
+      if (err instanceof PlatformApiError || err instanceof Error) {
+        setCreateError(err.message);
+      } else {
+        setCreateError("Failed to create plan");
+      }
+    }
+  };
+
   const handleOpenEdit = (plan: Plan) => {
     setSelectedPlan(plan);
     setPlanName(plan.name);
+    setPlanDescription(plan.description ?? "");
+    setDraftLimits({ ...plan.limits });
     setCurrency(plan.currency);
     setTrialDays(plan.trial_days);
     setMinSeats(plan.min_seats);
@@ -168,13 +354,14 @@ export function Plans({ userRole }: PlansProps) {
     setIsPublic(plan.is_public);
     setSortOrder(plan.sort);
     setArchived(Boolean(plan.archived_at));
+    setConfirmLowerLimits(false);
+    setAffectedSubscriptions(null);
     setCurrencyError(null);
     setEditError(null);
     setEditDialogOpen(true);
   };
 
-  const handleSavePlan = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitSavePlan = async () => {
     if (!selectedPlan || putPlan.isPending) return;
     setCurrencyError(null);
     setEditError(null);
@@ -183,8 +370,12 @@ export function Plans({ userRole }: PlansProps) {
       await putPlan.mutateAsync({
         key: selectedPlan.key,
         name: planName.trim(),
+        description: planDescription.trim(),
+        ...(selectedPlan.version !== undefined
+          ? { expected_version: selectedPlan.version }
+          : {}),
         trial_days: Number(trialDays),
-        limits: selectedPlan.limits,
+        limits: draftLimits,
         features: selectedPlan.features,
         currency: currency.trim(),
         seats_fixed: seatsFixed !== null && !isNaN(seatsFixed) ? Number(seatsFixed) : null,
@@ -195,16 +386,68 @@ export function Plans({ userRole }: PlansProps) {
       });
       setEditDialogOpen(false);
       setSelectedPlan(null);
+      setConfirmLowerLimits(false);
     } catch (err: unknown) {
       if (err instanceof PlatformApiError && err.code === "plan_currency_locked") {
         setCurrencyError(
           "The currency can't change because this plan has subscriptions or orders.",
         );
+      } else if (
+        err instanceof PlatformApiError &&
+        err.code === "plan_limit_change_confirm_required"
+      ) {
+        const affected =
+          typeof err.details?.affected_subscriptions === "number"
+            ? err.details.affected_subscriptions
+            : null;
+        setAffectedSubscriptions(affected);
+        setConfirmLowerLimits(true);
       } else if (err instanceof Error) {
         setEditError(err.message);
       } else {
         setEditError("Failed to update plan");
       }
+    }
+  };
+
+  const handleSavePlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlan || putPlan.isPending) return;
+    if (loweredLimits.length > 0 && !confirmLowerLimits) {
+      setConfirmLowerLimits(true);
+      return;
+    }
+    await submitSavePlan();
+  };
+
+  const handleToggleActive = async (plan: Plan, activate: boolean) => {
+    if (!canWritePlans || lifecyclePendingKey) return;
+    setLifecycleError(null);
+    setLifecyclePendingKey(plan.key);
+    try {
+      if (activate) {
+        await activatePlan.mutateAsync({ key: plan.key });
+      } else {
+        await deactivatePlan.mutateAsync({ key: plan.key });
+      }
+    } catch (err: unknown) {
+      if (err instanceof PlatformApiError || err instanceof Error) {
+        setLifecycleError(err.message);
+      } else {
+        setLifecycleError(
+          activate ? "Failed to activate plan" : "Failed to deactivate plan",
+        );
+      }
+    } finally {
+      setLifecyclePendingKey(null);
+    }
+  };
+
+  const handleViewHistory = (planKey: string) => {
+    if (onOpenHistory) {
+      onOpenHistory(planKey);
+    } else {
+      setPlanHistoryViewKey(planKey);
     }
   };
 
@@ -223,7 +466,12 @@ export function Plans({ userRole }: PlansProps) {
       setDeleteDialogOpen(false);
       setPlanToDelete(null);
     } catch (err: unknown) {
-      if (err instanceof PlatformApiError || err instanceof Error) {
+      if (err instanceof PlatformApiError && err.code === "plan_in_use") {
+        setDeleteError(
+          err.message ||
+            "Subscriptions use this plan; deactivate or archive it instead.",
+        );
+      } else if (err instanceof PlatformApiError || err instanceof Error) {
         setDeleteError(err.message);
       } else {
         setDeleteError("Failed to delete plan");
@@ -233,7 +481,24 @@ export function Plans({ userRole }: PlansProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Plans Catalogue" />
+      <PageHeader
+        title="Plans Catalogue"
+        actions={
+          canWritePlans ? (
+            <Button type="button" size="sm" onClick={handleOpenCreate}>
+              <Plus className="size-3.5" aria-hidden="true" />
+              Create plan
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {lifecycleError && (
+        <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+          <AlertDescription className="text-caption">{lifecycleError}</AlertDescription>
+        </Alert>
+      )}
 
       {isLoading && <LoadingState message="Loading plans..." />}
 
@@ -265,7 +530,7 @@ export function Plans({ userRole }: PlansProps) {
             {
               key: "name",
               header: "Plan",
-              width: proportional(2, { minWidth: 110 }),
+              width: proportional(2, { minWidth: 140 }),
               renderCell: (plan) => (
                 <>
                   <Text type="body" weight="medium" as="div" className="block">
@@ -274,6 +539,17 @@ export function Plans({ userRole }: PlansProps) {
                   <Text type="code" color="secondary" as="div" className="block">
                     {plan.key}
                   </Text>
+                  {plan.description && (
+                    <div className="max-w-64 truncate" title={plan.description}>
+                      <Text
+                        type="supporting"
+                        color="secondary"
+                        as="span"
+                      >
+                        {plan.description}
+                      </Text>
+                    </div>
+                  )}
                 </>
               ),
             },
@@ -354,54 +630,353 @@ export function Plans({ userRole }: PlansProps) {
               header: "Status",
               width: proportional(1, { minWidth: 76 }),
               renderCell: (plan) => (
-                <StatusBadge status={plan.archived_at ? "archived" : "active"} />
+                <StatusBadge status={getPlanState(plan)} />
               ),
             },
-            {
-              key: "actions",
-              header: "Actions",
-              width: pixel(128),
-              align: "end",
-              renderCell: (plan) => (
-                <div className="flex items-center justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Price schedule"
-                    onClick={() => {
-                      setSelectedSchedulePlan(plan);
-                      setSchedulePlanKey(plan.key);
-                    }}
-                    aria-label={`Schedule price for ${plan.name}`}
-                  >
-                    <CalendarClock className="size-3.5" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Edit"
-                    onClick={() => handleOpenEdit(plan)}
-                    aria-label={`Edit plan ${plan.name}`}
-                  >
-                    <Pencil className="size-3.5" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Delete"
-                    onClick={() => handleOpenDelete(plan)}
-                    aria-label={`Delete plan ${plan.name}`}
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="size-3.5" aria-hidden="true" />
-                  </Button>
-                </div>
-              ),
-            },
+            ...(canWritePlans
+              ? [
+                  {
+                    key: "actions",
+                    header: "Actions",
+                    width: pixel(204),
+                    align: "end" as const,
+                    renderCell: (plan: Plan) => {
+                      const isInactive = getPlanState(plan) === "inactive";
+                      const rowBusy = lifecyclePendingKey === plan.key;
+                      return (
+                        <div className="flex items-center justify-end gap-1">
+                          {isInactive ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              title="Activate"
+                              disabled={rowBusy}
+                              aria-busy={rowBusy || undefined}
+                              onClick={() => handleToggleActive(plan, true)}
+                              aria-label={`Activate plan ${plan.name}`}
+                            >
+                              {rowBusy ? (
+                                <Spinner className="size-3.5" aria-hidden="true" />
+                              ) : (
+                                <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                              )}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              title="Deactivate"
+                              disabled={rowBusy}
+                              aria-busy={rowBusy || undefined}
+                              onClick={() => handleToggleActive(plan, false)}
+                              aria-label={`Deactivate plan ${plan.name}`}
+                            >
+                              {rowBusy ? (
+                                <Spinner className="size-3.5" aria-hidden="true" />
+                              ) : (
+                                <CircleOff className="size-3.5" aria-hidden="true" />
+                              )}
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            title="History"
+                            onClick={() => handleViewHistory(plan.key)}
+                            aria-label={`View history for ${plan.name}`}
+                          >
+                            <History className="size-3.5" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            title="Price schedule"
+                            onClick={() => {
+                              setSelectedSchedulePlan(plan);
+                              setSchedulePlanKey(plan.key);
+                            }}
+                            aria-label={`Schedule price for ${plan.name}`}
+                          >
+                            <CalendarClock className="size-3.5" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            title="Edit"
+                            onClick={() => handleOpenEdit(plan)}
+                            aria-label={`Edit plan ${plan.name}`}
+                          >
+                            <Pencil className="size-3.5" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            title="Delete"
+                            onClick={() => handleOpenDelete(plan)}
+                            aria-label={`Delete plan ${plan.name}`}
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="size-3.5" aria-hidden="true" />
+                          </Button>
+                        </div>
+                      );
+                    },
+                  },
+                ]
+              : []),
           ]}
         />
         </Card>
       )}
+
+      {/* Create Plan Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleCreatePlan} className="flex flex-col gap-4">
+            <DialogHeader>
+              <DialogTitle>Create plan</DialogTitle>
+              <DialogDescription>
+                Define a new subscription plan and its initial pricing.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-3">
+                <Field>
+                  <FieldLabel htmlFor="create-plan-key" className="text-label">
+                    Plan Key <span className="text-destructive">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="create-plan-key"
+                    value={newKey}
+                    onChange={(e) => setNewKey(e.target.value)}
+                    placeholder="e.g. team_pro"
+                    required
+                    disabled={createPlan.isPending}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="create-plan-name" className="text-label">
+                    Plan Name <span className="text-destructive">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="create-plan-name"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    required
+                    disabled={createPlan.isPending}
+                  />
+                </Field>
+              </div>
+
+              <Field>
+                <FieldLabel htmlFor="create-plan-description" className="text-label">
+                  Description
+                </FieldLabel>
+                <Textarea
+                  id="create-plan-description"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Optional summary shown in catalogue and plan settings"
+                  disabled={createPlan.isPending}
+                />
+              </Field>
+
+              <div className="grid grid-cols-3 gap-3">
+                <Field>
+                  <FieldLabel htmlFor="create-plan-currency" className="text-label">
+                    Currency <span className="text-destructive">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="create-plan-currency"
+                    value={newCurrency}
+                    onChange={(e) => setNewCurrency(e.target.value)}
+                    required
+                    disabled={createPlan.isPending}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="create-plan-audience" className="text-label">
+                    Audience
+                  </FieldLabel>
+                  <Select
+                    items={[
+                      { value: "any", label: "Any" },
+                      { value: "individual", label: "Individual" },
+                      { value: "business", label: "Business" },
+                    ]}
+                    value={newAudience}
+                    onValueChange={(v) =>
+                      setNewAudience((v ?? "any") as Exclude<PlanAudience, "unknown">)
+                    }
+                    disabled={createPlan.isPending}
+                  >
+                    <SelectTrigger id="create-plan-audience">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any</SelectItem>
+                      <SelectItem value="individual">Individual</SelectItem>
+                      <SelectItem value="business">Business</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="create-plan-billing" className="text-label">
+                    Billing model
+                  </FieldLabel>
+                  <Select
+                    items={[
+                      { value: "seat", label: "Seat" },
+                      { value: "usage", label: "Usage" },
+                    ]}
+                    value={newBillingModel}
+                    onValueChange={(v) =>
+                      setNewBillingModel((v ?? "seat") as Exclude<PlanBillingModel, "unknown">)
+                    }
+                    disabled={createPlan.isPending}
+                  >
+                    <SelectTrigger id="create-plan-billing">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="seat">Seat</SelectItem>
+                      <SelectItem value="usage">Usage</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field>
+                  <FieldLabel htmlFor="create-price-month" className="text-label">
+                    Monthly seat price (minor)
+                  </FieldLabel>
+                  <Input
+                    id="create-price-month"
+                    type="number"
+                    min={0}
+                    value={newSeatPriceMonth}
+                    onChange={(e) => setNewSeatPriceMonth(e.target.value)}
+                    placeholder="Blank if free / N/A"
+                    disabled={createPlan.isPending}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="create-price-year" className="text-label">
+                    Yearly seat price (minor)
+                  </FieldLabel>
+                  <Input
+                    id="create-price-year"
+                    type="number"
+                    min={0}
+                    value={newSeatPriceYear}
+                    onChange={(e) => setNewSeatPriceYear(e.target.value)}
+                    placeholder="Blank if free / N/A"
+                    disabled={createPlan.isPending}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field>
+                  <FieldLabel htmlFor="create-trial-days" className="text-label">
+                    Trial Days
+                  </FieldLabel>
+                  <Input
+                    id="create-trial-days"
+                    type="number"
+                    min={0}
+                    value={newTrialDays}
+                    onChange={(e) => setNewTrialDays(Number(e.target.value))}
+                    disabled={createPlan.isPending}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="create-sort-order" className="text-label">
+                    Sort Order
+                  </FieldLabel>
+                  <Input
+                    id="create-sort-order"
+                    type="number"
+                    value={newSortOrder}
+                    onChange={(e) => setNewSortOrder(Number(e.target.value))}
+                    disabled={createPlan.isPending}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field>
+                  <FieldLabel htmlFor="create-min-seats" className="text-label">
+                    Min Seats (Optional)
+                  </FieldLabel>
+                  <Input
+                    id="create-min-seats"
+                    type="number"
+                    min={1}
+                    value={newMinSeats ?? ""}
+                    onChange={(e) =>
+                      setNewMinSeats(e.target.value === "" ? null : Number(e.target.value))
+                    }
+                    disabled={createPlan.isPending}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="create-fixed-seats" className="text-label">
+                    Fixed Seats (Optional)
+                  </FieldLabel>
+                  <Input
+                    id="create-fixed-seats"
+                    type="number"
+                    min={1}
+                    value={newSeatsFixed ?? ""}
+                    onChange={(e) =>
+                      setNewSeatsFixed(e.target.value === "" ? null : Number(e.target.value))
+                    }
+                    disabled={createPlan.isPending}
+                  />
+                </Field>
+              </div>
+
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="create-plan-public"
+                  checked={newIsPublic}
+                  onCheckedChange={(checked) => setNewIsPublic(Boolean(checked))}
+                  disabled={createPlan.isPending}
+                />
+                <FieldLabel htmlFor="create-plan-public" className="text-body font-normal">
+                  Public plan
+                </FieldLabel>
+              </Field>
+            </div>
+
+            {createError && (
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption">{createError}</AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter>
+              <DialogClose
+                render={<Button variant="outline" type="button" disabled={createPlan.isPending} />}
+              >
+                Cancel
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={!newKey.trim() || !newName.trim() || !newCurrency.trim() || createPlan.isPending}
+                aria-busy={createPlan.isPending || undefined}
+              >
+                {createPlan.isPending && <Spinner className="size-3.5" />}
+                Create plan
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Plan Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -424,6 +999,19 @@ export function Plans({ userRole }: PlansProps) {
                   value={planName}
                   onChange={(e) => setPlanName(e.target.value)}
                   required
+                  disabled={putPlan.isPending}
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="plan-description-input" className="text-label">
+                  Description
+                </FieldLabel>
+                <Textarea
+                  id="plan-description-input"
+                  value={planDescription}
+                  onChange={(e) => setPlanDescription(e.target.value)}
+                  placeholder="Optional summary shown in catalogue and plan settings"
                   disabled={putPlan.isPending}
                 />
               </Field>
@@ -537,7 +1125,67 @@ export function Plans({ userRole }: PlansProps) {
                   </FieldLabel>
                 </Field>
               </div>
+
+              <div className="space-y-2 border-t border-border pt-3">
+                <Text type="supporting" weight="medium" as="div" className="block">
+                  Limits (blank for unlimited)
+                </Text>
+                <div className="grid max-h-48 grid-cols-2 gap-3 overflow-y-auto pr-1">
+                  {LIMIT_FIELDS.map((field) => (
+                    <Field key={field.key}>
+                      <FieldLabel
+                        htmlFor={`edit-limit-${field.key}`}
+                        className="text-label"
+                      >
+                        {field.label}
+                      </FieldLabel>
+                      <Input
+                        id={`edit-limit-${field.key}`}
+                        type="number"
+                        min={0}
+                        value={draftLimits[field.key] ?? ""}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setConfirmLowerLimits(false);
+                          setAffectedSubscriptions(null);
+                          setDraftLimits((prev) => ({
+                            ...prev,
+                            [field.key]: raw === "" ? null : Number(raw),
+                          }));
+                        }}
+                        placeholder="Unlimited"
+                        disabled={putPlan.isPending}
+                      />
+                    </Field>
+                  ))}
+                </div>
+              </div>
             </div>
+
+            {confirmLowerLimits && (loweredLimits.length > 0 || affectedSubscriptions !== null) && (
+              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <AlertDescription className="text-caption space-y-1">
+                  <div className="font-medium">
+                    Lowered limits affect active subscribers
+                    {affectedSubscriptions !== null
+                      ? ` (${affectedSubscriptions} subscribers)`
+                      : ""}
+                    :
+                  </div>
+                  {loweredLimits.length > 0 && (
+                    <div>
+                      {loweredLimits
+                        .map(
+                          (item) =>
+                            `${item.label}: ${item.previous === null ? "Unlimited" : item.previous} -> ${item.next}`,
+                        )
+                        .join(", ")}
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
 
             {editError && (
               <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
@@ -552,14 +1200,27 @@ export function Plans({ userRole }: PlansProps) {
               >
                 Cancel
               </DialogClose>
-              <Button
-                type="submit"
-                disabled={!planName.trim() || putPlan.isPending}
-                aria-busy={putPlan.isPending}
-              >
-                {putPlan.isPending && <Spinner className="size-3.5" />}
-                Save changes
-              </Button>
+              {confirmLowerLimits && (loweredLimits.length > 0 || affectedSubscriptions !== null) ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={!planName.trim() || putPlan.isPending}
+                  aria-busy={putPlan.isPending}
+                  onClick={() => void submitSavePlan()}
+                >
+                  {putPlan.isPending && <Spinner className="size-3.5" />}
+                  Confirm limit reduction
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={!planName.trim() || putPlan.isPending}
+                  aria-busy={putPlan.isPending}
+                >
+                  {putPlan.isPending && <Spinner className="size-3.5" />}
+                  Save changes
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>

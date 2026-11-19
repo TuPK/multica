@@ -21,6 +21,7 @@ const mockUpdateWorkspaceBillingProfileMutateAsync = vi.fn();
 const mockAddWorkspaceMemberMutateAsync = vi.fn();
 const mockCancelMemberRequestMutateAsync = vi.fn();
 const mockDeleteWorkspaceNowMutateAsync = vi.fn();
+const mockExportWorkspaceMutateAsync = vi.fn();
 let mockUpdateBillingProfileIsPending = false;
 
 vi.mock("../api/hooks", () => ({
@@ -65,6 +66,10 @@ vi.mock("../api/hooks", () => ({
   }),
   useDeleteWorkspaceNow: () => ({
     mutateAsync: mockDeleteWorkspaceNowMutateAsync,
+    isPending: false,
+  }),
+  useExportWorkspace: () => ({
+    mutateAsync: mockExportWorkspaceMutateAsync,
     isPending: false,
   }),
 }));
@@ -1179,6 +1184,65 @@ describe("WorkspaceDetail screen", () => {
         expect(screen.queryByRole("heading", { name: "Member Requests" })).not.toBeInTheDocument();
         view.unmount();
       }
+    });
+  });
+
+  describe("R6 S23 seats, status history and quick actions", () => {
+    it("quick actions follow allowed[] and show the 409 state conflict", async () => {
+      mockUseWorkspace.mockReturnValue({
+        data: {
+          ...mockWorkspaceData,
+          status: "suspended",
+          state: { ...mockWorkspaceData.state, status: "suspended" },
+          tenant: { id: "ten-1", name: "Acme Tenant" },
+          seats: { purchased: 5, used: 3, held: 1 },
+          allowed: ["unlock", "export"],
+          status_history: [
+            {
+              id: "sh-1",
+              status: "suspended",
+              reason: "Past due",
+              actor: "ops@example.com",
+              created_at: "2026-11-18T10:00:00Z",
+            },
+          ],
+        },
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      });
+      mockExportWorkspaceMutateAsync.mockRejectedValueOnce(
+        new PlatformApiError(409, "workspace_state_conflict", "the workspace state does not allow this action", {
+          status: "pending_deletion",
+          allowed: ["active", "read_only", "suspended"],
+        }),
+      );
+
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
+
+      // Seats breakdown & status history rendered
+      expect(screen.getByText("Seats used")).toBeInTheDocument();
+      expect(screen.getByText("Seats held")).toBeInTheDocument();
+      expect(screen.getByText("Past due")).toBeInTheDocument();
+      expect(screen.getByText("ops@example.com")).toBeInTheDocument();
+      expect(screen.getByText("Acme Tenant")).toBeInTheDocument();
+
+      // Quick actions follow allowed[]
+      const quickBar = screen.getByTestId("workspace-quick-actions");
+      expect(within(quickBar).getByRole("button", { name: "Unlock" })).toBeEnabled();
+      expect(within(quickBar).getByRole("button", { name: "Export data" })).toBeEnabled();
+      expect(within(quickBar).getByRole("button", { name: "Suspend" })).toBeDisabled();
+      expect(within(quickBar).getByRole("button", { name: "Cancel deletion" })).toBeDisabled();
+
+      // Trigger export and observe 409 workspace_state_conflict with status + allowed[]
+      fireEvent.click(within(quickBar).getByRole("button", { name: "Export data" }));
+
+      await waitFor(() => {
+        const alert = within(quickBar).getByRole("alert");
+        expect(alert).toHaveTextContent("the workspace state does not allow this action");
+        expect(alert).toHaveTextContent("pending_deletion");
+        expect(alert).toHaveTextContent("active, read_only, suspended");
+      });
     });
   });
 });

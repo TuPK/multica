@@ -6,21 +6,40 @@ import { PlatformApiError } from "../api/client";
 
 const mockUsePlans = vi.fn();
 const mockUsePriceChanges = vi.fn();
+const mockUsePlanHistory = vi.fn();
+const mockUsePlan = vi.fn();
+const mockCreatePlanMutateAsync = vi.fn();
 const mockPutPlanMutateAsync = vi.fn();
 const mockDeletePlanMutateAsync = vi.fn();
+const mockActivatePlanMutateAsync = vi.fn();
+const mockDeactivatePlanMutateAsync = vi.fn();
 const mockSchedulePriceMutateAsync = vi.fn();
 const mockCancelPriceMutateAsync = vi.fn();
 let mockMeRole = "system_admin";
 
 vi.mock("../api/hooks", () => ({
   usePlans: (enabled = true) => mockUsePlans(enabled),
+  usePlan: (key: string | undefined, enabled = true) => mockUsePlan(key, enabled),
+  usePlanHistory: (key: string | undefined, enabled = true) => mockUsePlanHistory(key, enabled),
   usePriceChanges: (key: string | undefined, enabled = true) => mockUsePriceChanges(key, enabled),
+  useCreatePlan: () => ({
+    mutateAsync: mockCreatePlanMutateAsync,
+    isPending: false,
+  }),
   usePutPlan: () => ({
     mutateAsync: mockPutPlanMutateAsync,
     isPending: false,
   }),
   useDeletePlan: () => ({
     mutateAsync: mockDeletePlanMutateAsync,
+    isPending: false,
+  }),
+  useActivatePlan: () => ({
+    mutateAsync: mockActivatePlanMutateAsync,
+    isPending: false,
+  }),
+  useDeactivatePlan: () => ({
+    mutateAsync: mockDeactivatePlanMutateAsync,
     isPending: false,
   }),
   useSchedulePriceChange: () => ({
@@ -40,6 +59,7 @@ const mockPlanList = [
   {
     key: "pro",
     name: "Pro Plan",
+    description: "For growing teams",
     limits: { issue_count: 500, autopilot_runs: 50 },
     features: { sso: true },
     currency: "vnd",
@@ -58,6 +78,7 @@ const mockPlanList = [
   {
     key: "legacy",
     name: "Legacy Plan",
+    description: "",
     limits: {},
     features: {},
     currency: "vnd",
@@ -81,6 +102,17 @@ describe("Plans screen", () => {
     mockMeRole = "system_admin";
     mockUsePlans.mockReturnValue({
       data: mockPlanList,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUsePlan.mockReturnValue({
+      data: mockPlanList[0],
+      isLoading: false,
+      isError: false,
+    });
+    mockUsePlanHistory.mockReturnValue({
+      data: [],
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -185,6 +217,8 @@ describe("Plans screen", () => {
       expect(mockPutPlanMutateAsync).toHaveBeenCalledWith({
         key: "pro",
         name: "Pro Plus",
+        description: "For growing teams",
+        expected_version: 1,
         trial_days: 30,
         limits: { issue_count: 500, autopilot_runs: 50 },
         features: { sso: true },
@@ -281,5 +315,104 @@ describe("Plans screen", () => {
     expect(currencyInput.closest("div")).not.toHaveTextContent(
       "The currency can't change because this plan has subscriptions or orders.",
     );
+  });
+
+  it("admin sees plans read only", () => {
+    mockMeRole = "admin";
+    render(<Plans userRole="admin" />);
+
+    expect(mockUsePlans).toHaveBeenCalledWith(true);
+    expect(screen.getByRole("heading", { name: "Plans Catalogue" })).toBeInTheDocument();
+    expect(screen.getByText("Pro Plan")).toBeInTheDocument();
+    expect(screen.getByText("For growing teams")).toBeInTheDocument();
+
+    expect(screen.queryByRole("button", { name: /Create plan/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Edit plan/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Delete plan/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Schedule price/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Deactivate plan/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Activate plan/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /View history/i })).not.toBeInTheDocument();
+  });
+
+  it("deactivate and activate call the routes and show the inactive badge", async () => {
+    mockDeactivatePlanMutateAsync.mockResolvedValueOnce({
+      changed: true,
+      plan: { ...mockPlanList[0], archived_at: "2026-11-20T00:00:00Z" },
+    });
+    mockActivatePlanMutateAsync.mockResolvedValueOnce({
+      changed: true,
+      plan: { ...mockPlanList[1], archived_at: null },
+    });
+
+    render(<Plans userRole="system_admin" />);
+
+    // Inactive plan shows the Inactive badge
+    const legacyRow = screen.getByText("Legacy Plan").closest("tr")!;
+    expect(within(legacyRow).getByText("Inactive")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate plan Pro Plan" }));
+    await waitFor(() => {
+      expect(mockDeactivatePlanMutateAsync).toHaveBeenCalledWith({ key: "pro" });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Activate plan Legacy Plan" }));
+    await waitFor(() => {
+      expect(mockActivatePlanMutateAsync).toHaveBeenCalledWith({ key: "legacy" });
+    });
+  });
+
+  it("delete shows plan_in_use message", async () => {
+    mockDeletePlanMutateAsync.mockRejectedValueOnce(
+      new PlatformApiError(409, "plan_in_use", "subscriptions use this plan; archive it instead"),
+    );
+
+    render(<Plans userRole="system_admin" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete plan Pro Plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
+
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() => {
+      expect(within(dialog).getByRole("alert")).toHaveTextContent("subscriptions use this plan; archive it instead");
+    });
+  });
+
+  it("lowering a limit asks for confirmation", async () => {
+    mockPutPlanMutateAsync.mockResolvedValueOnce({
+      changed: true,
+      plan: { ...mockPlanList[0], limits: { issue_count: 100, autopilot_runs: 50 } },
+    });
+
+    render(<Plans userRole="system_admin" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit plan Pro Plan" }));
+
+    const issueLimitInput = screen.getByLabelText(/Issue limit/i);
+    fireEvent.change(issueLimitInput, { target: { value: "100" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    // Does not submit before explicit confirmation
+    expect(mockPutPlanMutateAsync).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/Lowered limits/i)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /Confirm limit reduction/i }));
+
+    await waitFor(() => {
+      expect(mockPutPlanMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: "pro",
+          limits: expect.objectContaining({ issue_count: 100 }),
+        }),
+      );
+    });
+  });
+
+  it("opens PlanHistory when admin clicks View history for a plan", () => {
+    render(<Plans userRole="system_admin" />);
+    fireEvent.click(screen.getByRole("button", { name: "View history for Pro Plan" }));
+    expect(screen.getByRole("heading", { name: /Plan History: Pro Plan/i })).toBeInTheDocument();
   });
 });

@@ -9,6 +9,7 @@ import { Login } from "./screens/Login";
 import { Overview } from "./screens/Overview";
 import { Tenants } from "./screens/Tenants";
 import { TenantDetail } from "./screens/TenantDetail";
+import { Workspaces } from "./screens/Workspaces";
 import { WorkspaceDetail } from "./screens/WorkspaceDetail";
 import { Users } from "./screens/Users";
 import { UserDetail } from "./screens/UserDetail";
@@ -20,11 +21,13 @@ import { EinvoiceFailures } from "./screens/EinvoiceFailures";
 import { Audit } from "./screens/Audit";
 import { Orders } from "./screens/Orders";
 import { Plans } from "./screens/Plans";
+import { PlanHistory } from "./screens/PlanHistory";
 
 type Screen =
   | "overview"
   | "tenants"
   | "tenant-detail"
+  | "workspaces"
   | "workspace-detail"
   | "users"
   | "user-detail"
@@ -32,6 +35,7 @@ type Screen =
   | "einvoices"
   | "orders"
   | "plans"
+  | "plan-history"
   | "accounts"
   | "staff"
   | "deletion-requests"
@@ -43,14 +47,16 @@ interface RouteState {
   tenantId: string | null;
   workspaceId: string | null;
   userId: string | null;
+  planKey: string | null;
 }
 
 const SCREEN_PATHS: Record<
-  Exclude<Screen, "tenant-detail" | "workspace-detail" | "user-detail">,
+  Exclude<Screen, "tenant-detail" | "workspace-detail" | "user-detail" | "plan-history">,
   string
 > = {
   overview: "/",
   tenants: "/tenants",
+  workspaces: "/workspaces",
   users: "/users",
   orders: "/orders",
   "payment-notices": "/payment-notices",
@@ -73,38 +79,48 @@ function safeDecodeSegment(raw: string): string | null {
 function parseRoute(pathname: string): RouteState {
   const clean = pathname.replace(/\/+$/, "") || "/";
   if (clean === "/") {
-    return { screen: "overview", tenantId: null, workspaceId: null, userId: null };
+    return { screen: "overview", tenantId: null, workspaceId: null, userId: null, planKey: null };
   }
   if (clean === "/tenants") {
-    return { screen: "tenants", tenantId: null, workspaceId: null, userId: null };
+    return { screen: "tenants", tenantId: null, workspaceId: null, userId: null, planKey: null };
+  }
+  if (clean === "/workspaces") {
+    return { screen: "workspaces", tenantId: null, workspaceId: null, userId: null, planKey: null };
   }
   if (clean.startsWith("/tenants/")) {
     const id = safeDecodeSegment(clean.slice("/tenants/".length));
     if (id && !id.includes("/")) {
-      return { screen: "tenant-detail", tenantId: id, workspaceId: null, userId: null };
+      return { screen: "tenant-detail", tenantId: id, workspaceId: null, userId: null, planKey: null };
     }
   }
   if (clean.startsWith("/workspaces/")) {
     const id = safeDecodeSegment(clean.slice("/workspaces/".length));
     if (id && !id.includes("/")) {
-      return { screen: "workspace-detail", tenantId: null, workspaceId: id, userId: null };
+      return { screen: "workspace-detail", tenantId: null, workspaceId: id, userId: null, planKey: null };
+    }
+  }
+  if (clean.startsWith("/plans/") && clean.endsWith("/history")) {
+    const rawKey = clean.slice("/plans/".length, -"/history".length);
+    const key = safeDecodeSegment(rawKey);
+    if (key && !key.includes("/")) {
+      return { screen: "plan-history", tenantId: null, workspaceId: null, userId: null, planKey: key };
     }
   }
   if (clean === "/users") {
-    return { screen: "users", tenantId: null, workspaceId: null, userId: null };
+    return { screen: "users", tenantId: null, workspaceId: null, userId: null, planKey: null };
   }
   if (clean.startsWith("/users/")) {
     const id = safeDecodeSegment(clean.slice("/users/".length));
     if (id && !id.includes("/")) {
-      return { screen: "user-detail", tenantId: null, workspaceId: null, userId: id };
+      return { screen: "user-detail", tenantId: null, workspaceId: null, userId: id, planKey: null };
     }
   }
   for (const [screen, path] of Object.entries(SCREEN_PATHS)) {
     if (path !== "/" && clean === path) {
-      return { screen: screen as Screen, tenantId: null, workspaceId: null, userId: null };
+      return { screen: screen as Screen, tenantId: null, workspaceId: null, userId: null, planKey: null };
     }
   }
-  return { screen: "overview", tenantId: null, workspaceId: null, userId: null };
+  return { screen: "overview", tenantId: null, workspaceId: null, userId: null, planKey: null };
 }
 
 function routeToPath(route: RouteState): string {
@@ -117,8 +133,13 @@ function routeToPath(route: RouteState): string {
   if (route.screen === "user-detail" && route.userId) {
     return `/users/${encodeURIComponent(route.userId)}`;
   }
-  if (route.screen === "tenant-detail" || route.screen === "workspace-detail") return "/tenants";
+  if (route.screen === "plan-history" && route.planKey) {
+    return `/plans/${encodeURIComponent(route.planKey)}/history`;
+  }
+  if (route.screen === "tenant-detail") return "/tenants";
+  if (route.screen === "workspace-detail") return "/workspaces";
   if (route.screen === "user-detail") return "/users";
+  if (route.screen === "plan-history") return "/plans";
   return SCREEN_PATHS[route.screen];
 }
 
@@ -126,8 +147,14 @@ function canAccessScreen(screen: Screen, role: StaffRole): boolean {
   if (screen === "overview") {
     return role !== "admin";
   }
-  if (screen === "staff" || screen === "accounts" || screen === "plans") {
+  if (screen === "staff" || screen === "accounts") {
     return role === "system_admin";
+  }
+  if (screen === "plans") {
+    return role === "system_admin" || role === "admin";
+  }
+  if (screen === "plan-history") {
+    return role === "system_admin" || role === "billing";
   }
   if (screen === "deletion-requests") {
     return role === "system_admin" || role === "admin";
@@ -147,6 +174,7 @@ function defaultRouteForRole(role: StaffRole): RouteState {
     tenantId: null,
     workspaceId: null,
     userId: null,
+    planKey: null,
   };
 }
 
@@ -211,8 +239,8 @@ export function App() {
   const handleNavigate = (screen: string) => {
     const targetScreen = (
       screen in SCREEN_PATHS ? screen : me.role === "admin" ? "tenants" : "overview"
-    ) as Exclude<Screen, "tenant-detail" | "workspace-detail" | "user-detail">;
-    navigateTo({ screen: targetScreen, tenantId: null, workspaceId: null, userId: null });
+    ) as Exclude<Screen, "tenant-detail" | "workspace-detail" | "user-detail" | "plan-history">;
+    navigateTo({ screen: targetScreen, tenantId: null, workspaceId: null, userId: null, planKey: null });
   };
 
   const handleLogout = async () => {
@@ -224,11 +252,13 @@ export function App() {
   };
 
   const openTenant = (id: string) =>
-    navigateTo({ screen: "tenant-detail", tenantId: id, workspaceId: null, userId: null });
+    navigateTo({ screen: "tenant-detail", tenantId: id, workspaceId: null, userId: null, planKey: null });
   const openWorkspace = (id: string, fromTenantId: string | null) =>
-    navigateTo({ screen: "workspace-detail", tenantId: fromTenantId, workspaceId: id, userId: null });
+    navigateTo({ screen: "workspace-detail", tenantId: fromTenantId, workspaceId: id, userId: null, planKey: null });
   const openUser = (id: string) =>
-    navigateTo({ screen: "user-detail", tenantId: null, workspaceId: null, userId: id });
+    navigateTo({ screen: "user-detail", tenantId: null, workspaceId: null, userId: id, planKey: null });
+  const openPlanHistory = (planKey: string) =>
+    navigateTo({ screen: "plan-history", tenantId: null, workspaceId: null, userId: null, planKey });
 
   const renderScreen = () => {
     switch (effectiveRoute.screen) {
@@ -236,6 +266,8 @@ export function App() {
         return <Overview />;
       case "tenants":
         return <Tenants onSelectTenant={openTenant} />;
+      case "workspaces":
+        return <Workspaces onSelectWorkspace={(id) => openWorkspace(id, null)} userRole={me.role} />;
       case "tenant-detail":
         if (!effectiveRoute.tenantId) {
           return <Tenants onSelectTenant={openTenant} />;
@@ -244,7 +276,7 @@ export function App() {
           <TenantDetail
             tenantId={effectiveRoute.tenantId}
             onBack={() =>
-              navigateTo({ screen: "tenants", tenantId: null, workspaceId: null, userId: null })
+              navigateTo({ screen: "tenants", tenantId: null, workspaceId: null, userId: null, planKey: null })
             }
             onSelectWorkspace={(id) => openWorkspace(id, effectiveRoute.tenantId)}
             userRole={me.role}
@@ -252,17 +284,17 @@ export function App() {
         );
       case "workspace-detail": {
         if (!effectiveRoute.workspaceId) {
-          return <Tenants onSelectTenant={openTenant} />;
+          return <Workspaces onSelectWorkspace={(id) => openWorkspace(id, null)} userRole={me.role} />;
         }
         const fromTenant = effectiveRoute.tenantId;
         return (
           <WorkspaceDetail
             workspaceId={effectiveRoute.workspaceId}
-            backLabel={fromTenant ? "Back to tenant" : "Back to tenants"}
+            backLabel={fromTenant ? "Back to tenant" : "Back to workspaces"}
             onBack={() =>
               fromTenant
                 ? openTenant(fromTenant)
-                : navigateTo({ screen: "tenants", tenantId: null, workspaceId: null, userId: null })
+                : navigateTo({ screen: "workspaces", tenantId: null, workspaceId: null, userId: null, planKey: null })
             }
             userRole={me.role}
           />
@@ -278,7 +310,7 @@ export function App() {
           <UserDetail
             userId={effectiveRoute.userId}
             onBack={() =>
-              navigateTo({ screen: "users", tenantId: null, workspaceId: null, userId: null })
+              navigateTo({ screen: "users", tenantId: null, workspaceId: null, userId: null, planKey: null })
             }
             userRole={me.role}
           />
@@ -286,7 +318,20 @@ export function App() {
       case "orders":
         return <Orders userRole={me.role} />;
       case "plans":
-        return <Plans userRole={me.role} />;
+        return <Plans userRole={me.role} onOpenHistory={openPlanHistory} />;
+      case "plan-history":
+        if (!effectiveRoute.planKey) {
+          return <Plans userRole={me.role} onOpenHistory={openPlanHistory} />;
+        }
+        return (
+          <PlanHistory
+            planKey={effectiveRoute.planKey}
+            onBack={() =>
+              navigateTo({ screen: "plans", tenantId: null, workspaceId: null, userId: null, planKey: null })
+            }
+            userRole={me.role}
+          />
+        );
       case "payment-notices":
         return <PaymentNotices userRole={me.role} />;
       case "einvoices":
@@ -311,6 +356,7 @@ export function App() {
         onNavigate={handleNavigate}
         user={me}
         onLogout={handleLogout}
+        workspaceFromTenant={Boolean(effectiveRoute.tenantId)}
       >
         {renderScreen()}
       </Layout>

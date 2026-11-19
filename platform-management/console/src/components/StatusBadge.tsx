@@ -38,6 +38,7 @@ const STATUS_CONFIG: Record<string, StatusPresentation> = {
   read_only: { kind: "quiet", label: "Read-only", dotVariant: "neutral", textColor: "secondary" },
   deleted: { kind: "quiet", label: "Deleted", dotVariant: "neutral", textColor: "secondary" },
   archived: { kind: "quiet", label: "Archived", dotVariant: "neutral", textColor: "secondary" },
+  inactive: { kind: "quiet", label: "Inactive", dotVariant: "neutral", textColor: "secondary" },
   expired: { kind: "quiet", label: "Expired", dotVariant: "neutral", textColor: "secondary" },
   canceled: { kind: "quiet", label: "Canceled", dotVariant: "neutral", textColor: "secondary" },
   cancelled: { kind: "quiet", label: "Cancelled", dotVariant: "neutral", textColor: "secondary" },

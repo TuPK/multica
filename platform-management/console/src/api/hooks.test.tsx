@@ -25,6 +25,8 @@ import {
   useWorkspaceBillingProfile,
   useTenants,
   useTenant,
+  useWorkspaces,
+  useExportWorkspace,
   useUser,
   useUsers,
   useVerifyCode,
@@ -32,7 +34,12 @@ import {
   useConfirmOrder,
   useCancelOrder,
   usePlans,
+  usePlan,
+  usePlanHistory,
+  useCreatePlan,
   usePutPlan,
+  useActivatePlan,
+  useDeactivatePlan,
   useDeletePlan,
   usePriceChanges,
   useSchedulePriceChange,
@@ -741,6 +748,7 @@ describe("plans hooks", () => {
   const mockPlan = {
     key: "pro",
     name: "Pro",
+    description: "",
     limits: {},
     features: {},
     currency: "vnd",
@@ -1686,5 +1694,154 @@ describe("R6 S13 hooks (staff update, member requests, immediate deletion)", () 
       "POST /api/platform/deletion-requests/dr-1/cancel",
       "POST /api/platform/deletion-requests/dr-1/retry",
     ]);
+  });
+
+  it("R6 S23 workspace list, export, plan create/activate/deactivate/history hooks hit expected routes", async () => {
+    const planObj = {
+      key: "team",
+      name: "Team",
+      description: "Team plan",
+      limits: { issue_count: 200 },
+      features: {},
+      currency: "vnd",
+      seat_price_month: 100000,
+      seat_price_year: null,
+      seats_fixed: null,
+      min_seats: 1,
+      trial_days: 14,
+      is_public: true,
+      sort: 5,
+      archived_at: null,
+      audience: "business",
+      billing_model: "seat",
+    };
+
+    const calls = stubFetch({
+      "GET /api/platform/workspaces": (url) => {
+        if (url.searchParams.get("cursor") === "cur-2") {
+          return json(200, {
+            workspaces: [
+              {
+                id: "ws-2",
+                name: "Beta",
+                slug: "beta",
+                tenant_id: "t-1",
+                tenant_name: "Acme",
+                status: "suspended",
+                plan_key: "team",
+                member_count: 2,
+                created_at: "2026-11-02T00:00:00Z",
+              },
+            ],
+            next_cursor: null,
+          });
+        }
+        return json(200, {
+          workspaces: [
+            {
+              id: "ws-1",
+              name: "Acme",
+              slug: "acme",
+              tenant_id: "t-1",
+              tenant_name: "Acme",
+              status: "active",
+              plan_key: "team",
+              member_count: 4,
+              created_at: "2026-11-01T00:00:00Z",
+            },
+          ],
+          next_cursor: "cur-2",
+        });
+      },
+      "POST /api/platform/workspaces/ws-1/export": json(202, { export_id: "exp-1", status: "queued" }),
+      "GET /api/platform/plans/team": json(200, { plan: planObj }),
+      "POST /api/platform/plans": json(201, { plan: planObj }),
+      "POST /api/platform/plans/team/deactivate": json(200, {
+        changed: true,
+        plan: { ...planObj, archived_at: "2026-11-20T00:00:00Z" },
+      }),
+      "POST /api/platform/plans/team/activate": json(200, {
+        changed: true,
+        plan: planObj,
+      }),
+      "GET /api/platform/plans/team/history": json(200, {
+        history: [
+          {
+            at: "2026-11-20T00:00:00Z",
+            actor: "root@example.com",
+            action: "plan.activated",
+            changes: [{ field: "archived_at", old: "2026-11-20T00:00:00Z", new: null }],
+            reason: "",
+          },
+        ],
+      }),
+    });
+
+    const { wrapper } = setup();
+
+    const wsHook = renderHook(
+      () => useWorkspaces({ q: "ac", status: "active", plan_key: "team", tenant_id: "t-1" }),
+      { wrapper },
+    );
+    await waitFor(() => expect(wsHook.result.current.isSuccess).toBe(true));
+    expect(calls[0]?.search).toBe("?q=ac&status=active&plan_key=team&tenant_id=t-1");
+    expect(wsHook.result.current.hasNextPage).toBe(true);
+
+    await act(async () => {
+      await wsHook.result.current.fetchNextPage();
+    });
+    await waitFor(() => expect(wsHook.result.current.data).toHaveLength(2));
+    expect(calls[1]?.search).toBe("?q=ac&status=active&plan_key=team&tenant_id=t-1&cursor=cur-2");
+    wsHook.unmount();
+
+    const exportHook = renderHook(() => useExportWorkspace(), { wrapper });
+    await act(async () => {
+      const res = await exportHook.result.current.mutateAsync({ workspaceId: "ws-1" });
+      expect(res).toEqual({ export_id: "exp-1", status: "queued" });
+    });
+
+    const createHook = renderHook(() => useCreatePlan(), { wrapper });
+    await act(async () => {
+      const created = await createHook.result.current.mutateAsync({
+        key: "team",
+        name: "Team",
+        description: "Team plan",
+        limits: { issue_count: 200 },
+        features: {},
+        currency: "vnd",
+        seat_price_month: 100000,
+        seat_price_year: null,
+        seats_fixed: null,
+        min_seats: 1,
+        trial_days: 14,
+        is_public: true,
+        sort: 5,
+        audience: "business",
+        billing_model: "seat",
+      });
+      expect(created?.plan.key).toBe("team");
+    });
+
+    const planDetail = renderHook(() => usePlan("team"), { wrapper });
+    await waitFor(() => expect(planDetail.result.current.isSuccess).toBe(true));
+    expect(planDetail.result.current.data?.name).toBe("Team");
+    planDetail.unmount();
+
+    const deactivateHook = renderHook(() => useDeactivatePlan(), { wrapper });
+    await act(async () => {
+      const res = await deactivateHook.result.current.mutateAsync({ key: "team" });
+      expect(res?.changed).toBe(true);
+    });
+
+    const activateHook = renderHook(() => useActivatePlan(), { wrapper });
+    await act(async () => {
+      const res = await activateHook.result.current.mutateAsync({ key: "team" });
+      expect(res?.changed).toBe(true);
+    });
+
+    const historyHook = renderHook(() => usePlanHistory("team"), { wrapper });
+    await waitFor(() => expect(historyHook.result.current.isSuccess).toBe(true));
+    expect(historyHook.result.current.data?.[0]?.action).toBe("plan.activated");
+    historyHook.unmount();
   });
 });

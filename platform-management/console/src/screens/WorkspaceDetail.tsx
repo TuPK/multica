@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Card } from "@astryxdesign/core/Card";
 import { Divider } from "@astryxdesign/core/Divider";
+import { HStack } from "@astryxdesign/core/HStack";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Section } from "@astryxdesign/core/Section";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
@@ -28,7 +29,23 @@ import {
 } from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Textarea } from "@multica/ui/components/ui/textarea";
-import { Activity, AlertCircle, AlertTriangle, Ban, CreditCard, Info, Plus, Trash2, UserPlus } from "@multica/ui/icons";
+import {
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  Ban,
+  CalendarClock,
+  CheckCircle2,
+  CreditCard,
+  Download,
+  History,
+  Info,
+  Lock,
+  Plus,
+  RotateCcw,
+  Trash2,
+  UserPlus,
+} from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { TypeToConfirmDialog } from "../components/TypeToConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -45,6 +62,7 @@ import {
   useWorkspaceNotes,
   useWorkspaceAudit,
   useChangeWorkspaceStatus,
+  useExportWorkspace,
   useAddWorkspaceNote,
   useUpdateSubscription,
   useSetBillingProfileVerified,
@@ -70,6 +88,28 @@ import type {
   WorkspaceUsageUnpaidOrder,
 } from "../api/schemas";
 import { formatMinorAmount } from "../money";
+
+function formatWorkspaceConflictError(err: unknown, fallback: string): string {
+  if (err instanceof PlatformApiError) {
+    const status = typeof err.details?.status === "string" ? err.details.status : null;
+    const allowedList = Array.isArray(err.details?.allowed)
+      ? err.details.allowed.filter((x): x is string => typeof x === "string")
+      : null;
+    if (
+      err.code === "workspace_state_conflict" &&
+      (status || (allowedList && allowedList.length > 0))
+    ) {
+      const parts: string[] = [err.message || fallback];
+      if (status) parts.push(`Current status: ${status}`);
+      if (allowedList && allowedList.length > 0) {
+        parts.push(`Allowed: ${allowedList.join(", ")}`);
+      }
+      return parts.join(" — ");
+    }
+    return err.message || fallback;
+  }
+  return err instanceof Error ? err.message : fallback;
+}
 
 const MEMBER_ROLE_ITEMS: Array<{ value: MemberRole; label: string }> = [
   { value: "admin", label: "Admin" },
@@ -417,6 +457,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
   } = useWorkspaceAudit(workspaceId);
 
   const changeStatus = useChangeWorkspaceStatus();
+  const exportWorkspace = useExportWorkspace();
   const addNote = useAddWorkspaceNote();
   const updateSubscription = useUpdateSubscription();
   const setBillingProfileVerified = useSetBillingProfileVerified();
@@ -448,6 +489,9 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
   const [targetStatus, setTargetStatus] = useState("active");
   const [statusError, setStatusError] = useState<string | null>(null);
 
+  const [quickActionNotice, setQuickActionNotice] = useState<string | null>(null);
+  const [quickActionError, setQuickActionError] = useState<string | null>(null);
+
   const [noteBody, setNoteBody] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
 
@@ -467,6 +511,11 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
   const effectiveRole = userRole ?? me?.role;
   const canEditSubscription = effectiveRole === "billing" || effectiveRole === "system_admin";
   const canWriteOff = me === null ? false : (me?.role ?? userRole) === "system_admin";
+  const canLockWorkspace =
+    effectiveRole === "system_admin" ||
+    effectiveRole === "admin" ||
+    effectiveRole === "support";
+  const canExportWorkspace = effectiveRole === "system_admin" || effectiveRole === "admin";
   const canManageMembers = effectiveRole === "system_admin" || effectiveRole === "admin";
   const canDeleteWorkspace = effectiveRole === "system_admin" || effectiveRole === "admin";
 
@@ -519,6 +568,29 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
     setStatusDialogOpen(true);
   };
 
+  const handleOpenQuickStatus = (nextStatus: "active" | "read_only" | "suspended" | "pending_deletion") => {
+    setTargetStatus(nextStatus);
+    setStatusError(null);
+    setQuickActionError(null);
+    setStatusDialogOpen(true);
+  };
+
+  const handleExportWorkspace = async () => {
+    if (!canExportWorkspace || exportWorkspace.isPending) return;
+    setQuickActionError(null);
+    setQuickActionNotice(null);
+    try {
+      const res = await exportWorkspace.mutateAsync({ workspaceId });
+      setQuickActionNotice(
+        res ? `Workspace export queued (${res.export_id})` : "Workspace export queued",
+      );
+    } catch (err: unknown) {
+      setQuickActionError(
+        formatWorkspaceConflictError(err, "Failed to request workspace export"),
+      );
+    }
+  };
+
   const handleConfirmStatusChange = async (reason: string) => {
     setStatusError(null);
     try {
@@ -529,9 +601,9 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
       });
       setStatusDialogOpen(false);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to change workspace status";
-      setStatusError(msg);
+      setStatusError(
+        formatWorkspaceConflictError(err, "Failed to change workspace status"),
+      );
     }
   };
 
@@ -802,6 +874,55 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
 
   const currentStatus = workspace.state?.status || workspace.status;
 
+  const allowedSet = Array.isArray(workspace.allowed)
+    ? new Set(workspace.allowed)
+    : null;
+  const isQuickAllowed = (keys: string[], fallback: boolean): boolean => {
+    if (allowedSet === null) return fallback;
+    return keys.some((k) => allowedSet.has(k));
+  };
+
+  const seatsPurchased =
+    workspace.seats?.purchased ?? workspace.subscription?.seats ?? 0;
+  const seatsUsed =
+    workspace.seats?.used ??
+    workspace.usage_current?.members ??
+    workspace.member_count;
+  const seatsHeld = workspace.seats?.held ?? 0;
+
+  const statusHistoryRows = workspace.status_history
+    ? workspace.status_history.map((entry, idx) => ({
+        key: entry.id || `${entry.created_at}-${idx}`,
+        status: entry.status as string | null,
+        statusLabel: "",
+        reason: entry.reason || "-",
+        actor: entry.actor || "-",
+        created_at: entry.created_at,
+      }))
+    : auditEvents
+        .filter(
+          (ev) =>
+            ev.action === "workspace.status_changed" ||
+            ev.action === "workspace.deletion_scheduled" ||
+            ev.action === "workspace.deletion_cancelled" ||
+            ev.action === "workspace.immediate_deletion_requested",
+        )
+        .map((ev) => ({
+          key: ev.id,
+          status: null as string | null,
+          statusLabel:
+            ev.action === "workspace.deletion_scheduled"
+              ? "Deletion scheduled"
+              : ev.action === "workspace.deletion_cancelled"
+                ? "Deletion cancelled"
+                : ev.action === "workspace.immediate_deletion_requested"
+                  ? "Immediate deletion requested"
+                  : "Status changed",
+          reason: "-",
+          actor: ev.actor_label || ev.actor_id || "-",
+          created_at: ev.created_at,
+        }));
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -876,6 +997,145 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         </div>
       )}
 
+      {/* Quick Actions Bar */}
+      <Section
+        variant="transparent"
+        padding={0}
+        className="space-y-3"
+        data-testid="workspace-quick-actions"
+      >
+        <Heading level={3}>Quick Actions</Heading>
+        <HStack wrap="wrap" gap={2} align="center">
+          {canLockWorkspace && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={
+                  !isQuickAllowed(
+                    ["suspend", "suspended"],
+                    currentStatus !== "suspended" && currentStatus !== "pending_deletion",
+                  )
+                }
+                onClick={() => handleOpenQuickStatus("suspended")}
+              >
+                <Ban className="size-3.5" aria-hidden="true" />
+                <span>Suspend</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={
+                  !isQuickAllowed(
+                    ["read_only"],
+                    currentStatus !== "read_only" && currentStatus !== "pending_deletion",
+                  )
+                }
+                onClick={() => handleOpenQuickStatus("read_only")}
+              >
+                <Lock className="size-3.5" aria-hidden="true" />
+                <span>Read-only</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={
+                  !isQuickAllowed(
+                    ["unlock", "activate", "active"],
+                    currentStatus !== "active",
+                  )
+                }
+                onClick={() => handleOpenQuickStatus("active")}
+              >
+                <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                <span>Unlock</span>
+              </Button>
+            </>
+          )}
+          {canDeleteWorkspace && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={
+                  !isQuickAllowed(
+                    ["schedule_deletion", "pending_deletion"],
+                    currentStatus !== "pending_deletion",
+                  )
+                }
+                onClick={() => handleOpenQuickStatus("pending_deletion")}
+              >
+                <CalendarClock className="size-3.5" aria-hidden="true" />
+                <span>Schedule deletion</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={
+                  !isQuickAllowed(
+                    ["cancel_deletion"],
+                    currentStatus === "pending_deletion",
+                  )
+                }
+                onClick={() => handleOpenQuickStatus("active")}
+              >
+                <RotateCcw className="size-3.5" aria-hidden="true" />
+                <span>Cancel deletion</span>
+              </Button>
+            </>
+          )}
+          {canExportWorkspace && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!isQuickAllowed(["export"], true) || exportWorkspace.isPending}
+              aria-busy={exportWorkspace.isPending || undefined}
+              onClick={() => void handleExportWorkspace()}
+            >
+              {exportWorkspace.isPending ? (
+                <Spinner className="size-3.5" aria-hidden="true" />
+              ) : (
+                <Download className="size-3.5" aria-hidden="true" />
+              )}
+              <span>Export data</span>
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              document
+                .getElementById("workspace-audit-log")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            <History className="size-3.5" aria-hidden="true" />
+            <span>View audit log</span>
+          </Button>
+        </HStack>
+
+        {quickActionNotice && (
+          <Alert role="status">
+            <Info className="size-4 shrink-0" aria-hidden="true" />
+            <AlertDescription className="text-caption">{quickActionNotice}</AlertDescription>
+          </Alert>
+        )}
+
+        {quickActionError && (
+          <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            <AlertDescription className="text-caption">{quickActionError}</AlertDescription>
+          </Alert>
+        )}
+      </Section>
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <Section variant="transparent" padding={0} className="space-y-4 lg:col-span-2">
           <Heading level={2}>Workspace State</Heading>
@@ -883,6 +1143,11 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
             <MetadataListItem label="Status">
               <StatusBadge status={currentStatus} />
             </MetadataListItem>
+            {workspace.tenant && (
+              <MetadataListItem label="Tenant">
+                {workspace.tenant.name || workspace.tenant.id}
+              </MetadataListItem>
+            )}
             <MetadataListItem label="Members" tabular>
               {workspace.member_count}
             </MetadataListItem>
@@ -978,12 +1243,18 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
             <StatusBadge status={workspace.subscription.status} />
           )}
         </div>
-        <MetadataList columns={4}>
+        <MetadataList columns={3}>
           <MetadataListItem label="Plan" className="capitalize">
             {workspace.subscription?.plan_key || "free"}
           </MetadataListItem>
           <MetadataListItem label="Seats" tabular>
-            {workspace.subscription?.seats ?? 0}
+            {seatsPurchased}
+          </MetadataListItem>
+          <MetadataListItem label="Seats used" tabular>
+            {seatsUsed}
+          </MetadataListItem>
+          <MetadataListItem label="Seats held" tabular>
+            {seatsHeld}
           </MetadataListItem>
           <MetadataListItem label="Interval" className="capitalize">
             {workspace.subscription?.interval || "month"}
@@ -1318,8 +1589,76 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
 
       <Divider />
 
-      {/* Workspace Audit Log Section */}
+      {/* Status History Section */}
       <Section variant="transparent" padding={0} className="space-y-4">
+        <Heading level={2}>Status History</Heading>
+        {statusHistoryRows.length === 0 ? (
+          <EmptyState
+            icon={<History className="size-5" aria-hidden="true" />}
+            title="No status transitions recorded"
+            isCompact
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <Table
+              data={statusHistoryRows}
+              idKey="key"
+              density="compact"
+              dividers="rows"
+              hasHover
+              columns={[
+                {
+                  key: "created_at",
+                  header: "When",
+                  width: proportional(1.4, { minWidth: 160 }),
+                  renderCell: (row) => (
+                    <Text type="supporting" hasTabularNumbers>
+                      {row.created_at
+                        ? new Date(row.created_at).toLocaleString()
+                        : "-"}
+                    </Text>
+                  ),
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  width: proportional(1.2, { minWidth: 130 }),
+                  renderCell: (row) =>
+                    row.status ? (
+                      <StatusBadge status={row.status} />
+                    ) : (
+                      <Text type="body">{row.statusLabel}</Text>
+                    ),
+                },
+                {
+                  key: "reason",
+                  header: "Reason",
+                  width: proportional(1.6, { minWidth: 160 }),
+                  renderCell: (row) => (
+                    <Text type="supporting">{row.reason}</Text>
+                  ),
+                },
+                {
+                  key: "actor",
+                  header: "Actor",
+                  width: proportional(1.4, { minWidth: 150 }),
+                  renderCell: (row) => <Text type="body">{row.actor}</Text>,
+                },
+              ]}
+            />
+          </div>
+        )}
+      </Section>
+
+      <Divider />
+
+      {/* Workspace Audit Log Section */}
+      <Section
+        id="workspace-audit-log"
+        variant="transparent"
+        padding={0}
+        className="space-y-4"
+      >
         <Heading level={2}>Workspace Audit Log</Heading>
         {auditLoading && <LoadingState message="Loading audit events..." />}
         {!auditLoading && auditEvents.length === 0 && (

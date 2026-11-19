@@ -13,6 +13,8 @@ import {
   parseOverview,
   parseStaffList,
   parseWorkspaceDetail,
+  parseWorkspacePage,
+  parseWorkspaceExportResponse,
   parseTenantDetail,
   parseTenantPage,
   parseWorkspaceUsage,
@@ -24,6 +26,8 @@ import {
   parseNoticeDetail,
   parseNoticeList,
   parsePlanList,
+  parsePlanDetail,
+  parsePlanHistory,
   parsePutPlanResponse,
   parseDeletePlanResponse,
   parseVerifyCodeResponse,
@@ -53,6 +57,8 @@ import {
   type StaffRole,
   type TenantDetail,
   type WorkspaceDetail,
+  type WorkspaceListItem,
+  type WorkspaceExportResponse,
   type WorkspaceStatus,
   type WorkspaceUsage,
   type UserDetail,
@@ -65,6 +71,10 @@ import {
   type NoticeDetail,
   type NoticeState,
   type Plan,
+  type PlanAudience,
+  type PlanBillingModel,
+  type PlanDetailResponse,
+  type PlanHistoryEntry,
   type Subscription,
   type BillingProfile,
   type BillingProfileVerifyResponse,
@@ -104,8 +114,14 @@ export type {
   Einvoice,
   EinvoiceState,
   Plan,
+  PlanAudience,
+  PlanBillingModel,
+  PlanDetailResponse,
+  PlanHistoryEntry,
   Limits,
   WorkspaceUsage,
+  WorkspaceListItem,
+  WorkspaceExportResponse,
   PriceChange,
   PriceChangeState,
   PriceSnapshot,
@@ -132,6 +148,13 @@ export type SettableStaffRole = Exclude<StaffRole, "unknown">;
 export interface SearchFilters {
   /** Substring of the name, slug or email. */
   q?: string;
+}
+
+export interface WorkspaceFilters {
+  q?: string;
+  status?: string;
+  plan_key?: string;
+  tenant_id?: string;
 }
 
 export interface AuditFilters {
@@ -177,6 +200,8 @@ export const platformKeys = {
   all: ["platform"] as const,
   me: () => ["platform", "me"] as const,
   workspaces: () => ["platform", "workspaces"] as const,
+  workspaceLists: () => ["platform", "workspaces", "list"] as const,
+  workspaceList: (filters: WorkspaceFilters) => ["platform", "workspaces", "list", clean(filters)] as const,
   tenants: () => ["platform", "tenants"] as const,
   tenantLists: () => ["platform", "tenants", "list"] as const,
   tenantList: (filters: SearchFilters) => ["platform", "tenants", "list", clean(filters)] as const,
@@ -205,6 +230,8 @@ export const platformKeys = {
   einvoices: () => ["platform", "einvoices"] as const,
   einvoiceList: (state = "") => ["platform", "einvoices", "list", state] as const,
   plans: () => ["platform", "plans"] as const,
+  plan: (key: string) => ["platform", "plans", "detail", key] as const,
+  planHistory: (key: string) => ["platform", "plans", key, "history"] as const,
   priceChanges: (key: string) => ["platform", "plans", key, "price-changes"] as const,
   audits: () => ["platform", "audit"] as const,
   audit: (filters: AuditFilters) => ["platform", "audit", clean(filters)] as const,
@@ -309,6 +336,29 @@ export function useTenants(filters: SearchFilters = {}) {
   });
 }
 
+export function useWorkspaces(filters: WorkspaceFilters = {}) {
+  const f = clean(filters);
+  return useInfiniteQuery({
+    queryKey: platformKeys.workspaceList(f),
+    queryFn: async ({ pageParam, signal }) =>
+      parseWorkspacePage(
+        await platformFetch(
+          `/workspaces${queryString({
+            q: f.q,
+            status: f.status,
+            plan_key: f.plan_key,
+            tenant_id: f.tenant_id,
+            cursor: pageParam,
+          })}`,
+          { signal },
+        ),
+      ),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    select: (data) => data.pages.flatMap((page) => page.workspaces),
+  });
+}
+
 export function useTenant(id: string | undefined) {
   return useQuery({
     queryKey: platformKeys.tenant(id ?? ""),
@@ -366,10 +416,30 @@ export function useChangeWorkspaceStatus() {
     onSuccess: (_data, vars) =>
       invalidateAll(queryClient, [
         platformKeys.workspace(vars.workspaceId),
+        platformKeys.workspaceLists(),
         platformKeys.tenants(),
         platformKeys.workspaceAudits(vars.workspaceId),
         platformKeys.audits(),
         platformKeys.overview(),
+      ]),
+  });
+}
+
+/** Queue a workspace export bundle (support, admin, system_admin). */
+export function useExportWorkspace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { workspaceId: string }) => {
+      const res = await platformFetch(`/workspaces/${pathSegment(vars.workspaceId)}/export`, {
+        method: "POST",
+      });
+      return parseWorkspaceExportResponse(res);
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.workspaceAudits(vars.workspaceId),
+        platformKeys.audits(),
       ]),
   });
 }
@@ -706,7 +776,7 @@ export function useDismissPaymentNotice() {
 
 // Plans
 
-/** List all plans. Admin only. */
+/** List all plans. System admin or admin (read-only). */
 export function usePlans(enabled = true) {
   return useQuery({
     queryKey: platformKeys.plans(),
@@ -718,54 +788,58 @@ export function usePlans(enabled = true) {
   });
 }
 
-export interface PutPlanInput {
+/** Fetch one plan detail by key. System admin only. */
+export function usePlan(key: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.plan(key ?? ""),
+    enabled: Boolean(key) && enabled,
+    queryFn: async ({ signal }): Promise<Plan> => {
+      const res = await platformFetch(`/plans/${pathSegment(key ?? "")}`, { signal });
+      return orMalformed(parsePlanDetail(res)).plan;
+    },
+  });
+}
+
+/** Fetch a plan's audit history (oldest/newest per server, plan.changed / activated / deactivated / price). System admin or billing. */
+export function usePlanHistory(key: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.planHistory(key ?? ""),
+    enabled: Boolean(key) && enabled,
+    queryFn: async ({ signal }): Promise<PlanHistoryEntry[]> => {
+      const res = await platformFetch(`/plans/${pathSegment(key ?? "")}/history`, { signal });
+      return parsePlanHistory(res).history;
+    },
+  });
+}
+
+export interface CreatePlanInput {
   key: string;
   name: string;
+  description: string;
   limits: Limits;
   features: Record<string, boolean>;
   currency: string;
+  seat_price_month: number | null;
+  seat_price_year: number | null;
   seats_fixed: number | null;
   min_seats: number | null;
   trial_days: number;
   is_public: boolean;
   sort: number;
-  archived: boolean;
+  audience: Exclude<PlanAudience, "unknown">;
+  billing_model: Exclude<PlanBillingModel, "unknown">;
 }
 
-/** Create or update non-price plan fields. Admin only. */
-export function usePutPlan() {
+/** Create a new plan. System admin only. */
+export function useCreatePlan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: PutPlanInput) => {
-      const {
-        key,
-        name,
-        limits,
-        features,
-        currency,
-        seats_fixed,
-        min_seats,
-        trial_days,
-        is_public,
-        sort,
-        archived,
-      } = vars;
-      const res = await platformFetch(`/plans/${pathSegment(key)}`, {
-        method: "PUT",
-        body: {
-          name,
-          limits,
-          features,
-          currency,
-          seats_fixed,
-          min_seats,
-          trial_days,
-          is_public,
-          sort,
-          archived,
-        },
+    mutationFn: async (vars: CreatePlanInput) => {
+      const res = await platformFetch("/plans", {
+        method: "POST",
+        body: vars,
       });
-      return parsePutPlanResponse(res);
+      return parsePlanDetail(res, "POST /api/platform/plans");
     },
     onSuccess: () =>
       invalidateAll(queryClient, [
@@ -775,7 +849,113 @@ export function usePutPlan() {
   });
 }
 
-/** Delete an unused plan. Admin only. */
+export interface PutPlanInput {
+  key: string;
+  name: string;
+  description?: string;
+  limits: Limits;
+  features: Record<string, boolean>;
+  currency: string;
+  seats_fixed: number | null;
+  min_seats: number | null;
+  trial_days: number;
+  is_public: boolean;
+  sort: number;
+  archived: boolean;
+  expected_version?: number;
+}
+
+/** Create or update non-price plan fields. System admin only. */
+export function usePutPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: PutPlanInput) => {
+      const {
+        key,
+        name,
+        description,
+        limits,
+        features,
+        currency,
+        seats_fixed,
+        min_seats,
+        trial_days,
+        is_public,
+        sort,
+        archived,
+        expected_version,
+      } = vars;
+      const body: Record<string, unknown> = {
+        name,
+        ...(description !== undefined ? { description } : {}),
+        limits,
+        features,
+        currency,
+        seats_fixed,
+        min_seats,
+        trial_days,
+        is_public,
+        sort,
+        archived,
+        ...(expected_version !== undefined ? { expected_version } : {}),
+      };
+      const res = await platformFetch(`/plans/${pathSegment(key)}`, {
+        method: "PUT",
+        body,
+      });
+      return parsePutPlanResponse(res);
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.plans(),
+        platformKeys.plan(vars.key),
+        platformKeys.planHistory(vars.key),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Activate an archived/inactive plan. System admin only. */
+export function useActivatePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { key: string }) => {
+      const res = await platformFetch(`/plans/${pathSegment(vars.key)}/activate`, {
+        method: "POST",
+      });
+      return parsePlanDetail(res, "POST /api/platform/plans/{key}/activate");
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.plans(),
+        platformKeys.plan(vars.key),
+        platformKeys.planHistory(vars.key),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Deactivate a plan. System admin only. */
+export function useDeactivatePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { key: string }) => {
+      const res = await platformFetch(`/plans/${pathSegment(vars.key)}/deactivate`, {
+        method: "POST",
+      });
+      return parsePlanDetail(res, "POST /api/platform/plans/{key}/deactivate");
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.plans(),
+        platformKeys.plan(vars.key),
+        platformKeys.planHistory(vars.key),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Delete an unused plan. System admin only. */
 export function useDeletePlan() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -785,9 +965,11 @@ export function useDeletePlan() {
       });
       return parseDeletePlanResponse(res);
     },
-    onSuccess: () =>
+    onSuccess: (_data, vars) =>
       invalidateAll(queryClient, [
         platformKeys.plans(),
+        platformKeys.plan(vars.key),
+        platformKeys.planHistory(vars.key),
         platformKeys.audits(),
       ]),
   });

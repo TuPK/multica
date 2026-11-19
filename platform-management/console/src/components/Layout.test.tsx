@@ -154,6 +154,7 @@ describe("Layout navigation", () => {
     const nav = screen.getByRole("navigation", { name: "Main Navigation" });
     expect(within(nav).getByRole("button", { name: /Overview/i })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /Tenants/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /Workspaces/i })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /Users/i })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /Audit Log/i })).toBeInTheDocument();
 
@@ -205,10 +206,10 @@ describe("Layout navigation", () => {
     );
 
     const nav = screen.getByRole("navigation", { name: "Main Navigation" });
-    for (const name of ["Tenants", "Users", "Orders", "Deletion requests", "Audit Log"]) {
+    for (const name of ["Tenants", "Workspaces", "Users", "Orders", "Plans", "Deletion requests", "Audit Log"]) {
       expect(within(nav).getByRole("button", { name })).toBeInTheDocument();
     }
-    for (const hidden of ["Overview", "Payment notices", "E-invoices", "Accounts", "Plans", "Staff"]) {
+    for (const hidden of ["Overview", "Payment notices", "E-invoices", "Accounts", "Staff"]) {
       expect(within(nav).queryByRole("button", { name: hidden })).not.toBeInTheDocument();
     }
   });
@@ -232,6 +233,7 @@ describe("Layout navigation", () => {
     for (const name of [
       "Overview",
       "Tenants",
+      "Workspaces",
       "Users",
       "Orders",
       "Payment notices",

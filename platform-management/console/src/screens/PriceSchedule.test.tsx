@@ -24,6 +24,7 @@ vi.mock("../api/hooks", () => ({
 const proPlan: Plan = {
   key: "pro",
   name: "Pro Plan",
+  description: "",
   limits: { issue_count: null },
   features: { audit_export: true },
   currency: "vnd",

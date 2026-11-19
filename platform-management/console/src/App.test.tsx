@@ -250,6 +250,42 @@ vi.mock("./api/hooks", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useCreatePlan: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useActivatePlan: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDeactivatePlan: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  usePlan: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+  }),
+  usePlanHistory: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useWorkspaces: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+    hasNextPage: false,
+    fetchNextPage: vi.fn(),
+    isFetchingNextPage: false,
+  }),
+  useExportWorkspace: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useDeletePlan: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -350,6 +386,7 @@ describe("App", () => {
       headingName: string;
     }> = [
       { buttonName: /^Tenants$/i, expectedPath: "/tenants", headingName: "Tenants" },
+      { buttonName: /^Workspaces$/i, expectedPath: "/workspaces", headingName: "Workspaces" },
       { buttonName: /^Users$/i, expectedPath: "/users", headingName: "Users" },
       { buttonName: /^Deletion requests$/i, expectedPath: "/deletion-requests", headingName: "Deletion requests" },
       { buttonName: /^Orders$/i, expectedPath: "/orders", headingName: "Orders" },
@@ -560,8 +597,12 @@ describe("App", () => {
       const { unmount } = render(<App />);
       const nav = screen.getByRole("navigation", { name: "Main Navigation" });
       expect(within(nav).queryByRole("button", { name: /^Staff$/i })).not.toBeInTheDocument();
-      expect(within(nav).queryByRole("button", { name: /^Plans$/i })).not.toBeInTheDocument();
       expect(within(nav).queryByRole("button", { name: /^Accounts$/i })).not.toBeInTheDocument();
+      if (role === "admin") {
+        expect(within(nav).getByRole("button", { name: /^Plans$/i })).toBeInTheDocument();
+      } else {
+        expect(within(nav).queryByRole("button", { name: /^Plans$/i })).not.toBeInTheDocument();
+      }
       unmount();
     }
   });
@@ -577,6 +618,7 @@ describe("App", () => {
         visible: [
           "Overview",
           "Tenants",
+          "Workspaces",
           "Users",
           "Deletion requests",
           "Orders",
@@ -591,17 +633,17 @@ describe("App", () => {
       },
       {
         role: "admin",
-        visible: ["Tenants", "Users", "Deletion requests", "Orders", "Audit Log"],
-        hidden: ["Overview", "Payment notices", "E-invoices", "Accounts", "Plans", "Staff"],
+        visible: ["Tenants", "Workspaces", "Users", "Deletion requests", "Orders", "Plans", "Audit Log"],
+        hidden: ["Overview", "Payment notices", "E-invoices", "Accounts", "Staff"],
       },
       {
         role: "support",
-        visible: ["Overview", "Tenants", "Users", "Audit Log"],
+        visible: ["Overview", "Tenants", "Workspaces", "Users", "Audit Log"],
         hidden: ["Deletion requests", "Orders", "Payment notices", "E-invoices", "Accounts", "Plans", "Staff"],
       },
       {
         role: "billing",
-        visible: ["Overview", "Tenants", "Users", "Orders", "Payment notices", "E-invoices", "Audit Log"],
+        visible: ["Overview", "Tenants", "Workspaces", "Users", "Orders", "Payment notices", "E-invoices", "Audit Log"],
         hidden: ["Deletion requests", "Accounts", "Plans", "Staff"],
       },
     ];

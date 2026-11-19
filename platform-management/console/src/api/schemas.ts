@@ -31,6 +31,7 @@ export const AUDIT_ACTIONS = [
   "workspace.created",
   "workspace.updated",
   "workspace.deleted",
+  "audit.exported",
   "auth.login",
   "auth.sessions_revoked",
   "pat.created",
@@ -41,6 +42,7 @@ export const AUDIT_ACTIONS = [
   "consent.accepted",
   "workspace.status_changed",
   "account.status_changed",
+  "tenant.status_changed",
   "account.sessions_revoked",
   "staff.added",
   "staff.removed",
@@ -66,6 +68,18 @@ export const AUDIT_ACTIONS = [
   "deletion.request_failed",
   "deletion.request_canceled",
   "deletion.request_retried",
+  "deletion.notice_sent",
+  "deletion.notice_failed",
+  "deletion.approval_requested",
+  "deletion.approved",
+  "deletion.rejected",
+  "deletion.approval_expired",
+  "deletion.blocked_by_hold",
+  "legal_hold.placed",
+  "legal_hold.released",
+  "quota.request_created",
+  "quota.request_approved",
+  "quota.request_denied",
   "note.added",
   "subscription.changed",
   "plan.changed",
@@ -147,6 +161,13 @@ function enumOf<const T extends readonly string[]>(values: T) {
     .string()
     .transform((v): T[number] | "unknown" => (values.includes(v) ? v : "unknown"))
     .default("unknown");
+}
+
+function optionalEnumOf<const T extends readonly string[]>(values: T) {
+  return z
+    .string()
+    .transform((v): T[number] | "unknown" => (values.includes(v) ? v : "unknown"))
+    .optional();
 }
 
 const text = z.string().default("");
@@ -348,9 +369,11 @@ export type PutSubscriptionResponse = z.output<typeof PutSubscriptionResponseSch
 
 export const PLAN_AUDIENCES = ["any", "individual", "business"] as const;
 export const PLAN_BILLING_MODELS = ["seat", "usage"] as const;
+export const PLAN_STATES = ["active", "inactive"] as const;
 
 export type PlanAudience = (typeof PLAN_AUDIENCES)[number] | "unknown";
 export type PlanBillingModel = (typeof PLAN_BILLING_MODELS)[number] | "unknown";
+export type PlanState = (typeof PLAN_STATES)[number] | "unknown";
 
 function enumWithDefault<const T extends readonly string[]>(values: T, fallback: T[number]) {
   return z
@@ -362,6 +385,7 @@ function enumWithDefault<const T extends readonly string[]>(values: T, fallback:
 export const PlanSchema = z.object({
   key: z.string(),
   name: text,
+  description: text,
   limits: LimitsSchema,
   features: z.record(z.string(), z.boolean()).default({}),
   currency: text,
@@ -373,6 +397,7 @@ export const PlanSchema = z.object({
   is_public: z.boolean().default(false),
   sort: count,
   archived_at: nullableText,
+  state: optionalEnumOf(PLAN_STATES),
   audience: enumWithDefault(PLAN_AUDIENCES, "any"),
   billing_model: enumWithDefault(PLAN_BILLING_MODELS, "seat"),
   version: z.number().optional(),
@@ -384,6 +409,12 @@ export const PlanListSchema = z.object({
 });
 export type PlanList = z.output<typeof PlanListSchema>;
 
+export const PlanDetailResponseSchema = z.object({
+  changed: z.boolean().optional(),
+  plan: PlanSchema,
+});
+export type PlanDetailResponse = z.output<typeof PlanDetailResponseSchema>;
+
 export const PutPlanResponseSchema = z.object({
   changed: z.boolean().default(false),
   plan: PlanSchema,
@@ -394,6 +425,27 @@ export const DeletePlanResponseSchema = z.object({
   deleted: z.boolean(),
 });
 export type DeletePlanResponse = z.output<typeof DeletePlanResponseSchema>;
+
+export const PlanHistoryChangeSchema = z.object({
+  field: z.string(),
+  old: z.unknown().default(null),
+  new: z.unknown().default(null),
+});
+export type PlanHistoryChange = z.output<typeof PlanHistoryChangeSchema>;
+
+export const PlanHistoryEntrySchema = z.object({
+  at: z.string(),
+  actor: text,
+  action: enumOf(AUDIT_ACTIONS),
+  changes: z.array(PlanHistoryChangeSchema).default([]),
+  reason: text,
+});
+export type PlanHistoryEntry = z.output<typeof PlanHistoryEntrySchema>;
+
+export const PlanHistorySchema = z.object({
+  history: z.array(PlanHistoryEntrySchema).default([]),
+});
+export type PlanHistory = z.output<typeof PlanHistorySchema>;
 
 /**
  * The answer to verify-code: `mfa_required` asks for the authenticator code
@@ -441,6 +493,55 @@ export const PutBillingProfileResponseSchema = BillingProfileSchema.extend({
 });
 export type PutBillingProfileResponse = z.output<typeof PutBillingProfileResponseSchema>;
 
+export const WorkspaceListItemSchema = z.object({
+  id: z.string(),
+  name: text,
+  slug: text,
+  tenant_id: text,
+  tenant_name: text,
+  status: enumOf(WORKSPACE_STATUSES),
+  plan_key: text,
+  member_count: count,
+  owner_email: text,
+  created_at: text,
+  last_activity_at: text,
+});
+export type WorkspaceListItem = z.output<typeof WorkspaceListItemSchema>;
+
+export const WorkspacePageSchema = z.object({
+  workspaces: z.array(WorkspaceListItemSchema).default([]),
+  next_cursor: nextCursor,
+});
+export type WorkspacePage = z.output<typeof WorkspacePageSchema>;
+
+export const WorkspaceTenantSummarySchema = z.object({
+  id: z.string(),
+  name: text,
+});
+export type WorkspaceTenantSummary = z.output<typeof WorkspaceTenantSummarySchema>;
+
+export const WorkspaceSeatsSchema = z.object({
+  purchased: count,
+  used: count,
+  held: count,
+});
+export type WorkspaceSeats = z.output<typeof WorkspaceSeatsSchema>;
+
+export const WorkspaceStatusHistoryEntrySchema = z.object({
+  id: text,
+  status: enumOf(WORKSPACE_STATUSES),
+  reason: text,
+  actor: text,
+  created_at: text,
+});
+export type WorkspaceStatusHistoryEntry = z.output<typeof WorkspaceStatusHistoryEntrySchema>;
+
+export const WorkspaceExportResponseSchema = z.object({
+  export_id: z.string(),
+  status: text,
+});
+export type WorkspaceExportResponse = z.output<typeof WorkspaceExportResponseSchema>;
+
 export const WorkspaceDetailSchema = WorkspaceSchema.extend({
   state: WorkspaceStateSchema.prefault({}),
   notes_count: count,
@@ -450,6 +551,10 @@ export const WorkspaceDetailSchema = WorkspaceSchema.extend({
   billing_profile: WorkspaceBillingProfileSchema.nullable().optional(),
   recent_orders: z.array(OrderSchema).default([]),
   usage_current: UsageCurrentSchema.optional(),
+  tenant: WorkspaceTenantSummarySchema.optional(),
+  seats: WorkspaceSeatsSchema.optional(),
+  status_history: z.array(WorkspaceStatusHistoryEntrySchema).optional(),
+  allowed: z.array(z.string()).optional(),
 });
 export type WorkspaceDetail = z.output<typeof WorkspaceDetailSchema>;
 
@@ -715,6 +820,15 @@ export function parsePlanList(data: unknown): PlanList {
   });
 }
 
+export function parsePlanDetail(
+  data: unknown,
+  endpoint = "GET /api/platform/plans/{key}",
+): PlanDetailResponse | null {
+  return parseWithFallback<PlanDetailResponse | null>(data, PlanDetailResponseSchema, null, {
+    endpoint,
+  });
+}
+
 export function parsePutPlanResponse(data: unknown): PutPlanResponse | null {
   return parseWithFallback<PutPlanResponse | null>(data, PutPlanResponseSchema, null, {
     endpoint: "PUT /api/platform/plans/{key}",
@@ -724,6 +838,12 @@ export function parsePutPlanResponse(data: unknown): PutPlanResponse | null {
 export function parseDeletePlanResponse(data: unknown): DeletePlanResponse | null {
   return parseWithFallback<DeletePlanResponse | null>(data, DeletePlanResponseSchema, null, {
     endpoint: "DELETE /api/platform/plans/{key}",
+  });
+}
+
+export function parsePlanHistory(data: unknown): PlanHistory {
+  return parseWithFallback<PlanHistory>(data, PlanHistorySchema, { history: [] }, {
+    endpoint: "GET /api/platform/plans/{key}/history",
   });
 }
 
@@ -755,10 +875,28 @@ export function parseTenantDetail(data: unknown): TenantDetail | null {
   });
 }
 
+export function parseWorkspacePage(data: unknown): WorkspacePage {
+  return parseWithFallback<WorkspacePage>(
+    data,
+    WorkspacePageSchema,
+    { workspaces: [], next_cursor: null },
+    { endpoint: "GET /api/platform/workspaces" },
+  );
+}
+
 export function parseWorkspaceDetail(data: unknown): WorkspaceDetail | null {
   return parseWithFallback<WorkspaceDetail | null>(data, WorkspaceDetailSchema, null, {
     endpoint: "GET /api/platform/workspaces/{id}",
   });
+}
+
+export function parseWorkspaceExportResponse(data: unknown): WorkspaceExportResponse | null {
+  return parseWithFallback<WorkspaceExportResponse | null>(
+    data,
+    WorkspaceExportResponseSchema,
+    null,
+    { endpoint: "POST /api/platform/workspaces/{id}/export" },
+  );
 }
 
 export function parseBillingProfile(data: unknown): BillingProfile | null {

@@ -15,6 +15,7 @@ import {
   FileText,
   Inbox,
   Layers,
+  LayoutGrid,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -32,6 +33,7 @@ interface LayoutProps {
   onNavigate: (screen: string) => void;
   user: MeResponse;
   onLogout: () => void;
+  workspaceFromTenant?: boolean;
   children: ReactNode;
 }
 
@@ -51,12 +53,14 @@ export function Layout({
   onNavigate,
   user,
   onLogout,
+  workspaceFromTenant = false,
   children,
 }: LayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isSystemAdmin = user.role === "system_admin";
   const canSeeOverview = user.role !== "admin";
+  const canSeePlans = isSystemAdmin || user.role === "admin";
   const canSeeDeletionRequests = isSystemAdmin || user.role === "admin";
   const canSeeOrders = isSystemAdmin || user.role === "admin" || user.role === "billing";
   const canSeePayments = isSystemAdmin || user.role === "billing";
@@ -69,12 +73,8 @@ export function Layout({
           { id: "einvoices", label: "E-invoices", icon: FileText },
         ]
       : []),
-    ...(isSystemAdmin
-      ? [
-          { id: "accounts", label: "Accounts", icon: UserPlus },
-          { id: "plans", label: "Plans", icon: Layers },
-        ]
-      : []),
+    ...(isSystemAdmin ? [{ id: "accounts", label: "Accounts", icon: UserPlus }] : []),
+    ...(canSeePlans ? [{ id: "plans", label: "Plans", icon: Layers }] : []),
   ];
 
   const navGroups: NavGroup[] = [
@@ -83,6 +83,7 @@ export function Layout({
       items: [
         ...(canSeeOverview ? [{ id: "overview", label: "Overview", icon: BarChart3 }] : []),
         { id: "tenants", label: "Tenants", icon: Building2 },
+        { id: "workspaces", label: "Workspaces", icon: LayoutGrid },
         { id: "users", label: "Users", icon: Users },
       ],
     },
@@ -179,7 +180,13 @@ export function Layout({
                 const Icon = item.icon;
                 const isActive =
                   currentScreen === item.id ||
-                  (item.id === "tenants" && (currentScreen === "tenant-detail" || currentScreen === "workspace-detail")) ||
+                  (item.id === "tenants" &&
+                    (currentScreen === "tenant-detail" ||
+                      (currentScreen === "workspace-detail" && workspaceFromTenant))) ||
+                  (item.id === "workspaces" &&
+                    currentScreen === "workspace-detail" &&
+                    !workspaceFromTenant) ||
+                  (item.id === "plans" && currentScreen === "plan-history") ||
                   (item.id === "users" && currentScreen === "user-detail");
                 return (
                   <SideNavItem
