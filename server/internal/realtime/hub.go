@@ -244,6 +244,11 @@ type Client struct {
 	writeMu     sync.Mutex // serializes application writes and the final removal notice
 	stopped     atomic.Bool
 
+	// done is closed when readPump exits, which every disconnect path
+	// reaches because stopClient closes the connection. Nil for clients that
+	// run no account watcher.
+	done chan struct{}
+
 	// guest is member.is_guest when the socket connected. A guest never joins
 	// the workspace room; a change of the flag disconnects the user so the
 	// next connect reads it again.
@@ -1017,11 +1022,47 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug
 		userID:      userID,
 		workspaceID: workspaceID,
 		guest:       guest,
+		done:        make(chan struct{}),
 	}
 	hub.register <- client
 
 	go client.writePump()
 	go client.readPump()
+	if guard != nil {
+		go client.watchAccount(guard, accountStatusRecheckInterval)
+	}
+}
+
+// accountStatusRecheckInterval is how often an open socket re-reads its
+// account's status. With accountguard.TTL it bounds how long a status change
+// made without a Redis notification (a direct SQL update) keeps a socket open.
+// A variable so tests can shorten it.
+var accountStatusRecheckInterval = 20 * time.Second
+
+// watchAccount disconnects the user's sockets once the account is no longer
+// active. A failed status read is not a reason to cut the socket.
+func (c *Client) watchAccount(guard *accountguard.Guard, interval time.Duration) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-c.done
+		cancel()
+	}()
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-c.done:
+			return
+		case <-ticker.C:
+		}
+		if status, body := accountRefusal(ctx, guard, c.userID, nil); status == http.StatusForbidden {
+			slog.Warn("ws: account no longer active, disconnecting", "user_id", c.userID, "status", status, "refusal", body)
+			c.hub.DisconnectUser(c.userID)
+			return
+		}
+	}
 }
 
 // inboundFrame describes the subset of inbound JSON messages the server
@@ -1038,6 +1079,9 @@ type subPayload struct {
 
 func (c *Client) readPump() {
 	defer func() {
+		if c.done != nil {
+			close(c.done)
+		}
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
