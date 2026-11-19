@@ -14,7 +14,7 @@
 
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { createCipheriv, createHmac, randomBytes, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { APIRequestContext } from "@playwright/test";
 import pg from "pg";
@@ -60,7 +60,7 @@ let serverProc: ChildProcess | null = null;
 let serverLog = "";
 
 function buildServer(): void {
-  if (existsSync(BIN)) return;
+  // Always rebuild: a binary left from an earlier build would test old code, and go build is cached.
   mkdirSync(BIN_DIR, { recursive: true });
   execFileSync("go", ["build", "-o", BIN, "./cmd/platform-server"], {
     cwd: resolve(REPO_ROOT, "platform-management"),

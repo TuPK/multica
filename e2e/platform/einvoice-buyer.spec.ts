@@ -66,7 +66,7 @@ async function stateOf(orderId: string): Promise<string> {
 // console.Deps (no Einvoices field), so the retry route answers 503 einvoice_provider_not_configured even
 // with the provider configured. Observed: 503 for both tests below. Both stay fixme until that is wired.
 test.describe("e-invoice retry refusals", () => {
-  test.fixme("flow 229: retrying a failed invoice whose buyer lacks required fields is refused and names the fields", async () => {
+  test("flow 229: retrying a failed invoice whose buyer lacks required fields is refused and names the fields", async () => {
     const orderId = await seedInvoice("failed", {});
     const res = await admin.post(`${CONSOLE_BASE}/api/platform/einvoices/${orderId}/retry`, {
       headers: ORIGIN,
@@ -79,7 +79,7 @@ test.describe("e-invoice retry refusals", () => {
     expect(await stateOf(orderId)).toBe("failed");
   });
 
-  test.fixme("flow 230: retrying an invoice that is already issued is refused with einvoice_state_conflict", async () => {
+  test("flow 230: retrying an invoice that is already issued is refused with einvoice_state_conflict", async () => {
     const orderId = await seedInvoice("issued", { name: "E2E Buyer", tax_code: "0123456789", address: "1 E2E St", email: "buyer@example.test" });
     const res = await admin.post(`${CONSOLE_BASE}/api/platform/einvoices/${orderId}/retry`, {
       headers: ORIGIN,
