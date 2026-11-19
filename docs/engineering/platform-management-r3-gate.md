@@ -54,7 +54,7 @@ The fixture is changed in the working tree (`server/internal/handler/seat_capaci
 
 | Row | Result | Tests | Gap |
 | --- | --- | --- | --- |
-| Staff account compromised | Mostly covered | `TestVerifyCodeSignsIn` (cookie flags), `TestMiddlewareFailuresAreAll404` (12-hour token), `TestRevocationTakesEffectOnTheNextRequest`, `TestMiddlewareReadsOnlyTheSessionCookie` (no PAT), `TestMiddlewareAllowsAnIPInsideTheCIDRs`, `TestStaffWithoutConfirmedMFACannotSignIn` | **Gap:** no test that tenants can see staff actions. (Not part of this close-out.) |
+| Staff account compromised | Covered | `TestVerifyCodeSignsIn` (cookie flags), `TestMiddlewareFailuresAreAll404` (12-hour token), `TestRevocationTakesEffectOnTheNextRequest`, `TestMiddlewareReadsOnlyTheSessionCookie` (no PAT), `TestMiddlewareAllowsAnIPInsideTheCIDRs`, `TestStaffWithoutConfirmedMFACannotSignIn`, `TestWorkspaceOwnerSeesStaffActionsInAuditLog` (`server/internal/handler/audit_staff_visibility_test.go`: owner and admin read a staff row with `workspace_id`; a member gets 403) | None. Closed in the item 1 close-out (section 5). |
 | Internal platform routes called from outside | Covered (commit `3173a8454`) | `TestInternalRoutesAreNotServedOnTheConsoleListener`, `TestDockerfileDoesNotPublishInternalPort` (`platform-management/internal/server/listener_exposure_test.go`). Both passed on the first run, with no product change; RED was not shown. The Dockerfile check looks only for a publish directive and for 8095 in compose files. |
 | Console leaks tenant content | Covered | `TestScannerFindsContentTables`, `TestConsoleFilesAreScannedAndNameNoContentTable` | None |
 | Audit log edited or deleted | Covered (commit `f805ca8b8`) | Multica: `TestAuditEventQueriesOnlyAllowedUpdates`, `TestUpdateGuardRejectsOtherUpdates`; platform: `TestPlatformAuditQueriesAreInsertAndSelectOnly` (`platform-management/audit/queries_readonly_test.go`). **Deviation (unchanged):** the Multica `audit_event.sql` has two UPDATE statements (label renames), and its test allows exactly those two. The platform SQL has none. |
@@ -68,22 +68,39 @@ The fixture is changed in the working tree (`server/internal/handler/seat_capaci
 | TOTP brute force and reuse | Covered | `TestMFAVerifySixthWrongCodeFailsTheToken`, `TestAttemptLimiterFailsTheTokenOnTheSixthAttempt`, `TestMFAVerifyTOTPCodeCannotBeUsedTwiceInOneStep`, `TestATOTPStepCannotBeUsedTwice` (platform) | None |
 | Fake or repeated payment confirmation | Covered for R2 and R3 | `TestApplyPaymentAppliesOnce`, `TestDBOrdersTwoConcurrentConfirmsApplyOnce`, `TestPlatformBillingConfirmTwiceAppliesOnce`, `TestPlatformBillingOrderRoutesAdmitBillingAndAdminOnly` | The webhook signature row applies to R4, which is not built. |
 | Quota race | Covered | `TestPlanLimitAgentsConcurrentCreationsAtOneSlot`, `TestIssueCountLimitSerializesConcurrentCreatesAndDeleteFreesCapacity`, `TestMemberGroupGateTwoConcurrentCreationsAtTheLimit` | None |
-| Export link leaked | Partly covered | `TestDownloadLinkIsAbsentAfterExpiry`, `TestNoLinkUnlessDone`, `TestExpiryIsSevenDaysAfterFinish`, `TestExportPresignedLinkTTLMatchesTheExpiry` (commit `27be1ac31`, `server/internal/handler/workspace_export_presign_ttl_test.go`) | The presign TTL is closed. **Gap still open:** export requests being audited is not verified. |
+| Export link leaked | Covered | `TestDownloadLinkIsAbsentAfterExpiry`, `TestNoLinkUnlessDone`, `TestExpiryIsSevenDaysAfterFinish`, `TestExportPresignedLinkTTLMatchesTheExpiry` (commit `27be1ac31`, `server/internal/handler/workspace_export_presign_ttl_test.go`), `TestAuditR2WorkspaceExportRequested` (`server/internal/handler/audit_r2_test.go`: the export request writes `workspace_export` audit with the workspace's actor) | None. Export audit closed in the item 2 close-out (section 5). |
 | Account deletion orphans a workspace | Covered | `TestDeletionSoleOwnerOfSharedWorkspaceIs409AndChangesNothing`, `TestAccountDeletionJobKeepsOtherMembersAndRefusesToOrphanAWorkspace` | None |
 | Agent injects a call to a sensitive route | Partly covered | `TestRequireHumanActor_BlocksMachineCredentials`, `TestRequireHumanActor_AppliedViaChiRouterUse` | Route-level coverage is not verified. |
 
 ## 5. Open follow-ups from R3
 
 - **Web and desktop screens for SSO, MFA and policies: open.** No such UI exists in `packages/views`.
-- **Mobile SSO sign-in: open.** `apps/mobile` has no SSO code.
+- **Mobile SSO sign-in: minimal slice closed (item 4).** `apps/mobile` has a "Continue with SSO" button, a `multica://sso-complete` deep-link route and a token exchange. The server half is `GET /auth/sso/start?client=mobile&challenge=…` and `POST /auth/sso/mobile/exchange`, in `server/internal/handler/sso.go` (tests in `sso_mobile_test.go`: six `TestSSOMobile*` tests). Assumptions: single use is not enforced, only the 60-second expiry plus the verifier binding; SSO opens the system browser, not an in-app auth session; no SSO admin UI on mobile; copy only in en, zh-Hans, zh-Hant; the verifier is memory-only. Not verified: a real device or simulator run, and the native `expo-crypto` SHA-256 (unit tests use Node's crypto).
 - **WebSocket PAT resolver (binding and read-only): open.** See AC18.
 - **`sso_domain` cleanup on workspace deletion: closed by test.** `TestSSODeletingAWorkspaceRemovesItsSSORows` passes in the handler subset. Its comment still says "Open item from P35"; the comment is stale.
-- **Route-table walk test for the viewer rule (AC19): open.**
-- **Route-level test for the pending token (AC15): open.**
+- **Route-table walk test for the viewer rule (AC19): closed (item 3).** `TestViewerIsRefusedEveryWriteRouteOfTheRealRouter` (`server/cmd/server/router_viewer_test.go`) and `TestViewerIsRefusedEveryWriteButTheAllowList` pass.
+- **Route-level test for the pending token (AC15): closed (item 3).** `TestMFAPendingTokenCallsNoRouteButMFAVerify` (`server/cmd/server/router_mfa_pending_test.go`), `TestMFAPendingTokenIsNotASession` and `TestMFAPendingTokenCarriesNoSessionIdentity` (`server/internal/auth/mfa_pending_test.go`) pass.
 - **Console-listener and port-exposure test (security row): open.**
 - **Account-guard cache TTL test (security row): open.**
 - **Platform-side audit `.sql` test (security row): open.**
 - **Export presign TTL test (security row): open.**
+
+### Close-out of items 1 to 4 (2026-11-19)
+
+Tests ran against `multica_platform_test` only, through `scratchpad/r3-close/run-tests.sh`, which builds the DSN from `.env` inside the command and sets `PLATFORM_TEST_DATABASE_URL` so DB tests do not skip.
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| 1. Tenant sees staff actions | Pass. Test added, no product change. | `TestWorkspaceOwnerSeesStaffActionsInAuditLog`, `TestListWorkspaceAuditEvents_AccessAndIsolation`, `TestListWorkspaceAuditEvents_Filters` pass. |
+| 2. Export audit | Pass. Already implemented, now verified. | `TestAuditR2WorkspaceExportRequested` passes when run alone. It failed once in a shared run with a Postgres catalog collision from another session creating the same fixture; the cause was the shared database, not the code. |
+| 3. Route-level check (AC15, AC19) | Pass. Both route walks exist and pass. | `TestMFAPendingTokenCallsNoRouteButMFAVerify`, `TestViewerIsRefusedEveryWriteRouteOfTheRealRouter`, plus the AC15 and AC19 named tests listed in section 3. |
+| 4. Mobile SSO | Minimal slice. Server and app halves implemented, tests pass. | Server: six `TestSSOMobile*` tests and the existing `SSO|Sso` subset pass. App: `pnpm --filter @multica/mobile typecheck`, `lint` exit 0, `test` 53 files and 418 tests pass. |
+
+Shared-file note: the server-side change adds two optional `omitempty` fields (`Mobile`, `Challenge`) to `sso.Pending` in `server/internal/sso/oidc.go`, which was not on the planned file list.
+
+Pre-existing, not changed by this slice: `gofmt -l` flags `server/cmd/server/router.go` at HEAD as well.
+
+Other stale bullets in section 5 (console listener, account-guard TTL, platform audit `.sql`, export presign TTL) are outside this close-out. Section 4 already records evidence for them.
 
 ## 6. User documentation (apps/docs)
 
