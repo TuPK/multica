@@ -279,6 +279,7 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/quota-requests/{id}/approve":              systemOnly,
 		"/api/platform/quota-requests/{id}/deny":                 systemOnly,
 		"/api/platform/workspaces/{id}/quota-requests":           systemTenant,
+		"/api/platform/audit-events/export":                      systemTenant,
 		"/api/platform/runtimes":                                 scopedLock,
 		"/api/platform/runtimes/{id}":                            scopedLock,
 		"/api/platform/runtimes/{id}/status":                     systemTenant,

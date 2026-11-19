@@ -60,6 +60,7 @@ func TestAuditCatalogHasDeletionActions(t *testing.T) {
 		"runtime.unregister_requested":           ActionRuntimeUnregisterRequested,
 		"tenant.policy_changed":                  ActionTenantPolicyChanged,
 		"quota.request_created":                  ActionQuotaRequestCreated,
+		"audit.exported":                         ActionAuditExported,
 		"quota.request_approved":                 ActionQuotaRequestApproved,
 		"quota.request_denied":                   ActionQuotaRequestDenied,
 		"runtime.disabled":                       ActionRuntimeDisabled,

@@ -192,6 +192,7 @@ func routeTable() []routeSpec {
 		{base + "/quota-requests/{id}/approve", staff.ActionQuotaRequestDecide, nil, map[string]handlerFunc{http.MethodPost: (*Handler).approveQuotaRequest}},
 		{base + "/quota-requests/{id}/deny", staff.ActionQuotaRequestDecide, nil, map[string]handlerFunc{http.MethodPost: (*Handler).denyQuotaRequest}},
 		{base + "/workspaces/{id}/quota-requests", staff.ActionQuotaRequestCreate, nil, map[string]handlerFunc{http.MethodPost: (*Handler).createQuotaRequest}},
+		{base + "/audit-events/export", staff.ActionAuditExport, nil, map[string]handlerFunc{http.MethodGet: (*Handler).exportAudit}},
 		{base + "/runtimes", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listRuntimes}},
 		{base + "/runtimes/{id}", staff.ActionRuntimesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getRuntime}},
 		{base + "/runtimes/{id}/status", staff.ActionRuntimeStatus, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setRuntimeStatus}},

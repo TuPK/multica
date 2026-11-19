@@ -59,6 +59,7 @@ func specMatrix() []matrixRow {
 		{"M46", ActionQuotaRequestsRead, All, Own, None, All},
 		{"M47", ActionQuotaRequestDecide, All, None, None, None},
 		{"M48", ActionQuotaRequestCreate, All, Own, None, None},
+		{"M51", ActionAuditExport, All, Own, None, None},
 		{"M42", ActionRuntimeStatus, All, Own, None, None},
 		{"M43", ActionRuntimeUnregister, All, Own, None, None},
 	}
@@ -66,7 +67,7 @@ func specMatrix() []matrixRow {
 
 func TestPermissionMatrixMatchesSpec(t *testing.T) {
 	rows := specMatrix()
-	if len(rows) != 45 {
+	if len(rows) != 46 {
 		t.Fatalf("the hand-written matrix has %d rows, want M1 to M32", len(rows))
 	}
 	for _, r := range rows {
