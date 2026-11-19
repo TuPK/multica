@@ -154,6 +154,13 @@ export type {
 } from "./agent";
 export { RUNTIME_PROFILE_PROTOCOL_FAMILIES, RUNTIME_PROFILE_RUNTIME_TYPES } from "./agent";
 export type { Workspace, WorkspaceRepo, WorkspaceMcpServer, Member, MemberRole, User, MemberWithUser, Invitation, ShareLink, ShareLinkInfo } from "./workspace";
+export type { PolicyFloor } from "./policy";
+export type {
+  QuotaRequest,
+  QuotaRequestState,
+  CreateQuotaRequestInput,
+  QuotaRequestListResponse,
+} from "./quota-request";
 export type {
   PluginInstallation,
   PluginConfigField,

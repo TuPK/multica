@@ -8,12 +8,17 @@ export {
   PLAN_LIMIT_GATES,
   PlanLimitReachedError,
   planLimitReached,
+  recordPlanLimitReached,
+  getPlanLimitReached,
+  subscribePlanLimitReached,
+  clearPlanLimitReached,
   PreviewTooLargeError,
   PreviewUnsupportedError,
 } from "./client";
 export type {
   ApiClientOptions,
   PlanLimitGate,
+  PlanLimitReachedRecord,
   ClientRuntimeSnapshot,
   ClientUsageRequest,
   LoginAttempt,

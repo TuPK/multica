@@ -3396,3 +3396,92 @@ describe("ApiClient account groups (spec 7b.2)", () => {
     expect(group.permissions).toEqual([]);
   });
 });
+
+describe("ApiClient quota requests (R6 S37)", () => {
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+  it("lists workspace quota requests and falls back cleanly on malformed payloads", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      json({
+        requests: [
+          {
+            id: "qr-1",
+            gate: "agents",
+            requested_value: 10,
+            state: "pending",
+            created_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("https://api.example.test");
+    const list = await client.listQuotaRequests("ws-1");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "https://api.example.test/api/workspaces/ws-1/quota-requests",
+    );
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({
+      id: "qr-1",
+      gate: "agents",
+      requested_value: 10,
+      state: "pending",
+    });
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ requests: "bad" })));
+    await expect(client.listQuotaRequests("ws-1")).resolves.toEqual([]);
+  });
+
+  it("creates a quota request and propagates 409 quota_request_pending", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      json(
+        {
+          id: "qr-2",
+          gate: "runtimes",
+          requested_value: 5,
+          state: "pending",
+          reason: "Need CI runners",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+        201,
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("https://api.example.test");
+    const created = await client.createQuotaRequest("ws-1", {
+      gate: "runtimes",
+      requested_value: 5,
+      reason: "Need CI runners",
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "https://api.example.test/api/workspaces/ws-1/quota-requests",
+    );
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).method).toBe("POST");
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      gate: "runtimes",
+      requested_value: 5,
+      reason: "Need CI runners",
+    });
+    expect(created).toMatchObject({
+      id: "qr-2",
+      gate: "runtimes",
+      requested_value: 5,
+      state: "pending",
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        json({ error: "pending request exists", code: "quota_request_pending" }, 409),
+      ),
+    );
+    await expect(
+      client.createQuotaRequest("ws-1", {
+        gate: "runtimes",
+        requested_value: 5,
+        reason: "Need CI runners",
+      }),
+    ).rejects.toThrow("pending request exists");
+  });
+});

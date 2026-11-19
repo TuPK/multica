@@ -260,4 +260,89 @@ describe("PolicyTab", () => {
     );
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
+
+  it("locks fields set by the tenant floor and shows the reason", async () => {
+    const user = userEvent.setup();
+    mockApi.getWorkspacePolicy.mockResolvedValue({
+      ...basePolicy,
+      allowed_invite_domains: [],
+      share_links_enabled: true,
+      require_sso: false,
+      require_mfa: false,
+      session_max_age_hours: 0,
+      floor: {
+        allowed_invite_domains: ["acme.com"],
+        share_links_enabled: false,
+        require_sso: false,
+        require_mfa: true,
+        session_max_age_hours: 24,
+      },
+    });
+
+    renderPolicyTab();
+
+    const shareSwitch = await screen.findByRole("switch", { name: /Share links/i });
+    const mfaSwitch = screen.getByRole("switch", { name: /Require two-step sign-in/i });
+    const ssoSwitch = screen.getByRole("switch", { name: /Require SSO/i });
+    const domainInput = screen.getByRole("textbox", { name: /Allowed invite domains/i });
+    const ageInput = screen.getByRole("spinbutton", { name: /Maximum session age/i });
+
+    // Fields constrained by the tenant floor reflect the floor value and are locked.
+    expect(shareSwitch).toHaveAttribute("aria-checked", "false");
+    expect(shareSwitch).toHaveAttribute("aria-disabled", "true");
+    expect(mfaSwitch).toHaveAttribute("aria-checked", "true");
+    expect(mfaSwitch).toHaveAttribute("aria-disabled", "true");
+
+    // Fields not constrained by the tenant floor stay editable.
+    expect(ssoSwitch).toHaveAttribute("aria-checked", "false");
+    expect(ssoSwitch).not.toHaveAttribute("aria-disabled", "true");
+
+    // Domain floor is shown and single-domain floor cannot be removed or loosened.
+    expect(screen.getByText("acme.com")).toBeInTheDocument();
+    expect(domainInput).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Remove acme.com" })).toBeDisabled();
+
+    // Session max age shows the floor value (24) and blocks loosening above it or to 0.
+    expect(ageInput).toHaveValue(24);
+    expect(screen.getAllByText(/Tenant floor/i).length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByText(/Set by tenant policy and cannot be loosened/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/Tenant policy restricts invite domains to acme\.com/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tenant policy caps session age at 24 hours/i)).toBeInTheDocument();
+
+    fireEvent.change(ageInput, { target: { value: "48" } });
+    expect(screen.getByText(/Cannot exceed the tenant floor of 24 hours/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    // Tightening session age below the floor (e.g. 12) is allowed, and toggling an unlocked field works.
+    fireEvent.change(ageInput, { target: { value: "12" } });
+    await user.click(ssoSwitch);
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
+  it("maps policy_below_tenant_floor (400) to the server message", async () => {
+    mockApi.updateWorkspacePolicy.mockRejectedValue(
+      new ApiError(
+        "the policy is looser than the tenant floor in the named fields",
+        400,
+        "Bad Request",
+        {
+          code: "policy_below_tenant_floor",
+          error: "the policy is looser than the tenant floor in the named fields",
+          fields: ["require_sso"],
+        },
+      ),
+    );
+    const user = userEvent.setup();
+    renderPolicyTab();
+
+    await user.click(await screen.findByRole("switch", { name: /Require SSO/i }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "the policy is looser than the tenant floor in the named fields",
+      );
+    });
+  });
 });

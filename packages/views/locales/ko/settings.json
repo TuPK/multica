@@ -1757,11 +1757,20 @@
       "consequence": "이 시간이 지나면 다시 로그인해야 합니다. 0이면 제한이 꺼집니다.",
       "invalid_range": "0에서 8760 사이의 정수를 입력하세요."
     },
+    "floor": {
+      "badge": "테넌트 기준",
+      "locked_reason": "테넌트 정책으로 설정되어 완화할 수 없습니다.",
+      "domains_reason": "테넌트 정책에 따라 초대 도메인이 {{domains}}(으)로 제한됩니다.",
+      "session_max_age_reason": "테넌트 정책에 따라 최대 세션 시간이 {{hours}}시간으로 제한됩니다.",
+      "session_max_age_exceeded": "테넌트 기준({{hours}}시간)을 초과할 수 없습니다.",
+      "domain_outside_floor": "테넌트 정책에서 허용한 도메인만 추가할 수 있습니다."
+    },
     "errors": {
       "plan_unavailable": "현재 요금제에서는 워크스페이스 정책을 사용할 수 없습니다.",
       "domain_not_verified": "이 워크스페이스에서 인증된 도메인만 사용할 수 있습니다.",
       "invite_domain_not_allowed": "워크스페이스 정책에 따라 이 초대 도메인은 허용되지 않습니다.",
       "share_links_disabled": "워크스페이스 정책에 의해 공유 링크가 비활성화되었습니다.",
+      "below_tenant_floor": "정책이 테넌트 기준보다 느슨합니다.",
       "forbidden": "워크스페이스 소유자만 정책을 변경할 수 있습니다.",
       "save_failed": "워크스페이스 정책을 저장할 수 없습니다."
     }
@@ -1873,6 +1882,57 @@
       "forbidden": "워크스페이스 소유자만 SSO 설정을 관리할 수 있습니다.",
       "domain_failed": "도메인을 업데이트할 수 없습니다.",
       "connection_failed": "SSO 연결을 저장할 수 없습니다."
+    }
+  },
+  "quota_requests": {
+    "title": "할당량 요청",
+    "request_button": "할당량 증설 요청",
+    "empty": "아직 할당량 증설 요청이 없습니다.",
+    "load_failed": "할당량 요청을 불러올 수 없습니다.",
+    "dialog": {
+      "title": "할당량 증설 요청",
+      "description": "요청은 플랫폼 관리자가 검토합니다.",
+      "gate_label": "할당량",
+      "value_label": "요청 한도",
+      "value_placeholder": "예: 25",
+      "value_invalid": "0보다 큰 정수를 입력하세요.",
+      "value_must_exceed": "현재 한도({{current}})보다 큰 값을 입력하세요.",
+      "reason_label": "사유",
+      "reason_placeholder": "이 워크스페이스에 더 높은 한도가 필요한 이유를 입력하세요...",
+      "reason_required": "사유를 입력하세요.",
+      "reason_too_long": "사유는 500자 이내로 입력하세요.",
+      "cancel": "취소",
+      "submit": "요청 제출",
+      "submitting": "제출 중..."
+    },
+    "submitted_title": "할당량 요청이 제출되었습니다",
+    "submitted_description": "{{gate}} 한도를 {{value}}(으)로 요청했습니다.",
+    "requested_value": "요청값: {{value}}",
+    "approved_value": "승인값: {{value}}",
+    "states": {
+      "pending": "대기 중",
+      "approved": "승인됨",
+      "denied": "거부됨",
+      "canceled": "취소됨",
+      "unknown": "알 수 없음"
+    },
+    "gates": {
+      "agents": "에이전트",
+      "runtimes": "런타임",
+      "storage_bytes": "스토리지(바이트)",
+      "issue_count": "태스크",
+      "autopilot_runs": "자동화 실행",
+      "member_groups": "그룹",
+      "api_rate_per_minute": "API 속도(분당)",
+      "audit_retention_days": "감사 로그 보관(일)",
+      "max_workspaces": "워크스페이스",
+      "unknown": "할당량"
+    },
+    "errors": {
+      "pending_exists": "이 할당량에 대해 이미 대기 중인 요청이 있습니다.",
+      "invalid": "요청 한도와 사유를 확인한 후 다시 시도하세요.",
+      "forbidden": "할당량 증설을 요청할 권한이 없습니다.",
+      "submit_failed": "할당량 증설 요청을 제출할 수 없습니다."
     }
   }
 }

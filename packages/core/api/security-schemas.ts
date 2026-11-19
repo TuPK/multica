@@ -1,5 +1,10 @@
 import { z } from "zod";
-import type { CreatePersonalAccessTokenResponse, PersonalAccessToken } from "../types";
+import type {
+  CreatePersonalAccessTokenResponse,
+  PersonalAccessToken,
+  PolicyFloor,
+} from "../types";
+import { PolicyFloorSchema } from "./schemas";
 
 // The R3 security responses: workspace policy, MFA, SSO domain claims and
 // personal access tokens. Schemas are lenient: unknown enum values stay
@@ -14,6 +19,8 @@ export interface WorkspacePolicy {
   session_max_age_hours: number;
   updated_by: string | null;
   updated_at: string | null;
+  /** Tenant floor that the workspace may only tighten; null or absent when none. */
+  floor?: PolicyFloor | null;
 }
 
 /** A partial update: only the fields present change. */
@@ -75,6 +82,8 @@ export const WorkspacePolicySchema = z
     session_max_age_hours: z.number().min(0).max(8760).default(0),
     updated_by: z.string().nullable().default(null),
     updated_at: z.string().nullable().default(null),
+    // Malformed floor values degrade to null instead of dropping the policy.
+    floor: PolicyFloorSchema.nullable().catch(null).optional(),
   })
   .loose();
 

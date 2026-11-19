@@ -174,6 +174,9 @@ import type {
   WebhookDelivery,
   Workspace,
   WorkspaceMcpServer,
+  PolicyFloor,
+  QuotaRequest,
+  QuotaRequestListResponse,
 } from "../types";
 import type { CloudRuntimeNode } from "../runtimes/cloud-runtime";
 import type { CreateFeedbackResponse } from "../feedback/types";
@@ -6257,3 +6260,83 @@ export const FlowInsightsSchema = z.object({
   manual_closes: count(),
   truncated: z.boolean().default(false).catch(false),
 }).loose() as unknown as z.ZodType<FlowInsights>;
+
+// ---------------------------------------------------------------------------------------------------------
+// Tenant policy floor and workspace quota requests (R6 S30 / S32 / S37)
+// ---------------------------------------------------------------------------------------------------------
+
+export const DEFAULT_POLICY_FLOOR: PolicyFloor = {
+  allowed_invite_domains: [],
+  share_links_enabled: true,
+  require_sso: false,
+  require_mfa: false,
+  session_max_age_hours: 0,
+};
+
+export const PolicyFloorSchema = z
+  .object({
+    allowed_invite_domains: z
+      .array(z.string())
+      .nullish()
+      .transform((v) => v ?? []),
+    share_links_enabled: z.boolean().default(true),
+    require_sso: z.boolean().default(false),
+    require_mfa: z.boolean().default(false),
+    session_max_age_hours: z.number().min(0).max(8760).default(0),
+  })
+  .loose();
+
+export const EMPTY_QUOTA_REQUEST: QuotaRequest = {
+  id: "",
+  workspace_id: "",
+  gate: "",
+  current_value: null,
+  requested_value: 0,
+  approved_value: null,
+  state: "",
+  reason: "",
+  decision_reason: "",
+  requested_by: "",
+  requested_by_label: "",
+  decided_by: "",
+  created_at: "",
+  decided_at: null,
+};
+
+export const EMPTY_QUOTA_REQUEST_LIST: QuotaRequestListResponse = {
+  requests: [],
+};
+
+const nullableTextDefaultEmpty = () =>
+  z
+    .string()
+    .nullish()
+    .transform((v) => v ?? "");
+
+export const QuotaRequestSchema = z
+  .object({
+    id: nullableTextDefaultEmpty(),
+    workspace_id: nullableTextDefaultEmpty(),
+    gate: nullableTextDefaultEmpty(),
+    current_value: z.number().nullable().default(null),
+    requested_value: z.number().default(0),
+    approved_value: z.number().nullable().default(null),
+    state: nullableTextDefaultEmpty(),
+    reason: nullableTextDefaultEmpty(),
+    decision_reason: nullableTextDefaultEmpty(),
+    requested_by: nullableTextDefaultEmpty(),
+    requested_by_label: nullableTextDefaultEmpty(),
+    decided_by: nullableTextDefaultEmpty(),
+    created_at: nullableTextDefaultEmpty(),
+    decided_at: z.string().nullable().default(null),
+  })
+  .loose();
+
+export const QuotaRequestListResponseSchema = z
+  .object({
+    requests: z
+      .array(QuotaRequestSchema)
+      .nullish()
+      .transform((v) => v ?? []),
+  })
+  .loose();

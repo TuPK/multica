@@ -1769,11 +1769,20 @@
       "consequence": "Requires members to sign in again after this many hours; 0 turns the limit off.",
       "invalid_range": "Enter a whole number between 0 and 8760."
     },
+    "floor": {
+      "badge": "Tenant floor",
+      "locked_reason": "Set by tenant policy and cannot be loosened.",
+      "domains_reason": "Tenant policy restricts invite domains to {{domains}}.",
+      "session_max_age_reason": "Tenant policy caps session age at {{hours}} hours.",
+      "session_max_age_exceeded": "Cannot exceed the tenant floor of {{hours}} hours.",
+      "domain_outside_floor": "Only domains allowed by the tenant policy can be added."
+    },
     "errors": {
       "plan_unavailable": "Workspace policies are not available on your current plan.",
       "domain_not_verified": "Only domains verified by this workspace can be used.",
       "invite_domain_not_allowed": "That invite domain is not allowed by workspace policy.",
       "share_links_disabled": "Share links are disabled by workspace policy.",
+      "below_tenant_floor": "The policy is looser than the tenant floor.",
       "forbidden": "Only workspace owners can change workspace policies.",
       "save_failed": "Could not save workspace policy."
     }
@@ -1885,6 +1894,57 @@
       "forbidden": "Only workspace owners can manage SSO settings.",
       "domain_failed": "Could not update domain.",
       "connection_failed": "Could not save SSO connection."
+    }
+  },
+  "quota_requests": {
+    "title": "Quota requests",
+    "request_button": "Request quota increase",
+    "empty": "No quota increase requests yet.",
+    "load_failed": "Could not load quota requests.",
+    "dialog": {
+      "title": "Request quota increase",
+      "description": "Requests are reviewed by a platform administrator.",
+      "gate_label": "Quota",
+      "value_label": "Requested limit",
+      "value_placeholder": "e.g. 25",
+      "value_invalid": "Enter a whole number greater than 0.",
+      "value_must_exceed": "Enter a value higher than the current limit ({{current}}).",
+      "reason_label": "Reason",
+      "reason_placeholder": "Explain why this workspace needs a higher limit...",
+      "reason_required": "Enter a reason.",
+      "reason_too_long": "Keep the reason within 500 characters.",
+      "cancel": "Cancel",
+      "submit": "Submit request",
+      "submitting": "Submitting..."
+    },
+    "submitted_title": "Quota request submitted",
+    "submitted_description": "Requested {{value}} for {{gate}}.",
+    "requested_value": "Requested: {{value}}",
+    "approved_value": "Approved: {{value}}",
+    "states": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "denied": "Denied",
+      "canceled": "Canceled",
+      "unknown": "Unknown"
+    },
+    "gates": {
+      "agents": "Agents",
+      "runtimes": "Runtimes",
+      "storage_bytes": "Storage (bytes)",
+      "issue_count": "Issues",
+      "autopilot_runs": "Autopilot runs",
+      "member_groups": "Groups",
+      "api_rate_per_minute": "API rate (per minute)",
+      "audit_retention_days": "Audit retention (days)",
+      "max_workspaces": "Workspaces",
+      "unknown": "Quota"
+    },
+    "errors": {
+      "pending_exists": "A request for this quota is already pending.",
+      "invalid": "Check the requested limit and reason, then try again.",
+      "forbidden": "You do not have permission to request a quota increase.",
+      "submit_failed": "Could not submit the quota increase request."
     }
   }
 }

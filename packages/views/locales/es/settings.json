@@ -1769,11 +1769,20 @@
       "consequence": "Exige volver a iniciar sesión tras estas horas; 0 desactiva el límite.",
       "invalid_range": "Introduce un número entero entre 0 y 8760."
     },
+    "floor": {
+      "badge": "Mínimo del tenant",
+      "locked_reason": "Definido por la política del tenant y no puede flexibilizarse.",
+      "domains_reason": "La política del tenant restringe los dominios de invitación a {{domains}}.",
+      "session_max_age_reason": "La política del tenant limita la sesión a {{hours}} horas.",
+      "session_max_age_exceeded": "No puede superar el mínimo del tenant de {{hours}} horas.",
+      "domain_outside_floor": "Solo pueden añadirse dominios permitidos por la política del tenant."
+    },
     "errors": {
       "plan_unavailable": "Las políticas del espacio de trabajo no están disponibles en tu plan actual.",
       "domain_not_verified": "Solo se pueden usar dominios verificados por este espacio de trabajo.",
       "invite_domain_not_allowed": "Ese dominio de invitación no está permitido por la política del espacio de trabajo.",
       "share_links_disabled": "Los enlaces de invitación están desactivados por la política del espacio de trabajo.",
+      "below_tenant_floor": "La política es más permisiva que el mínimo del tenant.",
       "forbidden": "Solo los propietarios pueden cambiar las políticas del espacio de trabajo.",
       "save_failed": "No se pudo guardar la política del espacio de trabajo."
     }
@@ -1885,6 +1894,57 @@
       "forbidden": "Solo los propietarios pueden gestionar la configuración de SSO.",
       "domain_failed": "No se pudo actualizar el dominio.",
       "connection_failed": "No se pudo guardar la conexión SSO."
+    }
+  },
+  "quota_requests": {
+    "title": "Solicitudes de cuota",
+    "request_button": "Solicitar aumento de cuota",
+    "empty": "Aún no hay solicitudes de aumento de cuota.",
+    "load_failed": "No se pudieron cargar las solicitudes de cuota.",
+    "dialog": {
+      "title": "Solicitar aumento de cuota",
+      "description": "Un administrador de la plataforma revisará la solicitud.",
+      "gate_label": "Cuota",
+      "value_label": "Límite solicitado",
+      "value_placeholder": "p. ej. 25",
+      "value_invalid": "Introduce un número entero mayor que 0.",
+      "value_must_exceed": "Introduce un valor superior al límite actual ({{current}}).",
+      "reason_label": "Motivo",
+      "reason_placeholder": "Explica por qué este espacio de trabajo necesita un límite mayor...",
+      "reason_required": "Introduce un motivo.",
+      "reason_too_long": "El motivo no puede superar los 500 caracteres.",
+      "cancel": "Cancelar",
+      "submit": "Enviar solicitud",
+      "submitting": "Enviando..."
+    },
+    "submitted_title": "Solicitud de cuota enviada",
+    "submitted_description": "Se solicitó {{value}} para {{gate}}.",
+    "requested_value": "Solicitado: {{value}}",
+    "approved_value": "Aprobado: {{value}}",
+    "states": {
+      "pending": "Pendiente",
+      "approved": "Aprobada",
+      "denied": "Rechazada",
+      "canceled": "Cancelada",
+      "unknown": "Desconocida"
+    },
+    "gates": {
+      "agents": "Agentes",
+      "runtimes": "Runtimes",
+      "storage_bytes": "Almacenamiento (bytes)",
+      "issue_count": "Tareas",
+      "autopilot_runs": "Ejecuciones de automatización",
+      "member_groups": "Grupos",
+      "api_rate_per_minute": "Límite de API (por minuto)",
+      "audit_retention_days": "Retención de auditoría (días)",
+      "max_workspaces": "Espacios de trabajo",
+      "unknown": "Cuota"
+    },
+    "errors": {
+      "pending_exists": "Ya existe una solicitud pendiente para esta cuota.",
+      "invalid": "Revisa el límite solicitado y el motivo e inténtalo de nuevo.",
+      "forbidden": "No tienes permiso para solicitar un aumento de cuota.",
+      "submit_failed": "No se pudo enviar la solicitud de aumento de cuota."
     }
   }
 }

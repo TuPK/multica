@@ -1,17 +1,28 @@
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "@multica/core/api";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  ApiClient,
+  ApiError,
+  clearPlanLimitReached,
+} from "@multica/core/api";
 import { configStore } from "@multica/core/config";
 import { BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG } from "@multica/core/feature-flags";
+import { setCurrentWorkspace } from "@multica/core/platform";
 import type {
   AutopilotQuotaUsage,
   IssueLimitUsage,
+  QuotaRequest,
   WorkspaceBillingProfile,
   WorkspaceSubscriptionEntitlements,
   WorkspaceSubscriptionSummary,
 } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
+
+const mockApi = vi.hoisted(() => ({
+  listQuotaRequests: vi.fn(),
+  createQuotaRequest: vi.fn(),
+}));
 
 const mocks = vi.hoisted(() => ({
   useQuery: vi.fn(),
@@ -30,8 +41,19 @@ const mocks = vi.hoisted(() => ({
   refetchIssueLimitUsage: vi.fn(),
   refetchPrices: vi.fn(),
   refetchPlans: vi.fn(),
+  refetchQuotaRequests: vi.fn(),
   openExternal: vi.fn(),
   workspaceId: "workspace-1",
+  memberRole: "owner" as "owner" | "admin" | "member" | "viewer",
+  memberPermissions: [
+    "members.invite",
+    "audit.read",
+    "billing.view",
+    "billing.manage",
+    "integrations.manage",
+    "runtime_profiles.manage",
+  ] as string[],
+  quotaRequests: [] as QuotaRequest[],
   plans: [] as any[],
   plansLoading: false,
   orders: [] as any[],
@@ -128,9 +150,25 @@ const mocks = vi.hoisted(() => ({
   } as AutopilotQuotaUsage,
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: (options: unknown) => mocks.useQuery(options),
-}));
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQuery: (options: unknown) => mocks.useQuery(options),
+  };
+});
+
+vi.mock("@multica/core/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@multica/core/api")>();
+  return {
+    ...actual,
+    api: {
+      ...actual.api,
+      listQuotaRequests: mockApi.listQuotaRequests,
+      createQuotaRequest: mockApi.createQuotaRequest,
+    },
+  };
+});
 
 vi.mock("@multica/core/billing", () => ({
   workspaceBillingProfileOptions: (wsId: string) => ({
@@ -212,6 +250,20 @@ vi.mock("@multica/core/autopilots", () => ({
     queryKey: ["autopilots", wsId, "usage"],
   }),
 }));
+
+vi.mock("@multica/core/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@multica/core/auth")>();
+  const authState = { user: { id: "user-1" } };
+  const useAuthStore = Object.assign(
+    (selector?: (s: typeof authState) => unknown) =>
+      selector ? selector(authState) : authState,
+    { getState: () => authState },
+  );
+  return {
+    ...actual,
+    useAuthStore,
+  };
+});
 
 vi.mock("@multica/core/paths", () => ({
   useCurrentWorkspace: () => ({
@@ -295,8 +347,36 @@ function setSeatCapacity({
 describe("BillingTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearPlanLimitReached();
     navigationState.search = "tab=billing";
     mocks.workspaceId = "workspace-1";
+    mocks.memberRole = "owner";
+    mocks.memberPermissions = [
+      "members.invite",
+      "audit.read",
+      "billing.view",
+      "billing.manage",
+      "integrations.manage",
+      "runtime_profiles.manage",
+    ];
+    mocks.quotaRequests = [];
+    mockApi.listQuotaRequests.mockResolvedValue([]);
+    mockApi.createQuotaRequest.mockResolvedValue({
+      id: "qr-new",
+      workspace_id: "workspace-1",
+      gate: "agents",
+      current_value: 3,
+      requested_value: 10,
+      approved_value: null,
+      state: "pending",
+      reason: "Growing team",
+      decision_reason: "",
+      requested_by: "user-1",
+      requested_by_label: "ada@acme.com",
+      decided_by: "",
+      created_at: "2030-01-03T00:00:00Z",
+      decided_at: null,
+    });
     mocks.prices = {
       month: {
         currency: "usd",
@@ -495,6 +575,38 @@ describe("BillingTab", () => {
           isFetching: mocks.usageFetching,
           isError: mocks.usageError,
           refetch: mocks.refetchUsage,
+        };
+      }
+      if (
+        queryKey?.[0] === "workspaces" &&
+        queryKey?.[2] === "permissions" &&
+        queryKey?.[3] === "me"
+      ) {
+        return {
+          data: {
+            role: mocks.memberRole,
+            permissions: mocks.memberPermissions,
+          },
+          isPending: false,
+          isError: false,
+          refetch: mocks.refetch,
+        };
+      }
+      if (queryKey?.[0] === "workspaces" && queryKey?.[2] === "members") {
+        return {
+          data: [],
+          isLoading: false,
+          isPending: false,
+          isError: false,
+          refetch: mocks.refetch,
+        };
+      }
+      if (queryKey?.[0] === "workspaces" && queryKey?.[2] === "quota-requests") {
+        return {
+          data: mocks.quotaRequests,
+          isPending: false,
+          isError: false,
+          refetch: mocks.refetchQuotaRequests,
         };
       }
       return {
@@ -2432,6 +2544,173 @@ describe("BillingTab", () => {
           screen.getByRole("button", { name: "Save buyer details" }),
         ).toBeEnabled();
       });
+    });
+  });
+
+  describe("quota increase requests (R6 S37)", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      setCurrentWorkspace(null, null);
+    });
+
+    const sampleRequests: QuotaRequest[] = [
+      {
+        id: "qr-1",
+        workspace_id: "workspace-1",
+        gate: "agents",
+        current_value: 3,
+        requested_value: 10,
+        approved_value: null,
+        state: "pending",
+        reason: "Need more agents",
+        decision_reason: "",
+        requested_by: "user-1",
+        requested_by_label: "ada@acme.com",
+        decided_by: "",
+        created_at: "2030-01-02T00:00:00Z",
+        decided_at: null,
+      },
+      {
+        id: "qr-2",
+        workspace_id: "workspace-1",
+        gate: "runtimes",
+        current_value: 2,
+        requested_value: 5,
+        approved_value: 4,
+        state: "approved",
+        reason: "More runners",
+        decision_reason: "Approved for 4",
+        requested_by: "user-1",
+        requested_by_label: "ada@acme.com",
+        decided_by: "staff-1",
+        created_at: "2030-01-01T00:00:00Z",
+        decided_at: "2030-01-01T12:00:00Z",
+      },
+      {
+        id: "qr-3",
+        workspace_id: "workspace-1",
+        gate: "storage_bytes",
+        current_value: 100,
+        requested_value: 500,
+        approved_value: null,
+        state: "future_state",
+        reason: "More storage",
+        decision_reason: "",
+        requested_by: "user-1",
+        requested_by_label: "ada@acme.com",
+        decided_by: "",
+        created_at: "2030-01-01T00:00:00Z",
+        decided_at: null,
+      },
+    ];
+
+    it("shows request increase after plan_limit_reached and lists my requests", async () => {
+      const user = userEvent.setup();
+      mocks.quotaRequests = sampleRequests;
+
+      // Before plan_limit_reached, the request button is hidden even when requests exist.
+      const { rerender } = renderWithI18n(<BillingTab />);
+      expect(
+        screen.queryByRole("button", { name: "Request quota increase" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Quota requests")).toBeInTheDocument();
+      expect(screen.getByText("Pending")).toBeInTheDocument();
+      expect(screen.getByText("Approved")).toBeInTheDocument();
+      expect(screen.getByText("Unknown")).toBeInTheDocument();
+
+      // Simulate an API response returning 402 plan_limit_reached for this workspace.
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              error: "this workspace has reached its plan limit",
+              code: "plan_limit_reached",
+              gate: "agents",
+              limit: 3,
+              used: 3,
+            }),
+            { status: 402, headers: { "Content-Type": "application/json" } },
+          ),
+        ),
+      );
+      setCurrentWorkspace("acme", "workspace-1");
+      const client = new ApiClient("https://api.example.test");
+      await client
+        .createAgent({ name: "Reviewer", runtime_id: "rt-1" })
+        .catch(() => {});
+
+      rerender(<BillingTab />);
+
+      const requestButton = await screen.findByRole("button", {
+        name: "Request quota increase",
+      });
+      expect(requestButton).toBeInTheDocument();
+
+      await user.click(requestButton);
+      const dialog = await screen.findByRole("dialog", {
+        name: "Request quota increase",
+      });
+      expect(dialog).toBeInTheDocument();
+
+      const limitInput = screen.getByRole("spinbutton", {
+        name: "Requested limit",
+      });
+      const reasonInput = screen.getByRole("textbox", { name: "Reason" });
+
+      await user.clear(limitInput);
+      await user.type(limitInput, "10");
+      await user.type(reasonInput, "Growing team");
+      await user.click(screen.getByRole("button", { name: "Submit request" }));
+
+      await waitFor(() => {
+        expect(mockApi.createQuotaRequest).toHaveBeenCalledWith("workspace-1", {
+          gate: "agents",
+          requested_value: 10,
+          reason: "Growing team",
+        });
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("dialog", { name: "Request quota increase" }),
+        ).not.toBeInTheDocument();
+      });
+      expect(mocks.refetchQuotaRequests).toHaveBeenCalled();
+    });
+
+    it("member without billing.manage does not see the button", async () => {
+      mocks.memberRole = "member";
+      mocks.memberPermissions = ["billing.view"];
+      mocks.quotaRequests = sampleRequests;
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              error: "this workspace has reached its plan limit",
+              code: "plan_limit_reached",
+              gate: "agents",
+              limit: 3,
+              used: 3,
+            }),
+            { status: 402, headers: { "Content-Type": "application/json" } },
+          ),
+        ),
+      );
+      setCurrentWorkspace("acme", "workspace-1");
+      const client = new ApiClient("https://api.example.test");
+      await client
+        .createAgent({ name: "Reviewer", runtime_id: "rt-1" })
+        .catch(() => {});
+
+      renderWithI18n(<BillingTab />);
+
+      expect(screen.getByText("Quota requests")).toBeInTheDocument();
+      expect(screen.getByText("Pending")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Request quota increase" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

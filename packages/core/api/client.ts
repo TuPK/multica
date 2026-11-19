@@ -376,9 +376,14 @@ import type {
   PackPreview,
   PackSourceRequest,
 } from "../types/pack";
+import type {
+  CreateQuotaRequestInput,
+  QuotaRequest,
+  QuotaRequestListResponse,
+} from "../types/quota-request";
 import { type Logger, noopLogger } from "../logger";
 import { createRequestId, createSafeId } from "../utils";
-import { getCurrentSlug } from "../platform/workspace-storage";
+import { getCurrentSlug, getCurrentWsId } from "../platform/workspace-storage";
 import { parseWithFallback } from "./schema";
 import { LoginAttemptSchema, LoginResponseSchema, type LoginAttempt } from "./login-schemas";
 import {
@@ -1079,6 +1084,10 @@ import {
   WorkspaceListItemSchema,
   WorkspacePinnedSchema,
   WorkspaceSchema,
+  QuotaRequestSchema,
+  QuotaRequestListResponseSchema,
+  EMPTY_QUOTA_REQUEST,
+  EMPTY_QUOTA_REQUEST_LIST,
   type IssueView,
   type IssueViewPreference,
   type CreateIssueViewRequest,
@@ -1215,6 +1224,62 @@ export class PlanLimitReachedError extends ApiError {
 // body that is not a well-formed plan limit.
 export function planLimitReached(err: unknown): PlanLimitReachedError | undefined {
   return err instanceof PlanLimitReachedError ? err : undefined;
+}
+
+export interface PlanLimitReachedRecord {
+  workspaceId: string | null;
+  workspaceSlug: string | null;
+  gate: string;
+  limit: number;
+  used: number;
+}
+
+const planLimitByKey = new Map<string, PlanLimitReachedRecord>();
+const planLimitListeners = new Set<() => void>();
+
+function notifyPlanLimitListeners(): void {
+  for (const listener of planLimitListeners) {
+    listener();
+  }
+}
+
+export function recordPlanLimitReached(record: PlanLimitReachedRecord): void {
+  if (!record.workspaceId && !record.workspaceSlug) return;
+  if (record.workspaceId) {
+    planLimitByKey.set(`id:${record.workspaceId}`, record);
+  }
+  if (record.workspaceSlug) {
+    planLimitByKey.set(`slug:${record.workspaceSlug}`, record);
+  }
+  notifyPlanLimitListeners();
+}
+
+export function getPlanLimitReached(
+  workspaceId: string,
+  workspaceSlug?: string | null,
+): PlanLimitReachedRecord | null {
+  if (workspaceId) {
+    const byId = planLimitByKey.get(`id:${workspaceId}`);
+    if (byId) return byId;
+  }
+  if (workspaceSlug) {
+    const bySlug = planLimitByKey.get(`slug:${workspaceSlug}`);
+    if (bySlug) return bySlug;
+  }
+  return null;
+}
+
+export function subscribePlanLimitReached(listener: () => void): () => void {
+  planLimitListeners.add(listener);
+  return () => {
+    planLimitListeners.delete(listener);
+  };
+}
+
+export function clearPlanLimitReached(): void {
+  if (planLimitByKey.size === 0) return;
+  planLimitByKey.clear();
+  notifyPlanLimitListeners();
 }
 
 function planLimitReachedFromResponse(
@@ -1655,8 +1720,28 @@ export class ApiClient {
       const { message, body } = await this.parseErrorBody(res, `API error: ${res.status} ${res.statusText}`);
       const logLevel = res.status === 404 ? "warn" : "error";
       this.logger[logLevel](`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms`, error: message });
-      throw planLimitReachedFromResponse(message, res.status, res.statusText, body)
-        ?? new ApiError(message, res.status, res.statusText, body);
+      const limitErr = planLimitReachedFromResponse(message, res.status, res.statusText, body);
+      if (limitErr) {
+        const headers = buildHeaders();
+        const explicitWsId = headers["X-Workspace-ID"] || null;
+        const explicitSlug = headers["X-Workspace-Slug"] || null;
+        const pathMatch = /^\/api\/workspaces\/([^/?]+)/.exec(path);
+        const pathWsId = pathMatch?.[1] ? decodeURIComponent(pathMatch[1]) : null;
+        const currentSlug = getCurrentSlug();
+        const ambientWsId =
+          explicitSlug && currentSlug && explicitSlug === currentSlug
+            ? getCurrentWsId()
+            : null;
+        recordPlanLimitReached({
+          workspaceId: explicitWsId ?? pathWsId ?? ambientWsId,
+          workspaceSlug: explicitSlug,
+          gate: limitErr.gate,
+          limit: limitErr.limit,
+          used: limitErr.used,
+        });
+        throw limitErr;
+      }
+      throw new ApiError(message, res.status, res.statusText, body);
     }
 
     this.logger.info(`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms` });
@@ -3287,6 +3372,34 @@ export class ApiClient {
       orderId,
       "invoice-buyer",
       buyer,
+    );
+  }
+
+  // Workspace quota requests (R6 S32).
+
+  async listQuotaRequests(wsId: string): Promise<QuotaRequest[]> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/quota-requests`);
+    return parseWithFallback<QuotaRequestListResponse>(
+      raw,
+      QuotaRequestListResponseSchema,
+      EMPTY_QUOTA_REQUEST_LIST,
+      { endpoint: "GET /api/workspaces/{id}/quota-requests" },
+    ).requests;
+  }
+
+  async createQuotaRequest(
+    wsId: string,
+    input: CreateQuotaRequestInput,
+  ): Promise<QuotaRequest> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/quota-requests`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return parseWithFallback<QuotaRequest>(
+      raw,
+      QuotaRequestSchema,
+      EMPTY_QUOTA_REQUEST,
+      { endpoint: "POST /api/workspaces/{id}/quota-requests" },
     );
   }
 

@@ -1757,11 +1757,20 @@
       "consequence": "超過此時長後需要重新登入；填 0 表示不限制。",
       "invalid_range": "請輸入 0 到 8760 之間的整數。"
     },
+    "floor": {
+      "badge": "租戶基準",
+      "locked_reason": "由租戶原則設定，無法放寬。",
+      "domains_reason": "租戶原則將邀請網域限制為 {{domains}}。",
+      "session_max_age_reason": "租戶原則將工作階段上限設為 {{hours}} 小時。",
+      "session_max_age_exceeded": "不能超過租戶基準 {{hours}} 小時。",
+      "domain_outside_floor": "只能新增租戶原則允許的網域。"
+    },
     "errors": {
       "plan_unavailable": "目前方案不支援工作區原則。",
       "domain_not_verified": "只能使用該工作區已驗證的網域。",
       "invite_domain_not_allowed": "工作區原則不允許該邀請網域。",
       "share_links_disabled": "工作區原則已停用分享連結。",
+      "below_tenant_floor": "原則設定低於租戶基準要求。",
       "forbidden": "只有工作區 owner 可以修改工作區原則。",
       "save_failed": "無法儲存工作區原則。"
     }
@@ -1873,6 +1882,57 @@
       "forbidden": "只有工作區 owner 可以管理 SSO 設定。",
       "domain_failed": "無法更新網域。",
       "connection_failed": "無法儲存 SSO 連線。"
+    }
+  },
+  "quota_requests": {
+    "title": "配額申請",
+    "request_button": "申請提高配額",
+    "empty": "尚無提高配額申請。",
+    "load_failed": "無法載入配額申請。",
+    "dialog": {
+      "title": "申請提高配額",
+      "description": "申請將由平台管理員審核。",
+      "gate_label": "配額項目",
+      "value_label": "申請上限",
+      "value_placeholder": "例如 25",
+      "value_invalid": "請輸入大於 0 的整數。",
+      "value_must_exceed": "請輸入高於目前上限（{{current}}）的值。",
+      "reason_label": "原因",
+      "reason_placeholder": "說明此工作區需要更高上限的原因...",
+      "reason_required": "請輸入原因。",
+      "reason_too_long": "原因請控制在 500 個字元以內。",
+      "cancel": "取消",
+      "submit": "提交申請",
+      "submitting": "提交中..."
+    },
+    "submitted_title": "已提交配額申請",
+    "submitted_description": "已申請將 {{gate}} 提高至 {{value}}。",
+    "requested_value": "申請值：{{value}}",
+    "approved_value": "核准值：{{value}}",
+    "states": {
+      "pending": "待審核",
+      "approved": "已核准",
+      "denied": "已拒絕",
+      "canceled": "已取消",
+      "unknown": "未知"
+    },
+    "gates": {
+      "agents": "AI 代理",
+      "runtimes": "執行時",
+      "storage_bytes": "儲存空間（位元組）",
+      "issue_count": "任務",
+      "autopilot_runs": "自動化執行",
+      "member_groups": "帳號組",
+      "api_rate_per_minute": "API 速率（每分鐘）",
+      "audit_retention_days": "稽核日誌保留（天）",
+      "max_workspaces": "工作區",
+      "unknown": "配額"
+    },
+    "errors": {
+      "pending_exists": "該配額項目已有待審核的申請。",
+      "invalid": "請檢查申請上限和原因後重試。",
+      "forbidden": "你沒有權限申請提高配額。",
+      "submit_failed": "無法提交提高配額申請。"
     }
   }
 }

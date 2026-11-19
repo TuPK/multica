@@ -1757,11 +1757,20 @@
       "consequence": "超过此时长后需要重新登录；填 0 表示不限制。",
       "invalid_range": "请输入 0 到 8760 之间的整数。"
     },
+    "floor": {
+      "badge": "租户基线",
+      "locked_reason": "由租户策略设定，无法放宽。",
+      "domains_reason": "租户策略将邀请域名限制为 {{domains}}。",
+      "session_max_age_reason": "租户策略将会话上限设为 {{hours}} 小时。",
+      "session_max_age_exceeded": "不能超过租户基线 {{hours}} 小时。",
+      "domain_outside_floor": "只能添加租户策略允许的域名。"
+    },
     "errors": {
       "plan_unavailable": "当前套餐不支持工作区策略。",
       "domain_not_verified": "只能使用该工作区已验证的域名。",
       "invite_domain_not_allowed": "工作区策略不允许该邀请域名。",
       "share_links_disabled": "工作区策略已禁用分享链接。",
+      "below_tenant_floor": "策略设置低于租户基线要求。",
       "forbidden": "只有工作区 owner 可以修改工作区策略。",
       "save_failed": "无法保存工作区策略。"
     }
@@ -1873,6 +1882,57 @@
       "forbidden": "只有工作区 owner 可以管理 SSO 设置。",
       "domain_failed": "无法更新域名。",
       "connection_failed": "无法保存 SSO 连接。"
+    }
+  },
+  "quota_requests": {
+    "title": "配额申请",
+    "request_button": "申请提高配额",
+    "empty": "暂无提高配额申请。",
+    "load_failed": "无法加载配额申请。",
+    "dialog": {
+      "title": "申请提高配额",
+      "description": "申请将由平台管理员审核。",
+      "gate_label": "配额项",
+      "value_label": "申请上限",
+      "value_placeholder": "例如 25",
+      "value_invalid": "请输入大于 0 的整数。",
+      "value_must_exceed": "请输入高于当前上限（{{current}}）的值。",
+      "reason_label": "原因",
+      "reason_placeholder": "说明该工作区需要更高上限的原因...",
+      "reason_required": "请输入原因。",
+      "reason_too_long": "原因请控制在 500 个字符以内。",
+      "cancel": "取消",
+      "submit": "提交申请",
+      "submitting": "提交中..."
+    },
+    "submitted_title": "已提交配额申请",
+    "submitted_description": "已申请将 {{gate}} 提高至 {{value}}。",
+    "requested_value": "申请值：{{value}}",
+    "approved_value": "批准值：{{value}}",
+    "states": {
+      "pending": "待审核",
+      "approved": "已批准",
+      "denied": "已拒绝",
+      "canceled": "已取消",
+      "unknown": "未知"
+    },
+    "gates": {
+      "agents": "智能体",
+      "runtimes": "运行时",
+      "storage_bytes": "存储空间（字节）",
+      "issue_count": "任务",
+      "autopilot_runs": "自动化运行",
+      "member_groups": "账号组",
+      "api_rate_per_minute": "API 速率（每分钟）",
+      "audit_retention_days": "审计日志保留（天）",
+      "max_workspaces": "工作区",
+      "unknown": "配额"
+    },
+    "errors": {
+      "pending_exists": "该配额项已有待审核的申请。",
+      "invalid": "请检查申请上限和原因后重试。",
+      "forbidden": "你没有权限申请提高配额。",
+      "submit_failed": "无法提交提高配额申请。"
     }
   }
 }

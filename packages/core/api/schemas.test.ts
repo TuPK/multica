@@ -103,8 +103,15 @@ import {
   WorkspaceSchema,
   EMPTY_WORKSPACE,
   WorkspaceListItemSchema,
+  QuotaRequestSchema,
+  QuotaRequestListResponseSchema,
+  PolicyFloorSchema,
+  EMPTY_QUOTA_REQUEST,
+  EMPTY_QUOTA_REQUEST_LIST,
+  DEFAULT_POLICY_FLOOR,
   type MemberWithGuest,
 } from "./schemas";
+import { WorkspacePolicySchema, DEFAULT_WORKSPACE_POLICY } from "./security-schemas";
 import type { Workspace } from "../types";
 import { parseWithFallback } from "./schema";
 
@@ -3176,5 +3183,133 @@ describe("WorkspaceSchema", () => {
     expect(parsed[0]?.tenant_id).toBeUndefined();
     expect(parsed[1]?.tenant_id).toBe("tenant-2");
     expect(parsed[2]?.tenant_id).toBeUndefined();
+  });
+});
+
+describe("QuotaRequest and PolicyFloor schemas", () => {
+  it("quota request and floor accept missing fields and unknown states", () => {
+    const minimalRequest = parseWithFallback(
+      {},
+      QuotaRequestSchema,
+      EMPTY_QUOTA_REQUEST,
+      { endpoint: "POST /api/workspaces/{id}/quota-requests" },
+    );
+    expect(minimalRequest).toEqual(EMPTY_QUOTA_REQUEST);
+
+    const unknownStateRequest = parseWithFallback(
+      {
+        id: "qr-1",
+        gate: "agents",
+        requested_value: 15,
+        state: "escalated_to_ops",
+        created_at: "2026-01-01T00:00:00Z",
+        extra_field: "ignored-safely",
+      },
+      QuotaRequestSchema,
+      EMPTY_QUOTA_REQUEST,
+      { endpoint: "GET /api/workspaces/{id}/quota-requests" },
+    );
+    expect(unknownStateRequest).toMatchObject({
+      id: "qr-1",
+      gate: "agents",
+      requested_value: 15,
+      state: "escalated_to_ops",
+      created_at: "2026-01-01T00:00:00Z",
+      current_value: null,
+      approved_value: null,
+      reason: "",
+      decision_reason: "",
+      decided_at: null,
+      extra_field: "ignored-safely",
+    });
+
+    const listWithUnknownAndMissing = parseWithFallback(
+      {
+        requests: [
+          {
+            id: "qr-2",
+            gate: "runtimes",
+            requested_value: 8,
+            state: "future_state",
+            created_at: "2026-01-02T00:00:00Z",
+          },
+          {},
+        ],
+      },
+      QuotaRequestListResponseSchema,
+      EMPTY_QUOTA_REQUEST_LIST,
+      { endpoint: "GET /api/workspaces/{id}/quota-requests" },
+    );
+    expect(listWithUnknownAndMissing.requests).toHaveLength(2);
+    expect(listWithUnknownAndMissing.requests[0]).toMatchObject({
+      id: "qr-2",
+      gate: "runtimes",
+      requested_value: 8,
+      state: "future_state",
+    });
+    expect(listWithUnknownAndMissing.requests[1]).toEqual(EMPTY_QUOTA_REQUEST);
+
+    expect(
+      parseWithFallback({}, QuotaRequestListResponseSchema, EMPTY_QUOTA_REQUEST_LIST, {
+        endpoint: "GET /api/workspaces/{id}/quota-requests",
+      }),
+    ).toEqual(EMPTY_QUOTA_REQUEST_LIST);
+    expect(
+      parseWithFallback(
+        { requests: "malformed" },
+        QuotaRequestListResponseSchema,
+        EMPTY_QUOTA_REQUEST_LIST,
+        { endpoint: "GET /api/workspaces/{id}/quota-requests" },
+      ),
+    ).toEqual(EMPTY_QUOTA_REQUEST_LIST);
+
+    const emptyFloor = parseWithFallback({}, PolicyFloorSchema, DEFAULT_POLICY_FLOOR, {
+      endpoint: "GET /api/workspaces/{id}/policy",
+    });
+    expect(emptyFloor).toEqual(DEFAULT_POLICY_FLOOR);
+
+    const partialFloor = parseWithFallback(
+      { require_mfa: true, allowed_invite_domains: null, unknown_floor_field: "x" },
+      PolicyFloorSchema,
+      DEFAULT_POLICY_FLOOR,
+      { endpoint: "GET /api/workspaces/{id}/policy" },
+    );
+    expect(partialFloor).toMatchObject({
+      allowed_invite_domains: [],
+      share_links_enabled: true,
+      require_sso: false,
+      require_mfa: true,
+      session_max_age_hours: 0,
+      unknown_floor_field: "x",
+    });
+
+    const policyWithFloor = parseWithFallback(
+      {
+        require_sso: false,
+        floor: { require_mfa: true },
+      },
+      WorkspacePolicySchema,
+      DEFAULT_WORKSPACE_POLICY,
+      { endpoint: "GET /api/workspaces/{id}/policy" },
+    );
+    expect(policyWithFloor.floor).toMatchObject({
+      allowed_invite_domains: [],
+      share_links_enabled: true,
+      require_sso: false,
+      require_mfa: true,
+      session_max_age_hours: 0,
+    });
+
+    const policyWithMalformedFloor = parseWithFallback(
+      {
+        require_sso: true,
+        floor: { require_mfa: "yes" },
+      },
+      WorkspacePolicySchema,
+      DEFAULT_WORKSPACE_POLICY,
+      { endpoint: "GET /api/workspaces/{id}/policy" },
+    );
+    expect(policyWithMalformedFloor.require_sso).toBe(true);
+    expect(policyWithMalformedFloor.floor).toBeNull();
   });
 });

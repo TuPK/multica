@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
+  ArrowUpCircle,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -14,7 +15,15 @@ import {
   Plus,
   RefreshCw,
 } from "@multica/ui/icons";
-import { ApiError, errorCode } from "@multica/core/api";
+import {
+  api,
+  ApiError,
+  clientErrorMessage,
+  errorCode,
+  getPlanLimitReached,
+  planLimitReached,
+  subscribePlanLimitReached,
+} from "@multica/core/api";
 import { autopilotQuotaUsageOptions } from "@multica/core/autopilots";
 import {
   type WorkspaceOrder,
@@ -41,8 +50,10 @@ import {
 import { useFeatureEnabled } from "@multica/core/config";
 import { BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG } from "@multica/core/feature-flags";
 import { useCurrentWorkspace } from "@multica/core/paths";
+import { useCan } from "@multica/core/permissions";
 import type {
   PurchaseWorkspaceSeatsRequest,
+  QuotaRequest,
   UpdateWorkspaceBillingProfileRequest,
   WorkspaceBillingAccountKind,
   WorkspaceBillingProfile,
@@ -77,6 +88,7 @@ import {
   DialogTitle,
 } from "@multica/ui/components/ui/dialog";
 import { Input } from "@multica/ui/components/ui/input";
+import { Label } from "@multica/ui/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -88,7 +100,15 @@ import {
   ProgressLabel,
   ProgressValue,
 } from "@multica/ui/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
+import { Textarea } from "@multica/ui/components/ui/textarea";
 import { useLocale, useT } from "../../i18n";
 import { useNavigation } from "../../navigation";
 import { openExternal } from "../../platform";
@@ -137,6 +157,93 @@ export { formatStripeMinorAmount } from "./billing-format";
 const CHECKOUT_SYNC_TIMEOUT_MS = 30_000;
 const SEAT_PURCHASE_POLL_TIMEOUT_MS = 2 * 60_000;
 const SEAT_PURCHASE_PREVIEW_DEBOUNCE_MS = 800;
+const QUOTA_REQUEST_MAX_REASON_LENGTH = 500;
+const QUOTA_REQUEST_GATES = [
+  "agents",
+  "runtimes",
+  "storage_bytes",
+  "issue_count",
+  "autopilot_runs",
+  "member_groups",
+  "api_rate_per_minute",
+  "audit_retention_days",
+  "max_workspaces",
+] as const;
+
+type SettingsT = ReturnType<typeof useT<"settings">>["t"];
+
+function quotaGateLabel(gate: string, tSettings: SettingsT): string {
+  switch (gate) {
+    case "agents":
+      return tSettings(($) => $.quota_requests.gates.agents);
+    case "runtimes":
+      return tSettings(($) => $.quota_requests.gates.runtimes);
+    case "storage_bytes":
+      return tSettings(($) => $.quota_requests.gates.storage_bytes);
+    case "issue_count":
+      return tSettings(($) => $.quota_requests.gates.issue_count);
+    case "autopilot_runs":
+      return tSettings(($) => $.quota_requests.gates.autopilot_runs);
+    case "member_groups":
+      return tSettings(($) => $.quota_requests.gates.member_groups);
+    case "api_rate_per_minute":
+      return tSettings(($) => $.quota_requests.gates.api_rate_per_minute);
+    case "audit_retention_days":
+      return tSettings(($) => $.quota_requests.gates.audit_retention_days);
+    case "max_workspaces":
+      return tSettings(($) => $.quota_requests.gates.max_workspaces);
+    default:
+      return gate || tSettings(($) => $.quota_requests.gates.unknown);
+  }
+}
+
+function quotaStateLabel(state: string, tSettings: SettingsT): string {
+  switch (state) {
+    case "pending":
+      return tSettings(($) => $.quota_requests.states.pending);
+    case "approved":
+      return tSettings(($) => $.quota_requests.states.approved);
+    case "denied":
+      return tSettings(($) => $.quota_requests.states.denied);
+    case "canceled":
+      return tSettings(($) => $.quota_requests.states.canceled);
+    default:
+      return tSettings(($) => $.quota_requests.states.unknown);
+  }
+}
+
+function quotaStateVariant(
+  state: string,
+): "default" | "secondary" | "destructive" | "outline" {
+  switch (state) {
+    case "approved":
+      return "default";
+    case "pending":
+      return "outline";
+    case "denied":
+      return "destructive";
+    case "canceled":
+    default:
+      return "secondary";
+  }
+}
+
+function mapQuotaRequestError(error: unknown, tSettings: SettingsT): string {
+  switch (errorCode(error)) {
+    case "quota_request_pending":
+      return tSettings(($) => $.quota_requests.errors.pending_exists);
+    case "quota_request_invalid":
+      return (
+        clientErrorMessage(error) ??
+        tSettings(($) => $.quota_requests.errors.invalid)
+      );
+    default:
+      if (error instanceof ApiError && error.status === 403) {
+        return tSettings(($) => $.quota_requests.errors.forbidden);
+      }
+      return tSettings(($) => $.quota_requests.errors.submit_failed);
+  }
+}
 
 type WorkspaceBillingReturnResult = "success" | "cancel" | "portal";
 
@@ -270,10 +377,18 @@ export function BillingTab() {
 
 function BillingTabContent() {
   const { t } = useT("billing");
+  const { t: tSettings } = useT("settings");
   const locale = useLocale();
   const navigation = useNavigation();
   const workspace = useCurrentWorkspace();
   const wsId = workspace?.id ?? "";
+  const workspaceSlug = workspace?.slug ?? null;
+  const canManageBilling = useCan(wsId, "billing.manage", { write: true }).allowed;
+  const recordedPlanLimit = useSyncExternalStore(
+    subscribePlanLimitReached,
+    () => getPlanLimitReached(wsId, workspaceSlug),
+    () => null,
+  );
   const returnResultParam = parseReturnResult(
     navigation.searchParams.get("result"),
   );
@@ -328,6 +443,13 @@ function BillingTabContent() {
   const [planChangePlanName, setPlanChangePlanName] = useState("");
   const [planChangeError, setPlanChangeError] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [observedPlanLimitGate, setObservedPlanLimitGate] = useState<string | null>(null);
+  const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
+  const [quotaGate, setQuotaGate] = useState<string>("agents");
+  const [quotaValueInput, setQuotaValueInput] = useState("");
+  const [quotaReasonInput, setQuotaReasonInput] = useState("");
+  const [quotaSubmitError, setQuotaSubmitError] = useState<string | null>(null);
+  const [quotaSubmitting, setQuotaSubmitting] = useState(false);
   const [expandedOrderIds, setExpandedOrderIds] = useState<
     Record<string, boolean>
   >({});
@@ -376,6 +498,9 @@ function BillingTabContent() {
     setPlanChangePlanName("");
     setPlanChangeError(null);
     setProfileError(null);
+    setObservedPlanLimitGate(null);
+    setQuotaDialogOpen(false);
+    setQuotaSubmitError(null);
     setExpandedOrderIds({});
   }, [wsId]);
 
@@ -478,6 +603,12 @@ function BillingTabContent() {
       entitlements?.limits.issueCount.mode === "limited",
   });
   const billingProfileQuery = useQuery(workspaceBillingProfileOptions(wsId));
+  const quotaRequestsQuery = useQuery({
+    queryKey: ["workspaces", wsId, "quota-requests"] as const,
+    queryFn: () => api.listQuotaRequests(wsId),
+    enabled: wsId.length > 0 && summaryQuery.data != null,
+    retry: false,
+  });
   const rawBillingProfile = billingProfileQuery.data;
   const billingProfile: WorkspaceBillingProfile | null =
     rawBillingProfile &&
@@ -774,6 +905,12 @@ function BillingTabContent() {
   };
 
   const reportActionError = (error: unknown, fallback: string) => {
+    const limit = planLimitReached(error);
+    if (limit) {
+      setObservedPlanLimitGate(limit.gate);
+    } else if (errorCode(error) === "plan_limit_reached") {
+      setObservedPlanLimitGate("agents");
+    }
     const code = errorCode(error);
     if (
       code === "workspace_subscriptions_disabled" ||
@@ -1312,6 +1449,134 @@ function BillingTabContent() {
     subscriptionUsageQuery.data?.usage?.unpaidOrderId ??
     null;
   const orders: WorkspaceOrder[] = ordersQuery.data ?? [];
+  const quotaRequests: QuotaRequest[] = quotaRequestsQuery.data ?? [];
+  const queryPlanLimit =
+    planLimitReached(summaryQuery.error) ??
+    planLimitReached(ordersQuery.error) ??
+    planLimitReached(quotaUsageQuery.error) ??
+    planLimitReached(issueLimitUsageQuery.error);
+  const queryHasPlanLimitCode =
+    errorCode(summaryQuery.error) === "plan_limit_reached" ||
+    errorCode(ordersQuery.error) === "plan_limit_reached" ||
+    errorCode(quotaUsageQuery.error) === "plan_limit_reached" ||
+    errorCode(issueLimitUsageQuery.error) === "plan_limit_reached";
+  const usageLimitReached =
+    (quotaUsage.kind === "metered" && quotaUsage.reached) ||
+    (issueCountLimit.mode === "limited" &&
+      issueLimitUsage != null &&
+      issueLimitUsage.used >= issueLimitUsage.limit);
+  const defaultQuotaGate =
+    recordedPlanLimit?.gate ??
+    queryPlanLimit?.gate ??
+    observedPlanLimitGate ??
+    (quotaUsage.kind === "metered" && quotaUsage.reached
+      ? "autopilot_runs"
+      : issueCountLimit.mode === "limited" &&
+          issueLimitUsage != null &&
+          issueLimitUsage.used >= issueLimitUsage.limit
+        ? "issue_count"
+        : "agents");
+  const hasPlanLimitReached =
+    recordedPlanLimit !== null ||
+    queryPlanLimit !== undefined ||
+    queryHasPlanLimitCode ||
+    observedPlanLimitGate !== null ||
+    usageLimitReached;
+  const showQuotaRequestsSection =
+    hasPlanLimitReached || quotaRequests.length > 0;
+  const knownCurrentGateLimit =
+    recordedPlanLimit?.gate === quotaGate
+      ? recordedPlanLimit.limit
+      : queryPlanLimit?.gate === quotaGate
+        ? queryPlanLimit.limit
+        : quotaGate === "issue_count" && issueCountLimit.mode === "limited"
+          ? issueCountLimit.limit
+          : quotaGate === "autopilot_runs" && quotaUsage.kind === "metered"
+            ? quotaUsage.limit
+            : null;
+  const quotaGateOptions = QUOTA_REQUEST_GATES.includes(
+    quotaGate as (typeof QUOTA_REQUEST_GATES)[number],
+  )
+    ? [...QUOTA_REQUEST_GATES]
+    : [...QUOTA_REQUEST_GATES, quotaGate];
+  const quotaGateSelectItems = quotaGateOptions.map((gate) => ({
+    value: gate,
+    label: quotaGateLabel(gate, tSettings),
+  }));
+
+  const handleOpenQuotaRequestDialog = () => {
+    setQuotaGate(defaultQuotaGate);
+    setQuotaValueInput("");
+    setQuotaReasonInput("");
+    setQuotaSubmitError(null);
+    setQuotaDialogOpen(true);
+  };
+
+  const handleQuotaDialogOpenChange = (open: boolean) => {
+    if (!open && quotaSubmitting) return;
+    setQuotaDialogOpen(open);
+    if (!open) {
+      setQuotaSubmitError(null);
+    }
+  };
+
+  const handleSubmitQuotaRequest = async () => {
+    if (quotaSubmitting || !canManageBilling) return;
+    const rawValue = quotaValueInput.trim();
+    const parsedValue = /^\d+$/.test(rawValue) ? Number(rawValue) : NaN;
+    if (!Number.isSafeInteger(parsedValue) || parsedValue <= 0) {
+      setQuotaSubmitError(
+        tSettings(($) => $.quota_requests.dialog.value_invalid),
+      );
+      return;
+    }
+    if (knownCurrentGateLimit !== null && parsedValue <= knownCurrentGateLimit) {
+      setQuotaSubmitError(
+        tSettings(($) => $.quota_requests.dialog.value_must_exceed, {
+          current: numberFormatter.format(knownCurrentGateLimit),
+        }),
+      );
+      return;
+    }
+    const trimmedReason = quotaReasonInput.trim();
+    if (!trimmedReason) {
+      setQuotaSubmitError(
+        tSettings(($) => $.quota_requests.dialog.reason_required),
+      );
+      return;
+    }
+    if ([...trimmedReason].length > QUOTA_REQUEST_MAX_REASON_LENGTH) {
+      setQuotaSubmitError(
+        tSettings(($) => $.quota_requests.dialog.reason_too_long),
+      );
+      return;
+    }
+
+    setQuotaSubmitting(true);
+    setQuotaSubmitError(null);
+    try {
+      await api.createQuotaRequest(wsId, {
+        gate: quotaGate,
+        requested_value: parsedValue,
+        reason: trimmedReason,
+      });
+      setQuotaDialogOpen(false);
+      setQuotaValueInput("");
+      setQuotaReasonInput("");
+      setActionMessage({
+        title: tSettings(($) => $.quota_requests.submitted_title),
+        description: tSettings(($) => $.quota_requests.submitted_description, {
+          gate: quotaGateLabel(quotaGate, tSettings),
+          value: numberFormatter.format(parsedValue),
+        }),
+      });
+      void quotaRequestsQuery.refetch();
+    } catch (error) {
+      setQuotaSubmitError(mapQuotaRequestError(error, tSettings));
+    } finally {
+      setQuotaSubmitting(false);
+    }
+  };
   const showInvoicesSection =
     isUsageBilling ||
     isManualProvider ||
@@ -1947,6 +2212,81 @@ function BillingTabContent() {
         </SettingsCard>
       </SettingsSection>
 
+      {showQuotaRequestsSection ? (
+        <SettingsSection
+          title={tSettings(($) => $.quota_requests.title)}
+          action={
+            hasPlanLimitReached && canManageBilling ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleOpenQuotaRequestDialog}
+              >
+                <ArrowUpCircle />
+                {tSettings(($) => $.quota_requests.request_button)}
+              </Button>
+            ) : undefined
+          }
+        >
+          {quotaRequests.length > 0 ? (
+            <SettingsCard>
+              {quotaRequests.map((request) => {
+                const createdDate = formatDate(request.created_at, locale);
+                const detailText = request.decision_reason || request.reason;
+                return (
+                  <SettingsRow
+                    key={request.id || `${request.gate}-${request.created_at}`}
+                    label={
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{quotaGateLabel(request.gate, tSettings)}</span>
+                        <Badge variant={quotaStateVariant(request.state)}>
+                          {quotaStateLabel(request.state, tSettings)}
+                        </Badge>
+                      </div>
+                    }
+                    description={
+                      createdDate || detailText ? (
+                        <span className="tabular-nums">
+                          {[createdDate, detailText].filter(Boolean).join(" · ")}
+                        </span>
+                      ) : undefined
+                    }
+                  >
+                    <div className="flex flex-col items-end gap-0.5 text-body tabular-nums">
+                      <span>
+                        {tSettings(($) => $.quota_requests.requested_value, {
+                          value: numberFormatter.format(request.requested_value),
+                        })}
+                      </span>
+                      {request.approved_value !== null ? (
+                        <span className="text-caption text-muted-foreground">
+                          {tSettings(($) => $.quota_requests.approved_value, {
+                            value: numberFormatter.format(request.approved_value),
+                          })}
+                        </span>
+                      ) : null}
+                    </div>
+                  </SettingsRow>
+                );
+              })}
+            </SettingsCard>
+          ) : quotaRequestsQuery.isError ? (
+            <SettingsCard>
+              <div className="px-4 py-3 text-body text-muted-foreground">
+                {tSettings(($) => $.quota_requests.load_failed)}
+              </div>
+            </SettingsCard>
+          ) : (
+            <SettingsCard>
+              <div className="px-4 py-3 text-body text-muted-foreground">
+                {tSettings(($) => $.quota_requests.empty)}
+              </div>
+            </SettingsCard>
+          )}
+        </SettingsSection>
+      ) : null}
+
       {hasSeatCapacity || summaryUnavailable ? (
         <SettingsSection
           title={t(($) => $.workspace.seats.title)}
@@ -2509,6 +2849,132 @@ function BillingTabContent() {
         error={planChangeError}
         onConfirm={() => void handleConfirmPlanChange()}
       />
+
+      <Dialog
+        open={quotaDialogOpen}
+        onOpenChange={handleQuotaDialogOpenChange}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {tSettings(($) => $.quota_requests.dialog.title)}
+            </DialogTitle>
+            <DialogDescription>
+              {tSettings(($) => $.quota_requests.dialog.description)}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            noValidate
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSubmitQuotaRequest();
+            }}
+          >
+            {quotaSubmitError ? (
+              <Alert variant="destructive">
+                <AlertCircle aria-hidden="true" />
+                <AlertDescription>{quotaSubmitError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <div className="space-y-2">
+              <Label htmlFor="quota-request-gate">
+                {tSettings(($) => $.quota_requests.dialog.gate_label)}
+              </Label>
+              <Select
+                items={quotaGateSelectItems}
+                value={quotaGate}
+                disabled={quotaSubmitting}
+                onValueChange={(value) => {
+                  if (value) {
+                    setQuotaGate(value);
+                    setQuotaSubmitError(null);
+                  }
+                }}
+              >
+                <SelectTrigger
+                  id="quota-request-gate"
+                  aria-label={tSettings(($) => $.quota_requests.dialog.gate_label)}
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {quotaGateSelectItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quota-request-value">
+                {tSettings(($) => $.quota_requests.dialog.value_label)}
+              </Label>
+              <Input
+                id="quota-request-value"
+                type="number"
+                inputMode="numeric"
+                min={knownCurrentGateLimit !== null ? knownCurrentGateLimit + 1 : 1}
+                step={1}
+                value={quotaValueInput}
+                disabled={quotaSubmitting}
+                placeholder={tSettings(
+                  ($) => $.quota_requests.dialog.value_placeholder,
+                )}
+                onChange={(event) => {
+                  setQuotaValueInput(event.currentTarget.value);
+                  setQuotaSubmitError(null);
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quota-request-reason">
+                {tSettings(($) => $.quota_requests.dialog.reason_label)}
+              </Label>
+              <Textarea
+                id="quota-request-reason"
+                rows={3}
+                maxLength={QUOTA_REQUEST_MAX_REASON_LENGTH}
+                value={quotaReasonInput}
+                disabled={quotaSubmitting}
+                placeholder={tSettings(
+                  ($) => $.quota_requests.dialog.reason_placeholder,
+                )}
+                onChange={(event) => {
+                  setQuotaReasonInput(event.currentTarget.value);
+                  setQuotaSubmitError(null);
+                }}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                disabled={quotaSubmitting}
+                onClick={() => handleQuotaDialogOpenChange(false)}
+              >
+                {tSettings(($) => $.quota_requests.dialog.cancel)}
+              </Button>
+              <Button
+                type="submit"
+                className="h-11"
+                disabled={quotaSubmitting}
+                aria-busy={quotaSubmitting || undefined}
+              >
+                {quotaSubmitting ? (
+                  <Loader2 className="animate-spin motion-reduce:animate-none" />
+                ) : null}
+                {quotaSubmitting
+                  ? tSettings(($) => $.quota_requests.dialog.submitting)
+                  : tSettings(($) => $.quota_requests.dialog.submit)}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </SettingsTab>
   );
 }

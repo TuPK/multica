@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
-import { AlertCircle, Loader2, Plus, X } from "@multica/ui/icons";
-import { ApiError, errorCode } from "@multica/core/api";
+import { AlertCircle, Loader2, Lock, Plus, X } from "@multica/ui/icons";
+import { ApiError, clientErrorMessage, errorCode } from "@multica/core/api";
 import { useCurrentWorkspace } from "@multica/core/paths";
 import { useCurrentMember } from "@multica/core/permissions";
 import {
@@ -10,7 +10,9 @@ import {
   useUpdateWorkspacePolicy,
   useWorkspacePolicy,
 } from "@multica/core/security";
+import type { PolicyFloor } from "@multica/core/types";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
+import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
@@ -34,7 +36,78 @@ const DEFAULT_POLICY = {
   require_sso: false,
   require_mfa: false,
   session_max_age_hours: 0,
+  floor: null as PolicyFloor | null,
 };
+
+function mergeFloorDomains(
+  floorDomains: readonly string[],
+  workspaceDomains: readonly string[],
+): string[] {
+  if (floorDomains.length === 0) return [...workspaceDomains];
+  if (workspaceDomains.length === 0) return [...floorDomains];
+  const narrowed = workspaceDomains.filter((d) => floorDomains.includes(d));
+  return narrowed.length > 0 ? narrowed : [...floorDomains];
+}
+
+function mergeFloorSessionAge(
+  floorHours: number,
+  workspaceHours: number,
+): number {
+  if (floorHours <= 0) return workspaceHours;
+  if (workspaceHours <= 0) return floorHours;
+  return Math.min(floorHours, workspaceHours);
+}
+
+function resolveEffectiveBaseline(policy: {
+  allowed_invite_domains: string[];
+  share_links_enabled: boolean;
+  require_sso: boolean;
+  require_mfa: boolean;
+  session_max_age_hours: number;
+  floor?: PolicyFloor | null;
+}) {
+  const floor = policy.floor ?? null;
+  if (!floor) {
+    return {
+      allowed_invite_domains: policy.allowed_invite_domains,
+      share_links_enabled: policy.share_links_enabled,
+      require_sso: policy.require_sso,
+      require_mfa: policy.require_mfa,
+      session_max_age_hours: policy.session_max_age_hours,
+    };
+  }
+  return {
+    allowed_invite_domains: mergeFloorDomains(
+      floor.allowed_invite_domains,
+      policy.allowed_invite_domains,
+    ),
+    share_links_enabled: policy.share_links_enabled && floor.share_links_enabled,
+    require_sso: policy.require_sso || floor.require_sso,
+    require_mfa: policy.require_mfa || floor.require_mfa,
+    session_max_age_hours: mergeFloorSessionAge(
+      floor.session_max_age_hours,
+      policy.session_max_age_hours,
+    ),
+  };
+}
+
+function TenantFloorNotice({
+  badge,
+  reason,
+}: {
+  badge: string;
+  reason: string;
+}) {
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-caption text-muted-foreground">
+      <Badge variant="secondary">
+        <Lock className="size-3" aria-hidden="true" />
+        {badge}
+      </Badge>
+      <span>{reason}</span>
+    </div>
+  );
+}
 
 function isPlanUnavailableError(error: unknown): boolean {
   return (
@@ -71,6 +144,21 @@ function mapPolicySaveError(
       return t(($) => $.policy.errors.invite_domain_not_allowed);
     case "share_links_disabled":
       return t(($) => $.policy.errors.share_links_disabled);
+    case "policy_below_tenant_floor": {
+      const bodyError =
+        error instanceof ApiError &&
+        error.body &&
+        typeof error.body === "object" &&
+        "error" in error.body &&
+        typeof (error.body as { error?: unknown }).error === "string"
+          ? (error.body as { error: string }).error
+          : undefined;
+      return (
+        clientErrorMessage(error) ??
+        bodyError ??
+        t(($) => $.policy.errors.below_tenant_floor)
+      );
+    }
     case "viewer_read_only":
       return t(($) => $.policy.errors.forbidden);
     default:
@@ -100,17 +188,22 @@ export function PolicyTab() {
   const updatePolicy = useUpdateWorkspacePolicy(wsId);
 
   const serverPolicy = policyQuery.data ?? DEFAULT_POLICY;
+  const floor = serverPolicy.floor ?? null;
+  const effectiveBaseline = useMemo(
+    () => resolveEffectiveBaseline(serverPolicy),
+    [serverPolicy],
+  );
 
   const [allowedDomains, setAllowedDomains] = useState<string[]>(
-    serverPolicy.allowed_invite_domains,
+    effectiveBaseline.allowed_invite_domains,
   );
   const [shareLinksEnabled, setShareLinksEnabled] = useState(
-    serverPolicy.share_links_enabled,
+    effectiveBaseline.share_links_enabled,
   );
-  const [requireMfa, setRequireMfa] = useState(serverPolicy.require_mfa);
-  const [requireSso, setRequireSso] = useState(serverPolicy.require_sso);
+  const [requireMfa, setRequireMfa] = useState(effectiveBaseline.require_mfa);
+  const [requireSso, setRequireSso] = useState(effectiveBaseline.require_sso);
   const [sessionMaxAgeInput, setSessionMaxAgeInput] = useState(
-    String(serverPolicy.session_max_age_hours),
+    String(effectiveBaseline.session_max_age_hours),
   );
   const [domainDraft, setDomainDraft] = useState("");
   const [domainError, setDomainError] = useState<string | null>(null);
@@ -118,17 +211,17 @@ export function PolicyTab() {
   const [planUnavailable, setPlanUnavailable] = useState(false);
 
   useEffect(() => {
-    setAllowedDomains(serverPolicy.allowed_invite_domains);
-    setShareLinksEnabled(serverPolicy.share_links_enabled);
-    setRequireMfa(serverPolicy.require_mfa);
-    setRequireSso(serverPolicy.require_sso);
-    setSessionMaxAgeInput(String(serverPolicy.session_max_age_hours));
+    setAllowedDomains(effectiveBaseline.allowed_invite_domains);
+    setShareLinksEnabled(effectiveBaseline.share_links_enabled);
+    setRequireMfa(effectiveBaseline.require_mfa);
+    setRequireSso(effectiveBaseline.require_sso);
+    setSessionMaxAgeInput(String(effectiveBaseline.session_max_age_hours));
   }, [
-    serverPolicy.allowed_invite_domains,
-    serverPolicy.require_mfa,
-    serverPolicy.require_sso,
-    serverPolicy.session_max_age_hours,
-    serverPolicy.share_links_enabled,
+    effectiveBaseline.allowed_invite_domains,
+    effectiveBaseline.require_mfa,
+    effectiveBaseline.require_sso,
+    effectiveBaseline.session_max_age_hours,
+    effectiveBaseline.share_links_enabled,
   ]);
 
   useEffect(() => {
@@ -138,6 +231,19 @@ export function PolicyTab() {
     setPlanUnavailable(false);
   }, [wsId]);
 
+  const floorDomains = useMemo(
+    () => floor?.allowed_invite_domains ?? [],
+    [floor?.allowed_invite_domains],
+  );
+  const domainsFloorConstrained = floorDomains.length > 0;
+  const domainsFloorLocked = floorDomains.length === 1;
+  const shareLinksFloorLocked = floor != null && !floor.share_links_enabled;
+  const requireMfaFloorLocked = floor != null && floor.require_mfa;
+  const requireSsoFloorLocked = floor != null && floor.require_sso;
+  const floorSessionMaxAge = floor?.session_max_age_hours ?? 0;
+  const sessionAgeFloorConstrained = floorSessionMaxAge > 0;
+  const sessionAgeFloorLocked = floorSessionMaxAge === 1;
+
   const verifiedDomains = useMemo(
     () =>
       (domainsQuery.data?.domains ?? [])
@@ -146,22 +252,31 @@ export function PolicyTab() {
     [domainsQuery.data?.domains],
   );
   const availableVerifiedDomains = useMemo(
-    () => verifiedDomains.filter((d) => !allowedDomains.includes(d)),
-    [allowedDomains, verifiedDomains],
+    () =>
+      verifiedDomains.filter(
+        (d) =>
+          !allowedDomains.includes(d) &&
+          (!domainsFloorConstrained || floorDomains.includes(d)),
+      ),
+    [allowedDomains, domainsFloorConstrained, floorDomains, verifiedDomains],
   );
 
   if (!workspace) return null;
 
   const parsedSessionAge = parseSessionAgeHours(sessionMaxAgeInput);
-  const sessionAgeInvalid = parsedSessionAge === null;
+  const sessionAgeBelowFloor =
+    sessionAgeFloorConstrained &&
+    parsedSessionAge !== null &&
+    (parsedSessionAge === 0 || parsedSessionAge > floorSessionMaxAge);
+  const sessionAgeInvalid = parsedSessionAge === null || sessionAgeBelowFloor;
 
   const hasChanges =
-    !stringArraysEqual(allowedDomains, serverPolicy.allowed_invite_domains) ||
-    shareLinksEnabled !== serverPolicy.share_links_enabled ||
-    requireMfa !== serverPolicy.require_mfa ||
-    requireSso !== serverPolicy.require_sso ||
+    !stringArraysEqual(allowedDomains, effectiveBaseline.allowed_invite_domains) ||
+    shareLinksEnabled !== effectiveBaseline.share_links_enabled ||
+    requireMfa !== effectiveBaseline.require_mfa ||
+    requireSso !== effectiveBaseline.require_sso ||
     (parsedSessionAge !== null &&
-      parsedSessionAge !== serverPolicy.session_max_age_hours);
+      parsedSessionAge !== effectiveBaseline.session_max_age_hours);
 
   const planBlocked =
     planUnavailable || isPlanUnavailableError(policyQuery.error);
@@ -171,6 +286,10 @@ export function PolicyTab() {
   const handleAddDomain = (rawDomain: string) => {
     const normalized = rawDomain.trim().toLowerCase();
     if (!normalized) return;
+    if (domainsFloorConstrained && !floorDomains.includes(normalized)) {
+      setDomainError(t(($) => $.policy.floor.domain_outside_floor));
+      return;
+    }
     if (allowedDomains.includes(normalized)) {
       setDomainError(
         t(($) => $.policy.allowed_domains.duplicate_error, {
@@ -193,13 +312,25 @@ export function PolicyTab() {
   };
 
   const handleRemoveDomain = (domain: string) => {
+    if (
+      domainsFloorLocked ||
+      (domainsFloorConstrained && allowedDomains.length <= 1)
+    ) {
+      return;
+    }
     setAllowedDomains((prev) => prev.filter((item) => item !== domain));
     setDomainError(null);
   };
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (readOnly || planBlocked || parsedSessionAge === null || !hasChanges) {
+    if (
+      readOnly ||
+      planBlocked ||
+      parsedSessionAge === null ||
+      sessionAgeBelowFloor ||
+      !hasChanges
+    ) {
       return;
     }
 
@@ -291,7 +422,19 @@ export function PolicyTab() {
                     {t(($) => $.policy.allowed_domains.label)}
                   </Label>
                 }
-                description={t(($) => $.policy.allowed_domains.consequence)}
+                description={
+                  <>
+                    <span>{t(($) => $.policy.allowed_domains.consequence)}</span>
+                    {domainsFloorConstrained ? (
+                      <TenantFloorNotice
+                        badge={t(($) => $.policy.floor.badge)}
+                        reason={t(($) => $.policy.floor.domains_reason, {
+                          domains: floorDomains.join(", "),
+                        })}
+                      />
+                    ) : null}
+                  </>
+                }
                 size="text"
                 align="start"
               >
@@ -311,7 +454,12 @@ export function PolicyTab() {
                               type="button"
                               variant="ghost"
                               size="icon-xs"
-                              disabled={controlsDisabled}
+                              disabled={
+                                controlsDisabled ||
+                                domainsFloorLocked ||
+                                (domainsFloorConstrained &&
+                                  allowedDomains.length <= 1)
+                              }
                               aria-label={t(
                                 ($) => $.policy.allowed_domains.remove_aria,
                                 { domain },
@@ -339,7 +487,7 @@ export function PolicyTab() {
                           autoComplete="off"
                           spellCheck={false}
                           value={domainDraft}
-                          disabled={controlsDisabled}
+                          disabled={controlsDisabled || domainsFloorLocked}
                           aria-invalid={domainError !== null}
                           placeholder={t(
                             ($) => $.policy.allowed_domains.placeholder,
@@ -359,7 +507,11 @@ export function PolicyTab() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={controlsDisabled || !domainDraft.trim()}
+                          disabled={
+                            controlsDisabled ||
+                            domainsFloorLocked ||
+                            !domainDraft.trim()
+                          }
                           onClick={() => handleAddDomain(domainDraft)}
                         >
                           {t(($) => $.policy.allowed_domains.add)}
@@ -385,7 +537,7 @@ export function PolicyTab() {
                               type="button"
                               variant="outline"
                               size="xs"
-                              disabled={controlsDisabled}
+                              disabled={controlsDisabled || domainsFloorLocked}
                               onClick={() => handleAddDomain(domain)}
                             >
                               <Plus className="size-3" />
@@ -393,7 +545,9 @@ export function PolicyTab() {
                             </Button>
                           ))}
                         </div>
-                      ) : verifiedDomains.length === 0 && !domainsQuery.isLoading ? (
+                      ) : verifiedDomains.length === 0 &&
+                        !domainsQuery.isLoading &&
+                        !domainsFloorLocked ? (
                         <p className="text-caption text-muted-foreground">
                           {t(($) => $.policy.allowed_domains.no_verified)}
                         </p>
@@ -410,12 +564,22 @@ export function PolicyTab() {
                     {t(($) => $.policy.share_links.label)}
                   </Label>
                 }
-                description={t(($) => $.policy.share_links.consequence)}
+                description={
+                  <>
+                    <span>{t(($) => $.policy.share_links.consequence)}</span>
+                    {shareLinksFloorLocked ? (
+                      <TenantFloorNotice
+                        badge={t(($) => $.policy.floor.badge)}
+                        reason={t(($) => $.policy.floor.locked_reason)}
+                      />
+                    ) : null}
+                  </>
+                }
               >
                 <Switch
                   id={shareLinksId}
                   checked={shareLinksEnabled}
-                  disabled={controlsDisabled}
+                  disabled={controlsDisabled || shareLinksFloorLocked}
                   aria-label={t(($) => $.policy.share_links.label)}
                   onCheckedChange={setShareLinksEnabled}
                 />
@@ -428,12 +592,22 @@ export function PolicyTab() {
                     {t(($) => $.policy.require_mfa.label)}
                   </Label>
                 }
-                description={t(($) => $.policy.require_mfa.consequence)}
+                description={
+                  <>
+                    <span>{t(($) => $.policy.require_mfa.consequence)}</span>
+                    {requireMfaFloorLocked ? (
+                      <TenantFloorNotice
+                        badge={t(($) => $.policy.floor.badge)}
+                        reason={t(($) => $.policy.floor.locked_reason)}
+                      />
+                    ) : null}
+                  </>
+                }
               >
                 <Switch
                   id={requireMfaId}
                   checked={requireMfa}
-                  disabled={controlsDisabled}
+                  disabled={controlsDisabled || requireMfaFloorLocked}
                   aria-label={t(($) => $.policy.require_mfa.label)}
                   onCheckedChange={setRequireMfa}
                 />
@@ -446,12 +620,22 @@ export function PolicyTab() {
                     {t(($) => $.policy.require_sso.label)}
                   </Label>
                 }
-                description={t(($) => $.policy.require_sso.consequence)}
+                description={
+                  <>
+                    <span>{t(($) => $.policy.require_sso.consequence)}</span>
+                    {requireSsoFloorLocked ? (
+                      <TenantFloorNotice
+                        badge={t(($) => $.policy.floor.badge)}
+                        reason={t(($) => $.policy.floor.locked_reason)}
+                      />
+                    ) : null}
+                  </>
+                }
               >
                 <Switch
                   id={requireSsoId}
                   checked={requireSso}
-                  disabled={controlsDisabled}
+                  disabled={controlsDisabled || requireSsoFloorLocked}
                   aria-label={t(($) => $.policy.require_sso.label)}
                   onCheckedChange={setRequireSso}
                 />
@@ -464,18 +648,34 @@ export function PolicyTab() {
                     {t(($) => $.policy.session_max_age.label)}
                   </Label>
                 }
-                description={t(($) => $.policy.session_max_age.consequence)}
+                description={
+                  <>
+                    <span>{t(($) => $.policy.session_max_age.consequence)}</span>
+                    {sessionAgeFloorConstrained ? (
+                      <TenantFloorNotice
+                        badge={t(($) => $.policy.floor.badge)}
+                        reason={t(($) => $.policy.floor.session_max_age_reason, {
+                          hours: floorSessionMaxAge,
+                        })}
+                      />
+                    ) : null}
+                  </>
+                }
                 size="code"
               >
                 <div className="space-y-1">
                   <Input
                     id={sessionAgeId}
                     type="number"
-                    min={0}
-                    max={MAX_SESSION_AGE_HOURS}
+                    min={sessionAgeFloorConstrained ? 1 : 0}
+                    max={
+                      sessionAgeFloorConstrained
+                        ? floorSessionMaxAge
+                        : MAX_SESSION_AGE_HOURS
+                    }
                     step={1}
                     value={sessionMaxAgeInput}
-                    disabled={controlsDisabled}
+                    disabled={controlsDisabled || sessionAgeFloorLocked}
                     aria-invalid={sessionAgeInvalid}
                     onChange={(event) =>
                       setSessionMaxAgeInput(event.currentTarget.value)
@@ -483,7 +683,11 @@ export function PolicyTab() {
                   />
                   {sessionAgeInvalid ? (
                     <p className="text-caption text-destructive">
-                      {t(($) => $.policy.session_max_age.invalid_range)}
+                      {sessionAgeBelowFloor
+                        ? t(($) => $.policy.floor.session_max_age_exceeded, {
+                            hours: floorSessionMaxAge,
+                          })
+                        : t(($) => $.policy.session_max_age.invalid_range)}
                     </p>
                   ) : null}
                 </div>

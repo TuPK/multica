@@ -1769,11 +1769,20 @@
       "consequence": "Impose une nouvelle connexion passé ce délai ; 0 désactive la limite.",
       "invalid_range": "Saisissez un entier compris entre 0 et 8760."
     },
+    "floor": {
+      "badge": "Plancher du tenant",
+      "locked_reason": "Défini par la politique du tenant et ne peut pas être assoupli.",
+      "domains_reason": "La politique du tenant limite les domaines d'invitation à {{domains}}.",
+      "session_max_age_reason": "La politique du tenant plafonne la session à {{hours}} heures.",
+      "session_max_age_exceeded": "Ne peut pas dépasser le plancher du tenant de {{hours}} heures.",
+      "domain_outside_floor": "Seuls les domaines autorisés par la politique du tenant peuvent être ajoutés."
+    },
     "errors": {
       "plan_unavailable": "Les politiques d'espace de travail ne sont pas disponibles dans votre offre actuelle.",
       "domain_not_verified": "Seuls les domaines vérifiés par cet espace de travail peuvent être utilisés.",
       "invite_domain_not_allowed": "Ce domaine d'invitation n'est pas autorisé par la politique de l'espace.",
       "share_links_disabled": "Les liens de partage sont désactivés par la politique de l'espace.",
+      "below_tenant_floor": "La politique est plus souple que le plancher du tenant.",
       "forbidden": "Seuls les propriétaires peuvent modifier les politiques de l'espace de travail.",
       "save_failed": "Impossible d'enregistrer la politique de l'espace de travail."
     }
@@ -1885,6 +1894,57 @@
       "forbidden": "Seuls les propriétaires peuvent gérer les paramètres SSO.",
       "domain_failed": "Impossible de mettre à jour le domaine.",
       "connection_failed": "Impossible d'enregistrer la connexion SSO."
+    }
+  },
+  "quota_requests": {
+    "title": "Demandes de quota",
+    "request_button": "Demander une augmentation de quota",
+    "empty": "Aucune demande d'augmentation de quota pour le moment.",
+    "load_failed": "Impossible de charger les demandes de quota.",
+    "dialog": {
+      "title": "Demander une augmentation de quota",
+      "description": "Les demandes sont examinées par un administrateur de la plateforme.",
+      "gate_label": "Quota",
+      "value_label": "Limite demandée",
+      "value_placeholder": "ex. 25",
+      "value_invalid": "Saisissez un entier supérieur à 0.",
+      "value_must_exceed": "Saisissez une valeur supérieure à la limite actuelle ({{current}}).",
+      "reason_label": "Motif",
+      "reason_placeholder": "Expliquez pourquoi cet espace de travail a besoin d'une limite plus élevée...",
+      "reason_required": "Saisissez un motif.",
+      "reason_too_long": "Limitez le motif à 500 caractères.",
+      "cancel": "Annuler",
+      "submit": "Envoyer la demande",
+      "submitting": "Envoi..."
+    },
+    "submitted_title": "Demande de quota envoyée",
+    "submitted_description": "{{value}} demandé pour {{gate}}.",
+    "requested_value": "Demandé : {{value}}",
+    "approved_value": "Approuvé : {{value}}",
+    "states": {
+      "pending": "En attente",
+      "approved": "Approuvée",
+      "denied": "Refusée",
+      "canceled": "Annulée",
+      "unknown": "Inconnu"
+    },
+    "gates": {
+      "agents": "Agents",
+      "runtimes": "Runtimes",
+      "storage_bytes": "Stockage (octets)",
+      "issue_count": "Tâches",
+      "autopilot_runs": "Exécutions d'automatisation",
+      "member_groups": "Groupes",
+      "api_rate_per_minute": "Débit API (par minute)",
+      "audit_retention_days": "Rétention d'audit (jours)",
+      "max_workspaces": "Espaces de travail",
+      "unknown": "Quota"
+    },
+    "errors": {
+      "pending_exists": "Une demande pour ce quota est déjà en attente.",
+      "invalid": "Vérifiez la limite demandée et le motif, puis réessayez.",
+      "forbidden": "Vous n'avez pas l'autorisation de demander une augmentation de quota.",
+      "submit_failed": "Impossible d'envoyer la demande d'augmentation de quota."
     }
   }
 }

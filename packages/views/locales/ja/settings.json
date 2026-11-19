@@ -1757,11 +1757,20 @@
       "consequence": "この時間を過ぎると再サインインが必要になります。0 で無制限になります。",
       "invalid_range": "0 から 8760 までの整数を入力してください。"
     },
+    "floor": {
+      "badge": "テナント下限",
+      "locked_reason": "テナントポリシーで設定されているため緩和できません。",
+      "domains_reason": "テナントポリシーにより招待ドメインは {{domains}} に制限されています。",
+      "session_max_age_reason": "テナントポリシーによりセッション上限は {{hours}} 時間に設定されています。",
+      "session_max_age_exceeded": "テナント下限の {{hours}} 時間を超えることはできません。",
+      "domain_outside_floor": "テナントポリシーで許可されたドメインのみ追加できます。"
+    },
     "errors": {
       "plan_unavailable": "現在のプランではワークスペースポリシーを利用できません。",
       "domain_not_verified": "このワークスペースで確認済みのドメインのみ指定できます。",
       "invite_domain_not_allowed": "この招待ドメインはワークスペースポリシーで許可されていません。",
       "share_links_disabled": "ワークスペースポリシーにより共有リンクは無効です。",
+      "below_tenant_floor": "ポリシーがテナントの下限より緩やかです。",
       "forbidden": "ワークスペースポリシーを変更できるのはオーナーのみです。",
       "save_failed": "ワークスペースポリシーを保存できませんでした。"
     }
@@ -1873,6 +1882,57 @@
       "forbidden": "SSO 設定を管理できるのはワークスペースオーナーのみです。",
       "domain_failed": "ドメインを更新できませんでした。",
       "connection_failed": "SSO 接続を保存できませんでした。"
+    }
+  },
+  "quota_requests": {
+    "title": "クォータ申請",
+    "request_button": "クォータ引き上げを申請",
+    "empty": "クォータ引き上げ申請はまだありません。",
+    "load_failed": "クォータ申請を読み込めませんでした。",
+    "dialog": {
+      "title": "クォータ引き上げを申請",
+      "description": "申請はプラットフォーム管理者が審査します。",
+      "gate_label": "クォータ",
+      "value_label": "希望上限",
+      "value_placeholder": "例: 25",
+      "value_invalid": "0 より大きい整数を入力してください。",
+      "value_must_exceed": "現在の上限（{{current}}）より大きい値を入力してください。",
+      "reason_label": "理由",
+      "reason_placeholder": "このワークスペースで上限引き上げが必要な理由を入力...",
+      "reason_required": "理由を入力してください。",
+      "reason_too_long": "理由は 500 文字以内で入力してください。",
+      "cancel": "キャンセル",
+      "submit": "申請を送信",
+      "submitting": "送信中..."
+    },
+    "submitted_title": "クォータ申請を送信しました",
+    "submitted_description": "{{gate}} の上限 {{value}} を申請しました。",
+    "requested_value": "申請値: {{value}}",
+    "approved_value": "承認値: {{value}}",
+    "states": {
+      "pending": "審査中",
+      "approved": "承認済み",
+      "denied": "却下",
+      "canceled": "キャンセル済み",
+      "unknown": "不明"
+    },
+    "gates": {
+      "agents": "エージェント",
+      "runtimes": "ランタイム",
+      "storage_bytes": "ストレージ（バイト）",
+      "issue_count": "タスク",
+      "autopilot_runs": "自動化の実行",
+      "member_groups": "グループ",
+      "api_rate_per_minute": "API レート（毎分）",
+      "audit_retention_days": "監査ログ保持（日）",
+      "max_workspaces": "ワークスペース",
+      "unknown": "クォータ"
+    },
+    "errors": {
+      "pending_exists": "このクォータについては審査中の申請がすでにあります。",
+      "invalid": "希望上限と理由を確認して、もう一度お試しください。",
+      "forbidden": "クォータ引き上げを申請する権限がありません。",
+      "submit_failed": "クォータ引き上げ申請を送信できませんでした。"
     }
   }
 }
