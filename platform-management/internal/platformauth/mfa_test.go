@@ -176,17 +176,19 @@ func TestAnEarlierStepThanTheLastUsedIsRefused(t *testing.T) {
 	assertInvalidCode(t, e.verify(staffEmail, e.signedIn(t)))
 }
 
-func TestTheDevCodeDoesNotSkipTheTOTPStep(t *testing.T) {
+// The development code signs in any active staff member on its own, with or without a
+// confirmed second factor. Real email codes still need the TOTP step (see above).
+func TestTheDevCodeSignsInStaffWithoutASecondFactor(t *testing.T) {
 	e := newEnv(t, withDevCode)
 	e.sendCode(staffEmail)
-	rec := e.verifyWith(staffEmail, devCode, "")
-	if rec.Code != http.StatusOK || len(rec.Result().Cookies()) != 0 {
+	if rec := e.verifyWith(staffEmail, devCode, ""); rec.Code != http.StatusOK || len(rec.Result().Cookies()) == 0 {
 		t.Fatalf("dev code alone: status %d, cookies %d", rec.Code, len(rec.Result().Cookies()))
 	}
-	assertInvalidCode(t, e.verifyWith(staffEmail, devCode, e.wrongTOTP()))
-	if rec := e.verifyWith(staffEmail, devCode, e.totp()); rec.Code != http.StatusOK {
-		t.Fatalf("dev code with the TOTP code: %d", rec.Code)
-	}
+}
+
+func TestTheDevCodeStillRefusesUnknownAndNonStaffAccounts(t *testing.T) {
+	e := newEnv(t, withDevCode)
+	assertInvalidCode(t, e.verifyWith("nobody@example.com", devCode, ""))
 }
 
 func TestSignInFailsClosedWhenTheMFAStoreFails(t *testing.T) {

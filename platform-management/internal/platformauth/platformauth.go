@@ -420,15 +420,18 @@ func (h *Handler) tryVerifyCode(ctx context.Context, w http.ResponseWriter, r *h
 	if !ok {
 		return "", "", verifyRefused
 	}
-	hash := emailhash.Of(email)
-
-	// attempt is the number of this attempt on the stored email code, and 0
-	// when the dev code stood in for it.
-	attempt := 0
-	if !h.devCodeMatches(body.Code) {
-		if attempt, ok = h.matchStoredCode(ctx, hash, body.Code); !ok {
+	if h.devCodeMatches(body.Code) {
+		userID, role, ok := h.devSignIn(ctx, email)
+		if !ok {
 			return "", "", verifyRefused
 		}
+		return userID, role, verifyOK
+	}
+	hash := emailhash.Of(email)
+
+	attempt, ok := h.matchStoredCode(ctx, hash, body.Code)
+	if !ok {
+		return "", "", verifyRefused
 	}
 
 	userID, role, step, result := h.checkSecondFactor(ctx, hash, email, body.TOTP)
@@ -438,7 +441,7 @@ func (h *Handler) tryVerifyCode(ctx context.Context, w http.ResponseWriter, r *h
 	case verifyOK:
 		// A step works once, and an email code works once. If either cannot be
 		// recorded the sign-in must not be accepted.
-		if h.claimStep(ctx, hash, userID, step) && (attempt == 0 || h.spendCode(ctx, hash)) {
+		if h.claimStep(ctx, hash, userID, step) && h.spendCode(ctx, hash) {
 			return userID, role, verifyOK
 		}
 	}
@@ -446,6 +449,21 @@ func (h *Handler) tryVerifyCode(ctx context.Context, w http.ResponseWriter, r *h
 		h.deleteCode(ctx, hash)
 	}
 	return "", "", verifyRefused
+}
+
+// devSignIn signs in an active staff member with the development code alone. The
+// code stands in for the email code and the second factor. It exists only where
+// loadDevVerificationCode allows it, which refuses production.
+func (h *Handler) devSignIn(ctx context.Context, email string) (string, staff.Role, bool) {
+	userID, found, err := h.Directory.UserIDByEmail(ctx, email)
+	if err != nil || !found {
+		return "", "", false
+	}
+	role, ok, err := h.eligible(ctx, userID)
+	if err != nil || !ok {
+		return "", "", false
+	}
+	return userID, role, true
 }
 
 // checkSecondFactor finds the staff member and checks their TOTP code against
