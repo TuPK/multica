@@ -281,13 +281,23 @@ test.describe("staff list", () => {
 });
 
 test.describe("layout", () => {
-  // Product failure: the header fix (2f274a142) cut the overflow from 1026px to 31px at 375px, but the page
-  // still scrolls sideways on the Tenants screen. Observed: scrollWidth - innerWidth = 31. Kept as fixme.
-  test.fixme("edge: the Tenants screen fits a 375 by 667 phone without horizontal scrolling", async ({ page }) => {
+  test("edge: the Tenants screen fits a 375 by 667 phone without horizontal scrolling", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await openScreen(page, "Tenants");
     await expect(page.getByPlaceholder("Search by name or slug...")).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
+
+    // The table may scroll inside its own container; the page may not.
+    await expect(page.locator('[data-slot="table-container"]')).toBeVisible();
+    const scroll = await page.evaluate(() => {
+      const container = document.querySelector('[data-slot="table-container"]');
+      return {
+        page: document.documentElement.scrollWidth <= window.innerWidth,
+        container: container ? container.scrollWidth >= container.clientWidth : false,
+      };
+    });
+    expect(scroll.page).toBe(true);
+    expect(scroll.container).toBe(true);
   });
 });
