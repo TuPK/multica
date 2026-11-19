@@ -53,7 +53,7 @@ func TestAddSeatsUsesSubscriptionCurrency(t *testing.T) {
 
 	wrong := confirm(q, "usd-wrong")
 	wrong["currency"] = "vnd"
-	wantCode(t, e.do("POST", purchasePath(wsID), ownerID, nil, wrong), http.StatusBadRequest, "invalid_request")
+	wantCode(t, e.do("POST", purchasePath(wsID), ownerID, nil, wrong), http.StatusConflict, "currency_mismatch")
 	if len(e.orders.drafts) != 0 {
 		t.Fatal("a purchase in the wrong currency wrote an order")
 	}
