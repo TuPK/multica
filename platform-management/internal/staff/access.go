@@ -43,6 +43,8 @@ const (
 	ActionDeletionRequestsRead = "deletion_requests.read"   // M27
 	ActionDeletionRequestsAct  = "deletion_requests.manage" // M28
 	ActionConsoleSignIn        = "console.sign_in"          // M29
+	ActionPlansRead            = "plans.read"               // M30
+	ActionPlanHistoryRead      = "plans.history"            // M32
 )
 
 // roleOrder is the order of RolesWith and of the columns of matrix.
@@ -54,6 +56,8 @@ var roleOrder = []Role{RoleSystemAdmin, RoleAdmin, RoleSupport, RoleBilling}
 var matrix = map[string][4]Access{
 	ActionStaffManage:          {All, None, None, None},
 	ActionPlansManage:          {All, None, None, None},
+	ActionPlansRead:            {All, All, None, None},
+	ActionPlanHistoryRead:      {All, None, None, All},
 	ActionPriceChangeManage:    {All, None, None, None},
 	ActionPriceChangeRead:      {All, None, None, All},
 	ActionAccountRequests:      {All, None, None, None},

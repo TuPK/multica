@@ -184,6 +184,7 @@ func run() error {
 		RequireStaff:      auth.RequirePlatformStaff,
 		RequireOrigin:     auth.RequireOrigin,
 		Plans:             plan.NewPgxReader(pool),
+		PlanHistory:       plan.NewPgxReader(pool),
 		PlanRunner:        planRunner,
 		Subscriptions:     subscription.NewService(subscription.NewPgxRunner(pool), policy),
 		Profiles:          subscription.NewProfileService(subscription.NewPgxProfileRunner(pool)),

@@ -2048,6 +2048,7 @@ type Plan struct {
 	UsageRates     []byte             `json:"usage_rates"`
 	UsageTerms     []byte             `json:"usage_terms"`
 	Version        int64              `json:"version"`
+	Description    string             `json:"description"`
 }
 
 type PlanPriceChange struct {

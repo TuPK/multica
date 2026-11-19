@@ -51,6 +51,7 @@ const (
 	codeInvalidSeats    = "invalid_seats"
 	codeNotFound        = "not_found"
 	codePlanNotFound    = "plan_not_found"
+	codePlanInactive    = "plan_inactive"
 	codeNotPurchaseable = "plan_not_purchasable"
 	codeForbidden       = "forbidden"
 	codeUnavailable     = "seat_purchase_unavailable"
@@ -288,6 +289,20 @@ func validInterval(v string) bool {
 // (public and not archived) or be the workspace's own. Without a name the
 // workspace's own plan is used when it sells seats, else the cheapest public
 // paid plan.
+// planInactive reports whether key names an archived plan that the checkout may
+// not pick: archived, and not the workspace's own plan (spec R6 section 3b.1 rule 5).
+func planInactive(plans []plan.Plan, key string, sub *subscription.Subscription) bool {
+	if key == "" || (sub != nil && sub.PlanKey == key) {
+		return false
+	}
+	for _, c := range plans {
+		if c.Key == key {
+			return c.ArchivedAt != nil
+		}
+	}
+	return false
+}
+
 func pickPlan(plans []plan.Plan, sub *subscription.Subscription, key string) (p plan.Plan, found bool) {
 	if key != "" {
 		for _, c := range plans {
@@ -410,6 +425,10 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 	}
 	p, found := pickPlan(plans, sub, in.PlanKey)
 	if !found {
+		if planInactive(plans, in.PlanKey, sub) {
+			writeError(w, http.StatusConflict, codePlanInactive, "plan is not available for new subscriptions")
+			return
+		}
 		writeError(w, http.StatusNotFound, codePlanNotFound, "plan not found")
 		return
 	}

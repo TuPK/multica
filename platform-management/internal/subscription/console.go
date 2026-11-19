@@ -37,8 +37,10 @@ type ConsoleDeps struct {
 	// method but GET.
 	RequireOrigin func(http.Handler) http.Handler
 
-	Plans         plan.Reader
-	PlanRunner    plan.Runner
+	Plans      plan.Reader
+	PlanRunner plan.Runner
+	// PlanHistory reads the plan's audit rows for GET /plans/{key}/history.
+	PlanHistory   plan.HistoryReader
 	Subscriptions *Service
 	Profiles      *ProfileService
 	Emails        EmailLookup
@@ -88,13 +90,23 @@ func (rt routeSpec) rolesFor(method string) []staff.Role {
 func routeTable() []routeSpec {
 	const base = "/api/platform"
 	return []routeSpec{
-		{base + "/plans", staff.ActionPlansManage, nil, map[string]handlerFunc{
+		{base + "/plans", staff.ActionPlansManage, map[string]string{http.MethodGet: staff.ActionPlansRead}, map[string]handlerFunc{
 			http.MethodGet:  (*Console).listPlans,
 			http.MethodPost: (*Console).postPlan,
 		}},
-		{base + "/plans/{key}", staff.ActionPlansManage, nil, map[string]handlerFunc{
+		{base + "/plans/{key}", staff.ActionPlansManage, map[string]string{http.MethodGet: staff.ActionPlansRead}, map[string]handlerFunc{
+			http.MethodGet:    (*Console).getPlan,
 			http.MethodPut:    (*Console).putPlan,
 			http.MethodDelete: (*Console).deletePlan,
+		}},
+		{base + "/plans/{key}/activate", staff.ActionPlansManage, nil, map[string]handlerFunc{
+			http.MethodPost: (*Console).activatePlan,
+		}},
+		{base + "/plans/{key}/deactivate", staff.ActionPlansManage, nil, map[string]handlerFunc{
+			http.MethodPost: (*Console).deactivatePlan,
+		}},
+		{base + "/plans/{key}/history", staff.ActionPlanHistoryRead, nil, map[string]handlerFunc{
+			http.MethodGet: (*Console).planHistory,
 		}},
 		{base + "/workspaces/{id}/subscription", staff.ActionSubscriptionsManage, nil, map[string]handlerFunc{
 			http.MethodPut: (*Console).putSubscription,
@@ -406,6 +418,7 @@ func (c *Console) listPlans(w http.ResponseWriter, r *http.Request) {
 type putPlanBody struct {
 	ExpectedVersion *int64          `json:"expected_version"`
 	Name            string          `json:"name"`
+	Description     string          `json:"description"`
 	Limits          plan.Limits     `json:"limits"`
 	Features        map[string]bool `json:"features"`
 	Currency        string          `json:"currency"`
@@ -514,7 +527,7 @@ func (c *Console) putPlan(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		next := plan.Plan{
-			Key: key, Name: body.Name, Limits: body.Limits, Features: body.Features, Currency: body.Currency,
+			Key: key, Name: body.Name, Description: body.Description, Limits: body.Limits, Features: body.Features, Currency: body.Currency,
 			SeatPriceMonth: body.SeatPriceMonth, SeatPriceYear: body.SeatPriceYear, SeatsFixed: body.SeatsFixed,
 			MinSeats: body.MinSeats, TrialDays: body.TrialDays, IsPublic: body.IsPublic, Sort: body.Sort,
 		}
@@ -588,6 +601,7 @@ func (c *Console) putPlan(w http.ResponseWriter, r *http.Request) {
 type postPlanBody struct {
 	Key            string          `json:"key"`
 	Name           string          `json:"name"`
+	Description    string          `json:"description"`
 	Limits         plan.Limits     `json:"limits"`
 	Features       map[string]bool `json:"features"`
 	Currency       string          `json:"currency"`
@@ -619,7 +633,7 @@ func (c *Console) postPlan(w http.ResponseWriter, r *http.Request) {
 		Key: body.Key, Name: body.Name, Limits: body.Limits, Features: body.Features, Currency: body.Currency,
 		SeatPriceMonth: body.SeatPriceMonth, SeatPriceYear: body.SeatPriceYear, SeatsFixed: body.SeatsFixed,
 		MinSeats: body.MinSeats, TrialDays: body.TrialDays, IsPublic: body.IsPublic, Sort: body.Sort,
-		Audience: body.Audience, BillingModel: body.BillingModel,
+		Audience: body.Audience, BillingModel: body.BillingModel, Description: body.Description,
 	}
 	if next.Limits == nil {
 		next.Limits = plan.Limits{}

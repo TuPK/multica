@@ -38,7 +38,7 @@ func (q *Queries) DeletePlan(ctx context.Context, key string) (int64, error) {
 }
 
 const getPlan = `-- name: GetPlan :one
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version, description FROM plan
 WHERE key = $1
 `
 
@@ -64,12 +64,13 @@ func (q *Queries) GetPlan(ctx context.Context, key string) (Plan, error) {
 		&i.UsageRates,
 		&i.UsageTerms,
 		&i.Version,
+		&i.Description,
 	)
 	return i, err
 }
 
 const getPlanForUpdate = `-- name: GetPlanForUpdate :one
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version, description FROM plan
 WHERE key = $1
 FOR UPDATE
 `
@@ -96,6 +97,7 @@ func (q *Queries) GetPlanForUpdate(ctx context.Context, key string) (Plan, error
 		&i.UsageRates,
 		&i.UsageTerms,
 		&i.Version,
+		&i.Description,
 	)
 	return i, err
 }
@@ -163,9 +165,51 @@ func (q *Queries) InsertPlanIfAbsent(ctx context.Context, arg InsertPlanIfAbsent
 	return result.RowsAffected(), nil
 }
 
+const listPlanHistory = `-- name: ListPlanHistory :many
+SELECT created_at, action, actor_label, detail
+FROM audit_event
+WHERE target_type = 'plan' AND target_id = $1 AND action LIKE 'plan.%'
+ORDER BY created_at DESC, id DESC
+LIMIT 200
+`
+
+type ListPlanHistoryRow struct {
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	Action     string             `json:"action"`
+	ActorLabel string             `json:"actor_label"`
+	Detail     []byte             `json:"detail"`
+}
+
+// The plan's audit rows (spec R6 section 3b.1, rule 7), newest first. The
+// platform reads the audit table; it writes no table of its own for history.
+func (q *Queries) ListPlanHistory(ctx context.Context, targetID string) ([]ListPlanHistoryRow, error) {
+	rows, err := q.db.Query(ctx, listPlanHistory, targetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlanHistoryRow{}
+	for rows.Next() {
+		var i ListPlanHistoryRow
+		if err := rows.Scan(
+			&i.CreatedAt,
+			&i.Action,
+			&i.ActorLabel,
+			&i.Detail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlans = `-- name: ListPlans :many
 
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version, description FROM plan
 ORDER BY sort, key
 `
 
@@ -200,6 +244,7 @@ func (q *Queries) ListPlans(ctx context.Context) ([]Plan, error) {
 			&i.UsageRates,
 			&i.UsageTerms,
 			&i.Version,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -246,13 +291,15 @@ const upsertPlan = `-- name: UpsertPlan :exec
 INSERT INTO plan (
     key, name, limits, features, currency, seat_price_month, seat_price_year,
     seats_fixed, min_seats, trial_days, is_public, sort, archived_at,
-    audience, billing_model
+    audience, billing_model, description
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-    COALESCE(NULLIF($14::text, ''), 'any'), COALESCE(NULLIF($15::text, ''), 'seat')
+    COALESCE(NULLIF($14::text, ''), 'any'), COALESCE(NULLIF($15::text, ''), 'seat'),
+    $16
 )
 ON CONFLICT (key) DO UPDATE
 SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
     limits = EXCLUDED.limits,
     features = EXCLUDED.features,
     currency = EXCLUDED.currency,
@@ -285,6 +332,7 @@ type UpsertPlanParams struct {
 	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
 	Audience       string             `json:"audience"`
 	BillingModel   string             `json:"billing_model"`
+	Description    string             `json:"description"`
 }
 
 // Creates the plan, or replaces its fields and moves version up by one. An empty
@@ -308,6 +356,7 @@ func (q *Queries) UpsertPlan(ctx context.Context, arg UpsertPlanParams) error {
 		arg.ArchivedAt,
 		arg.Audience,
 		arg.BillingModel,
+		arg.Description,
 	)
 	return err
 }

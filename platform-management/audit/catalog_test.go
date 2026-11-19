@@ -340,6 +340,8 @@ func TestPlanPriceActionsAreDefinedAndCataloged(t *testing.T) {
 		"plan.price_scheduled": ActionPlanPriceScheduled,
 		"plan.price_applied":   ActionPlanPriceApplied,
 		"plan.price_canceled":  ActionPlanPriceCanceled,
+		"plan.activated":       ActionPlanActivated,
+		"plan.deactivated":     ActionPlanDeactivated,
 	}
 	for want, got := range cases {
 		if got != want {

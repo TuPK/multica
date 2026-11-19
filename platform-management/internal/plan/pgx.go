@@ -171,7 +171,7 @@ func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 // defaults; a value that is not is a data error.
 func FromRow(r db.Plan) (Plan, error) {
 	p := Plan{
-		Key: r.Key, Name: r.Name, Currency: r.Currency, TrialDays: int(r.TrialDays),
+		Key: r.Key, Name: r.Name, Description: r.Description, Currency: r.Currency, TrialDays: int(r.TrialDays),
 		IsPublic: r.IsPublic, Sort: int(r.Sort), Limits: Limits{}, Features: map[string]bool{},
 		Audience: r.Audience, BillingModel: r.BillingModel, Version: r.Version,
 	}
@@ -228,6 +228,7 @@ type insertParams struct {
 	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
 	Audience       string             `json:"audience"`
 	BillingModel   string             `json:"billing_model"`
+	Description    string             `json:"description"`
 }
 
 func toInsertParams(p Plan) (insertParams, error) {
@@ -249,7 +250,7 @@ func toInsertParams(p Plan) (insertParams, error) {
 	out := insertParams{
 		Key: p.Key, Name: p.Name, Limits: limitsJSON, Features: featuresJSON, Currency: p.Currency,
 		TrialDays: int32(p.TrialDays), IsPublic: p.IsPublic, Sort: int32(p.Sort),
-		Audience: p.Audience, BillingModel: p.BillingModel,
+		Audience: p.Audience, BillingModel: p.BillingModel, Description: p.Description,
 	}
 	if p.SeatPriceMonth != nil {
 		out.SeatPriceMonth = pgtype.Int8{Int64: *p.SeatPriceMonth, Valid: true}
@@ -265,6 +266,25 @@ func toInsertParams(p Plan) (insertParams, error) {
 	}
 	if p.ArchivedAt != nil {
 		out.ArchivedAt = pgtype.Timestamptz{Time: *p.ArchivedAt, Valid: true}
+	}
+	return out, nil
+}
+
+// History implements Reader.
+func (r *PgxReader) History(ctx context.Context, key string) ([]HistoryRow, error) {
+	rows, err := r.q.ListPlanHistory(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("list plan history: %w", err)
+	}
+	out := make([]HistoryRow, 0, len(rows))
+	for _, row := range rows {
+		var detail map[string]any
+		if len(row.Detail) > 0 {
+			if err := json.Unmarshal(row.Detail, &detail); err != nil {
+				return nil, fmt.Errorf("decode plan history detail: %w", err)
+			}
+		}
+		out = append(out, HistoryRow{At: row.CreatedAt.Time, Action: row.Action, ActorLabel: row.ActorLabel, Detail: detail})
 	}
 	return out, nil
 }

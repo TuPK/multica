@@ -112,6 +112,7 @@ type Limits map[string]*int64
 type Plan struct {
 	Key            string          `json:"key"`
 	Name           string          `json:"name"`
+	Description    string          `json:"description"`
 	Limits         Limits          `json:"limits"`
 	Features       map[string]bool `json:"features"`
 	Currency       string          `json:"currency"`
@@ -155,9 +156,11 @@ var (
 )
 
 const (
-	maxNameChars  = 100
-	maxTrialDays  = 365
-	maxSeatsValue = 1_000_000
+	maxNameChars = 100
+	// maxDescriptionChars bounds the optional description (spec R6 section 3b.1, rule 2).
+	maxDescriptionChars = 500
+	maxTrialDays        = 365
+	maxSeatsValue       = 1_000_000
 )
 
 // summaryGates are the gates the billing page's schema shows. That schema holds
@@ -202,6 +205,9 @@ func Validate(p Plan) error {
 	}
 	if n := utf8.RuneCountInString(strings.TrimSpace(p.Name)); n == 0 || n > maxNameChars || strings.ContainsRune(p.Name, 0) {
 		return errors.New("name is required and at most 100 characters")
+	}
+	if utf8.RuneCountInString(p.Description) > maxDescriptionChars {
+		return errors.New("description is at most 500 characters")
 	}
 	if !currencyPattern.MatchString(p.Currency) {
 		return errors.New("currency must be a three-letter lower-case code")
@@ -287,10 +293,40 @@ type Reader interface {
 	List(ctx context.Context) ([]Plan, error)
 }
 
+// HistoryReader reads the audit rows of a plan, newest first (spec R6 section 3b.1, rule 7).
+// *PgxReader is one.
+type HistoryReader interface {
+	History(ctx context.Context, key string) ([]HistoryRow, error)
+}
+
+// HistoryRow is one audit row of a plan.
+type HistoryRow struct {
+	At         time.Time
+	Action     string
+	ActorLabel string
+	Detail     map[string]any
+}
+
 // validateSeed is Validate plus the enabled-set check that plan save also runs.
 func validateSeed(p Plan, enabled []string) error {
 	if err := Validate(p); err != nil {
 		return err
 	}
 	return ValidateCurrency(p.Currency, enabled)
+}
+
+// WithArchived returns p with archived_at set (archived) or cleared (not archived),
+// and whether it changed. A plan already in that state comes back unchanged, so
+// a repeated deactivate or activate writes nothing (spec R6 section 3b.1, rule 5).
+func WithArchived(p Plan, archived bool, at time.Time) (Plan, bool) {
+	if archived == (p.ArchivedAt != nil) {
+		return p, false
+	}
+	if archived {
+		t := at
+		p.ArchivedAt = &t
+	} else {
+		p.ArchivedAt = nil
+	}
+	return p, true
 }

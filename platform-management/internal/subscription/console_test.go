@@ -182,6 +182,7 @@ func buildConsole(t *testing.T, e *consoleEnv, plans plan.Reader, runner plan.Ru
 		RequireStaff:      auth.RequirePlatformStaff,
 		RequireOrigin:     auth.RequireOrigin,
 		Plans:             plans,
+		PlanHistory:       planHistorySource(plans),
 		PlanRunner:        runner,
 		Subscriptions:     NewService(e.subs, e.cache),
 		Profiles:          NewProfileService(e.profs),
@@ -287,8 +288,8 @@ func TestOtherMethodsOnTheseRoutesAre404(t *testing.T) {
 	e := newConsoleEnv(t)
 	for _, tc := range []struct{ method, path string }{
 		{"DELETE", "/api/platform/plans"},
-		{"GET", "/api/platform/plans/pro"},
-		{"POST", "/api/platform/plans/pro"},
+		{"POST", "/api/platform/plans/pro/history"},
+		{"PATCH", "/api/platform/plans/pro"},
 		{"GET", subPath},
 		{"POST", subPath},
 		{"DELETE", subPath},
@@ -300,6 +301,7 @@ func TestOtherMethodsOnTheseRoutesAre404(t *testing.T) {
 func TestPatternsListTheRoutesTheServerMounts(t *testing.T) {
 	want := map[string]bool{
 		"/api/platform/plans": true, "/api/platform/plans/{key}": true, "/api/platform/workspaces/{id}/subscription": true,
+		"/api/platform/plans/{key}/activate": true, "/api/platform/plans/{key}/deactivate": true, "/api/platform/plans/{key}/history": true,
 		"/api/platform/workspaces/{id}/billing-profile":          true,
 		"/api/platform/workspaces/{id}/billing-profile/verify":   true,
 		"/api/platform/workspaces/{id}/billing-profile/unverify": true,
@@ -1180,10 +1182,14 @@ func TestEveryRouteInEveryRouteTableHasAMatrixRow(t *testing.T) {
 // The roles of each route as they were before the matrix, with system_admin in
 // place of the old admin.
 func TestRouteRolesFollowTheMatrix(t *testing.T) {
-	sa, billing, support := staff.RoleSystemAdmin, staff.RoleBilling, staff.RoleSupport
+	sa, billing, support, admin := staff.RoleSystemAdmin, staff.RoleBilling, staff.RoleSupport, staff.RoleAdmin
 	type key struct{ method, pattern string }
 	want := map[key][]staff.Role{
-		{"GET", "/api/platform/plans"}:                                     {sa},
+		{"GET", "/api/platform/plans"}:                                     {sa, admin},
+		{"GET", "/api/platform/plans/{key}"}:                               {sa, admin},
+		{"POST", "/api/platform/plans/{key}/activate"}:                     {sa},
+		{"POST", "/api/platform/plans/{key}/deactivate"}:                   {sa},
+		{"GET", "/api/platform/plans/{key}/history"}:                       {sa, billing},
 		{"POST", "/api/platform/plans"}:                                    {sa},
 		{"PUT", "/api/platform/plans/{key}"}:                               {sa},
 		{"DELETE", "/api/platform/plans/{key}"}:                            {sa},
@@ -1208,3 +1214,15 @@ func TestRouteRolesFollowTheMatrix(t *testing.T) {
 		}
 	}
 }
+
+// planHistorySource gives the console test's plan reader its history, when it has one.
+func planHistorySource(r plan.Reader) plan.HistoryReader {
+	if h, ok := r.(plan.HistoryReader); ok {
+		return h
+	}
+	return noHistory{}
+}
+
+type noHistory struct{}
+
+func (noHistory) History(context.Context, string) ([]plan.HistoryRow, error) { return nil, nil }

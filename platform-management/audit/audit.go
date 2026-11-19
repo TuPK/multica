@@ -242,6 +242,8 @@ var Catalog = []string{
 	ActionAccountWelcomeFailed,
 	ActionPlanPriceApplied,
 	ActionPlanPriceCanceled,
+	ActionPlanActivated,
+	ActionPlanDeactivated,
 	ActionSubscriptionChangeScheduled,
 	ActionSubscriptionChangeCanceled,
 	ActionSubscriptionCancelRequested,
@@ -339,6 +341,8 @@ const (
 	ActionPlanPriceScheduled = "plan.price_scheduled"
 	ActionPlanPriceApplied   = "plan.price_applied"
 	ActionPlanPriceCanceled  = "plan.price_canceled"
+	ActionPlanActivated      = "plan.activated"
+	ActionPlanDeactivated    = "plan.deactivated"
 )
 
 // R5 account group actions (spec 7b.2, rule 13): written by Multica in the

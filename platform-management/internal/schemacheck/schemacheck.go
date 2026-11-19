@@ -38,6 +38,7 @@ var Required = []string{
 	"1027_platform_deletion_request_live_uidx",  // platform_deletion_request: partial unique index on kind, target_id, live rows
 	"1028_platform_deletion_request_tenant",     // platform_deletion_request: tenant_id column
 	"1029_platform_deletion_request_tenant_idx", // platform_deletion_request: index on tenant_id, created_at
+	"1030_plan_description",                     // plan: description column (R6 3b.1)
 	"651_platform_account",                      // platform_account: table
 	"652_platform_account_user_idx",             // platform_account: unique index on user_id
 	"653_platform_account_status_idx",           // platform_account: partial index on status

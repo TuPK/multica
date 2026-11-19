@@ -48,13 +48,15 @@ ON CONFLICT (key) DO NOTHING;
 INSERT INTO plan (
     key, name, limits, features, currency, seat_price_month, seat_price_year,
     seats_fixed, min_seats, trial_days, is_public, sort, archived_at,
-    audience, billing_model
+    audience, billing_model, description
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-    COALESCE(NULLIF(sqlc.arg(audience)::text, ''), 'any'), COALESCE(NULLIF(sqlc.arg(billing_model)::text, ''), 'seat')
+    COALESCE(NULLIF(sqlc.arg(audience)::text, ''), 'any'), COALESCE(NULLIF(sqlc.arg(billing_model)::text, ''), 'seat'),
+    sqlc.arg(description)
 )
 ON CONFLICT (key) DO UPDATE
 SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
     limits = EXCLUDED.limits,
     features = EXCLUDED.features,
     currency = EXCLUDED.currency,
@@ -69,6 +71,15 @@ SET name = EXCLUDED.name,
     audience = COALESCE(NULLIF(sqlc.arg(audience)::text, ''), plan.audience),
     billing_model = COALESCE(NULLIF(sqlc.arg(billing_model)::text, ''), plan.billing_model),
     version = plan.version + 1;
+
+-- name: ListPlanHistory :many
+-- The plan's audit rows (spec R6 section 3b.1, rule 7), newest first. The
+-- platform reads the audit table; it writes no table of its own for history.
+SELECT created_at, action, actor_label, detail
+FROM audit_event
+WHERE target_type = 'plan' AND target_id = $1 AND action LIKE 'plan.%'
+ORDER BY created_at DESC, id DESC
+LIMIT 200;
 
 -- name: DeletePlan :execrows
 DELETE FROM plan WHERE key = $1;
