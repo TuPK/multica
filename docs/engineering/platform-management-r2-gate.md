@@ -30,7 +30,7 @@ Other sessions were editing `server/internal/handler/issue*.go`, the proposal fi
 | `platform-management` `go build` and `go vet` | exit 0 (G-R1 record) |
 | `pnpm catalog:build` | exit 0 |
 | `docker build -f platform-management/Dockerfile` ([PI]) | **not run**: the Docker daemon did not respond. |
-| `pnpm exec playwright test` | **not run**: not authorised for this gate. |
+| `pnpm exec playwright test e2e/platform` (2026-11-19, run 5, section 6) | pass: 115 passed, 0 failed, 3 skipped (118 tests), exit 0. The whole-suite `pnpm exec playwright test` was not run. |
 
 Tests added for this gate (each one was written first, then run):
 
@@ -52,10 +52,10 @@ The drill ran on `multica_platform_test` only. It is a rehearsal on a copy-like 
 | Backfilled rows that are not `free`, `active`, version 1 | 0 |
 | `platform_workspace` rows that are not `active` | 0. No workspace is read-only or suspended because of the cutover. |
 | Platform refuses to start when a migration is missing | covered by the schema check tests (`TestMissingErrorListsVersions`, `TestLoadMissingRequiredVariableNamesIt`), not run live |
-| Platform starts and `/healthz` returns 200 | **not run**: no Redis in this environment (the platform requires `REDIS_URL`) and Docker did not respond |
-| Entitlement policy for each backfilled workspace through a running platform | **not run**: depends on the platform start above. The DB state it reads was checked in the table above. |
-| Compose stack with the `platform` service; `MULTICA_CLOUD_URL` pointed at the platform; no workspace blocked | **not run**: Docker did not respond |
-| Port 8095 unreachable from outside; `mcn_` token refused | **not run** |
+| Platform starts and `/healthz` returns 200 | **Not achieved (2026-11-19, section 6).** The built platform starts and listens on 8095 and 30001, but `/healthz` returns 503 `{"failed":["redis"],"status":"unavailable"}` because no Redis is listening on the `REDIS_URL` it was given. |
+| Entitlement policy for each backfilled workspace through a running platform | **Not run through the platform** (needs a Redis and a signed-in staff session). Covered instead by the package tests in section 6, run on `multica_platform_test`. |
+| Compose stack with the `platform` service; `MULTICA_CLOUD_URL` pointed at the platform; no workspace blocked | **Compose config only** (section 6). The stack was not started. |
+| Port 8095 unreachable from outside; `mcn_` token refused | **not run**. Note: a directly run platform binds `[::]:8095` (all interfaces). Compose publishes only 30001 and 30003, so the API port is not published there. |
 
 Backfill audit rows, and the backfill itself, are on the test database and can be removed by the owner if the test data is reset.
 
@@ -76,7 +76,7 @@ Backfill audit rows, and the backfill itself, are on the test database and can b
 ## 4. Open items after G-R2
 
 1. **AC14:** VND formatting has no named assertion, and there is no walkthrough on a live stack.
-2. **Commercial drill, live part:** the platform start, `/healthz`, entitlement check through a running platform, compose stack, port 8095 and `mcn_` refusal were not run. Docker did not respond and there is no Redis here. These need an environment where Docker works.
+2. **Commercial drill, live part:** `/healthz` is 503 (Redis down) and the entitlement check through a running platform, the compose stack, and the port 8095 / `mcn_` refusal checks were not completed. Docker answers now. What is missing is a Redis at the `REDIS_URL` used by the platform (the e2e harness starts one with Docker on 16379; a standalone run needs its own).
 3. **[PI] Docker image build** was not run.
 4. **`pnpm test` red** (see G-R1 section 4): one real web contrast failure from project-page work, and load-related timeouts elsewhere. Not rerun for this gate.
 5. **Buyer details on billing orders are not cleared** and **export storage objects are not deleted** by workspace teardown. These are listed in `docs/platform-operations.md` section 12 as open, and the R2 tests do not cover them.
@@ -88,3 +88,45 @@ Backfill audit rows, and the backfill itself, are on the test database and can b
 
 - `b64d9dec8` test(platform): pin workspace reads during a seat-capacity outage (AC20)
 - This record: committed separately.
+
+## 6. Live checks run on 2026-11-19 (R2 close)
+
+Database: `multica_platform_test` only, DSN built from `.env` with the database name changed inside each command. Every command passed `scripts/require-test-database.sh` first.
+
+**Compose config** (`docker compose -f docker-compose.selfhost.yml config`, with `JWT_SECRET` supplied in the command because `.env` has none; the value was a throwaway and was not written anywhere):
+
+| Run | Exit | Platform published ports |
+| --- | --- | --- |
+| Without `PLATFORM_WEBHOOK_PORT` | 0 | `127.0.0.1:30001 -> 30001` only (the duplicate entry is merged, as the compose comment says) |
+| `PLATFORM_WEBHOOK_PORT=30003` | 0 | `127.0.0.1:30001 -> 30001` and `127.0.0.1:30003 -> 30003` |
+
+The stack itself was not started. Docker answered `ping` (HTTP 200, server 29.10.0) once the daemon was free, but a stack run would start containers against the shared host, so it was left out of this check.
+
+**Live `/healthz`:** the platform-server binary was built from `platform-management/cmd/platform-server` and run with `DATABASE_URL` on `multica_platform_test`, `REDIS_URL=redis://127.0.0.1:16379/0` (nothing listening there), `PLATFORM_API_PORT=8095`, `PLATFORM_CONSOLE_PORT=30001`:
+
+```
+GET http://127.0.0.1:8095/healthz  -> HTTP/1.1 503  {"failed":["redis"],"status":"unavailable"}
+GET http://127.0.0.1:30001/healthz -> HTTP/1.1 503  {"failed":["redis"],"status":"unavailable"}
+GET http://127.0.0.1:8095/api/platform/me (no session) -> 404
+```
+
+The server started, and the only failing dependency was Redis. Migrations were not reported as missing, and the MFA key check passed (no confirmed `user_mfa` rows remained after the cleanup below).
+
+**Entitlement packages** on `multica_platform_test`:
+
+```
+server/internal/entitlement                ok  (go test -count=1 -p 1)
+platform-management/internal/entitlement   ok  16.758s
+platform-management/internal/plan          ok  24.968s
+platform-management/internal/subscription  ok  58.181s
+```
+
+**Playwright `e2e/platform`** (`pnpm exec playwright test e2e/platform`, `PLATFORM_TEST_DATABASE_URL` = the test DSN, `PLATFORM_DEV_VERIFICATION_CODE` exported from `.env`): **115 passed, 0 failed, 3 skipped, 118 tests, exit 0** (run 5, 2.9 min). The full log is in the session scratchpad, not in the repo.
+
+**Test-DB cleanup before the Playwright run** (in one transaction, on `multica_platform_test`): rows left by earlier harness runs that never reached teardown blocked the platform's MFA-key check. Deleted: 39 `user` rows with email `e2e-staff-*@example.test`, 17 `platform_staff` rows and 11 `user_mfa` rows for those users. Other rows in the database were not touched.
+
+**Harness notes:**
+- `e2e/platform/harness.ts` reads `PLATFORM_DEV_VERIFICATION_CODE` from `process.env`. The dotenv load in `e2e/env.ts` did not supply it on this host, so the command exports it.
+- Two other Playwright runs of this harness share ports 8095, 30001 and 16379. Run them one at a time.
+
+**Still open after this run:** the Docker image build [PI], the full-suite `pnpm exec playwright test`, `/healthz` 200 (needs a Redis at the platform's `REDIS_URL`), the entitlement check through a running platform, the compose stack, and the external-reachability and `mcn_` checks.
