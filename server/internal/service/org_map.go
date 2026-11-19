@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -106,8 +107,10 @@ func OrgRuntimeOnline(status string) bool {
 }
 
 // LoadOrgMap reads the workspace's org map. floorID, when valid, narrows the
-// floors and squads to one floor. Every query is scoped to workspaceID.
-func LoadOrgMap(ctx context.Context, q *db.Queries, workspaceID, floorID pgtype.UUID) (OrgMap, error) {
+// floors and squads to one floor. Every query is scoped to workspaceID. scope
+// is what the reader may see: a squad's open_issues and project leave out
+// projects the reader cannot see (spec 7.1 rule 5).
+func LoadOrgMap(ctx context.Context, q *db.Queries, workspaceID, floorID pgtype.UUID, scope projectaccess.Scope) (OrgMap, error) {
 	floors, err := q.ListCompanyFloors(ctx, workspaceID)
 	if err != nil {
 		return OrgMap{}, fmt.Errorf("list floors: %w", err)
@@ -135,6 +138,8 @@ func LoadOrgMap(ctx context.Context, q *db.Queries, workspaceID, floorID pgtype.
 		WorkspaceID: workspaceID,
 		FloorID:     floorID,
 		RowLimit:    int32(OrgMapMaxSquads + 1),
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		return OrgMap{}, fmt.Errorf("list squads: %w", err)

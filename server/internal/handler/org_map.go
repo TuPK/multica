@@ -31,7 +31,11 @@ func (h *Handler) GetCompanyOrgMap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	out, err := service.LoadOrgMap(r.Context(), h.Queries, wsUUID, floorID)
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+	out, err := service.LoadOrgMap(r.Context(), h.Queries, wsUUID, floorID, scope)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to read the org map")
 		return

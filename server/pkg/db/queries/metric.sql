@@ -150,6 +150,10 @@ WITH done AS (
       AND (i.status = 'done' OR st.category = 'done')
       AND COALESCE(i.done_at, i.updated_at) >= @since
       AND COALESCE(i.done_at, i.updated_at) < @until
+      -- projectaccess:scope
+      -- Stored aggregate: any member reads it, so issues of restricted projects are left out.
+      AND (i.project_id IS NULL
+           OR EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'))
 )
 SELECT count(*)::int AS done,
        COALESCE(sum(EXTRACT(EPOCH FROM (done_time - created_at)) / 86400), 0)::float8 AS cycle_days_total
@@ -164,7 +168,11 @@ WHERE i.workspace_id = @workspace_id
   AND i.assignee_type = 'squad'
   AND (sqlc.narg('squad_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('squad_ids')::uuid[]))
   AND i.last_reopened_at >= @since
-  AND i.last_reopened_at < @until;
+  AND i.last_reopened_at < @until
+  -- projectaccess:scope
+  -- Stored aggregate: any member reads it, so issues of restricted projects are left out.
+  AND (i.project_id IS NULL
+       OR EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'));
 
 -- name: BuiltinKnowledgePublished :one
 SELECT

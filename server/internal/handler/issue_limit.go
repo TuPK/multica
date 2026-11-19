@@ -26,7 +26,11 @@ func (h *Handler) GetIssueLimitUsage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	used, err := service.CountIssueUsage(r.Context(), h.Queries, workspaceID, policy)
+	scope, ok := h.viewerScope(w, r, workspaceID)
+	if !ok {
+		return
+	}
+	used, err := service.CountVisibleIssueUsage(r.Context(), h.Queries, workspaceID, policy, scope)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load issue limit usage")
 		return

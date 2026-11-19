@@ -89,6 +89,10 @@ WITH done AS (
       AND (i.status = 'done' OR st.category = 'done')
       AND COALESCE(i.done_at, i.updated_at) >= $3
       AND COALESCE(i.done_at, i.updated_at) < $4
+      -- projectaccess:scope
+      -- Stored aggregate: any member reads it, so issues of restricted projects are left out.
+      AND (i.project_id IS NULL
+           OR EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'))
 )
 SELECT count(*)::int AS done,
        COALESCE(sum(EXTRACT(EPOCH FROM (done_time - created_at)) / 86400), 0)::float8 AS cycle_days_total
@@ -132,6 +136,10 @@ WHERE i.workspace_id = $1
   AND ($2::uuid[] IS NULL OR i.assignee_id = ANY($2::uuid[]))
   AND i.last_reopened_at >= $3
   AND i.last_reopened_at < $4
+  -- projectaccess:scope
+  -- Stored aggregate: any member reads it, so issues of restricted projects are left out.
+  AND (i.project_id IS NULL
+       OR EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'))
 `
 
 type BuiltinIssuesReopenedParams struct {
