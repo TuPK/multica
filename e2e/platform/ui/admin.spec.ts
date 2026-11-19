@@ -13,8 +13,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 let seed: StaffSeed;
-const alpha = { name: "E2E Alpha Co", id: "", slug: "" };
-const beta = { name: "E2E Beta Co", id: "", slug: "" };
+// A run-unique suffix: other runs may share the test database, and a repeated name matches two rows.
+const RUN = Date.now().toString(36);
+const alpha = { name: `E2E Alpha Co ${RUN}`, id: "", slug: "" };
+const beta = { name: `E2E Beta Co ${RUN}`, id: "", slug: "" };
 let target: { id: string; email: string };
 const createdWorkspaces: string[] = [];
 const createdUsers: string[] = [];

@@ -8,21 +8,27 @@ import { expect, request as playwrightRequest, test, type APIRequestContext, typ
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { CONSOLE_BASE, signInApi, startPlatform, stopPlatform, testDatabaseUrl, type StaffSeed } from "./harness";
+import { startFakeSmtp, type FakeSmtp } from "./fake-smtp";
 
 const ORIGIN = { Origin: CONSOLE_BASE, "Content-Type": "application/json" };
 
 let seed: StaffSeed;
 let admin: APIRequestContext;
+let mail: FakeSmtp;
 const created: string[] = [];
 
 test.beforeAll(async () => {
-  seed = await startPlatform("admin");
+  test.setTimeout(300_000);
+  mail = await startFakeSmtp();
+  seed = await startPlatform("admin", { smtpPort: mail.port });
   admin = await playwrightRequest.newContext();
   await signInApi(admin, seed);
 });
 
 test.afterAll(async () => {
+  test.setTimeout(300_000);
   await admin?.dispose();
+  await mail?.close();
   const pool = new pg.Pool({ connectionString: testDatabaseUrl(), max: 1 });
   try {
     for (const id of created) {
@@ -121,6 +127,17 @@ test.describe("sessions and two-step sign-in", () => {
 
     const again = await post(`/api/platform/users/${target.id}/mfa-reset`, { reason: "e2e reset again" });
     expect(await again.json()).toEqual({ reset: false });
+  });
+
+  test("flow 23: the reset emails the user that two-step sign-in was turned off", async () => {
+    // The fake SMTP server (fake-smtp.ts) records what the platform sends; the user's inbox is that record.
+    const target = await seedUser(true);
+    const before = mail.sent.length;
+    const res = await post(`/api/platform/users/${target.id}/mfa-reset`, { reason: "e2e reset email" });
+    expect(res.status()).toBe(200);
+    const sent = mail.sent.slice(before).filter((m) => m.to === target.email);
+    expect(sent.length, "no reset notice reached the user").toBe(1);
+    expect(sent[0].data).toContain("Subject: Two-step sign-in was turned off on your Multica account");
   });
 });
 
