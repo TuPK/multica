@@ -31,6 +31,7 @@ import (
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/planlimit"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -6806,6 +6807,36 @@ func issueGCWire(status, category string) (wireStatus, wireCategory string) {
 	return issuestatus.WireCategory(status, category), category
 }
 
+// gcCheckScope is the visibility of the caller of an issue GC check. A daemon
+// token is an internal worker with no viewer and sees every issue of its
+// workspace; a member credential (PAT or JWT) reads as that member, and a
+// mat_ token as the run's originator (spec 7.1 rules 5 and 13).
+func (h *Handler) gcCheckScope(w http.ResponseWriter, r *http.Request, workspaceID pgtype.UUID) (projectaccess.Scope, bool) {
+	if middleware.DaemonWorkspaceIDFromContext(r.Context()) != "" {
+		return projectaccess.System(), true
+	}
+	return h.viewerScope(w, r, workspaceID)
+}
+
+// gcHiddenIssues returns the ids among issueIDs that scope does not see. It
+// reads project ids only for a scope that can hide something.
+func (h *Handler) gcHiddenIssues(ctx context.Context, scope projectaccess.Scope, workspaceID pgtype.UUID, issueIDs []pgtype.UUID) (map[string]bool, error) {
+	hidden := map[string]bool{}
+	if scope.Mode() == projectaccess.ModeAll {
+		return hidden, nil
+	}
+	issues, err := h.Queries.ListIssuesByIDsInWorkspace(ctx, db.ListIssuesByIDsInWorkspaceParams{WorkspaceID: workspaceID, Ids: issueIDs})
+	if err != nil {
+		return nil, err
+	}
+	for _, issue := range issues {
+		if !scope.Allows(issue.ProjectID) {
+			hidden[uuidToString(issue.ID)] = true
+		}
+	}
+	return hidden, nil
+}
+
 // BatchIssueGCCheck returns one explicit result for every requested issue ID.
 // The query is workspace-scoped at the SQL layer; missing rows and IDs owned by
 // another workspace both become found=false so the endpoint is not an
@@ -6844,6 +6875,11 @@ func (h *Handler) BatchIssueGCCheck(w http.ResponseWriter, r *http.Request) {
 		canonicalIDs = append(canonicalIDs, uuidToString(parsedID))
 	}
 
+	scope, ok := h.gcCheckScope(w, r, workspaceUUID)
+	if !ok {
+		return
+	}
+
 	rows := make(map[string]db.ListIssueGCStatusesRow, len(parsedIDs))
 	if len(parsedIDs) > 0 {
 		result, err := h.Queries.ListIssueGCStatuses(r.Context(), db.ListIssueGCStatusesParams{
@@ -6855,7 +6891,16 @@ func (h *Handler) BatchIssueGCCheck(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "failed to check issues")
 			return
 		}
+		hidden, err := h.gcHiddenIssues(r.Context(), scope, workspaceUUID, parsedIDs)
+		if err != nil {
+			slog.Warn("list issue GC projects failed", "workspace_id", workspaceID, "count", len(parsedIDs), "error", err)
+			writeError(w, http.StatusInternalServerError, "failed to check issues")
+			return
+		}
 		for _, row := range result {
+			if hidden[uuidToString(row.ID)] {
+				continue
+			}
 			rows[uuidToString(row.ID)] = row
 		}
 	}
@@ -6903,6 +6948,16 @@ func (h *Handler) GetIssueGCCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !h.requireDaemonWorkspaceAccess(w, r, uuidToString(issue.WorkspaceID)) {
+		return
+	}
+	scope, ok := h.gcCheckScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
+	projectID, err := h.Queries.GetIssueProjectID(r.Context(), issueUUID)
+	if err != nil || !scope.Allows(projectID) {
+		// A hidden issue answers exactly as a missing one (spec 7.1 rule 5).
+		writeError(w, http.StatusNotFound, "issue not found")
 		return
 	}
 	// Same reasoning as BatchIssueGCCheck: normalize server-side so the
