@@ -156,9 +156,11 @@ describe("Layout navigation", () => {
     expect(within(nav).getByRole("button", { name: /Tenants/i })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /Workspaces/i })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /Users/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: /Runtimes/i })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /Audit Log/i })).toBeInTheDocument();
 
     expect(within(nav).queryByText("Commercial")).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Resources/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /Orders/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /Payment notices/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /E-invoices/i })).not.toBeInTheDocument();
@@ -186,6 +188,8 @@ describe("Layout navigation", () => {
     expect(within(nav).getByRole("button", { name: /Orders/i })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /Payment notices/i })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /E-invoices/i })).toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Resources/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: /Runtimes/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /Plans/i })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: /Staff/i })).not.toBeInTheDocument();
@@ -206,10 +210,10 @@ describe("Layout navigation", () => {
     );
 
     const nav = screen.getByRole("navigation", { name: "Main Navigation" });
-    for (const name of ["Tenants", "Workspaces", "Users", "Orders", "Plans", "Deletion requests", "Audit Log"]) {
+    for (const name of ["Tenants", "Workspaces", "Users", "Runtimes", "Orders", "Plans", "Deletion requests", "Audit Log"]) {
       expect(within(nav).getByRole("button", { name })).toBeInTheDocument();
     }
-    for (const hidden of ["Overview", "Payment notices", "E-invoices", "Accounts", "Staff"]) {
+    for (const hidden of ["Overview", "Resources", "Payment notices", "E-invoices", "Accounts", "Staff"]) {
       expect(within(nav).queryByRole("button", { name: hidden })).not.toBeInTheDocument();
     }
   });
@@ -235,6 +239,8 @@ describe("Layout navigation", () => {
       "Tenants",
       "Workspaces",
       "Users",
+      "Resources",
+      "Runtimes",
       "Orders",
       "Payment notices",
       "E-invoices",

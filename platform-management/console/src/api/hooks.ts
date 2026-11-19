@@ -57,6 +57,13 @@ import {
   parseDeactivateTenantUserResponse,
   parseMemberChangeResponse,
   parseQuotaRequest,
+  parseTenantLimitOverrideResponse,
+  parseTenantResources,
+  parseSystemResources,
+  parseRuntimePage,
+  parseRuntimeDetail,
+  parseSetRuntimeStatusResponse,
+  parseRuntimeUnregisterResponse,
   type Me,
   type Overview,
   type StaffRole,
@@ -109,6 +116,23 @@ import {
   type DeactivateTenantUserResponse,
   type MemberChangeResponse,
   type QuotaRequest,
+  type LimitGate,
+  type TenantLimitOverrideResponse,
+  type ResourceState,
+  type ResourceUsageItem,
+  type TenantWorkspaceResource,
+  type TenantResources,
+  type SystemResourceTypeSummary,
+  type SystemResourcePlanSummary,
+  type SystemTopTenant,
+  type OverLimitResource,
+  type SystemResources,
+  type RuntimeStatus,
+  type RuntimeTaskStatus,
+  type Runtime,
+  type RuntimeTask,
+  type RuntimeDetail,
+  type SetRuntimeStatusResponse,
 } from "./schemas";
 
 export type {
@@ -155,6 +179,23 @@ export type {
   DeactivateTenantUserResponse,
   MemberChangeResponse,
   QuotaRequest,
+  LimitGate,
+  TenantLimitOverrideResponse,
+  ResourceState,
+  ResourceUsageItem,
+  TenantWorkspaceResource,
+  TenantResources,
+  SystemResourceTypeSummary,
+  SystemResourcePlanSummary,
+  SystemTopTenant,
+  OverLimitResource,
+  SystemResources,
+  RuntimeStatus,
+  RuntimeTaskStatus,
+  Runtime,
+  RuntimeTask,
+  RuntimeDetail,
+  SetRuntimeStatusResponse,
 };
 
 /** The states staff may set on a workspace. */
@@ -200,11 +241,30 @@ export interface TenantUserFilters {
   member_role?: string;
 }
 
+export interface SystemResourceFilters {
+  sort?: string;
+  top?: number;
+}
+
+export interface RuntimeFilters {
+  q?: string;
+  status?: string;
+  tenant_id?: string;
+  workspace_id?: string;
+  disabled?: boolean;
+}
+
 /** Drops empty values, so `{}` and `{ q: "" }` are one query. */
 function clean<T extends object>(filters: T): T {
-  const out: Record<string, string> = {};
+  const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(filters)) {
-    if (typeof value === "string" && value.trim() !== "") out[key] = value.trim();
+    if (typeof value === "string" && value.trim() !== "") {
+      out[key] = value.trim();
+    } else if (typeof value === "boolean" && value) {
+      out[key] = value;
+    } else if (typeof value === "number" && Number.isFinite(value)) {
+      out[key] = value;
+    }
   }
   return out as T;
 }
@@ -239,6 +299,14 @@ export const platformKeys = {
     ["platform", "tenants", "users", tenantId, "list", clean(filters)] as const,
   tenantUser: (tenantId: string, userId: string) =>
     ["platform", "tenants", "users", tenantId, "detail", userId] as const,
+  tenantResources: (id: string) => ["platform", "tenants", "resources", id] as const,
+  resources: () => ["platform", "resources"] as const,
+  resourceList: (filters: SystemResourceFilters) =>
+    ["platform", "resources", "list", clean(filters)] as const,
+  runtimes: () => ["platform", "runtimes"] as const,
+  runtimeList: (filters: RuntimeFilters) =>
+    ["platform", "runtimes", "list", clean(filters)] as const,
+  runtime: (id: string) => ["platform", "runtimes", "detail", id] as const,
   quotaRequests: () => ["platform", "quota-requests"] as const,
   workspace: (id: string) => ["platform", "workspaces", "detail", id] as const,
   workspaceUsage: (id: string) => ["platform", "workspaces", "usage", id] as const,
@@ -1804,6 +1872,216 @@ export function useCreateQuotaRequest() {
       invalidateAll(queryClient, [
         platformKeys.quotaRequests(),
         platformKeys.workspace(vars.workspaceId),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+// Resources & tenant limit overrides (R6 / S25)
+
+function mergeUniqueBy<T>(items: T[], keyOf: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    const key = keyOf(item);
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
+/**
+ * Fetch resource usage per type against plan limits for one tenant.
+ * Pending backend endpoint (`GET /tenants/{id}/resources`, plan S20; not on main yet).
+ */
+export function useTenantResources(tenantId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.tenantResources(tenantId ?? ""),
+    enabled: Boolean(tenantId) && enabled,
+    queryFn: async ({ signal }): Promise<TenantResources> =>
+      orMalformed(
+        parseTenantResources(
+          await platformFetch(`/tenants/${pathSegment(tenantId ?? "")}/resources`, { signal }),
+        ),
+      ),
+  });
+}
+
+/**
+ * Fetch system-wide resource usage summary, top tenants, and over-limit rows (system_admin only).
+ * Pending backend endpoint (`GET /resources`, plan S20; not on main yet).
+ */
+export function useSystemResources(filters: SystemResourceFilters = {}, enabled = true) {
+  const f = clean(filters);
+  return useInfiniteQuery({
+    queryKey: platformKeys.resourceList(f),
+    enabled,
+    queryFn: async ({ pageParam, signal }) =>
+      parseSystemResources(
+        await platformFetch(
+          `/resources${queryString({
+            sort: f.sort,
+            top: f.top !== undefined ? String(f.top) : undefined,
+            cursor: pageParam,
+          })}`,
+          { signal },
+        ),
+      ),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    select: (data) => {
+      const first = data.pages[0];
+      const last = data.pages[data.pages.length - 1];
+      return {
+        by_type: first?.by_type ?? [],
+        by_plan: first?.by_plan ?? [],
+        top_tenants: mergeUniqueBy(
+          data.pages.flatMap((page) => page.top_tenants),
+          (t) => t.tenant_id || t.tenant_name,
+        ),
+        tenants: mergeUniqueBy(
+          data.pages.flatMap((page) => page.tenants),
+          (t) => t.tenant_id || t.tenant_name,
+        ),
+        over_limit: mergeUniqueBy(
+          data.pages.flatMap((page) => page.over_limit),
+          (o) => `${o.tenant_id}:${o.workspace_id}:${o.type}`,
+        ),
+        complete: last?.complete ?? false,
+      };
+    },
+  });
+}
+
+/**
+ * Set or release (`value: null`) one limit gate across all or selected workspaces of a tenant.
+ * Live backend endpoint (`POST /tenants/{id}/limit-overrides`, system_admin and billing).
+ */
+export function useSetTenantLimitOverride() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      tenantId: string;
+      gate: string;
+      value: number | null;
+      workspace_ids?: string[];
+      reason: string;
+    }): Promise<TenantLimitOverrideResponse> => {
+      const body: Record<string, unknown> = {
+        gate: vars.gate,
+        value: vars.value,
+        reason: vars.reason,
+      };
+      if (vars.workspace_ids && vars.workspace_ids.length > 0) {
+        body.workspace_ids = vars.workspace_ids;
+      }
+      const res = await platformFetch(
+        `/tenants/${pathSegment(vars.tenantId)}/limit-overrides`,
+        {
+          method: "POST",
+          body,
+        },
+      );
+      return orMalformed(parseTenantLimitOverrideResponse(res));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.tenantResources(vars.tenantId),
+        platformKeys.tenant(vars.tenantId),
+        platformKeys.tenants(),
+        platformKeys.workspaces(),
+        platformKeys.resources(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+// Runtimes (R6 / S25)
+
+/** Page runtimes visible to the staff member (all for system_admin/support; own tenant for admin). */
+export function useRuntimes(filters: RuntimeFilters = {}, enabled = true) {
+  const f = clean(filters);
+  return useInfiniteQuery({
+    queryKey: platformKeys.runtimeList(f),
+    enabled,
+    queryFn: async ({ pageParam, signal }) =>
+      parseRuntimePage(
+        await platformFetch(
+          `/runtimes${queryString({
+            q: f.q,
+            status: f.status,
+            tenant_id: f.tenant_id,
+            workspace_id: f.workspace_id,
+            disabled: f.disabled ? "true" : undefined,
+            cursor: pageParam,
+          })}`,
+          { signal },
+        ),
+      ),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    select: (data) => data.pages.flatMap((page) => page.runtimes),
+  });
+}
+
+/** Fetch one runtime with recent tasks (without content) and 7-day failed task count. */
+export function useRuntime(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.runtime(id ?? ""),
+    enabled: Boolean(id) && enabled,
+    queryFn: async ({ signal }): Promise<RuntimeDetail> =>
+      orMalformed(
+        parseRuntimeDetail(await platformFetch(`/runtimes/${pathSegment(id ?? "")}`, { signal })),
+      ),
+  });
+}
+
+/** Disable or enable a runtime with a required reason. */
+export function useSetRuntimeStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      runtimeId: string;
+      status: "disabled" | "enabled";
+      reason: string;
+    }): Promise<SetRuntimeStatusResponse> => {
+      const res = await platformFetch(`/runtimes/${pathSegment(vars.runtimeId)}/status`, {
+        method: "POST",
+        body: { status: vars.status, reason: vars.reason },
+      });
+      return orMalformed(parseSetRuntimeStatusResponse(res));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.runtime(vars.runtimeId),
+        platformKeys.runtimes(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Request runtime unregistration with required reason and runtime name confirmation. */
+export function useUnregisterRuntime() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      runtimeId: string;
+      reason: string;
+      confirm: string;
+    }): Promise<DeletionStartResponse> => {
+      const res = await platformFetch(`/runtimes/${pathSegment(vars.runtimeId)}/unregister`, {
+        method: "POST",
+        body: { reason: vars.reason, confirm: vars.confirm },
+      });
+      return orMalformed(parseRuntimeUnregisterResponse(res));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.runtime(vars.runtimeId),
+        platformKeys.runtimes(),
+        platformKeys.deletionRequests(),
         platformKeys.audits(),
       ]),
   });

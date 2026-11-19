@@ -109,3 +109,21 @@ export function getMemberChangeErrorMessage(err: unknown, fallback: string): str
   if (mapped) return mapped;
   return getApiErrorMessage(err, fallback);
 }
+
+const LIMIT_OVERRIDE_ERROR_MESSAGES: Record<string, string> = {
+  limit_gate_invalid: "Select a valid plan limit gate.",
+  limit_value_invalid: "Value must be a non-negative integer, or leave empty to release the override.",
+  reason_required: "A reason of 1 to 500 characters is required.",
+  workspace_not_in_tenant: "Every selected workspace must belong to this tenant.",
+  concurrent_change: "The subscription changed concurrently. Refresh and try again.",
+};
+
+/** Maps tenant limit-override API error codes to clear guidance, falling back to the server message. */
+export function getLimitOverrideErrorMessage(err: unknown, fallback: string): string {
+  const mapped =
+    err instanceof PlatformApiError && err.code
+      ? LIMIT_OVERRIDE_ERROR_MESSAGES[err.code]
+      : undefined;
+  if (mapped) return mapped;
+  return getApiErrorMessage(err, fallback);
+}

@@ -72,6 +72,13 @@ import {
   useRemoveWorkspaceMember,
   useChangeWorkspaceMemberRole,
   useCreateQuotaRequest,
+  useTenantResources,
+  useSetTenantLimitOverride,
+  useSystemResources,
+  useRuntimes,
+  useRuntime,
+  useSetRuntimeStatus,
+  useUnregisterRuntime,
 } from "./hooks";
 
 type Handler = Response | ((url: URL, init: RequestInit | undefined) => Response);
@@ -2017,5 +2024,170 @@ describe("R6 S24 tenant users, member changes and quota requests", () => {
     expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.tenantUsersAll("t-1")));
     expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.memberRequests("ws-1")));
     expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.quotaRequests()));
+  });
+});
+
+describe("R6 S25 resources, limit overrides and runtimes hooks", () => {
+  it("useTenantResources, useSystemResources and useSetTenantLimitOverride call exact routes and invalidate", async () => {
+    const calls = stubFetch({
+      "GET /api/platform/tenants/t-1/resources": json(200, {
+        tenant_id: "t-1",
+        resources: [{ type: "agents", used: 8, limit: 10, percent: 80, state: "warning" }],
+        workspaces: [],
+        complete: true,
+      }),
+      "GET /api/platform/resources": (url) =>
+        url.searchParams.get("cursor") === "c1"
+          ? json(200, {
+              top_tenants: [{ tenant_id: "t-2", tenant_name: "Beta", agents: 2 }],
+              over_limit: [],
+              next_cursor: null,
+              complete: true,
+            })
+          : json(200, {
+              top_tenants: [{ tenant_id: "t-1", tenant_name: "Acme", agents: 8 }],
+              over_limit: [
+                {
+                  tenant_id: "t-1",
+                  tenant_name: "Acme",
+                  workspace_id: "ws-1",
+                  workspace_name: "Core",
+                  type: "agents",
+                  used: 8,
+                  limit: 10,
+                  percent: 80,
+                  state: "warning",
+                },
+              ],
+              next_cursor: "c1",
+              complete: false,
+            }),
+      "POST /api/platform/tenants/t-1/limit-overrides": json(200, {
+        gate: "agents",
+        workspace_ids: ["ws-1"],
+      }),
+    });
+
+    const { queryClient, wrapper } = setup();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const tenantResHook = renderHook(() => useTenantResources("t-1"), { wrapper });
+    await waitFor(() => expect(tenantResHook.result.current.isSuccess).toBe(true));
+    expect(tenantResHook.result.current.data?.resources[0]?.state).toBe("warning");
+
+    const sysHook = renderHook(() => useSystemResources({ sort: "agents" }), { wrapper });
+    await waitFor(() => expect(sysHook.result.current.hasNextPage).toBe(true));
+    expect(sysHook.result.current.data?.complete).toBe(false);
+    await act(async () => {
+      await sysHook.result.current.fetchNextPage();
+    });
+    await waitFor(() => expect(sysHook.result.current.data?.complete).toBe(true));
+    expect(sysHook.result.current.data?.top_tenants.map((t) => t.tenant_id)).toEqual(["t-1", "t-2"]);
+    expect(calls[1]?.search).toBe("?sort=agents");
+    expect(calls[2]?.search).toBe("?sort=agents&cursor=c1");
+
+    const overrideHook = renderHook(() => useSetTenantLimitOverride(), { wrapper });
+    await act(async () => {
+      await overrideHook.result.current.mutateAsync({
+        tenantId: "t-1",
+        gate: "agents",
+        value: null,
+        workspace_ids: ["ws-1"],
+        reason: "Release limit",
+      });
+    });
+    expect(
+      calls.find((c) => c.path === "/api/platform/tenants/t-1/limit-overrides"),
+    ).toMatchObject({
+      method: "POST",
+      path: "/api/platform/tenants/t-1/limit-overrides",
+      body: { gate: "agents", value: null, workspace_ids: ["ws-1"], reason: "Release limit" },
+    });
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.tenantResources("t-1")));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.tenant("t-1")));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.resources()));
+  });
+
+  it("useRuntimes, useRuntime, useSetRuntimeStatus and useUnregisterRuntime call exact routes and invalidate", async () => {
+    const rt = {
+      id: "rt-1",
+      name: "laptop",
+      workspace_id: "ws-1",
+      tenant_id: "t-1",
+      status: "online",
+      os: "darwin",
+      daemon_version: "0.9.1",
+      agent_version: "0.4.2",
+      owner_id: "u-1",
+      disabled: false,
+      running_tasks: 1,
+      last_seen_at: "2026-11-19T10:00:00Z",
+      created_at: "2026-11-01T00:00:00Z",
+    };
+    const calls = stubFetch({
+      "GET /api/platform/runtimes": json(200, { runtimes: [rt], next_cursor: null }),
+      "GET /api/platform/runtimes/rt-1": json(200, { ...rt, tasks: [], failed_tasks_7d: 0 }),
+      "POST /api/platform/runtimes/rt-1/status": json(200, { changed: true, disabled: true }),
+      "POST /api/platform/runtimes/rt-1/unregister": json(202, {
+        request_id: "dr-1",
+        state: "pending",
+      }),
+    });
+
+    const { queryClient, wrapper } = setup();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const listHook = renderHook(
+      () => useRuntimes({ q: "lap", status: "online", disabled: true, tenant_id: "t-1" }),
+      { wrapper },
+    );
+    await waitFor(() => expect(listHook.result.current.isSuccess).toBe(true));
+    expect(listHook.result.current.data).toHaveLength(1);
+    expect(calls[0]?.search).toBe("?q=lap&status=online&tenant_id=t-1&disabled=true");
+
+    const detailHook = renderHook(() => useRuntime("rt-1"), { wrapper });
+    await waitFor(() => expect(detailHook.result.current.isSuccess).toBe(true));
+    expect(detailHook.result.current.data?.name).toBe("laptop");
+
+    const statusHook = renderHook(() => useSetRuntimeStatus(), { wrapper });
+    await act(async () => {
+      const res = await statusHook.result.current.mutateAsync({
+        runtimeId: "rt-1",
+        status: "disabled",
+        reason: "Abuse report",
+      });
+      expect(res).toEqual({ changed: true, disabled: true });
+    });
+    expect(
+      calls.find((c) => c.path === "/api/platform/runtimes/rt-1/status"),
+    ).toMatchObject({
+      method: "POST",
+      path: "/api/platform/runtimes/rt-1/status",
+      body: { status: "disabled", reason: "Abuse report" },
+    });
+
+    const unregisterHook = renderHook(() => useUnregisterRuntime(), { wrapper });
+    await act(async () => {
+      const res = await unregisterHook.result.current.mutateAsync({
+        runtimeId: "rt-1",
+        reason: "Retired",
+        confirm: "laptop",
+      });
+      expect(res).toEqual({ request_id: "dr-1", state: "pending" });
+    });
+    expect(
+      calls.find((c) => c.path === "/api/platform/runtimes/rt-1/unregister"),
+    ).toMatchObject({
+      method: "POST",
+      path: "/api/platform/runtimes/rt-1/unregister",
+      body: { reason: "Retired", confirm: "laptop" },
+    });
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.runtime("rt-1")));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.runtimes()));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.deletionRequests()));
   });
 });

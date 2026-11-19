@@ -55,6 +55,13 @@ import {
   parseDeactivateTenantUserResponse,
   parseMemberChangeResponse,
   parseQuotaRequest,
+  parseTenantLimitOverrideResponse,
+  parseTenantResources,
+  parseSystemResources,
+  parseRuntimePage,
+  parseRuntimeDetail,
+  parseSetRuntimeStatusResponse,
+  parseRuntimeUnregisterResponse,
 } from "./schemas";
 
 const workspace = {
@@ -1781,5 +1788,143 @@ describe("R6 S24 tenant users, member changes and quota requests", () => {
     expect(qr?.id).toBe("qr-1");
     expect(qr?.state).toBe("unknown");
     expect(parseQuotaRequest({}, "POST /api/platform/workspaces/{id}/quota-requests")).toBeNull();
+  });
+});
+
+describe("R6 S25 resources, limit overrides and runtimes schemas", () => {
+  it("parses tenant resources with defaults and unknown state fallback", () => {
+    const parsed = parseTenantResources({
+      tenant_id: "t-1",
+      complete: true,
+      resources: [
+        { type: "agents", used: 8, limit: 10, percent: 80, state: "warning" },
+        { type: "runtimes", used: 3, limit: null, state: "future_state" },
+        {},
+      ],
+      workspaces: [
+        {
+          workspace_id: "ws-1",
+          workspace_name: "Core",
+          plan_key: "pro",
+          resources: [{ type: "agents", used: 8, limit: 10, percent: 80, status: "over" }],
+        },
+      ],
+    });
+    expect(parsed?.complete).toBe(true);
+    expect(parsed?.resources[0]).toMatchObject({ type: "agents", used: 8, limit: 10, percent: 80, state: "warning" });
+    expect(parsed?.resources[1]).toMatchObject({ type: "runtimes", used: 3, limit: null, percent: null, state: "unknown" });
+    expect(parsed?.resources[2]).toMatchObject({ type: "", used: 0, limit: null, percent: null, state: "unknown" });
+    expect(parsed?.workspaces[0]?.resources[0]?.state).toBe("over");
+
+    expect(parseTenantResources({})).toEqual({
+      tenant_id: "",
+      resources: [],
+      workspaces: [],
+      complete: false,
+    });
+    expect(parseTenantResources(null)).toBeNull();
+  });
+
+  it("parses system resources with top tenants, over_limit, cursor, complete and malformed fallback", () => {
+    const parsed = parseSystemResources({
+      by_type: [{ type: "agents", used: 10, limit: 20, percent: 50 }],
+      by_plan: [{ plan_key: "pro", tenant_count: 3, workspace_count: 5, totals: { agents: 10 } }],
+      top_tenants: [{ tenant_id: "t-1", tenant_name: "Acme", agents: 10, state: "warning" }],
+      over_limit: [
+        {
+          tenant_id: "t-1",
+          tenant_name: "Acme",
+          workspace_id: "ws-1",
+          workspace_name: "Core",
+          type: "agents",
+          used: 12,
+          limit: 10,
+          percent: 120,
+          state: "over",
+        },
+      ],
+      next_cursor: "cur-2",
+      complete: false,
+    });
+    expect(parsed.top_tenants).toHaveLength(1);
+    expect(parsed.top_tenants[0]?.state).toBe("warning");
+    expect(parsed.over_limit[0]?.state).toBe("over");
+    expect(parsed.next_cursor).toBe("cur-2");
+    expect(parsed.complete).toBe(false);
+
+    expect(parseSystemResources(null)).toEqual({
+      by_type: [],
+      by_plan: [],
+      top_tenants: [],
+      tenants: [],
+      over_limit: [],
+      next_cursor: null,
+      complete: false,
+    });
+  });
+
+  it("parses limit override response", () => {
+    expect(
+      parseTenantLimitOverrideResponse({ gate: "agents", workspace_ids: ["ws-1", "ws-2"] }),
+    ).toEqual({ gate: "agents", workspace_ids: ["ws-1", "ws-2"] });
+    expect(parseTenantLimitOverrideResponse({})).toBeNull();
+  });
+
+  it("parses runtimes page, strips raw device_info/metadata/ip, and falls back for unknown status", () => {
+    const page = parseRuntimePage({
+      runtimes: [
+        {
+          id: "rt-1",
+          name: "laptop",
+          workspace_id: "ws-1",
+          tenant_id: "t-1",
+          status: "online",
+          os: "darwin",
+          daemon_version: "0.9.1",
+          agent_version: "0.4.2",
+          owner_id: "u-1",
+          disabled: false,
+          running_tasks: 1,
+          last_seen_at: "2026-11-19T10:00:00Z",
+          created_at: "2026-11-01T00:00:00Z",
+          ip: "10.0.0.1",
+          device_info: "secret host",
+          metadata: { host: "secret" },
+        },
+        { id: "rt-2", status: "rebooting" },
+      ],
+      next_cursor: "cur-rt",
+    });
+    expect(page.runtimes).toHaveLength(2);
+    expect(page.runtimes[0]).not.toHaveProperty("ip");
+    expect(page.runtimes[0]).not.toHaveProperty("device_info");
+    expect(page.runtimes[0]).not.toHaveProperty("metadata");
+    expect(page.runtimes[1]?.status).toBe("unknown");
+    expect(page.next_cursor).toBe("cur-rt");
+
+    expect(parseRuntimePage("bad")).toEqual({ runtimes: [], next_cursor: null });
+
+    const detail = parseRuntimeDetail({
+      id: "rt-1",
+      name: "laptop",
+      status: "offline",
+      disabled: true,
+      failed_tasks_7d: 3,
+      tasks: [{ id: "task-1", status: "failed", has_error: true, error: "secret stack" }],
+      audit_events: null,
+    });
+    expect(detail?.disabled).toBe(true);
+    expect(detail?.failed_tasks_7d).toBe(3);
+    expect(detail?.tasks[0]).not.toHaveProperty("error");
+    expect(detail?.audit_events).toEqual([]);
+    expect(parseRuntimeDetail(null)).toBeNull();
+
+    expect(parseSetRuntimeStatusResponse({ changed: true, disabled: true })).toEqual({
+      changed: true,
+      disabled: true,
+    });
+    expect(
+      parseRuntimeUnregisterResponse({ request_id: "dr-1", state: "pending" }),
+    ).toEqual({ request_id: "dr-1", state: "pending" });
   });
 });

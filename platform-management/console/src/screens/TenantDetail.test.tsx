@@ -7,6 +7,8 @@ import { TenantDetail } from "./TenantDetail";
 const mockUseMe = vi.fn();
 const mockUseTenant = vi.fn();
 const mockUseTenantUsers = vi.fn();
+const mockUseTenantResources = vi.fn();
+const mockSetTenantLimitOverrideMutateAsync = vi.fn();
 const mockDeleteTenantNowMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
@@ -14,6 +16,12 @@ vi.mock("../api/hooks", () => ({
   useTenant: (id?: string) => mockUseTenant(id),
   useTenantUsers: (tenantId?: string, filters?: Record<string, unknown>) =>
     mockUseTenantUsers(tenantId, filters),
+  useTenantResources: (tenantId?: string, enabled = true) =>
+    mockUseTenantResources(tenantId, enabled),
+  useSetTenantLimitOverride: () => ({
+    mutateAsync: mockSetTenantLimitOverrideMutateAsync,
+    isPending: false,
+  }),
   useDeleteTenantNow: () => ({
     mutateAsync: mockDeleteTenantNowMutateAsync,
     isPending: false,
@@ -76,6 +84,17 @@ describe("TenantDetail screen", () => {
       hasNextPage: false,
       fetchNextPage: vi.fn(),
       isFetchingNextPage: false,
+    });
+    mockUseTenantResources.mockReturnValue({
+      data: {
+        tenant_id: "t-1",
+        resources: [],
+        workspaces: [],
+        complete: true,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
     });
   });
 
@@ -240,5 +259,162 @@ describe("TenantDetail screen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "View" }));
     expect(onSelectUser).toHaveBeenCalledWith("u-1");
+  });
+
+  it("resource bars show used limit percent and warning over states", async () => {
+    const user = userEvent.setup();
+    loaded(tenant);
+    mockUseTenantResources.mockReturnValue({
+      data: {
+        tenant_id: "t-1",
+        complete: true,
+        resources: [
+          { type: "members", label: "Members", unit: "count", used: 3, limit: 10, percent: 30, state: "ok", trend_7d: [] },
+          { type: "agents", label: "Agents", unit: "count", used: 8, limit: 10, percent: 80, state: "warning", trend_7d: [] },
+          { type: "runtimes", label: "Runtimes", unit: "count", used: 12, limit: 10, percent: 120, state: "over", trend_7d: [] },
+          { type: "issue_count", label: "Issues", unit: "count", used: 50, limit: null, percent: null, state: "ok", trend_7d: [] },
+        ],
+        workspaces: [
+          {
+            workspace_id: "w-1",
+            workspace_name: "Main workspace",
+            plan_key: "pro",
+            resources: [
+              { type: "agents", label: "Agents", unit: "count", used: 8, limit: 10, percent: 80, state: "warning", trend_7d: [] },
+            ],
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <TenantDetail
+        tenantId="t-1"
+        onBack={vi.fn()}
+        onSelectWorkspace={vi.fn()}
+        userRole="system_admin"
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Resources/i }));
+
+    expect(mockUseTenantResources).toHaveBeenCalledWith("t-1", true);
+
+    const membersRow = screen.getByTestId("resource-row-members");
+    expect(membersRow).toHaveTextContent("3 / 10");
+    expect(membersRow).toHaveTextContent("30%");
+    expect(membersRow).toHaveTextContent("OK");
+
+    const agentsRow = screen.getByTestId("resource-row-agents");
+    expect(agentsRow).toHaveTextContent("8 / 10");
+    expect(agentsRow).toHaveTextContent("80%");
+    expect(agentsRow).toHaveTextContent("Warning");
+    expect(agentsRow).toHaveAttribute("data-resource-state", "warning");
+
+    const runtimesRow = screen.getByTestId("resource-row-runtimes");
+    expect(runtimesRow).toHaveTextContent("12 / 10");
+    expect(runtimesRow).toHaveTextContent("120%");
+    expect(runtimesRow).toHaveTextContent("Over limit");
+    expect(runtimesRow).toHaveAttribute("data-resource-state", "over");
+
+    const issuesRow = screen.getByTestId("resource-row-issue_count");
+    expect(issuesRow).toHaveTextContent("50 / Unlimited");
+  });
+
+  it("limit override form hidden for admin", async () => {
+    const user = userEvent.setup();
+    loaded(tenant);
+
+    const { unmount } = render(
+      <TenantDetail
+        tenantId="t-1"
+        onBack={vi.fn()}
+        onSelectWorkspace={vi.fn()}
+        userRole="admin"
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Resources/i }));
+    expect(screen.queryByRole("button", { name: /Set extra limit/i })).not.toBeInTheDocument();
+    unmount();
+
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-supp", email: "support@example.com", role: "support", tenant_id: null },
+    });
+    const { unmount: unmountSupp } = render(
+      <TenantDetail
+        tenantId="t-1"
+        onBack={vi.fn()}
+        onSelectWorkspace={vi.fn()}
+        userRole="support"
+      />,
+    );
+    await user.click(screen.getByRole("tab", { name: /Resources/i }));
+    expect(screen.queryByRole("button", { name: /Set extra limit/i })).not.toBeInTheDocument();
+    unmountSupp();
+  });
+
+  it("allows system_admin and billing to set and release limit overrides", async () => {
+    const user = userEvent.setup();
+    loaded(tenant);
+    mockSetTenantLimitOverrideMutateAsync.mockResolvedValue({
+      gate: "agents",
+      workspace_ids: ["w-1", "w-2"],
+    });
+
+    render(
+      <TenantDetail
+        tenantId="t-1"
+        onBack={vi.fn()}
+        onSelectWorkspace={vi.fn()}
+        userRole="billing"
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Resources/i }));
+    const openBtn = screen.getByRole("button", { name: /Set extra limit/i });
+    expect(openBtn).toBeInTheDocument();
+    await user.click(openBtn);
+
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Extra limit value/i), {
+      target: { value: "25" },
+    });
+    fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
+      target: { value: "Enterprise add-on" },
+    });
+    await user.click(within(dialog).getByRole("button", { name: /Save limit/i }));
+
+    await waitFor(() => {
+      expect(mockSetTenantLimitOverrideMutateAsync).toHaveBeenCalledWith({
+        tenantId: "t-1",
+        gate: "agents",
+        value: 25,
+        workspace_ids: undefined,
+        reason: "Enterprise add-on",
+      });
+    });
+
+    // Release override (value: null)
+    await user.click(screen.getByRole("button", { name: /Set extra limit/i }));
+    const dialog2 = screen.getByRole("dialog");
+    await user.click(within(dialog2).getByLabelText(/Release limit/i));
+    fireEvent.change(within(dialog2).getByLabelText(/Reason/i), {
+      target: { value: "Contract expired" },
+    });
+    await user.click(within(dialog2).getByRole("button", { name: /Save limit/i }));
+
+    await waitFor(() => {
+      expect(mockSetTenantLimitOverrideMutateAsync).toHaveBeenLastCalledWith({
+        tenantId: "t-1",
+        gate: "agents",
+        value: null,
+        workspace_ids: undefined,
+        reason: "Contract expired",
+      });
+    });
   });
 });

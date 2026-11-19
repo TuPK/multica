@@ -13,12 +13,14 @@ import {
   Building2,
   CreditCard,
   FileText,
+  Gauge,
   Inbox,
   Layers,
   LayoutGrid,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  Server,
   Shield,
   Trash2,
   UserPlus,
@@ -60,6 +62,9 @@ export function Layout({
 
   const isSystemAdmin = user.role === "system_admin";
   const canSeeOverview = user.role !== "admin";
+  const canSeeResources = isSystemAdmin;
+  const canSeeRuntimes =
+    isSystemAdmin || user.role === "admin" || user.role === "support";
   const canSeePlans = isSystemAdmin || user.role === "admin";
   const canSeeDeletionRequests = isSystemAdmin || user.role === "admin";
   const canSeeOrders = isSystemAdmin || user.role === "admin" || user.role === "billing";
@@ -85,6 +90,8 @@ export function Layout({
         { id: "tenants", label: "Tenants", icon: Building2 },
         { id: "workspaces", label: "Workspaces", icon: LayoutGrid },
         { id: "users", label: "Users", icon: Users },
+        ...(canSeeResources ? [{ id: "resources", label: "Resources", icon: Gauge }] : []),
+        ...(canSeeRuntimes ? [{ id: "runtimes", label: "Runtimes", icon: Server }] : []),
       ],
     },
     ...(commercialItems.length > 0
@@ -187,7 +194,8 @@ export function Layout({
                     currentScreen === "workspace-detail" &&
                     !workspaceFromTenant) ||
                   (item.id === "plans" && currentScreen === "plan-history") ||
-                  (item.id === "users" && currentScreen === "user-detail");
+                  (item.id === "users" && currentScreen === "user-detail") ||
+                  (item.id === "runtimes" && currentScreen === "runtime-detail");
                 return (
                   <SideNavItem
                     key={item.id}

@@ -315,6 +315,84 @@ vi.mock("./api/hooks", () => ({
   useRemoveWorkspaceMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useChangeWorkspaceMemberRole: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateQuotaRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useTenantResources: () => ({
+    data: { tenant_id: "t-1", resources: [], workspaces: [], complete: true },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useSetTenantLimitOverride: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSystemResources: () => ({
+    data: {
+      by_type: [],
+      by_plan: [],
+      top_tenants: [],
+      tenants: [],
+      over_limit: [],
+      complete: true,
+    },
+    isLoading: false,
+    isFetching: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+    hasNextPage: false,
+    fetchNextPage: vi.fn(),
+    isFetchingNextPage: false,
+  }),
+  useRuntimes: () => ({
+    data: [
+      {
+        id: "rt-1",
+        name: "laptop-1",
+        workspace_id: "w-3",
+        tenant_id: "t-7",
+        status: "online",
+        os: "darwin",
+        daemon_version: "0.9.1",
+        agent_version: "0.4.2",
+        owner_id: "u-7",
+        disabled: false,
+        running_tasks: 0,
+        last_seen_at: "2026-11-19T00:00:00Z",
+        created_at: "2026-11-01T00:00:00Z",
+      },
+    ],
+    isLoading: false,
+    isFetching: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+    hasNextPage: false,
+    fetchNextPage: vi.fn(),
+    isFetchingNextPage: false,
+  }),
+  useRuntime: (id: string) => ({
+    data: {
+      id,
+      name: `Runtime ${id}`,
+      workspace_id: "w-3",
+      tenant_id: "t-7",
+      status: "online",
+      os: "darwin",
+      daemon_version: "0.9.1",
+      agent_version: "0.4.2",
+      owner_id: "u-7",
+      disabled: false,
+      running_tasks: 0,
+      last_seen_at: "2026-11-19T00:00:00Z",
+      created_at: "2026-11-01T00:00:00Z",
+      tasks: [],
+      failed_tasks_7d: 0,
+      audit_events: [],
+    },
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useSetRuntimeStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnregisterRuntime: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("App", () => {
@@ -406,6 +484,8 @@ describe("App", () => {
       { buttonName: /^Tenants$/i, expectedPath: "/tenants", headingName: "Tenants" },
       { buttonName: /^Workspaces$/i, expectedPath: "/workspaces", headingName: "Workspaces" },
       { buttonName: /^Users$/i, expectedPath: "/users", headingName: "Users" },
+      { buttonName: /^Resources$/i, expectedPath: "/resources", headingName: "Resources" },
+      { buttonName: /^Runtimes$/i, expectedPath: "/runtimes", headingName: "Runtimes" },
       { buttonName: /^Deletion requests$/i, expectedPath: "/deletion-requests", headingName: "Deletion requests" },
       { buttonName: /^Orders$/i, expectedPath: "/orders", headingName: "Orders" },
       { buttonName: /^Payment notices$/i, expectedPath: "/payment-notices", headingName: "Payment notices" },
@@ -448,6 +528,14 @@ describe("App", () => {
     window.history.pushState(null, "", "/orders");
     fireEvent(window, new PopStateEvent("popstate"));
     expect(screen.getByRole("heading", { name: "Orders" })).toBeInTheDocument();
+
+    window.history.pushState(null, "", "/resources");
+    fireEvent(window, new PopStateEvent("popstate"));
+    expect(screen.getByRole("heading", { name: "Resources" })).toBeInTheDocument();
+
+    window.history.pushState(null, "", "/runtimes/rt-9");
+    fireEvent(window, new PopStateEvent("popstate"));
+    expect(screen.getByRole("heading", { name: "Runtime rt-9" })).toBeInTheDocument();
   });
 
   it("redirects unauthorized direct URL access to Overview and resets pathname", () => {
@@ -638,6 +726,8 @@ describe("App", () => {
           "Tenants",
           "Workspaces",
           "Users",
+          "Resources",
+          "Runtimes",
           "Deletion requests",
           "Orders",
           "Payment notices",
@@ -651,18 +741,18 @@ describe("App", () => {
       },
       {
         role: "admin",
-        visible: ["Tenants", "Workspaces", "Users", "Deletion requests", "Orders", "Plans", "Audit Log"],
-        hidden: ["Overview", "Payment notices", "E-invoices", "Accounts", "Staff"],
+        visible: ["Tenants", "Workspaces", "Users", "Runtimes", "Deletion requests", "Orders", "Plans", "Audit Log"],
+        hidden: ["Overview", "Resources", "Payment notices", "E-invoices", "Accounts", "Staff"],
       },
       {
         role: "support",
-        visible: ["Overview", "Tenants", "Workspaces", "Users", "Audit Log"],
-        hidden: ["Deletion requests", "Orders", "Payment notices", "E-invoices", "Accounts", "Plans", "Staff"],
+        visible: ["Overview", "Tenants", "Workspaces", "Users", "Runtimes", "Audit Log"],
+        hidden: ["Resources", "Deletion requests", "Orders", "Payment notices", "E-invoices", "Accounts", "Plans", "Staff"],
       },
       {
         role: "billing",
         visible: ["Overview", "Tenants", "Workspaces", "Users", "Orders", "Payment notices", "E-invoices", "Audit Log"],
-        hidden: ["Deletion requests", "Accounts", "Plans", "Staff"],
+        hidden: ["Resources", "Runtimes", "Deletion requests", "Accounts", "Plans", "Staff"],
       },
     ];
 

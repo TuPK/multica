@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getApiErrorMessage, getMemberChangeErrorMessage, PlatformApiError, platformFetch } from "./client";
+import {
+  getApiErrorMessage,
+  getLimitOverrideErrorMessage,
+  getMemberChangeErrorMessage,
+  PlatformApiError,
+  platformFetch,
+} from "./client";
 
 function mockFetch(response: Response) {
   const fn = vi.fn<typeof fetch>().mockResolvedValue(response);
@@ -219,5 +225,32 @@ describe("platformFetch error mapping", () => {
         "fallback",
       ),
     ).toBe("Server said no");
+  });
+
+  it("maps limit override error codes to clear guidance", () => {
+    expect(
+      getLimitOverrideErrorMessage(
+        new PlatformApiError(400, "limit_gate_invalid", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/valid plan limit gate/i);
+    expect(
+      getLimitOverrideErrorMessage(
+        new PlatformApiError(400, "limit_value_invalid", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/non-negative/i);
+    expect(
+      getLimitOverrideErrorMessage(
+        new PlatformApiError(400, "reason_required", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/reason/i);
+    expect(
+      getLimitOverrideErrorMessage(
+        new PlatformApiError(400, "other_code", "Raw server error"),
+        "fallback",
+      ),
+    ).toBe("Raw server error");
   });
 });

@@ -1493,3 +1493,276 @@ export function parseMemberChangeResponse(
 export function parseQuotaRequest(data: unknown, endpoint: string): QuotaRequest | null {
   return parseWithFallback<QuotaRequest | null>(data, QuotaRequestSchema, null, { endpoint });
 }
+
+// Resources, limit overrides, and runtimes (R6 / S25)
+
+function nullableArray<T extends z.ZodTypeAny>(item: T) {
+  return z
+    .array(item)
+    .nullish()
+    .transform((v) => v ?? []);
+}
+
+export const LIMIT_GATES = [
+  "issue_count",
+  "autopilot_runs",
+  "agents",
+  "runtimes",
+  "storage_bytes",
+  "api_rate_per_minute",
+  "audit_retention_days",
+  "member_groups",
+  "max_workspaces",
+] as const;
+export type LimitGate = (typeof LIMIT_GATES)[number];
+
+export const TenantLimitOverrideResponseSchema = z.object({
+  gate: z.string(),
+  workspace_ids: nullableArray(z.string()),
+});
+export type TenantLimitOverrideResponse = z.output<typeof TenantLimitOverrideResponseSchema>;
+
+export function parseTenantLimitOverrideResponse(
+  data: unknown,
+): TenantLimitOverrideResponse | null {
+  return parseWithFallback<TenantLimitOverrideResponse | null>(
+    data,
+    TenantLimitOverrideResponseSchema,
+    null,
+    { endpoint: "POST /api/platform/tenants/{id}/limit-overrides" },
+  );
+}
+
+export const RESOURCE_STATES = ["ok", "warning", "over"] as const;
+export type ResourceState = (typeof RESOURCE_STATES)[number] | "unknown";
+
+export const ResourceUsageItemSchema = z
+  .object({
+    type: text,
+    label: text,
+    unit: text,
+    used: count,
+    limit: z.number().nullable().default(null),
+    percent: z.number().nullable().default(null),
+    state: optionalEnumOf(RESOURCE_STATES),
+    status: optionalEnumOf(RESOURCE_STATES),
+    trend_7d: nullableArray(z.number()),
+  })
+  .transform(({ status, state, ...rest }) => ({
+    ...rest,
+    state: state ?? status ?? ("unknown" as const),
+  }));
+export type ResourceUsageItem = z.output<typeof ResourceUsageItemSchema>;
+
+export const TenantWorkspaceResourceSchema = z.object({
+  workspace_id: text,
+  workspace_name: text,
+  plan_key: text,
+  resources: nullableArray(ResourceUsageItemSchema),
+});
+export type TenantWorkspaceResource = z.output<typeof TenantWorkspaceResourceSchema>;
+
+export const TenantResourcesSchema = z
+  .object({
+    tenant_id: text,
+    resources: nullableArray(ResourceUsageItemSchema).optional(),
+    totals: nullableArray(ResourceUsageItemSchema).optional(),
+    workspaces: nullableArray(TenantWorkspaceResourceSchema),
+    complete: z.boolean().default(false),
+  })
+  .transform(({ resources, totals, ...rest }) => ({
+    ...rest,
+    resources: resources ?? totals ?? [],
+  }));
+export type TenantResources = z.output<typeof TenantResourcesSchema>;
+
+export function parseTenantResources(data: unknown): TenantResources | null {
+  return parseWithFallback<TenantResources | null>(data, TenantResourcesSchema, null, {
+    endpoint: "GET /api/platform/tenants/{id}/resources",
+  });
+}
+
+export const SystemResourceTypeSummarySchema = z.object({
+  type: text,
+  label: text,
+  unit: text,
+  used: count,
+  limit: z.number().nullable().default(null),
+  percent: z.number().nullable().default(null),
+});
+export type SystemResourceTypeSummary = z.output<typeof SystemResourceTypeSummarySchema>;
+
+export const SystemResourcePlanSummarySchema = z.object({
+  plan_key: text,
+  tenant_count: count,
+  workspace_count: count,
+  totals: z.record(z.string(), z.number()).default({}),
+});
+export type SystemResourcePlanSummary = z.output<typeof SystemResourcePlanSummarySchema>;
+
+export const SystemTopTenantSchema = z
+  .object({
+    tenant_id: text,
+    tenant_name: text,
+    best_plan_key: text,
+    workspace_count: count,
+    members: count,
+    agents: count,
+    runtimes: count,
+    issues_total: count,
+    storage_bytes: count,
+    autopilot_runs: count,
+    state: optionalEnumOf(RESOURCE_STATES),
+    status: optionalEnumOf(RESOURCE_STATES),
+    resources: nullableArray(ResourceUsageItemSchema),
+  })
+  .transform(({ status, state, ...rest }) => ({
+    ...rest,
+    state: state ?? status ?? ("unknown" as const),
+  }));
+export type SystemTopTenant = z.output<typeof SystemTopTenantSchema>;
+
+export const OverLimitResourceSchema = z
+  .object({
+    tenant_id: text,
+    tenant_name: text,
+    workspace_id: text,
+    workspace_name: text,
+    type: text,
+    used: count,
+    limit: z.number().nullable().default(null),
+    percent: z.number().nullable().default(null),
+    state: optionalEnumOf(RESOURCE_STATES),
+    status: optionalEnumOf(RESOURCE_STATES),
+  })
+  .transform(({ status, state, ...rest }) => ({
+    ...rest,
+    state: state ?? status ?? ("unknown" as const),
+  }));
+export type OverLimitResource = z.output<typeof OverLimitResourceSchema>;
+
+export const SystemResourcesSchema = z
+  .object({
+    by_type: nullableArray(SystemResourceTypeSummarySchema),
+    by_plan: nullableArray(SystemResourcePlanSummarySchema),
+    top_tenants: nullableArray(SystemTopTenantSchema).optional(),
+    top: nullableArray(SystemTopTenantSchema).optional(),
+    tenants: nullableArray(SystemTopTenantSchema),
+    over_limit: nullableArray(OverLimitResourceSchema),
+    next_cursor: nextCursor,
+    complete: z.boolean().default(false),
+  })
+  .transform(({ top_tenants, top, ...rest }) => ({
+    ...rest,
+    top_tenants: top_tenants ?? top ?? [],
+  }));
+export type SystemResources = z.output<typeof SystemResourcesSchema>;
+
+export function parseSystemResources(data: unknown): SystemResources {
+  return parseWithFallback<SystemResources>(
+    data,
+    SystemResourcesSchema,
+    {
+      by_type: [],
+      by_plan: [],
+      top_tenants: [],
+      tenants: [],
+      over_limit: [],
+      next_cursor: null,
+      complete: false,
+    },
+    { endpoint: "GET /api/platform/resources" },
+  );
+}
+
+export const RUNTIME_STATUSES = ["online", "offline"] as const;
+export type RuntimeStatus = (typeof RUNTIME_STATUSES)[number] | "unknown";
+
+export const RUNTIME_TASK_STATUSES = [
+  "queued",
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "canceled",
+  "cancelled",
+] as const;
+export type RuntimeTaskStatus = (typeof RUNTIME_TASK_STATUSES)[number] | "unknown";
+
+export const RuntimeSchema = z.object({
+  id: z.string(),
+  name: text,
+  workspace_id: text,
+  tenant_id: text,
+  status: enumOf(RUNTIME_STATUSES),
+  os: text,
+  daemon_version: text,
+  agent_version: text,
+  owner_id: text,
+  disabled: z.boolean().default(false),
+  running_tasks: count,
+  last_seen_at: nullableText,
+  created_at: text,
+});
+export type Runtime = z.output<typeof RuntimeSchema>;
+
+export const RuntimePageSchema = z.object({
+  runtimes: nullableArray(RuntimeSchema),
+  next_cursor: nextCursor,
+});
+export type RuntimePage = z.output<typeof RuntimePageSchema>;
+
+export const RuntimeTaskSchema = z.object({
+  id: z.string(),
+  status: enumOf(RUNTIME_TASK_STATUSES),
+  has_error: z.boolean().default(false),
+  created_at: text,
+  completed_at: nullableText,
+});
+export type RuntimeTask = z.output<typeof RuntimeTaskSchema>;
+
+export const RuntimeDetailSchema = RuntimeSchema.extend({
+  tasks: nullableArray(RuntimeTaskSchema),
+  failed_tasks_7d: count,
+  audit_events: nullableArray(AuditEventSchema),
+});
+export type RuntimeDetail = z.output<typeof RuntimeDetailSchema>;
+
+export const SetRuntimeStatusResponseSchema = z.object({
+  changed: z.boolean().default(false),
+  disabled: z.boolean().default(false),
+});
+export type SetRuntimeStatusResponse = z.output<typeof SetRuntimeStatusResponseSchema>;
+
+export function parseRuntimePage(data: unknown): RuntimePage {
+  return parseWithFallback<RuntimePage>(
+    data,
+    RuntimePageSchema,
+    { runtimes: [], next_cursor: null },
+    { endpoint: "GET /api/platform/runtimes" },
+  );
+}
+
+export function parseRuntimeDetail(data: unknown): RuntimeDetail | null {
+  return parseWithFallback<RuntimeDetail | null>(data, RuntimeDetailSchema, null, {
+    endpoint: "GET /api/platform/runtimes/{id}",
+  });
+}
+
+export function parseSetRuntimeStatusResponse(data: unknown): SetRuntimeStatusResponse | null {
+  return parseWithFallback<SetRuntimeStatusResponse | null>(
+    data,
+    SetRuntimeStatusResponseSchema,
+    null,
+    { endpoint: "POST /api/platform/runtimes/{id}/status" },
+  );
+}
+
+export function parseRuntimeUnregisterResponse(data: unknown): DeletionStartResponse | null {
+  return parseWithFallback<DeletionStartResponse | null>(
+    data,
+    DeletionStartResponseSchema,
+    null,
+    { endpoint: "POST /api/platform/runtimes/{id}/unregister" },
+  );
+}
