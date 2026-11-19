@@ -537,6 +537,47 @@ func TestAccountDeletionJobAnonymisesAccountRequests(t *testing.T) {
 	}
 }
 
+// The job can be retried, so deleting an already deleted account must change
+// nothing and report nothing deleted.
+func TestAccountDeletionJobRunsTwiceWithoutError(t *testing.T) {
+	requirePlatformTestDatabase(t)
+	ctx := context.Background()
+	f := newDeletionFixture(t)
+	makeDue(t, f.userID)
+
+	// Everything the job writes about the account, in one comparable value.
+	snapshot := func() string {
+		var s string
+		if err := testPool.QueryRow(ctx, `SELECT
+			(SELECT to_jsonb(p)::text FROM platform_account p WHERE p.user_id = $1::uuid) ||
+			(SELECT to_jsonb(u)::text FROM "user" u WHERE u.id = $1::uuid) ||
+			(SELECT count(*)::text FROM member WHERE user_id = $1::uuid) ||
+			(SELECT count(*)::text FROM workspace WHERE id = ANY($2::uuid[])) ||
+			(SELECT count(*)::text FROM audit_event WHERE workspace_id = ANY($2::uuid[]))`,
+			f.userID, []string{f.soloWS, f.sharedWS}).Scan(&s); err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+
+	deleted, err := testHandler.DeleteAccount(ctx, f.userID, time.Now())
+	if err != nil || !deleted {
+		t.Fatalf("first run: deleted %v, err %v; want deleted, nil", deleted, err)
+	}
+	after := snapshot()
+
+	deleted, err = testHandler.DeleteAccount(ctx, f.userID, time.Now())
+	if err != nil || deleted {
+		t.Fatalf("second run: deleted %v, err %v; want false, nil", deleted, err)
+	}
+	if got := snapshot(); got != after {
+		t.Fatalf("second run changed the account state:\nafter first:  %s\nafter second: %s", after, got)
+	}
+	if status, _ := accountStatus(t, f.userID); status != "deleted" {
+		t.Fatalf("status = %q, want deleted", status)
+	}
+}
+
 func TestAccountDeletionJobLeavesAccountsThatAreNotDue(t *testing.T) {
 	requirePlatformTestDatabase(t)
 	ctx := context.Background()
