@@ -29,7 +29,7 @@ cd platform-management
 PLATFORM_TEST_DATABASE_URL="$TESTDSN" DATABASE_URL="$TESTDSN" go test ./internal/entitlement/ ./internal/trust/ ./internal/accountrequest/ ./audit/ ./internal/subscription/ ./internal/plan/ ./cmd/platform-server/ -count=1 -p 1
 ```
 
-Result of the final run of the packages touched by this batch: see the session log; each named test above was run and passed at its commit.
+Final run of the packages touched by this batch, against `multica_platform_test`: `internal/entitlement`, `internal/trust`, `internal/accountrequest`, `audit`, `internal/subscription`, `internal/plan`, `cmd/platform-server`: all `ok`.
 
 ## Open
 
