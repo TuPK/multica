@@ -56,11 +56,32 @@ test.describe("API refusals the screens cannot send", () => {
   });
 
   test("flow 228: an e-invoice retry while the provider is not configured is refused with einvoice_provider_not_configured", async () => {
-    const res = await admin.post(`${CONSOLE_BASE}/api/platform/einvoices/${randomUUID()}/retry`, {
-      headers: ORIGIN,
-      data: { reason: "e2e provider check" },
-    });
-    await expectCode(res, 503, "einvoice_provider_not_configured");
+    // The invoice must exist: the server looks it up before it checks the provider.
+    const orderId = randomUUID();
+    const pool = new pg.Pool({ connectionString: testDatabaseUrl(), max: 1 });
+    try {
+      await pool.query(
+        `INSERT INTO einvoice_issuance (order_id, revision, workspace_id, state, provider, currency, amount, buyer)
+         VALUES ($1, 1, $2, 'failed', '', 'VND', 100000, '{}')`,
+        [orderId, randomUUID()],
+      );
+    } finally {
+      await pool.end();
+    }
+    try {
+      const res = await admin.post(`${CONSOLE_BASE}/api/platform/einvoices/${orderId}/retry`, {
+        headers: ORIGIN,
+        data: { reason: "e2e provider check" },
+      });
+      await expectCode(res, 503, "einvoice_provider_not_configured");
+    } finally {
+      const cleanup = new pg.Pool({ connectionString: testDatabaseUrl(), max: 1 });
+      try {
+        await cleanup.query("DELETE FROM einvoice_issuance WHERE order_id = $1", [orderId]);
+      } finally {
+        await cleanup.end();
+      }
+    }
   });
 
   test("flow 235: cancelling a scheduled price change when none is scheduled is refused with price_change_not_found", async () => {

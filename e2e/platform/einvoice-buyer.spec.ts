@@ -28,7 +28,10 @@ test.afterAll(async () => {
   await admin?.dispose();
   const pool = new pg.Pool({ connectionString: testDatabaseUrl(), max: 1 });
   try {
-    if (orderIds.length > 0) await pool.query("DELETE FROM einvoice_issuance WHERE order_id = ANY($1)", [orderIds]);
+    if (orderIds.length > 0) {
+      await pool.query("DELETE FROM einvoice_issuance WHERE order_id = ANY($1)", [orderIds]);
+      await pool.query("DELETE FROM billing_order WHERE id = ANY($1)", [orderIds]);
+    }
   } finally {
     await pool.end();
   }
@@ -88,5 +91,34 @@ test.describe("e-invoice retry refusals", () => {
     expect(res.status()).toBe(409);
     expect((await res.json()).code).toBe("einvoice_state_conflict");
     expect(await stateOf(orderId)).toBe("issued");
+  });
+
+  test("flow 73: the order's e-invoice history lists its revision with its state", async () => {
+    // The order must exist for the history to be read; the schema has no foreign keys, so one row is seeded.
+    const orderId = randomUUID();
+    const pool = new pg.Pool({ connectionString: testDatabaseUrl(), max: 1 });
+    try {
+      await pool.query(
+        `INSERT INTO billing_order (id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency,
+                                    status, provider, transfer_code, buyer, expires_at, created_at, period_start, period_end)
+         VALUES ($1, $2, 'subscribe', 'pro', 'month', 1, 100000, 0, 'VND', 'paid', 'sepay', $3, '{}',
+                 now() + interval '7 days', now(), now(), now() + interval '1 month')`,
+        [orderId, randomUUID(), `E2E${orderId.replace(/-/g, "").slice(0, 12).toUpperCase()}`],
+      );
+      await pool.query(
+        `INSERT INTO einvoice_issuance (order_id, revision, workspace_id, state, provider, currency, amount, buyer)
+         VALUES ($1, 1, $2, 'failed', 'sepay', 'VND', 100000, '{}')`,
+        [orderId, randomUUID()],
+      );
+    } finally {
+      await pool.end();
+    }
+    orderIds.push(orderId);
+    const res = await admin.get(`${CONSOLE_BASE}/api/platform/orders/${orderId}/einvoices`);
+    expect(res.status(), `history answered: ${await res.text()}`).toBe(200);
+    const body = (await res.json()) as unknown;
+    const list = (Array.isArray(body) ? body : (body as { einvoices?: unknown[] }).einvoices ?? []) as { state: string; revision: number }[];
+    expect(list.length).toBe(1);
+    expect(list[0]).toMatchObject({ revision: 1, state: "failed" });
   });
 });

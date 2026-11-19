@@ -77,7 +77,7 @@ Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` =
 | 146 | Layout.tsx | support nav hides restricted screens | covered | support sees only the screens its role allows |
 | 146 | Layout.tsx | billing nav hides restricted screens | covered | billing sees the billing screens |
 | 146 | App.tsx | admin opens Staff and Accounts | covered | an admin opens the Staff and Accounts screens |
-| 146 | Layout.tsx | mobile layout without horizontal scroll (Tenants) | fixme | the Tenants screen fits a 375 by 667 phone |
+| 146 | Layout.tsx | mobile layout without horizontal scroll (Tenants) | covered | edge: the Tenants screen fits a 375 by 667 phone without horizontal scrolling |
 | 13 | Layout.tsx | reload keeps session | covered | a reload keeps the admin signed in |
 | 0 | ErrorState.tsx | error state renders | covered | the users list shows the error state |
 | 0 | ErrorState.tsx | Try again reloads after a failed request | covered | the error state's Try again button loads the overview |
@@ -107,7 +107,7 @@ Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` =
 | 22 | Console UserDetail | Staff force-revokes all user sessions with realtime WS disconnect | covered | Sign out everywhere asks for a reason |
 | 23 | Console UserDetail | Staff resets another user's MFA with email notification | covered | flow 23: the reset emails the user that two-step sign-in was turned off |
 | 24 | Console Accounts screen | Admin creates provisioned account request, cancels pending request, or resends welcome email (and customer signs in with ALLOW_SIGNUP=false) | covered | flow 24: each request state shows its own label in the accounts list |
-| 25 | Console Accounts screen | Admin welcome email resend records spec audit action account.welcome_resent [NOT BUILT] | gap | NOT BUILT: spec feature not built (welcome resend audit action) |
+| 25 | Console Accounts screen | Admin welcome email resend records spec audit action account.welcome_resent | covered | flow 25: a welcome resend that is sent answers 200 and records account.welcome_resent in the audit log |
 | 26 | Console Overview -> Tenants -> TenantDetail / Audit | Staff views platform overview KPIs, searches tenants, inspects tenant metadata, views audit logs, and adds internal notes | covered | flow 26: the audit log shows its columns and the action filter narrows the list |
 | 27 | Console TenantDetail | Staff changes tenant workspace status (active, read_only, suspended, pending_deletion) | covered | staff changes a workspace status with a reason |
 | 60 | Console PaymentNotices screen | Staff inspects payment notice queue and resolves notice onto candidate pending order | covered | flow 60: billing matches a payment notice to a pending order in a dialog |
@@ -116,10 +116,10 @@ Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` =
 | 63 | Console TenantDetail | Staff views, edits, verifies, and unverifies tenant billing profile | covered | flow 63: staff edits the billing profile in a dialog and the saved legal name is shown |
 | 64 | Console TenantDetail | Staff inspects tenant usage, writes off unpaid usage order (admin), and overrides tenant subscription | covered | flow 64: staff overrides the tenant subscription with a reason and the dialog closes |
 | 65 | Console Plans.tsx (unrouted) or API | Admin lists, updates non-price plan metadata, and deletes unused plan via Console API / unrouted Plans.tsx | covered | flow 65: staff edits a plan's name, and the catalogue shows the new name |
-| 66 | Console Plans screen or API | Admin creates a new or private plan via POST /api/platform/plans [NOT BUILT] | gap | NOT BUILT: spec feature not built (POST /api/platform/plans) |
+| 66 | Console Plans screen or API | Admin creates a new or private plan via POST /api/platform/plans | covered | flow 66: an admin creates a private plan with POST and it is stored under its key |
 | 67 | Console PriceSchedule.tsx (unrouted) or API | Admin previews (?dry_run=1), schedules, views history, and cancels plan price change | covered | flow 67: staff previews a price change, and nothing is scheduled |
 | 72 | Console EinvoiceFailures screen | Billing or admin staff lists e-invoices in Console EinvoiceFailures screen | covered | the e-invoice screen shows its state tabs and switches between them |
-| 73 | Console EinvoiceFailures screen or API | Billing or admin staff inspects single order e-invoice revision history via GET /api/platform/einvoices/{orderId} [NOT BUILT] | gap | NOT BUILT: spec feature not built (single order revision history) |
+| 73 | Console EinvoiceFailures screen or API | Billing or admin staff inspects single order e-invoice revision history via GET /api/platform/orders/{orderId}/einvoices | covered | flow 73: the order's e-invoice history lists its revision with its state |
 | 76 | Console API POST /api/platform/einvoices/{orderId}/retry | Billing or admin staff retries failed or needs_info e-invoice via POST /api/platform/einvoices/{orderId}/retry with live provider [NOT BUILT] | gap | DROPPED (user decision): the e-invoice retry flow was removed; no test is planned |
 | 77 | Console API POST /api/platform/einvoices/{orderId}/replace | Admin replaces issued e-invoice via POST /api/platform/einvoices/{orderId}/replace with live provider [NOT BUILT] | gap | DROPPED (user decision): the e-invoice replace and cancel flows were removed; no test is planned |
 | 78 | Console EinvoiceFailures screen | Billing or admin staff triggers Retry, Cancel, or Replace from Console EinvoiceFailures UI [NOT BUILT] | gap | DROPPED (user decision): the e-invoice replace and cancel flows were removed; no test is planned |
@@ -151,7 +151,7 @@ Status: `covered` = a passing test exists (UI or API in e2e/platform); `fixme` =
 | 236 | Console PriceSchedule | Admin schedules price delta above PLATFORM_PRICE_CONFIRM_PCT without confirmation (price_change_confirm_required) | covered | flow 236: a price change above the 50% threshold cannot be scheduled until it is confirmed |
 | 237 | Console PriceSchedule | Admin schedules price increase shorter than PLATFORM_PRICE_NOTICE_DAYS for paid subscribers (price_notice_too_short) | covered | flow 237: a price increase on a plan with paid subscribers, effective before the notice period, is refused with price_notice_too_short |
 | 238 | Console Plans / API | Admin changes currency on plan referenced by subscriptions or orders (plan_currency_locked) | covered | flow 238: a currency change on a plan that has orders is refused in the edit dialog |
-| 239 | Console Plans / API | Admin updates plan with stale expected_version returning 409 plan_version_conflict [NOT BUILT] | gap | NOT BUILT: spec feature not built (expected_version conflict) |
+| 239 | Console Plans / API | Admin updates plan with stale expected_version returning 409 plan_version_conflict | covered | flow 239: a plan update with a stale expected_version is refused with plan_version_conflict |
 | 240 | Console Plans / API | Admin deletes plan still referenced by subscriptions (plan_in_use) | covered | flow 240: deleting a plan that a subscription still uses is refused with plan_in_use |
 | 241 | Console TenantDetail / API | Staff assigns archived plan in tenant subscription override (plan_archived) | covered | flow 241: a tenant subscription override to an archived plan is refused with plan_archived |
 | 242 | Console TenantDetail / API | Staff assigns unknown plan_key in tenant subscription override (unknown_plan) | covered | flow 64: an unknown plan key is refused and the subscription dialog stays open |

@@ -23,8 +23,7 @@ test.describe("platform API identity boundary", () => {
   });
 
   // Product failure: the internal route answers 200 for a malformed X-User-ID.
-  // Kept as fixme until the platform API rejects it; product code is not changed here.
-  test.fixme("flow 276: a malformed X-User-ID on an internal route is unauthorized", async ({ request }) => {
+  test("flow 276: a malformed X-User-ID on an internal route is unauthorized", async ({ request }) => {
     const res = await request.get(`${API_BASE}/api/v1/internal/entitlement-policies/00000000-0000-0000-0000-000000000001`, {
       headers: { "X-User-ID": "not-a-uuid" },
     });
