@@ -71,6 +71,36 @@ vi.mock("./api/hooks", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useOrders: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useOrderEinvoices: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useConfirmOrder: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCancelOrder: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  usePutPlan: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDeletePlan: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useEinvoices: () => ({
     data: [],
     isLoading: false,
@@ -231,5 +261,36 @@ describe("App", () => {
     expect(einvoicesTab).toBeInTheDocument();
     fireEvent.click(einvoicesTab);
     expect(screen.getByRole("heading", { name: "E-invoices" })).toBeInTheDocument();
+  });
+
+  it("clicking each nav item renders its own screen, not Overview", () => {
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Orders$/i }));
+    expect(screen.getByRole("heading", { name: "Orders" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Platform Overview" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Plans$/i }));
+    expect(screen.getByRole("heading", { name: "Plans Catalogue" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Platform Overview" })).not.toBeInTheDocument();
+  });
+
+  it("role gating: billing sees Orders but not Plans", () => {
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-billing", email: "billing@example.com", role: "billing" },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<App />);
+    expect(screen.queryByRole("button", { name: /^Plans$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Orders$/i }));
+    expect(screen.getByRole("heading", { name: "Orders" })).toBeInTheDocument();
   });
 });
