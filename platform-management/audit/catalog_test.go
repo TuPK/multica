@@ -57,6 +57,8 @@ func TestAuditCatalogHasDeletionActions(t *testing.T) {
 	for want, got := range map[string]string{
 		"workspace.immediate_deletion_requested": ActionWorkspaceImmediateDeletionRequested,
 		"account.immediate_deletion_requested":   ActionAccountImmediateDeletionRequested,
+		"member.staff_remove_requested":          ActionMemberStaffRemoveRequested,
+		"member.staff_role_change_requested":     ActionMemberStaffRoleChangeRequested,
 		"tenant.immediate_deletion_requested":    ActionTenantImmediateDeletionRequested,
 		"tenant.deleted":                         ActionTenantDeleted,
 		"deletion.request_failed":                ActionDeletionRequestFailed,

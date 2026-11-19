@@ -47,6 +47,9 @@ const (
 	ActionPlanHistoryRead      = "plans.history"            // M32
 	ActionWorkspacesList       = "workspaces.list"          // M33
 	ActionWorkspaceExport      = "workspaces.export"        // M34
+	ActionTenantUsersRead      = "tenant_users.read"        // M35
+	ActionMembersRemove        = "members.remove"           // M36
+	ActionMembersChangeRole    = "members.change_role"      // M37
 )
 
 // roleOrder is the order of RolesWith and of the columns of matrix.
@@ -62,6 +65,9 @@ var matrix = map[string][4]Access{
 	ActionPlanHistoryRead:      {All, None, None, All},
 	ActionWorkspacesList:       {All, Own, All, All},
 	ActionWorkspaceExport:      {All, Own, None, None},
+	ActionTenantUsersRead:      {All, Own, All, All},
+	ActionMembersRemove:        {All, Own, None, None},
+	ActionMembersChangeRole:    {All, Own, None, None},
 	ActionPriceChangeManage:    {All, None, None, None},
 	ActionPriceChangeRead:      {All, None, None, All},
 	ActionAccountRequests:      {All, None, None, None},

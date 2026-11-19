@@ -113,9 +113,14 @@ type fakeReader struct {
 	userTenant    map[string]string // user id -> tenant id of one of its workspaces
 	scopeChecks   []string          // the workspaces WorkspaceInScope was asked about
 
-	lastTenants        TenantSearch
-	workspaceList      []WorkspaceListRow
-	lastWorkspaces     WorkspaceSearch
+	lastTenants    TenantSearch
+	workspaceList  []WorkspaceListRow
+	lastWorkspaces WorkspaceSearch
+	tenantUsers    []TenantUser
+	// memberRoles is keyed workspace id + "/" + user id; staffUsers holds active staff.
+	memberRoles        map[string]string
+	memberMail         map[string]string
+	staffUsers         map[string]bool
 	lastGetTenantScope Scope
 	lastOrderScope     Scope
 	lastUsers          UserSearch
@@ -183,6 +188,44 @@ func sortOrders(rows []OrderRow, newestFirst bool) {
 		}
 		return rows[i].CreatedAt.Before(rows[j].CreatedAt)
 	})
+}
+
+// TenantUsers returns the fake tenant users; the handler filters staff.
+func (r *fakeReader) TenantUsers(_ context.Context, q TenantUserSearch) ([]TenantUser, error) {
+	var out []TenantUser
+	for _, u := range r.tenantUsers {
+		if u.ID > q.CursorUserID {
+			out = append(out, u)
+		}
+	}
+	return out, nil
+}
+
+// TenantUser returns a fake tenant user whose memberships are in the tenant.
+func (r *fakeReader) TenantUser(_ context.Context, tenantID, userID string) (TenantUser, bool, error) {
+	for _, u := range r.tenantUsers {
+		if u.ID == userID {
+			return u, true, nil
+		}
+	}
+	return TenantUser{}, false, nil
+}
+
+// WorkspaceMember returns the fake member row.
+func (r *fakeReader) WorkspaceMember(_ context.Context, wsID, userID string) (string, string, bool, error) {
+	role, ok := r.memberRoles[wsID+"/"+userID]
+	return role, r.memberMail[userID], ok, nil
+}
+
+// IsActiveStaff reports the fake staff set.
+func (r *fakeReader) IsActiveStaff(_ context.Context, userID string) (bool, error) {
+	return r.staffUsers[userID], nil
+}
+
+// InsertMemberChange records the request on the fake store and returns its id.
+func (t *fakeTx) InsertMemberChange(_ context.Context, c MemberChange, _, _ string) (string, bool, error) {
+	t.s.memberChanges = append(t.s.memberChanges, c)
+	return "change-" + c.Kind + "-" + c.TargetUserID, true, nil
 }
 
 // WorkspaceTenant returns the tenant of a fake workspace, from wsTenant.
@@ -299,6 +342,8 @@ type fakeStore struct {
 	// exports are the export rows written; running marks workspaces with one running.
 	exports []fakeExport
 	running map[string]bool
+	// memberChanges are the remove and change_role requests written.
+	memberChanges []MemberChange
 }
 
 type fakeExport struct {
@@ -341,16 +386,17 @@ func newFakeStore() *fakeStore {
 }
 
 type snapshot struct {
-	exports   []fakeExport
-	running   map[string]bool
-	accounts  map[string]string
-	sessions  map[string]time.Time
-	staffRows []fakeStaffRow
-	notes     []Note
-	audits    []audit.Entry
-	orders    map[string]billing.Order
-	subs      map[string]subscription.Subscription
-	mfaRows   map[string]bool
+	exports       []fakeExport
+	memberChanges []MemberChange
+	running       map[string]bool
+	accounts      map[string]string
+	sessions      map[string]time.Time
+	staffRows     []fakeStaffRow
+	notes         []Note
+	audits        []audit.Entry
+	orders        map[string]billing.Order
+	subs          map[string]subscription.Subscription
+	mfaRows       map[string]bool
 }
 
 func (s *fakeStore) snap() snapshot {
@@ -367,6 +413,7 @@ func (s *fakeStore) snap() snapshot {
 	c.orders, c.subs = maps.Clone(s.orders), maps.Clone(s.subs)
 	c.mfaRows = maps.Clone(s.mfaRows)
 	c.exports = append([]fakeExport(nil), s.exports...)
+	c.memberChanges = append([]MemberChange(nil), s.memberChanges...)
 	c.running = maps.Clone(s.running)
 	return c
 }
@@ -376,6 +423,7 @@ func (s *fakeStore) restore(c snapshot) {
 	s.orders, s.subs = c.orders, c.subs
 	s.mfaRows = c.mfaRows
 	s.exports, s.running = c.exports, c.running
+	s.memberChanges = c.memberChanges
 }
 
 func (s *fakeStore) orderRow(o billing.Order) OrderRow {

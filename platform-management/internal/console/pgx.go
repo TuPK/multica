@@ -1045,3 +1045,125 @@ func (t *pgxTx) InsertExport(ctx context.Context, workspaceID, requestedBy strin
 	}
 	return uuidText(id), nil
 }
+
+// TenantUsers implements Reader: one page of users, each with its memberships in the tenant.
+func (r *PgxReader) TenantUsers(ctx context.Context, q TenantUserSearch) ([]TenantUser, error) {
+	tenant, err := parseUUID(q.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.q.ListTenantUserRows(ctx, db.ListTenantUserRowsParams{
+		TenantID: tenant, Pattern: q.Pattern, CursorUserID: q.CursorUserID, RowLimit: int32(q.Limit + 1),
+	})
+	if err != nil {
+		return nil, err
+	}
+	var out []TenantUser
+	index := map[string]int{}
+	for _, row := range rows {
+		id := uuidText(row.UserID)
+		i, ok := index[id]
+		if !ok {
+			out = append(out, TenantUser{
+				ID: id, Email: row.Email, Name: row.Name, AccountStatus: row.AccountStatus,
+				IsStaff: row.IsStaff, LastLoginAt: timePtr(row.LastLoginAt),
+			})
+			i = len(out) - 1
+			index[id] = i
+		}
+		out[i].Workspaces = append(out[i].Workspaces, TenantUserWorkspace{
+			ID: uuidText(row.WorkspaceID), Name: row.WorkspaceName, Role: row.MemberRole,
+		})
+	}
+	return out, nil
+}
+
+// TenantUser implements Reader.
+func (r *PgxReader) TenantUser(ctx context.Context, tenantID, userID string) (TenantUser, bool, error) {
+	tenant, err := parseUUID(tenantID)
+	if err != nil {
+		return TenantUser{}, false, err
+	}
+	user, err := parseUUID(userID)
+	if err != nil {
+		return TenantUser{}, false, err
+	}
+	rows, err := r.q.GetTenantUserMemberships(ctx, db.GetTenantUserMembershipsParams{TenantID: tenant, ID: user})
+	if err != nil {
+		return TenantUser{}, false, err
+	}
+	if len(rows) == 0 {
+		return TenantUser{}, false, nil
+	}
+	u := TenantUser{
+		ID: userID, Email: rows[0].Email, Name: rows[0].Name, AccountStatus: rows[0].AccountStatus, IsStaff: rows[0].IsStaff,
+	}
+	for _, row := range rows {
+		u.Workspaces = append(u.Workspaces, TenantUserWorkspace{ID: uuidText(row.WorkspaceID), Name: row.WorkspaceName, Role: row.MemberRole})
+	}
+	return u, true, nil
+}
+
+// WorkspaceMember implements Reader.
+func (r *PgxReader) WorkspaceMember(ctx context.Context, workspaceID, userID string) (string, string, bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return "", "", false, err
+	}
+	user, err := parseUUID(userID)
+	if err != nil {
+		return "", "", false, err
+	}
+	row, err := r.q.GetWorkspaceMemberRole(ctx, db.GetWorkspaceMemberRoleParams{WorkspaceID: ws, UserID: user})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", false, nil
+	}
+	if err != nil {
+		return "", "", false, err
+	}
+	return row.Role, row.Email, true, nil
+}
+
+// IsActiveStaff implements Reader.
+func (r *PgxReader) IsActiveStaff(ctx context.Context, userID string) (bool, error) {
+	user, err := parseUUID(userID)
+	if err != nil {
+		return false, err
+	}
+	_, err = r.q.GetActiveStaffByUserID(ctx, user)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+// InsertMemberChange implements Tx.
+func (t *pgxTx) InsertMemberChange(ctx context.Context, c MemberChange, byID, byLabel string) (string, bool, error) {
+	ws, err := parseUUID(c.WorkspaceID)
+	if err != nil {
+		return "", false, err
+	}
+	target, err := parseUUID(c.TargetUserID)
+	if err != nil {
+		return "", false, err
+	}
+	by, err := parseUUID(byID)
+	if err != nil {
+		return "", false, err
+	}
+	row, err := t.q.InsertMemberRequest(ctx, db.InsertMemberRequestParams{
+		WorkspaceID: ws, Kind: c.Kind, TargetUserID: target, PreviousRole: c.PreviousRole,
+		Email: c.Email, Role: c.Role, RequestedBy: by, RequestedByLabel: byLabel,
+	})
+	if err == nil {
+		return uuidText(row.ID), true, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", false, err
+	}
+	live, err := t.q.GetLiveMemberRequest(ctx, db.GetLiveMemberRequestParams{WorkspaceID: ws, Kind: c.Kind, Email: c.Email})
+	if err != nil {
+		return "", false, err
+	}
+	return uuidText(live.ID), false, nil
+}

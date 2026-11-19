@@ -264,6 +264,14 @@ type Reader interface {
 	SearchWorkspaces(ctx context.Context, q WorkspaceSearch) ([]WorkspaceListRow, error)
 	// WorkspaceTenant returns the tenant id of a workspace, or "" when it has none.
 	WorkspaceTenant(ctx context.Context, workspaceID string) (string, error)
+	// TenantUsers pages the users of a tenant, by user id (spec R6 section 3b.3).
+	TenantUsers(ctx context.Context, q TenantUserSearch) ([]TenantUser, error)
+	// TenantUser returns found == false when the user is in no workspace of the tenant.
+	TenantUser(ctx context.Context, tenantID, userID string) (TenantUser, bool, error)
+	// WorkspaceMember returns the role and email of a member; found is false for a non-member.
+	WorkspaceMember(ctx context.Context, workspaceID, userID string) (role, email string, found bool, err error)
+	// IsActiveStaff reports whether the user has an active platform_staff row.
+	IsActiveStaff(ctx context.Context, userID string) (bool, error)
 	// SearchTenants pages the tenants, newest first, within q.Scope.
 	SearchTenants(ctx context.Context, q TenantSearch) ([]TenantRow, error)
 	// GetTenant returns found == false for an unknown tenant and for one outside
@@ -303,6 +311,9 @@ type Account struct {
 // Tx is the writes of one console operation, all inside one transaction with
 // its audit row.
 type Tx interface {
+	// InsertMemberChange queues a remove or change_role request. A live request
+	// for the same workspace, kind and email is returned with inserted == false.
+	InsertMemberChange(ctx context.Context, c MemberChange, byID, byLabel string) (id string, inserted bool, err error)
 	// RunningExport reports whether the workspace has a queued or running export.
 	RunningExport(ctx context.Context, workspaceID string) (bool, error)
 	// InsertExport queues an export for the workspace and returns its id.
