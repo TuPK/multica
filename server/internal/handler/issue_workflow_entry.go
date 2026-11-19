@@ -394,6 +394,22 @@ func (h *Handler) handedToAgent(ctx context.Context, prev db.Issue, params db.Up
 	return ""
 }
 
+type workflowHandoffKey struct{}
+
+// withWorkflowHandoff marks a write whose assignee the workflow engine chose
+// for a handoff step. The squad leader gate limits the assignees a leader picks
+// through the API; a step's handler is not such a pick.
+func withWorkflowHandoff(ctx context.Context, handoff bool) context.Context {
+	if !handoff {
+		return ctx
+	}
+	return context.WithValue(ctx, workflowHandoffKey{}, true)
+}
+
+func isWorkflowHandoff(ctx context.Context) bool {
+	return ctx.Value(workflowHandoffKey{}) != nil
+}
+
 // advanceRunStep moves a run's workflow step along with a status change the
 // run made itself, so its next change is judged from where it put the issue.
 func (h *Handler) advanceRunStep(ctx context.Context, run *db.AgentTaskQueue, prev, issue db.Issue) {
