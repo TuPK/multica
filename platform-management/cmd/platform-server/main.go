@@ -156,11 +156,12 @@ func run() error {
 	guard := accountguard.New(store, accountCache)
 	auth := platformauth.New(platformauth.Deps{
 		Config: platformauth.Config{
-			SessionSecret: cfg.SessionSecret,
-			ConsoleOrigin: cfg.ConsoleOrigin,
-			SecureCookies: cfg.SecureCookies,
-			AdminCIDRs:    cfg.AdminCIDRs,
-			AdminEmails:   cfg.AdminEmails,
+			SessionSecret:  cfg.SessionSecret,
+			ConsoleOrigin:  cfg.ConsoleOrigin,
+			ConsoleOrigins: cfg.ConsoleOrigins,
+			SecureCookies:  cfg.SecureCookies,
+			AdminCIDRs:     cfg.AdminCIDRs,
+			AdminEmails:    cfg.AdminEmails,
 
 			DevVerificationCode: cfg.DevVerificationCode,
 		},

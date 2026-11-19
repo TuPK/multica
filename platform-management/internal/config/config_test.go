@@ -1002,3 +1002,24 @@ func TestWebhookMaxBytesIsReadAndChecked(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadConsoleOriginsList(t *testing.T) {
+	env := resendEnv()
+	env["PLATFORM_CONSOLE_ORIGIN"] = "http://localhost:30001, http://10.70.39.196:30001 ,"
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatalf("a list of origins: %v", err)
+	}
+	want := []string{"http://localhost:30001", "http://10.70.39.196:30001"}
+	if len(cfg.ConsoleOrigins) != len(want) || cfg.ConsoleOrigins[0] != want[0] || cfg.ConsoleOrigins[1] != want[1] {
+		t.Fatalf("ConsoleOrigins = %v, want %v", cfg.ConsoleOrigins, want)
+	}
+	if cfg.ConsoleOrigin != want[0] {
+		t.Fatalf("ConsoleOrigin = %q, want the first origin %q", cfg.ConsoleOrigin, want[0])
+	}
+
+	env["PLATFORM_CONSOLE_ORIGIN"] = "http://localhost:30001,not-an-origin"
+	if _, err := load(env); err == nil {
+		t.Fatal("a list with a bad origin must stop the start")
+	}
+}

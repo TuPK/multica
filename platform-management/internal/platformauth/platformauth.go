@@ -104,7 +104,10 @@ type Mailer interface {
 type Config struct {
 	SessionSecret string
 	ConsoleOrigin string
-	SecureCookies bool
+	// ConsoleOrigins, when set, lists every origin the console may send writes from.
+	// ConsoleOrigin is always allowed too.
+	ConsoleOrigins []string
+	SecureCookies  bool
 	// AdminCIDRs limits the middleware to these networks; empty means no limit.
 	AdminCIDRs []netip.Prefix
 	// AdminEmails are the lower-cased PLATFORM_ADMIN_EMAILS.
@@ -174,10 +177,23 @@ func (h *Handler) Wait() { h.mails.Wait() }
 
 // RequireOrigin refuses a request whose Origin header is not the console's.
 // Without an Origin header the request passes only when it carries no cookie.
+// originAllowed reports whether an Origin header names the console.
+func (h *Handler) originAllowed(origin string) bool {
+	if strings.EqualFold(origin, h.ConsoleOrigin) {
+		return true
+	}
+	for _, allowed := range h.ConsoleOrigins {
+		if strings.EqualFold(origin, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *Handler) RequireOrigin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if values, present := r.Header["Origin"]; present {
-			if len(values) != 1 || !strings.EqualFold(values[0], h.ConsoleOrigin) {
+			if len(values) != 1 || !h.originAllowed(values[0]) {
 				writeError(w, http.StatusForbidden, "bad_origin", "origin not allowed")
 				return
 			}

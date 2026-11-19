@@ -728,3 +728,24 @@ func TestNothingSecretIsLogged(t *testing.T) {
 		}
 	}
 }
+
+func TestRequireOriginAcceptsEveryConfiguredConsoleOrigin(t *testing.T) {
+	h := &Handler{Deps: Deps{Config: Config{
+		ConsoleOrigin:  "http://localhost:30001",
+		ConsoleOrigins: []string{"http://localhost:30001", "http://10.70.39.196:30001"},
+	}}}
+	ok := h.RequireOrigin(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	for origin, want := range map[string]int{
+		"http://10.70.39.196:30001": http.StatusNoContent,
+		"http://localhost:30001":    http.StatusNoContent,
+		"http://evil.example.com":   http.StatusForbidden,
+	} {
+		r := httptest.NewRequest(http.MethodPost, "/api/platform/auth/send-code", nil)
+		r.Header.Set("Origin", origin)
+		w := httptest.NewRecorder()
+		ok.ServeHTTP(w, r)
+		if w.Code != want {
+			t.Errorf("origin %q: got %d, want %d", origin, w.Code, want)
+		}
+	}
+}

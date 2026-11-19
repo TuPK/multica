@@ -192,8 +192,11 @@ type Config struct {
 	// default is the loopback and RFC 1918 private ranges.
 	TrustedCIDRs []netip.Prefix
 	// ConsoleOrigin is the console's origin as scheme://host[:port], lower
-	// case and without a trailing slash.
+	// case and without a trailing slash: the first of ConsoleOrigins.
 	ConsoleOrigin string
+	// ConsoleOrigins lists every origin the console may be opened from. The
+	// console is often reached by a LAN address as well as localhost.
+	ConsoleOrigins []string
 	// SecureCookies sets the Secure attribute on the session cookie.
 	SecureCookies bool
 	// APIRateCeiling is PLATFORM_API_RATE_CEILING: the API rate per minute a
@@ -295,15 +298,8 @@ func Load(getenv func(string) string) (Config, error) {
 		cfg.TrustedCIDRs = cidrs
 	}
 
-	origin := get("PLATFORM_CONSOLE_ORIGIN")
-	if origin == "" {
-		origin = defaultConsoleOrigin
-	}
-	if normalized, ok := normalizeOrigin(origin); ok {
-		cfg.ConsoleOrigin = normalized
-	} else {
-		fail("PLATFORM_CONSOLE_ORIGIN", "must be an absolute http or https origin such as https://console.example.com")
-	}
+	cfg.ConsoleOrigins = loadConsoleOrigins(get("PLATFORM_CONSOLE_ORIGIN"), fail)
+	cfg.ConsoleOrigin = cfg.ConsoleOrigins[0]
 
 	cfg.SecureCookies = true
 	switch strings.ToLower(get("PLATFORM_SECURE_COOKIES")) {
@@ -626,6 +622,31 @@ func parseCIDRs(raw string) ([]netip.Prefix, error) {
 
 // normalizeOrigin accepts scheme://host[:port] with an http or https scheme
 // and nothing after the host but an optional slash.
+// loadConsoleOrigins reads PLATFORM_CONSOLE_ORIGIN: one origin, or several
+// separated by commas. Empty means the default, the console on localhost.
+func loadConsoleOrigins(raw string, fail func(variable, reason string)) []string {
+	if strings.TrimSpace(raw) == "" {
+		return []string{defaultConsoleOrigin}
+	}
+	var origins []string
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		normalized, ok := normalizeOrigin(part)
+		if !ok {
+			fail("PLATFORM_CONSOLE_ORIGIN", "must be an absolute http or https origin such as https://console.example.com, or a comma-separated list of them")
+			return []string{defaultConsoleOrigin}
+		}
+		origins = append(origins, normalized)
+	}
+	if len(origins) == 0 {
+		return []string{defaultConsoleOrigin}
+	}
+	return origins
+}
+
 func normalizeOrigin(raw string) (string, bool) {
 	u, err := url.Parse(raw)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.Hostname() == "" {
