@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Section } from "@astryxdesign/core/Section";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { Building2, Info, Trash2 } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
@@ -17,11 +20,13 @@ import { useDeleteTenantNow, useMe, useTenant } from "../api/hooks";
 import type { TenantWorkspace } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { formatBytes, maxWorkspacesLabel, statusSummaryText } from "./Tenants";
+import { TenantUsers } from "./TenantUsers";
 
 interface TenantDetailProps {
   tenantId: string;
   onBack: () => void;
   onSelectWorkspace: (id: string) => void;
+  onSelectUser?: (userId: string) => void;
   userRole?: StaffRole;
 }
 
@@ -39,7 +44,13 @@ function usageSummary(workspace: TenantWorkspace): string {
   ].join(" · ");
 }
 
-export function TenantDetail({ tenantId, onBack, onSelectWorkspace, userRole }: TenantDetailProps) {
+export function TenantDetail({
+  tenantId,
+  onBack,
+  onSelectWorkspace,
+  onSelectUser,
+  userRole,
+}: TenantDetailProps) {
   const { data: me } = useMe();
   const effectiveRole = userRole ?? me?.role;
   const canDeleteTenant = effectiveRole === "system_admin";
@@ -47,6 +58,7 @@ export function TenantDetail({ tenantId, onBack, onSelectWorkspace, userRole }: 
   const { data: tenant, isLoading, isError, error, refetch } = useTenant(tenantId);
   const deleteTenantNow = useDeleteTenantNow();
 
+  const [activeTab, setActiveTab] = useState<"workspaces" | "users">("workspaces");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
@@ -134,96 +146,127 @@ export function TenantDetail({ tenantId, onBack, onSelectWorkspace, userRole }: 
         </MetadataList>
       </Card>
 
-      {tenant.workspaces.length === 0 ? (
-        <EmptyState
-          icon={<Building2 className="size-5" aria-hidden="true" />}
-          title="This tenant has no workspaces"
-        />
-      ) : (
-        <Card padding={0} className="overflow-x-auto">
-          <Table
-            data={tenant.workspaces}
-            idKey="id"
-            density="balanced"
-            dividers="rows"
-            hasHover
-            columns={[
-              {
-                key: "name",
-                header: "Workspace",
-                width: proportional(2, { minWidth: 200 }),
-                renderCell: (workspace) => (
-                  <>
-                    <div className="truncate font-medium text-foreground" title={workspace.name}>
-                      {workspace.name}
-                    </div>
-                    <div className="truncate font-mono text-caption text-muted-foreground" title={workspace.slug}>
-                      {workspace.slug}
-                    </div>
-                  </>
-                ),
-              },
-              {
-                key: "plan_key",
-                header: "Plan",
-                width: proportional(1, { minWidth: 100 }),
-                renderCell: (workspace) => <Text type="supporting">{workspace.plan_key || "-"}</Text>,
-              },
-              {
-                key: "status",
-                header: "Status",
-                width: proportional(1, { minWidth: 110 }),
-                renderCell: (workspace) => <StatusBadge status={workspace.status} />,
-              },
-              {
-                key: "member_count",
-                header: "Members",
-                width: pixel(96),
-                align: "end",
-                renderCell: (workspace) => (
-                  <Text type="body" hasTabularNumbers>
-                    {workspace.member_count}
-                  </Text>
-                ),
-              },
-              {
-                key: "owner",
-                header: "Owner",
-                width: proportional(1.5, { minWidth: 160 }),
-                renderCell: (workspace) => (
-                  <Text type="supporting">{workspace.owner?.email ?? "-"}</Text>
-                ),
-              },
-              {
-                key: "usage",
-                header: "Usage",
-                width: proportional(1.5, { minWidth: 160 }),
-                renderCell: (workspace) => (
-                  <span
-                    data-testid="workspace-usage"
-                    title={workspace.usage_day ? `Usage on ${workspace.usage_day} (UTC)` : "No usage recorded yet"}
-                  >
-                    <Text type="supporting" hasTabularNumbers>
-                      {usageSummary(workspace)}
-                    </Text>
-                  </span>
-                ),
-              },
-              {
-                key: "actions",
-                header: "Action",
-                width: pixel(96),
-                align: "end",
-                renderCell: (workspace) => (
-                  <Button variant="outline" size="sm" onClick={() => onSelectWorkspace(workspace.id)}>
-                    View
-                  </Button>
-                ),
-              },
-            ]}
-          />
-        </Card>
-      )}
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          if (value === "workspaces" || value === "users") setActiveTab(value);
+        }}
+        className="space-y-4"
+      >
+        <div className="border-b border-surface-border">
+          <TabsList variant="line" aria-label="Tenant sections">
+            <TabsTrigger value="workspaces">Workspaces</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="workspaces">
+          <Section variant="transparent" padding={0} className="space-y-4">
+            <Heading level={3}>Workspaces</Heading>
+            {tenant.workspaces.length === 0 ? (
+              <EmptyState
+                icon={<Building2 className="size-5" aria-hidden="true" />}
+                title="This tenant has no workspaces"
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table
+                  data={tenant.workspaces}
+                  idKey="id"
+                  density="balanced"
+                  dividers="rows"
+                  hasHover
+                  columns={[
+                    {
+                      key: "name",
+                      header: "Workspace",
+                      width: proportional(2, { minWidth: 200 }),
+                      renderCell: (workspace) => (
+                        <>
+                          <div className="truncate font-medium text-foreground" title={workspace.name}>
+                            {workspace.name}
+                          </div>
+                          <div className="truncate font-mono text-caption text-muted-foreground" title={workspace.slug}>
+                            {workspace.slug}
+                          </div>
+                        </>
+                      ),
+                    },
+                    {
+                      key: "plan_key",
+                      header: "Plan",
+                      width: proportional(1, { minWidth: 100 }),
+                      renderCell: (workspace) => <Text type="supporting">{workspace.plan_key || "-"}</Text>,
+                    },
+                    {
+                      key: "status",
+                      header: "Status",
+                      width: proportional(1, { minWidth: 110 }),
+                      renderCell: (workspace) => <StatusBadge status={workspace.status} />,
+                    },
+                    {
+                      key: "member_count",
+                      header: "Members",
+                      width: pixel(96),
+                      align: "end",
+                      renderCell: (workspace) => (
+                        <Text type="body" hasTabularNumbers>
+                          {workspace.member_count}
+                        </Text>
+                      ),
+                    },
+                    {
+                      key: "owner",
+                      header: "Owner",
+                      width: proportional(1.5, { minWidth: 160 }),
+                      renderCell: (workspace) => (
+                        <Text type="supporting">{workspace.owner?.email ?? "-"}</Text>
+                      ),
+                    },
+                    {
+                      key: "usage",
+                      header: "Usage",
+                      width: proportional(1.5, { minWidth: 160 }),
+                      renderCell: (workspace) => (
+                        <span
+                          data-testid="workspace-usage"
+                          title={workspace.usage_day ? `Usage on ${workspace.usage_day} (UTC)` : "No usage recorded yet"}
+                        >
+                          <Text type="supporting" hasTabularNumbers>
+                            {usageSummary(workspace)}
+                          </Text>
+                        </span>
+                      ),
+                    },
+                    {
+                      key: "actions",
+                      header: "Action",
+                      width: pixel(96),
+                      align: "end",
+                      renderCell: (workspace) => (
+                        <Button variant="outline" size="sm" onClick={() => onSelectWorkspace(workspace.id)}>
+                          View
+                        </Button>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+            )}
+          </Section>
+        </TabsContent>
+
+        <TabsContent value="users">
+          {activeTab === "users" && (
+            <TenantUsers
+              tenantId={tenantId}
+              workspaces={tenant.workspaces}
+              onSelectUser={onSelectUser ?? (() => {})}
+              userRole={effectiveRole}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
 
       {canDeleteTenant && (
         <TypeToConfirmDialog

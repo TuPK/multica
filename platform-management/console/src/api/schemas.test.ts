@@ -50,6 +50,11 @@ import {
   parsePlanDetail,
   parsePlanHistory,
   parseWorkspaceExportResponse,
+  parseTenantUserPage,
+  parseTenantUserDetail,
+  parseDeactivateTenantUserResponse,
+  parseMemberChangeResponse,
+  parseQuotaRequest,
 } from "./schemas";
 
 const workspace = {
@@ -1647,5 +1652,134 @@ describe("R6 S23 plan lifecycle, history and workspace list schemas", () => {
       status: "queued",
     });
     expect(parseWorkspaceExportResponse({})).toBeNull();
+  });
+});
+
+describe("R6 S24 tenant users, member changes and quota requests", () => {
+  it("tenant user row falls back for unknown account_status", () => {
+    const page = parseTenantUserPage({
+      users: [
+        {
+          user_id: "u-1",
+          email: "alice@acme.test",
+          name: "Alice",
+          account_status: "future_locked_state",
+          is_staff: false,
+          workspaces: [
+            { workspace_id: "ws-1", name: "Core", member_role: "member" },
+            { workspace_id: "ws-2", name: "Lab", member_role: "super_owner" },
+          ],
+          seats: 2,
+          last_login_at: "2026-11-18T10:00:00Z",
+        },
+        {
+          user_id: "u-2",
+        },
+      ],
+      next_cursor: "cur-u2",
+    });
+
+    expect(page.users).toHaveLength(2);
+    expect(page.next_cursor).toBe("cur-u2");
+    expect(page.users[0]?.account_status).toBe("unknown");
+    expect(page.users[0]?.workspaces[0]?.member_role).toBe("member");
+    expect(page.users[0]?.workspaces[1]?.member_role).toBe("unknown");
+    expect(page.users[1]).toEqual({
+      user_id: "u-2",
+      email: "",
+      name: "",
+      account_status: "unknown",
+      is_staff: false,
+      workspaces: [],
+      seats: 0,
+      last_login_at: null,
+    });
+    expect(parseTenantUserPage({ users: "bad" })).toEqual({ users: [], next_cursor: null });
+  });
+
+  it("parses tenant user detail and defaults missing allocation and audit_events", () => {
+    const minimal = parseTenantUserDetail({
+      user_id: "u-1",
+      email: "alice@acme.test",
+      name: "Alice",
+      account_status: "active",
+      is_staff: false,
+      workspaces: [{ workspace_id: "ws-1", name: "Core", member_role: "admin" }],
+      seats: 1,
+      last_login_at: null,
+    });
+    expect(minimal?.allocation).toEqual([]);
+    expect(minimal?.audit_events).toEqual([]);
+
+    const withAllocation = parseTenantUserDetail({
+      user_id: "u-1",
+      account_status: "active",
+      allocation: [
+        {
+          workspace_id: "ws-1",
+          workspace_name: "Core",
+          member_role: "future_role",
+          occupies_seat: true,
+          seats_purchased: 10,
+          seats_used: 4,
+          limits: { agents: 5 },
+          usage: { agents: 2 },
+        },
+      ],
+      audit_events: [
+        {
+          id: "ae-1",
+          action: "member.staff_role_change_requested",
+          actor_type: "staff",
+          created_at: "2026-11-19T00:00:00Z",
+        },
+      ],
+    });
+    expect(withAllocation?.allocation[0]?.member_role).toBe("unknown");
+    expect(withAllocation?.allocation[0]?.limits).toEqual({ agents: 5 });
+    expect(withAllocation?.audit_events).toHaveLength(1);
+    expect(parseTenantUserDetail(null)).toBeNull();
+  });
+
+  it("parses tenant deactivate, member change and quota request responses", () => {
+    expect(parseDeactivateTenantUserResponse({ request_ids: ["mr-1", "mr-2"] })).toEqual({
+      request_ids: ["mr-1", "mr-2"],
+    });
+    expect(parseDeactivateTenantUserResponse(null)).toBeNull();
+
+    expect(
+      parseMemberChangeResponse(
+        { request_id: "mr-3", kind: "change_role" },
+        "POST /api/platform/workspaces/{id}/members/{user_id}/role",
+      ),
+    ).toEqual({ request_id: "mr-3", kind: "change_role" });
+    expect(
+      parseMemberChangeResponse(
+        { changed: false },
+        "POST /api/platform/workspaces/{id}/members/{user_id}/role",
+      ),
+    ).toEqual({ changed: false });
+    expect(
+      parseMemberChangeResponse(null, "POST /api/platform/workspaces/{id}/members/{user_id}/remove"),
+    ).toBeNull();
+
+    const qr = parseQuotaRequest(
+      {
+        id: "qr-1",
+        workspace_id: "ws-1",
+        tenant_id: "t-1",
+        gate: "agents",
+        current_value: 5,
+        requested_value: 20,
+        approved_value: null,
+        state: "future_state",
+        reason: "Growing team",
+        created_at: "2026-11-19T12:00:00Z",
+      },
+      "POST /api/platform/workspaces/{id}/quota-requests",
+    );
+    expect(qr?.id).toBe("qr-1");
+    expect(qr?.state).toBe("unknown");
+    expect(parseQuotaRequest({}, "POST /api/platform/workspaces/{id}/quota-requests")).toBeNull();
   });
 });

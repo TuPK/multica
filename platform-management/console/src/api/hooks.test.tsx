@@ -66,6 +66,12 @@ import {
   useDeletionRequests,
   useCancelDeletionRequest,
   useRetryDeletionRequest,
+  useTenantUsers,
+  useTenantUser,
+  useDeactivateTenantUser,
+  useRemoveWorkspaceMember,
+  useChangeWorkspaceMemberRole,
+  useCreateQuotaRequest,
 } from "./hooks";
 
 type Handler = Response | ((url: URL, init: RequestInit | undefined) => Response);
@@ -1843,5 +1849,173 @@ describe("R6 S13 hooks (staff update, member requests, immediate deletion)", () 
     await waitFor(() => expect(historyHook.result.current.isSuccess).toBe(true));
     expect(historyHook.result.current.data?.[0]?.action).toBe("plan.activated");
     historyHook.unmount();
+  });
+});
+
+describe("R6 S24 tenant users, member changes and quota requests", () => {
+  it("useTenantUsers fetches with filters and cursor paging and useTenantUser fetches detail", async () => {
+    const calls = stubFetch({
+      "GET /api/platform/tenants/t-1/users": (url) => {
+        if (url.searchParams.get("cursor") === "cur-2") {
+          return json(200, {
+            users: [
+              {
+                user_id: "u-2",
+                email: "bob@acme.test",
+                name: "Bob",
+                account_status: "suspended",
+                is_staff: false,
+                workspaces: [{ workspace_id: "ws-1", name: "Core", member_role: "admin" }],
+                seats: 1,
+                last_login_at: null,
+              },
+            ],
+            next_cursor: null,
+          });
+        }
+        return json(200, {
+          users: [
+            {
+              user_id: "u-1",
+              email: "alice@acme.test",
+              name: "Alice",
+              account_status: "active",
+              is_staff: false,
+              workspaces: [{ workspace_id: "ws-1", name: "Core", member_role: "member" }],
+              seats: 1,
+              last_login_at: "2026-11-18T10:00:00Z",
+            },
+          ],
+          next_cursor: "cur-2",
+        });
+      },
+      "GET /api/platform/tenants/t-1/users/u-1": json(200, {
+        user_id: "u-1",
+        email: "alice@acme.test",
+        name: "Alice",
+        account_status: "active",
+        is_staff: false,
+        workspaces: [{ workspace_id: "ws-1", name: "Core", member_role: "member" }],
+        seats: 1,
+        last_login_at: null,
+      }),
+    });
+
+    const { wrapper } = setup();
+    const listHook = renderHook(
+      () =>
+        useTenantUsers("t-1", {
+          q: "alice",
+          account_status: "active",
+          workspace_id: "ws-1",
+          member_role: "member",
+        }),
+      { wrapper },
+    );
+    await waitFor(() => expect(listHook.result.current.isSuccess).toBe(true));
+    expect(listHook.result.current.data).toHaveLength(1);
+    expect(calls[0]?.search).toContain("q=alice");
+    expect(calls[0]?.search).toContain("account_status=active");
+    expect(calls[0]?.search).toContain("workspace_id=ws-1");
+    expect(calls[0]?.search).toContain("member_role=member");
+
+    await act(async () => {
+      await listHook.result.current.fetchNextPage();
+    });
+    await waitFor(() => expect(listHook.result.current.data).toHaveLength(2));
+    expect(calls[1]?.search).toContain("cursor=cur-2");
+
+    const detailHook = renderHook(() => useTenantUser("t-1", "u-1"), { wrapper });
+    await waitFor(() => expect(detailHook.result.current.isSuccess).toBe(true));
+    expect(detailHook.result.current.data?.email).toBe("alice@acme.test");
+  });
+
+  it("useDeactivateTenantUser, useRemoveWorkspaceMember, useChangeWorkspaceMemberRole and useCreateQuotaRequest mutate and invalidate", async () => {
+    const calls = stubFetch({
+      "POST /api/platform/tenants/t-1/users/u-1/deactivate": json(202, {
+        request_ids: ["mr-1", "mr-2"],
+      }),
+      "POST /api/platform/workspaces/ws-1/members/u-1/remove": json(202, {
+        request_id: "mr-3",
+        kind: "remove",
+      }),
+      "POST /api/platform/workspaces/ws-1/members/u-1/role": json(202, {
+        request_id: "mr-4",
+        kind: "change_role",
+      }),
+      "POST /api/platform/workspaces/ws-1/quota-requests": json(201, {
+        id: "qr-1",
+        workspace_id: "ws-1",
+        tenant_id: "t-1",
+        gate: "agents",
+        current_value: 5,
+        requested_value: 20,
+        approved_value: null,
+        state: "pending",
+        reason: "Need more agents",
+        created_at: "2026-11-19T00:00:00Z",
+      }),
+    });
+
+    const { queryClient, wrapper } = setup();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const deactivateHook = renderHook(() => useDeactivateTenantUser(), { wrapper });
+    await act(async () => {
+      const res = await deactivateHook.result.current.mutateAsync({
+        tenantId: "t-1",
+        userId: "u-1",
+        reason: "Offboarding",
+      });
+      expect(res.request_ids).toEqual(["mr-1", "mr-2"]);
+    });
+    expect(calls[0]).toMatchObject({
+      method: "POST",
+      path: "/api/platform/tenants/t-1/users/u-1/deactivate",
+      body: { reason: "Offboarding" },
+    });
+
+    const removeHook = renderHook(() => useRemoveWorkspaceMember(), { wrapper });
+    await act(async () => {
+      const res = await removeHook.result.current.mutateAsync({
+        workspaceId: "ws-1",
+        userId: "u-1",
+        tenantId: "t-1",
+      });
+      expect(res).toMatchObject({ request_id: "mr-3", kind: "remove" });
+    });
+
+    const roleHook = renderHook(() => useChangeWorkspaceMemberRole(), { wrapper });
+    await act(async () => {
+      const res = await roleHook.result.current.mutateAsync({
+        workspaceId: "ws-1",
+        userId: "u-1",
+        role: "viewer",
+        tenantId: "t-1",
+      });
+      expect(res).toMatchObject({ request_id: "mr-4", kind: "change_role" });
+    });
+    expect(calls[2]?.body).toEqual({ role: "viewer" });
+
+    const quotaHook = renderHook(() => useCreateQuotaRequest(), { wrapper });
+    await act(async () => {
+      const res = await quotaHook.result.current.mutateAsync({
+        workspaceId: "ws-1",
+        gate: "agents",
+        requested_value: 20,
+        reason: "Need more agents",
+      });
+      expect(res.id).toBe("qr-1");
+    });
+    expect(calls[3]?.body).toEqual({
+      gate: "agents",
+      requested_value: 20,
+      reason: "Need more agents",
+    });
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.tenantUsersAll("t-1")));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.memberRequests("ws-1")));
+    expect(invalidatedKeys).toContain(JSON.stringify(platformKeys.quotaRequests()));
   });
 });

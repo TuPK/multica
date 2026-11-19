@@ -664,6 +664,9 @@ export type AccountRecord = z.output<typeof AccountRecordSchema>;
 export const UserDetailSchema = UserSchema.extend({
   memberships: z.array(MembershipSchema).default([]),
   account: AccountRecordSchema.prefault({}),
+  tenant_id: z.string().nullable().optional(),
+  allocation: z.array(z.lazy(() => TenantUserAllocationItemSchema)).optional(),
+  audit_events: z.array(z.lazy(() => AuditEventSchema)).optional(),
 });
 export type UserDetail = z.output<typeof UserDetailSchema>;
 
@@ -1352,4 +1355,141 @@ export function parseAccountDeletePreview(data: unknown): AccountDeletePreview |
   return parseWithFallback<AccountDeletePreview | null>(data, AccountDeletePreviewSchema, null, {
     endpoint: "GET /api/platform/users/{id}/delete-now-preview",
   });
+}
+
+// Tenant users, member changes, and quota requests (R6 / S24)
+
+export const TENANT_MEMBER_ROLES = ["owner", "admin", "member", "viewer"] as const;
+export type TenantMemberRole = (typeof TENANT_MEMBER_ROLES)[number] | "unknown";
+
+export const TenantUserWorkspaceSchema = z.object({
+  workspace_id: z.string(),
+  name: text,
+  member_role: enumOf(TENANT_MEMBER_ROLES),
+});
+export type TenantUserWorkspace = z.output<typeof TenantUserWorkspaceSchema>;
+
+export const TenantUserSchema = z.object({
+  user_id: z.string(),
+  email: text,
+  name: text,
+  account_status: enumOf(ACCOUNT_STATUSES),
+  is_staff: z.boolean().default(false),
+  workspaces: z.array(TenantUserWorkspaceSchema).default([]),
+  seats: count,
+  last_login_at: nullableText,
+});
+export type TenantUser = z.output<typeof TenantUserSchema>;
+
+export const TenantUserPageSchema = z.object({
+  users: z.array(TenantUserSchema).default([]),
+  next_cursor: nextCursor,
+});
+export type TenantUserPage = z.output<typeof TenantUserPageSchema>;
+
+export const TenantUserAllocationItemSchema = z.object({
+  workspace_id: z.string(),
+  workspace_name: text,
+  member_role: enumOf(TENANT_MEMBER_ROLES),
+  occupies_seat: z.boolean().default(true),
+  seats_purchased: z.number().nullable().default(null),
+  seats_used: z.number().nullable().default(null),
+  limits: LimitsSchema,
+  usage: z.record(z.string(), z.number()).default({}),
+});
+export type TenantUserAllocationItem = z.output<typeof TenantUserAllocationItemSchema>;
+
+export const TenantUserDetailSchema = TenantUserSchema.extend({
+  allocation: z
+    .array(TenantUserAllocationItemSchema)
+    .nullish()
+    .transform((v) => v ?? []),
+  audit_events: z
+    .array(AuditEventSchema)
+    .nullish()
+    .transform((v) => v ?? []),
+});
+export type TenantUserDetail = z.output<typeof TenantUserDetailSchema>;
+
+export const DeactivateTenantUserResponseSchema = z.object({
+  request_ids: z.array(z.string()).default([]),
+});
+export type DeactivateTenantUserResponse = z.output<typeof DeactivateTenantUserResponseSchema>;
+
+export const MEMBER_CHANGE_KINDS = ["remove", "change_role"] as const;
+export type MemberChangeKind = (typeof MEMBER_CHANGE_KINDS)[number] | "unknown";
+
+export const MemberChangeResponseSchema = z.union([
+  z.object({
+    request_id: z.string(),
+    kind: enumOf(MEMBER_CHANGE_KINDS),
+    changed: z.boolean().optional(),
+  }),
+  z.object({
+    changed: z.literal(false),
+    request_id: z.string().optional(),
+    kind: optionalEnumOf(MEMBER_CHANGE_KINDS),
+  }),
+]);
+export type MemberChangeResponse = z.output<typeof MemberChangeResponseSchema>;
+
+export const QUOTA_REQUEST_STATES = ["pending", "approved", "denied", "canceled"] as const;
+export type QuotaRequestState = (typeof QUOTA_REQUEST_STATES)[number] | "unknown";
+
+export const QuotaRequestSchema = z.object({
+  id: z.string(),
+  workspace_id: text,
+  tenant_id: text,
+  gate: text,
+  current_value: z.number().nullable().default(null),
+  requested_value: count,
+  approved_value: z.number().nullable().default(null),
+  state: enumOf(QUOTA_REQUEST_STATES),
+  reason: text,
+  decision_reason: text,
+  requested_by: text,
+  requested_by_label: text,
+  decided_by: text,
+  created_at: text,
+  decided_at: nullableText,
+});
+export type QuotaRequest = z.output<typeof QuotaRequestSchema>;
+
+export function parseTenantUserPage(data: unknown): TenantUserPage {
+  return parseWithFallback<TenantUserPage>(
+    data,
+    TenantUserPageSchema,
+    { users: [], next_cursor: null },
+    { endpoint: "GET /api/platform/tenants/{id}/users" },
+  );
+}
+
+export function parseTenantUserDetail(data: unknown): TenantUserDetail | null {
+  return parseWithFallback<TenantUserDetail | null>(data, TenantUserDetailSchema, null, {
+    endpoint: "GET /api/platform/tenants/{id}/users/{user_id}",
+  });
+}
+
+export function parseDeactivateTenantUserResponse(
+  data: unknown,
+): DeactivateTenantUserResponse | null {
+  return parseWithFallback<DeactivateTenantUserResponse | null>(
+    data,
+    DeactivateTenantUserResponseSchema,
+    null,
+    { endpoint: "POST /api/platform/tenants/{id}/users/{user_id}/deactivate" },
+  );
+}
+
+export function parseMemberChangeResponse(
+  data: unknown,
+  endpoint: string,
+): MemberChangeResponse | null {
+  return parseWithFallback<MemberChangeResponse | null>(data, MemberChangeResponseSchema, null, {
+    endpoint,
+  });
+}
+
+export function parseQuotaRequest(data: unknown, endpoint: string): QuotaRequest | null {
+  return parseWithFallback<QuotaRequest | null>(data, QuotaRequestSchema, null, { endpoint });
 }

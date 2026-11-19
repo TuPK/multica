@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getApiErrorMessage, PlatformApiError, platformFetch } from "./client";
+import { getApiErrorMessage, getMemberChangeErrorMessage, PlatformApiError, platformFetch } from "./client";
 
 function mockFetch(response: Response) {
   const fn = vi.fn<typeof fetch>().mockResolvedValue(response);
@@ -180,5 +180,44 @@ describe("platformFetch error mapping", () => {
       "the account is the only owner of a workspace with other members",
     );
     expect(getApiErrorMessage("unknown", "fallback")).toBe("fallback");
+  });
+
+  it("maps member change error codes to specific guidance", () => {
+    expect(
+      getMemberChangeErrorMessage(
+        new PlatformApiError(409, "owner_role_immutable", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/owner role/i);
+    expect(
+      getMemberChangeErrorMessage(
+        new PlatformApiError(409, "cannot_change_own_role", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/own role/i);
+    expect(
+      getMemberChangeErrorMessage(
+        new PlatformApiError(409, "user_is_staff", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/staff/i);
+    expect(
+      getMemberChangeErrorMessage(
+        new PlatformApiError(400, "member_role_invalid", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/admin, member, or viewer/i);
+    expect(
+      getMemberChangeErrorMessage(
+        new PlatformApiError(409, "sole_owner", "raw"),
+        "fallback",
+      ),
+    ).toMatch(/sole owner/i);
+    expect(
+      getMemberChangeErrorMessage(
+        new PlatformApiError(400, "other_code", "Server said no"),
+        "fallback",
+      ),
+    ).toBe("Server said no");
   });
 });

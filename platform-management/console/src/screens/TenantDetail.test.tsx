@@ -1,15 +1,19 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TenantDetail } from "./TenantDetail";
 
 const mockUseMe = vi.fn();
 const mockUseTenant = vi.fn();
+const mockUseTenantUsers = vi.fn();
 const mockDeleteTenantNowMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
   useMe: () => mockUseMe(),
   useTenant: (id?: string) => mockUseTenant(id),
+  useTenantUsers: (tenantId?: string, filters?: Record<string, unknown>) =>
+    mockUseTenantUsers(tenantId, filters),
   useDeleteTenantNow: () => ({
     mutateAsync: mockDeleteTenantNowMutateAsync,
     isPending: false,
@@ -64,6 +68,15 @@ describe("TenantDetail screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseMe.mockReturnValue({ data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null } });
+    mockUseTenantUsers.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
+      isFetchingNextPage: false,
+    });
   });
 
   it("lists workspaces and links to the workspace detail", () => {
@@ -178,5 +191,54 @@ describe("TenantDetail screen", () => {
         confirm: "Acme Group",
       });
     });
+  });
+
+  it("switches to the Users tab and renders TenantUsers", async () => {
+    const user = userEvent.setup();
+    loaded(tenant);
+    mockUseTenantUsers.mockReturnValue({
+      data: [
+        {
+          user_id: "u-1",
+          email: "member@acme.test",
+          name: "Member One",
+          account_status: "active",
+          is_staff: false,
+          workspaces: [{ workspace_id: "w-1", name: "Main workspace", member_role: "member" }],
+          seats: 1,
+          last_login_at: null,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
+      isFetchingNextPage: false,
+    });
+
+    const onSelectUser = vi.fn();
+    render(
+      <TenantDetail
+        tenantId="t-1"
+        onBack={vi.fn()}
+        onSelectWorkspace={vi.fn()}
+        onSelectUser={onSelectUser}
+      />,
+    );
+
+    const usersTab = screen.getByRole("tab", { name: /Users/i });
+    await user.click(usersTab);
+
+    expect(mockUseTenantUsers).toHaveBeenCalledWith("t-1", {
+      q: undefined,
+      account_status: undefined,
+      workspace_id: undefined,
+      member_role: undefined,
+    });
+    expect(screen.getByText("member@acme.test")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    expect(onSelectUser).toHaveBeenCalledWith("u-1");
   });
 });

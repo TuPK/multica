@@ -52,6 +52,11 @@ import {
   parseDeletionRequestList,
   parseDeletionStartResponse,
   parseAccountDeletePreview,
+  parseTenantUserPage,
+  parseTenantUserDetail,
+  parseDeactivateTenantUserResponse,
+  parseMemberChangeResponse,
+  parseQuotaRequest,
   type Me,
   type Overview,
   type StaffRole,
@@ -96,6 +101,14 @@ import {
   type DeletionRequest,
   type DeletionStartResponse,
   type AccountDeletePreview,
+  type TenantUser,
+  type TenantUserDetail,
+  type TenantUserWorkspace,
+  type TenantUserAllocationItem,
+  type TenantMemberRole,
+  type DeactivateTenantUserResponse,
+  type MemberChangeResponse,
+  type QuotaRequest,
 } from "./schemas";
 
 export type {
@@ -134,6 +147,14 @@ export type {
   DeletionRequest,
   DeletionStartResponse,
   AccountDeletePreview,
+  TenantUser,
+  TenantUserDetail,
+  TenantUserWorkspace,
+  TenantUserAllocationItem,
+  TenantMemberRole,
+  DeactivateTenantUserResponse,
+  MemberChangeResponse,
+  QuotaRequest,
 };
 
 /** The states staff may set on a workspace. */
@@ -172,6 +193,13 @@ export interface DeletionRequestFilters {
   state?: string;
 }
 
+export interface TenantUserFilters {
+  q?: string;
+  account_status?: string;
+  workspace_id?: string;
+  member_role?: string;
+}
+
 /** Drops empty values, so `{}` and `{ q: "" }` are one query. */
 function clean<T extends object>(filters: T): T {
   const out: Record<string, string> = {};
@@ -206,6 +234,12 @@ export const platformKeys = {
   tenantLists: () => ["platform", "tenants", "list"] as const,
   tenantList: (filters: SearchFilters) => ["platform", "tenants", "list", clean(filters)] as const,
   tenant: (id: string) => ["platform", "tenants", "detail", id] as const,
+  tenantUsersAll: (tenantId: string) => ["platform", "tenants", "users", tenantId] as const,
+  tenantUserList: (tenantId: string, filters: TenantUserFilters) =>
+    ["platform", "tenants", "users", tenantId, "list", clean(filters)] as const,
+  tenantUser: (tenantId: string, userId: string) =>
+    ["platform", "tenants", "users", tenantId, "detail", userId] as const,
+  quotaRequests: () => ["platform", "quota-requests"] as const,
   workspace: (id: string) => ["platform", "workspaces", "detail", id] as const,
   workspaceUsage: (id: string) => ["platform", "workspaces", "usage", id] as const,
   workspaceBillingProfile: (id: string) => ["platform", "workspaces", "billing-profile", id] as const,
@@ -1585,5 +1619,192 @@ export function useRetryDeletionRequest() {
       return orMalformed(parseDeletionRequest(res, "POST /api/platform/deletion-requests/{id}/retry"));
     },
     onSuccess: () => invalidateAll(queryClient, [platformKeys.deletionRequests(), platformKeys.audits()]),
+  });
+}
+
+// Tenant users & member management (R6 / S24)
+
+/** Page users who belong to at least one workspace of the tenant. */
+export function useTenantUsers(tenantId: string | undefined, filters: TenantUserFilters = {}) {
+  const f = clean(filters);
+  return useInfiniteQuery({
+    queryKey: platformKeys.tenantUserList(tenantId ?? "", f),
+    enabled: Boolean(tenantId),
+    queryFn: async ({ pageParam, signal }) =>
+      parseTenantUserPage(
+        await platformFetch(
+          `/tenants/${pathSegment(tenantId ?? "")}/users${queryString({
+            q: f.q,
+            account_status: f.account_status,
+            workspace_id: f.workspace_id,
+            member_role: f.member_role,
+            cursor: pageParam,
+          })}`,
+          { signal },
+        ),
+      ),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    select: (data) => data.pages.flatMap((page) => page.users),
+  });
+}
+
+/** Fetch one user's memberships and allocation/audit summary inside a tenant. */
+export function useTenantUser(
+  tenantId: string | undefined,
+  userId: string | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: platformKeys.tenantUser(tenantId ?? "", userId ?? ""),
+    enabled: Boolean(tenantId && userId) && enabled,
+    queryFn: async ({ signal }): Promise<TenantUserDetail> =>
+      orMalformed(
+        parseTenantUserDetail(
+          await platformFetch(
+            `/tenants/${pathSegment(tenantId ?? "")}/users/${pathSegment(userId ?? "")}`,
+            { signal },
+          ),
+        ),
+      ),
+  });
+}
+
+/** Queue member removal requests across all workspaces of a tenant for one user. */
+export function useDeactivateTenantUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      tenantId: string;
+      userId: string;
+      reason: string;
+    }): Promise<DeactivateTenantUserResponse> => {
+      const res = await platformFetch(
+        `/tenants/${pathSegment(vars.tenantId)}/users/${pathSegment(vars.userId)}/deactivate`,
+        {
+          method: "POST",
+          body: { reason: vars.reason },
+        },
+      );
+      return orMalformed(parseDeactivateTenantUserResponse(res));
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.tenantUsersAll(vars.tenantId),
+        platformKeys.tenantUser(vars.tenantId, vars.userId),
+        platformKeys.tenant(vars.tenantId),
+        platformKeys.user(vars.userId),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Queue a member removal request for a user in a single workspace. */
+export function useRemoveWorkspaceMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      workspaceId: string;
+      userId: string;
+      tenantId?: string;
+    }): Promise<MemberChangeResponse> => {
+      const res = await platformFetch(
+        `/workspaces/${pathSegment(vars.workspaceId)}/members/${pathSegment(vars.userId)}/remove`,
+        { method: "POST" },
+      );
+      return orMalformed(
+        parseMemberChangeResponse(
+          res,
+          "POST /api/platform/workspaces/{id}/members/{user_id}/remove",
+        ),
+      );
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.memberRequests(vars.workspaceId),
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.user(vars.userId),
+        platformKeys.audits(),
+        ...(vars.tenantId
+          ? [
+              platformKeys.tenantUsersAll(vars.tenantId),
+              platformKeys.tenantUser(vars.tenantId, vars.userId),
+            ]
+          : []),
+      ]),
+  });
+}
+
+/** Queue a role change request (`admin`, `member`, or `viewer`) for a workspace member. */
+export function useChangeWorkspaceMemberRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      workspaceId: string;
+      userId: string;
+      role: MemberRole;
+      tenantId?: string;
+    }): Promise<MemberChangeResponse> => {
+      const res = await platformFetch(
+        `/workspaces/${pathSegment(vars.workspaceId)}/members/${pathSegment(vars.userId)}/role`,
+        {
+          method: "POST",
+          body: { role: vars.role },
+        },
+      );
+      return orMalformed(
+        parseMemberChangeResponse(
+          res,
+          "POST /api/platform/workspaces/{id}/members/{user_id}/role",
+        ),
+      );
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.memberRequests(vars.workspaceId),
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.user(vars.userId),
+        platformKeys.audits(),
+        ...(vars.tenantId
+          ? [
+              platformKeys.tenantUsersAll(vars.tenantId),
+              platformKeys.tenantUser(vars.tenantId, vars.userId),
+            ]
+          : []),
+      ]),
+  });
+}
+
+/** Submit a workspace quota increase request (system_admin or admin within tenant). */
+export function useCreateQuotaRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      workspaceId: string;
+      gate: string;
+      requested_value: number;
+      reason: string;
+    }): Promise<QuotaRequest> => {
+      const res = await platformFetch(
+        `/workspaces/${pathSegment(vars.workspaceId)}/quota-requests`,
+        {
+          method: "POST",
+          body: {
+            gate: vars.gate,
+            requested_value: vars.requested_value,
+            reason: vars.reason,
+          },
+        },
+      );
+      return orMalformed(
+        parseQuotaRequest(res, "POST /api/platform/workspaces/{id}/quota-requests"),
+      );
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.quotaRequests(),
+        platformKeys.workspace(vars.workspaceId),
+        platformKeys.audits(),
+      ]),
   });
 }

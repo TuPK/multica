@@ -91,3 +91,21 @@ export function getApiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof Error && err.message.trim() !== "") return err.message;
   return fallback;
 }
+
+const MEMBER_CHANGE_ERROR_MESSAGES: Record<string, string> = {
+  owner_role_immutable: "The owner role cannot be changed or removed by staff.",
+  cannot_change_own_role: "An admin cannot change their own role.",
+  user_is_staff: "An active staff member cannot be changed here.",
+  member_role_invalid: "Role must be admin, member, or viewer.",
+  sole_owner: "The sole owner of a workspace cannot be removed.",
+};
+
+/** Maps member-change API error codes to clear guidance, falling back to the server message. */
+export function getMemberChangeErrorMessage(err: unknown, fallback: string): string {
+  const mapped =
+    err instanceof PlatformApiError && err.code
+      ? MEMBER_CHANGE_ERROR_MESSAGES[err.code]
+      : undefined;
+  if (mapped) return mapped;
+  return getApiErrorMessage(err, fallback);
+}

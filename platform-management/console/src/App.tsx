@@ -255,8 +255,8 @@ export function App() {
     navigateTo({ screen: "tenant-detail", tenantId: id, workspaceId: null, userId: null, planKey: null });
   const openWorkspace = (id: string, fromTenantId: string | null) =>
     navigateTo({ screen: "workspace-detail", tenantId: fromTenantId, workspaceId: id, userId: null, planKey: null });
-  const openUser = (id: string) =>
-    navigateTo({ screen: "user-detail", tenantId: null, workspaceId: null, userId: id, planKey: null });
+  const openUser = (id: string, fromTenantId: string | null = null) =>
+    navigateTo({ screen: "user-detail", tenantId: fromTenantId, workspaceId: null, userId: id, planKey: null });
   const openPlanHistory = (planKey: string) =>
     navigateTo({ screen: "plan-history", tenantId: null, workspaceId: null, userId: null, planKey });
 
@@ -279,6 +279,7 @@ export function App() {
               navigateTo({ screen: "tenants", tenantId: null, workspaceId: null, userId: null, planKey: null })
             }
             onSelectWorkspace={(id) => openWorkspace(id, effectiveRoute.tenantId)}
+            onSelectUser={(id) => openUser(id, effectiveRoute.tenantId)}
             userRole={me.role}
           />
         );
@@ -302,19 +303,26 @@ export function App() {
       }
       case "users":
         return <Users onSelectUser={openUser} />;
-      case "user-detail":
+      case "user-detail": {
         if (!effectiveRoute.userId) {
           return <Users onSelectUser={openUser} />;
         }
+        const fromTenant = effectiveRoute.tenantId;
         return (
           <UserDetail
             userId={effectiveRoute.userId}
+            tenantId={fromTenant ?? undefined}
+            backLabel={fromTenant ? "Back to tenant" : "Back to users"}
             onBack={() =>
-              navigateTo({ screen: "users", tenantId: null, workspaceId: null, userId: null, planKey: null })
+              fromTenant
+                ? openTenant(fromTenant)
+                : navigateTo({ screen: "users", tenantId: null, workspaceId: null, userId: null, planKey: null })
             }
+            onSelectWorkspace={(id) => openWorkspace(id, fromTenant)}
             userRole={me.role}
           />
         );
+      }
       case "orders":
         return <Orders userRole={me.role} />;
       case "plans":

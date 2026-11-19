@@ -297,6 +297,24 @@ vi.mock("./api/hooks", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useTenantUsers: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+    hasNextPage: false,
+    fetchNextPage: vi.fn(),
+    isFetchingNextPage: false,
+  }),
+  useTenantUser: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+  }),
+  useDeactivateTenantUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRemoveWorkspaceMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useChangeWorkspaceMemberRole: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateQuotaRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("App", () => {
