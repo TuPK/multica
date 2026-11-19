@@ -242,8 +242,27 @@ func (h *Handler) pluginIssueForUser(w http.ResponseWriter, r *http.Request, cal
 		return db.Issue{}, false
 	}
 	// A call made for a user reaches what that user sees (spec 7.1 rule 3). An
-	// install token acting as the plugin has no viewer and keeps the standing
-	// workspace reach the installation was granted.
+	// install token acting as the plugin has no viewer and no project grants, so
+	// it sees only issues outside a project or in a `workspace` project; any
+	// other issue answers 404 like a missing one (rule 5). The zero
+	// projectaccess.Scope cannot express this: with no restricted list it allows
+	// every project, so the project's access is read directly and an unknown
+	// value counts as restricted (rule 1).
+	if !caller.UserID.Valid && issue.ProjectID.Valid {
+		project, err := h.Queries.GetProjectAccess(r.Context(), db.GetProjectAccessParams{
+			ID:          issue.ProjectID,
+			WorkspaceID: caller.WorkspaceID,
+		})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			slog.Error("load plugin issue project access", append(logger.RequestAttrs(r), "error", err)...)
+			publicapiv1.WriteProblem(w, r, http.StatusServiceUnavailable, "scope_unavailable", "visibility could not be determined")
+			return db.Issue{}, false
+		}
+		if err != nil || project.Access != "workspace" {
+			publicapiv1.WriteProblem(w, r, http.StatusNotFound, "not_found", "issue not found")
+			return db.Issue{}, false
+		}
+	}
 	if caller.UserID.Valid {
 		scope, err := projectaccess.ForViewer(r.Context(), h.Queries, caller.WorkspaceID, caller.UserID)
 		if errors.Is(err, projectaccess.ErrNotMember) {
