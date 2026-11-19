@@ -325,6 +325,9 @@ type CreateWorkspaceRequest struct {
 // not exist, or that they own no workspace of.
 const tenantNotFoundCode = "tenant_not_found"
 
+// tenantDeletingCode refuses a workspace into a tenant with an unfinished immediate deletion.
+const tenantDeletingCode = "tenant_deleting"
+
 // freeOwnedWorkspaceLimitCode is the code of the refusal. It is not
 // plan_limit_reached: no plan gate is involved and the response has no gate.
 const freeOwnedWorkspaceLimitCode = "free_workspace_limit_reached"
@@ -480,6 +483,18 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		if err := tenant.Lock(r.Context(), qtx, tenantID); err != nil {
 			slog.Warn("lock tenant failed", append(logger.RequestAttrs(r), "error", err)...)
 			writeError(w, http.StatusInternalServerError, "failed to create workspace")
+			return
+		}
+		// Read under the lock: a tenant deletion that committed its request first
+		// refuses the workspace, one that comes later lists it (spec R6 section 6.4).
+		deleting, err := qtx.HasLiveTenantDeletionRequest(r.Context(), tenantID)
+		if err != nil {
+			slog.Warn("tenant deletion check failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create workspace")
+			return
+		}
+		if deleting {
+			writeErrorCode(w, http.StatusConflict, tenantDeletingCode, "the tenant is being deleted")
 			return
 		}
 		if err := tenantGate.Admit(r.Context(), qtx, tenantID, 1, planlimit.CountTenantWorkspaces(qtx, tenantID)); err != nil {

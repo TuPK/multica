@@ -2112,6 +2112,29 @@ type PlatformAccountRequest struct {
 	WelcomeAttempts int32              `json:"welcome_attempts"`
 }
 
+type PlatformDeletionRequest struct {
+	ID               pgtype.UUID        `json:"id"`
+	Kind             string             `json:"kind"`
+	TargetID         pgtype.UUID        `json:"target_id"`
+	TargetLabel      string             `json:"target_label"`
+	Reason           string             `json:"reason"`
+	State            string             `json:"state"`
+	ErrorCode        string             `json:"error_code"`
+	Attempts         int32              `json:"attempts"`
+	ApprovedBy       pgtype.UUID        `json:"approved_by"`
+	ApprovedAt       pgtype.Timestamptz `json:"approved_at"`
+	ExportFirst      bool               `json:"export_first"`
+	NoticeSentAt     pgtype.Timestamptz `json:"notice_sent_at"`
+	Resolutions      []byte             `json:"resolutions"`
+	ParentID         pgtype.UUID        `json:"parent_id"`
+	RequestedBy      pgtype.UUID        `json:"requested_by"`
+	RequestedByLabel string             `json:"requested_by_label"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	CompletedAt      pgtype.Timestamptz `json:"completed_at"`
+	TenantID         pgtype.UUID        `json:"tenant_id"`
+}
+
 type PlatformMemberRequest struct {
 	ID               pgtype.UUID        `json:"id"`
 	WorkspaceID      pgtype.UUID        `json:"workspace_id"`

@@ -186,6 +186,37 @@ func (h *Handler) DeleteDueWorkspace(ctx context.Context, workspaceID string, no
 		return false, nil
 	}
 
+	return h.deleteWorkspaceForOrigin(ctx, wsID, DeletionOrigin{Kind: DeletionOriginPeriodEnded}, func(qtx *db.Queries) (bool, error) {
+		scheduledAt, err := qtx.LockPendingWorkspaceDeletion(ctx, wsID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("lock schedule: %w", err)
+		}
+		return scheduledAt.Valid && workspacedeletion.Due(now, scheduledAt.Time), nil
+	}, nil)
+}
+
+// DeleteWorkspaceForStaff runs phase 2 of an immediate deletion for one
+// workspace (spec R6 section 6.3). The platform request is running, so the
+// workspace's schedule is not consulted. It returns false, with no error, when
+// the workspace is already gone. inject is a test hook: a non-nil error from
+// stage "audit" fails the transaction, which then keeps every row of the workspace.
+func (h *Handler) DeleteWorkspaceForStaff(ctx context.Context, workspaceID string, origin DeletionOrigin, inject func(stage string) error) (bool, error) {
+	wsID, err := util.ParseUUID(workspaceID)
+	if err != nil {
+		return false, fmt.Errorf("parse workspace id: %w", err)
+	}
+	return h.deleteWorkspaceForOrigin(ctx, wsID, origin, nil, inject)
+}
+
+// deleteWorkspaceForOrigin is the teardown shared by the period-ended and the
+// staff deletion. admit, when set, runs in the transaction before the teardown
+// and reports whether the deletion still stands. The transaction holds the
+// whole teardown, its audit row and the commit; the side effects follow the commit.
+func (h *Handler) deleteWorkspaceForOrigin(ctx context.Context, wsID pgtype.UUID, origin DeletionOrigin, admit func(qtx *db.Queries) (bool, error), inject func(stage string) error) (bool, error) {
+	workspaceID := uuidToString(wsID)
 	if err := h.prepareQoderWorkspaceDeletion(ctx, workspaceID); err != nil {
 		return false, fmt.Errorf("qoder cleanup is pending: %w", err)
 	}
@@ -205,30 +236,43 @@ func (h *Handler) DeleteDueWorkspace(ctx context.Context, workspaceID string, no
 	}
 	defer tx.Rollback(ctx)
 	qtx := h.Queries.WithTx(tx)
-	scheduledAt, err := qtx.LockPendingWorkspaceDeletion(ctx, wsID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+	if admit != nil {
+		ok, err := admit(qtx)
+		if err != nil {
+			return false, fmt.Errorf("lock schedule: %w", err)
+		}
+		if !ok {
+			return false, nil
+		}
 	}
-	if err != nil {
-		return false, fmt.Errorf("lock schedule: %w", err)
-	}
-	if !scheduledAt.Valid || !workspacedeletion.Due(now, scheduledAt.Time) {
-		return false, nil
+
+	// The tenant is read before the teardown removes its link. It goes on the
+	// audit row, which keeps it once the workspace is gone.
+	var tenantID string
+	if origin.Kind == DeletionOriginStaff {
+		tid, err := qtx.GetTenantIDByWorkspace(ctx, wsID)
+		switch {
+		case err == nil:
+			tenantID = uuidToString(tid)
+		case !errors.Is(err, pgx.ErrNoRows):
+			return false, fmt.Errorf("read tenant: %w", err)
+		}
 	}
 
 	teardown, err := h.deleteWorkspaceData(ctx, tx, wsID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// The workspace row is gone: a parallel run deleted it.
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
-	if err := audit.Record(ctx, auditstore.NewTx(h.Queries, tx), audit.Entry{
-		WorkspaceID: workspaceID,
-		ActorType:   audit.ActorSystem,
-		Action:      audit.ActionWorkspaceDeleted,
-		TargetType:  "workspace",
-		TargetID:    workspaceID,
-		TargetLabel: teardown.Name,
-		Detail:      map[string]any{"reason": "deletion_period_ended"},
-	}); err != nil {
+	if inject != nil {
+		if err := inject("audit"); err != nil {
+			return false, err
+		}
+	}
+	if err := audit.Record(ctx, auditstore.NewTx(h.Queries, tx), origin.workspaceDeletedEntry(workspaceID, tenantID, teardown.Name)); err != nil {
 		return false, fmt.Errorf("audit: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {

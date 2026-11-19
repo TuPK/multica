@@ -225,29 +225,30 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"workspace_invitation":               workspaceDelete,
 	"workspace_share_link":               workspaceDelete,
 	// Platform-management tables (gate G-R2 decisions).
-	"audit_event":              workspaceDeleteDetach, // rows survive with a NULL workspace_id; the retention job removes them
-	"billing_notice":           workspaceDelete,
-	"billing_order":            workspaceDeleteSettle, // financial record kept for accounting; buyer details are an open item
-	"billing_profile":          workspaceDelete,       // buyer identity goes with the workspace (spec 7b.1); keeping it for invoices is an owner decision, same open item as billing_order
-	"einvoice_issuance":        workspaceDeleteKeep,   // issued e-invoices are tax records; the row keeps its workspace_id, see workspaceDeletionColumns
-	"payment_notice":           workspaceDeleteKeep,   // inbound bank notice, platform-level: no workspace_id column
-	"plan":                     workspaceDeleteKeep,
-	"plan_price_change":        workspaceDeleteKeep, // plan-level: plan_key, no workspace_id (spec 7b.4)
-	"platform_account":         workspaceDeleteKeep,
-	"platform_account_request": workspaceDeleteDetach, // the request row survives as the record; workspace teardown clears its workspace_id
-	"platform_member_request":  workspaceDelete,       // the pending and finished add-member requests of the workspace; they hold the email of people who were never members
-	"platform_note":            workspaceDelete,
-	"platform_seat_operation":  workspaceDelete,
-	"platform_staff":           workspaceDeleteKeep,
-	"platform_usage_daily":     workspaceDelete,
-	"platform_workspace":       workspaceDelete,
-	"tenant":                   workspaceDelete, // deleted with the last workspace of the tenant (tenant.Detach)
-	"tenant_workspace":         workspaceDelete, // the link of the deleted workspace
-	"usage_charge":             workspaceDelete, // per-workspace usage charges, rated from platform_usage_daily (spec 7b.3)
-	"user_consent":             workspaceDeleteKeep,
-	"workspace_policy":         workspaceDelete, // per-workspace configuration, like sso_connection (spec 6.4)
-	"workspace_export":         workspaceDelete, // storage archives are an open item
-	"workspace_subscription":   workspaceDelete,
+	"audit_event":               workspaceDeleteDetach, // rows survive with a NULL workspace_id; the retention job removes them
+	"billing_notice":            workspaceDelete,
+	"billing_order":             workspaceDeleteSettle, // financial record kept for accounting; buyer details are an open item
+	"billing_profile":           workspaceDelete,       // buyer identity goes with the workspace (spec 7b.1); keeping it for invoices is an owner decision, same open item as billing_order
+	"einvoice_issuance":         workspaceDeleteKeep,   // issued e-invoices are tax records; the row keeps its workspace_id, see workspaceDeletionColumns
+	"payment_notice":            workspaceDeleteKeep,   // inbound bank notice, platform-level: no workspace_id column
+	"plan":                      workspaceDeleteKeep,
+	"plan_price_change":         workspaceDeleteKeep, // plan-level: plan_key, no workspace_id (spec 7b.4)
+	"platform_account":          workspaceDeleteKeep,
+	"platform_account_request":  workspaceDeleteDetach, // the request row survives as the record; workspace teardown clears its workspace_id
+	"platform_deletion_request": workspaceDeleteKeep,   // staff deletion requests are the record of who asked; no workspace_id column, and the tenant admin reads them after the workspace is gone (spec R6 section 6.5)
+	"platform_member_request":   workspaceDelete,       // the pending and finished add-member requests of the workspace; they hold the email of people who were never members
+	"platform_note":             workspaceDelete,
+	"platform_seat_operation":   workspaceDelete,
+	"platform_staff":            workspaceDeleteKeep,
+	"platform_usage_daily":      workspaceDelete,
+	"platform_workspace":        workspaceDelete,
+	"tenant":                    workspaceDelete, // deleted with the last workspace of the tenant (tenant.Detach)
+	"tenant_workspace":          workspaceDelete, // the link of the deleted workspace
+	"usage_charge":              workspaceDelete, // per-workspace usage charges, rated from platform_usage_daily (spec 7b.3)
+	"user_consent":              workspaceDeleteKeep,
+	"workspace_policy":          workspaceDelete, // per-workspace configuration, like sso_connection (spec 6.4)
+	"workspace_export":          workspaceDelete, // storage archives are an open item
+	"workspace_subscription":    workspaceDelete,
 }
 
 // workspaceDeletionColumns classifies a workspace_id column on a table whose

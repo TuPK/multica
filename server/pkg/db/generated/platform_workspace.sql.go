@@ -47,11 +47,16 @@ func (q *Queries) DeletePlatformWorkspace(ctx context.Context, workspaceID pgtyp
 }
 
 const listDueWorkspaceDeletions = `-- name: ListDueWorkspaceDeletions :many
-SELECT workspace_id
-FROM platform_workspace
-WHERE status = 'pending_deletion'
-  AND deletion_scheduled_at <= $1
-ORDER BY deletion_scheduled_at
+SELECT pw.workspace_id
+FROM platform_workspace pw
+WHERE pw.status = 'pending_deletion'
+  AND pw.deletion_scheduled_at <= $1
+  AND NOT EXISTS (
+    SELECT 1 FROM platform_deletion_request r
+    WHERE r.kind = 'workspace' AND r.target_id = pw.workspace_id
+      AND r.state IN ('pending', 'running', 'failed')
+  )
+ORDER BY pw.deletion_scheduled_at
 LIMIT $2
 `
 
@@ -60,6 +65,8 @@ type ListDueWorkspaceDeletionsParams struct {
 	RowLimit int32              `json:"row_limit"`
 }
 
+// A workspace with a live or failed staff deletion is left to the staff_deletion
+// job, which decides between retry and cancel (spec R6 section 6.3).
 func (q *Queries) ListDueWorkspaceDeletions(ctx context.Context, arg ListDueWorkspaceDeletionsParams) ([]pgtype.UUID, error) {
 	rows, err := q.db.Query(ctx, listDueWorkspaceDeletions, arg.Now, arg.RowLimit)
 	if err != nil {

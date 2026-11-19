@@ -27,3 +27,7 @@ JOIN workspace w ON w.id = tw.workspace_id
 JOIN member m ON m.workspace_id = w.id AND m.user_id = $2 AND m.role = 'owner'
 WHERE tw.tenant_id = $1
 ORDER BY w.created_at, w.id;
+
+-- name: ListTenantWorkspaceIDs :many
+-- The workspaces linked to a tenant. A staff tenant deletion walks them one by one.
+SELECT workspace_id FROM tenant_workspace WHERE tenant_id = $1 ORDER BY workspace_id;

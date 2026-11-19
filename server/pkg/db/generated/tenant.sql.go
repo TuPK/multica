@@ -117,3 +117,28 @@ func (q *Queries) ListOwnedTenantWorkspaceIDs(ctx context.Context, arg ListOwned
 	}
 	return items, nil
 }
+
+const listTenantWorkspaceIDs = `-- name: ListTenantWorkspaceIDs :many
+SELECT workspace_id FROM tenant_workspace WHERE tenant_id = $1 ORDER BY workspace_id
+`
+
+// The workspaces linked to a tenant. A staff tenant deletion walks them one by one.
+func (q *Queries) ListTenantWorkspaceIDs(ctx context.Context, tenantID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listTenantWorkspaceIDs, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var workspace_id pgtype.UUID
+		if err := rows.Scan(&workspace_id); err != nil {
+			return nil, err
+		}
+		items = append(items, workspace_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

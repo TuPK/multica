@@ -34,6 +34,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/scheduler"
 	"github.com/multica-ai/multica/server/internal/selfhosttelemetry"
 	"github.com/multica-ai/multica/server/internal/service"
+	"github.com/multica-ai/multica/server/internal/staffdeletion"
 	"github.com/multica-ai/multica/server/internal/usagesnapshot"
 	"github.com/multica-ai/multica/server/internal/workspacedeletion"
 	"github.com/multica-ai/multica/server/internal/workspaceexport"
@@ -1067,6 +1068,15 @@ func main() {
 		MemberPayload:       h.MemberAddedPayload,
 	}))); err != nil {
 		slog.Error("scheduler: register member provisioning job", "error", err)
+	}
+	// Immediate deletions queued by platform management run through the same
+	// workspace teardown the handlers use.
+	if err := schedulerMgr.Register(staffdeletion.Job(staffdeletion.New(staffdeletion.Deps{
+		Pool:    pool,
+		Queries: queries,
+		Eraser:  h,
+	}))); err != nil {
+		slog.Error("scheduler: register staff deletion job", "error", err)
 	}
 	go func() {
 		_ = schedulerMgr.Run(sweepCtx)

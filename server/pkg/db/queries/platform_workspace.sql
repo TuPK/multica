@@ -33,11 +33,18 @@ WHERE workspace_id = @workspace_id
 RETURNING workspace_id;
 
 -- name: ListDueWorkspaceDeletions :many
-SELECT workspace_id
-FROM platform_workspace
-WHERE status = 'pending_deletion'
-  AND deletion_scheduled_at <= @now
-ORDER BY deletion_scheduled_at
+-- A workspace with a live or failed staff deletion is left to the staff_deletion
+-- job, which decides between retry and cancel (spec R6 section 6.3).
+SELECT pw.workspace_id
+FROM platform_workspace pw
+WHERE pw.status = 'pending_deletion'
+  AND pw.deletion_scheduled_at <= @now
+  AND NOT EXISTS (
+    SELECT 1 FROM platform_deletion_request r
+    WHERE r.kind = 'workspace' AND r.target_id = pw.workspace_id
+      AND r.state IN ('pending', 'running', 'failed')
+  )
+ORDER BY pw.deletion_scheduled_at
 LIMIT @row_limit;
 
 -- name: LockPendingWorkspaceDeletion :one
