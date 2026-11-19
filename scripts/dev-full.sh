@@ -899,7 +899,9 @@ start_platform_redis() {
 start_platform() {
   info "Starting the platform console and API (platform-management)"
   start_platform_redis
-  if [ ! -f "$PLATFORM_DIR/console/dist/index.html" ]; then
+  # WEB_MODE=build serves built bundles, so the console is rebuilt on every start; otherwise it
+  # is built only when it is missing.
+  if [ "${WEB_MODE:-dev}" = build ] || [ ! -f "$PLATFORM_DIR/console/dist/index.html" ]; then
     (cd "$REPO_ROOT" && pnpm --filter @multica/platform-console build) \
       || fail "The platform console did not build."
   fi

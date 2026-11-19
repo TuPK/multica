@@ -325,8 +325,11 @@ remove-worktree: ## Drop a linked worktree's database, then remove it (WORKTREE=
 dev: ## Bootstrap this checkout end-to-end: create env if needed, ensure DB, migrate, start services
 	@bash scripts/dev.sh
 
-dev-full: ## Fresh machine: start the WeKnora knowledge services and the Hub object store, fill their secrets, then make dev
-	@bash scripts/dev-full.sh
+# WEB_MODE=build serves a built web app instead of the hot-reloading dev server (see scripts/dev.sh).
+WEB_MODE ?= dev
+
+dev-full: ## Fresh machine: start the WeKnora knowledge services and the Hub object store, fill their secrets, then make dev. WEB_MODE=build serves the built web app
+	@WEB_MODE=$(WEB_MODE) bash scripts/dev-full.sh
 
 server: catalog-build ## Run only the Go server for the current checkout
 	$(REQUIRE_ENV)

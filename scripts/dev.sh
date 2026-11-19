@@ -60,13 +60,34 @@ echo "==> Running migrations..."
 (cd server && go run ./cmd/migrate up)
 
 # ---------- Start services ----------
+# WEB_MODE=dev (default) runs the hot-reloading dev server, which compiles a page the first time
+# it is requested. WEB_MODE=build builds the web app once and serves the build, so page loads and
+# navigation do not wait for compilation. A build is needed again after the web code changes.
+WEB_MODE="${WEB_MODE:-dev}"
+case "$WEB_MODE" in
+  dev)
+    WEB_CMD=(pnpm dev:web)
+    ;;
+  build)
+    echo "==> Building the web app (WEB_MODE=build)..."
+    # The web build imports the catalog's generated TypeScript, which turbo would build first.
+    pnpm catalog:build
+    pnpm --filter @multica/web build
+    WEB_CMD=(pnpm --filter @multica/web exec next start --port "${FRONTEND_PORT:-3000}")
+    ;;
+  *)
+    echo "WEB_MODE must be dev or build, not '$WEB_MODE'" >&2
+    exit 1
+    ;;
+esac
+
 echo ""
 echo "✓ Ready. Starting services..."
 echo "  Backend:  http://localhost:${PORT:-8080}"
-echo "  Frontend: http://localhost:${FRONTEND_PORT:-3000}"
+echo "  Frontend: http://localhost:${FRONTEND_PORT:-3000} (web: $WEB_MODE)"
 echo ""
 
 trap 'kill 0' EXIT
 (cd server && go run ./cmd/server) &
-pnpm dev:web &
+"${WEB_CMD[@]}" &
 wait
