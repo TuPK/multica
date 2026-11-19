@@ -78,3 +78,55 @@ These are not R1 failures, but the gate is not green until they are rerun or tri
 - `9fbd3b43f` test(audit): expect is_guest in invitation audit details
 - `74319a406` test(platform): pin the account-email reuse and the 60s guard cache bound
 - This record: committed separately.
+
+## 6. Closing run for the open items (2026-11-19)
+
+This section supersedes the "open" entries in sections 2 and 4 for the items below. Other sections are unchanged.
+
+Database: `multica_platform_test` only, through `scripts/require-test-database.sh`, with `DATABASE_URL` and `PLATFORM_TEST_DATABASE_URL` built from `.env` inside the command. The database `multica` was not used. Code was implemented by kiro (claude-sonnet-5.5, medium) and each change was checked by hand.
+
+### AC1: WebSocket cut when an account is suspended by SQL (closed)
+
+**Choice.** A SQL change publishes nothing, so the Redis notice cannot reach the server. Each open socket re-reads its account status every 20 seconds through the existing account guard. The guard cache TTL drops from 60s to 30s. Worst case from a SQL change to a cut socket: TTL + interval = 50s, inside the 60s bound. A Postgres trigger with NOTIFY was rejected: it needs a migration and a DB-side change for a path that the 20s recheck already covers.
+
+**Scope.** The watcher disconnects only on HTTP 403 from `accountRefusal`: suspended, deleted, pending deletion, or an unknown status. A store error (503) does not cut the socket. Session revocation is not rechecked here; AC2 is covered by the existing revocation paths.
+
+**Files.** `server/internal/realtime/hub.go` (`Client.done`, `watchAccount`, `accountStatusRecheckInterval`), `server/internal/realtime/account_watch_test.go`, `platform-management/accountguard/accountguard.go` (TTL 30s), `platform-management/accountguard/accountguard_test.go`, `platform-management/accountguard/ttl_bound_test.go`, `platform-management/internal/console/write.go` (comment only).
+
+| Test | Result | Red first |
+| --- | --- | --- |
+| `TestAccountWatchClosesSocketWhenSuspendedBySQL` | PASS | Yes: with the watcher disabled, the socket stayed open. |
+| `TestAccountWatchStopsWhenConnectionCloses` | PASS | Weak: it fails with the watcher disabled, but does not isolate the exit path. |
+| `TestHandleWebSocketRefusesNonActiveAccountOnCookieUpgrade`, `...OnFirstMessageAuth` | PASS | Existing tests |
+| `go test ./accountguard/...` (platform) | PASS | Pinned `TTL <= 30s` and `TTL + 20s <= 60s`. |
+| `go test ./internal/realtime -count=1` | PASS | Full package. |
+
+Not verified: the real Redis cache and Postgres path for the watcher. The tests use in-memory fakes.
+
+### Account deletion job runs twice (closed)
+
+`TestAccountDeletionJobRunsTwiceWithoutError` (`server/internal/handler/me_deletion_test.go`) calls `DeleteAccount` for one account twice. The first call returns `(true, nil)`. The second returns `(false, nil)`, and a snapshot of the account, user, membership, workspace and audit rows is unchanged. No production change was needed; `LockDueAccountDeletion` already finds no row on the second run.
+
+An earlier version of the test called `DueAccountDeletions` over the whole shared database. With that version, about 1,500 foreign-key errors broke unrelated handler tests. The mechanism was not identified. The version without the global listing gave no such errors in the full run.
+
+Result: `TestAccountDeletionJobRunsTwiceWithoutError` PASS, and the scheduler tests `TestRunAccountDeletions*` PASS.
+
+### Docker build of the platform service (done)
+
+`docker build -f platform-management/Dockerfile -t multica-platform-r1gate .` exited 0 on the second attempt. The first attempt failed with `DeadlineExceeded` while pulling `golang:1.27.3-alpine`, which points to the network, not the Dockerfile. The image was built locally; it was not run and the compose checks were not repeated.
+
+### Handler package (one test still failing, not from this slice)
+
+Full run: `go test ./internal/handler -count=1 -p 1 -timeout 60m -skip 'TestReproSquad' -v`. The `-timeout 60m` flag was needed; the default 10 minutes hit a timeout in `TestDigest_OrdersByWhatNeedsAttentionFirst`. The squad in_review repro tests were excluded, as owned by `handler-test-triage`.
+
+- Without the deletion test, the run was green: 3915 PASS, 0 FAIL (before the test fix below).
+- With the fixed deletion test: 7079 PASS lines, 1 FAIL: `TestClaimTasksByRuntime_DeadlineRecoveryOverWebSocket` (`daemon_batch_claim_recovery_test.go:124`, read i/o timeout). It fails alone too. It uses `daemonws.Hub`, not `realtime.Hub`, so the watcher in this slice does not touch that path. The checkout has uncommitted edits from other sessions in the daemon and service code; the cause was not investigated, and the file was not touched because it lies outside this slice.
+
+Gate status for this item: **not green**. Needs an owner for `TestClaimTasksByRuntime_DeadlineRecoveryOverWebSocket`.
+
+### Commits
+
+- `f85ec5fad` fix(platform): cap account guard cache TTL at 30s
+- `8a2469175` fix(realtime): close sockets of accounts suspended by SQL
+- `4b5483de3` test(handler): account deletion can run twice without error
+- This record: committed separately.
