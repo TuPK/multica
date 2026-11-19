@@ -92,6 +92,7 @@ export const AUDIT_ACTIONS = [
   "account.provision_failed",
   "account.provisioned",
   "account.welcome_sent",
+  "account.welcome_resent",
   "account.welcome_failed",
   "plan.price_scheduled",
   "plan.price_applied",

@@ -763,17 +763,35 @@ func TestWelcomeResendLimitPerDay(t *testing.T) {
 			break
 		}
 	}
-	if c := e.requestAuditCount(r.ID, "account.welcome_sent"); c != 4 {
-		t.Errorf("%d account.welcome_sent rows, want 1 automatic and 3 resent", c)
+	if c := e.requestAuditCount(r.ID, "account.welcome_sent"); c != 1 {
+		t.Errorf("%d account.welcome_sent rows, want 1 automatic", c)
+	}
+	if c := e.requestAuditCount(r.ID, "account.welcome_resent"); c != 3 {
+		t.Errorf("%d account.welcome_resent rows, want 3", c)
 	}
 	var actorType string
-	if err := e.pool.QueryRow(ctx, `SELECT actor_type FROM audit_event WHERE target_id = $1 AND action = 'account.welcome_sent' ORDER BY created_at DESC, id DESC LIMIT 1`, r.ID).Scan(&actorType); err != nil || actorType != "staff" {
+	if err := e.pool.QueryRow(ctx, `SELECT actor_type FROM audit_event WHERE target_id = $1 AND action = 'account.welcome_resent' ORDER BY created_at DESC, id DESC LIMIT 1`, r.ID).Scan(&actorType); err != nil || actorType != "staff" {
 		t.Errorf("the resend was audited as %q (%v), want staff", actorType, err)
 	}
 
 	other := e.completed("other")
 	if _, err := e.svc.ResendWelcome(ctx, e.actor(), other.ID); err != nil {
 		t.Errorf("another request shares the count: %v", err)
+	}
+}
+
+func TestResendWelcomeRecordsWelcomeResent(t *testing.T) {
+	e := newFinEnv(t)
+	r := e.completed("resent")
+	sent := e.requestAuditCount(r.ID, "account.welcome_sent")
+	if _, err := e.svc.ResendWelcome(context.Background(), e.actor(), r.ID); err != nil {
+		t.Fatal(err)
+	}
+	if c := e.requestAuditCount(r.ID, "account.welcome_resent"); c != 1 {
+		t.Errorf("%d account.welcome_resent rows, want 1", c)
+	}
+	if c := e.requestAuditCount(r.ID, "account.welcome_sent"); c != sent {
+		t.Errorf("account.welcome_sent rows went from %d to %d, want no new row", sent, c)
 	}
 }
 

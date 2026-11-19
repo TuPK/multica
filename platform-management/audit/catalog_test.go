@@ -302,6 +302,7 @@ func TestAccountFinalizeAndWelcomeActionsAreDefined(t *testing.T) {
 	cases := map[string]string{
 		"account.provisioned":    ActionAccountProvisioned,
 		"account.welcome_sent":   ActionAccountWelcomeSent,
+		"account.welcome_resent": ActionAccountWelcomeResent,
 		"account.welcome_failed": ActionAccountWelcomeFailed,
 	}
 	for want, got := range cases {
