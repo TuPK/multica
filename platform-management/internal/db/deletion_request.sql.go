@@ -46,6 +46,61 @@ func (q *Queries) CancelDeletionRequest(ctx context.Context, id pgtype.UUID) (Pl
 	return i, err
 }
 
+const getDeletionAccount = `-- name: GetDeletionAccount :one
+SELECT u.id, u.email, COALESCE(pa.status, 'active')::text AS status,
+       EXISTS (SELECT 1 FROM platform_staff s WHERE s.user_id = u.id AND s.revoked_at IS NULL) AS is_staff
+FROM "user" u
+LEFT JOIN platform_account pa ON pa.user_id = u.id
+WHERE u.id = $1
+`
+
+type GetDeletionAccountRow struct {
+	ID      pgtype.UUID `json:"id"`
+	Email   string      `json:"email"`
+	Status  string      `json:"status"`
+	IsStaff bool        `json:"is_staff"`
+}
+
+// The account a deletion request targets: its email, its platform status
+// (active when it has no row) and whether it is an active staff member.
+func (q *Queries) GetDeletionAccount(ctx context.Context, id pgtype.UUID) (GetDeletionAccountRow, error) {
+	row := q.db.QueryRow(ctx, getDeletionAccount, id)
+	var i GetDeletionAccountRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Status,
+		&i.IsStaff,
+	)
+	return i, err
+}
+
+const getDeletionMember = `-- name: GetDeletionMember :one
+SELECT m.role, COALESCE(pa.status, 'active')::text AS status
+FROM member m
+LEFT JOIN platform_account pa ON pa.user_id = m.user_id
+WHERE m.workspace_id = $1 AND m.user_id = $2
+`
+
+type GetDeletionMemberParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+}
+
+type GetDeletionMemberRow struct {
+	Role   string `json:"role"`
+	Status string `json:"status"`
+}
+
+// A member of a workspace with the member's account status, for the successor
+// check of spec GĐ11. No row when the user is not a member.
+func (q *Queries) GetDeletionMember(ctx context.Context, arg GetDeletionMemberParams) (GetDeletionMemberRow, error) {
+	row := q.db.QueryRow(ctx, getDeletionMember, arg.WorkspaceID, arg.UserID)
+	var i GetDeletionMemberRow
+	err := row.Scan(&i.Role, &i.Status)
+	return i, err
+}
+
 const getDeletionRequest = `-- name: GetDeletionRequest :one
 SELECT id, kind, target_id, target_label, reason, state, error_code, attempts, approved_by, approved_at, export_first, notice_sent_at, resolutions, parent_id, requested_by, requested_by_label, created_at, updated_at, completed_at, tenant_id FROM platform_deletion_request
 WHERE id = $1
@@ -232,6 +287,52 @@ func (q *Queries) InsertDeletionRequest(ctx context.Context, arg InsertDeletionR
 		&i.TenantID,
 	)
 	return i, err
+}
+
+const listDeletionAccountWorkspaces = `-- name: ListDeletionAccountWorkspaces :many
+SELECT m.workspace_id, w.slug, m.role,
+       (SELECT count(*) FROM member o WHERE o.workspace_id = m.workspace_id AND o.role = 'owner')::bigint AS owner_count,
+       (SELECT count(*) FROM member a WHERE a.workspace_id = m.workspace_id)::bigint AS member_count
+FROM member m
+JOIN workspace w ON w.id = m.workspace_id
+WHERE m.user_id = $1
+ORDER BY m.workspace_id
+`
+
+type ListDeletionAccountWorkspacesRow struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Slug        string      `json:"slug"`
+	Role        string      `json:"role"`
+	OwnerCount  int64       `json:"owner_count"`
+	MemberCount int64       `json:"member_count"`
+}
+
+// The workspaces an account belongs to, with the owner and member counts that
+// decide the sole-owner rule (spec R6 section 7.3).
+func (q *Queries) ListDeletionAccountWorkspaces(ctx context.Context, userID pgtype.UUID) ([]ListDeletionAccountWorkspacesRow, error) {
+	rows, err := q.db.Query(ctx, listDeletionAccountWorkspaces, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDeletionAccountWorkspacesRow{}
+	for rows.Next() {
+		var i ListDeletionAccountWorkspacesRow
+		if err := rows.Scan(
+			&i.WorkspaceID,
+			&i.Slug,
+			&i.Role,
+			&i.OwnerCount,
+			&i.MemberCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDeletionRequests = `-- name: ListDeletionRequests :many
@@ -459,4 +560,35 @@ func (q *Queries) RetryDeletionRequest(ctx context.Context, id pgtype.UUID) (Pla
 		&i.TenantID,
 	)
 	return i, err
+}
+
+const scheduleAccountDeletionNow = `-- name: ScheduleAccountDeletionNow :exec
+INSERT INTO platform_account (user_id, status, reason, changed_by, sessions_valid_after, deletion_scheduled_at)
+VALUES ($1, 'pending_deletion', $2, $3, $4::timestamptz, $4::timestamptz)
+ON CONFLICT (user_id) DO UPDATE
+SET status = 'pending_deletion',
+    reason = EXCLUDED.reason,
+    changed_by = EXCLUDED.changed_by,
+    changed_at = now(),
+    sessions_valid_after = EXCLUDED.sessions_valid_after,
+    deletion_scheduled_at = EXCLUDED.deletion_scheduled_at
+`
+
+type ScheduleAccountDeletionNowParams struct {
+	UserID    pgtype.UUID        `json:"user_id"`
+	Reason    string             `json:"reason"`
+	ChangedBy pgtype.UUID        `json:"changed_by"`
+	At        pgtype.Timestamptz `json:"at"`
+}
+
+// Phase 1 of an account deletion (spec R6 section 7.4): the account is pending
+// deletion with the date now, and every session issued before now stops working.
+func (q *Queries) ScheduleAccountDeletionNow(ctx context.Context, arg ScheduleAccountDeletionNowParams) error {
+	_, err := q.db.Exec(ctx, scheduleAccountDeletionNow,
+		arg.UserID,
+		arg.Reason,
+		arg.ChangedBy,
+		arg.At,
+	)
+	return err
 }

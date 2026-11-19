@@ -13,10 +13,11 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
 )
 
-// Kinds of request. Account and runtime requests come later (spec R6 sections 7 and 11).
+// Kinds of request. Runtime requests come later (spec R6 section 11).
 const (
 	KindWorkspace = "workspace"
 	KindTenant    = "tenant"
+	KindAccount   = "account"
 )
 
 // States of a request (spec R6 section 6.3 and the platform_deletion_request table).
@@ -34,24 +35,34 @@ const ReasonImmediate = "staff_immediate_deletion"
 // ReasonCanceled is the workspace status reason written when a request is canceled.
 const ReasonCanceled = "staff_deletion_canceled"
 
-// Error codes of spec R6 section 6.5.
+// Error codes of spec R6 section 6.5 and section 7.5.
 const (
 	CodeReasonRequired       = "reason_required"
 	CodeReasonTooLong        = "reason_too_long"
 	CodeConfirmationMismatch = "confirmation_mismatch"
 	CodeNotCancelable        = "deletion_request_not_cancelable"
 	CodeNotRetryable         = "deletion_request_not_retryable"
+	CodeUserStaff            = "user_is_staff"
+	CodeCannotDeleteSelf     = "cannot_delete_self"
+	CodeSoleOwnerUnresolved  = "sole_owner_unresolved"
+	CodeSuccessorInvalid     = "successor_invalid"
+	CodeResolutionInvalid    = "resolution_invalid"
+	// CodeWorkspaceRequestLive refuses an account request whose workspace choice
+	// (B) already has a live request of its own.
+	CodeWorkspaceRequestLive = "workspace_request_live"
 )
 
 // ErrNotFound is returned for an unknown target or request id.
 var ErrNotFound = errors.New("deletionrequest: not found")
 
-// Error is a rejection with an HTTP status and a stable code.
+// Error is a rejection with an HTTP status and a stable code. Extra holds the
+// fields a rejection adds to its body, such as workspace_id or workspace_ids.
 type Error struct {
 	Status  int
 	Code    string
 	Message string
 	State   string
+	Extra   map[string]any
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Message }
@@ -101,13 +112,15 @@ type Tenant struct {
 	Status string
 }
 
-// NewRequest is a request to insert.
+// NewRequest is a request to insert. Resolutions is JSON; nil stores an empty object.
 type NewRequest struct {
 	Kind        string
 	TargetID    string
 	TargetLabel string
 	Reason      string
 	TenantID    string
+	ParentID    string
+	Resolutions []byte
 	By          Actor
 }
 
@@ -121,6 +134,16 @@ type Tx interface {
 	// creation and a tenant deletion queue on it (spec R6 section 5.7).
 	LockTenant(ctx context.Context, tenantID string) error
 	TenantWorkspaces(ctx context.Context, tenantID string) ([]string, error)
+	// AccountUser returns found == false for an unknown user and for a deleted one.
+	AccountUser(ctx context.Context, id string) (AccountUser, bool, error)
+	// AccountWorkspaces lists the workspaces the user belongs to (spec R6 section 7.3).
+	AccountWorkspaces(ctx context.Context, userID string) ([]AccountWorkspace, error)
+	// WorkspaceMember returns the role and account status of a member; found is
+	// false when the user is not a member.
+	WorkspaceMember(ctx context.Context, workspaceID, userID string) (role, status string, found bool, err error)
+	// ScheduleAccount puts the account in pending_deletion now with its sessions
+	// revoked as of at (spec R6 section 7.4, phase 1).
+	ScheduleAccount(ctx context.Context, userID, reason string, by Actor, at time.Time) error
 	Live(ctx context.Context, kind, targetID string) (Request, bool, error)
 	Lock(ctx context.Context, id string) (Request, bool, error)
 	Insert(ctx context.Context, n NewRequest) (Request, bool, error)
@@ -150,4 +173,12 @@ type Filter struct {
 // Invalidator drops the cached state of a workspace. *workspacestate.Guard is one.
 type Invalidator interface {
 	Invalidate(ctx context.Context, workspaceID string) error
+}
+
+// AccountNotifier drops the cached state of an account (Invalidate) and publishes
+// a change of kind to the Multica server (Publish), as the console does after a
+// status change. Both run after the commit.
+type AccountNotifier interface {
+	Invalidate(ctx context.Context, userID string) error
+	Publish(ctx context.Context, userID, kind string) error
 }

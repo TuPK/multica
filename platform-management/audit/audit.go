@@ -73,6 +73,7 @@ const (
 // has gone. deletion.request_failed has actor_type system; the other two staff.
 const (
 	ActionWorkspaceImmediateDeletionRequested = "workspace.immediate_deletion_requested"
+	ActionAccountImmediateDeletionRequested   = "account.immediate_deletion_requested"
 	ActionTenantImmediateDeletionRequested    = "tenant.immediate_deletion_requested"
 	ActionTenantDeleted                       = "tenant.deleted"
 	ActionDeletionRequestFailed               = "deletion.request_failed"
@@ -187,6 +188,7 @@ var Catalog = []string{
 	ActionMemberStaffAddFailed,
 	ActionMemberStaffAddCanceled,
 	ActionWorkspaceImmediateDeletionRequested,
+	ActionAccountImmediateDeletionRequested,
 	ActionTenantImmediateDeletionRequested,
 	ActionTenantDeleted,
 	ActionDeletionRequestFailed,

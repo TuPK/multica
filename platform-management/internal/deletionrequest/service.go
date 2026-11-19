@@ -16,7 +16,10 @@ type Deps struct {
 	Runner Runner
 	Reader Reader
 	Cache  Invalidator
-	Log    *slog.Logger
+	// Accounts serves account requests (spec R6 section 7). Nil skips the
+	// after-commit notices, as in tests of workspace and tenant requests.
+	Accounts AccountNotifier
+	Log      *slog.Logger
 	// Now returns the time of a request. Nil uses time.Now.
 	Now func() time.Time
 }

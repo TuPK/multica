@@ -300,6 +300,8 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/member-requests/{id}/cancel":     systemTenant,
 		"/api/platform/workspaces/{id}/delete-now":      systemTenant,
 		"/api/platform/tenants/{id}/delete-now":         systemOnly,
+		"/api/platform/users/{id}/delete-now":           systemOnly,
+		"/api/platform/users/{id}/delete-now-preview":   systemOnly,
 		"/api/platform/deletion-requests":               systemTenant,
 		"/api/platform/deletion-requests/{id}":          systemTenant,
 		"/api/platform/deletion-requests/{id}/cancel":   systemTenant,

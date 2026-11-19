@@ -26,6 +26,30 @@ type fakeDeletions struct {
 	tenants    []fakeDelTenant
 	acts       []string
 	filters    []deletionrequest.Filter
+	accounts   []fakeDelAccount
+	preview    deletionrequest.AccountPreview
+}
+
+type fakeDelAccount struct {
+	by   deletionrequest.Actor
+	user string
+	in   deletionrequest.AccountInput
+}
+
+// RequestAccount and PreviewAccount record the call; the answers are the fake's fields.
+func (f *fakeDeletions) RequestAccount(_ context.Context, by deletionrequest.Actor, user string, in deletionrequest.AccountInput) (deletionrequest.Request, bool, error) {
+	f.accounts = append(f.accounts, fakeDelAccount{by: by, user: user, in: in})
+	if f.err != nil {
+		return deletionrequest.Request{}, false, f.err
+	}
+	return f.rows[delReqID], f.created, nil
+}
+
+func (f *fakeDeletions) PreviewAccount(_ context.Context, _ deletionrequest.Actor, _ string) (deletionrequest.AccountPreview, error) {
+	if f.err != nil {
+		return deletionrequest.AccountPreview{}, f.err
+	}
+	return f.preview, nil
 }
 
 type fakeDelWorkspace struct {
@@ -211,4 +235,63 @@ func TestDeletionCancelAndRetryOnlyOwnForAdmin(t *testing.T) {
 	e.delete.rows[delReqID] = deletionrequest.Request{ID: delReqID, Kind: deletionrequest.KindWorkspace, TargetID: wsID, State: deletionrequest.StatePending, TenantID: tenantID, RequestedBy: adminID}
 	wantCode(t, e.do(tadminID, "POST", "/api/platform/deletion-requests/"+delReqID+"/cancel", ""), 404, "not_found")
 	wantStatus(t, e.do(adminID, "POST", "/api/platform/deletion-requests/"+delReqID+"/cancel", ""), http.StatusOK)
+}
+
+const delAccountBody = `{"reason":"legal request","confirm":"leaver@example.test","resolutions":[{"workspace_id":"` + wsID + `","action":"delete"}]}`
+
+func TestDeleteAccountNowIsSystemAdminOnly(t *testing.T) {
+	e := newDeletionEnv(t)
+	for _, u := range []string{tadminID, suppID, billID} {
+		wantUnknownRouteOrNotFound(t, e.do(u, "POST", "/api/platform/users/"+custID+"/delete-now", delAccountBody))
+		wantUnknownRouteOrNotFound(t, e.do(u, "GET", "/api/platform/users/"+custID+"/delete-now-preview", ""))
+	}
+	if len(e.delete.accounts) != 0 {
+		t.Fatalf("the service was reached by a non-system_admin")
+	}
+}
+
+func TestDeleteAccountNowPassesResolutionsAndAnswers202(t *testing.T) {
+	e := newDeletionEnv(t)
+	rec := e.do(adminID, "POST", "/api/platform/users/"+custID+"/delete-now", delAccountBody)
+	wantStatus(t, rec, http.StatusAccepted)
+	if body := decode(t, rec); body["request_id"] != delReqID {
+		t.Fatalf("body = %s", rec.Body.String())
+	}
+	if len(e.delete.accounts) != 1 {
+		t.Fatalf("service calls = %d", len(e.delete.accounts))
+	}
+	got := e.delete.accounts[0]
+	if got.user != custID || got.by.ID != adminID || len(got.in.Resolutions) != 1 || got.in.Resolutions[0].Action != "delete" {
+		t.Fatalf("service got %+v", got)
+	}
+}
+
+func TestDeleteAccountNowSoleOwnerUnresolvedIs409WithList(t *testing.T) {
+	e := newDeletionEnv(t)
+	e.delete.err = &deletionrequest.Error{Status: 409, Code: deletionrequest.CodeSoleOwnerUnresolved, Message: "choose",
+		Extra: map[string]any{"workspace_ids": []string{wsID}}}
+	rec := e.do(adminID, "POST", "/api/platform/users/"+custID+"/delete-now", `{"reason":"r","confirm":"x"}`)
+	wantCode(t, rec, 409, "sole_owner_unresolved")
+	ids, _ := decode(t, rec)["workspace_ids"].([]any)
+	if len(ids) != 1 || ids[0] != wsID {
+		t.Fatalf("workspace_ids = %v", decode(t, rec)["workspace_ids"])
+	}
+}
+
+func TestDeleteAccountPreviewReturnsWorkspaces(t *testing.T) {
+	e := newDeletionEnv(t)
+	e.delete.preview = deletionrequest.AccountPreview{Email: "leaver@example.test",
+		NeedChoice: []deletionrequest.AccountWorkspace{{ID: wsID, Slug: "acme", Role: "owner", OwnerCount: 1, MemberCount: 3}}}
+	rec := e.do(adminID, "GET", "/api/platform/users/"+custID+"/delete-now-preview", "")
+	wantStatus(t, rec, http.StatusOK)
+	body := decode(t, rec)
+	if body["email"] != "leaver@example.test" {
+		t.Fatalf("body = %s", rec.Body.String())
+	}
+	if nc, _ := body["need_choice"].([]any); len(nc) != 1 {
+		t.Fatalf("need_choice = %v", body["need_choice"])
+	}
+	if dw, ok := body["deleted_with"].([]any); !ok || dw == nil {
+		t.Fatalf("deleted_with must be an empty list, not null: %s", rec.Body.String())
+	}
 }

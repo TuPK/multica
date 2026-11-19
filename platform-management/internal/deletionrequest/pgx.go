@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -140,6 +141,14 @@ func (t *pgxTx) Insert(ctx context.Context, n NewRequest) (Request, bool, error)
 	if err != nil {
 		return Request{}, false, err
 	}
+	parent, err := optionalUUID(n.ParentID)
+	if err != nil {
+		return Request{}, false, err
+	}
+	resolutions := n.Resolutions
+	if resolutions == nil {
+		resolutions = []byte(`{}`)
+	}
 	row, err := t.q.InsertDeletionRequest(ctx, db.InsertDeletionRequestParams{
 		Kind:             n.Kind,
 		TargetID:         target,
@@ -148,8 +157,8 @@ func (t *pgxTx) Insert(ctx context.Context, n NewRequest) (Request, bool, error)
 		RequestedBy:      by,
 		RequestedByLabel: n.By.Label,
 		ExportFirst:      false,
-		Resolutions:      []byte(`{}`),
-		ParentID:         pgtype.UUID{},
+		Resolutions:      resolutions,
+		ParentID:         parent,
 		TenantID:         tenant,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -267,4 +276,74 @@ func uuidText(u pgtype.UUID) string {
 	}
 	b := u.Bytes
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+}
+
+func (t *pgxTx) AccountUser(ctx context.Context, id string) (AccountUser, bool, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return AccountUser{}, false, err
+	}
+	row, err := t.q.GetDeletionAccount(ctx, u)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return AccountUser{}, false, nil
+	}
+	if err != nil {
+		return AccountUser{}, false, fmt.Errorf("read account: %w", err)
+	}
+	if row.Status == accountStatusDeleted {
+		return AccountUser{}, false, nil
+	}
+	return AccountUser{ID: uuidText(row.ID), Email: row.Email, Status: row.Status, Staff: row.IsStaff}, true, nil
+}
+
+func (t *pgxTx) AccountWorkspaces(ctx context.Context, userID string) ([]AccountWorkspace, error) {
+	u, err := parseUUID(userID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := t.q.ListDeletionAccountWorkspaces(ctx, u)
+	if err != nil {
+		return nil, fmt.Errorf("list account workspaces: %w", err)
+	}
+	out := make([]AccountWorkspace, len(rows))
+	for i, r := range rows {
+		out[i] = AccountWorkspace{
+			ID: uuidText(r.WorkspaceID), Slug: r.Slug, Role: r.Role,
+			OwnerCount: int(r.OwnerCount), MemberCount: int(r.MemberCount),
+		}
+	}
+	return out, nil
+}
+
+func (t *pgxTx) WorkspaceMember(ctx context.Context, workspaceID, userID string) (string, string, bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return "", "", false, err
+	}
+	u, err := parseUUID(userID)
+	if err != nil {
+		return "", "", false, err
+	}
+	row, err := t.q.GetDeletionMember(ctx, db.GetDeletionMemberParams{WorkspaceID: ws, UserID: u})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", false, nil
+	}
+	if err != nil {
+		return "", "", false, fmt.Errorf("read member: %w", err)
+	}
+	return row.Role, row.Status, true, nil
+}
+
+func (t *pgxTx) ScheduleAccount(ctx context.Context, userID, reason string, by Actor, at time.Time) error {
+	u, err := parseUUID(userID)
+	if err != nil {
+		return err
+	}
+	b, err := parseUUID(by.ID)
+	if err != nil {
+		return err
+	}
+	return t.q.ScheduleAccountDeletionNow(ctx, db.ScheduleAccountDeletionNowParams{
+		UserID: u, Reason: reason, ChangedBy: b, At: pgtype.Timestamptz{Time: at, Valid: true},
+	})
 }

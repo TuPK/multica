@@ -267,7 +267,7 @@ func run() error {
 		}),
 		Deletions: deletionrequest.New(deletionrequest.Deps{
 			Runner: deletionrequest.NewPgxRunner(pool), Reader: deletionrequest.NewPgxReader(pool),
-			Cache: guard, Log: slog.Default(),
+			Cache: guard, Accounts: accountChanges{cache: guard, pub: accountcache.NewPublisher(rdb)}, Log: slog.Default(),
 		}),
 		Accounts: accountrequest.New(accountrequest.Deps{
 			Runner: accountrequest.NewPgxRunner(pool), Reader: accountrequest.NewPgxReader(pool),
@@ -486,4 +486,23 @@ type memberSeats struct{ svc *seat.Service }
 func (m memberSeats) Release(ctx context.Context, workspaceID, token string) error {
 	_, err := m.svc.Release(ctx, workspaceID, token)
 	return err
+}
+
+// accountChanges is the deletionrequest.AccountNotifier: it drops the cached account
+// state and publishes the change to the Multica server, as the console does.
+type accountChanges struct {
+	cache interface {
+		Invalidate(ctx context.Context, userID string) error
+	}
+	pub interface {
+		Publish(ctx context.Context, userID, kind string) error
+	}
+}
+
+func (a accountChanges) Invalidate(ctx context.Context, userID string) error {
+	return a.cache.Invalidate(ctx, userID)
+}
+
+func (a accountChanges) Publish(ctx context.Context, userID, kind string) error {
+	return a.pub.Publish(ctx, userID, kind)
 }

@@ -79,3 +79,44 @@ SELECT workspace_id FROM tenant_workspace WHERE tenant_id = $1 ORDER BY workspac
 -- The max_workspaces gate lock of the tenant (server plan_limit.sql LockPlanGate),
 -- so a workspace creation and this request queue on the same lock.
 SELECT pg_advisory_xact_lock(hashtext($1::text), hashtext('max_workspaces'));
+
+-- name: GetDeletionAccount :one
+-- The account a deletion request targets: its email, its platform status
+-- (active when it has no row) and whether it is an active staff member.
+SELECT u.id, u.email, COALESCE(pa.status, 'active')::text AS status,
+       EXISTS (SELECT 1 FROM platform_staff s WHERE s.user_id = u.id AND s.revoked_at IS NULL) AS is_staff
+FROM "user" u
+LEFT JOIN platform_account pa ON pa.user_id = u.id
+WHERE u.id = $1;
+
+-- name: ListDeletionAccountWorkspaces :many
+-- The workspaces an account belongs to, with the owner and member counts that
+-- decide the sole-owner rule (spec R6 section 7.3).
+SELECT m.workspace_id, w.slug, m.role,
+       (SELECT count(*) FROM member o WHERE o.workspace_id = m.workspace_id AND o.role = 'owner')::bigint AS owner_count,
+       (SELECT count(*) FROM member a WHERE a.workspace_id = m.workspace_id)::bigint AS member_count
+FROM member m
+JOIN workspace w ON w.id = m.workspace_id
+WHERE m.user_id = $1
+ORDER BY m.workspace_id;
+
+-- name: GetDeletionMember :one
+-- A member of a workspace with the member's account status, for the successor
+-- check of spec GĐ11. No row when the user is not a member.
+SELECT m.role, COALESCE(pa.status, 'active')::text AS status
+FROM member m
+LEFT JOIN platform_account pa ON pa.user_id = m.user_id
+WHERE m.workspace_id = $1 AND m.user_id = $2;
+
+-- name: ScheduleAccountDeletionNow :exec
+-- Phase 1 of an account deletion (spec R6 section 7.4): the account is pending
+-- deletion with the date now, and every session issued before now stops working.
+INSERT INTO platform_account (user_id, status, reason, changed_by, sessions_valid_after, deletion_scheduled_at)
+VALUES (sqlc.arg(user_id), 'pending_deletion', sqlc.arg(reason), sqlc.arg(changed_by), sqlc.arg(at)::timestamptz, sqlc.arg(at)::timestamptz)
+ON CONFLICT (user_id) DO UPDATE
+SET status = 'pending_deletion',
+    reason = EXCLUDED.reason,
+    changed_by = EXCLUDED.changed_by,
+    changed_at = now(),
+    sessions_valid_after = EXCLUDED.sessions_valid_after,
+    deletion_scheduled_at = EXCLUDED.deletion_scheduled_at;

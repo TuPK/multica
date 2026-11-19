@@ -15,6 +15,8 @@ import (
 type DeletionRequests interface {
 	RequestWorkspace(ctx context.Context, by deletionrequest.Actor, workspaceID string, in deletionrequest.Input) (deletionrequest.Request, bool, error)
 	RequestTenant(ctx context.Context, by deletionrequest.Actor, tenantID string, in deletionrequest.Input) (deletionrequest.Request, bool, error)
+	RequestAccount(ctx context.Context, by deletionrequest.Actor, userID string, in deletionrequest.AccountInput) (deletionrequest.Request, bool, error)
+	PreviewAccount(ctx context.Context, by deletionrequest.Actor, userID string) (deletionrequest.AccountPreview, error)
 	Cancel(ctx context.Context, by deletionrequest.Actor, id string) (deletionrequest.Request, error)
 	Retry(ctx context.Context, by deletionrequest.Actor, id string) (deletionrequest.Request, error)
 	List(ctx context.Context, f deletionrequest.Filter) ([]deletionrequest.Request, error)
@@ -56,6 +58,9 @@ func (h *Handler) failDeletion(w http.ResponseWriter, r *http.Request, op string
 		body := map[string]any{"error": de.Message, "code": de.Code}
 		if de.State != "" {
 			body["state"] = de.State
+		}
+		for k, v := range de.Extra {
+			body[k] = v
 		}
 		writeJSON(w, de.Status, body)
 	case errors.Is(err, deletionrequest.ErrNotFound):
@@ -144,6 +149,83 @@ func (h *Handler) deleteTenantNow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, deleteStatus(created), deleteAnswer{RequestID: req.ID, State: req.State})
+}
+
+// deleteAccountNow requests the immediate deletion of a user's account (spec R6
+// section 7). Only system_admin has the route: any other scope is the flat 404,
+// even for a user who belongs only to the admin's tenant (M25, D86).
+func (h *Handler) deleteAccountNow(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionAccountDeleteNow)
+	if !ok {
+		return
+	}
+	id, perr := pathID(r, "id")
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	if !scope.All {
+		writeError(w, notFound())
+		return
+	}
+	var in deletionrequest.AccountInput
+	if perr := decodeBody(w, r, &in); perr != nil {
+		writeError(w, perr)
+		return
+	}
+	by, err := h.deletionActor(r)
+	if err != nil {
+		h.fail(w, r, "resolve staff actor", err)
+		return
+	}
+	req, created, err := h.Deletions.RequestAccount(r.Context(), by, id, in)
+	if err != nil {
+		h.failDeletion(w, r, "request account deletion", err)
+		return
+	}
+	writeJSON(w, deleteStatus(created), deleteAnswer{RequestID: req.ID, State: req.State})
+}
+
+// accountPreviewJSON is the preview the console builds the form from.
+type accountPreviewJSON struct {
+	Email       string                             `json:"email"`
+	NeedChoice  []deletionrequest.AccountWorkspace `json:"need_choice"`
+	DeletedWith []deletionrequest.AccountWorkspace `json:"deleted_with"`
+}
+
+// previewAccountDeleteNow returns the workspaces a deletion needs and writes nothing.
+func (h *Handler) previewAccountDeleteNow(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionAccountDeleteNow)
+	if !ok {
+		return
+	}
+	id, perr := pathID(r, "id")
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	if !scope.All {
+		writeError(w, notFound())
+		return
+	}
+	by, err := h.deletionActor(r)
+	if err != nil {
+		h.fail(w, r, "resolve staff actor", err)
+		return
+	}
+	p, err := h.Deletions.PreviewAccount(r.Context(), by, id)
+	if err != nil {
+		h.failDeletion(w, r, "preview account deletion", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, accountPreviewJSON{Email: p.Email, NeedChoice: nonNilWS(p.NeedChoice), DeletedWith: nonNilWS(p.DeletedWith)})
+}
+
+func nonNilWS(in []deletionrequest.AccountWorkspace) []deletionrequest.AccountWorkspace {
+	if in == nil {
+		return []deletionrequest.AccountWorkspace{}
+	}
+	return in
 }
 
 func deleteStatus(created bool) int {
