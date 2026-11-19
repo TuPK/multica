@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS platform_deletion_request_live_uidx;

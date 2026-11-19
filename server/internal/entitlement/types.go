@@ -34,6 +34,11 @@ const (
 	// GateMemberGroups caps the account groups of a workspace (spec 7b.2). The
 	// group routes count it when a group is created.
 	GateMemberGroups GateName = "member_groups"
+
+	// GateMaxWorkspaces caps the workspaces of a tenant (spec R6 section 5.7).
+	// The platform serves the tenant's limit in the policy of every workspace of
+	// the tenant; CreateWorkspace counts it when a workspace joins a tenant.
+	GateMaxWorkspaces GateName = "max_workspaces"
 )
 
 // requiredGates must be present in every policy. An absent one makes the
@@ -46,7 +51,7 @@ var optionalGates = []GateName{
 	GateAgents, GateRuntimes, GateStorageBytes,
 	GateAPIRatePerMinute, GateAuditRetentionDays,
 	GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport,
-	GateMemberGroups,
+	GateMemberGroups, GateMaxWorkspaces,
 }
 
 func (n GateName) valid() bool {
@@ -55,7 +60,7 @@ func (n GateName) valid() bool {
 		GateAgents, GateRuntimes, GateStorageBytes,
 		GateAPIRatePerMinute, GateAuditRetentionDays,
 		GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport,
-		GateMemberGroups:
+		GateMemberGroups, GateMaxWorkspaces:
 		return true
 	default:
 		return false

@@ -34,6 +34,14 @@ func (s *Store) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 		}
 		ws = u
 	}
+	var tenant pgtype.UUID
+	if e.TenantID != "" {
+		u, err := util.ParseUUID(e.TenantID)
+		if err != nil {
+			return err
+		}
+		tenant = u
+	}
 	detail := e.Detail
 	if detail == nil {
 		detail = map[string]any{}
@@ -55,5 +63,6 @@ func (s *Store) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 		Ip:          e.IP,
 		UserAgent:   e.UserAgent,
 		RequestID:   e.RequestID,
+		TenantID:    tenant,
 	})
 }

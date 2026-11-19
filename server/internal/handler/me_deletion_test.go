@@ -537,6 +537,53 @@ func TestAccountDeletionJobAnonymisesAccountRequests(t *testing.T) {
 	}
 }
 
+// Staff add-member requests that named the user (platform spec R6 section 4.3)
+// keep their rows and ids but lose the email, like the account requests do.
+// A request for another person is left alone.
+func TestAccountDeletionAnonymizesMemberRequests(t *testing.T) {
+	requirePlatformTestDatabase(t)
+	ctx := context.Background()
+	f := newDeletionFixture(t)
+	makeDue(t, f.userID)
+
+	reqID := dbfx.Insert(t, "platform_member_request", testutil.Cols{
+		"id": uuid.NewString(), "workspace_id": f.sharedWS, "email": "added-" + uuid.NewString()[:8] + "@example.test",
+		"role": "member", "state": "completed", "user_id": f.userID, "requested_by": f.otherUserID,
+	})
+	removeID := dbfx.Insert(t, "platform_member_request", testutil.Cols{
+		"id": uuid.NewString(), "workspace_id": f.sharedWS, "kind": "remove", "email": "target-" + uuid.NewString()[:8] + "@example.test",
+		"role": "member", "state": "completed", "target_user_id": f.userID, "requested_by": f.otherUserID,
+	})
+	otherEmail := "other-" + uuid.NewString()[:8] + "@example.test"
+	otherID := dbfx.Insert(t, "platform_member_request", testutil.Cols{
+		"id": uuid.NewString(), "workspace_id": f.sharedWS, "email": otherEmail,
+		"role": "member", "requested_by": f.otherUserID,
+	})
+
+	done, err := testHandler.DeleteAccount(ctx, f.userID, time.Now())
+	if err != nil || !done {
+		t.Fatalf("DeleteAccount = %v, %v", done, err)
+	}
+
+	want := "deleted+" + f.userID + "@deleted.invalid"
+	for name, id := range map[string]string{"add": reqID, "remove": removeID} {
+		var email string
+		if err := testPool.QueryRow(ctx, `SELECT email FROM platform_member_request WHERE id = $1::uuid`, id).Scan(&email); err != nil {
+			t.Fatal(err)
+		}
+		if email != want {
+			t.Errorf("%s request email = %q, want %q", name, email, want)
+		}
+	}
+	var got string
+	if err := testPool.QueryRow(ctx, `SELECT email FROM platform_member_request WHERE id = $1::uuid`, otherID).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != otherEmail {
+		t.Errorf("another person's request changed: %q", got)
+	}
+}
+
 // The job can be retried, so deleting an already deleted account must change
 // nothing and report nothing deleted.
 func TestAccountDeletionJobRunsTwiceWithoutError(t *testing.T) {

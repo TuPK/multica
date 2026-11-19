@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS tenant_id_uidx
+    ON tenant (id);

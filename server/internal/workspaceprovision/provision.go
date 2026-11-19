@@ -21,11 +21,16 @@ type Params struct {
 	Context     pgtype.Text
 	IssuePrefix string
 	OwnerID     pgtype.UUID
-	Record      func(audit.Entry) error
+	// TenantID, when valid, is the tenant the workspace joins; the caller has
+	// checked that the owner may add to it and that its max_workspaces gate
+	// admits one more. When not valid, Create makes a tenant of the workspace's
+	// own, keyed by the workspace id (spec R6 section 5.9).
+	TenantID pgtype.UUID
+	Record   func(audit.Entry) error
 }
 
 // StepError names the step of Create that failed: "create", "owner",
-// "statuses" or "audit".
+// "statuses", "tenant" or "audit".
 type StepError struct {
 	Step string
 	Err  error
@@ -59,6 +64,17 @@ func Create(ctx context.Context, qtx *db.Queries, p Params) (db.Workspace, error
 	// never visible without its status catalog.
 	if err := issuestatus.Ensure(ctx, qtx, ws.ID); err != nil {
 		return db.Workspace{}, &StepError{Step: "statuses", Err: err}
+	}
+	// The workspace's tenant: the one it joins, or a new one keyed by its own id.
+	tenantID := p.TenantID
+	if !tenantID.Valid {
+		if err := qtx.CreateTenant(ctx, db.CreateTenantParams{ID: ws.ID, Name: ws.Name, CreatedBy: p.OwnerID}); err != nil {
+			return db.Workspace{}, &StepError{Step: "tenant", Err: err}
+		}
+		tenantID = ws.ID
+	}
+	if err := qtx.LinkWorkspaceToTenant(ctx, db.LinkWorkspaceToTenantParams{WorkspaceID: ws.ID, TenantID: tenantID}); err != nil {
+		return db.Workspace{}, &StepError{Step: "tenant", Err: err}
 	}
 	id := uuidString(ws.ID)
 	if err := p.Record(audit.Entry{

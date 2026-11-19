@@ -20,10 +20,12 @@ import (
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auditstore"
+	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/service"
+	"github.com/multica-ai/multica/server/internal/tenant"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/workspacedeletion"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
@@ -109,6 +111,9 @@ type WorkspaceResponse struct {
 	CreatedAt        string  `json:"created_at"`
 	UpdatedAt        string  `json:"updated_at"`
 	PinnedAt         *string `json:"pinned_at,omitempty"`
+	// TenantID is the tenant the workspace belongs to (spec R6 section 5.9). It
+	// is set on creation and on the single-workspace read, and absent elsewhere.
+	TenantID string `json:"tenant_id,omitempty"`
 }
 
 func (h *Handler) workspaceToResponse(w db.Workspace) WorkspaceResponse {
@@ -294,7 +299,15 @@ func (h *Handler) GetWorkspace(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "workspace not found")
 		return
 	}
-	writeJSON(w, http.StatusOK, h.workspaceToResponse(ws))
+	resp := h.workspaceToResponse(ws)
+	tenantID, err := h.Queries.GetTenantIDByWorkspace(r.Context(), idUUID)
+	switch {
+	case err == nil:
+		resp.TenantID = uuidToString(tenantID)
+	case !errors.Is(err, pgx.ErrNoRows):
+		slog.Warn("read workspace tenant failed", append(logger.RequestAttrs(r), "error", err)...)
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 type CreateWorkspaceRequest struct {
@@ -303,7 +316,14 @@ type CreateWorkspaceRequest struct {
 	Description *string `json:"description"`
 	Context     *string `json:"context"`
 	IssuePrefix *string `json:"issue_prefix"`
+	// TenantID adds the workspace to a tenant the caller owns a workspace of. When
+	// absent the workspace gets a tenant of its own.
+	TenantID *string `json:"tenant_id"`
 }
+
+// tenantNotFoundCode answers a tenant the caller may not add to: one that does
+// not exist, or that they own no workspace of.
+const tenantNotFoundCode = "tenant_not_found"
 
 // freeOwnedWorkspaceLimitCode is the code of the refusal. It is not
 // plan_limit_reached: no plan gate is involved and the response has no gate.
@@ -402,6 +422,32 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		issuePrefix = defaultIssuePrefixFromSlug(req.Slug)
 	}
 
+	// Joining a tenant: the caller must own a workspace of it. The policy is read
+	// from the oldest such workspace before the transaction, because it is a
+	// network call (spec R6 section 5.7).
+	var tenantID pgtype.UUID
+	var tenantGate planlimit.Policy
+	if req.TenantID != nil {
+		parsed, ok := parseUUIDOrBadRequest(w, strings.TrimSpace(*req.TenantID), "tenant_id")
+		if !ok {
+			return
+		}
+		owned, err := h.Queries.ListOwnedTenantWorkspaceIDs(r.Context(), db.ListOwnedTenantWorkspaceIDsParams{
+			TenantID: parsed, UserID: parseUUID(userID),
+		})
+		if err != nil {
+			slog.Warn("list owned tenant workspaces failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create workspace")
+			return
+		}
+		if len(owned) == 0 {
+			writeErrorCode(w, http.StatusNotFound, tenantNotFoundCode, "tenant not found")
+			return
+		}
+		tenantID = parsed
+		tenantGate = h.resolvePlanGate(r.Context(), owned[0], entitlement.GateMaxWorkspaces)
+	}
+
 	tx, err := h.TxStarter.Begin(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create workspace")
@@ -427,6 +473,24 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to create workspace")
 		return
 	}
+	if tenantID.Valid {
+		// The tenant lock is taken whether or not the gate is enforced, so this
+		// creation queues with every other change to the tenant's workspaces.
+		// Admit then counts under it.
+		if err := tenant.Lock(r.Context(), qtx, tenantID); err != nil {
+			slog.Warn("lock tenant failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create workspace")
+			return
+		}
+		if err := tenantGate.Admit(r.Context(), qtx, tenantID, 1, planlimit.CountTenantWorkspaces(qtx, tenantID)); err != nil {
+			if writePlanLimitReached(w, err) {
+				return
+			}
+			slog.Warn("tenant workspace gate failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create workspace")
+			return
+		}
+	}
 	ws, err := workspaceprovision.Create(r.Context(), qtx, workspaceprovision.Params{
 		Name:        req.Name,
 		Slug:        req.Slug,
@@ -434,6 +498,7 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		Context:     ptrToText(req.Context),
 		IssuePrefix: issuePrefix,
 		OwnerID:     parseUUID(userID),
+		TenantID:    tenantID,
 		Record:      func(e audit.Entry) error { return h.recordAudit(r, tx, e) },
 	})
 	if err != nil {
@@ -456,6 +521,9 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		case "statuses":
 			slog.Warn("seed issue statuses failed", append(logger.RequestAttrs(r), "error", stepErr.Err)...)
 			writeError(w, http.StatusInternalServerError, "failed to seed issue statuses")
+		case "tenant":
+			slog.Warn("link workspace to tenant failed", append(logger.RequestAttrs(r), "error", stepErr.Err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create workspace")
 		default:
 			slog.Warn("audit workspace created failed", append(logger.RequestAttrs(r), "error", stepErr.Err)...)
 			writeError(w, http.StatusInternalServerError, "failed to create workspace")
@@ -492,7 +560,13 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("workspace created", append(logger.RequestAttrs(r), "workspace_id", wsID, "name", ws.Name, "slug", ws.Slug)...)
-	writeJSON(w, http.StatusCreated, h.workspaceToResponse(ws))
+	resp := h.workspaceToResponse(ws)
+	if tenantID.Valid {
+		resp.TenantID = uuidToString(tenantID)
+	} else {
+		resp.TenantID = wsID // a tenant of its own, keyed by the workspace id
+	}
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 type UpdateWorkspaceRequest struct {
@@ -812,6 +886,12 @@ func (h *Handler) memberWithUserResponse(member db.Member, user db.User) MemberW
 		AvatarURL:   h.resolveAvatarURLPtr(textToPtr(user.AvatarUrl)),
 		IsGuest:     member.IsGuest,
 	}
+}
+
+// MemberAddedPayload is the "member" value of the member:added event, for the
+// member_provisioning job, which adds members outside a request.
+func (h *Handler) MemberAddedPayload(member db.Member, user db.User) any {
+	return h.memberWithUserResponse(member, user)
 }
 
 func normalizeMemberRole(role string) (string, bool) {
@@ -2021,6 +2101,9 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 				if err := qtx.DeleteWorkspacePlatformSeatOperations(ctx, wsID); err != nil {
 					return err
 				}
+				if err := qtx.DeleteWorkspaceMemberRequests(ctx, wsID); err != nil {
+					return err
+				}
 				if err := qtx.DeleteWorkspacePlatformUsageDaily(ctx, wsID); err != nil {
 					return err
 				}
@@ -2036,6 +2119,15 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 		{
 			name: "detach audit events",
 			run:  func() error { return qtx.DetachWorkspaceAuditEvents(ctx, wsID) },
+		},
+		{
+			// Takes the tenant lock, so a deletion queues behind a creation that
+			// is counting the tenant's workspaces, then removes the link and, with
+			// the tenant's last workspace, the tenant. The tables carry no foreign
+			// key, so only this step cleans them. platform_staff rows that point at
+			// the tenant are left as they are (spec R6 section 3.5, rule 5).
+			name: "detach tenant",
+			run:  func() error { return tenant.Detach(ctx, qtx, wsID) },
 		},
 		{
 			// The caller has resolved the workspace to a valid UUID. The existing final

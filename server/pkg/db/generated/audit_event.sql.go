@@ -58,9 +58,10 @@ func (q *Queries) DeleteAuditEventsBefore(ctx context.Context, arg DeleteAuditEv
 const insertAuditEvent = `-- name: InsertAuditEvent :exec
 INSERT INTO audit_event (
     workspace_id, actor_type, actor_id, actor_label, action,
-    target_type, target_id, target_label, detail, ip, user_agent, request_id
+    target_type, target_id, target_label, detail, ip, user_agent, request_id,
+    tenant_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
 )
 `
 
@@ -77,6 +78,7 @@ type InsertAuditEventParams struct {
 	Ip          string      `json:"ip"`
 	UserAgent   string      `json:"user_agent"`
 	RequestID   string      `json:"request_id"`
+	TenantID    pgtype.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error {
@@ -93,12 +95,13 @@ func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventPara
 		arg.Ip,
 		arg.UserAgent,
 		arg.RequestID,
+		arg.TenantID,
 	)
 	return err
 }
 
 const listUserSecurityEvents = `-- name: ListUserSecurityEvents :many
-SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at FROM audit_event
+SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at, tenant_id FROM audit_event
 WHERE workspace_id IS NULL
   AND actor_id = $1::text
   AND (
@@ -146,6 +149,7 @@ func (q *Queries) ListUserSecurityEvents(ctx context.Context, arg ListUserSecuri
 			&i.UserAgent,
 			&i.RequestID,
 			&i.CreatedAt,
+			&i.TenantID,
 		); err != nil {
 			return nil, err
 		}
@@ -158,7 +162,7 @@ func (q *Queries) ListUserSecurityEvents(ctx context.Context, arg ListUserSecuri
 }
 
 const listWorkspaceAuditEvents = `-- name: ListWorkspaceAuditEvents :many
-SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at FROM audit_event
+SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at, tenant_id FROM audit_event
 WHERE workspace_id = $1
   AND ($2::text IS NULL OR action = $2::text)
   AND ($3::text IS NULL OR actor_id = $3::text)
@@ -219,6 +223,7 @@ func (q *Queries) ListWorkspaceAuditEvents(ctx context.Context, arg ListWorkspac
 			&i.UserAgent,
 			&i.RequestID,
 			&i.CreatedAt,
+			&i.TenantID,
 		); err != nil {
 			return nil, err
 		}

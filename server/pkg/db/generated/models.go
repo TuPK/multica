@@ -256,6 +256,7 @@ type AuditEvent struct {
 	UserAgent   string             `json:"user_agent"`
 	RequestID   string             `json:"request_id"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	TenantID    pgtype.UUID        `json:"tenant_id"`
 }
 
 type Autopilot struct {
@@ -2111,6 +2112,27 @@ type PlatformAccountRequest struct {
 	WelcomeAttempts int32              `json:"welcome_attempts"`
 }
 
+type PlatformMemberRequest struct {
+	ID               pgtype.UUID        `json:"id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Kind             string             `json:"kind"`
+	TargetUserID     pgtype.UUID        `json:"target_user_id"`
+	PreviousRole     string             `json:"previous_role"`
+	Email            string             `json:"email"`
+	Role             string             `json:"role"`
+	State            string             `json:"state"`
+	ErrorCode        string             `json:"error_code"`
+	Attempts         int32              `json:"attempts"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	MemberID         pgtype.UUID        `json:"member_id"`
+	UserCreated      bool               `json:"user_created"`
+	RequestedBy      pgtype.UUID        `json:"requested_by"`
+	RequestedByLabel string             `json:"requested_by_label"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	CompletedAt      pgtype.Timestamptz `json:"completed_at"`
+}
+
 type PlatformNote struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	AuthorID    pgtype.UUID        `json:"author_id"`
@@ -2137,6 +2159,7 @@ type PlatformStaff struct {
 	CreatedBy pgtype.UUID        `json:"created_by"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+	TenantID  pgtype.UUID        `json:"tenant_id"`
 }
 
 type PlatformUsageDaily struct {
@@ -2850,6 +2873,24 @@ type TaskUsageHourlyRollupState struct {
 	LastRunFinishedAt pgtype.Timestamptz `json:"last_run_finished_at"`
 	LastRunRows       int64              `json:"last_run_rows"`
 	LastError         pgtype.Text        `json:"last_error"`
+}
+
+type Tenant struct {
+	ID              pgtype.UUID        `json:"id"`
+	Name            string             `json:"name"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
+	Status          string             `json:"status"`
+	StatusReason    string             `json:"status_reason"`
+	StatusChangedAt pgtype.Timestamptz `json:"status_changed_at"`
+	StatusChangedBy pgtype.UUID        `json:"status_changed_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type TenantWorkspace struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	TenantID    pgtype.UUID        `json:"tenant_id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type UsageCharge struct {

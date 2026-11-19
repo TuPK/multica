@@ -872,3 +872,30 @@ func TestAccountProvisionCallsAutoEnableOncePerWorkspaceAfterCommit(t *testing.T
 		t.Fatal("unrelated run changed the AutoEnable count")
 	}
 }
+
+// Every account an admin creates gets a workspace with a tenant of its own
+// (spec R6 section 5.9), made by the same Create the web app calls.
+func TestProvisionedWorkspaceHasTenant(t *testing.T) {
+	r := newRunner(runnerOpts{})
+	id, _ := insertRequest(t, reqSpec{
+		Email:       "tenant-" + token() + "@example.test",
+		DisplayName: "Tenant Owner",
+		WSName:      "Tenant Co",
+		WSSlug:      "acct-" + token(),
+	})
+	runOnce(t, r)
+	req := getRequest(t, id)
+	if req.State != "provisioned" || !req.WorkspaceID.Valid {
+		t.Fatalf("state = %q, workspace %v", req.State, req.WorkspaceID.Valid)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM tenant_workspace WHERE workspace_id = $1`, req.WorkspaceID)
+		testPool.Exec(context.Background(), `DELETE FROM tenant WHERE id = $1`, req.WorkspaceID)
+	})
+	if n := count(t, `SELECT count(*) FROM tenant WHERE id = $1 AND name = 'Tenant Co' AND created_by = $2`, req.WorkspaceID, req.UserID); n != 1 {
+		t.Fatalf("tenants of the new workspace = %d, want 1", n)
+	}
+	if n := count(t, `SELECT count(*) FROM tenant_workspace WHERE workspace_id = $1 AND tenant_id = $1`, req.WorkspaceID); n != 1 {
+		t.Fatalf("links = %d, want 1", n)
+	}
+}

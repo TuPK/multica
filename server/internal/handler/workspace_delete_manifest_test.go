@@ -235,11 +235,14 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"plan_price_change":        workspaceDeleteKeep, // plan-level: plan_key, no workspace_id (spec 7b.4)
 	"platform_account":         workspaceDeleteKeep,
 	"platform_account_request": workspaceDeleteDetach, // the request row survives as the record; workspace teardown clears its workspace_id
+	"platform_member_request":  workspaceDelete,       // the pending and finished add-member requests of the workspace; they hold the email of people who were never members
 	"platform_note":            workspaceDelete,
 	"platform_seat_operation":  workspaceDelete,
 	"platform_staff":           workspaceDeleteKeep,
 	"platform_usage_daily":     workspaceDelete,
 	"platform_workspace":       workspaceDelete,
+	"tenant":                   workspaceDelete, // deleted with the last workspace of the tenant (tenant.Detach)
+	"tenant_workspace":         workspaceDelete, // the link of the deleted workspace
 	"usage_charge":             workspaceDelete, // per-workspace usage charges, rated from platform_usage_daily (spec 7b.3)
 	"user_consent":             workspaceDeleteKeep,
 	"workspace_policy":         workspaceDelete, // per-workspace configuration, like sso_connection (spec 6.4)
@@ -357,6 +360,11 @@ func TestWorkspaceTeardownAppliesManifestDecisions(t *testing.T) {
 	dbfx.Exec(t, `INSERT INTO workspace_subscription (workspace_id, plan_key, status) VALUES ($1::uuid, 'free', 'active')`, wsID)
 	dbfx.Exec(t, `INSERT INTO billing_profile (workspace_id) VALUES ($1::uuid)`, wsID)
 	dbfx.Exec(t, `INSERT INTO workspace_policy (workspace_id) VALUES ($1::uuid)`, wsID)
+	tenantID := uuid.NewString()
+	dbfx.Exec(t, `INSERT INTO tenant (id, name) VALUES ($1::uuid, 'manifest')`, tenantID)
+	dbfx.Exec(t, `INSERT INTO tenant_workspace (workspace_id, tenant_id) VALUES ($1::uuid, $2::uuid)`, wsID, tenantID)
+	dbfx.Cleanup(t, `DELETE FROM tenant_workspace WHERE workspace_id = $1::uuid`, wsID)
+	dbfx.Cleanup(t, `DELETE FROM tenant WHERE id = $1::uuid`, tenantID)
 	dbfx.Exec(t, `INSERT INTO billing_order (id, workspace_id, kind, plan_key, "interval", amount, currency, status, provider, transfer_code, expires_at)
 		VALUES (gen_random_uuid(), $1::uuid, 'subscription', 'free', 'month', 0, 'VND', 'pending', 'bank_transfer', 'manifest-' || $1, now() + interval '1 day')`, wsID)
 
@@ -381,10 +389,13 @@ func TestWorkspaceTeardownAppliesManifestDecisions(t *testing.T) {
 		t.Fatalf("commit teardown: %v", err)
 	}
 
-	for _, table := range []string{"billing_notice", "billing_profile", "platform_note", "platform_seat_operation", "platform_usage_daily", "platform_workspace", "workspace_export", "workspace_policy", "workspace_subscription"} {
+	for _, table := range []string{"billing_notice", "billing_profile", "platform_note", "platform_seat_operation", "platform_usage_daily", "platform_workspace", "tenant_workspace", "workspace_export", "workspace_policy", "workspace_subscription"} {
 		if n := dbfx.Count(t, `SELECT count(*) FROM `+table+` WHERE workspace_id = $1::uuid`, wsID); n != 0 {
 			t.Errorf("%s: %d rows left for the deleted workspace; want 0", table, n)
 		}
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM tenant WHERE id = $1::uuid`, tenantID); n != 0 {
+		t.Errorf("tenant: %d rows left for the deleted workspace's only tenant; want 0", n)
 	}
 	if n := dbfx.Count(t, `SELECT count(*) FROM audit_event WHERE id = $1::uuid AND workspace_id IS NULL`, auditID); n != 1 {
 		t.Errorf("audit_event row %s: want it kept with a NULL workspace_id", auditID)

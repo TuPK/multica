@@ -265,3 +265,88 @@ func assertStep(t *testing.T, err error, step string) {
 		t.Fatalf("StepError.Err is nil")
 	}
 }
+
+func cleanupTenant(t *testing.T, tenantID any) {
+	t.Helper()
+	t.Cleanup(func() {
+		ctx := context.Background()
+		_, _ = testPool.Exec(ctx, `DELETE FROM tenant_workspace WHERE tenant_id = $1`, tenantID)
+		_, _ = testPool.Exec(ctx, `DELETE FROM tenant WHERE id = $1`, tenantID)
+	})
+}
+
+// Without a tenant, Create makes one keyed by the workspace id: the same shape
+// the backfill gives an existing workspace (spec R6 sections 5.4 and 5.9).
+func TestCreateWithoutTenantMakesTenantWithWorkspaceID(t *testing.T) {
+	owner := newUser(t)
+	slug := "prov-" + token()
+	cleanupWorkspaceBySlug(t, slug)
+
+	ws, err := runCreate(t, Params{Name: "Own Tenant Co", Slug: slug, IssuePrefix: "OTC", OwnerID: owner.ID, Record: func(audit.Entry) error { return nil }})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	cleanupTenant(t, ws.ID)
+	if n := countWhere(t, `SELECT count(*) FROM tenant WHERE id = $1 AND name = $2 AND created_by = $3 AND status = 'active'`, ws.ID, "Own Tenant Co", owner.ID); n != 1 {
+		t.Fatalf("tenants keyed by the workspace id = %d, want 1 with the workspace's name and the owner as creator", n)
+	}
+	if n := countWhere(t, `SELECT count(*) FROM tenant_workspace WHERE workspace_id = $1 AND tenant_id = $1`, ws.ID); n != 1 {
+		t.Fatalf("links to the workspace's own tenant = %d, want 1", n)
+	}
+}
+
+// With a tenant, Create only adds the link and makes no tenant.
+func TestCreateWithTenantAddsLinkOnly(t *testing.T) {
+	owner := newUser(t)
+	first := "prov-" + token()
+	second := "prov-" + token()
+	cleanupWorkspaceBySlug(t, first)
+	cleanupWorkspaceBySlug(t, second)
+
+	ws1, err := runCreate(t, Params{Name: "First", Slug: first, IssuePrefix: "FST", OwnerID: owner.ID, Record: func(audit.Entry) error { return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanupTenant(t, ws1.ID)
+	before := countWhere(t, `SELECT count(*) FROM tenant`)
+
+	ws2, err := runCreate(t, Params{Name: "Second", Slug: second, IssuePrefix: "SND", OwnerID: owner.ID, TenantID: ws1.ID, Record: func(audit.Entry) error { return nil }})
+	if err != nil {
+		t.Fatalf("Create into a tenant: %v", err)
+	}
+	if n := countWhere(t, `SELECT count(*) FROM tenant`); n != before {
+		t.Errorf("tenants went from %d to %d, want no new tenant", before, n)
+	}
+	if n := countWhere(t, `SELECT count(*) FROM tenant WHERE id = $1`, ws2.ID); n != 0 {
+		t.Errorf("the second workspace got a tenant keyed by its own id")
+	}
+	if n := countWhere(t, `SELECT count(*) FROM tenant_workspace WHERE workspace_id = $1 AND tenant_id = $2`, ws2.ID, ws1.ID); n != 1 {
+		t.Errorf("links of the second workspace to the first tenant = %d, want 1", n)
+	}
+	if n := countWhere(t, `SELECT count(*) FROM tenant_workspace WHERE tenant_id = $1`, ws1.ID); n != 2 {
+		t.Errorf("workspaces in the tenant = %d, want 2", n)
+	}
+}
+
+// The tenant rows are part of the workspace's creating transaction.
+func TestCreateTenantRowsRollBackWithTheWorkspace(t *testing.T) {
+	owner := newUser(t)
+	slug := "prov-" + token()
+	cleanupWorkspaceBySlug(t, slug)
+	ctx := context.Background()
+	tx, err := testPool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ws, err := Create(ctx, db.New(testPool).WithTx(tx), Params{Name: "Rollback", Slug: slug, IssuePrefix: "RBK", OwnerID: owner.ID, Record: func(audit.Entry) error { return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanupTenant(t, ws.ID)
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := countWhere(t, `SELECT count(*) FROM tenant WHERE id = $1`, ws.ID) + countWhere(t, `SELECT count(*) FROM tenant_workspace WHERE workspace_id = $1`, ws.ID); n != 0 {
+		t.Fatalf("tenant rows survived a rollback: %d", n)
+	}
+}
