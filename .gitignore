@@ -70,6 +70,9 @@ e2e/secretary-eval/results/
 # feature tracking
 _features/
 
+# local agent scratch output (logs, briefs, run folders)
+scratchpad/
+
 # runtime
 *.pid
 
