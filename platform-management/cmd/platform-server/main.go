@@ -108,7 +108,7 @@ func run() error {
 	// An empty plan table gets the embedded catalogue; a table with rows is
 	// staff's and is left alone.
 	planRunner := plan.NewPgxRunner(pool)
-	if _, err := plan.Seed(startCtx, planRunner, slog.Default()); err != nil {
+	if _, err := plan.SeedEnabled(startCtx, planRunner, slog.Default(), cfg.Billing.Currencies); err != nil {
 		return fmt.Errorf("load the plan catalogue: %w", err)
 	}
 
@@ -415,6 +415,7 @@ func run() error {
 	if webhookLn != nil {
 		listeners = append(listeners, server.Listener{Name: "webhook", Listener: webhookLn, Handler: billing.NewWebhookHandler(billing.WebhookDeps{
 			Registry: cfg.Payments.Registry, Notices: paymentnotice.NewPgxStore(pool), Reconciler: reconciler, Log: slog.Default(),
+			Currencies: cfg.Billing.Currencies,
 		})})
 	}
 	err = server.Serve(ctx, shutdownGrace, listeners...)

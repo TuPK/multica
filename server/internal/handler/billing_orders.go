@@ -69,7 +69,7 @@ type scheduledPriceChangeJSON struct {
 	SeatPriceYear  *int64 `json:"seat_price_year"`
 }
 
-// usageRateJSON is one meter of a usage plan: price VND for per units.
+// usageRateJSON is one meter of a usage plan: price in minor units of the plan currency for per units.
 type usageRateJSON struct {
 	Per   int64 `json:"per"`
 	Price int64 `json:"price"`
@@ -141,7 +141,7 @@ func billingBankDetails() orderBankJSON {
 }
 
 // workspaceOrderJSON is an order as the order page reads it. Amounts are whole
-// units of the currency (VND has no decimals); total_amount is what the customer
+// minor units of the plan currency; total_amount is what the customer
 // transfers, VAT included.
 type workspaceOrderJSON struct {
 	ID           string         `json:"id"`

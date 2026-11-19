@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/multica-ai/multica/platform-management/audit"
+	rules "github.com/multica-ai/multica/platform-management/internal/money"
 )
 
 // Tx is the plan writes of one operation, all inside one transaction with its
@@ -43,12 +44,18 @@ type Runner interface {
 // nothing. It returns the number of plans it inserted. The load is one
 // transaction, so a failure leaves the table as it was and the next start tries again.
 func Seed(ctx context.Context, r Runner, log *slog.Logger) (int, error) {
+	return SeedEnabled(ctx, r, log, []string{rules.Default})
+}
+
+// SeedEnabled is Seed with the enabled set of the platform. A catalogue plan
+// outside it makes SeedEnabled fail before any row is written.
+func SeedEnabled(ctx context.Context, r Runner, log *slog.Logger, enabled []string) (int, error) {
 	catalogue, err := Catalogue()
 	if err != nil {
 		return 0, err
 	}
 	for _, p := range catalogue {
-		if err := Validate(p); err != nil {
+		if err := validateSeed(p, enabled); err != nil {
 			return 0, fmt.Errorf("plan catalogue: %s: %w", p.Key, err)
 		}
 	}

@@ -278,3 +278,11 @@ type Reader interface {
 	// List returns every plan, archived ones included, in display order.
 	List(ctx context.Context) ([]Plan, error)
 }
+
+// validateSeed is Validate plus the enabled-set check that plan save also runs.
+func validateSeed(p Plan, enabled []string) error {
+	if err := Validate(p); err != nil {
+		return err
+	}
+	return ValidateCurrency(p.Currency, enabled)
+}

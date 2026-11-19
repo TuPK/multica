@@ -8,8 +8,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
+	"github.com/multica-ai/multica/platform-management/internal/money"
 	"github.com/multica-ai/multica/platform-management/internal/paymentnotice"
+	"github.com/multica-ai/multica/platform-management/internal/plan"
 )
 
 const webhookPath = "/api/payments/webhook/{provider}"
@@ -34,6 +37,7 @@ type WebhookDeps struct {
 	Notices    NoticeStore
 	Reconciler NoticeReconciler // required
 	MaxBytes   int64            // 0 means DefaultWebhookMaxBytes
+	Currencies []string         // PLATFORM_CURRENCIES; empty means just money.Default
 	Log        *slog.Logger
 }
 
@@ -45,6 +49,9 @@ func NewWebhookHandler(d WebhookDeps) http.Handler {
 	}
 	if d.Log == nil {
 		d.Log = slog.Default()
+	}
+	if len(d.Currencies) == 0 {
+		d.Currencies = []string{money.Default}
 	}
 	h := &webhook{WebhookDeps: d}
 	mux := http.NewServeMux()
@@ -90,6 +97,13 @@ func (h *webhook) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	case err != nil:
 		h.review(w, r, name, bodyHash, "unparsable")
+		return
+	}
+
+	// Providers report the currency in either case; the enabled set is lower case.
+	if err := plan.ValidateCurrency(strings.ToLower(n.Currency), h.Currencies); err != nil {
+		h.done(w, name, http.StatusBadRequest, "currency_not_enabled",
+			`{"error":"currency not enabled","code":"payment_currency_not_enabled"}`)
 		return
 	}
 
