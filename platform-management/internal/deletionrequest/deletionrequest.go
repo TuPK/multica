@@ -91,10 +91,12 @@ type Request struct {
 	UpdatedAt        time.Time
 }
 
-// Input is what staff submit: the reason and the typed confirmation.
+// Input is what staff submit: the reason, the typed confirmation, and whether
+// the workspaces' data is exported before deletion (spec R6 section 3c.9, rule 5).
 type Input struct {
-	Reason  string `json:"reason"`
-	Confirm string `json:"confirm"`
+	Reason      string `json:"reason"`
+	Confirm     string `json:"confirm"`
+	ExportFirst bool   `json:"export_first"`
 }
 
 // Workspace is the target row of a workspace request.
@@ -130,6 +132,7 @@ type NewRequest struct {
 	TenantID    string
 	ParentID    string
 	Resolutions []byte
+	ExportFirst bool
 	By          Actor
 }
 
@@ -155,6 +158,9 @@ type Tx interface {
 	// ScheduleAccount puts the account in pending_deletion now with its sessions
 	// revoked as of at (spec R6 section 7.4, phase 1).
 	ScheduleAccount(ctx context.Context, userID, reason string, by Actor, at time.Time) error
+	// InsertExport queues a workspace export for a deletion, unless one is queued or running
+	// (then the existing one serves, spec R6 section 3c.9, rule 5).
+	InsertExport(ctx context.Context, workspaceID, requestedBy string) (bool, error)
 	Live(ctx context.Context, kind, targetID string) (Request, bool, error)
 	Lock(ctx context.Context, id string) (Request, bool, error)
 	Insert(ctx context.Context, n NewRequest) (Request, bool, error)
@@ -184,6 +190,16 @@ type Filter struct {
 // Invalidator drops the cached state of a workspace. *workspacestate.Guard is one.
 type Invalidator interface {
 	Invalidate(ctx context.Context, workspaceID string) error
+}
+
+// OwnerLookup lists the emails of a workspace's owners.
+type OwnerLookup interface {
+	OwnerEmails(ctx context.Context, workspaceID string) ([]string, error)
+}
+
+// DeletionMailer sends the notice of a scheduled deletion to one owner.
+type DeletionMailer interface {
+	SendDeletionNotice(ctx context.Context, to, workspaceName string, at time.Time, exportFirst bool) error
 }
 
 // AccountNotifier drops the cached state of an account (Invalidate) and publishes

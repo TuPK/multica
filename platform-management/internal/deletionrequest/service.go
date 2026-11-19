@@ -19,7 +19,11 @@ type Deps struct {
 	// Accounts serves account requests (spec R6 section 7). Nil skips the
 	// after-commit notices, as in tests of workspace and tenant requests.
 	Accounts AccountNotifier
-	Log      *slog.Logger
+	// Owners and Mail send the notice of an immediate deletion to each owner of a
+	// workspace after the commit (spec R6 section 3c.9, rule 4). Nil skips them.
+	Owners OwnerLookup
+	Mail   DeletionMailer
+	Log    *slog.Logger
 	// Now returns the time of a request. Nil uses time.Now.
 	Now func() time.Time
 }
@@ -57,6 +61,7 @@ func (s *Service) RequestWorkspace(ctx context.Context, by Actor, workspaceID st
 	var out Request
 	created := false
 	var changed []string
+	var notices []Workspace
 	err := s.Runner.InTx(ctx, func(tx Tx) error {
 		out, created, changed = Request{}, false, nil
 		ws, found, err := tx.Workspace(ctx, workspaceID)
@@ -76,7 +81,8 @@ func (s *Service) RequestWorkspace(ctx context.Context, by Actor, workspaceID st
 			return nil
 		}
 		row, inserted, err := tx.Insert(ctx, NewRequest{
-			Kind: KindWorkspace, TargetID: ws.ID, TargetLabel: ws.Slug, Reason: reason, TenantID: ws.TenantID, By: by,
+			Kind: KindWorkspace, TargetID: ws.ID, TargetLabel: ws.Slug, Reason: reason, TenantID: ws.TenantID,
+			ExportFirst: in.ExportFirst, By: by,
 		})
 		if err != nil {
 			return err
@@ -100,12 +106,19 @@ func (s *Service) RequestWorkspace(ctx context.Context, by Actor, workspaceID st
 		if moved {
 			changed = append(changed, ws.ID)
 		}
+		if in.ExportFirst {
+			if _, err := tx.InsertExport(ctx, ws.ID, by.ID); err != nil {
+				return err
+			}
+		}
+		notices = []Workspace{ws}
 		return nil
 	})
 	if err != nil {
 		return Request{}, false, err
 	}
 	s.invalidate(ctx, changed)
+	s.noticeOwners(ctx, notices, out, in.ExportFirst)
 	return out, created, nil
 }
 
@@ -120,8 +133,9 @@ func (s *Service) RequestTenant(ctx context.Context, by Actor, tenantID string, 
 	var out Request
 	created := false
 	var changed []string
+	var notices []Workspace
 	err := s.Runner.InTx(ctx, func(tx Tx) error {
-		out, created, changed = Request{}, false, nil
+		out, created, changed, notices = Request{}, false, nil, nil
 		tn, found, err := tx.Tenant(ctx, tenantID)
 		if err != nil {
 			return err
@@ -142,7 +156,8 @@ func (s *Service) RequestTenant(ctx context.Context, by Actor, tenantID string, 
 			return nil
 		}
 		row, inserted, err := tx.Insert(ctx, NewRequest{
-			Kind: KindTenant, TargetID: tn.ID, TargetLabel: tn.Name, Reason: reason, TenantID: tn.ID, By: by,
+			Kind: KindTenant, TargetID: tn.ID, TargetLabel: tn.Name, Reason: reason, TenantID: tn.ID,
+			ExportFirst: in.ExportFirst, By: by,
 		})
 		if err != nil {
 			return err
@@ -178,6 +193,12 @@ func (s *Service) RequestTenant(ctx context.Context, by Actor, tenantID string, 
 			if moved {
 				changed = append(changed, ws.ID)
 			}
+			if in.ExportFirst {
+				if _, err := tx.InsertExport(ctx, ws.ID, by.ID); err != nil {
+					return err
+				}
+			}
+			notices = append(notices, ws)
 		}
 		return audit.Record(ctx, tx, by.entry(audit.Entry{
 			TenantID: tn.ID, Action: audit.ActionTenantImmediateDeletionRequested, TargetType: targetTenant, TargetID: tn.ID, TargetLabel: tn.Name,
@@ -188,7 +209,39 @@ func (s *Service) RequestTenant(ctx context.Context, by Actor, tenantID string, 
 		return Request{}, false, err
 	}
 	s.invalidate(ctx, changed)
+	s.noticeOwners(ctx, notices, out, in.ExportFirst)
 	return out, created, nil
+}
+
+// noticeOwners sends the scheduled-deletion notice to every owner of each
+// workspace, after the commit (spec R6 section 3c.9, rule 4). A failure to send
+// is audited as deletion.notice_failed and does not stop the deletion.
+func (s *Service) noticeOwners(ctx context.Context, wss []Workspace, req Request, exportFirst bool) {
+	if s.Owners == nil || s.Mail == nil {
+		return
+	}
+	at := s.Now().UTC()
+	for _, ws := range wss {
+		emails, err := s.Owners.OwnerEmails(ctx, ws.ID)
+		if err != nil {
+			s.Log.Warn("deletionrequest: owners not read; no notice sent", "workspace_id", ws.ID, "error", err)
+			continue
+		}
+		for _, to := range emails {
+			action := audit.ActionDeletionNoticeSent
+			if err := s.Mail.SendDeletionNotice(ctx, to, ws.Name, at, exportFirst); err != nil {
+				action = audit.ActionDeletionNoticeFailed
+				s.Log.Warn("deletionrequest: deletion notice not sent", "workspace_id", ws.ID, "error", err)
+			}
+			_ = s.Runner.InTx(ctx, func(tx Tx) error {
+				return audit.Record(ctx, tx, audit.Entry{
+					WorkspaceID: ws.ID, TenantID: ws.TenantID, ActorType: audit.ActorSystem,
+					Action: action, TargetType: targetWorkspace, TargetID: ws.ID, TargetLabel: ws.Slug,
+					Detail: map[string]any{"request_id": req.ID},
+				})
+			})
+		}
+	}
 }
 
 // setPending moves one workspace to pending_deletion with the date now, and writes

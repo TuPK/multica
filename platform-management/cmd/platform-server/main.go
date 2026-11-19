@@ -147,6 +147,7 @@ func run() error {
 	var signInMail platformauth.Mailer
 	var consoleMail console.Mailer
 	var welcomeMail accountrequest.WelcomeMailer
+	var deletionMail deletionrequest.DeletionMailer
 	if cfg.Email.Provider != "" {
 		m, err := mailer.New(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, slog.Default())
 		if err != nil {
@@ -155,6 +156,7 @@ func run() error {
 		signInMail = m
 		consoleMail = m
 		welcomeMail = m
+		deletionMail = m
 	}
 	accountCache := accountcache.NewCache(rdb)
 	guard := accountguard.New(store, accountCache)
@@ -271,7 +273,8 @@ func run() error {
 		}),
 		Deletions: deletionrequest.New(deletionrequest.Deps{
 			Runner: deletionrequest.NewPgxRunner(pool), Reader: deletionrequest.NewPgxReader(pool),
-			Cache: guard, Accounts: accountChanges{cache: guard, pub: accountcache.NewPublisher(rdb)}, Log: slog.Default(),
+			Cache: guard, Accounts: accountChanges{cache: guard, pub: accountcache.NewPublisher(rdb)},
+			Owners: deletionrequest.NewPgxReader(pool), Mail: deletionMail, Log: slog.Default(),
 		}),
 		Quota:          quota.New(quota.Deps{Pool: pool, Cache: policy}),
 		TenantStatuses: tenantstatus.New(pool, guard),

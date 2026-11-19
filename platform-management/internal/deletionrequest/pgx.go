@@ -156,7 +156,7 @@ func (t *pgxTx) Insert(ctx context.Context, n NewRequest) (Request, bool, error)
 		Reason:           n.Reason,
 		RequestedBy:      by,
 		RequestedByLabel: n.By.Label,
-		ExportFirst:      false,
+		ExportFirst:      n.ExportFirst,
 		Resolutions:      resolutions,
 		ParentID:         parent,
 		TenantID:         tenant,
@@ -362,4 +362,37 @@ func (t *pgxTx) Runtime(ctx context.Context, id string) (RuntimeTarget, bool, er
 		return RuntimeTarget{}, false, fmt.Errorf("read runtime: %w", err)
 	}
 	return RuntimeTarget{ID: uuidText(row.ID), Name: row.Name, WorkspaceID: uuidText(row.WorkspaceID), TenantID: row.TenantID}, true, nil
+}
+
+// InsertExport implements Tx: a queued export of the workspace, unless one is
+// queued or running already. It reports whether it queued one.
+func (t *pgxTx) InsertExport(ctx context.Context, workspaceID, requestedBy string) (bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return false, err
+	}
+	busy, err := t.q.WorkspaceExportInFlight(ctx, ws)
+	if err != nil {
+		return false, fmt.Errorf("read export state: %w", err)
+	}
+	if busy {
+		return false, nil
+	}
+	by, err := parseUUID(requestedBy)
+	if err != nil {
+		return false, err
+	}
+	if _, err := t.q.InsertWorkspaceExport(ctx, db.InsertWorkspaceExportParams{WorkspaceID: ws, RequestedBy: by}); err != nil {
+		return false, fmt.Errorf("queue export: %w", err)
+	}
+	return true, nil
+}
+
+// OwnerEmails implements OwnerLookup over the shared member and user tables.
+func (r *PgxReader) OwnerEmails(ctx context.Context, workspaceID string) ([]string, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	return r.q.ListWorkspaceOwnerEmails(ctx, ws)
 }
