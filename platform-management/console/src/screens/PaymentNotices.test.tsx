@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { PaymentNotices } from "./PaymentNotices";
 import { PlatformApiError } from "../api/client";
 
@@ -77,6 +77,7 @@ describe("PaymentNotices screen", () => {
     expect(screen.getByText("MUL12345678")).toBeInTheDocument();
     expect(screen.getByText(/660,000/)).toBeInTheDocument();
     expect(screen.getByText("Ambiguous transfer code")).toBeInTheDocument();
+    expect(screen.getByText("No notice selected")).toBeInTheDocument();
   });
 
   it("shows the loading state while the queue loads", () => {
@@ -185,7 +186,8 @@ describe("PaymentNotices screen", () => {
     fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: "Matched by hand" } });
     fireEvent.click(screen.getByRole("button", { name: "Match payment" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("no longer waiting for review");
+    const dialog = screen.getByRole("dialog");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("no longer waiting for review");
   });
 
   it("hides the queue and its actions from support", () => {

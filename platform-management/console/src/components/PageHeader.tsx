@@ -1,4 +1,7 @@
 import type { ReactNode } from "react";
+import { Divider } from "@astryxdesign/core/Divider";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@multica/ui/components/ui/button";
 import { ArrowLeft } from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
@@ -26,7 +29,7 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <header className={cn("space-y-3 border-b border-surface-border pb-4", className)}>
+    <header className={cn("space-y-3", className)}>
       {backAction && (
         <div>
           <Button
@@ -44,18 +47,23 @@ export function PageHeader({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="font-heading text-title-lg font-semibold tracking-tight text-foreground">
-              {title}
-            </h1>
+            <Heading level={1}>{title}</Heading>
             {badge}
           </div>
-          {meta && <div className="text-caption text-muted-foreground">{meta}</div>}
+          {meta && (
+            <Text type="supporting" as="div">
+              {meta}
+            </Text>
+          )}
           {description && (
-            <p className="max-w-2xl text-body text-muted-foreground">{description}</p>
+            <Text type="body" color="secondary" as="p" className="max-w-2xl">
+              {description}
+            </Text>
           )}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>
+      <Divider />
     </header>
   );
 }

@@ -1,15 +1,77 @@
+@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+@import "@astryxdesign/theme-neutral/theme.css";
+@import "@astryxdesign/charts/charts.css";
 @import "@multica/ui/styles/tokens.css";
 @import "@multica/ui/styles/base.css";
 
-/* Scan the shared UI primitives too: Dialog, Table and Button classes live in
-   packages/ui, outside this app's source tree, and would not be generated. */
+/* Scan the shared UI primitives too: Dialog, Select, Tabs, and Button classes
+   live in packages/ui, outside this app's source tree, and would not be generated. */
 @source "../../../packages/ui";
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+/* Bridge @multica/ui semantic CSS variables directly to the live Astryx Neutral
+   tokens provided by @astryxdesign/theme-neutral/theme.css so remaining
+   @multica/ui controls (Dialogs, Selects, Inputs, Checkboxes, Tabs, DatePicker)
+   follow the real Astryx <Theme theme={neutralTheme}> in both light and dark modes
+   without duplicating raw color values. */
+@layer astryx-theme {
+  [data-astryx-theme="neutral"] {
+    --font-sans: var(--font-family-body);
+    --font-mono: var(--font-family-code);
+    --dialog-enter-duration: var(--duration-fast);
+    --dialog-exit-duration: var(--duration-fast);
+
+    --app-shell: var(--color-background-body);
+    --page-canvas: var(--color-background-body);
+    --surface: var(--color-background-surface);
+    --surface-foreground: var(--color-text-primary);
+    --surface-raised: var(--color-background-popover);
+    --surface-hover: var(--color-overlay-hover);
+    --surface-selected: var(--color-accent-muted);
+    --surface-selected-foreground: var(--color-text-primary);
+    --surface-border: var(--color-border);
+    --surface-shadow: var(--shadow-low);
+    --menu-shadow: var(--shadow-med);
+    --floating-shadow: var(--shadow-high);
+
+    --background: var(--color-background-body);
+    --foreground: var(--color-text-primary);
+    --card: var(--color-background-surface);
+    --card-foreground: var(--color-text-primary);
+    --popover: var(--color-background-popover);
+    --popover-foreground: var(--color-text-primary);
+    --primary: var(--color-accent);
+    --primary-foreground: var(--color-on-accent);
+    --secondary: var(--color-background-gray);
+    --secondary-foreground: var(--color-text-gray);
+    --muted: var(--color-background-muted);
+    --muted-foreground: var(--color-text-secondary);
+    --faint-foreground: var(--color-icon-secondary);
+    --accent: var(--color-neutral);
+    --accent-foreground: var(--color-text-accent);
+    --border: var(--color-border);
+    --input: var(--color-border-emphasized);
+    --ring: var(--color-accent);
+
+    --brand: var(--color-info);
+    --brand-foreground: var(--color-on-info);
+    --info: var(--color-text-info);
+    --success: var(--color-text-success);
+    --warning: var(--color-text-warning);
+    --destructive: var(--color-text-error);
+  }
+
+  /* Keep selected rows unmistakably highlighted at rest and on hover inside
+     children-mode Astryx Tables. */
+  [data-astryx-theme="neutral"] tr[data-state="selected"],
+  [data-astryx-theme="neutral"] tr[data-state="selected"]:hover {
+    background-color: var(--color-accent-muted);
+  }
 }

@@ -9,8 +9,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@astryxdesign/charts": "catalog:",
+    "@astryxdesign/core": "catalog:",
+    "@astryxdesign/theme-neutral": "catalog:",
     "@multica/core": "workspace:*",
     "@multica/ui": "workspace:*",
+    "@stylexjs/stylex": "catalog:",
     "@tanstack/react-query": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

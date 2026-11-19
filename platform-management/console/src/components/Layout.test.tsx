@@ -13,12 +13,19 @@ function setViewportWidth(width: number) {
     value: width,
   });
   window.matchMedia = (query: string) => {
-    const maxMatch = /\(max-width:\s*(\d+)px\)/.exec(query);
-    const minMatch = /\(min-width:\s*(\d+)px\)/.exec(query);
-    const matchesMax = maxMatch ? width <= Number(maxMatch[1]) : true;
-    const matchesMin = minMatch ? width >= Number(minMatch[1]) : true;
+    const ltMatch = /\(width\s*<\s*([\d.]+)px\)/.exec(query);
+    const lteMatch = /\(width\s*<=\s*([\d.]+)px\)/.exec(query);
+    const gteMatch = /\(width\s*>=\s*([\d.]+)px\)/.exec(query);
+    const maxMatch = /\(max-width:\s*([\d.]+)px\)/.exec(query);
+    const minMatch = /\(min-width:\s*([\d.]+)px\)/.exec(query);
+    const matches =
+      (ltMatch ? width < Number(ltMatch[1]) : true) &&
+      (lteMatch ? width <= Number(lteMatch[1]) : true) &&
+      (gteMatch ? width >= Number(gteMatch[1]) : true) &&
+      (maxMatch ? width <= Number(maxMatch[1]) : true) &&
+      (minMatch ? width >= Number(minMatch[1]) : true);
     return {
-      matches: matchesMax && matchesMin,
+      matches,
       media: query,
       onchange: null,
       addListener: () => {},
@@ -40,7 +47,7 @@ describe("Layout navigation", () => {
     window.matchMedia = originalMatchMedia;
   });
 
-  it("renders AppShell + SideNav from @multica/ui/sidebar with grouped items, aria-current, and footer info", () => {
+  it("renders Astryx AppShell + SideNav with grouped items, aria-current, and footer info", () => {
     setViewportWidth(1280);
     const { container } = render(
       <Layout
@@ -53,11 +60,9 @@ describe("Layout navigation", () => {
       </Layout>,
     );
 
-    expect(container.querySelector('[data-slot="sidebar-wrapper"]')).not.toBeNull();
-    expect(container.querySelector('[data-slot="sidebar"]')).not.toBeNull();
-    const inset = container.querySelector('[data-slot="sidebar-inset"]');
-    expect(inset).not.toBeNull();
-    expect(inset).toHaveClass("min-w-0");
+    expect(container.querySelector(".astryx-app-shell")).not.toBeNull();
+    expect(container.querySelector(".astryx-side-nav")).not.toBeNull();
+    expect(screen.getByRole("main")).toBeInTheDocument();
 
     const nav = screen.getByRole("navigation", { name: "Main Navigation" });
     expect(within(nav).getByText("Operations")).toBeInTheDocument();
@@ -66,7 +71,7 @@ describe("Layout navigation", () => {
 
     const tenantsBtn = within(nav).getByRole("button", { name: /Tenants/i });
     expect(tenantsBtn).toHaveAttribute("aria-current", "page");
-    expect(tenantsBtn).toHaveAttribute("data-active");
+    expect(tenantsBtn).toHaveAttribute("data-selected", "selected");
     expect(within(nav).getByRole("button", { name: /Overview/i })).not.toHaveAttribute("aria-current");
 
     const emailEl = screen.getByText("very.long.admin.address@example.com");
@@ -77,7 +82,7 @@ describe("Layout navigation", () => {
 
   it("collapses and reopens the desktop sidebar via the toggle buttons", () => {
     setViewportWidth(1280);
-    const { container } = render(
+    render(
       <Layout
         currentScreen="overview"
         onNavigate={vi.fn()}
@@ -88,7 +93,7 @@ describe("Layout navigation", () => {
       </Layout>,
     );
 
-    const sidebar = container.querySelector('[data-slot="sidebar"]');
+    const sidebar = screen.getByRole("navigation", { name: "Main Navigation" });
     expect(sidebar).toHaveAttribute("data-state", "expanded");
 
     fireEvent.click(screen.getByRole("button", { name: "Collapse navigation" }));
@@ -116,21 +121,21 @@ describe("Layout navigation", () => {
     );
 
     // Closed by default on narrow viewports so content is not pushed off-screen
-    expect(screen.queryByRole("navigation", { name: "Main Navigation" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     const toggleBtn = screen.getByRole("button", { name: "Open navigation" });
     expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
 
     fireEvent.click(toggleBtn);
 
-    const nav = screen.getByRole("navigation", { name: "Main Navigation" });
-    expect(nav).toBeInTheDocument();
-    expect(within(nav).getByRole("button", { name: "Audit Log" })).toBeInTheDocument();
-    expect(within(nav).getByRole("button", { name: "Staff" })).toBeInTheDocument();
+    const drawer = screen.getByRole("dialog");
+    expect(drawer).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "Audit Log" })).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "Staff" })).toBeInTheDocument();
 
-    fireEvent.click(within(nav).getByRole("button", { name: "Audit Log" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Audit Log" }));
     expect(onNavigate).toHaveBeenCalledWith("audit");
-    expect(screen.queryByRole("navigation", { name: "Main Navigation" })).not.toBeInTheDocument();
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
   });
 
   it("hides Commercial group, Plans, Accounts, and Staff from support role", () => {

@@ -1,4 +1,14 @@
 import { useMemo, useState } from "react";
+import { Card } from "@astryxdesign/core/Card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@multica/ui/components/ui/button";
 import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
@@ -9,15 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@multica/ui/components/ui/select";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
 import { Spinner } from "@multica/ui/components/ui/spinner";
+import { Activity } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { DatePickerField } from "../components/DatePickerField";
 import { LoadingState } from "../components/LoadingState";
@@ -85,69 +88,71 @@ export function Audit() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 rounded-lg border border-surface-border bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Field>
-          <FieldLabel htmlFor="audit-action-select" className="text-label">
-            Action
-          </FieldLabel>
-          <Select
-            items={actionItems}
-            value={action || "all"}
-            onValueChange={(val) => setAction(!val || val === "all" ? "" : val)}
-          >
-            <SelectTrigger id="audit-action-select" aria-label="Action" className="w-full">
-              <SelectValue>
-                {actionItems.find((item) => item.value === (action || "all"))?.label ??
-                  "All actions"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {actionItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
+      <Card padding={4}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Field>
+            <FieldLabel htmlFor="audit-action-select" className="text-label">
+              Action
+            </FieldLabel>
+            <Select
+              items={actionItems}
+              value={action || "all"}
+              onValueChange={(val) => setAction(!val || val === "all" ? "" : val)}
+            >
+              <SelectTrigger id="audit-action-select" aria-label="Action" className="w-full">
+                <SelectValue>
+                  {actionItems.find((item) => item.value === (action || "all"))?.label ??
+                    "All actions"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {actionItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
 
-        <Field>
-          <FieldLabel htmlFor="audit-actor-input" className="text-label">
-            Actor ID
-          </FieldLabel>
-          <Input
-            id="audit-actor-input"
-            type="text"
-            value={actorId}
-            onChange={(e) => setActorId(e.target.value)}
-            placeholder="Filter by actor ID..."
-          />
-        </Field>
+          <Field>
+            <FieldLabel htmlFor="audit-actor-input" className="text-label">
+              Actor ID
+            </FieldLabel>
+            <Input
+              id="audit-actor-input"
+              type="text"
+              value={actorId}
+              onChange={(e) => setActorId(e.target.value)}
+              placeholder="Filter by actor ID..."
+            />
+          </Field>
 
-        <Field>
-          <FieldLabel htmlFor="audit-from-input" className="text-label">
-            From Date
-          </FieldLabel>
-          <DatePickerField
-            id="audit-from-input"
-            value={from}
-            onChange={setFrom}
-            placeholder="Select start date"
-          />
-        </Field>
+          <Field>
+            <FieldLabel htmlFor="audit-from-input" className="text-label">
+              From Date
+            </FieldLabel>
+            <DatePickerField
+              id="audit-from-input"
+              value={from}
+              onChange={setFrom}
+              placeholder="Select start date"
+            />
+          </Field>
 
-        <Field>
-          <FieldLabel htmlFor="audit-to-input" className="text-label">
-            To Date
-          </FieldLabel>
-          <DatePickerField
-            id="audit-to-input"
-            value={to}
-            onChange={setTo}
-            placeholder="Select end date"
-          />
-        </Field>
-      </div>
+          <Field>
+            <FieldLabel htmlFor="audit-to-input" className="text-label">
+              To Date
+            </FieldLabel>
+            <DatePickerField
+              id="audit-to-input"
+              value={to}
+              onChange={setTo}
+              placeholder="Select end date"
+            />
+          </Field>
+        </div>
+      </Card>
 
       {isLoading && <LoadingState message="Loading audit log..." />}
 
@@ -161,6 +166,7 @@ export function Audit() {
 
       {!isLoading && !isError && events.length === 0 && (
         <EmptyState
+          icon={<Activity className="size-5" aria-hidden="true" />}
           title="No audit events found"
           description="Try adjusting your filter criteria."
           actions={
@@ -175,53 +181,55 @@ export function Audit() {
 
       {!isLoading && !isError && events.length > 0 && (
         <div className="space-y-4">
-          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-            <Table>
+          <Card padding={0} className="overflow-x-auto">
+            <Table density="compact" dividers="rows" hasHover>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Actor</TableHead>
-                  <TableHead>Target</TableHead>
-                  <TableHead>Details</TableHead>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>Time</TableHeaderCell>
+                  <TableHeaderCell>Action</TableHeaderCell>
+                  <TableHeaderCell>Actor</TableHeaderCell>
+                  <TableHeaderCell>Target</TableHeaderCell>
+                  <TableHeaderCell>Details</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {events.map((event: AuditEvent) => (
                   <TableRow key={event.id}>
-                    <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
-                      {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
+                    <TableCell className="whitespace-nowrap">
+                      <Text type="supporting" hasTabularNumbers>
+                        {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
+                      </Text>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-caption font-medium">
-                      {event.action}
+                    <TableCell className="whitespace-nowrap">
+                      <Text type="code" weight="medium">
+                        {event.action}
+                      </Text>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span>{event.actor_label}</span>
-                        <span className="text-caption text-muted-foreground">
-                          {event.actor_type}
-                        </span>
+                        <Text type="body">{event.actor_label}</Text>
+                        <Text type="supporting">{event.actor_type}</Text>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span>{event.target_label || event.target_id}</span>
-                        <span className="text-caption text-muted-foreground">
-                          {event.target_type}
-                        </span>
+                        <Text type="body">{event.target_label || event.target_id}</Text>
+                        <Text type="supporting">{event.target_type}</Text>
                       </div>
                     </TableCell>
-                    <TableCell
-                      className="max-w-xs truncate font-mono text-caption text-muted-foreground"
-                      title={event.detail ? JSON.stringify(event.detail) : undefined}
-                    >
-                      {event.detail ? JSON.stringify(event.detail) : "-"}
+                    <TableCell className="max-w-xs">
+                      <span
+                        className="block truncate font-mono text-caption text-muted-foreground"
+                        title={event.detail ? JSON.stringify(event.detail) : undefined}
+                      >
+                        {event.detail ? JSON.stringify(event.detail) : "-"}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </Card>
 
           {hasNextPage && (
             <div className="flex justify-center pt-2">

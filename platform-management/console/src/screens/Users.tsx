@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Input } from "@multica/ui/components/ui/input";
-import { Button } from "@multica/ui/components/ui/button";
+import { Card } from "@astryxdesign/core/Card";
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableRow,
-  TableHead,
   TableCell,
-} from "@multica/ui/components/ui/table";
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
+import { Button } from "@multica/ui/components/ui/button";
+import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Search, X } from "@multica/ui/icons";
+import { Search, Users as UsersIcon, X } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
@@ -87,6 +89,7 @@ export function Users({ onSelectUser }: UsersProps) {
 
       {!isLoading && !isError && users.length === 0 && (
         <EmptyState
+          icon={<UsersIcon className="size-5" aria-hidden="true" />}
           title="No users found"
           description={
             search
@@ -105,16 +108,16 @@ export function Users({ onSelectUser }: UsersProps) {
 
       {!isLoading && !isError && users.length > 0 && (
         <div className="space-y-4">
-          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-            <Table>
+          <Card padding={0} className="overflow-x-auto">
+            <Table density="balanced" dividers="rows" hasHover>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Workspaces</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>Email</TableHeaderCell>
+                  <TableHeaderCell>Name</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Workspaces</TableHeaderCell>
+                  <TableHeaderCell>Created</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Action</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -131,15 +134,21 @@ export function Users({ onSelectUser }: UsersProps) {
                         {user.id}
                       </div>
                     </TableCell>
-                    <TableCell>{user.name || "-"}</TableCell>
+                    <TableCell>
+                      <Text type="body">{user.name || "-"}</Text>
+                    </TableCell>
                     <TableCell>
                       <StatusBadge status={user.status} />
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {user.memberships_count}
+                    <TableCell className="text-right">
+                      <Text type="body" hasTabularNumbers>
+                        {user.memberships_count}
+                      </Text>
                     </TableCell>
-                    <TableCell className="text-muted-foreground tabular-nums">
-                      {user.created_at ? new Date(user.created_at).toLocaleString() : "-"}
+                    <TableCell>
+                      <Text type="supporting" hasTabularNumbers>
+                        {user.created_at ? new Date(user.created_at).toLocaleString() : "-"}
+                      </Text>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -154,7 +163,7 @@ export function Users({ onSelectUser }: UsersProps) {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </Card>
 
           {hasNextPage && (
             <div className="flex justify-center pt-2">

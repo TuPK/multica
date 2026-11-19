@@ -129,16 +129,15 @@ describe("Users screen", () => {
       refetch: vi.fn(),
     });
 
-    const { container } = render(<Users onSelectUser={vi.fn()} />);
+    render(<Users onSelectUser={vi.fn()} />);
 
     for (const col of ["Email", "Name", "Status", "Workspaces", "Created", "Action"]) {
       expect(screen.getByRole("columnheader", { name: col })).toBeInTheDocument();
     }
 
-    const tableContainer = container.querySelector('[data-slot="table-container"]');
-    expect(tableContainer).not.toBeNull();
-    expect(tableContainer).toHaveClass("overflow-x-auto");
-    expect(tableContainer?.parentElement).toHaveClass("overflow-x-auto");
+    const tableCard = screen.getByRole("table").closest(".astryx-card");
+    expect(tableCard).not.toBeNull();
+    expect(tableCard).toHaveClass("overflow-x-auto");
 
     const emailEl = screen.getByText("alice@example.com");
     expect(emailEl).toHaveClass("truncate");

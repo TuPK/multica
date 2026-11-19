@@ -1,21 +1,25 @@
 import { useEffect, useState } from "react";
+import { Card } from "@astryxdesign/core/Card";
+import { Divider } from "@astryxdesign/core/Divider";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Section } from "@astryxdesign/core/Section";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
-import { Separator } from "@multica/ui/components/ui/separator";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
 import { Textarea } from "@multica/ui/components/ui/textarea";
-import { AlertCircle, AlertTriangle, CheckCircle2 } from "@multica/ui/icons";
+import { AlertCircle, AlertTriangle, CalendarClock, CheckCircle2 } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -369,20 +373,16 @@ export function PriceSchedule({
             }
           />
 
-          <section className="space-y-4">
+          <Section variant="transparent" padding={0} className="space-y-4">
             <div className="space-y-1">
-              <h2 className="font-heading text-title-sm font-semibold text-foreground">
-                Schedule price change
-              </h2>
-              <p className="text-caption text-muted-foreground">
+              <Heading level={2}>Schedule price change</Heading>
+              <Text type="supporting" as="p">
                 Preview affected subscribers before scheduling. Price increases with paid subscribers require advance notice in UTC.
-              </p>
+              </Text>
             </div>
 
-            <form
-              onSubmit={handleSchedule}
-              className="space-y-4 rounded-lg border border-surface-border bg-surface p-4"
-            >
+            <Card padding={5}>
+              <form onSubmit={handleSchedule} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field>
                   <FieldLabel htmlFor="price-effective-from" className="text-label">
@@ -554,17 +554,18 @@ export function PriceSchedule({
                   Schedule
                 </Button>
               </div>
-            </form>
-          </section>
+              </form>
+            </Card>
+          </Section>
 
-          <Separator />
+          <Divider />
         </>
       )}
 
-      <section className="space-y-4">
-        <h2 className="font-heading text-title-sm font-semibold text-foreground">
+      <Section variant="transparent" padding={0} className="space-y-4">
+        <Heading level={2}>
           {readOnly ? `Changes for ${resolvedPlanKey}` : "Price Change History"}
-        </h2>
+        </Heading>
 
         {cancelError && (
           <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
@@ -589,22 +590,23 @@ export function PriceSchedule({
 
         {!historyLoading && !historyError && (!history || history.length === 0) && (
           <EmptyState
+            icon={<CalendarClock className="size-5" aria-hidden="true" />}
             title="No price changes"
             description="No scheduled or past price changes recorded for this plan."
           />
         )}
 
         {!historyLoading && !historyError && history && history.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-            <Table>
+          <Card padding={0} className="overflow-x-auto">
+            <Table density="compact" dividers="rows" hasHover>
               <TableHeader>
-                <TableRow>
-                  <TableHead>State</TableHead>
-                  <TableHead>Effective from (UTC)</TableHead>
-                  <TableHead>Old prices</TableHead>
-                  <TableHead>New prices</TableHead>
-                  <TableHead>Reason</TableHead>
-                  {!readOnly && <TableHead className="text-right">Actions</TableHead>}
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>State</TableHeaderCell>
+                  <TableHeaderCell>Effective from (UTC)</TableHeaderCell>
+                  <TableHeaderCell>Old prices</TableHeaderCell>
+                  <TableHeaderCell>New prices</TableHeaderCell>
+                  <TableHeaderCell>Reason</TableHeaderCell>
+                  {!readOnly && <TableHeaderCell className="text-right">Actions</TableHeaderCell>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -613,16 +615,24 @@ export function PriceSchedule({
                     <TableCell>
                       <StatusBadge status={item.state} />
                     </TableCell>
-                    <TableCell className="font-mono text-caption tabular-nums">
-                      {item.effective_from}
+                    <TableCell>
+                      <Text type="code" hasTabularNumbers>
+                        {item.effective_from}
+                      </Text>
                     </TableCell>
-                    <TableCell className="text-caption tabular-nums">
-                      {formatPriceSnapshot(item.old, currency)}
+                    <TableCell>
+                      <Text type="supporting" hasTabularNumbers>
+                        {formatPriceSnapshot(item.old, currency)}
+                      </Text>
                     </TableCell>
-                    <TableCell className="text-caption font-medium tabular-nums">
-                      {formatPriceSnapshot(item.new, currency)}
+                    <TableCell>
+                      <Text type="supporting" color="primary" weight="medium" hasTabularNumbers>
+                        {formatPriceSnapshot(item.new, currency)}
+                      </Text>
                     </TableCell>
-                    <TableCell className="text-body">{item.reason}</TableCell>
+                    <TableCell>
+                      <Text type="body">{item.reason}</Text>
+                    </TableCell>
                     {!readOnly && (
                       <TableCell className="text-right">
                         {item.state === "scheduled" && (
@@ -646,9 +656,9 @@ export function PriceSchedule({
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </Card>
         )}
-      </section>
+      </Section>
     </div>
   );
 }

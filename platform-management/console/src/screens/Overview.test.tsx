@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { Overview } from "./Overview";
 
 const mockUseOverview = vi.fn();
@@ -33,18 +33,19 @@ describe("Overview screen", () => {
     render(<Overview />);
 
     expect(screen.getByRole("heading", { name: "Platform Overview" })).toBeInTheDocument();
-    expect(screen.getByText("Total Workspaces")).toBeInTheDocument();
-    expect(screen.getByText("51")).toBeInTheDocument(); // 42+5+3+1
-    expect(screen.getByText("Active Workspaces")).toBeInTheDocument();
-    expect(screen.getByText("42")).toBeInTheDocument();
-    expect(screen.getByText("Sign-ups (7 Days)")).toBeInTheDocument();
-    expect(screen.getByText("19")).toBeInTheDocument();
-    expect(screen.getByText("Read-Only")).toBeInTheDocument();
-    expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getByText("Suspended")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText("Pending Deletion")).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
+    const kpiBand = screen.getByLabelText("Workspace metrics");
+    expect(within(kpiBand).getByText("Total Workspaces")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("51")).toBeInTheDocument(); // 42+5+3+1
+    expect(within(kpiBand).getByText("Active Workspaces")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("42")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("Sign-ups (7 Days)")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("19")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("Read-Only")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("5")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("Suspended")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("3")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("Pending Deletion")).toBeInTheDocument();
+    expect(within(kpiBand).getByText("1")).toBeInTheDocument();
   });
 
   it("renders pending orders, subscriptions by plan, and platform usage snapshot when present", () => {
@@ -86,14 +87,44 @@ describe("Overview screen", () => {
     expect(screen.getByText(/660,000 VND/)).toBeInTheDocument();
 
     expect(screen.getByRole("heading", { name: "Subscriptions by Plan" })).toBeInTheDocument();
-    expect(screen.getByText("free")).toBeInTheDocument();
-    expect(screen.getByText("pro")).toBeInTheDocument();
+    expect(screen.getAllByText("free").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("pro").length).toBeGreaterThanOrEqual(1);
 
     expect(screen.getByRole("heading", { name: "Platform Usage Snapshot" })).toBeInTheDocument();
-    expect(screen.getByText("2026-11-18")).toBeInTheDocument();
-    expect(screen.getByText("24")).toBeInTheDocument();
-    expect(screen.getByText("120")).toBeInTheDocument();
-    expect(screen.getByText("2.0 KB")).toBeInTheDocument();
+    const supportingBand = screen.getByLabelText("Supporting tables");
+    expect(within(supportingBand).getByText("2026-11-18")).toBeInTheDocument();
+    expect(within(supportingBand).getByText("24")).toBeInTheDocument();
+    expect(within(supportingBand).getByText("120")).toBeInTheDocument();
+    expect(within(supportingBand).getByText("2.0 KB")).toBeInTheDocument();
+
+    // Analytics Dashboard charts (@astryxdesign/charts) and supporting tables bands
+    expect(
+      screen.getByRole("img", { name: /Workspace status distribution/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /Subscriptions by plan/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Pending Orders by Currency" }),
+    ).toBeInTheDocument();
+  });
+
+  it("refreshes overview metrics from the header Refresh button", () => {
+    const refetch = vi.fn();
+    mockUseOverview.mockReturnValue({
+      data: {
+        workspaces_by_status: { active: 2, read_only: 0, suspended: 0, pending_deletion: 0 },
+        signups_7d: 1,
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      refetch,
+    });
+
+    render(<Overview />);
+    fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("handles loading, error, and empty states", () => {

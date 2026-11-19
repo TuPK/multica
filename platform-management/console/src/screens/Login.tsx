@@ -1,13 +1,9 @@
 import { useState } from "react";
+import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@multica/ui/components/ui/card";
 import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
@@ -81,23 +77,24 @@ export function Login({ onSuccess }: LoginProps) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-app-shell p-4">
-      <Card className="w-full max-w-sm border-surface-border shadow-none">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+      <Card padding={6} elevation="low" className="w-full max-w-sm space-y-5">
+        <div className="space-y-1.5 text-center">
+          <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Shield className="size-5" aria-hidden="true" />
           </div>
-          <CardTitle className="font-heading text-title-lg font-semibold">
+          <Heading level={1} justify="center">
             Platform Console
-          </CardTitle>
-          <CardDescription>
+          </Heading>
+          <Text type="supporting" as="p" justify="center">
             {step === "email"
               ? "Sign in with your staff email address"
               : step === "code"
                 ? "Enter the verification code"
                 : "Enter the code from your authenticator app"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </Text>
+        </div>
+
+        <div className="space-y-4">
           {infoMessage && (
             <Alert role="status" className="border-info/30 bg-info/10 text-foreground">
               <Info className="size-4 text-info" aria-hidden="true" />
@@ -219,7 +216,7 @@ export function Login({ onSuccess }: LoginProps) {
               </Button>
             </form>
           )}
-        </CardContent>
+        </div>
       </Card>
     </div>
   );

@@ -1,229 +1,118 @@
-import { Badge } from "@multica/ui/components/ui/badge";
-import { cn } from "@multica/ui/lib/utils";
+import { Badge, type BadgeVariant } from "@astryxdesign/core/Badge";
+import { StatusDot as AstryxStatusDot, type StatusDotVariant } from "@astryxdesign/core/StatusDot";
+import { Text } from "@astryxdesign/core/Text";
 
-type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+type StatusPresentation =
+  | {
+      kind: "quiet";
+      label: string;
+      dotVariant: StatusDotVariant;
+      textColor: "primary" | "secondary";
+    }
+  | {
+      kind: "badge";
+      label: string;
+      badgeVariant: BadgeVariant;
+      dotVariant?: StatusDotVariant;
+    };
 
-interface StatusConfig {
-  label: string;
-  variant: BadgeVariant;
-  className?: string;
-  dot?: boolean;
-}
+/**
+ * Astryx Neutral status-dot & badge discipline (Badge.doc.mjs / StatusDot.doc.mjs):
+ * - Routine/healthy and inactive states render as a quiet Astryx StatusDot + Text
+ *   so they never drown out rows that demand operator attention.
+ * - Exception, warning, and active transitional states render as Astryx semantic
+ *   Badges with a leading StatusDot.
+ * - Roles render as Astryx categorical Badges without a StatusDot.
+ */
+const STATUS_CONFIG: Record<string, StatusPresentation> = {
+  // Routine healthy operational states — quiet dot + primary text
+  active: { kind: "quiet", label: "Active", dotVariant: "success", textColor: "primary" },
+  paid: { kind: "quiet", label: "Paid", dotVariant: "success", textColor: "primary" },
+  completed: { kind: "quiet", label: "Completed", dotVariant: "success", textColor: "primary" },
+  issued: { kind: "quiet", label: "Issued", dotVariant: "success", textColor: "primary" },
+  applied: { kind: "quiet", label: "Applied", dotVariant: "success", textColor: "primary" },
+  resolved: { kind: "quiet", label: "Resolved", dotVariant: "success", textColor: "primary" },
+  verified: { kind: "quiet", label: "Verified", dotVariant: "success", textColor: "primary" },
 
-const STATUS_CONFIG: Record<string, StatusConfig> = {
-  // Operational workspace & account statuses
-  active: {
-    label: "Active",
-    variant: "outline",
-    className: "border-success/30 bg-success/10 text-success",
-    dot: true,
-  },
-  read_only: {
-    label: "Read-only",
-    variant: "secondary",
-    dot: true,
-  },
-  suspended: {
-    label: "Suspended",
-    variant: "destructive",
-    dot: true,
-  },
-  pending_deletion: {
-    label: "Pending Deletion",
-    variant: "destructive",
-    className: "border-destructive/40 bg-destructive/15",
-    dot: true,
-  },
-  deleted: {
-    label: "Deleted",
-    variant: "outline",
-    className: "text-muted-foreground",
-    dot: true,
-  },
-  archived: {
-    label: "Archived",
-    variant: "secondary",
-    className: "text-muted-foreground",
-    dot: true,
-  },
+  // Inactive / neutral operational states — quiet dot + secondary text
+  read_only: { kind: "quiet", label: "Read-only", dotVariant: "neutral", textColor: "secondary" },
+  deleted: { kind: "quiet", label: "Deleted", dotVariant: "neutral", textColor: "secondary" },
+  archived: { kind: "quiet", label: "Archived", dotVariant: "neutral", textColor: "secondary" },
+  expired: { kind: "quiet", label: "Expired", dotVariant: "neutral", textColor: "secondary" },
+  canceled: { kind: "quiet", label: "Canceled", dotVariant: "neutral", textColor: "secondary" },
+  cancelled: { kind: "quiet", label: "Cancelled", dotVariant: "neutral", textColor: "secondary" },
+  dismissed: { kind: "quiet", label: "Dismissed", dotVariant: "neutral", textColor: "secondary" },
+  unverified: { kind: "quiet", label: "Unverified", dotVariant: "neutral", textColor: "secondary" },
+  received: { kind: "quiet", label: "Received", dotVariant: "neutral", textColor: "secondary" },
 
-  // Subscription statuses
-  trialing: {
-    label: "Trialing",
-    variant: "outline",
-    className: "border-info/30 bg-info/10 text-info",
-    dot: true,
-  },
-  past_due: {
-    label: "Past due",
-    variant: "outline",
-    className: "border-warning/40 bg-warning/10 text-warning",
-    dot: true,
-  },
-
-  // Order statuses
-  pending: {
-    label: "Pending",
-    variant: "outline",
-    className: "border-warning/40 bg-warning/10 text-warning",
-    dot: true,
-  },
-  paid: {
-    label: "Paid",
-    variant: "outline",
-    className: "border-success/30 bg-success/10 text-success",
-    dot: true,
-  },
-  expired: {
-    label: "Expired",
-    variant: "secondary",
-    className: "text-muted-foreground",
-    dot: true,
-  },
-  canceled: {
-    label: "Canceled",
-    variant: "outline",
-    className: "text-muted-foreground",
-    dot: true,
-  },
-  cancelled: {
-    label: "Cancelled",
-    variant: "outline",
-    className: "text-muted-foreground",
-    dot: true,
-  },
-  refunded: {
-    label: "Refunded",
-    variant: "outline",
-    className: "border-info/30 bg-info/10 text-info",
-    dot: true,
-  },
-
-  // Account requests, payment notices, e-invoices, and price changes
-  provisioned: {
-    label: "Provisioned",
-    variant: "outline",
-    className: "border-info/30 bg-info/10 text-info",
-    dot: true,
-  },
-  completed: {
-    label: "Completed",
-    variant: "outline",
-    className: "border-success/30 bg-success/10 text-success",
-    dot: true,
-  },
-  failed: {
-    label: "Failed",
-    variant: "destructive",
-    dot: true,
-  },
-  needs_info: {
-    label: "Needs info",
-    variant: "destructive",
-    dot: true,
-  },
-  issued: {
-    label: "Issued",
-    variant: "outline",
-    className: "border-success/30 bg-success/10 text-success",
-    dot: true,
-  },
-  received: {
-    label: "Received",
-    variant: "secondary",
-    dot: true,
-  },
+  // Attention / warning states — semantic warning badge + dot
+  pending: { kind: "badge", label: "Pending", badgeVariant: "warning", dotVariant: "warning" },
+  past_due: { kind: "badge", label: "Past due", badgeVariant: "warning", dotVariant: "warning" },
   needs_review: {
+    kind: "badge",
     label: "Needs review",
-    variant: "outline",
-    className: "border-warning/40 bg-warning/10 text-warning",
-    dot: true,
-  },
-  applied: {
-    label: "Applied",
-    variant: "outline",
-    className: "border-success/30 bg-success/10 text-success",
-    dot: true,
-  },
-  resolved: {
-    label: "Resolved",
-    variant: "outline",
-    className: "border-success/30 bg-success/10 text-success",
-    dot: true,
-  },
-  dismissed: {
-    label: "Dismissed",
-    variant: "outline",
-    className: "text-muted-foreground",
-    dot: true,
-  },
-  scheduled: {
-    label: "Scheduled",
-    variant: "outline",
-    className: "border-info/30 bg-info/10 text-info",
-    dot: true,
-  },
-  verified: {
-    label: "Verified",
-    variant: "outline",
-    className: "border-success/30 bg-success/10 text-success",
-    dot: true,
-  },
-  unverified: {
-    label: "Unverified",
-    variant: "outline",
-    className: "text-muted-foreground",
-    dot: true,
+    badgeVariant: "warning",
+    dotVariant: "warning",
   },
 
-  // Staff & workspace roles
-  admin: {
-    label: "Admin",
-    variant: "default",
+  // Critical / destructive states — semantic error badge + dot
+  suspended: { kind: "badge", label: "Suspended", badgeVariant: "error", dotVariant: "error" },
+  pending_deletion: {
+    kind: "badge",
+    label: "Pending Deletion",
+    badgeVariant: "error",
+    dotVariant: "error",
   },
-  support: {
-    label: "Support",
-    variant: "secondary",
-  },
-  billing: {
-    label: "Billing",
-    variant: "outline",
-  },
-  owner: {
-    label: "Owner",
-    variant: "default",
-  },
-  member: {
-    label: "Member",
-    variant: "secondary",
-  },
+  failed: { kind: "badge", label: "Failed", badgeVariant: "error", dotVariant: "error" },
+  needs_info: { kind: "badge", label: "Needs info", badgeVariant: "error", dotVariant: "error" },
 
-  unknown: {
-    label: "Unknown",
-    variant: "outline",
-    className: "text-muted-foreground",
-  },
+  // Transitional / informational states — semantic info badge + dot
+  trialing: { kind: "badge", label: "Trialing", badgeVariant: "info", dotVariant: "accent" },
+  provisioned: { kind: "badge", label: "Provisioned", badgeVariant: "info", dotVariant: "accent" },
+  scheduled: { kind: "badge", label: "Scheduled", badgeVariant: "info", dotVariant: "accent" },
+  refunded: { kind: "badge", label: "Refunded", badgeVariant: "info", dotVariant: "accent" },
+
+  // Staff & workspace roles — categorical badges, no dot
+  admin: { kind: "badge", label: "Admin", badgeVariant: "blue" },
+  support: { kind: "badge", label: "Support", badgeVariant: "neutral" },
+  billing: { kind: "badge", label: "Billing", badgeVariant: "teal" },
+  owner: { kind: "badge", label: "Owner", badgeVariant: "purple" },
+  member: { kind: "badge", label: "Member", badgeVariant: "neutral" },
+
+  unknown: { kind: "badge", label: "Unknown", badgeVariant: "neutral" },
 };
-
-export function StatusDot({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn("size-1.5 shrink-0 rounded-full bg-current", className)}
-    />
-  );
-}
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {
   const config = STATUS_CONFIG[status];
   if (!config) {
-    return <Badge variant="outline">{label ?? status}</Badge>;
+    return <Badge variant="neutral" label={label ?? status} />;
+  }
+
+  const text = label ?? config.label;
+
+  if (config.kind === "quiet") {
+    return (
+      <span
+        data-status-presentation="quiet"
+        className="inline-flex items-center gap-1.5 whitespace-nowrap"
+      >
+        <AstryxStatusDot variant={config.dotVariant} label={text} aria-hidden="true" />
+        <Text type="body" color={config.textColor}>
+          {text}
+        </Text>
+      </span>
+    );
   }
 
   return (
-    <Badge variant={config.variant} className={config.className}>
-      {config.dot && <StatusDot />}
-      <span>{label ?? config.label}</span>
-    </Badge>
+    <Badge
+      variant={config.badgeVariant}
+      label={text}
+      icon={
+        config.dotVariant ? (
+          <AstryxStatusDot variant={config.dotVariant} label={text} aria-hidden="true" />
+        ) : undefined
+      }
+    />
   );
 }

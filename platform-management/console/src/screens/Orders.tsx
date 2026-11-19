@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { Badge } from "@multica/ui/components/ui/badge";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Card } from "@astryxdesign/core/Card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@multica/ui/components/ui/button";
 import {
   Dialog,
@@ -11,16 +21,8 @@ import {
 } from "@multica/ui/components/ui/dialog";
 import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
-import { Copy, Check, ExternalLink } from "@multica/ui/icons";
+import { Copy, Check, CreditCard, ExternalLink } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -210,26 +212,27 @@ export function Orders({ userRole }: OrdersProps) {
 
       {!isLoading && !isError && (!orders || orders.length === 0) && (
         <EmptyState
+          icon={<CreditCard className="size-4" />}
           title="No orders"
           description={`No orders found with status "${activeTab}".`}
         />
       )}
 
       {!isLoading && !isError && orders && orders.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-          <Table>
+        <Card padding={0} className="overflow-x-auto">
+          <Table density="compact" dividers="rows" hasHover>
             <TableHeader>
-              <TableRow>
-                <TableHead>Workspace</TableHead>
-                <TableHead>Kind</TableHead>
-                <TableHead>Transfer Code</TableHead>
-                <TableHead>Plan & Seats</TableHead>
-                <TableHead>Total (incl. VAT)</TableHead>
-                <TableHead>Buyer Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>E-invoice</TableHead>
-                <TableHead>Expiry</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+              <TableRow isHeaderRow>
+                <TableHeaderCell>Workspace</TableHeaderCell>
+                <TableHeaderCell>Kind</TableHeaderCell>
+                <TableHeaderCell>Transfer Code</TableHeaderCell>
+                <TableHeaderCell>Plan & Seats</TableHeaderCell>
+                <TableHeaderCell>Total (incl. VAT)</TableHeaderCell>
+                <TableHeaderCell>Buyer Email</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>E-invoice</TableHeaderCell>
+                <TableHeaderCell>Expiry</TableHeaderCell>
+                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -253,9 +256,10 @@ export function Orders({ userRole }: OrdersProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {ORDER_KIND_LABELS[order.kind] ?? order.kind}
-                      </Badge>
+                      <Badge
+                        variant="neutral"
+                        label={ORDER_KIND_LABELS[order.kind] ?? order.kind}
+                      />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 font-mono text-body font-semibold">
@@ -276,27 +280,29 @@ export function Orders({ userRole }: OrdersProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-body font-medium capitalize">
+                      <Text type="body" weight="medium" as="div" className="capitalize">
                         {order.plan_key} &bull; {order.interval}
-                      </div>
-                      <div className="text-caption text-muted-foreground tabular-nums">
+                      </Text>
+                      <Text type="supporting" hasTabularNumbers as="div">
                         {order.seats} seats
-                      </div>
+                      </Text>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium tabular-nums">
+                      <Text type="body" weight="medium" hasTabularNumbers as="div">
                         {formatMinorAmount(totalAmount, order.currency)}
-                      </div>
-                      <div className="text-caption text-muted-foreground tabular-nums">
+                      </Text>
+                      <Text type="supporting" hasTabularNumbers as="div">
                         Net: {formatMinorAmount(order.amount, order.currency)} + VAT: {formatMinorAmount(order.vat_amount, order.currency)}
-                      </div>
+                      </Text>
                     </TableCell>
                     <TableCell>
-                      <div className="text-body">{order.buyer.invoice_email || "-"}</div>
+                      <Text type="body" as="div">
+                        {order.buyer.invoice_email || "-"}
+                      </Text>
                       {order.buyer.tax_code && (
-                        <div className="font-mono text-caption text-muted-foreground">
+                        <Text type="code" color="secondary" as="div">
                           MST: {order.buyer.tax_code}
-                        </div>
+                        </Text>
                       )}
                     </TableCell>
                     <TableCell>
@@ -306,11 +312,13 @@ export function Orders({ userRole }: OrdersProps) {
                       {order.invoice_state ? (
                         <StatusBadge status={order.invoice_state} />
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <Text type="supporting">—</Text>
                       )}
                     </TableCell>
-                    <TableCell className="text-caption text-muted-foreground tabular-nums">
-                      {order.expires_at ? new Date(order.expires_at).toLocaleString() : "-"}
+                    <TableCell>
+                      <Text type="supporting" hasTabularNumbers>
+                        {order.expires_at ? new Date(order.expires_at).toLocaleString() : "-"}
+                      </Text>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -357,7 +365,7 @@ export function Orders({ userRole }: OrdersProps) {
               })}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       )}
 
       {/* Confirm Reason Dialog */}
@@ -433,17 +441,17 @@ export function Orders({ userRole }: OrdersProps) {
           )}
 
           {!historyLoading && !historyIsError && sortedHistory.length > 0 && (
-            <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-              <Table>
+            <Card padding={0} className="overflow-x-auto">
+              <Table density="compact" dividers="rows" hasHover>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Revision</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead>Invoice number</TableHead>
-                    <TableHead>Buyer</TableHead>
-                    <TableHead>Attempts</TableHead>
-                    <TableHead>Last error</TableHead>
-                    <TableHead>Updated</TableHead>
+                  <TableRow isHeaderRow>
+                    <TableHeaderCell>Revision</TableHeaderCell>
+                    <TableHeaderCell>State</TableHeaderCell>
+                    <TableHeaderCell>Invoice number</TableHeaderCell>
+                    <TableHeaderCell>Buyer</TableHeaderCell>
+                    <TableHeaderCell>Attempts</TableHeaderCell>
+                    <TableHeaderCell>Last error</TableHeaderCell>
+                    <TableHeaderCell>Updated</TableHeaderCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -452,16 +460,18 @@ export function Orders({ userRole }: OrdersProps) {
 
                     return (
                       <TableRow key={item.revision}>
-                        <TableCell className="font-mono text-caption">
-                          rev {item.revision}
+                        <TableCell>
+                          <Text type="code" color="secondary">
+                            rev {item.revision}
+                          </Text>
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={item.state} />
                         </TableCell>
                         <TableCell>
-                          <div className="font-mono text-caption">
+                          <Text type="code" as="div">
                             {item.invoice_number || "—"}
-                          </div>
+                          </Text>
                           {safeUrl && (
                             <a
                               href={safeUrl}
@@ -475,34 +485,40 @@ export function Orders({ userRole }: OrdersProps) {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="text-body font-medium">
+                          <Text type="body" weight="medium" as="div">
                             {item.buyer.name || "—"}
-                          </div>
+                          </Text>
                           {item.buyer.tax_code && (
-                            <div className="font-mono text-caption text-muted-foreground">
+                            <Text type="code" color="secondary" as="div">
                               {item.buyer.tax_code}
-                            </div>
+                            </Text>
                           )}
                         </TableCell>
-                        <TableCell className="text-body tabular-nums">
-                          {item.attempts}
+                        <TableCell>
+                          <Text type="body" hasTabularNumbers>
+                            {item.attempts}
+                          </Text>
                         </TableCell>
-                        <TableCell className="font-mono text-caption text-muted-foreground">
+                        <TableCell>
                           {item.last_error_code ? (
-                            <span className="text-destructive">{item.last_error_code}</span>
+                            <Text type="code" color="inherit" className="text-destructive">
+                              {item.last_error_code}
+                            </Text>
                           ) : (
-                            "—"
+                            <Text type="supporting">—</Text>
                           )}
                         </TableCell>
-                        <TableCell className="text-caption text-muted-foreground tabular-nums">
-                          {item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}
+                        <TableCell>
+                          <Text type="supporting" hasTabularNumbers>
+                            {item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}
+                          </Text>
                         </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
-            </div>
+            </Card>
           )}
 
           <DialogFooter>

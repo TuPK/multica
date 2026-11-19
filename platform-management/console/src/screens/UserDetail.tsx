@@ -1,4 +1,17 @@
 import { useState } from "react";
+import { Card } from "@astryxdesign/core/Card";
+import { Divider } from "@astryxdesign/core/Divider";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Section } from "@astryxdesign/core/Section";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
 import {
@@ -10,17 +23,8 @@ import {
   DialogFooter,
   DialogClose,
 } from "@multica/ui/components/ui/dialog";
-import { Separator } from "@multica/ui/components/ui/separator";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
-import { AlertCircle, AlertTriangle, Ban, LogOut, RotateCcw, Shield } from "@multica/ui/icons";
+import { AlertCircle, AlertTriangle, Ban, Building2, LogOut, RotateCcw, Shield } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -219,10 +223,8 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
         </Alert>
       )}
 
-      <section className="space-y-4">
-        <h2 className="font-heading text-title-sm font-semibold text-foreground">
-          Account Record
-        </h2>
+      <Section variant="transparent" padding={0} className="space-y-4">
+        <Heading level={2}>Account Record</Heading>
         <MetadataList columns={3}>
           <MetadataListItem label="Account Status">
             <StatusBadge status={accountStatus} />
@@ -241,49 +243,52 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
             </MetadataListItem>
           )}
         </MetadataList>
-      </section>
+      </Section>
 
-      <Separator />
+      <Divider />
 
-      <section className="space-y-4">
-        <h2 className="font-heading text-title-sm font-semibold text-foreground">
-          Workspace Memberships
-        </h2>
+      <Section variant="transparent" padding={0} className="space-y-4">
+        <Heading level={2}>Workspace Memberships</Heading>
         {!user.memberships || user.memberships.length === 0 ? (
           <EmptyState
+            icon={<Building2 className="size-5" aria-hidden="true" />}
             title="No memberships"
             description="This user does not belong to any workspaces."
             isCompact
           />
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-            <Table>
+          <Card padding={0} className="overflow-x-auto">
+            <Table density="balanced" dividers="rows" hasHover>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Workspace Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Workspace ID</TableHead>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>Workspace Name</TableHeaderCell>
+                  <TableHeaderCell>Role</TableHeaderCell>
+                  <TableHeaderCell>Workspace ID</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {user.memberships.map((membership: Membership) => (
                   <TableRow key={membership.workspace_id}>
-                    <TableCell className="font-medium">
-                      {membership.name}
+                    <TableCell>
+                      <Text type="body" weight="medium">
+                        {membership.name}
+                      </Text>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={membership.role} />
                     </TableCell>
-                    <TableCell className="font-mono text-caption text-muted-foreground">
-                      {membership.workspace_id}
+                    <TableCell>
+                      <Text type="code" color="secondary">
+                        {membership.workspace_id}
+                      </Text>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </Card>
         )}
-      </section>
+      </Section>
 
       <ConfirmReasonDialog
         open={statusDialogOpen}

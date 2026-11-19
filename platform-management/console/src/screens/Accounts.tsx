@@ -1,6 +1,16 @@
 import { useState } from "react";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Card } from "@astryxdesign/core/Card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
+import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import {
@@ -22,14 +32,6 @@ import {
   SelectValue,
 } from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@multica/ui/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { AlertCircle, CheckCircle2, UserPlus } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
@@ -550,6 +552,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
       {!isLoading && !isError && requestList.length === 0 && (
         <EmptyState
+          icon={<UserPlus className="size-4" />}
           title="No account requests"
           description={
             stateFilter
@@ -571,19 +574,19 @@ export function Accounts({ userRole }: AccountsProps) {
       )}
 
       {!isLoading && !isError && requestList.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-          <Table>
+        <Card padding={0} className="overflow-x-auto">
+          <Table density="compact" dividers="rows" hasHover>
             <TableHeader>
-              <TableRow>
-                <TableHead>State</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Kind</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Workspace Name</TableHead>
-                <TableHead>Error Code</TableHead>
-                <TableHead className="text-right">Attempts</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+              <TableRow isHeaderRow>
+                <TableHeaderCell>State</TableHeaderCell>
+                <TableHeaderCell>Email</TableHeaderCell>
+                <TableHeaderCell>Kind</TableHeaderCell>
+                <TableHeaderCell>Plan</TableHeaderCell>
+                <TableHeaderCell>Workspace Name</TableHeaderCell>
+                <TableHeaderCell>Error Code</TableHeaderCell>
+                <TableHeaderCell className="text-right">Attempts</TableHeaderCell>
+                <TableHeaderCell>Created</TableHeaderCell>
+                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -600,24 +603,30 @@ export function Accounts({ userRole }: AccountsProps) {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <AccountStateBadge req={req} />
                         {req.logged_in === false && (
-                          <Badge variant="outline" className="text-muted-foreground">
-                            Never logged in
-                          </Badge>
+                          <Badge variant="neutral" label="Never logged in" />
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium text-foreground">{req.email}</div>
+                      <Text type="body" weight="medium" as="div">
+                        {req.email}
+                      </Text>
                       {req.display_name && (
-                        <div className="text-caption text-muted-foreground">{req.display_name}</div>
+                        <Text type="supporting" as="div">
+                          {req.display_name}
+                        </Text>
                       )}
                     </TableCell>
-                    <TableCell className="capitalize">{req.kind}</TableCell>
+                    <TableCell className="capitalize">
+                      <Text type="body">{req.kind}</Text>
+                    </TableCell>
                     <TableCell>
-                      <div className="font-medium">{req.plan_key}</div>
-                      <div className="text-caption text-muted-foreground tabular-nums">
+                      <Text type="body" weight="medium" as="div">
+                        {req.plan_key}
+                      </Text>
+                      <Text type="supporting" hasTabularNumbers as="div">
                         {req.seats} seats &bull; {req.interval}
-                      </div>
+                      </Text>
                     </TableCell>
                     <TableCell>
                       <div className="max-w-52 truncate font-medium" title={req.workspace_name}>
@@ -632,16 +641,24 @@ export function Accounts({ userRole }: AccountsProps) {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-caption text-muted-foreground">
+                    <TableCell>
                       {req.error_code ? (
-                        <span className="text-destructive">{formatErrorCode(req.error_code)}</span>
+                        <Text type="supporting" color="inherit" className="text-destructive">
+                          {formatErrorCode(req.error_code)}
+                        </Text>
                       ) : (
-                        "-"
+                        <Text type="supporting">-</Text>
                       )}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{req.attempts}</TableCell>
-                    <TableCell className="whitespace-nowrap text-caption text-muted-foreground tabular-nums">
-                      {req.created_at ? new Date(req.created_at).toLocaleString() : "-"}
+                    <TableCell className="text-right">
+                      <Text type="body" hasTabularNumbers>
+                        {req.attempts}
+                      </Text>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <Text type="supporting" hasTabularNumbers>
+                        {req.created_at ? new Date(req.created_at).toLocaleString() : "-"}
+                      </Text>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -676,7 +693,7 @@ export function Accounts({ userRole }: AccountsProps) {
               })}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       )}
 
       {/* Create Account Request Dialog */}
