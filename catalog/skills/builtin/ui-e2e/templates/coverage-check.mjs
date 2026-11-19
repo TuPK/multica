@@ -19,7 +19,10 @@
  *  3. fixme rows: the title exists as test.fixme("...");
  *  4. gap rows: the reason is not empty;
  *  5. every screen file in the inventory is named in at least one matrix row;
- *  6. every simple button / nav label in the inventory appears in the matrix or in ignore.txt.
+ *  6. every simple button / nav label in the inventory appears in the matrix or in ignore.txt;
+ *  7. the inventory lists at least one screen (an empty file, e.g. /dev/null, fails);
+ *  8. every navigation label has a spec that clicks it (a locator for the label followed by .click()).
+ *     This is a text heuristic: it proves a click test exists, not that the test passes.
  * Exit code 1 when any check fails, so it can run in CI or before a "done" claim.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -86,10 +89,39 @@ for (const r of rows) {
 if (existsSync(inventoryPath)) {
   const inv = readFileSync(inventoryPath, "utf8");
   const screens = [...inv.matchAll(/^## (.+)$/gm)].map((m) => m[1].trim()).filter((s) => /\.tsx$/.test(s));
+  // An empty inventory (for example /dev/null) would pass every check below, so it is a failure of its own.
+  if (screens.length === 0) {
+    fail(`inventory has no screens: ${inventoryPath} (run discover-ui.mjs on the source tree first)`);
+  }
   const matrixLower = matrixText;
   for (const s of screens) {
     const base = s.split("/").pop().replace(/\.tsx$/, "").toLowerCase();
     if (!matrixLower.includes(base)) fail(`screen ${s} is not named in the matrix`);
+  }
+
+  // Navigation entries must each have a spec that clicks them. A matrix row that
+  // only mentions the nav is not enough: the nav entry must open its own screen.
+  // Only layout-like files count as navigation; a "label:" in a form or a filter is not a nav entry.
+  const navLabels = new Set();
+  let file = "";
+  let section = "";
+  for (const line of inv.split("\n")) {
+    const f = line.match(/^## (.+)$/);
+    if (f) { file = f[1]; section = ""; continue; }
+    const h = line.match(/^\*\*(.+)\*\*$/);
+    if (h) section = h[1];
+    const m = line.match(/^- (.+)$/);
+    if (m && section === "Navigation labels" && /(layout|nav|sidebar|menu|header)/i.test(file)) navLabels.add(m[1].trim());
+  }
+  const escapeLabel = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  for (const label of navLabels) {
+    const q = `[^)]*["'\`]${escapeLabel(label)}["'\`]`;
+    // A locator followed by .click(, or a helper whose name says it opens or clicks something.
+    const locatorClick = new RegExp(`(getByRole|getByText|getByLabel|locator)\\(${q}[\\s\\S]{0,200}?\\.click\\(`);
+    const helperOpen = new RegExp(`\\b(open|click|goTo|navigate)\\w*\\(\\s*page\\s*,\\s*["'\`]${escapeLabel(label)}["'\`]`, "i");
+    if (!locatorClick.test(specs) && !helperOpen.test(specs)) {
+      fail(`nav label "${label}" has no spec that clicks it and then checks the screen it opens`);
+    }
   }
 
   // Simple labels in the inventory
