@@ -68,6 +68,35 @@ describe("useAuthStore", () => {
     expect(useAuthStore.getState().hasMfaChallenge).toBe(true);
   });
 
+  it("finishSSOLogin stores the session and clears the MFA challenge", async () => {
+    apiMock.verifyCode.mockResolvedValueOnce({
+      mfa_required: true,
+      mfa_token: "mfa-secret-token",
+      expires_in: 300,
+    });
+    await useAuthStore.getState().verifyCode("alex@example.com", "123456");
+    expect(useAuthStore.getState().hasMfaChallenge).toBe(true);
+
+    const ssoUser = {
+      ...SAMPLE_USER,
+      onboarded_at: null,
+      onboarding_questionnaire: {},
+      language: null,
+      profile_description: "",
+      timezone: null,
+    };
+    await useAuthStore.getState().finishSSOLogin({ token: "sso-jwt", user: ssoUser });
+
+    expect(epochMock.invalidateSessionEpoch).toHaveBeenCalledTimes(1);
+    expect(storageMock.setToken).toHaveBeenCalledExactlyOnceWith("sso-jwt");
+    expect(apiMock.setToken).toHaveBeenCalledExactlyOnceWith("sso-jwt");
+    expect(useAuthStore.getState().user).toEqual(ssoUser);
+    expect(useAuthStore.getState().hasMfaChallenge).toBe(false);
+    await expect(useAuthStore.getState().verifyMFA("123456")).rejects.toMatchObject({
+      code: "mfa_token_invalid",
+    });
+  });
+
   it("verifyMFA sets token and user on success and clears the in-memory MFA challenge", async () => {
     apiMock.verifyCode.mockResolvedValueOnce({
       mfa_required: true,

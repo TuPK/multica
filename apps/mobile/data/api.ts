@@ -111,6 +111,8 @@ import {
   EMPTY_SEARCH_ISSUES_RESPONSE,
   EMPTY_SEARCH_PROJECTS_RESPONSE,
   EMPTY_SQUAD_LIST,
+  EMPTY_SSO_DISCOVERY,
+  EMPTY_SSO_EXCHANGE,
   EMPTY_USER,
   EMPTY_WORKSPACE_LIST,
   InboxListSchema,
@@ -128,6 +130,9 @@ import {
   SearchProjectsResponseSchema,
   SendChatMessageResponseSchema,
   SquadListSchema,
+  SsoDiscoverySchema,
+  SsoExchangeSchema,
+  type SsoDiscovery,
   TaskMessageListSchema,
   EMPTY_TASK_MESSAGE_LIST,
   UserSchema,
@@ -444,6 +449,28 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify({ mfa_token: mfaToken, code }),
     });
+  }
+
+  /** Asks whether an email signs in through SSO. A malformed answer reads as "no SSO". */
+  async discoverSSO(email: string): Promise<SsoDiscovery> {
+    return this.fetchValidatedWith(
+      "/auth/sso/discover",
+      SsoDiscoverySchema,
+      EMPTY_SSO_DISCOVERY,
+      { method: "POST", body: JSON.stringify({ email }) },
+      { endpoint: "discoverSSO" },
+    );
+  }
+
+  /** Trades the deep-link code and PKCE verifier for a session. A malformed answer has an empty token. */
+  async exchangeSSO(code: string, verifier: string): Promise<LoginResponse> {
+    return this.fetchValidatedWith(
+      "/auth/sso/mobile/exchange",
+      SsoExchangeSchema,
+      EMPTY_SSO_EXCHANGE,
+      { method: "POST", body: JSON.stringify({ code, verifier }) },
+      { endpoint: "exchangeSSO" },
+    );
   }
 
   /**

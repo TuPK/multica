@@ -11,7 +11,7 @@
  */
 import { create } from "zustand";
 import type { User } from "@multica/core/types";
-import { api, ApiError, type VerifyCodeResponse } from "./api";
+import { api, ApiError, type LoginResponse, type VerifyCodeResponse } from "./api";
 import { clearToken, getToken, setToken } from "./secure-storage";
 import { invalidateSessionEpoch } from "./session-epoch";
 import { useWorkspaceAccessStore } from "./stores/workspace-access-store";
@@ -27,6 +27,25 @@ export type VerifyCodeResult =
 // Kept strictly in module memory (never SecureStore, never logged, never in
 // navigation params or persisted state) for the duration of an MFA step.
 let pendingMfaToken: string | null = null;
+
+// Success path shared by every sign-in method. Signing in replaces the
+// credential just as decisively as signing out: a renewal still in flight for
+// the previous account must not write its result over this one.
+async function storeSession(
+  set: (state: Partial<AuthState>) => void,
+  res: LoginResponse,
+) {
+  pendingMfaToken = null;
+  invalidateSessionEpoch();
+  await setToken(res.token);
+  api.setToken(res.token);
+  set({
+    user: res.user,
+    hasMfaChallenge: false,
+    signOutReason: null,
+    mfaFailureReason: null,
+  });
+}
 
 function isMfaChallenge(
   res: VerifyCodeResponse,
@@ -50,6 +69,8 @@ interface AuthState {
   sendCode: (email: string) => Promise<void>;
   verifyCode: (email: string, code: string) => Promise<VerifyCodeResult>;
   verifyMFA: (code: string) => Promise<User>;
+  /** Completes a sign-in whose session came from the SSO code exchange. */
+  finishSSOLogin: (res: LoginResponse) => Promise<void>;
   clearMFAChallenge: () => void;
   setSignOutReason: (reason: SignOutReason | null) => void;
   setMfaFailureReason: (reason: MfaFailureReason | null) => void;
@@ -121,19 +142,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ hasMfaChallenge: true, signOutReason: null, mfaFailureReason: null });
       return { mfaRequired: true };
     }
-    pendingMfaToken = null;
-    // Signing in replaces the credential just as decisively as signing out:
-    // a renewal still in flight for the previous account must not write its
-    // result over this one.
-    invalidateSessionEpoch();
-    await setToken(res.token);
-    api.setToken(res.token);
-    set({
-      user: res.user,
-      hasMfaChallenge: false,
-      signOutReason: null,
-      mfaFailureReason: null,
-    });
+    await storeSession(set, res);
     return { mfaRequired: false, user: res.user };
   },
 
@@ -147,16 +156,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     try {
       const res = await api.verifyMFA(mfaToken, code);
-      pendingMfaToken = null;
-      invalidateSessionEpoch();
-      await setToken(res.token);
-      api.setToken(res.token);
-      set({
-        user: res.user,
-        hasMfaChallenge: false,
-        signOutReason: null,
-        mfaFailureReason: null,
-      });
+      await storeSession(set, res);
       return res.user;
     } catch (err) {
       if (
@@ -177,6 +177,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       throw err;
     }
   },
+
+  finishSSOLogin: (res) => storeSession(set, res),
 
   clearMFAChallenge: () => {
     pendingMfaToken = null;

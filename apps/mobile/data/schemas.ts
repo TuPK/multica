@@ -522,6 +522,30 @@ export const EMPTY_USER: User = {
   updated_at: "",
 };
 
+// SSO sign-in. Discover falls back to "no SSO"; exchange falls back to an
+// empty token, which the caller treats as a failed sign-in.
+export const SsoDiscoverySchema = z.object({
+  sso: z.boolean().default(false),
+  start_url: z.string().default(""),
+}).loose();
+
+export interface SsoDiscovery {
+  sso: boolean;
+  start_url: string;
+}
+
+export const EMPTY_SSO_DISCOVERY: SsoDiscovery = { sso: false, start_url: "" };
+
+export const SsoExchangeSchema = z.object({
+  token: z.string().min(1),
+  user: UserSchema,
+}).loose();
+
+export const EMPTY_SSO_EXCHANGE: { token: string; user: User } = {
+  token: "",
+  user: EMPTY_USER,
+};
+
 export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   id: z.string(),
   name: z.string().default(""),
