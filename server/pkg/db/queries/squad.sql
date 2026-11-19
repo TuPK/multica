@@ -200,7 +200,7 @@ SELECT
     ar.last_seen_at    AS runtime_last_seen_at,
     atq.id             AS task_id,
     atq.status         AS task_status,
-    atq.issue_id       AS task_issue_id,
+    i.id               AS task_issue_id,
     atq.dispatched_at  AS task_dispatched_at,
     i.number           AS issue_number,
     i.title            AS issue_title,
@@ -214,9 +214,18 @@ LEFT JOIN agent_task_queue atq
        ON sm.member_type = 'agent'
       AND atq.agent_id = sm.member_id
       AND atq.status IN ('dispatched', 'running', 'waiting_local_directory')
+-- A task whose issue the viewer cannot see keeps its row (the member still
+-- shows as working) but joins no issue, so the issue link reads as absent.
 LEFT JOIN issue i
        ON i.id = atq.issue_id
-WHERE sm.squad_id = $1
+      -- projectaccess:scope
+      AND (sqlc.arg(scope_mode)::text = 'all'
+          OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+          OR (sqlc.arg(scope_mode)::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+WHERE sm.squad_id = sqlc.arg('squad_id')
 ORDER BY sm.created_at ASC, atq.dispatched_at DESC NULLS LAST;
 
 -- name: IsSquadLeaderInWorkspace :one

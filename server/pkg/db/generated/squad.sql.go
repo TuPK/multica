@@ -553,7 +553,7 @@ SELECT
     ar.last_seen_at    AS runtime_last_seen_at,
     atq.id             AS task_id,
     atq.status         AS task_status,
-    atq.issue_id       AS task_issue_id,
+    i.id               AS task_issue_id,
     atq.dispatched_at  AS task_dispatched_at,
     i.number           AS issue_number,
     i.title            AS issue_title,
@@ -569,9 +569,22 @@ LEFT JOIN agent_task_queue atq
       AND atq.status IN ('dispatched', 'running', 'waiting_local_directory')
 LEFT JOIN issue i
        ON i.id = atq.issue_id
-WHERE sm.squad_id = $1
+      -- projectaccess:scope
+      AND ($1::text = 'all'
+          OR (i.project_id IS NULL AND $1::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $2::uuid)
+          OR ($1::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+WHERE sm.squad_id = $3
 ORDER BY sm.created_at ASC, atq.dispatched_at DESC NULLS LAST
 `
+
+type ListSquadMemberStatusRowsParams struct {
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	SquadID     pgtype.UUID `json:"squad_id"`
+}
 
 type ListSquadMemberStatusRowsRow struct {
 	SquadMemberID     pgtype.UUID        `json:"squad_member_id"`
@@ -596,8 +609,10 @@ type ListSquadMemberStatusRowsRow struct {
 // waiting_local_directory stays in the row set so its issue remains visible,
 // but the handler only treats dispatched/running rows as working because the
 // squad status vocabulary has no queued bucket.
-func (q *Queries) ListSquadMemberStatusRows(ctx context.Context, squadID pgtype.UUID) ([]ListSquadMemberStatusRowsRow, error) {
-	rows, err := q.db.Query(ctx, listSquadMemberStatusRows, squadID)
+// A task whose issue the viewer cannot see keeps its row (the member still
+// shows as working) but joins no issue, so the issue link reads as absent.
+func (q *Queries) ListSquadMemberStatusRows(ctx context.Context, arg ListSquadMemberStatusRowsParams) ([]ListSquadMemberStatusRowsRow, error) {
+	rows, err := q.db.Query(ctx, listSquadMemberStatusRows, arg.ScopeMode, arg.ScopeUserID, arg.SquadID)
 	if err != nil {
 		return nil, err
 	}

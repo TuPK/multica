@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 func TestDeriveSquadMemberStatus(t *testing.T) {
@@ -87,7 +88,7 @@ func TestListSquadMemberStatusRetainsWaiterIssueWithoutWorkingStatus(t *testing.
 		testPool.Exec(context.Background(), `DELETE FROM agent_task_queue WHERE id = $1`, taskID)
 	})
 
-	rows, err := testHandler.Queries.ListSquadMemberStatusRows(ctx, parseUUID(squadID))
+	rows, err := testHandler.Queries.ListSquadMemberStatusRows(ctx, db.ListSquadMemberStatusRowsParams{SquadID: parseUUID(squadID), ScopeMode: "all"})
 	if err != nil {
 		t.Fatalf("ListSquadMemberStatusRows with waiter: %v", err)
 	}
@@ -133,7 +134,7 @@ func TestListSquadMemberStatusRetainsWaiterIssueWithoutWorkingStatus(t *testing.
 	`, taskID); err != nil {
 		t.Fatalf("promote waiter to dispatched: %v", err)
 	}
-	rows, err = testHandler.Queries.ListSquadMemberStatusRows(ctx, parseUUID(squadID))
+	rows, err = testHandler.Queries.ListSquadMemberStatusRows(ctx, db.ListSquadMemberStatusRowsParams{SquadID: parseUUID(squadID), ScopeMode: "all"})
 	if err != nil {
 		t.Fatalf("ListSquadMemberStatusRows with dispatched task: %v", err)
 	}

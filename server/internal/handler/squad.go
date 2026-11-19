@@ -832,7 +832,16 @@ func (h *Handler) ListSquadMemberStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	rows, err := h.Queries.ListSquadMemberStatusRows(r.Context(), squad.ID)
+	scope, ok := h.viewerScope(w, r, squad.WorkspaceID)
+	if !ok {
+		return
+	}
+
+	rows, err := h.Queries.ListSquadMemberStatusRows(r.Context(), db.ListSquadMemberStatusRowsParams{
+		SquadID:     squad.ID,
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list squad member status")
 		return
