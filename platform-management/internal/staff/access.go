@@ -45,6 +45,8 @@ const (
 	ActionConsoleSignIn        = "console.sign_in"          // M29
 	ActionPlansRead            = "plans.read"               // M30
 	ActionPlanHistoryRead      = "plans.history"            // M32
+	ActionWorkspacesList       = "workspaces.list"          // M33
+	ActionWorkspaceExport      = "workspaces.export"        // M34
 )
 
 // roleOrder is the order of RolesWith and of the columns of matrix.
@@ -58,6 +60,8 @@ var matrix = map[string][4]Access{
 	ActionPlansManage:          {All, None, None, None},
 	ActionPlansRead:            {All, All, None, None},
 	ActionPlanHistoryRead:      {All, None, None, All},
+	ActionWorkspacesList:       {All, Own, All, All},
+	ActionWorkspaceExport:      {All, Own, None, None},
 	ActionPriceChangeManage:    {All, None, None, None},
 	ActionPriceChangeRead:      {All, None, None, All},
 	ActionAccountRequests:      {All, None, None, None},

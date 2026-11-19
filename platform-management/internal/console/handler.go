@@ -180,6 +180,8 @@ func routeTable() []routeSpec {
 		{base + "/member-requests/{id}/cancel", staff.ActionMemberRequests, nil, map[string]handlerFunc{http.MethodPost: (*Handler).cancelMemberRequest}},
 		{base + "/workspaces/{id}/delete-now", staff.ActionWorkspaceDeleteNow, nil, map[string]handlerFunc{http.MethodPost: (*Handler).deleteWorkspaceNow}},
 		{base + "/tenants/{id}/delete-now", staff.ActionTenantDeleteNow, nil, map[string]handlerFunc{http.MethodPost: (*Handler).deleteTenantNow}},
+		{base + "/workspaces", staff.ActionWorkspacesList, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listWorkspaces}},
+		{base + "/workspaces/{id}/export", staff.ActionWorkspaceExport, nil, map[string]handlerFunc{http.MethodPost: (*Handler).exportWorkspace}},
 		{base + "/users/{id}/delete-now", staff.ActionAccountDeleteNow, nil, map[string]handlerFunc{http.MethodPost: (*Handler).deleteAccountNow}},
 		{base + "/users/{id}/delete-now-preview", staff.ActionAccountDeleteNow, nil, map[string]handlerFunc{http.MethodGet: (*Handler).previewAccountDeleteNow}},
 		{base + "/deletion-requests", staff.ActionDeletionRequestsRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listDeletionRequests}},

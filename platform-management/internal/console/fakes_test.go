@@ -114,6 +114,8 @@ type fakeReader struct {
 	scopeChecks   []string          // the workspaces WorkspaceInScope was asked about
 
 	lastTenants        TenantSearch
+	workspaceList      []WorkspaceListRow
+	lastWorkspaces     WorkspaceSearch
 	lastGetTenantScope Scope
 	lastOrderScope     Scope
 	lastUsers          UserSearch
@@ -181,6 +183,30 @@ func sortOrders(rows []OrderRow, newestFirst bool) {
 		}
 		return rows[i].CreatedAt.Before(rows[j].CreatedAt)
 	})
+}
+
+// WorkspaceTenant returns the tenant of a fake workspace, from wsTenant.
+func (r *fakeReader) WorkspaceTenant(_ context.Context, id string) (string, error) {
+	return r.wsTenant[id], nil
+}
+
+// SearchWorkspaces applies the scope and the filters the way the query does.
+func (r *fakeReader) SearchWorkspaces(_ context.Context, q WorkspaceSearch) ([]WorkspaceListRow, error) {
+	r.lastWorkspaces = q
+	var out []WorkspaceListRow
+	for _, w := range r.workspaceList {
+		if !q.Scope.All && w.TenantID != q.Scope.TenantID {
+			continue
+		}
+		if q.Status != "" && w.Status != q.Status {
+			continue
+		}
+		if q.TenantFilter != "" && w.TenantID != q.TenantFilter {
+			continue
+		}
+		out = append(out, w)
+	}
+	return out, nil
 }
 
 func (r *fakeReader) SearchTenants(_ context.Context, q TenantSearch) ([]TenantRow, error) {
@@ -270,6 +296,24 @@ type fakeStore struct {
 	mfaRows    map[string]bool // user id -> has a user_mfa row
 	// tenants are the tenants that exist; nil means every tenant id exists.
 	tenants map[string]bool
+	// exports are the export rows written; running marks workspaces with one running.
+	exports []fakeExport
+	running map[string]bool
+}
+
+type fakeExport struct {
+	ws string
+	by string
+}
+
+// RunningExport and InsertExport are the export writes of the fake store.
+func (t *fakeTx) RunningExport(_ context.Context, ws string) (bool, error) {
+	return t.s.running[ws], nil
+}
+
+func (t *fakeTx) InsertExport(_ context.Context, ws, by string) (string, error) {
+	t.s.exports = append(t.s.exports, fakeExport{ws: ws, by: by})
+	return "export-" + ws, nil
 }
 
 // defaultStaffRows is the number of staff rows newFakeStore starts with.
@@ -277,6 +321,7 @@ const defaultStaffRows = 4
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
+		running:    map[string]bool{},
 		workspaces: map[string]string{wsID: wsName},
 		users: map[string]string{
 			adminID: adminMail, suppID: suppMail, billID: billMail, custID: custMail, tadminID: tadminMail,
@@ -296,6 +341,8 @@ func newFakeStore() *fakeStore {
 }
 
 type snapshot struct {
+	exports   []fakeExport
+	running   map[string]bool
 	accounts  map[string]string
 	sessions  map[string]time.Time
 	staffRows []fakeStaffRow
@@ -319,6 +366,8 @@ func (s *fakeStore) snap() snapshot {
 	c.audits = append(c.audits, s.audits...)
 	c.orders, c.subs = maps.Clone(s.orders), maps.Clone(s.subs)
 	c.mfaRows = maps.Clone(s.mfaRows)
+	c.exports = append([]fakeExport(nil), s.exports...)
+	c.running = maps.Clone(s.running)
 	return c
 }
 
@@ -326,6 +375,7 @@ func (s *fakeStore) restore(c snapshot) {
 	s.accounts, s.sessions, s.staffRows, s.notes, s.audits = c.accounts, c.sessions, c.staffRows, c.notes, c.audits
 	s.orders, s.subs = c.orders, c.subs
 	s.mfaRows = c.mfaRows
+	s.exports, s.running = c.exports, c.running
 }
 
 func (s *fakeStore) orderRow(o billing.Order) OrderRow {

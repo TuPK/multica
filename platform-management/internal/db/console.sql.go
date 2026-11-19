@@ -229,6 +229,19 @@ func (q *Queries) GetWorkspaceName(ctx context.Context, id pgtype.UUID) (string,
 	return name, err
 }
 
+const getWorkspaceTenantID = `-- name: GetWorkspaceTenantID :one
+SELECT tenant_id FROM tenant_workspace
+WHERE workspace_id = $1
+`
+
+// The tenant a workspace belongs to. No row when it has none.
+func (q *Queries) GetWorkspaceTenantID(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceTenantID, workspaceID)
+	var tenant_id pgtype.UUID
+	err := row.Scan(&tenant_id)
+	return tenant_id, err
+}
+
 const listActiveStaffWithEmail = `-- name: ListActiveStaffWithEmail :many
 SELECT s.user_id, u.email, s.role, s.tenant_id, s.created_by, s.created_at
 FROM platform_staff s
@@ -589,6 +602,119 @@ func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]Sea
 			&i.Status,
 			&i.MembershipsCount,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchWorkspaces = `-- name: SearchWorkspaces :many
+SELECT
+    w.id,
+    w.name,
+    w.slug,
+    w.created_at,
+    COALESCE(pw.status, 'active')::text AS status,
+    COALESCE(ws.plan_key, 'free')::text AS plan_key,
+    tw.tenant_id,
+    COALESCE(tn.name, '')::text AS tenant_name,
+    (SELECT count(*) FROM member m WHERE m.workspace_id = w.id)::bigint AS member_count,
+    COALESCE(owner_user.email, '')::text AS owner_email
+FROM workspace w
+LEFT JOIN platform_workspace pw ON pw.workspace_id = w.id
+LEFT JOIN workspace_subscription ws ON ws.workspace_id = w.id
+LEFT JOIN tenant_workspace tw ON tw.workspace_id = w.id
+LEFT JOIN tenant tn ON tn.id = tw.tenant_id
+LEFT JOIN LATERAL (
+    SELECT m.user_id
+    FROM member m
+    WHERE m.workspace_id = w.id AND m.role = 'owner'
+    ORDER BY m.created_at, m.id
+    LIMIT 1
+) ow ON true
+LEFT JOIN "user" owner_user ON owner_user.id = ow.user_id
+WHERE (
+        $1::text IS NULL
+        OR w.name ILIKE $1::text
+        OR w.slug ILIKE $1::text
+        OR owner_user.email ILIKE $1::text
+        OR tn.name ILIKE $1::text
+    )
+  AND ($2::text = '' OR COALESCE(pw.status, 'active') = $2::text)
+  AND ($3::text = '' OR COALESCE(ws.plan_key, 'free') = $3::text)
+  AND (NOT $4::boolean OR tw.tenant_id = $5::uuid)
+  AND ($6::uuid IS NULL OR tw.tenant_id = $6::uuid)
+  AND (
+        $7::timestamptz IS NULL
+        OR (w.created_at, w.id) < ($7::timestamptz, $8::uuid)
+    )
+ORDER BY w.created_at DESC, w.id DESC
+LIMIT $9
+`
+
+type SearchWorkspacesParams struct {
+	Pattern         pgtype.Text        `json:"pattern"`
+	Status          string             `json:"status"`
+	PlanKey         string             `json:"plan_key"`
+	Scoped          bool               `json:"scoped"`
+	ScopeTenant     pgtype.UUID        `json:"scope_tenant"`
+	TenantFilter    pgtype.UUID        `json:"tenant_filter"`
+	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
+	CursorID        pgtype.UUID        `json:"cursor_id"`
+	RowLimit        int32              `json:"row_limit"`
+}
+
+type SearchWorkspacesRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	Status      string             `json:"status"`
+	PlanKey     string             `json:"plan_key"`
+	TenantID    pgtype.UUID        `json:"tenant_id"`
+	TenantName  string             `json:"tenant_name"`
+	MemberCount int64              `json:"member_count"`
+	OwnerEmail  string             `json:"owner_email"`
+}
+
+// The workspaces of the staff list, newest first (spec R6 section 3b.2). The
+// pattern matches name, slug, owner email and tenant name. A workspace without
+// a subscription is on the free plan, as the billing path reads it.
+func (q *Queries) SearchWorkspaces(ctx context.Context, arg SearchWorkspacesParams) ([]SearchWorkspacesRow, error) {
+	rows, err := q.db.Query(ctx, searchWorkspaces,
+		arg.Pattern,
+		arg.Status,
+		arg.PlanKey,
+		arg.Scoped,
+		arg.ScopeTenant,
+		arg.TenantFilter,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchWorkspacesRow{}
+	for rows.Next() {
+		var i SearchWorkspacesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.CreatedAt,
+			&i.Status,
+			&i.PlanKey,
+			&i.TenantID,
+			&i.TenantName,
+			&i.MemberCount,
+			&i.OwnerEmail,
 		); err != nil {
 			return nil, err
 		}

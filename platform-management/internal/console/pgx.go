@@ -971,3 +971,77 @@ func (l *PgxLogins) UsersWithLogin(ctx context.Context, userIDs []string) (map[s
 	}
 	return out, nil
 }
+
+// SearchWorkspaces implements Reader.
+func (r *PgxReader) SearchWorkspaces(ctx context.Context, q WorkspaceSearch) ([]WorkspaceListRow, error) {
+	at, id, err := cursorArgs(q.Cursor)
+	if err != nil {
+		return nil, err
+	}
+	var tenantFilter pgtype.UUID
+	if q.TenantFilter != "" {
+		if tenantFilter, err = parseUUID(q.TenantFilter); err != nil {
+			return nil, err
+		}
+	}
+	scoped, scopeTenant := scopeArgs(q.Scope)
+	rows, err := r.q.SearchWorkspaces(ctx, db.SearchWorkspacesParams{
+		Pattern: textArg(q.Pattern), Status: q.Status, PlanKey: q.PlanKey,
+		Scoped: scoped, ScopeTenant: scopeTenant, TenantFilter: tenantFilter,
+		CursorCreatedAt: at, CursorID: id, RowLimit: int32(q.Limit + 1),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]WorkspaceListRow, len(rows))
+	for i, row := range rows {
+		out[i] = WorkspaceListRow{
+			ID: uuidText(row.ID), Name: row.Name, Slug: row.Slug, Status: row.Status, PlanKey: row.PlanKey,
+			TenantID: uuidText(row.TenantID), TenantName: row.TenantName, OwnerEmail: row.OwnerEmail,
+			MemberCount: row.MemberCount, CreatedAt: row.CreatedAt.Time,
+		}
+	}
+	return out, nil
+}
+
+// WorkspaceTenant implements Reader.
+func (r *PgxReader) WorkspaceTenant(ctx context.Context, workspaceID string) (string, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return "", err
+	}
+	tenant, err := r.q.GetWorkspaceTenantID(ctx, ws)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return uuidText(tenant), nil
+}
+
+// RunningExport implements Tx.
+func (t *pgxTx) RunningExport(ctx context.Context, workspaceID string) (bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return false, err
+	}
+	return t.q.WorkspaceExportInFlight(ctx, ws)
+}
+
+// InsertExport implements Tx.
+func (t *pgxTx) InsertExport(ctx context.Context, workspaceID, requestedBy string) (string, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return "", err
+	}
+	by, err := parseUUID(requestedBy)
+	if err != nil {
+		return "", err
+	}
+	id, err := t.q.InsertWorkspaceExport(ctx, db.InsertWorkspaceExportParams{WorkspaceID: ws, RequestedBy: by})
+	if err != nil {
+		return "", err
+	}
+	return uuidText(id), nil
+}

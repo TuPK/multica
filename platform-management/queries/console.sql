@@ -193,3 +193,55 @@ WHERE created_at >= $1;
 SELECT DISTINCT actor_id::text AS user_id
 FROM audit_event
 WHERE action = 'auth.login' AND actor_id = ANY(sqlc.arg('user_ids')::text[]);
+
+-- name: SearchWorkspaces :many
+-- The workspaces of the staff list, newest first (spec R6 section 3b.2). The
+-- pattern matches name, slug, owner email and tenant name. A workspace without
+-- a subscription is on the free plan, as the billing path reads it.
+SELECT
+    w.id,
+    w.name,
+    w.slug,
+    w.created_at,
+    COALESCE(pw.status, 'active')::text AS status,
+    COALESCE(ws.plan_key, 'free')::text AS plan_key,
+    tw.tenant_id,
+    COALESCE(tn.name, '')::text AS tenant_name,
+    (SELECT count(*) FROM member m WHERE m.workspace_id = w.id)::bigint AS member_count,
+    COALESCE(owner_user.email, '')::text AS owner_email
+FROM workspace w
+LEFT JOIN platform_workspace pw ON pw.workspace_id = w.id
+LEFT JOIN workspace_subscription ws ON ws.workspace_id = w.id
+LEFT JOIN tenant_workspace tw ON tw.workspace_id = w.id
+LEFT JOIN tenant tn ON tn.id = tw.tenant_id
+LEFT JOIN LATERAL (
+    SELECT m.user_id
+    FROM member m
+    WHERE m.workspace_id = w.id AND m.role = 'owner'
+    ORDER BY m.created_at, m.id
+    LIMIT 1
+) ow ON true
+LEFT JOIN "user" owner_user ON owner_user.id = ow.user_id
+WHERE (
+        sqlc.narg('pattern')::text IS NULL
+        OR w.name ILIKE sqlc.narg('pattern')::text
+        OR w.slug ILIKE sqlc.narg('pattern')::text
+        OR owner_user.email ILIKE sqlc.narg('pattern')::text
+        OR tn.name ILIKE sqlc.narg('pattern')::text
+    )
+  AND (sqlc.arg('status')::text = '' OR COALESCE(pw.status, 'active') = sqlc.arg('status')::text)
+  AND (sqlc.arg('plan_key')::text = '' OR COALESCE(ws.plan_key, 'free') = sqlc.arg('plan_key')::text)
+  AND (NOT sqlc.arg('scoped')::boolean OR tw.tenant_id = sqlc.arg('scope_tenant')::uuid)
+  AND (sqlc.narg('tenant_filter')::uuid IS NULL OR tw.tenant_id = sqlc.narg('tenant_filter')::uuid)
+  AND (
+        sqlc.narg('cursor_created_at')::timestamptz IS NULL
+        OR (w.created_at, w.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+ORDER BY w.created_at DESC, w.id DESC
+LIMIT sqlc.arg('row_limit');
+
+-- name: GetWorkspaceTenantID :one
+-- The tenant a workspace belongs to. No row when it has none.
+SELECT tenant_id FROM tenant_workspace
+WHERE workspace_id = $1;
+

@@ -232,8 +232,38 @@ type AuditQuery struct {
 	Limit       int
 }
 
+// WorkspaceListRow is one workspace of the staff list (spec R6 section 3b.2).
+type WorkspaceListRow struct {
+	ID          string
+	Name        string
+	Slug        string
+	Status      string
+	PlanKey     string
+	TenantID    string
+	TenantName  string
+	OwnerEmail  string
+	MemberCount int64
+	CreatedAt   time.Time
+}
+
+// WorkspaceSearch is one page of the workspace list. Status, PlanKey and
+// TenantFilter narrow it when set; Scope limits it to a tenant for an admin.
+type WorkspaceSearch struct {
+	Pattern      *string
+	Status       string
+	PlanKey      string
+	TenantFilter string
+	Cursor       *Cursor
+	Limit        int
+	Scope        Scope
+}
+
 // Reader is the console's read side.
 type Reader interface {
+	// SearchWorkspaces pages the workspaces, newest first, within q.Scope.
+	SearchWorkspaces(ctx context.Context, q WorkspaceSearch) ([]WorkspaceListRow, error)
+	// WorkspaceTenant returns the tenant id of a workspace, or "" when it has none.
+	WorkspaceTenant(ctx context.Context, workspaceID string) (string, error)
 	// SearchTenants pages the tenants, newest first, within q.Scope.
 	SearchTenants(ctx context.Context, q TenantSearch) ([]TenantRow, error)
 	// GetTenant returns found == false for an unknown tenant and for one outside
@@ -273,6 +303,10 @@ type Account struct {
 // Tx is the writes of one console operation, all inside one transaction with
 // its audit row.
 type Tx interface {
+	// RunningExport reports whether the workspace has a queued or running export.
+	RunningExport(ctx context.Context, workspaceID string) (bool, error)
+	// InsertExport queues an export for the workspace and returns its id.
+	InsertExport(ctx context.Context, workspaceID, requestedBy string) (string, error)
 	// WorkspaceName returns found == false for an unknown workspace.
 	WorkspaceName(ctx context.Context, id string) (name string, found bool, err error)
 	InsertNote(ctx context.Context, workspaceID, authorID, body string) (id string, createdAt time.Time, err error)

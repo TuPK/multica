@@ -270,7 +270,9 @@ func TestRouteRoles(t *testing.T) {
 	want := map[string][]staff.Role{
 		"/api/platform/tenants":                         scopedAll,
 		"/api/platform/tenants/{id}":                    scopedAll,
+		"/api/platform/workspaces":                      scopedAll,
 		"/api/platform/workspaces/{id}":                 scopedAll,
+		"/api/platform/workspaces/{id}/export":          systemTenant,
 		"/api/platform/workspaces/{id}/status":          scopedLock,
 		"/api/platform/workspaces/{id}/usage":           scopedAll,
 		"/api/platform/workspaces/{id}/audit-events":    scopedAll,
