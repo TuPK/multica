@@ -94,10 +94,32 @@ func snapshotsByWorkspace(rows []db.ListLatestUsageDailyRow) map[string]Snapshot
 }
 
 // Reader reads usage over a Postgres pool.
-type Reader struct{ q *db.Queries }
+type Reader struct {
+	q    *db.Queries
+	pool db.DBTX
+}
 
 // NewReader returns a Reader over pool.
-func NewReader(pool db.DBTX) *Reader { return &Reader{q: db.New(pool)} }
+func NewReader(pool db.DBTX) *Reader { return &Reader{q: db.New(pool), pool: pool} }
+
+// AutopilotRuns returns the autopilot runs the workspace has used in the period
+// that holds now (spec R6 section 3b.4). A workspace with no period row has used
+// none. Periods are UTC months and carry no foreign key, so a missing row is zero.
+func (r *Reader) AutopilotRuns(ctx context.Context, workspaceID string, now time.Time) (int64, error) {
+	var id pgtype.UUID
+	if err := id.Scan(workspaceID); err != nil || !id.Valid {
+		return 0, fmt.Errorf("invalid workspace id %q", workspaceID)
+	}
+	var used int64
+	err := r.pool.QueryRow(ctx, `
+		SELECT COALESCE(sum(used_count), 0)::bigint FROM autopilot_quota_period
+		WHERE workspace_id = $1 AND period_start <= $2 AND period_end > $2`,
+		id, now.UTC()).Scan(&used)
+	if err != nil {
+		return 0, fmt.Errorf("read autopilot runs: %w", err)
+	}
+	return used, nil
+}
 
 // Latest returns the newest row of each listed workspace. A workspace with no
 // row is absent from the map; its zero Snapshot is the "no usage" value.

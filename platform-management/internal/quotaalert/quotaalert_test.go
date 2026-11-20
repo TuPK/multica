@@ -19,7 +19,7 @@ type fakeSource struct {
 
 func (f *fakeSource) Workspaces(context.Context) ([]string, error) { return f.ws, nil }
 
-func (f *fakeSource) Counts(_ context.Context, ws string) (map[string]int64, error) {
+func (f *fakeSource) Counts(_ context.Context, ws string, _ time.Time) (map[string]int64, error) {
 	return f.counts[ws], nil
 }
 
@@ -103,6 +103,26 @@ func TestWarningAtEightyThenOneHundredOncePerMonth(t *testing.T) {
 	}
 	if want := "Multica: acme reached 80% of its agents limit"; mail.sent[0].Subject != want {
 		t.Fatalf("first subject = %q, want %q", mail.sent[0].Subject, want)
+	}
+}
+
+// TestAutopilotRunsWarnAtEighty: the autopilot runs of the period warn like the
+// other counted limits, with the autopilot_runs gate in the subject (spec R6
+// section 3c.5, rule 1).
+func TestAutopilotRunsWarnAtEighty(t *testing.T) {
+	src := &fakeSource{
+		ws:     []string{"w1"},
+		counts: map[string]map[string]int64{"w1": {plan.GateAutopilotRuns: 8}},
+		limits: map[string]map[string]*int64{"w1": {plan.GateAutopilotRuns: i64(10)}},
+	}
+	mail := &fakeMail{}
+	job := Job{Source: src, Notices: &fakeNotices{recorded: map[string]bool{}}, Mail: mail}
+
+	if n, err := job.Run(context.Background(), june); err != nil || n != 1 {
+		t.Fatalf("at 8 of 10 autopilot runs: sent %d, err %v; want 1", n, err)
+	}
+	if want := "Multica: acme reached 80% of its autopilot_runs limit"; len(mail.sent) != 1 || mail.sent[0].Subject != want {
+		t.Fatalf("mail = %+v, want subject %q", mail.sent, want)
 	}
 }
 

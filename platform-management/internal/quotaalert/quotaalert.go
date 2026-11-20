@@ -25,16 +25,17 @@ const (
 // maxRecipients bounds the addresses of one email; Resend takes at most 50.
 const maxRecipients = 50
 
-// Gates are the counted limits whose current count the platform reads: agents,
-// runtimes, issues and storage. The autopilot period and the API rate have no
-// current count here and are not alerted.
-var Gates = []string{plan.GateAgents, plan.GateRuntimes, plan.GateIssueCount, plan.GateStorageBytes}
+// Gates are the counted limits the platform alerts on: agents, runtimes, issues,
+// storage and the autopilot runs of the period (spec R6 section 3c.5, rule 1).
+// The API rate is not alerted; it has no count in the database, only a Redis
+// counter of the current minute.
+var Gates = []string{plan.GateAgents, plan.GateRuntimes, plan.GateIssueCount, plan.GateStorageBytes, plan.GateAutopilotRuns}
 
 // Source reads the workspaces to check, the current count of each gate of one
 // workspace, and its effective limits at an instant.
 type Source interface {
 	Workspaces(ctx context.Context) ([]string, error)
-	Counts(ctx context.Context, workspaceID string) (map[string]int64, error)
+	Counts(ctx context.Context, workspaceID string, now time.Time) (map[string]int64, error)
 	Limits(ctx context.Context, workspaceID string, now time.Time) (map[string]*int64, error)
 }
 
@@ -97,7 +98,7 @@ func (j Job) Job(now func() time.Time) func(context.Context) error {
 }
 
 func (j Job) checkWorkspace(ctx context.Context, ws string, now time.Time) (int, error) {
-	counts, err := j.Source.Counts(ctx, ws)
+	counts, err := j.Source.Counts(ctx, ws, now)
 	if err != nil {
 		return 0, err
 	}

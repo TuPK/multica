@@ -44,17 +44,24 @@ func (s PgxSource) Workspaces(ctx context.Context) ([]string, error) {
 	return out, rows.Err()
 }
 
-// Counts returns the current count of each alerted gate of a workspace.
-func (s PgxSource) Counts(ctx context.Context, workspaceID string) (map[string]int64, error) {
-	cur, err := usage.NewReader(s.pool).Current(ctx, workspaceID)
+// Counts returns the current count of each alerted gate of a workspace, and the
+// autopilot runs of the period that holds now.
+func (s PgxSource) Counts(ctx context.Context, workspaceID string, now time.Time) (map[string]int64, error) {
+	reader := usage.NewReader(s.pool)
+	cur, err := reader.Current(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("count workspace: %w", err)
 	}
+	runs, err := reader.AutopilotRuns(ctx, workspaceID, now)
+	if err != nil {
+		return nil, fmt.Errorf("count autopilot runs: %w", err)
+	}
 	return map[string]int64{
-		plan.GateAgents:       cur.Agents,
-		plan.GateRuntimes:     cur.Runtimes,
-		plan.GateIssueCount:   cur.IssuesTotal,
-		plan.GateStorageBytes: cur.StorageBytes,
+		plan.GateAgents:        cur.Agents,
+		plan.GateRuntimes:      cur.Runtimes,
+		plan.GateIssueCount:    cur.IssuesTotal,
+		plan.GateStorageBytes:  cur.StorageBytes,
+		plan.GateAutopilotRuns: runs,
 	}, nil
 }
 
