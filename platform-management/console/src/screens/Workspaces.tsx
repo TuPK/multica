@@ -23,6 +23,7 @@ import {
 } from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { LayoutGrid, Search, X } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -331,14 +332,7 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                                 </Text>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="xs"
-                                  onClick={() => onSelectWorkspace(ws.id)}
-                                >
-                                  View
-                                </Button>
+                                <RowActions label="workspace" actions={[{ label: "View", onSelect: () => onSelectWorkspace(ws.id) }]} />
                               </TableCell>
                             </TableRow>
                           ))}

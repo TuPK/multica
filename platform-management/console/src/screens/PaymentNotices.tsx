@@ -15,6 +15,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@multica/ui/components/ui/button";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Inbox, RefreshCw, X } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -258,13 +259,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                         </Text>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant={isSelected ? "secondary" : "outline"}
-                          size="sm"
-                          onClick={() => setSelectedId(notice.id)}
-                        >
-                          View
-                        </Button>
+                        <RowActions label="payment notice" actions={[{ label: "View", onSelect: () => setSelectedId(notice.id) }]} />
                       </TableCell>
                     </TableRow>
                   );

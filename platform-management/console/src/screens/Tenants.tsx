@@ -10,6 +10,7 @@ import { PageHeader } from "../components/PageHeader";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
+import { RowActions, useRowActionsWidth } from "../components/RowActions";
 import { useTenants } from "../api/hooks";
 import type { Tenant } from "../api/schemas";
 
@@ -45,6 +46,7 @@ interface TenantsProps {
 }
 
 export function Tenants({ onSelectTenant }: TenantsProps) {
+  const actionsWidth = useRowActionsWidth(96);
   const [search, setSearch] = useState("");
   const {
     data,
@@ -201,12 +203,13 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                 {
                   key: "actions",
                   header: "Action",
-                  width: pixel(96),
+                  width: pixel(actionsWidth),
                   align: "end",
                   renderCell: (tenant) => (
-                    <Button variant="outline" size="sm" onClick={() => onSelectTenant(tenant.id)}>
-                      View
-                    </Button>
+                    <RowActions
+                      label={`tenant ${tenant.name}`}
+                      actions={[{ label: "View", onSelect: () => onSelectTenant(tenant.id) }]}
+                    />
                   ),
                 },
               ]}

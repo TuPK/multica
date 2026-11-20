@@ -23,6 +23,7 @@ import {
 } from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Search, Users as UsersIcon, X } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -343,14 +344,7 @@ export function TenantUsers({
                       </Text>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => onSelectUser(user.user_id)}
-                      >
-                        View
-                      </Button>
+                      <RowActions label="user" actions={[{ label: "View", onSelect: () => onSelectUser(user.user_id) }]} />
                     </TableCell>
                   </TableRow>
                 ))}

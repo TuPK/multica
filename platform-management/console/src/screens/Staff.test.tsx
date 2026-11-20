@@ -119,9 +119,8 @@ describe("Staff screen", () => {
     render(<Staff />);
 
     // Click remove on the admin row
-    const removeAdminBtn = screen.getByRole("button", {
-      name: "Remove staff member admin1@example.com",
-    });
+    const adminRow = screen.getByRole("row", { name: /admin1@example\.com/ });
+    const removeAdminBtn = within(adminRow).getByRole("button", { name: "Remove" });
     fireEvent.click(removeAdminBtn);
 
     expect(screen.getByRole("heading", { name: "Remove staff member" })).toBeInTheDocument();

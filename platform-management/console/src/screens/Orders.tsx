@@ -23,6 +23,7 @@ import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Input } from "@multica/ui/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { Copy, Check, CreditCard, ExternalLink } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -322,44 +323,22 @@ export function Orders({ userRole }: OrdersProps) {
                       </Text>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {activeTab === "pending" && canManageOrders && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => handleOpenConfirmDialog(order)}
-                            >
-                              Confirm
-                            </Button>
-                            {isUsageOrder ? (
-                              canWriteOffUsage && (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleOpenCancelDialog(order)}
-                                >
-                                  Write off
-                                </Button>
-                              )
-                            ) : (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleOpenCancelDialog(order)}
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                          </>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setHistoryOrderId(order.id)}
-                        >
-                          History
-                        </Button>
-                      </div>
+                      <RowActions
+                        label={`order ${order.transfer_code}`}
+                        actions={[
+                          ...(activeTab === "pending" && canManageOrders
+                            ? [
+                                { label: "Confirm", primary: true, onSelect: () => handleOpenConfirmDialog(order) },
+                                ...(isUsageOrder
+                                  ? canWriteOffUsage
+                                    ? [{ label: "Write off", destructive: true, onSelect: () => handleOpenCancelDialog(order) }]
+                                    : []
+                                  : [{ label: "Cancel", destructive: true, onSelect: () => handleOpenCancelDialog(order) }]),
+                              ]
+                            : []),
+                          { label: "History", onSelect: () => setHistoryOrderId(order.id) },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 );

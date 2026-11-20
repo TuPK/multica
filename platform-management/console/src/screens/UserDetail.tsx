@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Card } from "@astryxdesign/core/Card";
 import { Divider } from "@astryxdesign/core/Divider";
-import { HStack } from "@astryxdesign/core/HStack";
 import { Heading } from "@astryxdesign/core/Heading";
 import { RadioList, RadioListItem } from "@astryxdesign/core/RadioList";
 import { Section } from "@astryxdesign/core/Section";
@@ -17,6 +16,7 @@ import {
 import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
+import { RowActions } from "../components/RowActions";
 import {
   Dialog,
   DialogContent,
@@ -47,10 +47,8 @@ import {
   LogOut,
   RotateCcw,
   Shield,
-  SlidersHorizontal,
   Trash2,
   UserMinus,
-  UserPen,
 } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { TypeToConfirmDialog } from "../components/TypeToConfirmDialog";
@@ -687,75 +685,56 @@ export function UserDetail({
                       </TableCell>
                       {hasMembershipActions && (
                         <TableCell className="text-right">
-                          <HStack wrap="wrap" gap={1.5} justify="end" align="center">
-                            {canManageMembers && (
-                              <>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="xs"
-                                  disabled={isOwner || isSelfTarget || isStaffTarget}
-                                  title={
-                                    isOwner
-                                      ? "Owner role cannot be changed by staff"
-                                      : isSelfTarget
-                                        ? "You cannot change your own role"
+                          <RowActions
+                            label={`workspace ${membership.name}`}
+                            actions={[
+                              ...(canManageMembers
+                                ? [
+                                    {
+                                      label: "Change role",
+                                      disabled: isOwner || isSelfTarget || isStaffTarget,
+                                      title: isOwner
+                                        ? "Owner role cannot be changed by staff"
+                                        : isSelfTarget
+                                          ? "You cannot change your own role"
+                                          : isStaffTarget
+                                            ? "Active staff members cannot be changed here"
+                                            : undefined,
+                                      onSelect: () => handleOpenRoleDialog(membership),
+                                    },
+                                    {
+                                      label: "Remove",
+                                      disabled: isOwner || isStaffTarget,
+                                      title: isOwner
+                                        ? "Owner cannot be removed by staff"
                                         : isStaffTarget
                                           ? "Active staff members cannot be changed here"
-                                          : undefined
-                                  }
-                                  onClick={() => handleOpenRoleDialog(membership)}
-                                >
-                                  <UserPen className="size-3" aria-hidden="true" />
-                                  Change role
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="xs"
-                                  disabled={isOwner || isStaffTarget}
-                                  title={
-                                    isOwner
-                                      ? "Owner cannot be removed by staff"
-                                      : isStaffTarget
-                                        ? "Active staff members cannot be changed here"
-                                        : undefined
-                                  }
-                                  onClick={() => {
-                                    setRemoveError(null);
-                                    setRemoveDialogWorkspace(membership);
-                                  }}
-                                >
-                                  <UserMinus className="size-3" aria-hidden="true" />
-                                  Remove
-                                </Button>
-                              </>
-                            )}
-
-                            {canEditWorkspaceAllocation && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="xs"
-                                onClick={() => onSelectWorkspace?.(membership.workspace_id)}
-                              >
-                                <SlidersHorizontal className="size-3" aria-hidden="true" />
-                                Workspace allocation
-                              </Button>
-                            )}
-
-                            {canRequestWorkspaceQuota && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="xs"
-                                onClick={() => handleOpenQuotaDialog(membership)}
-                              >
-                                <SlidersHorizontal className="size-3" aria-hidden="true" />
-                                Request quota increase
-                              </Button>
-                            )}
-                          </HStack>
+                                          : undefined,
+                                      onSelect: () => {
+                                        setRemoveError(null);
+                                        setRemoveDialogWorkspace(membership);
+                                      },
+                                    },
+                                  ]
+                                : []),
+                              ...(canEditWorkspaceAllocation
+                                ? [
+                                    {
+                                      label: "Workspace allocation",
+                                      onSelect: () => onSelectWorkspace?.(membership.workspace_id),
+                                    },
+                                  ]
+                                : []),
+                              ...(canRequestWorkspaceQuota
+                                ? [
+                                    {
+                                      label: "Request quota increase",
+                                      onSelect: () => handleOpenQuotaDialog(membership),
+                                    },
+                                  ]
+                                : []),
+                            ]}
+                          />
                         </TableCell>
                       )}
                     </TableRow>

@@ -24,6 +24,7 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
+import { RowActions } from "../components/RowActions";
 import { StatusBadge } from "../components/StatusBadge";
 import {
   usePriceChanges,
@@ -635,21 +636,20 @@ export function PriceSchedule({
                     </TableCell>
                     {!readOnly && (
                       <TableCell className="text-right">
-                        {item.state === "scheduled" && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCancelScheduled}
-                            disabled={cancelScheduledPriceChange.isPending}
-                            aria-busy={cancelScheduledPriceChange.isPending}
-                          >
-                            {cancelScheduledPriceChange.isPending && (
-                              <Spinner className="size-3.5" />
-                            )}
-                            Cancel scheduled change
-                          </Button>
-                        )}
+                        <RowActions
+                          label={`price change ${item.effective_from}`}
+                          actions={
+                            item.state === "scheduled"
+                              ? [
+                                  {
+                                    label: "Cancel scheduled change",
+                                    busy: cancelScheduledPriceChange.isPending,
+                                    onSelect: () => handleCancelScheduled(),
+                                  },
+                                ]
+                              : []
+                          }
+                        />
                       </TableCell>
                     )}
                   </TableRow>

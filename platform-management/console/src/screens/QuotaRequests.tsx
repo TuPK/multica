@@ -33,6 +33,7 @@ import {
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { AlertCircle, ArrowUpCircle, RefreshCw } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -294,27 +295,20 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                         {canDecide && (
                           <TableCell className="text-right">
                             {req.state === "pending" ? (
-                              <div className="inline-flex items-center justify-end gap-1.5">
-                                <Button
-                                  type="button"
-                                  variant="default"
-                                  size="xs"
-                                  onClick={() => openApproveDialog(req)}
-                                >
-                                  Approve
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="xs"
-                                  onClick={() => {
-                                    setDenyTarget(req);
-                                    setDenySubmitError(null);
-                                  }}
-                                >
-                                  Deny
-                                </Button>
-                              </div>
+                              <RowActions
+                                label={`quota request for ${req.workspace_id}`}
+                                actions={[
+                                  { label: "Approve", primary: true, onSelect: () => openApproveDialog(req) },
+                                  {
+                                    label: "Deny",
+                                    destructive: true,
+                                    onSelect: () => {
+                                      setDenyTarget(req);
+                                      setDenySubmitError(null);
+                                    },
+                                  },
+                                ]}
+                              />
                             ) : (
                               <Text type="supporting">—</Text>
                             )}

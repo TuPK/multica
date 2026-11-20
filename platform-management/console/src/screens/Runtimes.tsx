@@ -25,6 +25,7 @@ import {
 } from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { RefreshCw, Search, Server, X } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -364,14 +365,7 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                               </Text>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="xs"
-                                onClick={() => onSelectRuntime(rt.id)}
-                              >
-                                View
-                              </Button>
+                              <RowActions label="runtime" actions={[{ label: "View", onSelect: () => onSelectRuntime(rt.id) }]} />
                             </TableCell>
                           </TableRow>
                         ))}

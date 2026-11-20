@@ -14,7 +14,8 @@ import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { AlertCircle, CheckCircle2, RefreshCw, ShieldCheck } from "@multica/ui/icons";
+import { AlertCircle, RefreshCw, ShieldCheck } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -187,34 +188,25 @@ export function Approvals({ userRole }: ApprovalsProps) {
                             <StatusBadge status={req.state} />
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="inline-flex items-center justify-end gap-1.5">
-                              <Button
-                                type="button"
-                                variant="default"
-                                size="xs"
-                                disabled={isSelfRequest || rowBusy}
-                                aria-busy={rowBusy && approveMutation.isPending ? true : undefined}
-                                onClick={() => handleApprove(req.id)}
-                              >
-                                {rowBusy && approveMutation.isPending ? (
-                                  <Spinner />
-                                ) : (
-                                  <CheckCircle2 className="size-3" aria-hidden="true" />
-                                )}
-                                Approve
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="xs"
-                                disabled={isSelfRequest || rowBusy}
-                                aria-busy={rowBusy && rejectMutation.isPending ? true : undefined}
-                                onClick={() => handleReject(req.id)}
-                              >
-                                {rowBusy && rejectMutation.isPending && <Spinner />}
-                                Reject
-                              </Button>
-                            </div>
+                            <RowActions
+                              label={`approval request for ${req.target_label || req.target_id}`}
+                              actions={[
+                                {
+                                  label: "Approve",
+                                  primary: true,
+                                  busy: rowBusy && approveMutation.isPending,
+                                  disabled: isSelfRequest || rowBusy,
+                                  onSelect: () => handleApprove(req.id),
+                                },
+                                {
+                                  label: "Reject",
+                                  destructive: true,
+                                  busy: rowBusy && rejectMutation.isPending,
+                                  disabled: isSelfRequest || rowBusy,
+                                  onSelect: () => handleReject(req.id),
+                                },
+                              ]}
+                            />
                           </TableCell>
                         </TableRow>
                       );

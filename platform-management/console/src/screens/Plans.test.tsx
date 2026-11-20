@@ -139,7 +139,7 @@ describe("Plans screen", () => {
     expect(screen.getByText("Usage")).toBeInTheDocument();
     expect(screen.getByText("pro")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit plan Pro Plan" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Schedule price for Pro Plan" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Price schedule plan Pro Plan" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete plan Pro Plan" })).toBeInTheDocument();
   });
 
@@ -238,7 +238,7 @@ describe("Plans screen", () => {
 
   it("opens PriceSchedule when admin clicks Schedule price for a plan", () => {
     render(<Plans userRole="system_admin" />);
-    fireEvent.click(screen.getByRole("button", { name: "Schedule price for Pro Plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Price schedule plan Pro Plan" }));
     expect(screen.getByRole("heading", { name: /Price Schedule: Pro Plan/i })).toBeInTheDocument();
   });
 
@@ -412,7 +412,7 @@ describe("Plans screen", () => {
 
   it("opens PlanHistory when admin clicks View history for a plan", () => {
     render(<Plans userRole="system_admin" />);
-    fireEvent.click(screen.getByRole("button", { name: "View history for Pro Plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "History plan Pro Plan" }));
     expect(screen.getByRole("heading", { name: /Plan History: Pro Plan/i })).toBeInTheDocument();
   });
 });

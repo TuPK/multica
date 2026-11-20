@@ -30,7 +30,8 @@ import {
   SelectValue,
 } from "@multica/ui/components/ui/select";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { AlertCircle, Pencil, Shield, Trash2, UserPlus } from "@multica/ui/icons";
+import { AlertCircle, Shield, UserPlus } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -252,27 +253,13 @@ export function Staff() {
                       </Text>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="inline-flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenEditDialog(member)}
-                          aria-label={`Edit staff member ${member.email}`}
-                        >
-                          <Pencil className="size-4" aria-hidden="true" />
-                          <span>Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenRemoveDialog(member)}
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          aria-label={`Remove staff member ${member.email}`}
-                        >
-                          <Trash2 className="size-4" aria-hidden="true" />
-                          <span>Remove</span>
-                        </Button>
-                      </div>
+                      <RowActions
+                        label={`staff member ${member.email}`}
+                        actions={[
+                          { label: "Edit", onSelect: () => handleOpenEditDialog(member) },
+                          { label: "Remove", destructive: true, onSelect: () => handleOpenRemoveDialog(member) },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 );

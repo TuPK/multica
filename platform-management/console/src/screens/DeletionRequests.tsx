@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { AlertCircle, Ban, RefreshCw, RotateCcw, Trash2 } from "@multica/ui/icons";
+import { AlertCircle, RefreshCw, Trash2 } from "@multica/ui/icons";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
 import {
@@ -32,6 +32,7 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
+import { RowActions } from "../components/RowActions";
 import { StatusBadge } from "../components/StatusBadge";
 import type { StaffRole } from "../components/types";
 
@@ -287,40 +288,17 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
                       </Text>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="inline-flex items-center justify-end gap-1.5">
-                        {canRetry && (
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            disabled={rowBusy}
-                            aria-busy={rowBusy || undefined}
-                            onClick={() => handleRetry(req.id)}
-                          >
-                            {rowBusy && retryMutation.isPending ? (
-                              <Spinner />
-                            ) : (
-                              <RotateCcw className="size-3" aria-hidden="true" />
-                            )}
-                            Retry
-                          </Button>
-                        )}
-                        {canCancel && (
-                          <Button
-                            variant="destructive"
-                            size="xs"
-                            disabled={rowBusy}
-                            aria-busy={rowBusy || undefined}
-                            onClick={() => handleCancel(req.id)}
-                          >
-                            {rowBusy && cancelMutation.isPending ? (
-                              <Spinner />
-                            ) : (
-                              <Ban className="size-3" aria-hidden="true" />
-                            )}
-                            Cancel
-                          </Button>
-                        )}
-                      </div>
+                      <RowActions
+                        label={`deletion request for ${req.target_label || req.target_id}`}
+                        actions={[
+                          ...(canRetry
+                            ? [{ label: "Retry", busy: rowBusy && retryMutation.isPending, disabled: rowBusy, onSelect: () => handleRetry(req.id) }]
+                            : []),
+                          ...(canCancel
+                            ? [{ label: "Cancel", destructive: true, busy: rowBusy && cancelMutation.isPending, disabled: rowBusy, onSelect: () => handleCancel(req.id) }]
+                            : []),
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 );

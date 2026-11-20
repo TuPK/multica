@@ -33,6 +33,7 @@ import {
 import { Button } from "@multica/ui/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
 import type { MeResponse } from "./types";
+import { SidebarCollapsedProvider } from "./sidebar-state";
 
 interface LayoutProps {
   currentScreen: string;
@@ -128,6 +129,7 @@ export function Layout({
   ];
 
   return (
+    <SidebarCollapsedProvider value={isCollapsed}>
     <AppShell
       variant="section"
       contentPadding={0}
@@ -148,26 +150,24 @@ export function Layout({
           }
           footer={
             isCollapsed ? undefined : (
-              <div className="space-y-2.5 border-t border-surface-border pt-3">
-                <div className="flex items-center justify-between gap-2 px-1">
-                  <span
-                    className="min-w-0 flex-1 truncate text-label text-muted-foreground"
-                    title={user.email}
-                  >
-                    {user.email}
-                  </span>
-                  <StatusBadge status={user.role} />
-                </div>
+              <div className="flex items-center justify-between gap-2 border-t border-surface-border px-1 pt-3">
+                <span
+                  className="min-w-0 flex-1 truncate text-label text-muted-foreground"
+                  title={user.email}
+                >
+                  {user.email}
+                </span>
+                <StatusBadge status={user.role} />
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
+                  size="icon-sm"
                   onClick={onLogout}
-                  className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+                  title="Sign out"
                   aria-label="Sign out"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
                 >
                   <LogOut className="size-4" aria-hidden="true" />
-                  <span>Sign out</span>
                 </Button>
               </div>
             )
@@ -233,5 +233,6 @@ export function Layout({
         {children}
       </div>
     </AppShell>
+    </SidebarCollapsedProvider>
   );
 }

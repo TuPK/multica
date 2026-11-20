@@ -55,6 +55,7 @@ import { LoadingState } from "../components/LoadingState";
 import { MetadataList, MetadataListItem } from "../components/MetadataList";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { RowActions, useRowActionsWidth } from "../components/RowActions";
 import {
   useMe,
   useWorkspace,
@@ -155,6 +156,7 @@ function MonthlyUsageSection({
   canWriteOff,
   onWriteOff,
 }: MonthlyUsageSectionProps) {
+  const actionsWidth = useRowActionsWidth(120);
   return (
     <Section variant="transparent" padding={0} data-testid="usage-month" className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -360,12 +362,15 @@ function MonthlyUsageSection({
                           {
                             key: "actions",
                             header: "Action",
-                            width: pixel(120),
+                            width: pixel(actionsWidth),
                             align: "end" as const,
                             renderCell: (order: WorkspaceUsageUnpaidOrder) => (
-                              <Button variant="destructive" size="sm" onClick={() => onWriteOff(order)}>
-                                Write off
-                              </Button>
+                              <RowActions
+                                label={`unpaid order ${order.id}`}
+                                actions={[
+                                  { label: "Write off", destructive: true, onSelect: () => onWriteOff(order) },
+                                ]}
+                              />
                             ),
                           },
                         ]

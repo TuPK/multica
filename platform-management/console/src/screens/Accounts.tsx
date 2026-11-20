@@ -27,6 +27,7 @@ import {
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { AlertCircle, CheckCircle2, UserPlus } from "@multica/ui/icons";
+import { RowActions, useRowActionsWidth, type RowAction } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -185,6 +186,7 @@ function AccountStateBadge({ req }: { req: AccountRequest }) {
 }
 
 export function Accounts({ userRole }: AccountsProps) {
+  const actionsWidth = useRowActionsWidth(200);
   const { data: me } = useMe();
   const effectiveRole = userRole || me?.role;
 
@@ -681,7 +683,7 @@ export function Accounts({ userRole }: AccountsProps) {
               {
                 key: "actions",
                 header: "Actions",
-                width: pixel(200),
+                width: pixel(actionsWidth),
                 align: "end",
                 renderCell: (req) => {
                   const canCancel = req.state === "pending";
@@ -689,34 +691,25 @@ export function Accounts({ userRole }: AccountsProps) {
                     req.state === "completed" ||
                     (req.state === "failed" && req.error_code === "finalize_failed");
                   const isResending = resendingId === req.id;
-                  return (
-                    <div className="flex items-center justify-end gap-2">
-                      {canCancel && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            setCancelTarget(req);
-                            setCancelError(null);
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                      {canResend && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={isResending}
-                          aria-busy={isResending}
-                          onClick={() => handleResendWelcome(req)}
-                        >
-                          {isResending && <Spinner className="size-3.5" />}
-                          Resend welcome
-                        </Button>
-                      )}
-                    </div>
-                  );
+                  const actions: RowAction[] = [];
+                  if (canCancel) {
+                    actions.push({
+                      label: "Cancel",
+                      destructive: true,
+                      onSelect: () => {
+                        setCancelTarget(req);
+                        setCancelError(null);
+                      },
+                    });
+                  }
+                  if (canResend) {
+                    actions.push({
+                      label: "Resend welcome",
+                      busy: isResending,
+                      onSelect: () => handleResendWelcome(req),
+                    });
+                  }
+                  return <RowActions label={`account request ${req.email}`} actions={actions} />;
                 },
               },
             ]}

@@ -41,6 +41,7 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
+import { RowActions, useRowActionsWidth, type RowAction } from "../components/RowActions";
 import { StatusBadge } from "../components/StatusBadge";
 import { PlanHistory } from "./PlanHistory";
 import { PriceSchedule } from "./PriceSchedule";
@@ -139,6 +140,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
   const isBilling = effectiveRole === "billing";
   const canReadPlans = isSystemAdmin || isTenantAdmin;
   const canWritePlans = isSystemAdmin;
+  const actionsWidth = useRowActionsWidth(204);
 
   const { data: plans, isLoading, isError, error, refetch } = usePlans(canReadPlans);
   const createPlan = useCreatePlan();
@@ -638,87 +640,32 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                   {
                     key: "actions",
                     header: "Actions",
-                    width: pixel(204),
+                    width: pixel(actionsWidth),
                     align: "end" as const,
                     renderCell: (plan: Plan) => {
-                      const isInactive = getPlanState(plan) === "inactive";
                       const rowBusy = lifecyclePendingKey === plan.key;
+                      const lifecycle: RowAction =
+                        getPlanState(plan) === "inactive"
+                          ? { label: "Activate", icon: CheckCircle2, busy: rowBusy, onSelect: () => handleToggleActive(plan, true) }
+                          : { label: "Deactivate", icon: CircleOff, busy: rowBusy, onSelect: () => handleToggleActive(plan, false) };
                       return (
-                        <div className="flex items-center justify-end gap-1">
-                          {isInactive ? (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              title="Activate"
-                              disabled={rowBusy}
-                              aria-busy={rowBusy || undefined}
-                              onClick={() => handleToggleActive(plan, true)}
-                              aria-label={`Activate plan ${plan.name}`}
-                            >
-                              {rowBusy ? (
-                                <Spinner className="size-3.5" aria-hidden="true" />
-                              ) : (
-                                <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                              )}
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              title="Deactivate"
-                              disabled={rowBusy}
-                              aria-busy={rowBusy || undefined}
-                              onClick={() => handleToggleActive(plan, false)}
-                              aria-label={`Deactivate plan ${plan.name}`}
-                            >
-                              {rowBusy ? (
-                                <Spinner className="size-3.5" aria-hidden="true" />
-                              ) : (
-                                <CircleOff className="size-3.5" aria-hidden="true" />
-                              )}
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title="History"
-                            onClick={() => handleViewHistory(plan.key)}
-                            aria-label={`View history for ${plan.name}`}
-                          >
-                            <History className="size-3.5" aria-hidden="true" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Price schedule"
-                            onClick={() => {
-                              setSelectedSchedulePlan(plan);
-                              setSchedulePlanKey(plan.key);
-                            }}
-                            aria-label={`Schedule price for ${plan.name}`}
-                          >
-                            <CalendarClock className="size-3.5" aria-hidden="true" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(plan)}
-                            aria-label={`Edit plan ${plan.name}`}
-                          >
-                            <Pencil className="size-3.5" aria-hidden="true" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Delete"
-                            onClick={() => handleOpenDelete(plan)}
-                            aria-label={`Delete plan ${plan.name}`}
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="size-3.5" aria-hidden="true" />
-                          </Button>
-                        </div>
+                        <RowActions
+                          label={`plan ${plan.name}`}
+                          actions={[
+                            lifecycle,
+                            { label: "History", icon: History, onSelect: () => handleViewHistory(plan.key) },
+                            {
+                              label: "Price schedule",
+                              icon: CalendarClock,
+                              onSelect: () => {
+                                setSelectedSchedulePlan(plan);
+                                setSchedulePlanKey(plan.key);
+                              },
+                            },
+                            { label: "Edit", icon: Pencil, onSelect: () => handleOpenEdit(plan) },
+                            { label: "Delete", icon: Trash2, destructive: true, onSelect: () => handleOpenDelete(plan) },
+                          ]}
+                        />
                       );
                     },
                   },

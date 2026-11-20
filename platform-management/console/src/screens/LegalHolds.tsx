@@ -34,6 +34,7 @@ import {
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { AlertCircle, Lock, Plus, RefreshCw } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -272,20 +273,21 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                           />
                         </TableCell>
                         <TableCell className="text-right">
-                          {!hold.released ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="xs"
-                              onClick={() => {
-                                setReleaseTarget(hold);
-                                setReleaseError(null);
-                              }}
-                            >
-                              Release
-                            </Button>
-                          ) : (
+                          {hold.released ? (
                             <Text type="supporting">—</Text>
+                          ) : (
+                            <RowActions
+                              label={`legal hold ${hold.id}`}
+                              actions={[
+                                {
+                                  label: "Release",
+                                  onSelect: () => {
+                                    setReleaseTarget(hold);
+                                    setReleaseError(null);
+                                  },
+                                },
+                              ]}
+                            />
                           )}
                         </TableCell>
                       </TableRow>

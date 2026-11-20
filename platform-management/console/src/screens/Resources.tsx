@@ -31,6 +31,7 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
+import { RowActions } from "../components/RowActions";
 import {
   useMe,
   useSystemResources,
@@ -474,15 +475,16 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                                 </TableCell>
                                 {onSelectTenant && (
                                   <TableCell className="text-right">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="xs"
-                                      disabled={!row.tenant_id}
-                                      onClick={() => onSelectTenant(row.tenant_id)}
-                                    >
-                                      View
-                                    </Button>
+                                    <RowActions
+                                      label={`tenant ${row.tenant_id}`}
+                                      actions={[
+                                        {
+                                          label: "View",
+                                          disabled: !row.tenant_id,
+                                          onSelect: () => onSelectTenant(row.tenant_id),
+                                        },
+                                      ]}
+                                    />
                                   </TableCell>
                                 )}
                               </TableRow>

@@ -13,6 +13,7 @@ import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Search, Users as UsersIcon, X } from "@multica/ui/icons";
+import { RowActions } from "../components/RowActions";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
@@ -151,13 +152,7 @@ export function Users({ onSelectUser }: UsersProps) {
                       </Text>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onSelectUser(user.id)}
-                      >
-                        View
-                      </Button>
+                      <RowActions label="user" actions={[{ label: "View", onSelect: () => onSelectUser(user.id) }]} />
                     </TableCell>
                   </TableRow>
                 ))}

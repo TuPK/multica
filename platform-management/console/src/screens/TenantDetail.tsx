@@ -18,6 +18,7 @@ import {
 import { Text } from "@astryxdesign/core/Text";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
+import { RowActions, useRowActionsWidth } from "../components/RowActions";
 import {
   Dialog,
   DialogClose,
@@ -113,6 +114,7 @@ export function TenantDetail({
   onSelectUser,
   userRole,
 }: TenantDetailProps) {
+  const actionsWidth = useRowActionsWidth(96);
   const { data: me } = useMe();
   const effectiveRole = userRole ?? me?.role;
   const canDeleteTenant = effectiveRole === "system_admin";
@@ -498,12 +500,13 @@ export function TenantDetail({
                     {
                       key: "actions",
                       header: "Action",
-                      width: pixel(96),
+                      width: pixel(actionsWidth),
                       align: "end",
                       renderCell: (workspace) => (
-                        <Button variant="outline" size="sm" onClick={() => onSelectWorkspace(workspace.id)}>
-                          View
-                        </Button>
+                        <RowActions
+                          label={`workspace ${workspace.name}`}
+                          actions={[{ label: "View", onSelect: () => onSelectWorkspace(workspace.id) }]}
+                        />
                       ),
                     },
                   ]}

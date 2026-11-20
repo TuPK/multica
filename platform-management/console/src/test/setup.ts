@@ -1,6 +1,15 @@
 import "@testing-library/jest-dom/vitest";
 import { configure } from "@testing-library/react";
 import "@multica/vitest-setup/web-storage";
+import { vi } from "vitest";
+
+// Row actions render as inline buttons while the sidebar is collapsed and as a
+// "..." menu while it is expanded. Screen tests address the buttons directly,
+// so they run collapsed; RowActions.test switches to the expanded menu.
+vi.mock("../components/sidebar-state", () => ({
+  SidebarCollapsedProvider: ({ children }: { children: unknown }) => children,
+  useSidebarCollapsed: vi.fn(() => true),
+}));
 
 configure({ asyncUtilTimeout: 5_000 });
 
