@@ -89,11 +89,7 @@ export const metadata: Metadata = {
   description:
     "Source-available platform that turns coding agents into real teammates. Assign tasks, track progress, compound skills.",
   icons: {
-    // Light tab: dark ink. Dark tab: light ink. Same mapping as the platform console.
-    icon: [
-      { url: "/brand/delegora-symbol-on-light.svg", type: "image/svg+xml", media: "(prefers-color-scheme: light)" },
-      { url: "/brand/delegora-symbol-on-dark.svg", type: "image/svg+xml", media: "(prefers-color-scheme: dark)" },
-    ],
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     shortcut: ["/favicon.svg"],
     // iOS never reads the manifest's icons for the home screen; it needs its
     // own opaque, full-bleed square and rounds the corners itself.

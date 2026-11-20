@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description:
     "Multica — source-available platform that turns coding agents into real teammates. Assign tasks, track progress, compound skills.",
   openGraph: {
-    title: "Multica — Project Management for Human + Agent Teams",
+    title: "Delegora: AI Agent Company",
     description:
       "Manage your human + agent workforce in one place.",
     url: "/homepage",

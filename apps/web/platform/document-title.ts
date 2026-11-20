@@ -13,7 +13,7 @@
  */
 
 /** Root fallback — the title of a page that has nothing more specific to say. */
-export const SITE_TITLE = "Delegora";
+export const SITE_TITLE = "Delegora: AI Agent Company";
 
 /** Appended to every page-specific title. */
 export const TITLE_SUFFIX = " | Delegora";
