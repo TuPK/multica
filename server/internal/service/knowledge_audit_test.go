@@ -180,9 +180,14 @@ func TestLibrarianBackfillRestoresKindsAndTheVenturesBase(t *testing.T) {
 		t.Fatal("the ventures base was not restored")
 	}
 
-	// A second pass changes nothing and reports the workspace done again.
-	if done, err := e.svc.RunLibrarian(ctx, LibrarianJobTaxonomyBackfill, time.Now()); err != nil || done != 1 {
-		t.Fatalf("second pass: done %d, err %v", done, err)
+	// A second pass changes nothing for this workspace. Its total done count
+	// includes the other workspaces in the shared database, so it is not asserted.
+	if _, err := e.svc.RunLibrarian(ctx, LibrarianJobTaxonomyBackfill, time.Now()); err != nil {
+		t.Fatalf("second pass: %v", err)
+	}
+	again, _ := e.svc.ListKnowledgeKinds(ctx, e.ws)
+	if len(again) != len(kinds) {
+		t.Fatalf("kinds after second pass = %d, want %d", len(again), len(kinds))
 	}
 }
 
