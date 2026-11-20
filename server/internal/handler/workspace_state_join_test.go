@@ -78,6 +78,8 @@ func (r joinRow) Scan(dest ...any) error {
 		*dest[1].(*pgtype.UUID) = joinUUID(joinTestWorkspace)
 	case "GetMemberByUserAndWorkspace", "GetWorkspacePolicy": // no policy row means the default policy
 		return pgx.ErrNoRows
+	case "GetTenantIDByWorkspace": // no tenant: no policy floor
+		return pgx.ErrNoRows
 	default:
 		return errors.New("joinDB: unexpected query " + r.name)
 	}
