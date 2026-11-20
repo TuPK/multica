@@ -12,13 +12,13 @@ import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Search, Users as UsersIcon } from "@multica/ui/icons";
-import { RowActions } from "../components/RowActions";
+import { UserAccountMenu } from "./UserAccountMenu";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
-import { useUsers } from "../api/hooks";
+import { useMe, useUsers } from "../api/hooks";
 import type { User } from "../api/schemas";
 import { t } from "../i18n";
 
@@ -28,6 +28,9 @@ interface UsersProps {
 
 export function Users({ onSelectUser }: UsersProps) {
   const [search, setSearch] = useState("");
+  const { data: me } = useMe();
+  const canControlAccount = me?.role === "system_admin" || me?.role === "support";
+  const canDeleteAccount = me?.role === "system_admin";
   const {
     data,
     isLoading,
@@ -108,7 +111,7 @@ export function Users({ onSelectUser }: UsersProps) {
               </TableHeader>
               <TableBody>
                 {users.map((user: User) => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.id} onClick={() => onSelectUser(user.id)}>
                     <TableCell>
                       <div className="max-w-60 truncate font-medium text-foreground" title={user.email}>
                         {user.email}
@@ -136,8 +139,14 @@ export function Users({ onSelectUser }: UsersProps) {
                         {user.created_at ? new Date(user.created_at).toLocaleString() : "-"}
                       </Text>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <RowActions label={t("user")} actions={[{ label: t("View"), onSelect: () => onSelectUser(user.id) }]} />
+                    <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                      <UserAccountMenu
+                        userId={user.id}
+                        email={user.email}
+                        accountStatus={user.status}
+                        canControlAccount={canControlAccount}
+                        canDeleteAccount={canDeleteAccount && user.status !== "deleted"}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

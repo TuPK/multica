@@ -556,7 +556,7 @@ describe("App", () => {
       { buttonName: /^Orders$/i, expectedPath: "/orders", headingName: "Orders" },
       { buttonName: /^Payment notices$/i, expectedPath: "/payment-notices", headingName: "Payment notices" },
       { buttonName: /^E-invoices$/i, expectedPath: "/einvoices", headingName: "E-invoices" },
-      { buttonName: /^Accounts$/i, expectedPath: "/accounts", headingName: "Accounts" },
+      { buttonName: /^Account requests$/i, expectedPath: "/accounts", headingName: "Account requests" },
       { buttonName: /^Plans$/i, expectedPath: "/plans", headingName: "Plans Catalogue" },
       { buttonName: /^Quota requests$/i, expectedPath: "/quota-requests", headingName: "Quota requests" },
       { buttonName: /^Staff$/i, expectedPath: "/staff", headingName: "Staff Management" },
@@ -657,7 +657,7 @@ describe("App", () => {
 
     fireEvent.click(within(nav).getByRole("button", { name: /^Users$/i }));
     expect(window.location.pathname).toBe("/users");
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByText("jane@example.com"));
     expect(window.location.pathname).toBe("/users/u-7");
     expect(screen.getByRole("heading", { name: "User u-7" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /^Users$/i })).toHaveAttribute(
@@ -708,7 +708,7 @@ describe("App", () => {
     });
 
     const { rerender } = render(<App />);
-    expect(screen.queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Account requests/i })).not.toBeInTheDocument();
 
     mockUseMe.mockReturnValue({
       data: { user_id: "u-sys", email: "sys@example.com", role: "system_admin", tenant_id: null },
@@ -717,10 +717,10 @@ describe("App", () => {
     });
 
     rerender(<App />);
-    const accountsTab = screen.getByRole("button", { name: /Accounts/i });
+    const accountsTab = screen.getByRole("button", { name: /Account requests/i });
     expect(accountsTab).toBeInTheDocument();
     fireEvent.click(accountsTab);
-    expect(screen.getByRole("heading", { name: "Accounts" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Account requests" })).toBeInTheDocument();
   });
 
   it("role gating: billing and admin can navigate to E-invoices, support cannot", () => {
@@ -773,7 +773,7 @@ describe("App", () => {
       const { unmount } = render(<App />);
       const nav = screen.getByRole("navigation", { name: "Main Navigation" });
       expect(within(nav).queryByRole("button", { name: /^Staff$/i })).not.toBeInTheDocument();
-      expect(within(nav).queryByRole("button", { name: /^Accounts$/i })).not.toBeInTheDocument();
+      expect(within(nav).queryByRole("button", { name: /^Account requests$/i })).not.toBeInTheDocument();
       if (role === "admin") {
         expect(within(nav).getByRole("button", { name: /^Plans$/i })).toBeInTheDocument();
       } else {
@@ -802,7 +802,7 @@ describe("App", () => {
           "Orders",
           "Payment notices",
           "E-invoices",
-          "Accounts",
+          "Account requests",
           "Plans",
           "Quota requests",
           "Staff",
@@ -832,7 +832,7 @@ describe("App", () => {
           "Resources",
           "Payment notices",
           "E-invoices",
-          "Accounts",
+          "Account requests",
           "Staff",
           "Approvals",
           "Legal holds",
@@ -847,7 +847,7 @@ describe("App", () => {
           "Orders",
           "Payment notices",
           "E-invoices",
-          "Accounts",
+          "Account requests",
           "Plans",
           "Quota requests",
           "Staff",
@@ -872,7 +872,7 @@ describe("App", () => {
           "Resources",
           "Runtimes",
           "Deletion requests",
-          "Accounts",
+          "Account requests",
           "Plans",
           "Staff",
           "Policy",

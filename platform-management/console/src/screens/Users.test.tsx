@@ -7,6 +7,12 @@ const mockUseUsers = vi.fn();
 
 vi.mock("../api/hooks", () => ({
   useUsers: (filters: { q?: string }) => mockUseUsers(filters),
+  useMe: () => ({ data: { user_id: "u-admin", email: "admin@example.com", role: "system_admin" } }),
+  useChangeUserStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRevokeUserSessions: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useResetUserMfa: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteAccountNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAccountDeletePreview: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }),
 }));
 
 const mockUsersList = [
@@ -50,7 +56,7 @@ describe("Users screen", () => {
     expect(screen.getByText("Bob")).toBeInTheDocument();
   });
 
-  it("calls onSelectUser when View button is clicked", () => {
+  it("opens the user's detail when a row is clicked", () => {
     mockUseUsers.mockReturnValue({
       data: { users: mockUsersList, next_cursor: null },
       isLoading: false,
@@ -61,11 +67,25 @@ describe("Users screen", () => {
 
     render(<Users onSelectUser={onSelect} />);
 
-    const viewButtons = screen.getAllByRole("button", { name: "View" });
-    expect(viewButtons[0]).toBeDefined();
-    fireEvent.click(viewButtons[0]!);
+    fireEvent.click(screen.getByText("alice@example.com"));
 
     expect(onSelect).toHaveBeenCalledWith("u-1");
+  });
+
+  it("does not open the detail when a row action is used", () => {
+    mockUseUsers.mockReturnValue({
+      data: { users: mockUsersList, next_cursor: null },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    const onSelect = vi.fn();
+
+    render(<Users onSelectUser={onSelect} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Suspend account" }));
+
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("handles loading, error, and empty states", () => {

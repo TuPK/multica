@@ -96,7 +96,7 @@ export function Layout({
           { id: "einvoices", label: t("E-invoices"), icon: FileText },
         ]
       : []),
-    ...(isSystemAdmin ? [{ id: "accounts", label: t("Accounts"), icon: UserPlus }] : []),
+    ...(isSystemAdmin ? [{ id: "accounts", label: t("Account requests"), icon: UserPlus }] : []),
     ...(canSeePlans ? [{ id: "plans", label: t("Plans"), icon: Layers }] : []),
     ...(canSeeQuotaRequests
       ? [{ id: "quota-requests", label: t("Quota requests"), icon: ArrowUpCircle }]

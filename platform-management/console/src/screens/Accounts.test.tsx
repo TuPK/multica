@@ -350,7 +350,7 @@ describe("Accounts screen", () => {
   it("renders rows including a finalize_failed row with its distinct error state and label", () => {
     render(<Accounts userRole="system_admin" />);
 
-    expect(screen.getByRole("heading", { name: "Accounts" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Account requests" })).toBeInTheDocument();
     expect(screen.getByText("pending@example.com")).toBeInTheDocument();
     expect(screen.getByText("done@example.com")).toBeInTheDocument();
     expect(screen.getByText("partial@example.com")).toBeInTheDocument();
@@ -478,7 +478,7 @@ describe("Accounts screen", () => {
     mockMeRole = "support";
     render(<Accounts userRole="support" />);
 
-    expect(screen.queryByRole("heading", { name: "Accounts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Account requests" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Not found" })).toBeInTheDocument();
   });
 

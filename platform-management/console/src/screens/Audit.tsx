@@ -296,7 +296,7 @@ export function Audit() {
                 {
                   key: "created_at",
                   header: t("Time"),
-                  width: proportional(1.2, { minWidth: 170 }),
+                  width: proportional(1.2, { minWidth: 140 }),
                   renderCell: (event) => (
                     <Text type="supporting" hasTabularNumbers>
                       {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
@@ -305,36 +305,36 @@ export function Audit() {
                 {
                   key: "action",
                   header: t("Action"),
-                  width: proportional(1.5, { minWidth: 160 }),
+                  width: proportional(1.5, { minWidth: 120 }),
                   renderCell: (event) => (
-                    <Text type="code" weight="medium">
+                    <Text type="code" weight="medium" className="break-all">
                       {event.action}
                     </Text>
                   ) },
                 {
                   key: "actor_label",
                   header: t("Actor"),
-                  width: proportional(1.5, { minWidth: 180 }),
+                  width: proportional(1.5, { minWidth: 150 }),
                   renderCell: (event) => (
                     <div className="flex flex-col">
-                      <Text type="body">{event.actor_label}</Text>
-                      <Text type="supporting">{event.actor_type}</Text>
+                      <span className="block max-w-44 truncate text-body" title={event.actor_label}>{event.actor_label}</span>
+                      <Text type="supporting" className="block max-w-44 truncate">{event.actor_type}</Text>
                     </div>
                   ) },
                 {
                   key: "target_label",
                   header: t("Target"),
-                  width: proportional(1.5, { minWidth: 180 }),
+                  width: proportional(1.5, { minWidth: 150 }),
                   renderCell: (event) => (
                     <div className="flex flex-col">
-                      <Text type="body">{event.target_label || event.target_id}</Text>
-                      <Text type="supporting">{event.target_type}</Text>
+                      <span className="block max-w-56 truncate font-mono text-body" title={event.target_label || event.target_id}>{event.target_label || event.target_id}</span>
+                      <Text type="supporting" className="block max-w-44 truncate">{event.target_type}</Text>
                     </div>
                   ) },
                 {
                   key: "detail",
                   header: t("Details"),
-                  width: proportional(3, { minWidth: 220 }),
+                  width: proportional(3, { minWidth: 200 }),
                   renderCell: (event) => (
                     <span
                       className="block truncate font-mono text-caption text-muted-foreground"

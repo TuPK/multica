@@ -465,7 +465,7 @@ export function Accounts({ userRole }: AccountsProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t("Accounts")}
+        title={t("Account requests")}
         actions={
           <Button
             label={t("Create account")}

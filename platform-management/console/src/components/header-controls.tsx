@@ -9,5 +9,5 @@ export const HeaderControlsProvider = HeaderControlsContext.Provider;
 export function HeaderControls() {
   const controls = useContext(HeaderControlsContext);
   if (!controls) return null;
-  return <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">{controls}</div>;
+  return <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">{controls}</div>;
 }

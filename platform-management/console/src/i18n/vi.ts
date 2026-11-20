@@ -47,7 +47,7 @@ export const vi: Record<string, string> = {
   "Account Status": "Trạng thái tài khoản",
   "Account suspended": "Tài khoản đã bị đình chỉ",
   "AccountApiError": "AccountApiError",
-  "Accounts": "Tài khoản",
+  "Account requests": "Yêu cầu tạo tài khoản",
   "acme.com, partner.org": "acme.com, partner.org",
   "Action": "Thao tác",
   "Actions": "Thao tác",

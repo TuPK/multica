@@ -18,6 +18,8 @@ interface PageHeaderProps {
   badge?: ReactNode;
   actions?: ReactNode;
   meta?: ReactNode;
+  // Shown on its own line under the title row, for identity details that need room.
+  details?: ReactNode;
   className?: string;
 }
 
@@ -31,6 +33,7 @@ export function PageHeader({
   badge,
   actions,
   meta,
+  details,
   className,
 }: PageHeaderProps) {
   return (
@@ -57,11 +60,12 @@ export function PageHeader({
             </Text>
           )}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
           {actions}
           <HeaderControls />
         </div>
       </div>
+      {details && <div className="flex min-w-0 flex-wrap items-center gap-2">{details}</div>}
       <Divider />
       {description && (
         <Text type="body" color="secondary" as="p" className="block max-w-2xl pt-1">
