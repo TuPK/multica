@@ -3,6 +3,7 @@ package console
 import (
 	"errors"
 	"net/http"
+	"sort"
 
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
@@ -49,7 +50,7 @@ func (h *Handler) getTenantPolicy(w http.ResponseWriter, r *http.Request) {
 	if !found {
 		stored = tenantpolicy.Stored{Policy: tenantpolicy.Default()}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"policy": stored.Policy, "version": stored.Version})
+	writeJSON(w, http.StatusOK, tenantPolicyJSON(stored.Policy, stored.Version))
 }
 
 // putTenantPolicy writes the tenant's floor (M45). A write needs a workspace of
@@ -143,5 +144,40 @@ func (h *Handler) putTenantPolicy(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "write tenant policy", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"policy": next, "version": version})
+	writeJSON(w, http.StatusOK, tenantPolicyJSON(next, version))
+}
+
+// tenantPolicyJSON is the floor as the console reads it. A workspace merges the
+// floor with its own policy and can only tighten it, so the floor is the
+// effective value for every workspace of the tenant. sources names, per field,
+// whether the tenant set it or it is the default; tenant_fields lists the
+// fields the tenant set.
+func tenantPolicyJSON(p tenantpolicy.Policy, version int64) map[string]any {
+	sources := map[string]string{
+		"allowed_invite_domains": "default",
+		"share_links_enabled":    "default",
+		"require_sso":            "default",
+		"require_mfa":            "default",
+		"session_max_age_hours":  "default",
+	}
+	fields := []string{}
+	set := func(name string, restricts bool) {
+		if restricts {
+			sources[name] = "tenant"
+			fields = append(fields, name)
+		}
+	}
+	set("allowed_invite_domains", len(p.AllowedInviteDomains) > 0)
+	set("share_links_enabled", !p.ShareLinksEnabled)
+	set("require_sso", p.RequireSSO)
+	set("require_mfa", p.RequireMFA)
+	set("session_max_age_hours", p.SessionMaxAgeHours > 0)
+	sort.Strings(fields)
+	return map[string]any{
+		"policy":           p,
+		"version":          version,
+		"effective_policy": p,
+		"sources":          sources,
+		"tenant_fields":    fields,
+	}
 }
