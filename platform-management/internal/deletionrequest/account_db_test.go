@@ -7,6 +7,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/multica-ai/multica/platform-management/audit"
 )
 
 // Database tests of phase 1 of an account deletion (spec R6 section 7.4). They
@@ -227,5 +230,90 @@ func TestPreviewListsSuccessorCandidatesForSoleOwner(t *testing.T) {
 	}
 	if _, ok := got[viewer]; ok {
 		t.Fatal("a viewer was listed as a successor")
+	}
+}
+
+// orderTx records the order of the phase-1 writes that matter for this test: the
+// audit row, the request row and the account schedule.
+type orderTx struct {
+	Tx
+	log *[]string
+}
+
+func (o orderTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
+	*o.log = append(*o.log, "audit")
+	return o.Tx.InsertAuditEvent(ctx, e)
+}
+
+func (o orderTx) Insert(ctx context.Context, n NewRequest) (Request, bool, error) {
+	*o.log = append(*o.log, "request")
+	return o.Tx.Insert(ctx, n)
+}
+
+func (o orderTx) ScheduleAccount(ctx context.Context, userID, reason string, by Actor, at time.Time) error {
+	*o.log = append(*o.log, "schedule")
+	return o.Tx.ScheduleAccount(ctx, userID, reason, by, at)
+}
+
+type orderRunner struct {
+	Runner
+	log *[]string
+}
+
+func (o orderRunner) InTx(ctx context.Context, fn func(Tx) error) error {
+	return o.Runner.InTx(ctx, func(tx Tx) error { return fn(orderTx{Tx: tx, log: o.log}) })
+}
+
+// Spec R6 section 7.4: the audit row of an account phase 1 is written in the same
+// transaction before the account is scheduled, so a refused or rolled back phase 1
+// leaves no schedule without its audit row.
+func TestUserDeleteNowAuditIsFirstAndHasNoEmailInDetail(t *testing.T) {
+	f := newAccountFixture(t)
+	ctx := context.Background()
+	target, email := f.user("leaver")
+	ws := f.workspace(false)
+	f.member(ws, target, "member")
+
+	var order []string
+	svc := f.svc
+	svc.Runner = orderRunner{Runner: svc.Runner, log: &order}
+	if _, _, err := svc.RequestAccount(ctx, f.staff, target, AccountInput{Reason: "legal request", Confirm: email}); err != nil {
+		t.Fatalf("RequestAccount: %v", err)
+	}
+	auditAt, scheduleAt := -1, -1
+	for i, step := range order {
+		switch step {
+		case "audit":
+			if auditAt < 0 {
+				auditAt = i
+			}
+		case "schedule":
+			scheduleAt = i
+		}
+	}
+	if auditAt < 0 || scheduleAt < 0 || auditAt > scheduleAt {
+		t.Fatalf("write order = %v, want the audit row before the account schedule", order)
+	}
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE target_id = $1 AND action = 'account.immediate_deletion_requested' AND detail::text LIKE '%' || $2 || '%'`, target, email); n != 0 {
+		t.Fatalf("audit detail carries the email")
+	}
+}
+
+// Spec R6 section 7.4: an account the user already scheduled for self-service
+// deletion is brought forward to now by a platform delete-now.
+func TestUserDeleteNowExpeditesSelfServiceSchedule(t *testing.T) {
+	f := newAccountFixture(t)
+	ctx := context.Background()
+	target, email := f.user("leaver")
+	ws := f.workspace(false)
+	f.member(ws, target, "member")
+	f.exec(`INSERT INTO platform_account (user_id, status, reason, deletion_scheduled_at)
+	        VALUES ($1, 'pending_deletion', 'self service', now() + interval '14 days')`, target)
+
+	if _, _, err := f.svc.RequestAccount(ctx, f.staff, target, AccountInput{Reason: "now", Confirm: email}); err != nil {
+		t.Fatalf("RequestAccount: %v", err)
+	}
+	if n := f.count(`SELECT count(*) FROM platform_account WHERE user_id = $1 AND deletion_scheduled_at <= now() + interval '5 seconds'`, target); n != 1 {
+		t.Fatalf("self-service schedule was not brought forward to now")
 	}
 }
