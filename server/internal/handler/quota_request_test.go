@@ -3,13 +3,17 @@ package handler
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/entitlement/entitlementtest"
+	"github.com/multica-ai/multica/server/internal/membergroup"
+	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/testutil"
 )
 
@@ -142,4 +146,59 @@ func quotaBodyHas(s string, subs ...string) bool {
 		}
 	}
 	return true
+}
+
+// quotaCreateRouter mounts CreateQuotaRequest behind the same guards as the
+// router's billing.manage group: the permission key, then the human-actor gate.
+func quotaCreateRouter() http.Handler {
+	r := chi.NewRouter()
+	r.Route("/api/workspaces/{id}", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireWorkspacePermissionFromURL(testHandler.Queries, "id", membergroup.KeyBillingManage))
+			r.Use(RequireHumanActor)
+			r.Post("/quota-requests", testHandler.CreateQuotaRequest)
+		})
+	})
+	return r
+}
+
+// A plain member cannot file a quota request: billing.manage refuses it.
+func TestCreateQuotaRequestByPlainMemberIsPermissionDenied(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ws := dbfx.Workspace(t, "quota member", "quota-member-"+uuid.NewString()[:8])
+	dbfx.Member(t, ws, testUserID, "member")
+	withAgentsLimit(t, ws, 10)
+
+	req := newRequest("POST", "/api/workspaces/"+ws+"/quota-requests", map[string]any{"gate": "agents", "requested_value": 20, "reason": "more agents"})
+	w := httptest.NewRecorder()
+	quotaCreateRouter().ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 for a plain member; body = %s", w.Code, w.Body.String())
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM quota_request WHERE workspace_id = $1::uuid`, ws); n != 0 {
+		t.Fatalf("rows = %d after a refused request, want 0", n)
+	}
+}
+
+// A machine credential (task token) is refused even when its owner could file.
+func TestQuotaRequestMachineTokenIs403(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ws := dbfx.Workspace(t, "quota machine", "quota-machine-"+uuid.NewString()[:8])
+	dbfx.Member(t, ws, testUserID, "owner")
+	withAgentsLimit(t, ws, 10)
+
+	req := newRequest("POST", "/api/workspaces/"+ws+"/quota-requests", map[string]any{"gate": "agents", "requested_value": 20, "reason": "from a task"})
+	req.Header.Set("X-Actor-Source", "task_token")
+	w := httptest.NewRecorder()
+	quotaCreateRouter().ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 for a machine token; body = %s", w.Code, w.Body.String())
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM quota_request WHERE workspace_id = $1::uuid`, ws); n != 0 {
+		t.Fatalf("rows = %d after a refused request, want 0", n)
+	}
 }
