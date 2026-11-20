@@ -440,6 +440,7 @@ func (h *Handler) DeleteAccountForOrigin(ctx context.Context, userID string, now
 		{"issue unread", func() error { return qtx.DeleteUserIssueUnread(ctx, uid) }},
 		{"delegation days", func() error { return qtx.DeleteUserDelegationDays(ctx, uid) }},
 		{"autopilot collaborators", func() error { return qtx.DeleteUserAutopilotCollaborators(ctx, uid) }},
+		{"project members", func() error { return qtx.DeleteUserProjectMembers(ctx, uid) }},
 		{"invitations", func() error {
 			return qtx.DeleteUserInvitations(ctx, db.DeleteUserInvitationsParams{UserID: uid, Email: user.Email})
 		}},

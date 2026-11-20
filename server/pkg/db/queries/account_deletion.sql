@@ -140,6 +140,9 @@ DELETE FROM member_delegation_day WHERE user_id = $1;
 -- name: DeleteUserAutopilotCollaborators :exec
 DELETE FROM autopilot_collaborator WHERE user_type = 'member' AND user_id = $1;
 
+-- name: DeleteUserProjectMembers :exec
+DELETE FROM project_member WHERE user_id = $1;
+
 -- name: DeleteUserInvitations :exec
 -- Invitations addressed to the user, by account or by the email they held.
 DELETE FROM workspace_invitation

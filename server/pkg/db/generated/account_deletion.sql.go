@@ -246,6 +246,15 @@ func (q *Queries) DeleteUserPinnedItems(ctx context.Context, userID pgtype.UUID)
 	return err
 }
 
+const deleteUserProjectMembers = `-- name: DeleteUserProjectMembers :exec
+DELETE FROM project_member WHERE user_id = $1
+`
+
+func (q *Queries) DeleteUserProjectMembers(ctx context.Context, userID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUserProjectMembers, userID)
+	return err
+}
+
 const deleteUserTaskTokens = `-- name: DeleteUserTaskTokens :exec
 DELETE FROM task_token WHERE user_id = $1
 `
