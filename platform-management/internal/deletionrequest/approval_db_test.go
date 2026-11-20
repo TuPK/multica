@@ -114,3 +114,68 @@ func TestRejectCancelsAndAwaitingRequestsExpireAfterADay(t *testing.T) {
 		t.Fatal("an expired approval was not canceled")
 	}
 }
+
+// countRunner reports a fixed number of system administrators inside every
+// transaction, so the one-admin rule is checked without depending on the
+// administrators the shared test database already holds.
+type countRunner struct {
+	Runner
+	n int64
+}
+
+func (c countRunner) InTx(ctx context.Context, fn func(Tx) error) error {
+	return c.Runner.InTx(ctx, func(tx Tx) error { return fn(adminCountTx{Tx: tx, n: c.n}) })
+}
+
+// Spec R6 section 3c.6 rule 5: with one active system_admin the request is refused
+// at once with 409 approver_unavailable, and no request row or status change is written.
+func TestSingleSystemAdminCannotRequireApproval(t *testing.T) {
+	f := newFixture(t)
+	ws := f.workspace(true)
+	name := f.scalar(`SELECT name FROM tenant WHERE id = $1`, f.tenant)
+	svc := approvalService(f, ActionTenantDelete)
+	svc.Runner = countRunner{Runner: svc.Runner, n: 1}
+
+	_, created, err := svc.RequestTenant(context.Background(), f.staff, f.tenant, Input{Reason: "closing", Confirm: name})
+	if de := asError(t, err); de.Code != CodeApproverUnavailable || de.Status != 409 || created {
+		t.Fatalf("created=%v err=%v, want 409 approver_unavailable and no request", created, err)
+	}
+	if n := f.requestsFor(f.tenant); n != 0 {
+		t.Fatalf("requests written for the tenant: %d", n)
+	}
+	if f.status(ws) != "active" {
+		t.Fatalf("a refused request changed the workspace to %q", f.status(ws))
+	}
+}
+
+// Spec R6 section 3c.6 rule 4: an awaiting request left past 24 hours is canceled
+// once. A second run of the job finds nothing and writes no second audit row.
+func TestApprovalExpiresAfter24HoursIdempotent(t *testing.T) {
+	f := newFixture(t)
+	f.exec(`INSERT INTO platform_staff (user_id, role) VALUES ($1, 'system_admin')`, f.staff.ID)
+	t.Cleanup(func() { f.pool.Exec(context.Background(), `DELETE FROM platform_staff WHERE user_id = $1`, f.staff.ID) })
+	second(f)
+	f.workspace(true)
+	name := f.scalar(`SELECT name FROM tenant WHERE id = $1`, f.tenant)
+	svc := approvalService(f, ActionTenantDelete)
+	ctx := context.Background()
+
+	r, _, err := svc.RequestTenant(ctx, f.staff, f.tenant, Input{Reason: "closing", Confirm: name})
+	if err != nil || r.State != StateAwaitingApproval {
+		t.Fatalf("RequestTenant: state=%s err=%v", r.State, err)
+	}
+	t.Cleanup(func() { f.pool.Exec(ctx, `DELETE FROM audit_event WHERE target_id = $1`, r.ID) })
+	f.exec(`UPDATE platform_deletion_request SET created_at = $2 WHERE id = $1`, r.ID, time.Now().Add(-25*time.Hour))
+
+	for run := 1; run <= 2; run++ {
+		if _, err := svc.ExpireApprovals(ctx); err != nil {
+			t.Fatalf("run %d: ExpireApprovals: %v", run, err)
+		}
+	}
+	if s := f.scalar(`SELECT state FROM platform_deletion_request WHERE id = $1`, r.ID); s != StateCanceled {
+		t.Fatalf("state = %s, want canceled", s)
+	}
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE action = 'deletion.approval_expired' AND target_id = $1`, r.ID); n != 1 {
+		t.Fatalf("expiry audit rows = %d, want 1", n)
+	}
+}
