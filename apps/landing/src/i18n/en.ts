@@ -279,6 +279,8 @@ export const en: Dict = {
       ],
     },
     termsTitle: "Terms",
+    guideLabel: "Read the step-by-step guide",
+    guideHref: "/en/guide/#dynamic-workflow",
     terms: [
       { term: "Workflow", def: "The squad's process map: steps, roles, edges, loops and stops." },
       { term: "Draft", def: "The version being edited. No request runs on it yet." },

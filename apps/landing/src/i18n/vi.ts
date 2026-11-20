@@ -277,6 +277,8 @@ export const vi = {
       ],
     },
     termsTitle: "Thuật ngữ",
+    guideLabel: "Đọc hướng dẫn từng bước",
+    guideHref: "/huong-dan/#workflow-dong",
     terms: [
       { term: "Workflow", def: "Bản đồ quy trình của squad: bước, vai, cạnh, vòng và điểm dừng." },
       { term: "Draft (bản nháp)", def: "Bản đang sửa. Chưa có request nào chạy theo nó." },
