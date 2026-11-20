@@ -24,6 +24,62 @@ func secretaryCall(f directiveRunFixture, method, path string, body map[string]a
 // addressee, and files a one-shot deadline wakeup on the request. When the child
 // closes, the rule wakes the Secretary with the request's own instruction, and
 // that run is attributed to the boss, the originator of the Secretary's run.
+// A request's answers reach the Secretary as each leader closes its child, not
+// only when the last one closes: the first answer wakes the Secretary, and the
+// second wakes it again. Each run gets the request's own instruction.
+func TestSecretaryRequestContract_WakesOnEachAnswer(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	f := seedDirectiveRun(t, "How is the mua ngon e-commerce project doing, and what is at risk?")
+	desk := dbfx.Project(t, "Secretary desk", testutil.Cols{"workspace_id": testWorkspaceID})
+	leaderA := createHandlerTestAgent(t, "request answer leader A", nil)
+	leaderB := createHandlerTestAgent(t, "request answer leader B", nil)
+
+	var request IssueResponse
+	testutil.Call(t, testHandler.CreateIssue, secretaryCall(f, "POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
+		"title":         "Mua ngon assessment",
+		"project_id":    desk,
+		"assignee_type": "agent",
+		"assignee_id":   f.secretaryID,
+	})).Want(http.StatusCreated).JSON(&request)
+	dbfx.Exec(t, `UPDATE issue SET metadata = jsonb_build_object('chat_session_id', $2::text) WHERE id = $1`, request.ID, f.sessionID)
+
+	childFor := func(title string, leader string) IssueResponse {
+		var child IssueResponse
+		testutil.Call(t, testHandler.CreateIssue, secretaryCall(f, "POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
+			"title":           title,
+			"status":          "in_progress",
+			"parent_issue_id": request.ID,
+			"assignee_type":   "agent",
+			"assignee_id":     leader,
+		})).Want(http.StatusCreated).JSON(&child)
+		return child
+	}
+	childA := childFor("Squad A: status", leaderA)
+	childB := childFor("Squad B: status", leaderB)
+
+	answerAsAgent(t, childA.ID, leaderA, "Answer A: on track.")
+	updateChildStatus(t, childA.ID, "done")
+	if runs := childDoneRuns(t, request.ID); len(runs) != 1 || runs[0].AgentID != f.secretaryID {
+		t.Fatalf("after the first answer, child_done runs = %+v, want one run for the Secretary", runs)
+	}
+
+	// The second answer may land while the first run is still queued; it then joins
+	// that run, which reads the request's current state. So the latest run must
+	// carry the request's instruction and the fact that every answer is in.
+	answerAsAgent(t, childB.ID, leaderB, "Answer B: one risk on payments.")
+	updateChildStatus(t, childB.ID, "done")
+	runs := childDoneRuns(t, request.ID)
+	last := runs[len(runs)-1]
+	if last.AgentID != f.secretaryID || !strings.Contains(last.Note, service.SecretaryRequestChildDoneInstruction) {
+		t.Fatalf("after the second answer, latest child_done run = %+v, want the Secretary's request instruction", last)
+	}
+	if !strings.Contains(last.Note, `"closed":2`) {
+		t.Errorf("latest run does not see both answers:\n%s", last.Note)
+	}
+}
+
 func TestSecretaryRequestContract_DeadlineAndChildDone(t *testing.T) {
 	if testHandler == nil {
 		t.Skip("database not available")

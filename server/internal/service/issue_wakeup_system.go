@@ -45,6 +45,10 @@ const (
 
 var childDoneCondition = json.RawMessage(`{"type":"children_done","each_stage":true}`)
 
+// secretaryChildDoneCondition is a Secretary request's child_done condition: each
+// closing answer wakes the Secretary, not only the last one.
+var secretaryChildDoneCondition = json.RawMessage(`{"type":"children_done","each_child":true}`)
+
 // ChildDoneDefaultInstruction is what the woken assignee is asked to do when
 // neither the issue nor the workspace sets an instruction. The trigger facts
 // say which stage closed, which one is next and how many were cancelled.
@@ -85,7 +89,11 @@ func baselineChildDone(ctx context.Context, tx pgx.Tx, q *db.Queries, rule db.Is
 	if err != nil {
 		return err
 	}
-	met, fingerprint, _ := stageProgress(children)
+	var c WakeupCondition
+	if err := json.Unmarshal(rule.Condition, &c); err != nil {
+		return err
+	}
+	met, fingerprint, _ := childDoneProgress(c, children)
 	if !met {
 		fingerprint = ""
 	}
@@ -96,7 +104,7 @@ func baselineChildDone(ctx context.Context, tx pgx.Tx, q *db.Queries, rule db.Is
 // the children of its request close (spec 13.3.1). It replaces the generic
 // delivery instruction for a Secretary request only; the issue's own instruction
 // wins over the workspace default, so this text holds for the request.
-const SecretaryRequestChildDoneInstruction = "The answers to this request have come in. Read each one critically: open what a claim rests on, challenge the weak ones on their child issues, and compare across squads. Then write the assessment, publish it as an ad hoc brief, and close this request. Follow the secretary-analysis skill."
+const SecretaryRequestChildDoneInstruction = "A leader's answer on this request has just closed. Count the request's children. If some answers are still open, read the new one critically (open what its claims rest on, challenge weak ones on their child issues), then reply to the boss with an assessment that names who has answered and who is still pending, and end the run. If every answer is in, compare across squads, write the assessment, publish it as an ad hoc brief, and close this request. Follow the secretary-analysis skill."
 
 // secretaryRequestInstruction returns the children-done instruction a new rule
 // starts with: the Secretary's own text when the parent is a request in the
@@ -140,18 +148,26 @@ func EnsureChildDoneRule(ctx context.Context, tx pgx.Tx, q *db.Queries, parent d
 			children[i].Closed, children[i].Cancelled = false, false
 		}
 	}
-	met, fingerprint, _ := stageProgress(children)
-	if !met {
-		fingerprint = ""
-	}
 	instruction, err := secretaryRequestInstruction(ctx, q, ws, parent)
 	if err != nil {
 		return rule, err
 	}
+	condition := childDoneCondition
+	if instruction != "" {
+		condition = secretaryChildDoneCondition
+	}
+	var c WakeupCondition
+	if err := json.Unmarshal(condition, &c); err != nil {
+		return rule, err
+	}
+	met, fingerprint, _ := childDoneProgress(c, children)
+	if !met {
+		fingerprint = ""
+	}
 	rule, err = q.CreateSystemWakeup(ctx, db.CreateSystemWakeupParams{
 		ID: dbid.NewV7(), WorkspaceID: parent.WorkspaceID, IssueID: parent.ID,
 		Instruction: instruction,
-		EventTypes:  []string{"issue.status_changed"}, Condition: childDoneCondition, ConditionState: fingerprint,
+		EventTypes:  []string{"issue.status_changed"}, Condition: condition, ConditionState: fingerprint,
 		Enabled: enabled, SystemRule: systemRuleText(SystemRuleChildDone),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {

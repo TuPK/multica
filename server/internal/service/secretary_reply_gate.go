@@ -46,7 +46,7 @@ const (
 var (
 	ErrChatReplyKind                  = errors.New("kind must be one of: ack, fact, clarify, assessment")
 	ErrChatReplyAssessmentNotRequest  = errors.New("an assessment is written from a request's answers: reply from the run that reads a Secretary request")
-	ErrChatReplyAssessmentTooEarly    = errors.New("not every leader has closed its answer yet and the deadline has not passed; wait for the answers or the deadline before you assess")
+	ErrChatReplyAssessmentTooEarly    = errors.New("no leader has answered yet and the deadline has not passed; wait for the first answer or the deadline before you assess")
 	ErrChatReplyAssessmentUnsupported = errors.New("the assessment states claims no leader answer supports; revise them or challenge the leader")
 )
 
@@ -99,7 +99,10 @@ func checkAssessmentReply(ctx context.Context, q *db.Queries, run db.AgentTaskQu
 			open++
 		}
 	}
-	if open > 0 {
+	// An assessment needs at least one answer to assess. Once one is in, the
+	// Secretary may report the answers it has, naming who is still pending; the
+	// verifier below checks each claim against them.
+	if open > 0 && open == len(children) {
 		deadline, err := isDeadlineRun(ctx, q, run, request.WorkspaceID)
 		if err != nil {
 			return err

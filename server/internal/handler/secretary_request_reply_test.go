@@ -121,9 +121,9 @@ func TestSecretaryRequestChild_CloseNeedsAnAnswer(t *testing.T) {
 	closeChild().Want(http.StatusOK)
 }
 
-// The assessment gate: an assessment is written from a request's answers, after
-// every leader has closed its child (or at the deadline). Other kinds and other
-// runs are not gated by the answers.
+// The assessment gate: an assessment is written from a request's answers, once at
+// least one leader has answered (or at the deadline). Other kinds and other runs
+// are not gated by the answers.
 func TestSecretaryAssessment_GatedByTheRequestsAnswers(t *testing.T) {
 	if testHandler == nil {
 		t.Skip("database not available")
@@ -163,16 +163,8 @@ func TestSecretaryAssessment_GatedByTheRequestsAnswers(t *testing.T) {
 		return testutil.Call(t, testHandler.ReplyChatSession, req)
 	}
 
-	// The children-done run starts only once every child has closed, so while B is
-	// open no such run exists. Leader A closes alone first.
-	answerAsAgent(t, childA.ID, leaderA, "Answer: on track for 14 March.")
-	updateChildStatus(t, childA.ID, "done")
-	if runs := childDoneRuns(t, request.ID); len(runs) != 0 {
-		t.Fatalf("a children-done run started while a child is open: %+v", runs)
-	}
-
-	// A run that reads the request while B is open is refused an assessment; a
-	// fact is still allowed. The run is bound to the request's chat as a request run.
+	// A run that reads the request before any leader has answered is refused an
+	// assessment; a fact is still allowed. The run is bound to the request's chat.
 	var owner string
 	dbfx.QueryRow(t, `SELECT COALESCE(originator_user_id::text, '') FROM agent_task_queue WHERE id = $1`, f.taskID).Scan(&owner)
 	openRun := dbfx.Task(t, f.secretaryID, testutil.Cols{
@@ -188,13 +180,20 @@ func TestSecretaryAssessment_GatedByTheRequestsAnswers(t *testing.T) {
 	reply(openRun, "bogus").Want(http.StatusBadRequest)
 	reply(openRun, "fact").Want(http.StatusCreated)
 
-	// Once B has answered and closed, every leader has closed and the assessment passes.
-	answerAsAgent(t, childB.ID, leaderB, "Answer: the tax rules are the risk.")
-	updateChildStatus(t, childB.ID, "done")
+	// Leader A answers alone: its answer wakes the Secretary, and the run may report
+	// it as an interim assessment while B is still open.
+	answerAsAgent(t, childA.ID, leaderA, "Answer: on track for 14 March.")
+	updateChildStatus(t, childA.ID, "done")
 	runs := childDoneRuns(t, request.ID)
 	if len(runs) == 0 {
-		t.Fatal("no children-done run after every child closed")
+		t.Fatal("no children-done run after the first answer")
 	}
+	reply(runs[len(runs)-1].ID, "assessment").Want(http.StatusCreated)
+
+	// Once B has answered and closed, the final assessment passes.
+	answerAsAgent(t, childB.ID, leaderB, "Answer: the tax rules are the risk.")
+	updateChildStatus(t, childB.ID, "done")
+	runs = childDoneRuns(t, request.ID)
 	reply(runs[len(runs)-1].ID, "assessment").Want(http.StatusCreated)
 }
 

@@ -48,6 +48,10 @@ type WakeupCondition struct {
 	// every stage closing while a later one waits, then every sub-issue
 	// closing. Only the platform sets it.
 	EachStage bool `json:"each_stage,omitempty"`
+	// EachChild is the Secretary request's reading of children_done: every
+	// sub-issue closing wakes the rule, so each leader's answer reaches the
+	// Secretary when it arrives. Only the platform sets it.
+	EachChild bool `json:"each_child,omitempty"`
 	// pull_request: checks_finished | merged | conflicts
 	Event string `json:"event,omitempty"`
 	// other_issue: the watched issue and done | ended | in_review | blocked. The
@@ -198,6 +202,9 @@ func validateCondition(ctx context.Context, tx pgx.Tx, issue db.Issue, creator p
 	case "children_done":
 		if c.EachStage {
 			return nil, nil, badCondition("each_stage is reserved for the platform's sub-issue rule")
+		}
+		if c.EachChild {
+			return nil, nil, badCondition("each_child is reserved for the platform's request rule")
 		}
 		if c.Stage != nil && (*c.Stage < 1 || *c.Stage > 1000) {
 			return nil, nil, badCondition("stage must be a positive number")
@@ -657,8 +664,8 @@ func loadSubIssues(ctx context.Context, tx pgx.Tx, q *db.Queries, parent, worksp
 // for every staged sub-issue up to that stage; without a stage it waits for
 // every sub-issue, staged or not.
 func childrenDone(c WakeupCondition, children []subIssue) (bool, string, map[string]any) {
-	if c.EachStage {
-		return stageProgress(children)
+	if c.EachStage || c.EachChild {
+		return childDoneProgress(c, children)
 	}
 	total, done, inStage := 0, 0, 0
 	for _, ch := range children {
@@ -689,6 +696,26 @@ type stageCount struct {
 // stage:N), and when every sub-issue, staged or not, is closed (all). The last
 // stage closing on its own does not hold: the wrap-up also waits for unstaged
 // sub-issues. The observation lists every stage for the woken agent.
+// childDoneProgress is the child_done rule's reading of its sub-issues. A
+// request's rule (each_child) is met by each closing sub-issue, so its
+// fingerprint counts the closed ones; every other rule reads stages.
+func childDoneProgress(c WakeupCondition, children []subIssue) (bool, string, map[string]any) {
+	if !c.EachChild {
+		return stageProgress(children)
+	}
+	closed := 0
+	for _, ch := range children {
+		if ch.Closed {
+			closed++
+		}
+	}
+	observed := map[string]any{"total": len(children), "closed": closed}
+	if closed == 0 {
+		return false, "", observed
+	}
+	return true, fmt.Sprintf("closed:%d", closed), observed
+}
+
 func stageProgress(children []subIssue) (bool, string, map[string]any) {
 	counts := map[int32]*stageCount{}
 	var stages []int32
