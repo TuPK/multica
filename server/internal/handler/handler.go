@@ -41,6 +41,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/publish"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/research"
+	"github.com/multica-ai/multica/server/internal/runtimeguard"
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/storage"
@@ -261,6 +262,9 @@ type Handler struct {
 	// (MUL-6243)
 	IssueStatusCatalog issuestatus.Querier
 	LivenessStore      LivenessStore
+	// RuntimeGuard tells whether staff disabled a runtime. Nil reads Postgres on
+	// every check; the router sets a Redis-cached guard.
+	RuntimeGuard       *runtimeguard.Guard
 	HeartbeatScheduler HeartbeatScheduler
 	Storage            storage.Storage
 	// HubStorage holds Skill/Plugin Hub objects: staged previews and immutable

@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/multica-ai/multica/server/internal/daemonws"
 	"github.com/multica-ai/multica/server/internal/testutil"
 )
 
@@ -111,5 +113,32 @@ func TestDeleteWorkspaceRemovesPlatformRuntimeRows(t *testing.T) {
 	}
 	if n := runtimeRowCount(t, `SELECT count(*) FROM platform_runtime WHERE runtime_id = $1::uuid`, runtimeID); n != 0 {
 		t.Errorf("platform_runtime rows = %d after the workspace is deleted, want 0", n)
+	}
+}
+
+// The WebSocket heartbeat refuses a disabled runtime with no acknowledgement, so
+// the daemon falls back to the HTTP heartbeat, which refuses it too. Enabling
+// the runtime lets the beat through again.
+func TestDisabledRuntimeRefusedOnWSHeartbeat(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ctx := context.Background()
+	runtimeID := createClaimReclaimRuntime(t, ctx, "disabled ws heartbeat runtime")
+	identity := daemonws.ClientIdentity{
+		WorkspaceID: testWorkspaceID,
+		RuntimeLeases: map[string]*daemonws.RuntimeLease{
+			runtimeID: daemonws.NewRuntimeLease(testWorkspaceID, "online", time.Now(), true),
+		},
+	}
+
+	disableRuntimeForTest(t, runtimeID)
+	if ack, err := testHandler.HandleDaemonWSHeartbeat(ctx, identity, runtimeID, false); err == nil || ack != nil {
+		t.Fatalf("disabled heartbeat: ack=%v err=%v, want no ack and an error", ack, err)
+	}
+
+	enableRuntimeForTest(t, runtimeID)
+	if ack, err := testHandler.HandleDaemonWSHeartbeat(ctx, identity, runtimeID, false); err != nil || ack == nil {
+		t.Fatalf("enabled heartbeat: ack=%v err=%v, want an ack", ack, err)
 	}
 }

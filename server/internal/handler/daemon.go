@@ -205,11 +205,20 @@ func (h *Handler) requireDaemonRuntimeAccess(w http.ResponseWriter, r *http.Requ
 	return rt, true
 }
 
+// runtimeDisabled reports whether staff disabled the runtime.
+func (h *Handler) runtimeDisabled(ctx context.Context, runtimeID pgtype.UUID) (bool, error) {
+	g := h.RuntimeGuard
+	if g == nil {
+		g = runtimeguard.New(h.Queries, nil)
+	}
+	return g.Disabled(ctx, runtimeID)
+}
+
 // refuseDisabledRuntime answers the request and returns true when staff disabled
 // the runtime (403 runtime_disabled), or when that state cannot be read (503: the
 // guard fails closed rather than letting a disabled runtime through).
 func (h *Handler) refuseDisabledRuntime(ctx context.Context, w http.ResponseWriter, runtimeID pgtype.UUID) bool {
-	disabled, err := runtimeguard.Disabled(ctx, h.Queries, runtimeID)
+	disabled, err := h.runtimeDisabled(ctx, runtimeID)
 	if err != nil {
 		slog.Warn("read platform runtime state failed", "runtime_id", uuidToString(runtimeID), "error", err)
 		writeError(w, http.StatusServiceUnavailable, "runtime state unavailable")
@@ -1676,6 +1685,17 @@ func (h *Handler) HandleDaemonWSHeartbeat(ctx context.Context, identity daemonws
 	// from the same connection-time query. This does not re-authorize against DB.
 	if !identity.AllowsWorkspace(lease.Snapshot().WorkspaceID) {
 		return nil, fmt.Errorf("runtime not in connection workspace")
+	}
+	runtimeUUID, err := util.ParseUUID(runtimeID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid runtime_id: %w", err)
+	}
+	// A disabled runtime gets no acknowledgement, so the daemon falls back to the
+	// HTTP heartbeat, which answers 403 runtime_disabled.
+	if disabled, err := h.runtimeDisabled(ctx, runtimeUUID); err != nil {
+		return nil, err
+	} else if disabled {
+		return nil, fmt.Errorf("runtime is disabled")
 	}
 	if err := h.recordHeartbeatLease(ctx, runtimeID, lease); err != nil {
 		if isNotFound(err) {

@@ -47,6 +47,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/publish"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/research"
+	"github.com/multica-ai/multica/server/internal/runtimeguard"
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/sso"
@@ -1562,6 +1563,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// with no platform_workspace row is active.
 	workspaceState := workspaceguard.New(queries, rdb)
 	h.TaskService.WorkspaceGate = workspaceguard.NewClaimGate(workspaceState)
+	// The runtime guard is cache-aside over platform_runtime; both the daemon
+	// routes and the claim gate read it, so they share one instance.
+	h.RuntimeGuard = runtimeguard.New(queries, rdb)
+	h.TaskService.RuntimeGuard = h.RuntimeGuard
 	accountExportLimiter := handler.NewMemoryAccountExportLimiter()
 	if rdb != nil {
 		accountExportLimiter = handler.NewRedisAccountExportLimiter(rdb)

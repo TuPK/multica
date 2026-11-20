@@ -29,6 +29,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
+	"github.com/multica-ai/multica/server/internal/runtimeguard"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -75,6 +76,9 @@ type TaskService struct {
 	// WorkspaceGate refuses a claim in a workspace that is not active, for every
 	// run kind. Nil admits, for tests; the router always sets it.
 	WorkspaceGate WorkspaceGate
+	// RuntimeGuard tells whether staff disabled a runtime. Nil reads Postgres on
+	// every check, for tests; the router sets a Redis-cached guard.
+	RuntimeGuard *runtimeguard.Guard
 	// ReclaimCheck schedules the next time a runtime can plausibly contain a
 	// stale dispatched task. It removes the unconditional reclaim UPDATE from
 	// idle claim polls while missing/error states preserve the DB fallback.

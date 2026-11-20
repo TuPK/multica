@@ -310,6 +310,15 @@ func (s *TaskService) admitClaimedTask(ctx context.Context, q *db.Queries, ws pg
 	return nil
 }
 
+// runtimeDisabled reports whether staff disabled the runtime of a task.
+func (s *TaskService) runtimeDisabled(ctx context.Context, q *db.Queries, runtimeID pgtype.UUID) (bool, error) {
+	g := s.RuntimeGuard
+	if g == nil {
+		g = runtimeguard.New(q, nil)
+	}
+	return g.Disabled(ctx, runtimeID)
+}
+
 // claimRefusalFor is the claim gate's verdict on a queued task at this moment,
 // or nil when the gate admits it. It only reads state, so the runs list asks
 // the same question the claim asks. A workspace that is not active refuses
@@ -332,7 +341,7 @@ func (s *TaskService) claimRefusalFor(ctx context.Context, q *db.Queries, ws pgt
 	// A runtime staff disabled claims nothing; the task stays queued until it is
 	// enabled again (spec R6 section 3b.5, D98).
 	if task.RuntimeID.Valid {
-		disabled, err := runtimeguard.Disabled(ctx, q, task.RuntimeID)
+		disabled, err := s.runtimeDisabled(ctx, q, task.RuntimeID)
 		if err != nil {
 			return nil, err
 		}
