@@ -219,3 +219,85 @@ func TestMemberChangeRoleStaleRoleFails(t *testing.T) {
 		t.Errorf("a stale change wrote role %q", got)
 	}
 }
+
+// seatedChanger is the handler with a seat protocol, so a removed member's seat
+// is released through ReleaseMember.
+func (w *world) seatedChanger(t *testing.T) *Runner {
+	t.Helper()
+	hub := realtime.NewHub()
+	go hub.Run()
+	h := handler.New(db.New(testPool), testPool, hub, events.New(), service.NewEmailService(), nil, nil, analytics.NoopClient{}, handler.Config{})
+	h.SeatCapacity = w.seats
+	d := w.deps
+	d.Members = h
+	return New(d)
+}
+
+func TestMemberRemoveReleasesSeat(t *testing.T) {
+	w := newWorld(t)
+	target := w.memberOf("release seat", "member")
+	w.seats.used = 1
+	reqID := w.stageChange("remove", target, "member", "member")
+
+	if n := mustRunOnce(t, w.seatedChanger(t)); n != 1 {
+		t.Fatalf("RunOnce = %d, want 1", n)
+	}
+	w.wantDone(reqID)
+	if got := w.seats.count("release_member"); got != 1 {
+		t.Errorf("ReleaseMember calls = %d, want 1", got)
+	}
+	if w.seats.used != 0 {
+		t.Errorf("used seats = %d, want 0 after the removed member's seat is released", w.seats.used)
+	}
+}
+
+// The audit row of a staff removal carries the workspace, the tenant, the staff
+// actor and the removed user, so the tenant's admin can read it.
+func TestMemberRemoveAuditActorStaffWithTenantWorkspaceUser(t *testing.T) {
+	w := newWorld(t)
+	target := w.memberOf("remove audit fields", "member")
+	tenantID := uuid.NewString()
+	if _, err := testPool.Exec(context.Background(), `INSERT INTO tenant (id, name) VALUES ($1::uuid, 'member audit tenant')`, tenantID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM tenant_workspace WHERE workspace_id = $1::uuid`, w.ws)
+		testPool.Exec(context.Background(), `DELETE FROM tenant WHERE id = $1::uuid`, tenantID)
+	})
+	if _, err := testPool.Exec(context.Background(), `INSERT INTO tenant_workspace (workspace_id, tenant_id) VALUES ($1::uuid, $2::uuid)`, w.ws, tenantID); err != nil {
+		t.Fatal(err)
+	}
+	w.stageChange("remove", target, "member", "member")
+
+	mustRunOnce(t, w.changeRunner(t))
+	if n := count(t, `SELECT count(*) FROM audit_event WHERE action = 'member.removed' AND actor_type = 'staff' AND actor_id = $1 AND workspace_id = $2::uuid AND tenant_id = $3::uuid AND target_id = $4`, w.staff, w.ws, tenantID, target); n != 1 {
+		t.Errorf("member.removed rows with staff actor, workspace, tenant and user = %d, want 1", n)
+	}
+}
+
+// A user removed by staff can be added again, and ends with exactly one member row.
+func TestAddRemoveAddEndsWithOneMember(t *testing.T) {
+	w := newWorld(t)
+	email := testutil.UniqueEmail("add remove add")
+
+	w.request(email, "member")
+	w.runOnce()
+	if n := w.members(email); n != 1 {
+		t.Fatalf("after first add: members = %d, want 1", n)
+	}
+	var target string
+	if err := testPool.QueryRow(context.Background(), `SELECT u.id::text FROM "user" u WHERE lower(u.email) = lower($1)`, email).Scan(&target); err != nil {
+		t.Fatalf("read added user: %v", err)
+	}
+	w.stageChange("remove", target, "member", "member")
+	mustRunOnce(t, w.changeRunner(t))
+	if n := w.members(email); n != 0 {
+		t.Fatalf("after remove: members = %d, want 0", n)
+	}
+
+	w.request(email, "member")
+	w.runOnce()
+	if n := w.members(email); n != 1 {
+		t.Errorf("after second add: members = %d, want exactly 1", n)
+	}
+}

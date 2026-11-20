@@ -163,8 +163,16 @@ func (f *fakeSeats) ReserveInvitation(context.Context, uuid.UUID, uuid.UUID, tim
 func (f *fakeSeats) Consume(context.Context, uuid.UUID, uuid.UUID) (seatcapacity.Decision, error) {
 	return seatcapacity.Decision{}, errors.New("unexpected Consume")
 }
-func (f *fakeSeats) ReleaseMember(context.Context, uuid.UUID, uuid.UUID) (seatcapacity.Decision, error) {
-	return seatcapacity.Decision{}, errors.New("unexpected ReleaseMember")
+
+// ReleaseMember frees one used seat for a removed member (spec Appendix B).
+func (f *fakeSeats) ReleaseMember(_ context.Context, ws, member uuid.UUID) (seatcapacity.Decision, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, seatCall{Method: "release_member", Workspace: ws, Member: member})
+	if f.used > 0 {
+		f.used--
+	}
+	return seatcapacity.Decision{Managed: true, Allowed: true}, nil
 }
 func (f *fakeSeats) GetOperation(context.Context, uuid.UUID, uuid.UUID) (seatcapacity.Decision, error) {
 	return seatcapacity.Decision{}, errors.New("unexpected GetOperation")
