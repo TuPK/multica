@@ -38,7 +38,6 @@ var Required = []string{
 	"1027_platform_deletion_request_live_uidx",  // platform_deletion_request: partial unique index on kind, target_id, live rows
 	"1028_platform_deletion_request_tenant",     // platform_deletion_request: tenant_id column
 	"1029_platform_deletion_request_tenant_idx", // platform_deletion_request: index on tenant_id, created_at
-	"1030_plan_description",                     // plan: description column (R6 3b.1)
 	"1031_platform_runtime",                     // platform_runtime: table (R6 3b.5)
 	"1032_platform_runtime_uidx",                // platform_runtime: unique index on runtime_id
 	"1033_tenant_policy",                        // tenant_policy: table (R6 3c.4)
@@ -86,6 +85,7 @@ var Required = []string{
 	"688_platform_note_id_uidx",                 // platform_note: unique index on id
 	"689_platform_usage_daily",                  // platform_usage_daily: table
 	"690_platform_usage_daily_uidx",             // platform_usage_daily: unique index on workspace_id, day
+	"938_plan_description",                      // plan: description column (R6 3b.1)
 	"941_plan_max_workspaces",                   // plan: max_workspaces key in limits
 	"942_platform_staff_tenant",                 // platform_staff: tenant_id column, set for the admin role
 	"943_platform_staff_tenant_idx",             // platform_staff: partial index on tenant_id
