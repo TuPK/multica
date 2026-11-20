@@ -68,6 +68,18 @@
     --destructive: var(--color-text-error);
   }
 
+  /* Blue-and-white palette matching the Multica web app: the Astryx neutral
+     theme keeps its black accent, so the accent tokens are redirected to the
+     Multica info blue. Surfaces stay white; the page body gets a faint blue tint. */
+  [data-astryx-theme="neutral"] {
+    --color-accent: light-dark(#0074e2, #6d9cfe);
+    --color-accent-muted: light-dark(#b9d7ff, #88bcff3D);
+    --color-text-accent: light-dark(#0067ce, #a1caff);
+    --color-icon-accent: light-dark(#0067ce, #a1caff);
+    --color-background-body: light-dark(#f3f7fd, #1b1b1b);
+    --color-background-muted: light-dark(#eaf2fc, #1b1b1b);
+  }
+
   /* Keep selected rows unmistakably highlighted at rest and on hover inside
      children-mode Astryx Tables. */
   [data-astryx-theme="neutral"] tr[data-state="selected"],
