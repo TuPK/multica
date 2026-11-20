@@ -82,3 +82,52 @@ func TestExportFirstQueuesOneExportPerWorkspace(t *testing.T) {
 		t.Fatalf("export_first on the request row = %d", n)
 	}
 }
+
+// Spec R6 section 3c.9 rule 4: the account being deleted gets no notice of the
+// workspace it takes down. A delete choice needs the account to be the sole owner,
+// so the other members of that workspace are not owners and get no notice here.
+func TestDeleteNowSendsNoticeToOwnersNotTheDeletedUser(t *testing.T) {
+	af := newAccountFixture(t)
+	ctx := context.Background()
+	leaver, leaverEmail := af.user("leaver")
+	_, memberEmail := af.user("member")
+	ws := af.workspace(false)
+	af.member(ws, leaver, "owner")
+	memberID := af.scalar(`SELECT id::text FROM "user" WHERE email = $1`, memberEmail)
+	af.member(ws, memberID, "member")
+
+	mail := &fakeMail{}
+	svc := New(Deps{
+		Runner: NewPgxRunner(af.pool), Reader: NewPgxReader(af.pool), Cache: af.cache, Accounts: af.acc,
+		Owners: NewPgxReader(af.pool), Mail: mail, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, _, err := svc.RequestAccount(ctx, af.staff, leaver, AccountInput{
+		Reason: "legal request", Confirm: leaverEmail,
+		Resolutions: []Resolution{{WorkspaceID: ws, Action: ActionDelete}},
+	})
+	if err != nil {
+		t.Fatalf("RequestAccount: %v", err)
+	}
+	if len(mail.to) != 0 {
+		t.Fatalf("notices sent to %v, want none: the deleted user is the only owner", mail.to)
+	}
+}
+
+// Spec R6 section 3c.9 rule 5: a deletion that asks for an export while one is
+// already queued or running reuses that export and queues no second one.
+func TestExportFirstRefusedWhenExportAlreadyRunningReusesIt(t *testing.T) {
+	f := newFixture(t)
+	ws := f.workspace(false)
+	ctx := context.Background()
+	f.exec(`INSERT INTO workspace_export (id, workspace_id, requested_by, status) VALUES (gen_random_uuid(), $1, $2, 'running')`, ws, f.staff.ID)
+	t.Cleanup(func() { f.pool.Exec(ctx, `DELETE FROM workspace_export WHERE workspace_id = $1`, ws) })
+	svc := noticeService(f, fakeOwners{}, &fakeMail{})
+
+	r, _, err := svc.RequestWorkspace(ctx, f.staff, ws, Input{Reason: "closing", Confirm: f.slug(ws), ExportFirst: true})
+	if err != nil || r.State != StatePending {
+		t.Fatalf("RequestWorkspace with a running export: state=%s err=%v", r.State, err)
+	}
+	if n := f.count(`SELECT count(*) FROM workspace_export WHERE workspace_id = $1`, ws); n != 1 {
+		t.Fatalf("exports for the workspace = %d, want the running one reused", n)
+	}
+}
