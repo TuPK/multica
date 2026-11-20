@@ -18,6 +18,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/billing"
+	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
@@ -95,6 +96,9 @@ type Deps struct {
 	// Mailer may be nil when no email provider is configured; a reset then
 	// sends no notice.
 	Mailer Mailer
+	// QuotaMail sends the requester the result of a quota request (spec R6 section
+	// 3c.5 rule 3). Nil sends none.
+	QuotaMail lifecycle.Sender
 
 	Log *slog.Logger
 	Now func() time.Time

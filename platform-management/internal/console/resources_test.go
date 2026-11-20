@@ -61,7 +61,7 @@ func TestTenantResourcesAddUpAndStateEachLimit(t *testing.T) {
 
 	total, _ := body["resources"].([]any)
 	if got := resourceOf(t, total, plan.GateAgents); got["used"] != float64(10) || got["limit"] != nil || got["status"] != "ok" {
-		t.Fatalf("tenant agents = %v", got)
+		t.Fatalf("tenant total = %v", got)
 	}
 	if got := resourceOf(t, total, plan.GateMaxWorkspaces); got["used"] != float64(2) || got["limit"] != float64(3) || got["status"] != "ok" {
 		t.Fatalf("max_workspaces = %v", got)
@@ -74,13 +74,13 @@ func TestTenantResourcesAddUpAndStateEachLimit(t *testing.T) {
 	first, _ := workspaces[0].(map[string]any)
 	firstRes, _ := first["resources"].([]any)
 	if agents := resourceOf(t, firstRes, plan.GateAgents); agents["percent"] != float64(90) || agents["status"] != "warning" {
-		t.Fatalf("acme agents = %v, want 90 percent warning", agents)
+		t.Fatalf("acme %s = %v, want 90 percent warning", plan.GateAgents, agents)
 	}
 	if issues := resourceOf(t, firstRes, plan.GateIssueCount); issues["status"] != "over" {
-		t.Fatalf("acme issues = %v, want over", issues)
+		t.Fatalf("acme %s = %v, want over", plan.GateIssueCount, issues)
 	}
 	if runtimes := resourceOf(t, firstRes, plan.GateRuntimes); runtimes["limit"] != nil || runtimes["status"] != "ok" {
-		t.Fatalf("acme runtimes = %v, want no limit", runtimes)
+		t.Fatalf("acme %s = %v, want no limit", plan.GateRuntimes, runtimes)
 	}
 }
 
@@ -108,15 +108,15 @@ func TestSystemResourcesTotalsTopAndOverLimit(t *testing.T) {
 	}
 	totals, _ := body["totals"].([]any)
 	if got := resourceOf(t, totals, plan.GateAgents); got["used"] != float64(10) {
-		t.Fatalf("totals agents = %v", got)
+		t.Fatalf("totals %s = %v", plan.GateAgents, got)
 	}
 	top, _ := body["top"].(map[string]any)
 	agents, _ := top[plan.GateAgents].([]any)
 	if len(agents) != 1 {
-		t.Fatalf("top agents = %v, want one tenant", agents)
+		t.Fatalf("top %s = %v, want one tenant", plan.GateAgents, agents)
 	}
 	if first, _ := agents[0].(map[string]any); first["tenant_id"] != tenantID {
-		t.Fatalf("top agents = %v", agents)
+		t.Fatalf("top %s = %v", plan.GateAgents, agents)
 	}
 	over, _ := body["over_limit"].([]any)
 	found := false
@@ -127,7 +127,7 @@ func TestSystemResourcesTotalsTopAndOverLimit(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("over_limit = %v, want the acme issue_count", over)
+		t.Fatalf("over_limit = %v, want the acme %s", over, plan.GateIssueCount)
 	}
 }
 

@@ -43,6 +43,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/pricechange"
+	"github.com/multica-ai/multica/platform-management/internal/quotaalert"
 	"github.com/multica-ai/multica/platform-management/internal/schemacheck"
 	"github.com/multica-ai/multica/platform-management/internal/seat"
 	"github.com/multica-ai/multica/platform-management/internal/server"
@@ -267,8 +268,19 @@ func run() error {
 		Owners: deletionrequest.NewPgxReader(pool), Mail: deletionMail, Log: slog.Default(),
 		ApprovalActions: approvalActions,
 	})
+	// The lifecycle mail sender: the price-change notices, the quota warnings and
+	// the quota result emails use it; nil sends none.
+	var noticeSender lifecycle.Sender
+	if cfg.Email.Provider != "" {
+		sender, err := lifecycle.NewMailSender(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, time.Now, slog.Default())
+		if err != nil {
+			return err
+		}
+		noticeSender = sender
+	}
 	consoleAPI := console.New(console.Deps{
 		RequireStaff:  auth.RequirePlatformStaff,
+		QuotaMail:     noticeSender,
 		RequireOrigin: auth.RequireOrigin,
 		Reader:        console.NewPgxReader(pool),
 		Runner:        console.NewPgxRunner(pool),
@@ -355,18 +367,11 @@ func run() error {
 	if err := runner.RegisterAccountRequestFinalize(accountFinalizer.RunOnce); err != nil {
 		return err
 	}
-	// The price-change notice uses the lifecycle mail sender; nil sends no notice.
-	var noticeSender lifecycle.Sender
 	if cfg.Email.Provider == "" {
 		slog.Warn("lifecycle notices are off: no email provider is configured")
 	} else {
-		noticeMail, err := lifecycle.NewMailSender(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, time.Now, slog.Default())
-		if err != nil {
-			return err
-		}
-		noticeSender = noticeMail
 		lifecycleJob, err := lifecycle.New(lifecycle.Deps{
-			Store: lifecycle.NewPgxStore(pool), Mail: noticeMail,
+			Store: lifecycle.NewPgxStore(pool), Mail: noticeSender,
 			Workspaces: workspacestate.New(nil, accountCache), Entitlements: policy,
 			AppURL: cfg.AppURL, UsageDueDays: cfg.Billing.UsageDueDays, Log: slog.Default(),
 		})
@@ -389,6 +394,13 @@ func run() error {
 	}
 	usageInvoicer := usage.NewInvoicer(pool, usage.InvoicerConfig{VATRate: cfg.Billing.VATRate, MinInvoice: cfg.Billing.UsageMinInvoice})
 	if err := runner.Register(usage.JobNameInvoicing, usage.Interval, usageInvoicer.Job(time.Now)); err != nil {
+		return err
+	}
+
+	// The quota warnings at 80 and 100 percent of a counted limit (spec R6
+	// section 3c.5). They use the lifecycle mail sender; nil sends none.
+	quotaJob := quotaalert.Job{Source: quotaalert.NewPgxSource(pool), Notices: lifecycle.NewPgxStore(pool), Mail: noticeSender, AppURL: cfg.AppURL}
+	if err := runner.Register(quotaalert.JobName, quotaalert.Interval, quotaJob.Job(time.Now)); err != nil {
 		return err
 	}
 

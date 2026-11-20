@@ -3,9 +3,11 @@ package console
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 	"github.com/multica-ai/multica/platform-management/internal/quota"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
@@ -196,6 +198,7 @@ func (h *Handler) approveQuotaRequest(w http.ResponseWriter, r *http.Request) {
 		h.failQuota(w, r, "approve quota request", err)
 		return
 	}
+	h.notifyRequester(r, req, "approved")
 	writeJSON(w, http.StatusOK, quotaJSON(req))
 }
 
@@ -226,5 +229,29 @@ func (h *Handler) denyQuotaRequest(w http.ResponseWriter, r *http.Request) {
 		h.failQuota(w, r, "deny quota request", err)
 		return
 	}
+	h.notifyRequester(r, req, "denied")
 	writeJSON(w, http.StatusOK, quotaJSON(req))
+}
+
+// notifyRequester emails the requester the decision. The decision is already
+// written, so a failed send is logged and does not fail the request.
+func (h *Handler) notifyRequester(r *http.Request, req quota.Request, decision string) {
+	if h.QuotaMail == nil {
+		return
+	}
+	u, found, err := h.Reader.GetUser(r.Context(), req.RequestedBy)
+	if err != nil || !found || u.Email == "" {
+		if err != nil {
+			h.Log.Error("console: quota result lookup failed", "request", req.ID, "error", err)
+		}
+		return
+	}
+	subject := fmt.Sprintf("Multica: your %s increase request was %s", req.Gate, decision)
+	body := fmt.Sprintf("Your request to raise %s to %d in workspace %s was %s.\n", req.Gate, req.RequestedValue, req.WorkspaceID, decision)
+	if req.DecisionReason != "" {
+		body += "\nReason: " + req.DecisionReason + "\n"
+	}
+	if err := h.QuotaMail.Send(r.Context(), lifecycle.Message{To: []string{u.Email}, Subject: subject, Body: body}); err != nil {
+		h.Log.Error("console: quota result email failed", "request", req.ID, "error", err)
+	}
 }

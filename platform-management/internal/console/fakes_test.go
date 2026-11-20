@@ -836,21 +836,22 @@ func (m *fakeMailer) SendMFAReset(_ context.Context, to string) error {
 
 // env is a console Handler behind the real staff middleware, on fakes.
 type env struct {
-	t      *testing.T
-	h      http.Handler
-	dir    *fakeDirectory
-	reader *fakeReader
-	store  *fakeStore
-	ws     *fakeStatusSetter
-	cache  *fakeCache
-	pub    *fakeNotifier
-	mail   *fakeMailer
-	logs   *bytes.Buffer
-	member *fakeMembers
-	delete *fakeDeletions
-	quota  *fakeQuota
-	tstat  *fakeTenantStatus
-	holds  *fakeLegalHolds
+	t         *testing.T
+	h         http.Handler
+	dir       *fakeDirectory
+	reader    *fakeReader
+	store     *fakeStore
+	ws        *fakeStatusSetter
+	cache     *fakeCache
+	pub       *fakeNotifier
+	mail      *fakeMailer
+	quotaMail *fakeQuotaMail
+	logs      *bytes.Buffer
+	member    *fakeMembers
+	delete    *fakeDeletions
+	quota     *fakeQuota
+	tstat     *fakeTenantStatus
+	holds     *fakeLegalHolds
 }
 
 func newEnv(t *testing.T) *env { return newEnvMail(t, true) }
@@ -876,17 +877,18 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 			details:  map[string]WorkspaceDetail{wsID: {WorkspaceRow: WorkspaceRow{ID: wsID, Name: wsName, Slug: "acme", Status: "active", CreatedAt: t0, LastActivityAt: t0}}},
 			userDets: map[string]UserDetail{custID: {UserRow: UserRow{ID: custID, Email: custMail, Name: "Cu", Status: "active", CreatedAt: t0}}},
 		},
-		store:  newFakeStore(),
-		ws:     &fakeStatusSetter{changed: true},
-		cache:  &fakeCache{},
-		pub:    &fakeNotifier{},
-		mail:   &fakeMailer{},
-		logs:   &bytes.Buffer{},
-		member: newFakeMembers(),
-		delete: newFakeDeletions(),
-		quota:  &fakeQuota{},
-		tstat:  &fakeTenantStatus{},
-		holds:  &fakeLegalHolds{},
+		store:     newFakeStore(),
+		ws:        &fakeStatusSetter{changed: true},
+		cache:     &fakeCache{},
+		pub:       &fakeNotifier{},
+		mail:      &fakeMailer{},
+		logs:      &bytes.Buffer{},
+		member:    newFakeMembers(),
+		delete:    newFakeDeletions(),
+		quota:     &fakeQuota{},
+		quotaMail: &fakeQuotaMail{},
+		tstat:     &fakeTenantStatus{},
+		holds:     &fakeLegalHolds{},
 	}
 	e.reader.store = e.store
 	payments, err := billing.New(billing.Deps{
@@ -925,6 +927,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		Quota:          e.quota,
 		TenantStatuses: e.tstat,
 		LegalHolds:     e.holds,
+		QuotaMail:      e.quotaMail,
 		Log:            log,
 		Now:            func() time.Time { return t0 },
 	})

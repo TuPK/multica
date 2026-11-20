@@ -23,6 +23,13 @@ const (
 // 7b.3, rule 12).
 const NoticeKindUsage80 = "usage_80"
 
+// NoticeKindQuota80 and NoticeKindQuota100 are the billing_notice kinds of the
+// console's counted-limit warnings at 80 and 100 percent (spec R6 section 3c.5).
+const (
+	NoticeKindQuota80  = "quota_80"
+	NoticeKindQuota100 = "quota_100"
+)
+
 // Valid reports whether k is a kind this release sells.
 func (k Kind) Valid() bool {
 	switch k {
