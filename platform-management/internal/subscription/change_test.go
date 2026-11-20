@@ -497,3 +497,25 @@ func TestLosingTheFirstInsertIs409(t *testing.T) {
 		t.Fatal("a lost insert left an audit row or cleared the cache")
 	}
 }
+
+// Spec R6 section 3b.1 rule 5: an inactive plan keeps its subscribers: a seat
+// purchase stays on that plan, and the next renewal is priced for it.
+func TestInactivePlanKeepsExistingSubscriptionsRenewingAndBuyingSeats(t *testing.T) {
+	svc, store, _ := newService(t)
+	store.subs[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "legacy", Status: StatusActive, Seats: 2, Interval: IntervalMonth, Version: 4}
+
+	c := proChange()
+	c.PlanKey = "legacy"
+	c.Seats = 5
+	res, err := svc.Apply(context.Background(), c)
+	if err != nil {
+		t.Fatalf("seat purchase on an inactive plan: %v", err)
+	}
+	if res.Subscription.PlanKey != "legacy" || res.Subscription.Seats != 5 {
+		t.Fatalf("after the seat purchase: plan %q seats %d, want legacy with 5", res.Subscription.PlanKey, res.Subscription.Seats)
+	}
+	planKey, interval, seats := RenewalTerms(res.Subscription)
+	if planKey != "legacy" || interval != IntervalMonth || seats != 5 {
+		t.Fatalf("renewal terms = %s %s %d, want legacy month 5", planKey, interval, seats)
+	}
+}
