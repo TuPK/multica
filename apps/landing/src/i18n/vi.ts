@@ -14,6 +14,7 @@ export const vi = {
       { href: "#he-sinh-thai", label: "Hệ sinh thái" },
       { href: "#phan-mem", label: "Phần mềm" },
       { href: "#xem-ben-trong", label: "Bên trong một đội" },
+      { href: "#quy-trinh-dong", label: "Quy trình động" },
       { href: "#cach-lam", label: "Cách làm" },
       { href: "#gia", label: "Giá" },
       { href: "/huong-dan/", label: "Hướng dẫn" },
@@ -200,6 +201,94 @@ export const vi = {
       { icon: "i-flag", title: "Mục tiêu đi từ trên xuống", text: "Mục tiêu của công ty chia xuống tầng và đội. Mỗi mục tiêu có chỉ số và tiến độ tự tính, không cần ai viết báo cáo." },
       { icon: "i-shield", title: "Ngân sách theo tầng và đội", text: "Đặt trần cho công ty, cho tầng hoặc cho đội. Khi một phòng sắp chạm ngưỡng, bạn được cảnh báo trước." },
     ],
+  },
+  workflow: {
+    tag: "Quy trình động",
+    h2: "Dựng quy trình cho đội, rồi để máy chủ bắt cả đội đi đúng quy trình.",
+    p: "Một quy trình (workflow) là bản đồ gồm bước, vai, cổng kiểm và vòng sửa. Bạn sửa bản đồ ngay trong trình soạn, không cần viết mã. Máy chủ giữ luật và kiểm mọi thay đổi; agent chỉ báo kết quả theo mẫu đã khai báo, không tự đổi luật. Tên nút giữ tiếng Anh như trong ứng dụng.",
+    stepsTitle: "Tám bước, từ lúc chọn quy trình đến lúc đọc số liệu",
+    steps: [
+      {
+        title: "Chọn cách bắt đầu",
+        text: "Mở squad, vào mục Workflows và bấm New workflow. Có bốn lối:",
+        items: [
+          "Blank: bản nháp trắng, tự dựng từng bước.",
+          "Copy a Kit Việt workflow: nhân bản một quy trình mẫu Kit Việt. Bản sao tách hẳn, không nhận cập nhật từ bản gốc.",
+          "Import a file: nhập tệp flow.json (manifest) đã có sẵn.",
+          "Ask an agent to draft: ghi quy trình bạn muốn, đính tài liệu tham khảo, rồi chọn agent soạn. Agent đọc và trả về một tệp flow.json để bạn nhập.",
+        ],
+      },
+      {
+        title: "Dựng bước và vai",
+        text: "Khu Steps bên trái liệt kê bước theo thứ tự việc chạy. Inspector ở giữa chỉnh bước, task và cạnh. Roles gắn agent hoặc thành viên vào từng vai. Bấm Add step để thêm bước từ mẫu:",
+        items: [
+          "Work: bước làm việc, có task và cạnh ra.",
+          "Gate: bước kiểm, có cạnh pass, fail và block. Fail còn lượt sửa thì việc quay lại bước làm.",
+          "Quorum review: ba người chấm, hai người duyệt là qua.",
+          "Human approval: bước chờ một người duyệt, kèm thông báo.",
+          "Lead decision: lead chọn đường đi. Lead không nhận task làm việc.",
+        ],
+      },
+      {
+        title: "Đặt vòng sửa và điểm dừng",
+        text: "Cạnh quay lại tạo một vòng sửa. Mỗi vòng có giới hạn (Up to N times). Hết lượt, request dừng ở điểm dừng đã khai báo chứ không lặp mãi. Điểm dừng (Stop) và đích (Terminal) là nơi request kết thúc.",
+        items: [
+          "Stalled: request treo, chờ người xử lý tiếp.",
+          "Leaves the workspace: đích mà công việc ra ngoài workspace. Phải có người xem trước; nếu thiếu, bộ kiểm cảnh báo.",
+        ],
+      },
+      {
+        title: "Kiểm và mô phỏng",
+        text: "Bấm Check để xem Problems. Lỗi được nhóm theo bước, bấm một dòng để nhảy tới đúng chỗ. Publish bị khóa khi còn lỗi. Simulate chạy đường đi với biến bạn chọn: bước nào được vào, bao nhiêu lần, vòng đếm ra sao. Simulate chỉ kiểm định tuyến, không kiểm agent làm đúng hay sai.",
+      },
+      {
+        title: "Xuất bản và đặt làm mặc định",
+        text: "Publish tạo một phiên bản đã khóa. Request đang chạy giữ phiên bản của nó; request mới dùng phiên bản đang active. Bật Make this the active workflow để đặt làm mặc định của squad.",
+        items: [
+          "Bản nháp từ agent phải tick I have read this workflow trước khi xuất bản.",
+          "Chỉ người quản lý squad được xuất bản. Agent không tự xuất bản và không tự gắn vai.",
+        ],
+      },
+      {
+        title: "Chạy thử trước khi bật thật",
+        text: "Trên trang một phiên bản đã xuất bản, bấm Trial run và đặt tiêu đề cho một request mẫu. Agent thật vẫn làm việc trên đúng engine, nhưng request có huy hiệu Trial, không tính vào số liệu mặc định, và công việc không ra khỏi workspace khi chưa có người xem. Request thử không ảnh hưởng request khác.",
+      },
+      {
+        title: "Theo dõi một request",
+        text: "Panel quy trình trên issue cho biết bước hiện tại. Số vòng hiện dạng ↺ n/max: đã dùng bao nhiêu trên giới hạn. Mục Path liệt kê đường đã đi. Khi task đang chờ quyết định, bạn chọn verdict đúng với bộ verdict của task đó.",
+        items: [
+          "Quản lý squad có thể dùng Close on behalf để đóng task thay agent. Thao tác được ghi nhật ký và hiện rõ trong bảng task.",
+        ],
+      },
+      {
+        title: "Đọc số liệu rồi sửa",
+        text: "Trang phiên bản có phần số liệu: số request, thời gian trung vị và p90 của từng bước, số lần mỗi cạnh được chọn, phân bố số vòng. Nếu một cổng trả việc về quá nhiều, sửa hướng dẫn của task hoặc tăng giới hạn vòng, rồi xuất bản phiên bản mới. Số liệu chỉ để bạn quyết định; hệ thống không tự đề xuất sửa.",
+      },
+    ],
+    packs: {
+      title: "Có sẵn bộ agent và skill? Nhập cả bộ.",
+      text: "Ở trang Squads, bấm Import a pack. Dán link GitHub hoặc tải tệp .zip, rồi đọc bản xem trước. Nhận các định dạng: bó squad-bundle.json, agent pack pack.json của Multica, thư mục agents/*.md kiểu Claude Code, hoặc thư mục skill có SKILL.md theo chuẩn Agent Skills.",
+      items: [
+        "Agents: mỗi agent tạo mới, dùng agent đang có, hoặc bỏ qua. Chọn runtime cho agent mới.",
+        "Skills: skill trùng tên giữ bản cũ hoặc nhập thành bản mới. Không ghi đè bản đang có.",
+        "Ignored settings: tools, model, biến môi trường và cấu hình MCP trong bộ không được áp. Bạn tự cấu hình agent sau khi nhập.",
+        "Security scan: bộ bị chặn thì không cài được; cảnh báo phải được xác nhận.",
+        "Sau khi cài, bấm Design the workflow để mở bản nháp từ quy trình có trong bộ.",
+      ],
+    },
+    termsTitle: "Thuật ngữ",
+    terms: [
+      { term: "Workflow", def: "Bản đồ quy trình của squad: bước, vai, cạnh, vòng và điểm dừng." },
+      { term: "Draft (bản nháp)", def: "Bản đang sửa. Chưa có request nào chạy theo nó." },
+      { term: "Version (phiên bản)", def: "Bản đã xuất bản và khóa. Request giữ phiên bản lúc nó bắt đầu." },
+      { term: "Step (bước)", def: "Nơi việc đang đứng: Work, Gate, Lead hoặc Manual." },
+      { term: "Role (vai)", def: "Ai làm việc ở bước: agent, thành viên, quản lý squad, hoặc người yêu cầu." },
+      { term: "Verdict", def: "Kết quả task báo: Pass, Fail hoặc Neutral. Cạnh đi tiếp dựa trên verdict." },
+      { term: "Loop (vòng)", def: "Cạnh quay lại có giới hạn số lượt." },
+      { term: "Trial", def: "Request chạy thử. Không tính vào số liệu mặc định." },
+    ],
+    permissions: "Người quản lý squad soạn và xuất bản. Chỉ admin bật Auto và xác nhận khi quy trình có thể rời workspace mà không có người xem.",
+    principle: "Engine không tin lời agent. Chỉ verdict và biến đã khai báo mới đi vào luật, và mọi thay đổi đều qua bộ kiểm trên máy chủ.",
   },
   slider: {
     tag: "Bên trong một đội",

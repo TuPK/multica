@@ -144,6 +144,35 @@ body{margin:0;background:var(--bg)}
 /* ----- mechanics ----- */
 .mc .mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
 
+/* ----- dynamic workflow guide ----- */
+.mc .wf-sub{margin-top:88px;font-size:26px;letter-spacing:-0.02em}
+.mc .wf-steps{list-style:none;margin:40px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.mc .wf-step{border:1px solid var(--line2);border-radius:22px;background:var(--panel);padding:32px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.mc .wf-step .no{font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.08em}
+.mc .wf-step h3{font-size:22px}
+.mc .wf-step p{font-size:15px;color:var(--muted);line-height:1.6}
+.mc .wf-items{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:9px}
+.mc .wf-items li{position:relative;padding-left:20px;font-size:15px;color:var(--soft);line-height:1.55}
+.mc .wf-items li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.mc .wf-items b{color:var(--ink);font-weight:600}
+.mc .wf-pack{margin-top:22px}
+.mc .wf-pack h3{font-size:22px}
+.mc .wf-pack p{margin-top:10px}
+.mc .wf-pack .wf-items{margin-top:18px}
+.mc .wf-terms{margin:40px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px;border-top:1px solid var(--line)}
+.mc .wf-terms>div{padding:20px 0;border-bottom:1px solid var(--line);min-width:0}
+.mc .wf-terms dt{font-weight:700;color:var(--ink);font-size:17px}
+.mc .wf-terms dd{margin:6px 0 0;color:var(--muted);font-size:15px;line-height:1.55}
+.mc .wf-note{margin-top:28px;border-left:3px solid var(--amber);padding:4px 0 4px 16px;color:var(--soft);font-size:16px;line-height:1.55;max-width:760px}
+.mc .wf-note b{color:var(--ink);font-weight:600}
+@media (max-width:860px){
+  .mc .wf-steps,.mc .wf-terms{grid-template-columns:1fr}
+}
+@media (max-width:600px){
+  .mc .wf-step{padding:24px}
+  .mc .wf-sub{margin-top:64px;font-size:22px}
+}
+
 /* ----- industries ----- */
 .mc .ind{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .mc .tile{border:1px solid var(--line2);border-radius:20px;background:var(--panel);padding:24px;display:flex;flex-direction:column;gap:14px;min-width:0;transition:transform .35s ease,border-color .35s ease,background .35s ease}

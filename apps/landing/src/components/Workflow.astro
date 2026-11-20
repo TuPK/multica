@@ -1,0 +1,69 @@
+---
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).workflow;
+
+// Items read "Label: text"; the label is set in bold so each line can be scanned.
+const splitLead = (item: string) => {
+  const at = item.indexOf(": ");
+  return at > 0 && at < 40 ? { lead: item.slice(0, at + 1), rest: item.slice(at + 2) } : null;
+};
+---
+
+<section id="quy-trinh-dong">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="tag">{t.tag}</div>
+      <h2 style="margin-top:18px">{t.h2}</h2>
+      <p>{t.p}</p>
+    </div>
+
+    <h3 class="wf-sub rv">{t.stepsTitle}</h3>
+    <ol class="wf-steps">
+      {t.steps.map((s, i) => (
+        <li class="wf-step rv">
+          <span class="no">{String(i + 1).padStart(2, "0")}</span>
+          <h3>{s.title}</h3>
+          <p>{s.text}</p>
+          {s.items && (
+            <ul class="wf-items">
+              {s.items.map((item) => {
+                const parts = splitLead(item);
+                return <li>{parts ? <><b>{parts.lead}</b> {parts.rest}</> : item}</li>;
+              })}
+            </ul>
+          )}
+        </li>
+      ))}
+    </ol>
+
+    <div class="card wf-pack rv">
+      <h3>{t.packs.title}</h3>
+      <p>{t.packs.text}</p>
+      <ul class="wf-items">
+        {t.packs.items.map((item) => {
+          const parts = splitLead(item);
+          return <li>{parts ? <><b>{parts.lead}</b> {parts.rest}</> : item}</li>;
+        })}
+      </ul>
+    </div>
+
+    <h3 class="wf-sub rv">{t.termsTitle}</h3>
+    <dl class="wf-terms rv">
+      {t.terms.map((x) => (
+        <div>
+          <dt>{x.term}</dt>
+          <dd>{x.def}</dd>
+        </div>
+      ))}
+    </dl>
+
+    <p class="wf-note rv"><b>{t.permissions}</b></p>
+    <p class="wf-note rv">{t.principle}</p>
+  </div>
+</section>

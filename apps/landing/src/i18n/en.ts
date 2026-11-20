@@ -16,6 +16,7 @@ export const en: Dict = {
       { href: "#he-sinh-thai", label: "Ecosystem" },
       { href: "#phan-mem", label: "Software" },
       { href: "#xem-ben-trong", label: "Inside a team" },
+      { href: "#quy-trinh-dong", label: "Dynamic workflow" },
       { href: "#cach-lam", label: "How it works" },
       { href: "#gia", label: "Pricing" },
       { href: "/en/guide/", label: "Guide" },
@@ -202,6 +203,94 @@ export const en: Dict = {
       { icon: "i-flag", title: "Goals flow top-down", text: "Company goals cascade to floors and teams. Each goal has metrics and progress computed automatically, so nobody has to write reports." },
       { icon: "i-shield", title: "Budgets by floor and team", text: "Set a cap for the company, a floor or a team. When a team nears its limit, you're warned in advance." },
     ],
+  },
+  workflow: {
+    tag: "Dynamic workflow",
+    h2: "Design the team's workflow, and let the server keep the whole team on it.",
+    p: "A workflow is a map of steps, roles, gates and rework loops. You edit the map directly in the designer, with no code. The server holds the rules and checks every change; an agent only reports results in the format you declared and never changes the rules itself. Button names stay in English, as they appear in the app.",
+    stepsTitle: "Eight steps, from choosing a workflow to reading its numbers",
+    steps: [
+      {
+        title: "Choose how to start",
+        text: "Open the squad, go to Workflows and click New workflow. There are four ways in:",
+        items: [
+          "Blank: an empty draft. Build each step yourself.",
+          "Copy a Kit Việt workflow: copy a Kit Việt template. The copy is separate and does not receive updates from the original.",
+          "Import a file: import an existing flow.json manifest.",
+          "Ask an agent to draft: write what the workflow should do, attach reference files, and pick the agent. The agent reads them and returns a flow.json for you to import.",
+        ],
+      },
+      {
+        title: "Build the steps and roles",
+        text: "The Steps list on the left shows steps in the order work flows. The Inspector in the middle edits steps, tasks and edges. Roles attach agents or members to each role. Click Add step to insert a step from a template:",
+        items: [
+          "Work: a working step, with tasks and outgoing edges.",
+          "Gate: a check step with pass, fail and block edges. A fail with rework left sends the work back.",
+          "Quorum review: three reviewers; two approvals pass.",
+          "Human approval: a step that waits for one person to approve, with a notice.",
+          "Lead decision: the lead chooses the route. The lead takes no work tasks.",
+        ],
+      },
+      {
+        title: "Set rework loops and stops",
+        text: "A back-edge creates a rework loop. Each loop has a limit (Up to N times). When the limit runs out, the request stops at a declared stop instead of looping forever. Stops and terminals are where a request ends.",
+        items: [
+          "Stalled: the request is stuck and waits for someone to take it on.",
+          "Leaves the workspace: the terminal where work leaves the workspace. A person must review it first; if not, the checker warns you.",
+        ],
+      },
+      {
+        title: "Check and simulate",
+        text: "Click Check to see Problems. Errors are grouped by step; click a row to jump to the exact place. Publish is locked while errors remain. Simulate runs the route with the variables you choose: which steps are entered, how often, and how the loop counters move. Simulate checks the routing only, not whether agents do the work correctly.",
+      },
+      {
+        title: "Publish and make it the default",
+        text: "Publish creates a locked version. Running requests keep their version; new requests use the active one. Turn on Make this the active workflow to make it the squad's default.",
+        items: [
+          "A draft from an agent must have I have read this workflow ticked before it can be published.",
+          "Only squad managers can publish. Agents never publish and never bind roles themselves.",
+        ],
+      },
+      {
+        title: "Trial run before going live",
+        text: "On a published version's page, click Trial run and give a sample request a title. Real agents still do the work on the same engine, but the request carries a Trial badge, is left out of the default numbers, and its work cannot leave the workspace until a person has reviewed it. A trial request does not affect other requests.",
+      },
+      {
+        title: "Follow a request",
+        text: "The workflow panel on an issue shows the current step. Loop counts appear as ↺ n/max: how many rounds have been used against the limit. The Path section lists the route taken. When a task is waiting for a decision, pick the verdict that belongs to that task's verdict set.",
+        items: [
+          "Squad managers can use Close on behalf to close a task in place of the agent. The action is logged and shown in the task table.",
+        ],
+      },
+      {
+        title: "Read the numbers, then fix",
+        text: "The version page has an Insights section: request counts, median and p90 time per step, how often each edge was taken, and the spread of loop counts. If a gate sends work back too often, fix the task's instructions or raise the loop limit, then publish a new version. The numbers are for your decision; the system does not suggest changes.",
+      },
+    ],
+    packs: {
+      title: "Already have a bundle of agents and skills? Import the whole bundle.",
+      text: "On the Squads page, click Import a pack. Paste a GitHub link or upload a .zip, then read the preview. Accepted formats: a squad-bundle.json bundle, a Multica pack.json agent pack, an agents/*.md folder in the Claude Code style, or skill folders with SKILL.md in the Agent Skills format.",
+      items: [
+        "Agents: each agent is created, reuses an existing one, or is skipped. Pick a runtime for new agents.",
+        "Skills: a skill with the same name keeps the existing copy or is imported as new. Nothing is overwritten.",
+        "Ignored settings: tools, model, environment variables and MCP configuration in the bundle are not applied. You configure the agents yourself after import.",
+        "Security scan: a blocked bundle cannot be installed; warnings must be acknowledged.",
+        "After installing, click Design the workflow to open a draft built from the flow inside the bundle.",
+      ],
+    },
+    termsTitle: "Terms",
+    terms: [
+      { term: "Workflow", def: "The squad's process map: steps, roles, edges, loops and stops." },
+      { term: "Draft", def: "The version being edited. No request runs on it yet." },
+      { term: "Version", def: "A published, locked copy. A request keeps the version it started on." },
+      { term: "Step", def: "Where work sits: Work, Gate, Lead or Manual." },
+      { term: "Role", def: "Who works at a step: an agent, a member, the squad managers, or the requester." },
+      { term: "Verdict", def: "The result a task reports: Pass, Fail or Neutral. Edges follow the verdict." },
+      { term: "Loop", def: "A back-edge with a limit on how many times it can be taken." },
+      { term: "Trial", def: "A trial request. It is left out of the default numbers." },
+    ],
+    permissions: "Squad managers draft and publish. Only admins turn on Auto, and only admins confirm when a workflow can leave the workspace without a person reviewing the work.",
+    principle: "The engine does not trust what agents say. Only declared verdicts and variables affect the rules, and every change passes the server's checks.",
   },
   slider: {
     tag: "Inside a team",
