@@ -123,6 +123,40 @@ func TestTenantResourcesCountAutopilotRunsAndAPIRatePerWorkspace(t *testing.T) {
 	}
 }
 
+// TestTenantResourcesCountMembersAndHeldSeatsAgainstPurchasedSeats: the members
+// and the held seat operations of a workspace count against the seats it bought
+// (spec R6 section 3b.4, rows thành viên and ghế đang giữ); no purchase is no limit.
+func TestTenantResourcesCountMembersAndHeldSeatsAgainstPurchasedSeats(t *testing.T) {
+	e := newEnv(t)
+	setResourceFixture(e)
+	d := e.reader.details[wsID]
+	d.Current.Members = 8
+	e.reader.details[wsID] = d
+	e.reader.seats = map[string]*int64{wsID: i64(10)}
+	e.reader.held = map[string]int64{wsID: 3}
+
+	rec := e.do(suppID, "GET", "/api/platform/tenants/"+tenantID+"/resources", "")
+	wantStatus(t, rec, http.StatusOK)
+	body := decode(t, rec)
+
+	workspaces, _ := body["workspaces"].([]any)
+	first, _ := workspaces[0].(map[string]any)
+	firstRes, _ := first["resources"].([]any)
+	members := resourceOf(t, firstRes, "members")
+	if members["used"] != float64(8) || members["limit"] != float64(10) || members["percent"] != float64(80) || members["status"] != "warning" {
+		t.Fatalf("acme members = %v, want 8 of 10 seats, 80 percent warning", members)
+	}
+	held := resourceOf(t, firstRes, "seats_held")
+	if held["used"] != float64(3) || held["limit"] != float64(10) || held["status"] != "ok" {
+		t.Fatalf("acme seats_held = %v, want 3 of 10 seats", held)
+	}
+	second, _ := workspaces[1].(map[string]any)
+	secondRes, _ := second["resources"].([]any)
+	if members := resourceOf(t, secondRes, "members"); members["limit"] != nil {
+		t.Fatalf("second members = %v, want no limit without a purchase", members)
+	}
+}
+
 // day returns the UTC day n days before the test clock, as the console reports it.
 func day(n int) string { return t0.AddDate(0, 0, -n).Format(time.DateOnly) }
 

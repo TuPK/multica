@@ -20,12 +20,19 @@ const (
 	gateIssuesCreated = "issues_created"
 )
 
+// The seat types of spec R6 section 3b.4: the members of a workspace and its
+// held seat operations, both against the seats it bought.
+const (
+	gateMembers   = "members"
+	gateSeatsHeld = "seats_held"
+)
+
 // resourceGates are the resource types the console states, in order: the
-// counted limits (usage.Current, the group count, the autopilot period and the
-// API rate of the minute), then the flows.
+// counted limits (usage.Current, the group count, the seats, the autopilot period
+// and the API rate of the minute), then the flows.
 var resourceGates = []string{
 	plan.GateAgents, plan.GateRuntimes, plan.GateIssueCount, plan.GateStorageBytes, plan.GateMemberGroups,
-	plan.GateAutopilotRuns, plan.GateAPIRatePerMinute, gateTasksRun, gateIssuesCreated,
+	gateMembers, gateSeatsHeld, plan.GateAutopilotRuns, plan.GateAPIRatePerMinute, gateTasksRun, gateIssuesCreated,
 }
 
 // trendDays is the window of a flow's trend: the UTC days that end today.
@@ -135,6 +142,10 @@ func (h *Handler) workspaceUsage(ctx context.Context, workspaceID string, now ti
 		out.used[plan.GateIssueCount] = d.Current.IssuesTotal
 		out.used[plan.GateStorageBytes] = d.Current.StorageBytes
 		out.used[plan.GateMemberGroups] = d.GroupCount
+		out.used[gateMembers] = d.Current.Members
+	}
+	if out.used[gateSeatsHeld], err = h.Reader.HeldSeats(ctx, workspaceID, now); err != nil {
+		return workspaceUsed{}, err
 	}
 	if out.used[plan.GateAutopilotRuns], err = h.Reader.AutopilotRuns(ctx, workspaceID, now); err != nil {
 		return workspaceUsed{}, err
@@ -154,6 +165,14 @@ func (h *Handler) workspaceUsage(ctx context.Context, workspaceID string, now ti
 	if err != nil {
 		return workspaceUsed{}, err
 	}
+	seats, err := h.Reader.SeatLimit(ctx, workspaceID)
+	if err != nil {
+		return workspaceUsed{}, err
+	}
+	if out.limits == nil {
+		out.limits = map[string]*int64{}
+	}
+	out.limits[gateMembers], out.limits[gateSeatsHeld] = seats, seats
 	return out, nil
 }
 

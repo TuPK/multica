@@ -143,6 +143,9 @@ type fakeReader struct {
 	autopilot map[string]int64
 	rates     map[string]int64
 	flows     map[string][]usage.DayFlow
+	// seats is the purchased seats of a workspace (nil: no seat limit); held its held seat operations.
+	seats map[string]*int64
+	held  map[string]int64
 
 	lastOrderStatus billing.Status
 	lastNewestFirst bool
@@ -189,6 +192,16 @@ func (r *fakeReader) Flows(_ context.Context, ws string, since time.Time) ([]usa
 		}
 	}
 	return out, nil
+}
+
+// SeatLimit returns the fake purchased seats of a workspace; nil has no limit.
+func (r *fakeReader) SeatLimit(_ context.Context, ws string) (*int64, error) {
+	return r.seats[ws], nil
+}
+
+// HeldSeats returns the fake held seat operations of a workspace.
+func (r *fakeReader) HeldSeats(_ context.Context, ws string, _ time.Time) (int64, error) {
+	return r.held[ws], nil
 }
 
 // RateCurrent returns the fake API requests of a workspace this minute.

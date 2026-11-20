@@ -17,6 +17,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/entitlement"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
+	"github.com/multica-ai/multica/platform-management/internal/subscription"
 	"github.com/multica-ai/multica/platform-management/internal/usage"
 )
 
@@ -1515,6 +1516,39 @@ func quotaFromRow(x db.QuotaRequest) quota.Request {
 // AutopilotRuns returns the autopilot runs a workspace used this period.
 func (r *PgxReader) AutopilotRuns(ctx context.Context, workspaceID string, now time.Time) (int64, error) {
 	return r.usage.AutopilotRuns(ctx, workspaceID, now)
+}
+
+// SeatLimit returns the seats a workspace bought: the plan's fixed seats, else the
+// subscription's seats. nil means the workspace has no seat limit.
+func (r *PgxReader) SeatLimit(ctx context.Context, workspaceID string) (*int64, error) {
+	in, err := entitlement.NewPgxLoader(r.pool).Inputs(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("load plan: %w", err)
+	}
+	sub, found, err := subscription.NewPgxReader(r.pool).Get(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("load subscription: %w", err)
+	}
+	var subPtr *subscription.Subscription
+	if found {
+		subPtr = &sub
+	}
+	n, ok := subscription.PurchasedSeats(in.Plan, subPtr)
+	if !ok {
+		return nil, nil
+	}
+	return &n, nil
+}
+
+// HeldSeats counts the seat operations of a workspace that hold a seat at now.
+func (r *PgxReader) HeldSeats(ctx context.Context, workspaceID string, now time.Time) (int64, error) {
+	var id pgtype.UUID
+	if err := id.Scan(workspaceID); err != nil || !id.Valid {
+		return 0, fmt.Errorf("invalid workspace id %q", workspaceID)
+	}
+	return r.q.CountHeldSeatOperations(ctx, db.CountHeldSeatOperationsParams{
+		WorkspaceID: id, ExpiresAt: pgtype.Timestamptz{Time: now, Valid: true},
+	})
 }
 
 // Flows returns a workspace's daily flows from since on.

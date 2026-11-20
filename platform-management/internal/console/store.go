@@ -387,6 +387,10 @@ type Reader interface {
 	WorkspaceLimits(ctx context.Context, workspaceID string, now time.Time) (map[string]*int64, error)
 	// AutopilotRuns returns the autopilot runs a workspace used in the period that holds now (spec R6 section 3b.4).
 	AutopilotRuns(ctx context.Context, workspaceID string, now time.Time) (int64, error)
+	// SeatLimit returns the seats a workspace bought, nil when it has no seat limit (spec R6 section 3b.4).
+	SeatLimit(ctx context.Context, workspaceID string) (*int64, error)
+	// HeldSeats counts the seat operations that hold a seat at now (spec R6 section 3b.4).
+	HeldSeats(ctx context.Context, workspaceID string, now time.Time) (int64, error)
 	// Flows returns a workspace's daily issues created and tasks run from since on, oldest first (spec R6 section 3b.4, rule 1).
 	Flows(ctx context.Context, workspaceID string, since time.Time) ([]usage.DayFlow, error)
 	// GetOrder returns found == false for an unknown order.
