@@ -119,3 +119,22 @@ func TestAdminCannotChangeItsOwnRole(t *testing.T) {
 	e := tenantUserEnv(t)
 	wantCode(t, e.do(tadminID, "POST", "/api/platform/workspaces/"+tuWS+"/members/"+tadminID+"/role", `{"role":"member"}`), 409, "cannot_change_own_role")
 }
+
+// Spec D107 and 3b.3 rule 3(a): an admin of a tenant removes a member from every
+// workspace of its own tenant, and only from that tenant.
+func TestAdminDeactivatesMemberOfOwnTenantOnly(t *testing.T) {
+	e := tenantUserEnv(t)
+	rec := e.do(tadminID, "POST", "/api/platform/tenants/"+tenantID+"/users/"+tuMem+"/deactivate", "")
+	wantStatus(t, rec, http.StatusAccepted)
+	if len(e.store.memberChanges) != 1 {
+		t.Fatalf("requests = %+v, want one removal", e.store.memberChanges)
+	}
+	if got := e.store.memberChanges[0]; got.Kind != memberKindRemove || got.TargetUserID != tuMem || got.WorkspaceID != tuWS {
+		t.Fatalf("request = %+v", got)
+	}
+	wantUnknownRouteOrNotFound(t, e.do(tadminID, "POST", "/api/platform/tenants/"+otherTenantID+"/users/"+tuMem+"/deactivate", ""))
+	wantUnknownRouteOrNotFound(t, e.do(tadminID, "POST", "/api/platform/tenants/"+tenantID+"/users/"+tuStaff+"/deactivate", ""))
+	if len(e.store.memberChanges) != 1 {
+		t.Fatalf("refused deactivations wrote requests: %+v", e.store.memberChanges)
+	}
+}
