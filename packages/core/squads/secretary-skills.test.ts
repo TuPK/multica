@@ -21,6 +21,10 @@ const SECRETARY_SKILLS = [
 ];
 
 describe("secretary router", () => {
+  it("never reuses a request whose deadline has passed", () => {
+    expect(read("secretary-router")).toContain("A request whose deadline has passed is not open for this");
+  });
+
   it("reaches every other Secretary skill by name", () => {
     const router = read("secretary-router");
     for (const name of SECRETARY_SKILLS.filter((n) => n !== "secretary-router")) {

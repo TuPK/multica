@@ -33,6 +33,9 @@ Read the trigger in the run's message and pick one row:
    state: which leaders have answered, who is still pending, and its deadline. If
    every answer is in, go to `secretary-analysis` instead. Answers that arrived since
    the last report are read by `secretary-analysis` on their own wakeup.
+   A request whose deadline has passed is not open for this: do not reuse or report it.
+   File a new request for the boss's current question, and say in the reply what the old
+   request was and that it was not used.
 3. If the turn names a route (`Route for this message (set by the platform)`), that is
    the classification: follow the skill it names. Otherwise classify the question:
 
