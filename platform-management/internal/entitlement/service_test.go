@@ -449,3 +449,53 @@ func TestHandlerRefusesAMalformedUserHeader(t *testing.T) {
 		}
 	}
 }
+
+// reachesWithin30Seconds is the claim of spec R6 sections 3c.4 and 3c.5: a
+// limit override written without an invalidation in this process reaches the
+// policy at the latest when the cached inputs expire, 30 seconds after the load.
+func reachesWithin30Seconds(t *testing.T, override int64) {
+	t.Helper()
+	src := newFakeSource(map[string]Inputs{wsA: freeInputs(t, 1)})
+	svc, clk := newService(t, src)
+	ctx := context.Background()
+
+	if _, err := svc.Policy(ctx, wsA); err != nil {
+		t.Fatal(err)
+	}
+	in := freeInputs(t, 2)
+	in.Overrides = plan.Limits{plan.GateAgents: &override}
+	src.set(wsA, in)
+
+	clk.advance(29*time.Second + 999*time.Millisecond)
+	stale, err := svc.Policy(ctx, wsA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g := stale.Gates[plan.GateAgents]; g.Limit != nil && *g.Limit == override {
+		t.Fatalf("the override showed before the cache expired")
+	}
+
+	clk.advance(time.Millisecond)
+	fresh, err := svc.Policy(ctx, wsA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g := fresh.Gates[plan.GateAgents]; g.Limit == nil || *g.Limit != override {
+		t.Fatalf("the override is not in the policy 30 seconds after the load: %+v", g)
+	}
+	if fresh.ValidForSeconds != 30 {
+		t.Fatalf("valid_for_seconds = %d, want 30", fresh.ValidForSeconds)
+	}
+}
+
+// TestLimitOverridesReachPolicyWithin30Seconds: a limit written by an override
+// reaches the policy within 30 seconds.
+func TestLimitOverridesReachPolicyWithin30Seconds(t *testing.T) {
+	reachesWithin30Seconds(t, 25)
+}
+
+// TestApprovedOverrideReachesPolicyWithin30Seconds: a quota request approved as an
+// override reaches the policy within 30 seconds.
+func TestApprovedOverrideReachesPolicyWithin30Seconds(t *testing.T) {
+	reachesWithin30Seconds(t, 12)
+}
