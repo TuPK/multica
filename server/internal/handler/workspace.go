@@ -2136,6 +2136,9 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 				if err := qtx.DeleteWorkspaceMemberRequests(ctx, wsID); err != nil {
 					return err
 				}
+				if err := qtx.DeleteWorkspaceQuotaRequests(ctx, wsID); err != nil {
+					return err
+				}
 				if err := qtx.DeleteWorkspacePlatformUsageDaily(ctx, wsID); err != nil {
 					return err
 				}

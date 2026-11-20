@@ -2075,6 +2075,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Use(handler.RequireHumanActor)
 					r.Put("/orders/{orderId}/buyer", h.UpdateWorkspaceOrderBuyer)
 					r.Put("/orders/{orderId}/invoice-buyer", h.UpdateWorkspaceOrderInvoiceBuyer)
+					// Quota increase requests (spec R6 3c.5): owners and billing managers, humans only.
+					r.Post("/quota-requests", h.CreateQuotaRequest)
+					r.Get("/quota-requests", h.ListQuotaRequests)
 				})
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyRuntimeProfilesManage))
