@@ -339,3 +339,43 @@ func TestDBNoticeThenCancelSendsOneCorrection(t *testing.T) {
 		}
 	}
 }
+
+// Spec R6 section 7b.4 rule 2 (D88): a scheduled price change moves the plan's
+// prices and nothing else. The paid period and the order already created keep
+// their values.
+func TestPriceChangeDoesNotTouchPaidPeriodsOrCreatedOrders(t *testing.T) {
+	f := newDBFixture(t)
+	ctx := context.Background()
+	periodStart := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	periodEnd := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	f.exec(`UPDATE workspace_subscription SET current_period_start = $2, current_period_end = $3, version = 7 WHERE workspace_id = $1`, f.paidWS, periodStart, periodEnd)
+	var orderID string
+	f.query(&orderID, `INSERT INTO billing_order (id, workspace_id, kind, plan_key, interval, seats, amount, currency, status, provider, transfer_code)
+	        VALUES (gen_random_uuid(), $1, 'subscribe', $2, 'month', 3, 300000, 'vnd', 'paid', 'test', 'PC-ORDER') RETURNING id::text`, f.paidWS, f.key)
+	t.Cleanup(func() { f.pool.Exec(ctx, `DELETE FROM billing_order WHERE id = $1`, orderID) })
+
+	at := time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC)
+	if _, err := f.svc.Schedule(ctx, admin, f.key, seatReq(at, "150000", "1500000"), false, t0); err != nil {
+		t.Fatalf("Schedule: %v", err)
+	}
+	if err := f.svc.Run(ctx, at); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if month, _, _ := f.planState(); month != 150000 {
+		t.Fatalf("plan month price = %d, want the new 150000", month)
+	}
+
+	var gotStart, gotEnd time.Time
+	var version int64
+	f.query(&gotStart, `SELECT current_period_start FROM workspace_subscription WHERE workspace_id = $1`, f.paidWS)
+	f.query(&gotEnd, `SELECT current_period_end FROM workspace_subscription WHERE workspace_id = $1`, f.paidWS)
+	f.query(&version, `SELECT version FROM workspace_subscription WHERE workspace_id = $1`, f.paidWS)
+	if !gotStart.Equal(periodStart) || !gotEnd.Equal(periodEnd) || version != 7 {
+		t.Fatalf("paid period changed: start %v end %v version %d", gotStart, gotEnd, version)
+	}
+	var amount int64
+	f.query(&amount, `SELECT amount FROM billing_order WHERE id = $1`, orderID)
+	if amount != 300000 {
+		t.Fatalf("created order amount = %d, want 300000", amount)
+	}
+}
