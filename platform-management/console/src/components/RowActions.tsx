@@ -109,4 +109,4 @@ export function useRowActionsWidth(inlineWidth: number): number {
   return useSidebarCollapsed() ? inlineWidth : MENU_TRIGGER_WIDTH;
 }
 
-const MENU_TRIGGER_WIDTH = 56;
+const MENU_TRIGGER_WIDTH = 72;
