@@ -17,6 +17,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/auditstore"
 	"github.com/multica-ai/multica/server/internal/handler"
+	"github.com/multica-ai/multica/server/internal/legalhold"
 	"github.com/multica-ai/multica/server/internal/scheduler"
 	"github.com/multica-ai/multica/server/internal/tenant"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -124,6 +125,10 @@ func (r *Runner) process(ctx context.Context, id pgtype.UUID) (bool, error) {
 	}
 
 	err = r.run(ctx, req)
+	if errors.Is(err, legalhold.ErrHeld) {
+		// A hold keeps the data; no retry can lift it, so the request fails at once.
+		err = &permanentError{Code: legalhold.Code}
+	}
 	var perm *permanentError
 	switch {
 	case errors.Is(err, errWaitingForChildren):

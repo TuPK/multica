@@ -374,6 +374,9 @@ func (h *Handler) DeleteAccountForOrigin(ctx context.Context, userID string, now
 	if err != nil {
 		return false, fmt.Errorf("parse user id: %w", err)
 	}
+	if err := h.checkAccountHeld(ctx, uid); err != nil {
+		return false, err
+	}
 	user, err := h.Queries.GetUser(ctx, uid)
 	if err != nil {
 		return false, fmt.Errorf("load user: %w", err)

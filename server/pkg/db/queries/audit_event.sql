@@ -37,10 +37,21 @@ ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg('row_limit');
 
 -- name: DeleteAuditEventsBefore :execrows
--- Retention. Deletes at most row_limit rows older than the cutoff.
+-- Retention. Deletes at most row_limit rows older than the cutoff. A row of a
+-- held workspace, tenant or account stays until the hold is released (spec R6
+-- section 3c.7, QT18).
 DELETE FROM audit_event
 WHERE id IN (
-    SELECT old.id FROM audit_event AS old WHERE old.created_at < $1 LIMIT $2
+    SELECT old.id FROM audit_event AS old
+    WHERE old.created_at < $1
+      AND NOT EXISTS (
+          SELECT 1 FROM legal_hold lh
+          WHERE lh.released_at IS NULL
+            AND ((lh.scope_kind = 'workspace' AND lh.scope_id = old.workspace_id)
+              OR (lh.scope_kind = 'tenant' AND lh.scope_id = old.tenant_id)
+              OR (lh.scope_kind = 'account' AND lh.scope_id::text = old.actor_id))
+      )
+    LIMIT $2
 );
 
 -- name: AnonymizeAuditActor :exec

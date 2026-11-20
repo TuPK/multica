@@ -2,10 +2,12 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
 	"github.com/multica-ai/multica/platform-management/accountdeletion"
+	"github.com/multica-ai/multica/server/internal/legalhold"
 )
 
 // JobNameAccountDeletion is the canonical name used in audit rows. Stable
@@ -65,6 +67,8 @@ func runAccountDeletions(ctx context.Context, deleter AccountDeleter, now time.T
 		}
 		done, err := deleter.DeleteAccount(ctx, id, now)
 		switch {
+		case errors.Is(err, legalhold.ErrHeld):
+			slog.Info("account deletion skipped: legal hold", "user_id", id)
 		case err != nil:
 			failed++
 			slog.Error("account deletion failed; the account stays pending and the next run retries", "user_id", id, "error", err)

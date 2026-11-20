@@ -37,7 +37,16 @@ func (q *Queries) AnonymizeAuditTarget(ctx context.Context, targetID string) err
 const deleteAuditEventsBefore = `-- name: DeleteAuditEventsBefore :execrows
 DELETE FROM audit_event
 WHERE id IN (
-    SELECT old.id FROM audit_event AS old WHERE old.created_at < $1 LIMIT $2
+    SELECT old.id FROM audit_event AS old
+    WHERE old.created_at < $1
+      AND NOT EXISTS (
+          SELECT 1 FROM legal_hold lh
+          WHERE lh.released_at IS NULL
+            AND ((lh.scope_kind = 'workspace' AND lh.scope_id = old.workspace_id)
+              OR (lh.scope_kind = 'tenant' AND lh.scope_id = old.tenant_id)
+              OR (lh.scope_kind = 'account' AND lh.scope_id::text = old.actor_id))
+      )
+    LIMIT $2
 )
 `
 
@@ -46,7 +55,9 @@ type DeleteAuditEventsBeforeParams struct {
 	Limit     int32              `json:"limit"`
 }
 
-// Retention. Deletes at most row_limit rows older than the cutoff.
+// Retention. Deletes at most row_limit rows older than the cutoff. A row of a
+// held workspace, tenant or account stays until the hold is released (spec R6
+// section 3c.7, QT18).
 func (q *Queries) DeleteAuditEventsBefore(ctx context.Context, arg DeleteAuditEventsBeforeParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteAuditEventsBefore, arg.CreatedAt, arg.Limit)
 	if err != nil {

@@ -21,6 +21,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auditstore"
 	"github.com/multica-ai/multica/server/internal/entitlement"
+	"github.com/multica-ai/multica/server/internal/legalhold"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/planlimit"
@@ -1594,6 +1595,13 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 	teardown, err := h.deleteWorkspaceData(r.Context(), tx, requester.WorkspaceID)
+	if errors.Is(err, legalhold.ErrHeld) {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "workspace is under legal hold",
+			"code":  legalhold.Code,
+		})
+		return
+	}
 	if err != nil {
 		var stepErr *workspaceDeleteStepError
 		if errors.As(err, &stepErr) {
@@ -1662,6 +1670,9 @@ func (e *workspaceDeleteStepError) Unwrap() error { return e.err }
 func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtype.UUID) (workspaceTeardown, error) {
 	var teardown workspaceTeardown
 	qtx := h.Queries.WithTx(tx)
+	if err := h.checkWorkspaceHeld(ctx, qtx, wsID); err != nil {
+		return teardown, err
+	}
 	doomed, err := qtx.GetWorkspace(ctx, wsID)
 	if err != nil {
 		return teardown, &workspaceDeleteStepError{step: "load workspace for audit", err: err}

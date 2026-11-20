@@ -2,8 +2,11 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
+
+	"github.com/multica-ai/multica/server/internal/legalhold"
 )
 
 // JobNameWorkspaceDeletion is the canonical name used in audit rows. Stable
@@ -77,6 +80,9 @@ func runWorkspaceDeletions(ctx context.Context, deleter WorkspaceDeleter, state 
 		}
 		done, err := deleter.DeleteDueWorkspace(ctx, id, now)
 		switch {
+		case errors.Is(err, legalhold.ErrHeld):
+			// A held workspace stays pending until the hold is released (spec R6 3c.7 rule 5).
+			slog.Info("workspace deletion skipped: legal hold", "workspace_id", id)
 		case err != nil:
 			failed++
 			slog.Error("workspace deletion failed; the workspace stays pending and the next run retries", "workspace_id", id, "error", err)

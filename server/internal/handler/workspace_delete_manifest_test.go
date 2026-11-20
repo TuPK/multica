@@ -22,6 +22,7 @@ const (
 // handler deletion graph must then implement that decision before CI passes.
 var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"cloud_agent_connection":             workspaceDelete,
+	"legal_hold":                         workspaceDeleteKeep,
 	"hub_activity":                       workspaceDelete,
 	"hub_item":                           workspaceDelete,
 	"hub_item_version_blob":              workspaceDelete,
