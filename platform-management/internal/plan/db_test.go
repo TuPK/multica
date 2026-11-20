@@ -414,3 +414,30 @@ func TestDBAudienceAndBillingModelRoundTripAndAnUnsetFieldKeepsTheStoredValue(t 
 		t.Fatalf("a plan created with the fields unset: %q/%q, want any/seat", got.Audience, got.BillingModel)
 	}
 }
+
+// Spec R6 section 3b.1 rule 7 and 3b.2 (QT1): the plan history lists the price
+// changes of the plan, because they are audit rows of the plan.
+func TestPlanHistoryIncludesPriceChanges(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	key := randomKey(t)
+	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM audit_event WHERE target_type = 'plan' AND target_id = $1`, key) })
+
+	for _, action := range []string{"plan.price_scheduled", "plan.price_applied"} {
+		if _, err := pool.Exec(ctx, `INSERT INTO audit_event (actor_type, actor_label, action, target_type, target_id, target_label, detail)
+		        VALUES ('staff', 'root@example.test', $1, 'plan', $2, 'History test', '{"plan": "x"}')`, action, key); err != nil {
+			t.Fatalf("insert audit row %s: %v", action, err)
+		}
+	}
+	rows, err := NewPgxReader(pool).History(ctx, key)
+	if err != nil {
+		t.Fatalf("History: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, r := range rows {
+		seen[r.Action] = true
+	}
+	if !seen["plan.price_scheduled"] || !seen["plan.price_applied"] {
+		t.Fatalf("history actions = %v, want the price changes", seen)
+	}
+}
