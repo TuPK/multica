@@ -435,6 +435,9 @@ type putPlanBody struct {
 	IsPublic        bool            `json:"is_public"`
 	Sort            int             `json:"sort"`
 	Archived        bool            `json:"archived"`
+	// ConfirmAffectsSubscribers acknowledges that a lowered limit applies to the
+	// plan's existing subscribers (spec 3b.1 rule 3).
+	ConfirmAffectsSubscribers bool `json:"confirm_affects_subscribers"`
 }
 
 // planDoc is a plan as the JSON object clients see, without its key, so two
@@ -454,6 +457,29 @@ func planDoc(p plan.Plan) (map[string]any, error) {
 
 // planChanges returns {field: {from, to}} for each field that differs. from is
 // nil for every field of a plan that is new.
+// limitsLowered reports whether next lowers any gate of old. A nil value is
+// unlimited, so going from unlimited to a number is a lowering, and the reverse is not.
+func limitsLowered(old, next plan.Limits) bool {
+	for gate := range old {
+		if v, ok := next[gate]; ok && lowered(old[gate], v) {
+			return true
+		}
+	}
+	for gate, v := range next {
+		if _, ok := old[gate]; !ok && v != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func lowered(old, next *int64) bool {
+	if next == nil {
+		return false
+	}
+	return old == nil || *next < *old
+}
+
 func planChanges(from *plan.Plan, to plan.Plan) (map[string]any, error) {
 	newDoc, err := planDoc(to)
 	if err != nil {
@@ -566,6 +592,20 @@ func (c *Console) putPlan(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := plan.Validate(next); err != nil {
 			return badRequest("invalid_plan", err.Error())
+		}
+		// Lowering a limit only blocks new purchases, so it still needs the caller
+		// to confirm that subscribers are affected (spec 3b.1 rule 3, D88).
+		if exists && limitsLowered(old.Limits, next.Limits) && !body.ConfirmAffectsSubscribers {
+			n, err := tx.CountSubscriptions(r.Context(), key)
+			if err != nil {
+				return err
+			}
+			if n > 0 {
+				e := &Error{Status: http.StatusConflict, Code: "plan_limit_change_confirm_required",
+					Message: "lowering a limit of a plan with subscribers affects them; resend with confirm_affects_subscribers = true"}
+				e.Detail = map[string]any{"affected_subscriptions": n}
+				return e
+			}
 		}
 		if err := plan.ValidateCurrency(next.Currency, c.EnabledCurrencies); err != nil {
 			e := badRequest("price_invalid", err.Error())
