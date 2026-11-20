@@ -46,6 +46,18 @@ type AccountWorkspace struct {
 	Role        string `json:"role"`
 	OwnerCount  int    `json:"owner_count"`
 	MemberCount int    `json:"member_count"`
+	// Successors are the members who may take over sole ownership (spec GĐ11).
+	// Set only for a workspace that needs a choice.
+	Successors []Successor `json:"successors,omitempty"`
+}
+
+// Successor is a member who may take over the ownership of a workspace.
+type Successor struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	Name   string `json:"name"`
+	Role   string `json:"role"`
+	Status string `json:"status"`
 }
 
 // NeedChoice reports whether the account is the only owner of a workspace that
@@ -177,6 +189,13 @@ func (s *Service) PreviewAccount(ctx context.Context, by Actor, userID string) (
 		}
 		out.Email = acc.Email
 		out.NeedChoice = needChoiceOf(wss)
+		for i := range out.NeedChoice {
+			succ, err := tx.AccountSuccessors(ctx, out.NeedChoice[i].ID, acc.ID)
+			if err != nil {
+				return err
+			}
+			out.NeedChoice[i].Successors = succ
+		}
 		for _, w := range wss {
 			if w.MemberCount == 1 {
 				out.DeletedWith = append(out.DeletedWith, w)

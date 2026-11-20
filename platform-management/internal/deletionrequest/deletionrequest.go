@@ -180,6 +180,9 @@ type Tx interface {
 	AccountUser(ctx context.Context, id string) (AccountUser, bool, error)
 	// AccountWorkspaces lists the workspaces the user belongs to (spec R6 section 7.3).
 	AccountWorkspaces(ctx context.Context, userID string) ([]AccountWorkspace, error)
+	// AccountSuccessors lists the members of a workspace who may take over its
+	// ownership, excluding the account being deleted (spec R6 section 7.3, GĐ11).
+	AccountSuccessors(ctx context.Context, workspaceID, excludeUserID string) ([]Successor, error)
 	// WorkspaceMember returns the role and account status of a member; found is
 	// false when the user is not a member.
 	WorkspaceMember(ctx context.Context, workspaceID, userID string) (role, status string, found bool, err error)

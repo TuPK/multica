@@ -318,6 +318,26 @@ func (t *pgxTx) AccountWorkspaces(ctx context.Context, userID string) ([]Account
 	return out, nil
 }
 
+func (t *pgxTx) AccountSuccessors(ctx context.Context, workspaceID, excludeUserID string) ([]Successor, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	ex, err := parseUUID(excludeUserID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := t.q.ListDeletionSuccessorCandidates(ctx, db.ListDeletionSuccessorCandidatesParams{WorkspaceID: ws, UserID: ex})
+	if err != nil {
+		return nil, fmt.Errorf("list successor candidates: %w", err)
+	}
+	out := make([]Successor, len(rows))
+	for i, r := range rows {
+		out[i] = Successor{UserID: uuidText(r.UserID), Email: r.Email, Name: r.Name, Role: r.Role, Status: "active"}
+	}
+	return out, nil
+}
+
 func (t *pgxTx) WorkspaceMember(ctx context.Context, workspaceID, userID string) (string, string, bool, error) {
 	ws, err := parseUUID(workspaceID)
 	if err != nil {

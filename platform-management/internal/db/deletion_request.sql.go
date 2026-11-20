@@ -623,6 +623,57 @@ func (q *Queries) ListDeletionRequestsInTenant(ctx context.Context, arg ListDele
 	return items, nil
 }
 
+const listDeletionSuccessorCandidates = `-- name: ListDeletionSuccessorCandidates :many
+SELECT m.user_id, u.email, u.name, m.role
+FROM member m
+JOIN "user" u ON u.id = m.user_id
+LEFT JOIN platform_account pa ON pa.user_id = m.user_id
+WHERE m.workspace_id = $1 AND m.user_id <> $2
+  AND m.role IN ('admin', 'member') AND NOT m.is_guest
+  AND COALESCE(pa.status, 'active') = 'active'
+ORDER BY u.email
+`
+
+type ListDeletionSuccessorCandidatesParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+}
+
+type ListDeletionSuccessorCandidatesRow struct {
+	UserID pgtype.UUID `json:"user_id"`
+	Email  string      `json:"email"`
+	Name   string      `json:"name"`
+	Role   string      `json:"role"`
+}
+
+// Members who may take over sole ownership of a workspace (spec GĐ11): an
+// admin or member that is not a guest, has a live account, and is not the
+// account being deleted.
+func (q *Queries) ListDeletionSuccessorCandidates(ctx context.Context, arg ListDeletionSuccessorCandidatesParams) ([]ListDeletionSuccessorCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listDeletionSuccessorCandidates, arg.WorkspaceID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDeletionSuccessorCandidatesRow{}
+	for rows.Next() {
+		var i ListDeletionSuccessorCandidatesRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Email,
+			&i.Name,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDeletionTenantWorkspaces = `-- name: ListDeletionTenantWorkspaces :many
 SELECT workspace_id FROM tenant_workspace WHERE tenant_id = $1 ORDER BY workspace_id
 `

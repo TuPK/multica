@@ -38,7 +38,7 @@ func (q *Queries) DeletePlan(ctx context.Context, key string) (int64, error) {
 }
 
 const getPlan = `-- name: GetPlan :one
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version, description FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, description, audience, billing_model, usage_rates, usage_terms, version FROM plan
 WHERE key = $1
 `
 
@@ -59,18 +59,18 @@ func (q *Queries) GetPlan(ctx context.Context, key string) (Plan, error) {
 		&i.IsPublic,
 		&i.Sort,
 		&i.ArchivedAt,
+		&i.Description,
 		&i.Audience,
 		&i.BillingModel,
 		&i.UsageRates,
 		&i.UsageTerms,
 		&i.Version,
-		&i.Description,
 	)
 	return i, err
 }
 
 const getPlanForUpdate = `-- name: GetPlanForUpdate :one
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version, description FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, description, audience, billing_model, usage_rates, usage_terms, version FROM plan
 WHERE key = $1
 FOR UPDATE
 `
@@ -92,12 +92,12 @@ func (q *Queries) GetPlanForUpdate(ctx context.Context, key string) (Plan, error
 		&i.IsPublic,
 		&i.Sort,
 		&i.ArchivedAt,
+		&i.Description,
 		&i.Audience,
 		&i.BillingModel,
 		&i.UsageRates,
 		&i.UsageTerms,
 		&i.Version,
-		&i.Description,
 	)
 	return i, err
 }
@@ -209,7 +209,7 @@ func (q *Queries) ListPlanHistory(ctx context.Context, targetID string) ([]ListP
 
 const listPlans = `-- name: ListPlans :many
 
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version, description FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, description, audience, billing_model, usage_rates, usage_terms, version FROM plan
 ORDER BY sort, key
 `
 
@@ -239,12 +239,12 @@ func (q *Queries) ListPlans(ctx context.Context) ([]Plan, error) {
 			&i.IsPublic,
 			&i.Sort,
 			&i.ArchivedAt,
+			&i.Description,
 			&i.Audience,
 			&i.BillingModel,
 			&i.UsageRates,
 			&i.UsageTerms,
 			&i.Version,
-			&i.Description,
 		); err != nil {
 			return nil, err
 		}

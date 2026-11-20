@@ -192,3 +192,40 @@ func TestAccountPreviewWritesNothing(t *testing.T) {
 		t.Fatalf("preview wrote rows")
 	}
 }
+
+// The preview lists, for each workspace that needs a choice, the members who
+// may take over sole ownership: admins and members with a live account, never
+// the account itself or a viewer (spec R6 section 7.3, GĐ11).
+func TestPreviewListsSuccessorCandidatesForSoleOwner(t *testing.T) {
+	f := newAccountFixture(t)
+	target, _ := f.user("owner")
+	admin, adminEmail := f.user("admin")
+	member, memberEmail := f.user("member")
+	viewer, _ := f.user("viewer")
+	ws := f.workspace(false)
+	f.member(ws, target, "owner")
+	f.member(ws, admin, "admin")
+	f.member(ws, member, "member")
+	f.member(ws, viewer, "viewer")
+
+	out, err := f.svc.PreviewAccount(context.Background(), f.staff, target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.NeedChoice) != 1 {
+		t.Fatalf("need_choice = %d, want 1", len(out.NeedChoice))
+	}
+	got := map[string]string{}
+	for _, s := range out.NeedChoice[0].Successors {
+		got[s.UserID] = s.Email
+	}
+	if len(got) != 2 || got[admin] != adminEmail || got[member] != memberEmail {
+		t.Fatalf("successors = %v, want the admin and the member only", got)
+	}
+	if _, ok := got[target]; ok {
+		t.Fatal("the account being deleted listed itself as a successor")
+	}
+	if _, ok := got[viewer]; ok {
+		t.Fatal("a viewer was listed as a successor")
+	}
+}

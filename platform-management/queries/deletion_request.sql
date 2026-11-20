@@ -167,3 +167,16 @@ RETURNING *;
 -- Active system administrators (rule 5): an approval needs one besides the requester.
 SELECT count(*)::bigint FROM platform_staff
 WHERE role = 'system_admin' AND revoked_at IS NULL;
+
+-- name: ListDeletionSuccessorCandidates :many
+-- Members who may take over sole ownership of a workspace (spec GĐ11): an
+-- admin or member that is not a guest, has a live account, and is not the
+-- account being deleted.
+SELECT m.user_id, u.email, u.name, m.role
+FROM member m
+JOIN "user" u ON u.id = m.user_id
+LEFT JOIN platform_account pa ON pa.user_id = m.user_id
+WHERE m.workspace_id = $1 AND m.user_id <> $2
+  AND m.role IN ('admin', 'member') AND NOT m.is_guest
+  AND COALESCE(pa.status, 'active') = 'active'
+ORDER BY u.email;
