@@ -1227,3 +1227,21 @@ func planHistorySource(r plan.Reader) plan.HistoryReader {
 type noHistory struct{}
 
 func (noHistory) History(context.Context, string) ([]plan.HistoryRow, error) { return nil, nil }
+
+// Spec R6 section 3b.1 rule 2: the key of a plan is fixed by its path; a PUT whose
+// body names another key does not create or rename a plan.
+func TestPlanKeyIsImmutable(t *testing.T) {
+	e := newConsoleEnv(t)
+	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", teamBody), 200)
+	renamed := strings.Replace(teamBody, `{"name":"Team"`, `{"key":"other","name":"Team"`, 1)
+	rec := e.do(adminUser, "PUT", "/api/platform/plans/team", renamed)
+	if rec.Code != 200 && rec.Code != 400 {
+		t.Fatalf("status = %d, want 200 or 400; body %s", rec.Code, rec.Body)
+	}
+	if _, ok := e.plans.rows["other"]; ok {
+		t.Fatal("a PUT body created a plan under another key")
+	}
+	if got := e.plans.rows["team"].Key; got != "team" {
+		t.Fatalf("stored key = %q, want team", got)
+	}
+}
