@@ -159,9 +159,10 @@ func TestLibrarianBackfillRestoresKindsAndTheVenturesBase(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	done, err := e.svc.RunLibrarian(ctx, LibrarianJobTaxonomyBackfill, time.Now())
-	if err != nil || done != 1 {
-		t.Fatalf("backfill: done %d, err %v", done, err)
+	// The shared test database can hold other workspaces that also need the
+	// backfill, so assert on this workspace's rows, not on the total.
+	if _, err := e.svc.RunLibrarian(ctx, LibrarianJobTaxonomyBackfill, time.Now()); err != nil {
+		t.Fatalf("backfill: %v", err)
 	}
 	kinds, _ := e.svc.ListKnowledgeKinds(ctx, e.ws)
 	if len(kinds) != len(defaultKnowledgeKinds) {
