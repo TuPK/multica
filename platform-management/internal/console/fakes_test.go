@@ -96,6 +96,7 @@ func (activeGuard) State(context.Context, string) (accountguard.Record, error) {
 // fakeReader serves canned rows and records what it was asked.
 type fakeReader struct {
 	details  map[string]WorkspaceDetail
+	limits   map[string]map[string]*int64
 	users    []UserRow
 	userDets map[string]UserDetail
 	notes    []Note
@@ -161,6 +162,11 @@ func (r *fakeReader) ListOrders(_ context.Context, status billing.Status, newest
 
 func (r *fakeReader) ListOrderEinvoices(_ context.Context, orderID string) ([]EinvoiceHistoryRow, error) {
 	return r.history[orderID], r.historyErr
+}
+
+// WorkspaceLimits returns the fake limits set for a workspace.
+func (r *fakeReader) WorkspaceLimits(_ context.Context, ws string, _ time.Time) (map[string]*int64, error) {
+	return r.limits[ws], nil
 }
 
 func (r *fakeReader) WorkspaceUsage(_ context.Context, ws string, _ time.Time) (usage.Month, error) {

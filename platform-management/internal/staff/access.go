@@ -57,6 +57,8 @@ const (
 	ActionTenantPolicyRead     = "tenant_policy.read"       // M44
 	ActionTenantPolicyWrite    = "tenant_policy.write"      // M45
 	ActionQuotaRequestsRead    = "quota_requests.read"      // M46
+	ActionTenantResourcesRead  = "tenant_resources.read"    // M38
+	ActionSystemResourcesRead  = "system_resources.read"    // M39
 	ActionQuotaRequestDecide   = "quota_requests.decide"    // M47
 	ActionQuotaRequestCreate   = "quota_requests.create"    // M48
 	ActionAuditExport          = "audit.export"             // M51
@@ -88,6 +90,8 @@ var matrix = map[string][4]Access{
 	ActionTenantPolicyRead:     {All, Own, All, None},
 	ActionTenantPolicyWrite:    {All, Own, None, None},
 	ActionQuotaRequestsRead:    {All, Own, None, All},
+	ActionTenantResourcesRead:  {All, Own, All, All},
+	ActionSystemResourcesRead:  {All, None, None, None},
 	ActionQuotaRequestDecide:   {All, None, None, None},
 	ActionQuotaRequestCreate:   {All, Own, None, None},
 	ActionAuditExport:          {All, Own, None, None},

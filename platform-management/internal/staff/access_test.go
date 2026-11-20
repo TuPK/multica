@@ -57,6 +57,8 @@ func specMatrix() []matrixRow {
 		{"M44", ActionTenantPolicyRead, All, Own, All, None},
 		{"M45", ActionTenantPolicyWrite, All, Own, None, None},
 		{"M46", ActionQuotaRequestsRead, All, Own, None, All},
+		{"M38", ActionTenantResourcesRead, All, Own, All, All},
+		{"M39", ActionSystemResourcesRead, All, None, None, None},
 		{"M47", ActionQuotaRequestDecide, All, None, None, None},
 		{"M48", ActionQuotaRequestCreate, All, Own, None, None},
 		{"M51", ActionAuditExport, All, Own, None, None},
@@ -70,8 +72,8 @@ func specMatrix() []matrixRow {
 
 func TestPermissionMatrixMatchesSpec(t *testing.T) {
 	rows := specMatrix()
-	if len(rows) != 49 {
-		t.Fatalf("the hand-written matrix has %d rows, want M1 to M32", len(rows))
+	if len(rows) != 51 {
+		t.Fatalf("the hand-written matrix has %d rows, want 51", len(rows))
 	}
 	for _, r := range rows {
 		for role, want := range map[Role]Access{
@@ -131,11 +133,13 @@ func TestSupportAndBillingAccessUnchangedFromSpec52(t *testing.T) {
 		ActionTenantsList, ActionTenantsRead, ActionWorkspacesRead, ActionNotesWrite,
 		ActionWorkspacesLock, ActionOverviewRead, ActionUsersRead, ActionAccountsControl, ActionAuditRead,
 		ActionConsoleSignIn, ActionWorkspacesList, ActionTenantUsersRead, ActionRuntimesRead, ActionTenantPolicyRead, ActionTenantStatus,
+		ActionTenantResourcesRead, // M38: support sees every tenant (spec row M38)
 	}
 	billingAll := []string{
 		ActionPriceChangeRead, ActionTenantsList, ActionTenantsRead, ActionWorkspacesRead, ActionNotesWrite,
 		ActionSubscriptionsManage, ActionOrdersRead, ActionOrdersDecide, ActionPaymentsManage,
 		ActionOverviewRead, ActionUsersRead, ActionAuditRead, ActionConsoleSignIn, ActionPlanHistoryRead, ActionWorkspacesList, ActionTenantUsersRead, ActionTenantLimitOverride, ActionQuotaRequestsRead,
+		ActionTenantResourcesRead, // M38: billing sees every tenant (spec row M38)
 	}
 	for role, all := range map[Role][]string{RoleSupport: supportAll, RoleBilling: billingAll} {
 		for _, a := range Actions() {

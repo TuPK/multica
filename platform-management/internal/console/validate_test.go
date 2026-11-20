@@ -334,6 +334,8 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/accounts/{id}":                            systemOnly,
 		"/api/platform/accounts/{id}/cancel":                     systemOnly,
 		"/api/platform/accounts/{id}/resend-welcome":             systemOnly,
+		"/api/platform/tenants/{id}/resources":                   scopedAll,
+		"/api/platform/resources":                                systemOnly,
 	}
 	methodRoles := map[string][]staff.Role{
 		"GET /api/platform/tenants/{id}/policy": {sa, ta, support},

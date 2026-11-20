@@ -353,6 +353,10 @@ type Reader interface {
 	ListOrders(ctx context.Context, status billing.Status, newestFirst bool, limit int, scope Scope) ([]OrderRow, error)
 	// WorkspaceUsage returns the usage tab of a workspace for the UTC month of now.
 	WorkspaceUsage(ctx context.Context, workspaceID string, now time.Time) (usage.Month, error)
+	// WorkspaceLimits returns the effective limit of every gate of a workspace at
+	// now: its plan, its overrides and its tenant (spec R6 section 3b.4). A nil
+	// limit is no limit.
+	WorkspaceLimits(ctx context.Context, workspaceID string, now time.Time) (map[string]*int64, error)
 	// GetOrder returns found == false for an unknown order.
 	GetOrder(ctx context.Context, id string) (o OrderRow, found bool, err error)
 	// RecentOrders returns a workspace's newest orders first, up to limit.

@@ -1425,3 +1425,19 @@ func quotaFromRow(x db.QuotaRequest) quota.Request {
 	}
 	return out
 }
+
+// WorkspaceLimits builds the workspace's entitlement policy and returns the
+// limit of each gate. The loader reads the subscription, the plan and the
+// tenant, the same way the Multica policy does.
+func (r *PgxReader) WorkspaceLimits(ctx context.Context, workspaceID string, now time.Time) (map[string]*int64, error) {
+	in, err := entitlement.NewPgxLoader(r.pool).Inputs(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("load entitlement inputs: %w", err)
+	}
+	gates := entitlement.Build(in, now).Gates
+	out := make(map[string]*int64, len(gates))
+	for name, g := range gates {
+		out[name] = g.Limit
+	}
+	return out, nil
+}
