@@ -1082,4 +1082,7 @@ export const vi: Record<string, string> = {
   "Seats must be a whole number of at least 1.": "Số chỗ phải là số nguyên từ 1 trở lên.",
   "Welcome email rate limit reached.": "Đã đạt giới hạn gửi email chào mừng.",
   "Yr": "Năm",
+  "Count": "Số lượng",
+  "Platform usage totals": "Tổng mức sử dụng nền tảng",
+  "Pending orders per currency": "Đơn chờ thanh toán theo tiền tệ",
 };

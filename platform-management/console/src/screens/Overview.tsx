@@ -185,6 +185,15 @@ export function Overview() {
 
   const hasSupportingTables = hasUsageSnapshot || pendingCurrencyEntries.length > 0;
 
+  // Chart inputs. Storage is a byte size, not a count, so it stays out of the usage chart.
+  const usageChartData = usageRows
+    .filter((row) => row.raw !== null)
+    .map((row) => ({ label: row.label, count: row.raw ?? 0 }));
+  const pendingChartData = pendingCurrencyEntries.map(([currency, summary]) => ({
+    currency,
+    orders: summary.orders,
+  }));
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -508,6 +517,31 @@ export function Overview() {
                       </Text>
                     )}
                   </div>
+                  {usageChartData.length > 0 && (
+                    <Card padding={4} className="space-y-3">
+                      <Chart
+                        data={usageChartData as unknown as Record<string, unknown>[]}
+                        xKey="label"
+                        series={[
+                          bar("count", {
+                            label: t("Count"),
+                            radius: 4,
+                            color: () => "var(--data-color-1)",
+                          }),
+                        ]}
+                        height={220}
+                        grid={<ChartGrid horizontal />}
+                        axes={
+                          <>
+                            <ChartAxis position="bottom" />
+                            <ChartAxis position="left" tickCount={4} tickFormat={integerTick} />
+                          </>
+                        }
+                        tooltip
+                        title={t("Platform usage totals")}
+                      />
+                    </Card>
+                  )}
                   <Card padding={0} className="overflow-x-auto">
                     <Table density="compact" dividers="rows" hasHover>
                       <TableHeader>
@@ -559,6 +593,29 @@ export function Overview() {
                       {pendingCurrencyEntries.length === 1 ? "currency" : "currencies"}
                     </Text>
                   </div>
+                  <Card padding={4} className="space-y-3">
+                    <Chart
+                      data={pendingChartData as unknown as Record<string, unknown>[]}
+                      xKey="currency"
+                      series={[
+                        bar("orders", {
+                          label: t("Orders"),
+                          radius: 4,
+                          color: () => "var(--data-color-2)",
+                        }),
+                      ]}
+                      height={200}
+                      grid={<ChartGrid horizontal />}
+                      axes={
+                        <>
+                          <ChartAxis position="bottom" />
+                          <ChartAxis position="left" tickCount={4} tickFormat={integerTick} />
+                        </>
+                      }
+                      tooltip
+                      title={t("Pending orders per currency")}
+                    />
+                  </Card>
                   <Card padding={0} className="overflow-x-auto">
                     <Table density="compact" dividers="rows" hasHover>
                       <TableHeader>

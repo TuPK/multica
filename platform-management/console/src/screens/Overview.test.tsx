@@ -93,8 +93,9 @@ describe("Overview screen", () => {
     expect(screen.getByRole("heading", { name: "Platform Usage Snapshot" })).toBeInTheDocument();
     const supportingBand = screen.getByLabelText("Supporting tables");
     expect(within(supportingBand).getByText("2026-11-18")).toBeInTheDocument();
-    expect(within(supportingBand).getByText("24")).toBeInTheDocument();
-    expect(within(supportingBand).getByText("120")).toBeInTheDocument();
+    // The usage chart repeats each value as a label, so the table cell is one of several "24"s.
+    expect(within(supportingBand).getAllByText("24").length).toBeGreaterThan(0);
+    expect(within(supportingBand).getAllByText("120").length).toBeGreaterThan(0);
     expect(within(supportingBand).getByText("2.0 KB")).toBeInTheDocument();
 
     // Analytics Dashboard charts (@astryxdesign/charts) and supporting tables bands
