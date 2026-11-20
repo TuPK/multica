@@ -106,3 +106,29 @@ func TestDetachTenantDeletesPolicyRow(t *testing.T) {
 		t.Errorf("tenant_policy rows = %d after the tenant went, want 0", n)
 	}
 }
+
+// A workspace with no tenant policy row keeps its own policy as stored, and the
+// read shows no floor.
+func TestNoTenantPolicyRowKeepsBehaviour(t *testing.T) {
+	requirePolicyDB(t)
+	ws := policyWorkspace(t)
+	setPolicyFeature(t, ws, true)
+	putPolicy(t, ws, map[string]any{"require_mfa": true})
+
+	got, err := workspaceguard.EffectivePolicy(context.Background(), testHandler.Queries, testHandler.Entitlements, parseUUID(ws))
+	if err != nil {
+		t.Fatalf("EffectivePolicy: %v", err)
+	}
+	if !got.RequireMFA || got.RequireSSO {
+		t.Errorf("effective policy = mfa %v sso %v, want the stored mfa only", got.RequireMFA, got.RequireSSO)
+	}
+	var body struct {
+		Floor *struct {
+			RequireMFA bool `json:"require_mfa"`
+		} `json:"floor"`
+	}
+	doPolicy(t, http.MethodGet, ws, testUserID, nil).Want(http.StatusOK).JSON(&body)
+	if body.Floor != nil {
+		t.Errorf("floor = %+v, want none without a tenant policy row", body.Floor)
+	}
+}

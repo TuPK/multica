@@ -62,3 +62,21 @@ func TestPolicyCodesAndMessages(t *testing.T) {
 		}
 	}
 }
+
+// The owner signs in with an email code under a tenant SSO floor: require_sso
+// does not bind the owner. A member in the same position is still refused.
+func TestOwnerStillSignsInWithEmailCodeUnderTenantSSOFloor(t *testing.T) {
+	now := time.Unix(2_000_000, 0)
+	floor := workspacepolicy.Default()
+	floor.RequireSSO = true
+	emailCode := Session{AMR: []string{"otp"}, AuthTime: now.Unix() - 3600, AuthTimeKnown: true, SSOCovered: true, SSOConnectionID: "conn-1", IsOwner: true}
+
+	if got := CheckWorkspaceAccess(floor, emailCode, now); got != "" {
+		t.Errorf("owner email-code sign-in = %q, want allowed under the SSO floor", got)
+	}
+	member := emailCode
+	member.IsOwner = false
+	if got := CheckWorkspaceAccess(floor, member, now); got != CodeSSORequired {
+		t.Errorf("member email-code sign-in = %q, want %q", got, CodeSSORequired)
+	}
+}
