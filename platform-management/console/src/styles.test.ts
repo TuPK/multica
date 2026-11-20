@@ -57,9 +57,11 @@ describe("console stylesheet and real Astryx Neutral integration", () => {
 describe("theme palettes", () => {
   it("defines blue-white, light and dark palettes against the data-theme attribute", () => {
     const css = readFileSync(stylesPath, "utf8");
-    expect(css).toContain('[data-astryx-theme="neutral"]:not([data-theme="light"]):not([data-theme="dark"])');
-    expect(css).toContain('[data-astryx-theme="neutral"][data-theme="light"]');
-    expect(css).toContain('[data-astryx-theme="neutral"][data-theme="dark"]');
+    // data-theme is on <html>; data-astryx-theme is on a descendant, so the
+    // palettes must select the descendant from the root.
+    expect(css).toContain(':root:not([data-theme="light"]):not([data-theme="dark"]) [data-astryx-theme="neutral"]');
+    expect(css).toContain(':root[data-theme="light"] [data-astryx-theme="neutral"]');
+    expect(css).toContain(':root[data-theme="dark"] [data-astryx-theme="neutral"]');
   });
 
   it("writes explicit values instead of light-dark(), which Lightning CSS mangles inside custom properties", () => {

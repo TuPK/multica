@@ -33,6 +33,8 @@ import { Button } from "@multica/ui/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
 import type { MeResponse } from "./types";
 import { SidebarCollapsedProvider } from "./sidebar-state";
+import { HeaderControlsProvider } from "./header-controls";
+import { useTheme } from "../theme";
 import { LanguageSwitch, ThemeSwitch } from "./PreferenceControls";
 import { useLanguage } from "../i18n";
 import { t } from "../i18n";
@@ -66,6 +68,7 @@ export function Layout({
   children,
 }: LayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const theme = useTheme();
   // Re-render this shell when the language changes so its own labels follow.
   useLanguage();
 
@@ -132,6 +135,28 @@ export function Layout({
     },
   ];
 
+  const headerControls = (
+    <>
+      <LanguageSwitch />
+      <ThemeSwitch />
+      <span className="min-w-0 truncate text-label text-muted-foreground" title={user.email}>
+        {user.email}
+      </span>
+      <StatusBadge status={user.role} />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={onLogout}
+        title={t("Sign out")}
+        aria-label={t("Sign out")}
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+      >
+        <LogOut className="size-4" aria-hidden="true" />
+      </Button>
+    </>
+  );
+
   return (
     <SidebarCollapsedProvider value={isCollapsed}>
     <AppShell
@@ -147,9 +172,27 @@ export function Layout({
             hasButton: false,
           }}
           header={
-            <div className="flex h-8 items-center px-1">
-              <img src="/brand/delegora-logo-on-light.svg" alt={t("Delegora")} className="h-7 w-auto" />
-            </div>
+            isCollapsed ? (
+              // The collapsed rail is too narrow for the wordmark, so show the symbol only.
+              <div className="flex h-8 w-full items-center justify-center overflow-visible">
+                <img
+                  src={theme === "light" ? "/brand/delegora-symbol-on-light.svg" : "/brand/delegora-symbol-on-dark.svg"}
+                  alt={t("Delegora")}
+                  className="size-6 shrink-0"
+                />
+              </div>
+            ) : (
+              <div className="flex min-w-0 items-center gap-2 px-1">
+                <img
+                  src={theme === "light" ? "/brand/delegora-logo-on-light.svg" : "/brand/delegora-logo-on-dark.svg"}
+                  alt={t("Delegora")}
+                  className="h-6 w-auto shrink-0"
+                />
+                <span className="truncate whitespace-nowrap text-caption text-muted-foreground">
+                  {t("Platform Console")}
+                </span>
+              </div>
+            )
           }
           footerIcons={
             <>
@@ -209,26 +252,7 @@ export function Layout({
       }
     >
       <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-5 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-          <LanguageSwitch />
-          <ThemeSwitch />
-          <span className="min-w-0 truncate text-label text-muted-foreground" title={user.email}>
-            {user.email}
-          </span>
-          <StatusBadge status={user.role} />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={onLogout}
-            title={t("Sign out")}
-            aria-label={t("Sign out")}
-            className="shrink-0 text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
-        {children}
+        <HeaderControlsProvider value={headerControls}>{children}</HeaderControlsProvider>
       </div>
     </AppShell>
     </SidebarCollapsedProvider>

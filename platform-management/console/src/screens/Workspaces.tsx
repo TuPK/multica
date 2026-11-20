@@ -120,7 +120,7 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
   return (
     <Layout
       header={
-        <LayoutHeader>
+        <LayoutHeader padding={0}>
           <PageHeader
             title={t("Workspaces")}
             meta={
@@ -132,7 +132,7 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
         </LayoutHeader>
       }
       content={
-        <LayoutContent>
+        <LayoutContent padding={0}>
           <div className="space-y-6">
             <Section>
               <div className="space-y-4">

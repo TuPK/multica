@@ -66,7 +66,7 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
   return (
     <Layout
       header={
-        <LayoutHeader>
+        <LayoutHeader padding={0}>
           <PageHeader
             title={
               plan?.name
@@ -96,7 +96,7 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
         </LayoutHeader>
       }
       content={
-        <LayoutContent>
+        <LayoutContent padding={0}>
           <div className="space-y-6">
             <Section>
               <div className="space-y-4">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Heading } from "@astryxdesign/core/Heading";
-import { HStack, Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
+import { Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
 import { Section } from "@astryxdesign/core/Section";
 import {
   Table,
@@ -29,6 +29,7 @@ import {
 } from "../api/hooks";
 import type { StaffRole } from "../components/types";
 import { t } from "../i18n";
+import { PageHeader } from "../components/PageHeader";
 
 export interface ApprovalsProps {
   userRole?: StaffRole;
@@ -85,28 +86,32 @@ export function Approvals({ userRole }: ApprovalsProps) {
 
   return (
     <Layout height="auto">
-      <LayoutHeader hasDivider>
-        <HStack justify="between" align="center" wrap="wrap" gap={3}>
-          <Heading level={1}>{t("Approvals")}</Heading>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => query.refetch()}
-            disabled={query.isFetching}
-            aria-busy={query.isFetching || undefined}
-          >
-            {query.isFetching ? (
-              <Spinner />
-            ) : (
-              <RefreshCw className="size-4" aria-hidden="true" />
-            )}
-            {t("Refresh")}
-          </Button>
-        </HStack>
-      </LayoutHeader>
+      <LayoutHeader padding={0}>
+          <PageHeader
+            title={t("Approvals")}
+            actions={
+              <>
+                <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => query.refetch()}
+                            disabled={query.isFetching}
+                            aria-busy={query.isFetching || undefined}
+                          >
+                            {query.isFetching ? (
+                              <Spinner />
+                            ) : (
+                              <RefreshCw className="size-4" aria-hidden="true" />
+                            )}
+                            {t("Refresh")}
+                          </Button>
+              </>
+            }
+          />
+        </LayoutHeader>
 
-      <LayoutContent>
+      <LayoutContent padding={0}>
         <div className="space-y-6">
           {actionError && (
             <Alert variant="destructive">

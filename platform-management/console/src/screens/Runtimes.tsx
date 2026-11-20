@@ -154,7 +154,7 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
   return (
     <Layout
       header={
-        <LayoutHeader hasDivider>
+        <LayoutHeader padding={0}>
           <PageHeader
             title={t("Runtimes")}
             meta={
@@ -179,7 +179,7 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
         </LayoutHeader>
       }
       content={
-        <LayoutContent>
+        <LayoutContent padding={0}>
           <div className="space-y-6">
             <Section className="space-y-4">
               <HStack wrap="wrap" gap={2} align="center">

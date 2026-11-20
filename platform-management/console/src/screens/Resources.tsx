@@ -190,7 +190,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
   return (
     <Layout
       header={
-        <LayoutHeader hasDivider>
+        <LayoutHeader padding={0}>
           <PageHeader
             title={t("Resources")}
             actions={
@@ -210,7 +210,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
         </LayoutHeader>
       }
       content={
-        <LayoutContent>
+        <LayoutContent padding={0}>
           <div className="space-y-6">
             {data && !data.complete && (
               <Alert role="status">

@@ -71,8 +71,10 @@
   /* Blue-and-white palette (default) matching the Multica web app: the Astryx
      neutral theme keeps its black accent, so the accent tokens are redirected to
      the Multica info blue. Surfaces stay white; the page body gets a faint blue tint.
-     The :not() guards keep this palette from overriding the light and dark palettes below. */
-  [data-astryx-theme="neutral"]:not([data-theme="light"]):not([data-theme="dark"]) {
+     The :not() guards keep this palette from overriding the light and dark palettes below.
+     The data-theme attribute lives on <html> while data-astryx-theme is on a descendant,
+     so the palette selectors use a descendant combinator. */
+  :root:not([data-theme="light"]):not([data-theme="dark"]) [data-astryx-theme="neutral"] {
     --color-accent: #0074e2;
     --color-accent-muted: #b9d7ff;
     --color-text-accent: #0067ce;
@@ -82,20 +84,23 @@
 
     /* Sidebar: the Astryx SideNav reads these --sidebar* tokens, not the
        color-* ones above, so they are set to the same blue-white palette. */
-    --sidebar: #e8f2fd;
-    --sidebar-foreground: #0b2a4a;
-    --sidebar-border: #c9ddf5;
-    --sidebar-primary: #0074e2;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #d3e6fc;
-    --sidebar-accent-foreground: #0067ce;
-    --sidebar-ring: #0074e2;
+    /* Multica web blue-white: a solid blue rail with white text beside white content.
+       The content area keeps --app-shell white; the rail is painted by the rule below. */
+    --app-shell: #ffffff;
+    --sidebar: #0054a6;
+    --sidebar-foreground: #ffffff;
+    --sidebar-border: rgb(255 255 255 / 16%);
+    --sidebar-primary: #ffffff;
+    --sidebar-primary-foreground: #0054a6;
+    --sidebar-accent: rgb(255 255 255 / 14%);
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-ring: #ffffff;
   }
 
   /* Light palette: neutral white and gray with black accent, the Astryx neutral
      default without the blue tint. Values are explicit per theme because
      Lightning CSS mangles the light-dark function inside custom properties. */
-  [data-astryx-theme="neutral"][data-theme="light"] {
+  :root[data-theme="light"] [data-astryx-theme="neutral"] {
     --color-background-body: #f4f4f5;
     --color-background-surface: #ffffff;
     --color-background-card: #ffffff;
@@ -131,7 +136,7 @@
 
   /* Dark palette: dark surfaces with light text and a light accent, so buttons
      and selected states keep their contrast. */
-  [data-astryx-theme="neutral"][data-theme="dark"] {
+  :root[data-theme="dark"] [data-astryx-theme="neutral"] {
     --color-background-body: #111113;
     --color-background-surface: #1c1c1f;
     --color-background-card: #1c1c1f;
@@ -163,6 +168,35 @@
     --sidebar-accent: #26262b;
     --sidebar-accent-foreground: #f4f4f5;
     --sidebar-ring: #6d9cfe;
+  }
+
+  /* Blue-white rail: the navigation panel is solid blue with white text, as in the
+     Multica web app. Text tokens are remapped inside the panel so labels, icons and
+     hover states read on blue. */
+  :root:not([data-theme="light"]):not([data-theme="dark"]) [data-astryx-theme="neutral"] .astryx-layout-panel:has(> .astryx-side-nav) {
+    background-color: var(--sidebar);
+    --foreground: #ffffff;
+    --surface-foreground: #ffffff;
+    --muted-foreground: rgb(255 255 255 / 80%);
+    --faint-foreground: rgb(255 255 255 / 62%);
+    --color-text-primary: #ffffff;
+    --color-text-secondary: rgb(255 255 255 / 80%);
+    --color-icon-primary: #ffffff;
+    --color-icon-secondary: rgb(255 255 255 / 80%);
+    --accent: rgb(255 255 255 / 14%);
+    --surface-hover: rgb(255 255 255 / 12%);
+    --surface-selected: rgb(255 255 255 / 20%);
+    --surface-selected-foreground: #ffffff;
+    --surface-border: rgb(255 255 255 / 16%);
+    --border: rgb(255 255 255 / 16%);
+    color: #ffffff;
+  }
+
+  /* Astryx paints the app shell with a fixed white background, which is the
+     column the sidebar sits in. Paint it from --app-shell so the sidebar follows
+     the active palette. */
+  [data-astryx-theme="neutral"] .astryx-app-shell {
+    background-color: var(--app-shell);
   }
 
   /* Keep selected rows unmistakably highlighted at rest and on hover inside

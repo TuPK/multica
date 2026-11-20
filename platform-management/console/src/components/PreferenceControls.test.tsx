@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { Layout } from "./Layout";
 import { getLanguage, setLanguage } from "../i18n";
 import { initTheme, setTheme } from "../theme";
+import { PageHeader } from "./PageHeader";
 
 function renderLayout() {
   return render(
@@ -13,7 +14,7 @@ function renderLayout() {
       user={{ user_id: "u-admin", email: "admin@example.com", role: "system_admin" }}
       onLogout={vi.fn()}
     >
-      <div>Content</div>
+      <PageHeader title="Content" />
     </Layout>,
   );
 }

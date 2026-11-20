@@ -27,6 +27,7 @@ import { useMe, useTenantPolicy, useTenants, useUpdateTenantPolicy } from "../ap
 import type { TenantPolicyResponse, TenantPolicyValues } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { t } from "../i18n";
+import { PageHeader } from "../components/PageHeader";
 
 export interface TenantPolicyProps {
   tenantId?: string;
@@ -494,27 +495,31 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
 
   return (
     <Layout height="auto">
-      <LayoutHeader hasDivider>
-        <HStack justify="between" align="center" wrap="wrap" gap={3}>
-          <Heading level={1}>{t("Tenant policy")}</Heading>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => policyQuery.refetch()}
-            disabled={policyQuery.isFetching || !activeTenantId}
-            aria-busy={policyQuery.isFetching || undefined}
-          >
-            {policyQuery.isFetching ? (
-              <Spinner />
-            ) : (
-              <RefreshCw className="size-4" aria-hidden="true" />
-            )}
-            {t("Refresh")}
-          </Button>
-        </HStack>
-      </LayoutHeader>
-      <LayoutContent>{content}</LayoutContent>
+      <LayoutHeader padding={0}>
+          <PageHeader
+            title={t("Tenant policy")}
+            actions={
+              <>
+                <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => policyQuery.refetch()}
+                            disabled={policyQuery.isFetching || !activeTenantId}
+                            aria-busy={policyQuery.isFetching || undefined}
+                          >
+                            {policyQuery.isFetching ? (
+                              <Spinner />
+                            ) : (
+                              <RefreshCw className="size-4" aria-hidden="true" />
+                            )}
+                            {t("Refresh")}
+                          </Button>
+              </>
+            }
+          />
+        </LayoutHeader>
+      <LayoutContent padding={0}>{content}</LayoutContent>
     </Layout>
   );
 }

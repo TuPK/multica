@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { Layout } from "./Layout";
+import { PageHeader } from "./PageHeader";
 
 const originalInnerWidth = window.innerWidth;
 const originalMatchMedia = window.matchMedia;
@@ -56,7 +57,7 @@ describe("Layout navigation", () => {
         user={{ user_id: "u-admin", email: "very.long.admin.address@example.com", role: "system_admin" }}
         onLogout={vi.fn()}
       >
-        <div>Content</div>
+        <PageHeader title="Content" />
       </Layout>,
     );
 
@@ -89,7 +90,7 @@ describe("Layout navigation", () => {
         user={{ user_id: "u-admin", email: "admin@example.com", role: "system_admin" }}
         onLogout={vi.fn()}
       >
-        <div>Content</div>
+        <PageHeader title="Content" />
       </Layout>,
     );
 
@@ -116,7 +117,7 @@ describe("Layout navigation", () => {
         user={{ user_id: "u-admin", email: "admin@example.com", role: "system_admin" }}
         onLogout={vi.fn()}
       >
-        <div>Content</div>
+        <PageHeader title="Content" />
       </Layout>,
     );
 
@@ -147,7 +148,7 @@ describe("Layout navigation", () => {
         user={{ user_id: "u-supp", email: "support@example.com", role: "support" }}
         onLogout={vi.fn()}
       >
-        <div>Content</div>
+        <PageHeader title="Content" />
       </Layout>,
     );
 
@@ -179,7 +180,7 @@ describe("Layout navigation", () => {
         user={{ user_id: "u-bill", email: "billing@example.com", role: "billing" }}
         onLogout={vi.fn()}
       >
-        <div>Content</div>
+        <PageHeader title="Content" />
       </Layout>,
     );
 
@@ -205,7 +206,7 @@ describe("Layout navigation", () => {
         user={{ user_id: "u-tadmin", email: "tadmin@example.com", role: "admin", tenant_id: "t-1" }}
         onLogout={vi.fn()}
       >
-        <div>Content</div>
+        <PageHeader title="Content" />
       </Layout>,
     );
 
@@ -229,7 +230,7 @@ describe("Layout navigation", () => {
         user={{ user_id: "u-admin", email: "admin@example.com", role: "system_admin" }}
         onLogout={onLogout}
       >
-        <div>Content</div>
+        <PageHeader title="Content" />
       </Layout>,
     );
 

@@ -122,12 +122,12 @@ export function RuntimeDetail({
     return (
       <Layout
         header={
-          <LayoutHeader hasDivider>
+          <LayoutHeader padding={0}>
             <PageHeader title={t("Runtime")} backAction={back} />
           </LayoutHeader>
         }
         content={
-          <LayoutContent>
+          <LayoutContent padding={0}>
             <LoadingState message={t("Loading runtime...")} />
           </LayoutContent>
         }
@@ -139,12 +139,12 @@ export function RuntimeDetail({
     return (
       <Layout
         header={
-          <LayoutHeader hasDivider>
+          <LayoutHeader padding={0}>
             <PageHeader title={t("Runtime")} backAction={back} />
           </LayoutHeader>
         }
         content={
-          <LayoutContent>
+          <LayoutContent padding={0}>
             <ErrorState
               title={t("Failed to load runtime")}
               message={error instanceof Error ? error.message : undefined}
@@ -199,7 +199,7 @@ export function RuntimeDetail({
   return (
     <Layout
       header={
-        <LayoutHeader hasDivider>
+        <LayoutHeader padding={0}>
           <PageHeader
             title={runtime.name || runtime.id}
             backAction={back}
@@ -254,7 +254,7 @@ export function RuntimeDetail({
         </LayoutHeader>
       }
       content={
-        <LayoutContent>
+        <LayoutContent padding={0}>
           <div className="space-y-6">
             {actionNotice && (
               <Alert role="status">

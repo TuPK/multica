@@ -49,6 +49,7 @@ import {
 import type { LegalHold, LegalHoldScopeKind } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { t } from "../i18n";
+import { PageHeader } from "../components/PageHeader";
 
 export interface LegalHoldsProps {
   userRole?: StaffRole;
@@ -153,34 +154,38 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
 
   return (
     <Layout height="auto">
-      <LayoutHeader hasDivider>
-        <HStack justify="between" align="center" wrap="wrap" gap={3}>
-          <Heading level={1}>{t("Legal holds")}</Heading>
-          <HStack gap={2} align="center">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => query.refetch()}
-              disabled={query.isFetching}
-              aria-busy={query.isFetching || undefined}
-            >
-              {query.isFetching ? (
-                <Spinner />
-              ) : (
-                <RefreshCw className="size-4" aria-hidden="true" />
-              )}
-              {t("Refresh")}
-            </Button>
-            <Button type="button" variant="default" size="sm" onClick={openPlaceDialog}>
-              <Plus className="size-4" aria-hidden="true" />
-              {t("Place legal hold")}
-            </Button>
-          </HStack>
-        </HStack>
-      </LayoutHeader>
+      <LayoutHeader padding={0}>
+          <PageHeader
+            title={t("Legal holds")}
+            actions={
+              <>
+                <HStack gap={2} align="center">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => query.refetch()}
+                              disabled={query.isFetching}
+                              aria-busy={query.isFetching || undefined}
+                            >
+                              {query.isFetching ? (
+                                <Spinner />
+                              ) : (
+                                <RefreshCw className="size-4" aria-hidden="true" />
+                              )}
+                              {t("Refresh")}
+                            </Button>
+                            <Button type="button" variant="default" size="sm" onClick={openPlaceDialog}>
+                              <Plus className="size-4" aria-hidden="true" />
+                              {t("Place legal hold")}
+                            </Button>
+                          </HStack>
+              </>
+            }
+          />
+        </LayoutHeader>
 
-      <LayoutContent>
+      <LayoutContent padding={0}>
         <div className="space-y-6">
           <Section padding={4}>
             <div className="space-y-4">

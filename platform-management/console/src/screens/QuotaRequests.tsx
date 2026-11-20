@@ -49,6 +49,7 @@ import {
 import type { QuotaRequest } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { t } from "../i18n";
+import { PageHeader } from "../components/PageHeader";
 
 export interface QuotaRequestsProps {
   userRole?: StaffRole;
@@ -168,28 +169,32 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
 
   return (
     <Layout height="auto">
-      <LayoutHeader hasDivider>
-        <HStack justify="between" align="center" wrap="wrap" gap={3}>
-          <Heading level={1}>{t("Quota requests")}</Heading>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => query.refetch()}
-            disabled={query.isFetching}
-            aria-busy={query.isFetching || undefined}
-          >
-            {query.isFetching ? (
-              <Spinner />
-            ) : (
-              <RefreshCw className="size-4" aria-hidden="true" />
-            )}
-            {t("Refresh")}
-          </Button>
-        </HStack>
-      </LayoutHeader>
+      <LayoutHeader padding={0}>
+          <PageHeader
+            title={t("Quota requests")}
+            actions={
+              <>
+                <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => query.refetch()}
+                            disabled={query.isFetching}
+                            aria-busy={query.isFetching || undefined}
+                          >
+                            {query.isFetching ? (
+                              <Spinner />
+                            ) : (
+                              <RefreshCw className="size-4" aria-hidden="true" />
+                            )}
+                            {t("Refresh")}
+                          </Button>
+              </>
+            }
+          />
+        </LayoutHeader>
 
-      <LayoutContent>
+      <LayoutContent padding={0}>
         <div className="space-y-6">
           <Section padding={4}>
             <div className="space-y-4">
