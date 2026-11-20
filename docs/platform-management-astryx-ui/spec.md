@@ -171,24 +171,27 @@ Astryx dùng thang nhân học `base = 14px, ratio = 1.2` (`tokens.stylex.ts:362
 | **Border Radius** | `inner = 4px/6px`, `element = 8px/10px`, `container = 12px`, `full = 9999px`. Công thức đồng tâm: `inner_radius = max(0px, outer_radius - padding)`. | `--radius-sm` (`4px`), `--radius-md` (`6px`), `--radius-lg` (`8px` - controls), `--radius-xl` (`12px` - cards/dialogs), `rounded-full` (status dots/pills). |
 | **Elevation / Shadow** | 4 mức: `none` (mặc định cho mọi Card/Banner trong luồng trang), `low` (nổi nhẹ), `med` (Popover/Menu), `high` (Modal Dialog). | Mặc định Card/Section trong trang dùng `shadow-none` + `border-surface-border`; Menu dùng `--menu-shadow`; Dialog dùng `--floating-shadow`. |
 
-### 2.3 Danh mục thành phần Astryx và ánh xạ sang `@multica/ui`
+### 2.3 Danh mục thành phần Astryx và ánh xạ sang mã nguồn hiện tại
 
-Do quy tắc của repo Multica (`AGENTS.md`: dùng `@multica/ui` primitives, dùng `@multica/ui/icons`, không cài thêm thư viện icon hay hệ thống CSS-in-JS xung đột trong `packages/views`), chúng ta áp dụng kiến trúc thành phần và mẫu bố cục của Astryx thông qua các primitive sẵn có trong `@multica/ui` kết hợp với các thành phần bố cục chuẩn Astryx:
+*(Cập nhật `2026-11-20` theo mã nguồn sau commit `26525d7c5`. Bản trước mô tả quy ước "dựng bằng `@multica/ui`", nhưng Console hiện import trực tiếp nhiều thành phần của `@astryxdesign/core`; bảng dưới ghi đúng những gì đang dùng.)*
 
-| Thành phần Astryx (`@astryxdesign/core`) | Vai trò trong Astryx | Thành phần tương đương trong `@multica/ui` / `@multica/platform-console` |
+Phạm vi kiểm chứng: `platform-management/console/src/`, không tính các tệp `.test.`. `packages/ui/` và `packages/views/` hiện không import `@astryxdesign/core`. Các thành phần của `@multica/ui` (Button, Select, Input, Checkbox, Tabs, Dialog, Alert, icon từ `@multica/ui/icons`) vẫn được dùng song song với Astryx.
+
+| Thành phần Astryx (`@astryxdesign/core`) | Vai trò trong Astryx | Hiện trạng trong Console |
 | --- | --- | --- |
-| `AppShell` + `SideNav` (`SideNavHeading`, `SideNavSection`, `SideNavItem`) | Khung ứng dụng ngoài cùng (`100dvh`, `height="fill"`), thanh điều hướng bên trái (`256px`, thu gọn được trên mobile/desktop), vùng `<main>` cuộn độc lập, skip-link | `SidebarProvider`, `Sidebar`, `SidebarHeader`, `SidebarContent`, `SidebarGroup`, `SidebarMenu`, `SidebarMenuItem`, `SidebarMenuButton`, `SidebarFooter`, `SidebarInset` từ `@multica/ui/components/ui/sidebar` (**đã có trong `packages/ui`, chưa dùng trong Console**) |
-| `Layout` (`LayoutHeader`, `LayoutContent`, `LayoutPanel`, `LayoutFooter`) | Bố cục 5 vùng cho mỗi màn hình: Header cố định có vạch ngăn (`hasDivider`), Content cuộn độc lập, Side Panel (`end` slot, `380px`–`420px`) cho master-detail | Tổ hợp `PageHeader` + `Layout` (trong `platform-management/console/src/components/`) và `SettingsTab` / `SettingsSection` (trong `packages/views/settings/components/settings-layout.tsx`) |
-| `Section` | Đơn vị phân vùng mặc định trên trang (tiêu đề `Heading level={3}` + mô tả tùy chọn + nội dung, phân tách bằng khoảng trắng hoặc `Separator`) | `Section` / `SettingsSection` (thay thế các `Card` bọc toàn bộ phần trang) |
-| `Card` | Khối có viền dùng cho KPI tile, hộp đăng nhập, hoặc nhóm cài đặt có viền chia hàng (`SettingsCard`) | `@multica/ui/components/ui/card` (`shadow-none border-surface-border`) |
-| `MetadataList` (`MetadataListItem`) | Danh sách cặp khóa–giá trị (`<dl>/<dt>/<dd>`) hỗ trợ xếp 1 cột (`position="start"`) hoặc nhiều cột (`position="top"`) | Tạo primitive nhẹ `MetadataList` / `MetadataListItem` trong console (**chưa có**) để thay thế các lưới `<div><span>Label</span><span>Value</span></div>` lặp lại ở `TenantDetail`, `UserDetail`, `Overview` |
-| `Table` + Filter Toolbar (`Field` example) | Bảng dữ liệu tràn viền vùng chứa (`density="compact" | "balanced"`, `hasHover`), thanh công cụ lọc dùng `HStack wrap="wrap"` với ô tìm kiếm `fill` và các `Select` thu gọn | `@multica/ui/components/ui/table` + thanh lọc dùng `@multica/ui/components/ui/input` và `@multica/ui/components/ui/select` (thay toàn bộ `<select>` HTML thô) |
-| `Badge` & `StatusDot` | `StatusDot` (chấm màu + nhãn văn bản) cho trạng thái hàng trong bảng; `Badge` tint ngữ nghĩa cho phân loại / trạng thái cần chú ý | Cập nhật `StatusBadge.tsx` dùng token ngữ nghĩa (`text-success`, `bg-warning/15`, `bg-destructive/15`, `bg-info/15`, `bg-muted`) kèm chấm trạng thái (`StatusDot`) |
-| `TabList` (`Tab`) | Thanh chuyển tab có vạch ngăn dưới (`hasDivider`), đồng bộ chiều cao với nút hành động cạnh nó | `@multica/ui/components/ui/tabs` (`Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`) hoặc `SettingsViewTabs` |
-| `Banner` | Thông báo bền vững đầu trang/vùng (`info`, `warning`, `error`, `success`) kèm hành động `endContent` | `@multica/ui/components/ui/alert` (`Alert`, `AlertTitle`, `AlertDescription`) |
-| `Dialog` / `AlertDialog` | Hộp thoại tác vụ (`Dialog`) và hộp thoại xác nhận hành động hệ trọng (`AlertDialog`) | `@multica/ui/components/ui/dialog` và `@multica/ui/components/ui/alert-dialog` (tuân thủ `packages/ui/docs/dialog.md`) |
-| `FormLayout` + `Field` | Bố cục trường biểu mẫu dọc/ngang nhất quán, chỉ đánh dấu trường ngoại lệ (`required` hoặc `optional`), gắn lỗi qua `aria-describedby` | `@multica/ui/components/ui/field` (`Field`, `FieldLabel`, `FieldDescription`, `FieldError`) + `@multica/ui/components/ui/input`, `select`, `switch`, `checkbox`, `textarea` |
-| `EmptyState` | Khung trống có icon trang trí (`aria-hidden`), tiêu đề cụ thể, hướng dẫn bước tiếp theo và nút hành động (`actions`), hỗ trợ `isCompact` | `@multica/ui/components/ui/empty` hoặc nâng cấp `EmptyState.tsx` hỗ trợ `icon`, `actions`, `isCompact` |
+| `AppShell` + `SideNav` (`SideNavSection`, `SideNavItem`, `SideNavCollapseButton`) | Khung ứng dụng ngoài cùng và thanh điều hướng trái, thu gọn được | `components/Layout.tsx` dùng `AppShell` (`variant="section"`, `contentPadding={0}`) và `SideNav` có `collapsible` với `SideNavCollapseButton`. Theme `blue-white` tô thanh điều hướng bằng xanh Multica (`--sidebar: #0054a6`, chữ trắng) trong `styles.css`. `SidebarProvider` / `Sidebar` của `@multica/ui/components/ui/sidebar` có sẵn nhưng Console chưa dùng. |
+| `Layout` (`LayoutHeader`, `LayoutContent`) | Bố cục theo vùng cho mỗi màn hình | Dùng trong 9 tệp màn hình (`screens/*.tsx`). |
+| `Heading`, `Text`, `Divider` (dựng `PageHeader`) | Tiêu đề cấp 1, văn bản phụ, vạch ngăn | `components/PageHeader.tsx` ghép ba thành phần này. Hàng đầu gồm nút quay lại, tiêu đề, `badge`, `meta`; bên phải là `actions` và `HeaderControls`. `Divider` đóng header một lần duy nhất; `description` nằm dưới vạch ngăn, để chiều cao header không đổi giữa các trang. |
+| Điều khiển ngôn ngữ và theme (không có trong Astryx) | — | `components/PreferenceControls.tsx`: `LanguageSwitch` (EN/VI) và `ThemeSwitch` (`blue-white`, `light`, `dark`) là nhóm nút phân đoạn (`role="group"`, mỗi nút có `aria-pressed`), không dùng `<select>`. `components/header-controls.tsx` đưa các điều khiển này, cùng email, vai trò và nút đăng xuất, lên cùng hàng với tiêu đề trang. |
+| `Section` | Đơn vị phân vùng mặc định trên trang, không viền | Dùng trực tiếp `@astryxdesign/core/Section` ở 16 tệp. |
+| `Card` | Khối có viền cho KPI, hộp đăng nhập, widget độc lập | Dùng `@astryxdesign/core/Card` ở 19 tệp. Console không import `@multica/ui/components/ui/card`. Việc giảm "Card soup" vẫn là mục còn mở ở mục 3.1. |
+| `MetadataList` + `MetadataListItem` | Danh sách cặp khóa–giá trị | `components/MetadataList.tsx` bọc `MetadataList` và `MetadataListItem` của Astryx, nhận `columns` từ 1 đến 4. |
+| `Table` | Bảng dữ liệu tràn viền vùng chứa | Dùng `@astryxdesign/core/Table` (`Table`, `pixel`, `proportional`) ở 24 tệp. Không tệp nào dùng `@multica/ui/components/ui/table`. Thanh lọc dùng `Input` và `Select` của `@multica/ui` (lần lượt 17 và 15 tệp). |
+| `Badge` & `StatusDot` | `StatusDot` và nhãn chữ cho trạng thái thường; `Badge` ngữ nghĩa cho trạng thái cần chú ý và phân loại | `components/StatusBadge.tsx` dùng `Badge` và `StatusDot` của Astryx, theo bảng `STATUS_CONFIG`: trạng thái bình thường hoặc không hoạt động là `kind: "quiet"` (chấm + chữ); trạng thái ngoại lệ hoặc chuyển tiếp là `kind: "badge"` với `badgeVariant`; vai trò là `Badge` không có chấm. Trong `StatusBadge.tsx` không còn màu `emerald-*`, `amber-*` hay mã hex. |
+| `Banner` | Thông báo bền vững (`info`, `warning`, `error`, `success`) | Dùng `@astryxdesign/core/Banner` ở 5 tệp. Song song, `Alert` của `@multica/ui/components/ui/alert` được dùng ở 14 tệp. |
+| `Dialog`, `Field` | Hộp thoại và trường biểu mẫu | `@astryxdesign/core/Dialog` ở 2 tệp và `Field` ở 3 tệp. Phần lớn hộp thoại vẫn dùng `@multica/ui/components/ui/dialog` (9 tệp). |
+| `EmptyState` | Khung trống có icon, tiêu đề, mô tả và hành động | `components/EmptyState.tsx` bọc `Card` và `EmptyState` của Astryx, nhận `title`, `description`, `icon`, `actions`, `isCompact`. |
+| `TabList` (`Tab`) | Thanh chuyển tab | `@multica/ui/components/ui/tabs` (`Tabs`, `TabsList`, `TabsTrigger`) ở 4 tệp, ví dụ `screens/Orders.tsx`. Không còn `role="tab"` tự dựng trong `platform-management/console/src/` (đã kiểm tra bằng grep). |
 
 ---
 
@@ -307,7 +310,7 @@ Do quy tắc của repo Multica (`AGENTS.md`: dùng `@multica/ui` primitives, d�
 
 ### 5.2 Ngoài phạm vi (Non-goals)
 
-- Không cài đặt gói `@astryxdesign/core` hay trình biên dịch `@stylexjs/stylex` vào `package.json` của Multica. Áp dụng **ngôn ngữ thiết kế, quy tắc bố cục, phân cấp bề mặt, mật độ và mẫu trang của Astryx** trực tiếp trên `@multica/ui` và `tokens.css`.
+- Phạm vi cài đặt `@astryxdesign/core`, `@astryxdesign/theme-neutral`, `@astryxdesign/charts` và `@stylexjs/stylex` hiện giới hạn trong `platform-management/console/package.json` (dùng `catalog:`). `packages/ui/`, `packages/views/` không khai báo hay import Astryx; không đưa Astryx vào các gói này. Trong Console, các thành phần Astryx được dùng trực tiếp như mục 2.3 mô tả. **Ngôn ngữ thiết kế, quy tắc bố cục, phân cấp bề mặt, mật độ và mẫu trang của Astryx** được áp dụng qua `@multica/ui` và `tokens.css` khi có thể.
 - Không thay đổi giao diện của `apps/mobile/` hay `apps/docs/`.
 - Không thay đổi các màn hình sản phẩm ngoài phạm vi `platform-management` (như Issues, Chat, Autopilot, Knowledge).
 
