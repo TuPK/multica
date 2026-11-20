@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
+	"github.com/multica-ai/multica/platform-management/internal/testdb"
 )
 
 type fakeSource struct {
@@ -173,5 +175,105 @@ func TestThresholds(t *testing.T) {
 		if got := thresholds(c.used, c.limit); !slices.Equal(got, c.want) {
 			t.Errorf("thresholds(%d, %d) = %v, want %v", c.used, c.limit, got, c.want)
 		}
+	}
+}
+
+// syncNotices and syncMail make the fakes safe for concurrent runs. The real
+// notice store relies on its unique key for this; the fake's lock stands in for it.
+type syncNotices struct {
+	mu sync.Mutex
+	fakeNotices
+}
+
+func (s *syncNotices) InsertNotice(ctx context.Context, n lifecycle.Notice) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.fakeNotices.InsertNotice(ctx, n)
+}
+
+type syncMail struct {
+	mu   sync.Mutex
+	sent []lifecycle.Message
+}
+
+func (s *syncMail) Send(_ context.Context, m lifecycle.Message) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sent = append(s.sent, m)
+	return nil
+}
+
+// Spec R6 section 3c.5 rule 1: a warning goes out once per (workspace, limit,
+// threshold, month) however many runs overlap or follow one another.
+func TestQuotaAlertTwiceAndParallelSendsOne(t *testing.T) {
+	src := agentsAt(8)
+	notices := &syncNotices{fakeNotices: fakeNotices{recorded: map[string]bool{}}}
+	mail := &syncMail{}
+	job := Job{Source: src, Notices: notices, Mail: mail}
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = job.Run(context.Background(), june)
+		}()
+	}
+	wg.Wait()
+	if len(mail.sent) != 1 {
+		t.Fatalf("parallel runs sent %d emails, want 1", len(mail.sent))
+	}
+	if n, err := job.Run(context.Background(), june); err != nil || n != 0 {
+		t.Fatalf("a later run sent %d (err %v), want 0", n, err)
+	}
+}
+
+// Spec R6 section 3c.5 rule 1: the alert reads workspaces that are not being
+// deleted; a workspace in pending_deletion is not in the list.
+func TestQuotaAlertSkipsPendingDeletionWorkspace(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	var active, pending string
+	if err := pool.QueryRow(ctx, `INSERT INTO workspace (name, slug) VALUES ('Quota Alert Active', 'qa-' || substr(md5(random()::text), 1, 12)) RETURNING id::text`).Scan(&active); err != nil {
+		t.Fatalf("insert active workspace: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO workspace (name, slug) VALUES ('Quota Alert Pending', 'qa-' || substr(md5(random()::text), 1, 12)) RETURNING id::text`).Scan(&pending); err != nil {
+		t.Fatalf("insert pending workspace: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO platform_workspace (workspace_id, status, reason, deletion_scheduled_at) VALUES ($1, 'pending_deletion', 'scheduled', now())`, pending); err != nil {
+		t.Fatalf("mark pending workspace: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Exec(ctx, `DELETE FROM platform_workspace WHERE workspace_id = ANY($1::uuid[])`, []string{active, pending})
+		pool.Exec(ctx, `DELETE FROM workspace WHERE id = ANY($1::uuid[])`, []string{active, pending})
+	})
+
+	ids, err := NewPgxSource(pool).Workspaces(ctx)
+	if err != nil {
+		t.Fatalf("Workspaces: %v", err)
+	}
+	if !slices.Contains(ids, active) {
+		t.Fatalf("active workspace missing from the alert source")
+	}
+	if slices.Contains(ids, pending) {
+		t.Fatalf("workspace in pending_deletion is in the alert source")
+	}
+}
+
+// Spec R6 section 3c.5 rule 1: the alert only sends warnings. It records notices
+// and reads the limits, and leaves the limits it read as they were.
+func TestQuotaAlertDoesNotChangeEnforcement(t *testing.T) {
+	src := agentsAt(10)
+	notices := &fakeNotices{recorded: map[string]bool{}}
+	mail := &fakeMail{}
+
+	if _, err := (Job{Source: src, Notices: notices, Mail: mail}).Run(context.Background(), june); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if got := src.limits["w1"]; len(got) != 1 || got[plan.GateAgents] == nil || *got[plan.GateAgents] != 10 {
+		t.Fatalf("limits changed by the alert: %v", got)
+	}
+	if len(mail.sent) != 2 || len(notices.recorded) != 2 {
+		t.Fatalf("sent %d emails and recorded %d notices, want the 80 and 100 warnings only", len(mail.sent), len(notices.recorded))
 	}
 }
