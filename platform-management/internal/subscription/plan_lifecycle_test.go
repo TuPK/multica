@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 )
 
@@ -46,5 +47,37 @@ func TestPlanHistoryRowWithoutChangesIsEmptyList(t *testing.T) {
 	got := planHistoryEntries([]plan.HistoryRow{{Action: "plan.activated", Detail: map[string]any{}}})
 	if got[0].Changes == nil || len(got[0].Changes) != 0 {
 		t.Fatalf("changes must be an empty list, got %#v", got[0].Changes)
+	}
+}
+
+// Spec R6 section 3b.1 rule 5: activating an active plan and deactivating an
+// archived one change nothing and write no audit row.
+func TestDeactivateAndActivateAreIdempotent(t *testing.T) {
+	e := newConsoleEnv(t)
+	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", teamBody), 200)
+	steps := []struct {
+		route   string
+		changed bool
+	}{
+		{"deactivate", true}, {"deactivate", false}, {"activate", true}, {"activate", false},
+	}
+	for _, s := range steps {
+		rec := e.do(adminUser, "POST", "/api/platform/plans/team/"+s.route, "")
+		wantStatus(t, rec, 200)
+		if got := decodeMap(t, rec)["changed"]; got != s.changed {
+			t.Fatalf("%s: changed = %v, want %v", s.route, got, s.changed)
+		}
+	}
+	var deactivated, activated int
+	for _, a := range e.plans.audits {
+		switch a.Action {
+		case audit.ActionPlanDeactivated:
+			deactivated++
+		case audit.ActionPlanActivated:
+			activated++
+		}
+	}
+	if deactivated != 1 || activated != 1 {
+		t.Fatalf("audit rows: deactivated=%d activated=%d, want 1 each", deactivated, activated)
 	}
 }
