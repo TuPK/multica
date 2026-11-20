@@ -22,6 +22,5 @@ same question.
 
 ## A later run
 
-A child closed and the children-done wakeup starts a run. Its message names the
-request. Go to `secretary-analysis`. Do not classify the boss's question again: the
+A child closed and its answer wakes the Secretary. Its message names the request. Go to `secretary-analysis`. Do not classify the boss's question again: the
 question is already on the request.

@@ -135,8 +135,9 @@ describe("secretary brief", () => {
 describe("secretary directives", () => {
   const directives = read("secretary-directives");
 
-  it("files a directive only from the boss's confirmed decision, quoted", () => {
-    expect(directives).toContain("Wait for confirmation in the boss's chat.");
+  it("files a directive only from the boss's own words, quoted; proposals and stage gates still need confirmation", () => {
+    expect(directives).toContain("Ask the boss to confirm");
+    expect(directives).toContain("stay the boss's decision");
     expect(directives).toContain("The boss's own words, quoted");
     expect(directives).toContain("Never file a directive from a wakeup");
   });

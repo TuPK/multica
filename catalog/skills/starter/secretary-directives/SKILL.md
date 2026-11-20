@@ -13,13 +13,14 @@ message the boss wrote, so every directive quotes that message.
 
 ### 1. Restate each decision
 
-When the boss answers in chat, restate each decision in one line and ask whether it is
-right. For example:
+When the boss answers in chat, restate each decision in one line. For example:
 
-> D1: launch checkout on 28 November; Release holds the 14 November date. Is that right?
+> D1: launch checkout on 28 November; Release holds the 14 November date.
 
-Wait for confirmation in the boss's chat. A reply that changes a decision means you
-restate it again.
+A plain instruction to deliver work (a goal, a scope, a date) is filed at once, quoting the
+boss's words; the one-line restatement goes in the acknowledgement. Ask the boss to confirm
+only when the message is ambiguous, or when it decides a proposal or a stage gate. Those
+stay the boss's decision.
 
 ### 2. Find the owner
 
@@ -63,7 +64,7 @@ to the directive. Then end the turn.
 
 - At most five directives per boss message.
 - Never file a directive from a wakeup, an autopilot run, or a message that is not the
-  boss's confirmation.
+  boss's own words.
 - Never change a leader's plan for the work. Say what the decision requires, not how to
   split the work.
-- If the boss's message is ambiguous, restate it and ask again. Do not guess.
+- If the boss's message is ambiguous, ask in chat before you file anything. Do not guess.

@@ -19,7 +19,7 @@ Read the trigger in the run's message and pick one row:
 | Trigger | Next skill |
 | --- | --- |
 | A chat message from the boss | Step 2 below |
-| A wakeup on a request you filed (children closed, or the deadline passed) | `secretary-analysis` |
+| A wakeup on a request you filed (a leader's answer closed, or the deadline passed) | `secretary-analysis` |
 | The daily brief or weekly review autopilot | `secretary-brief` |
 | A leader's comment that mentions you, or a comment on a directive | `secretary-leader-questions` |
 
@@ -31,7 +31,8 @@ Read the trigger in the run's message and pick one row:
    ones that are not done.
 2. If an open request already covers the question, do not file another. Report its
    state: which leaders have answered, who is still pending, and its deadline. If
-   every answer is in, go to `secretary-analysis` instead.
+   every answer is in, go to `secretary-analysis` instead. Answers that arrived since
+   the last report are read by `secretary-analysis` on their own wakeup.
 3. If the turn names a route (`Route for this message (set by the platform)`), that is
    the classification: follow the skill it names. Otherwise classify the question:
 
@@ -41,10 +42,42 @@ Read the trigger in the run's message and pick one row:
 | What the company knows or decided: a policy, a past decision | `multica knowledge search "<question>"` first, cite what you find; if it needs judgment, `secretary-ask` |
 | Progress against a plan, risk, cause, whether something is on track | `secretary-ask` |
 | The boss confirms or makes a decision | `secretary-directives` |
-| The period, the project, or the scope is genuinely unclear | Ask the boss one short question and stop |
+| A general goal to deliver: a project, a launch, a plan, a campaign, a cross-department piece of work | `Orchestrate a goal` below |
+| The question is vague or a material input is missing | `Intake` below |
 
 4. Follow the chosen skill to its end. Switch skills only for a reason you can
    state in one line.
+
+## Intake: clarify before you orchestrate
+
+You are the boss's coordinator, and the boss is in the loop at the start, not at every step.
+Before you file any work or ask any leader, decide whether the request can be acted on:
+
+- Answer what you can from the org map, the digest, and `multica knowledge search`.
+- Ask the boss only what changes who does the work, what is delivered, or when it is due.
+  Ask at most three questions in one chat reply (`--kind clarify`). Give each a recommended
+  default, so the boss can answer "yes" to all of them.
+- If the boss has not answered by the next run, go on with the defaults. Record each one as
+  an assumption in the first reply that starts the work.
+- For a vague request, state the reading you took in one line ("I take this as the spring
+  launch of mua_ngon_ecommerce, due 28 November") and proceed on it unless the boss corrects it.
+
+## Orchestrate a goal
+
+A goal is work the boss wants done, not a question. You decompose it, route it, watch it,
+and report it, without asking the boss at each step.
+
+1. Split the goal into workstreams, one per owner. Use `multica company map --output json`:
+   match each workstream to the floor or squad whose work it is. A project with several
+   squads is a candidate for each of them.
+2. Brief each owner: the objective, the output format, what is out of scope, the sources to
+   use, what done means, and the date. Use the brief format in `secretary-ask`, step 4.
+3. File the work through `secretary-directives`, quoting the boss's message. A plain goal the
+   boss has stated needs no confirmation round. A decision that a proposal or a stage gate
+   needs stays the boss's: ask for it.
+4. Watch the children. Each answer or closed workstream wakes you; read it and report
+   progress in chat with `--kind ack`. Synthesize with `secretary-analysis` when the parts
+   are in, and give the boss your recommendation.
 
 ## Replying to the boss
 

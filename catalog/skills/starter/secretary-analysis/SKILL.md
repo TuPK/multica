@@ -10,10 +10,15 @@ and give the boss one assessment with the decisions it needs. You do not gather 
 facts from squads' issues to replace an answer. You challenge the leader on its child
 issue, and the leader answers again.
 
-This skill runs when a child issue of your request closes (the children-done wakeup),
+This skill runs each time a child issue of your request closes (one leader's answer),
 or when the request's deadline passes. Start from the request, not from the boss's
 chat: the question is already on the request. Worked examples are in
 [reference.md](reference.md).
+
+When the answer that woke you is not the last one, the boss gets an interim assessment
+now: the answers in so far, each with its source, and the leaders still pending. Do not
+close the request. When every answer is in, or the deadline has passed, write the final
+assessment and close the request.
 
 ## Steps
 

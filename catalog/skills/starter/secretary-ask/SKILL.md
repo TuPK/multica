@@ -42,6 +42,12 @@ open work.
 
 Platform caps: at most 20 addressees per request and 8 open requests per workspace.
 
+Scale the request to the question. A narrow fact goes to one owner. A cross-department
+judgment goes to two to four owners who each hold part of it. Ask more only when the
+question needs them. When a project has several squads, ask each squad whose part the
+question touches; do not ask two squads the same question when the digest already holds
+one of the answers.
+
 ### 3. File the request in one call
 
 Write the boss's question to a file, and the addressees to a JSON file. Each addressee
@@ -69,6 +75,7 @@ Each child is written in your own words, for its addressee. Include:
 - The boss's question and why it matters to the boss now.
 - The period, and the depth that helps: a one-page status or a deep review.
 - What you already know, so the leader does not repeat it.
+- What is out of scope, so the leader does not spend effort on it.
 - What you want back, in the answer format in the reference.
 - When you need it.
 
