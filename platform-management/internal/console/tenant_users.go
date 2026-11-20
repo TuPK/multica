@@ -202,7 +202,50 @@ func (h *Handler) getTenantUser(w http.ResponseWriter, r *http.Request) {
 	if !scope.All {
 		u.IsStaff = false
 	}
-	writeJSON(w, http.StatusOK, tenantUserJSON(u))
+	body := tenantUserJSON(u)
+	allocation, err := h.tenantUserAllocation(r.Context(), scope, tenantID, u)
+	if err != nil {
+		h.fail(w, r, "read tenant user allocation", err)
+		return
+	}
+	body["allocation"] = map[string]any{"workspaces": allocation}
+	writeJSON(w, http.StatusOK, body)
+}
+
+// tenantUserAllocation is what a user holds in each workspace of the tenant: the
+// seat it takes there, and the workspace's effective limits and usage (spec
+// R6 section 3b.3 rule 2, D95). Limits belong to workspaces, so the user has none
+// of its own. Each membership takes one seat, as the list's seats count does.
+func (h *Handler) tenantUserAllocation(ctx context.Context, scope Scope, tenantID string, u TenantUser) ([]map[string]any, error) {
+	d, found, err := h.Reader.GetTenant(ctx, tenantID, scope)
+	if err != nil {
+		return nil, err
+	}
+	if !found || len(u.Workspaces) == 0 {
+		return []map[string]any{}, nil
+	}
+	roles := make(map[string]string, len(u.Workspaces))
+	for _, m := range u.Workspaces {
+		roles[m.ID] = m.Role
+	}
+	var mine []TenantWorkspace
+	for _, ws := range d.Workspaces {
+		if _, ok := roles[ws.ID]; ok {
+			mine = append(mine, ws)
+		}
+	}
+	usage, err := h.tenantUsage(ctx, mine, h.Now())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]map[string]any, 0, len(usage.workspaces))
+	for _, ws := range usage.workspaces {
+		out = append(out, map[string]any{
+			"workspace_id": ws.WorkspaceID, "slug": ws.Slug, "plan_key": ws.PlanKey,
+			"member_role": roles[ws.WorkspaceID], "occupies_seat": true, "resources": ws.Resources,
+		})
+	}
+	return out, nil
 }
 
 // requestMemberChange inserts one change request and its audit row in one
