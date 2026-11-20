@@ -503,6 +503,11 @@ WHERE runtime_id = @runtime_id
 RETURNING *;
 
 -- name: DeleteAgentRuntime :exec
+-- platform_runtime has no foreign key to agent_runtime, so its row is removed in
+-- this same statement, inside the caller's transaction (spec R6 section 3b.5, D98).
+WITH removed_platform_runtime AS (
+  DELETE FROM platform_runtime WHERE runtime_id = $1
+)
 DELETE FROM agent_runtime WHERE id = $1;
 
 -- name: DeleteSystemAgentsByRuntime :exec

@@ -319,9 +319,14 @@ func (q *Queries) CountUndrainedTasksByRuntimeOrAgent(ctx context.Context, arg C
 }
 
 const deleteAgentRuntime = `-- name: DeleteAgentRuntime :exec
+WITH removed_platform_runtime AS (
+  DELETE FROM platform_runtime WHERE runtime_id = $1
+)
 DELETE FROM agent_runtime WHERE id = $1
 `
 
+// platform_runtime has no foreign key to agent_runtime, so its row is removed in
+// this same statement, inside the caller's transaction (spec R6 section 3b.5, D98).
 func (q *Queries) DeleteAgentRuntime(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteAgentRuntime, id)
 	return err
