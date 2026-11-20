@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { Layout } from "./Layout";
 import { getLanguage, setLanguage } from "../i18n";
 import { initTheme, setTheme } from "../theme";
@@ -50,10 +50,10 @@ describe("header language and theme switches", () => {
   it("applies the selected theme to the root element and remembers it", () => {
     renderLayout();
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Theme" }), {
-      target: { value: "dark" },
-    });
+    const theme = screen.getByRole("group", { name: "Theme" });
+    fireEvent.click(within(theme).getByRole("button", { name: "Dark" }));
 
+    expect(within(theme).getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(window.localStorage.getItem("platform-console.theme")).toBe("dark");
   });

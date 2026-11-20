@@ -49,17 +49,30 @@ export function LanguageSwitch() {
 export function ThemeSwitch() {
   const theme = useTheme();
   return (
-    <select
+    <div
+      role="group"
       aria-label={t("Theme")}
-      value={theme}
-      onChange={(event) => setTheme(event.target.value as Theme)}
-      className="h-8 shrink-0 rounded-md border border-surface-border bg-surface px-2 text-label text-foreground"
+      className="inline-flex shrink-0 rounded-md border border-surface-border p-0.5"
     >
-      {THEMES.map((option) => (
-        <option key={option} value={option}>
-          {themeLabel(option)}
-        </option>
-      ))}
-    </select>
+      {THEMES.map((option) => {
+        const selected = option === theme;
+        return (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => setTheme(option)}
+            className={
+              "rounded px-2 py-0.5 text-label " +
+              (selected
+                ? "bg-surface-selected text-foreground"
+                : "text-muted-foreground hover:text-foreground")
+            }
+          >
+            {themeLabel(option)}
+          </button>
+        );
+      })}
+    </div>
   );
 }
