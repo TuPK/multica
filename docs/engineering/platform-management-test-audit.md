@@ -98,6 +98,14 @@ A `go test -run` filter that matches no test name passes without running anythin
 | S27 | `./audit -run 'Readonly'` (in `platform-management/`) | matches 0 test names in either tree; the test is named `TestPlatformAuditQueriesAreInsertAndSelectOnly` |
 | S10 | `./internal/lifecycle -run 'NeverDeletes'` (in `platform-management/`) | matches 0 platform test names (two `server/` names match) |
 
+Fixes applied in `docs/engineering/platform-management-plan-admin.md` (commit in the `docs(platform)` group):
+
+| Slice | Old filter | New filter | Matches after the change |
+|---|---|---|---|
+| S10 | `./internal/lifecycle -run 'NeverDeletes'` | `./internal/lifecycle -run 'OrderExpiry'` | 5 real names in `expire_test.go`. The I10 test `TestSubscriptionLifecycleNeverDeletesAWorkspace` is still missing (class c, platform package) |
+| S11 | `./internal/deletionrequest ./internal/console -run 'UserDeleteNow'` (the [PD] line) | `... -run 'DeleteNow'` | 13 real names across `deletionrequest` and `console` (`TestDeleteNow…`) |
+| S27 | `./audit -run 'Readonly'` (in `platform-management/`) | `./audit -run 'AuditQueriesAreInsertAndSelectOnly'` | 1: `TestPlatformAuditQueriesAreInsertAndSelectOnly` |
+
 The other filters are alternations of broad terms (for example `Tenant`, `Runtime`, `Plan`) that each match many names; they were not checked term by term. Those broad filters would pass even when the named tests are absent.
 
 ## 6. Rows
