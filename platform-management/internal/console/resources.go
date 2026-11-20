@@ -3,19 +3,33 @@ package console
 import (
 	"context"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
 
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
+	"github.com/multica-ai/multica/platform-management/internal/usage"
 )
 
-// The resource types of spec R6 section 3b.4 that have a plan limit and are
-// counted now (usage.Current and the group count). The API rate lives in Redis
-// and has no history, and the seven-day trend needs platform_usage_daily; both
-// are outside this slice.
-var resourceGates = []string{plan.GateAgents, plan.GateRuntimes, plan.GateIssueCount, plan.GateStorageBytes, plan.GateMemberGroups}
+// The flows of spec R6 section 3b.4 that have no limit: task runs and issues
+// created per day. Each states its newest day's count and a seven-day trend.
+const (
+	gateTasksRun      = "tasks_run"
+	gateIssuesCreated = "issues_created"
+)
+
+// resourceGates are the resource types the console states, in order: the
+// counted limits (usage.Current, the group count, the autopilot period and the
+// API rate of the minute), then the flows.
+var resourceGates = []string{
+	plan.GateAgents, plan.GateRuntimes, plan.GateIssueCount, plan.GateStorageBytes, plan.GateMemberGroups,
+	plan.GateAutopilotRuns, plan.GateAPIRatePerMinute, gateTasksRun, gateIssuesCreated,
+}
+
+// trendDays is the window of a flow's trend: the UTC days that end today.
+const trendDays = 7
 
 // warningPercent is where a resource turns to warning (spec 3b.4 rule 1).
 const warningPercent = 80
@@ -28,6 +42,52 @@ type resourceJSON struct {
 	Limit   *int64 `json:"limit"`
 	Percent *int64 `json:"percent"`
 	Status  string `json:"status"`
+	// Trend is the seven days of a flow, oldest first; other types have none.
+	Trend []trendPointJSON `json:"trend,omitempty"`
+}
+
+// trendPointJSON is one day of a flow's trend.
+type trendPointJSON struct {
+	Day  string `json:"day"`
+	Used int64  `json:"used"`
+}
+
+// trendSince is the first day of a flow's trend: the seven UTC days ending today.
+func trendSince(now time.Time) time.Time {
+	d := now.UTC()
+	return time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -(trendDays - 1))
+}
+
+// flowValue is the count of one flow on the day of row f.
+func flowValue(f usage.DayFlow, gate string) int64 {
+	if gate == gateTasksRun {
+		return f.TasksRun
+	}
+	return f.IssuesCreated
+}
+
+// flowUsed is the newest day's count of a flow, as the overview states it. The
+// rows are the window's, oldest first; no row in the window is zero.
+func flowUsed(flows []usage.DayFlow, gate string) int64 {
+	if len(flows) == 0 {
+		return 0
+	}
+	return flowValue(flows[len(flows)-1], gate)
+}
+
+// flowTrend gives the seven days of a flow from since, zero on a day with no row.
+func flowTrend(flows []usage.DayFlow, gate string, now time.Time) []trendPointJSON {
+	byDay := make(map[string]int64, len(flows))
+	for _, f := range flows {
+		byDay[f.Day.UTC().Format(time.DateOnly)] = flowValue(f, gate)
+	}
+	since := trendSince(now)
+	out := make([]trendPointJSON, trendDays)
+	for i := range out {
+		d := since.AddDate(0, 0, i).Format(time.DateOnly)
+		out[i] = trendPointJSON{Day: d, Used: byDay[d]}
+	}
+	return out
 }
 
 // newResource states a used count against its limit. Over is more than the
@@ -53,26 +113,48 @@ func newResource(gate string, used int64, limit *int64) resourceJSON {
 	return out
 }
 
-// workspaceUsage returns the used count of each resource gate of a workspace
-// and its effective limits. A workspace the platform does not know counts zero.
-func (h *Handler) workspaceUsage(ctx context.Context, workspaceID string, now time.Time) (map[string]int64, map[string]*int64, error) {
-	used := map[string]int64{}
+// workspaceUsed is the usage of one workspace: the used count of each resource
+// gate, its effective limits, and the trend of each flow.
+type workspaceUsed struct {
+	used   map[string]int64
+	limits map[string]*int64
+	trend  map[string][]trendPointJSON
+}
+
+// workspaceUsage reads the usage of a workspace. A workspace the platform does
+// not know counts zero for the counts it holds.
+func (h *Handler) workspaceUsage(ctx context.Context, workspaceID string, now time.Time) (workspaceUsed, error) {
+	out := workspaceUsed{used: map[string]int64{}, trend: map[string][]trendPointJSON{}}
 	d, found, err := h.Reader.GetWorkspace(ctx, workspaceID)
 	if err != nil {
-		return nil, nil, err
+		return workspaceUsed{}, err
 	}
 	if found {
-		used[plan.GateAgents] = d.Current.Agents
-		used[plan.GateRuntimes] = d.Current.Runtimes
-		used[plan.GateIssueCount] = d.Current.IssuesTotal
-		used[plan.GateStorageBytes] = d.Current.StorageBytes
-		used[plan.GateMemberGroups] = d.GroupCount
+		out.used[plan.GateAgents] = d.Current.Agents
+		out.used[plan.GateRuntimes] = d.Current.Runtimes
+		out.used[plan.GateIssueCount] = d.Current.IssuesTotal
+		out.used[plan.GateStorageBytes] = d.Current.StorageBytes
+		out.used[plan.GateMemberGroups] = d.GroupCount
 	}
-	limits, err := h.Reader.WorkspaceLimits(ctx, workspaceID, now)
+	if out.used[plan.GateAutopilotRuns], err = h.Reader.AutopilotRuns(ctx, workspaceID, now); err != nil {
+		return workspaceUsed{}, err
+	}
+	if out.used[plan.GateAPIRatePerMinute], err = h.RateCounter.RateCurrent(ctx, workspaceID, now); err != nil {
+		return workspaceUsed{}, err
+	}
+	flows, err := h.Reader.Flows(ctx, workspaceID, trendSince(now))
 	if err != nil {
-		return nil, nil, err
+		return workspaceUsed{}, err
 	}
-	return used, limits, nil
+	for _, g := range []string{gateTasksRun, gateIssuesCreated} {
+		out.used[g] = flowUsed(flows, g)
+		out.trend[g] = flowTrend(flows, g, now)
+	}
+	out.limits, err = h.Reader.WorkspaceLimits(ctx, workspaceID, now)
+	if err != nil {
+		return workspaceUsed{}, err
+	}
+	return out, nil
 }
 
 type workspaceResourcesJSON struct {
@@ -83,29 +165,48 @@ type workspaceResourcesJSON struct {
 }
 
 // tenantResources is a tenant's resources: the totals of its workspaces, the
-// tenant's own workspace count against max_workspaces, and each workspace.
+// summed trend of each flow, the tenant's own workspace count against
+// max_workspaces, and each workspace.
 type tenantResources struct {
 	totals     map[string]int64
+	trends     map[string][]trendPointJSON
 	workspaces []workspaceResourcesJSON
 }
 
 // tenantUsage reads every workspace of a tenant. Totals have no limit: the
 // limits are per workspace (spec 3b.4 rule 5).
 func (h *Handler) tenantUsage(ctx context.Context, workspaces []TenantWorkspace, now time.Time) (tenantResources, error) {
-	out := tenantResources{totals: map[string]int64{}, workspaces: make([]workspaceResourcesJSON, 0, len(workspaces))}
+	out := tenantResources{totals: map[string]int64{}, trends: map[string][]trendPointJSON{}, workspaces: make([]workspaceResourcesJSON, 0, len(workspaces))}
 	for _, ws := range workspaces {
-		used, limits, err := h.workspaceUsage(ctx, ws.ID, now)
+		u, err := h.workspaceUsage(ctx, ws.ID, now)
 		if err != nil {
 			return tenantResources{}, err
 		}
 		entry := workspaceResourcesJSON{WorkspaceID: ws.ID, Slug: ws.Slug, PlanKey: ws.PlanKey, Resources: make([]resourceJSON, 0, len(resourceGates))}
 		for _, g := range resourceGates {
-			entry.Resources = append(entry.Resources, newResource(g, used[g], limits[g]))
-			out.totals[g] += used[g]
+			res := newResource(g, u.used[g], u.limits[g])
+			res.Trend = u.trend[g]
+			entry.Resources = append(entry.Resources, res)
+			out.totals[g] += u.used[g]
+			if pts := u.trend[g]; pts != nil {
+				out.trends[g] = addTrend(out.trends[g], pts)
+			}
 		}
 		out.workspaces = append(out.workspaces, entry)
 	}
 	return out, nil
+}
+
+// addTrend adds the days of pts to the trend acc, day by day. acc is a copy, so
+// the workspace's own trend is not changed.
+func addTrend(acc, pts []trendPointJSON) []trendPointJSON {
+	if acc == nil {
+		return slices.Clone(pts)
+	}
+	for i := range acc {
+		acc[i].Used += pts[i].Used
+	}
+	return acc
 }
 
 // totalResources lists the tenant totals in gate order, then max_workspaces,
@@ -113,7 +214,9 @@ func (h *Handler) tenantUsage(ctx context.Context, workspaces []TenantWorkspace,
 func totalResources(t tenantResources, workspaceCount int64, maxWorkspaces *int64) []resourceJSON {
 	out := make([]resourceJSON, 0, len(resourceGates)+1)
 	for _, g := range resourceGates {
-		out = append(out, newResource(g, t.totals[g], nil))
+		res := newResource(g, t.totals[g], nil)
+		res.Trend = t.trends[g]
+		out = append(out, res)
 	}
 	return append(out, newResource(plan.GateMaxWorkspaces, workspaceCount, maxWorkspaces))
 }

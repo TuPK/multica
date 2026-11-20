@@ -282,6 +282,7 @@ func run() error {
 		RequireStaff:  auth.RequirePlatformStaff,
 		QuotaMail:     noticeSender,
 		RequireOrigin: auth.RequireOrigin,
+		RateCounter:   console.RedisRateCounter{RDB: rdb},
 		Reader:        console.NewPgxReader(pool),
 		Runner:        console.NewPgxRunner(pool),
 		Workspaces: workspacestatus.New(workspacestatus.NewPgxRunner(pool),

@@ -138,6 +138,12 @@ type fakeReader struct {
 	lastAudit          AuditQuery
 	lastNow            time.Time
 
+	// autopilot is the used runs of a workspace this period; rates the API
+	// requests of its current minute; flows its daily rows, oldest first.
+	autopilot map[string]int64
+	rates     map[string]int64
+	flows     map[string][]usage.DayFlow
+
 	lastOrderStatus billing.Status
 	lastNewestFirst bool
 	lastOrderLimit  int
@@ -167,6 +173,27 @@ func (r *fakeReader) ListOrderEinvoices(_ context.Context, orderID string) ([]Ei
 // WorkspaceLimits returns the fake limits set for a workspace.
 func (r *fakeReader) WorkspaceLimits(_ context.Context, ws string, _ time.Time) (map[string]*int64, error) {
 	return r.limits[ws], nil
+}
+
+// AutopilotRuns returns the fake autopilot runs of a workspace.
+func (r *fakeReader) AutopilotRuns(_ context.Context, ws string, _ time.Time) (int64, error) {
+	return r.autopilot[ws], nil
+}
+
+// Flows returns the fake daily rows of a workspace from since on.
+func (r *fakeReader) Flows(_ context.Context, ws string, since time.Time) ([]usage.DayFlow, error) {
+	var out []usage.DayFlow
+	for _, f := range r.flows[ws] {
+		if !f.Day.Before(since) {
+			out = append(out, f)
+		}
+	}
+	return out, nil
+}
+
+// RateCurrent returns the fake API requests of a workspace this minute.
+func (r *fakeReader) RateCurrent(_ context.Context, ws string, _ time.Time) (int64, error) {
+	return r.rates[ws], nil
 }
 
 func (r *fakeReader) WorkspaceUsage(_ context.Context, ws string, _ time.Time) (usage.Month, error) {
@@ -916,6 +943,7 @@ func newEnvMail(t *testing.T, withMail bool) *env {
 		RequireStaff:   auth.RequirePlatformStaff,
 		RequireOrigin:  auth.RequireOrigin,
 		Reader:         e.reader,
+		RateCounter:    e.reader,
 		Runner:         e.store,
 		Workspaces:     e.ws,
 		Cache:          e.cache,

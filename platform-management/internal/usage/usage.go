@@ -102,6 +102,42 @@ type Reader struct {
 // NewReader returns a Reader over pool.
 func NewReader(pool db.DBTX) *Reader { return &Reader{q: db.New(pool), pool: pool} }
 
+// DayFlow is one day's issues created and tasks run of one workspace. They are
+// flows: the day's count, not a running total.
+type DayFlow struct {
+	Day           time.Time
+	IssuesCreated int64
+	TasksRun      int64
+}
+
+// Flows returns the daily rows of the workspace from since on, oldest first.
+// A day with no row is absent.
+func (r *Reader) Flows(ctx context.Context, workspaceID string, since time.Time) ([]DayFlow, error) {
+	var id pgtype.UUID
+	if err := id.Scan(workspaceID); err != nil || !id.Valid {
+		return nil, fmt.Errorf("invalid workspace id %q", workspaceID)
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT day, issues_created, tasks_run FROM platform_usage_daily
+		WHERE workspace_id = $1 AND day >= $2::date
+		ORDER BY day`, id, since.UTC().Format(dayLayout))
+	if err != nil {
+		return nil, fmt.Errorf("read daily flows: %w", err)
+	}
+	defer rows.Close()
+	var out []DayFlow
+	for rows.Next() {
+		var d pgtype.Date
+		var f DayFlow
+		if err := rows.Scan(&d, &f.IssuesCreated, &f.TasksRun); err != nil {
+			return nil, fmt.Errorf("scan daily flow: %w", err)
+		}
+		f.Day = d.Time
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
 // AutopilotRuns returns the autopilot runs the workspace has used in the period
 // that holds now (spec R6 section 3b.4). A workspace with no period row has used
 // none. Periods are UTC months and carry no foreign key, so a missing row is zero.

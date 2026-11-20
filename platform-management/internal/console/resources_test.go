@@ -3,6 +3,7 @@ package console
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/usage"
@@ -90,6 +91,91 @@ func TestTenantResourcesScopeAnswersOutsideTenantAsNotFound(t *testing.T) {
 	e := newEnv(t)
 	setResourceFixture(e)
 	wantUnknownRouteOrNotFound(t, e.do(tadminID, "GET", "/api/platform/tenants/"+otherTenantID+"/resources", ""))
+}
+
+// TestTenantResourcesCountAutopilotRunsAndAPIRatePerWorkspace: the autopilot runs
+// of the period and the API requests of the minute count against their plan
+// limits in each workspace (spec R6 section 3b.4, rows autopilot and API rate).
+func TestTenantResourcesCountAutopilotRunsAndAPIRatePerWorkspace(t *testing.T) {
+	e := newEnv(t)
+	setResourceFixture(e)
+	e.reader.limits[wsID][plan.GateAutopilotRuns] = i64(10)
+	e.reader.limits[wsID][plan.GateAPIRatePerMinute] = i64(60)
+	e.reader.autopilot = map[string]int64{wsID: 9}
+	e.reader.rates = map[string]int64{wsID: 55}
+
+	rec := e.do(suppID, "GET", "/api/platform/tenants/"+tenantID+"/resources", "")
+	wantStatus(t, rec, http.StatusOK)
+	body := decode(t, rec)
+
+	total, _ := body["resources"].([]any)
+	if got := resourceOf(t, total, plan.GateAutopilotRuns); got["used"] != float64(9) {
+		t.Fatalf("tenant total %s = %v, want used 9", plan.GateAutopilotRuns, got)
+	}
+	workspaces, _ := body["workspaces"].([]any)
+	first, _ := workspaces[0].(map[string]any)
+	firstRes, _ := first["resources"].([]any)
+	if got := resourceOf(t, firstRes, plan.GateAutopilotRuns); got["percent"] != float64(90) || got["status"] != "warning" {
+		t.Fatalf("acme %s = %v, want 90 percent warning", plan.GateAutopilotRuns, got)
+	}
+	if got := resourceOf(t, firstRes, plan.GateAPIRatePerMinute); got["used"] != float64(55) || got["percent"] != float64(91) || got["status"] != "warning" {
+		t.Fatalf("acme %s = %v, want 55 of 60, 91 percent warning", plan.GateAPIRatePerMinute, got)
+	}
+}
+
+// day returns the UTC day n days before the test clock, as the console reports it.
+func day(n int) string { return t0.AddDate(0, 0, -n).Format(time.DateOnly) }
+
+// trendOf returns the seven-day trend of one resource: the days oldest first.
+func trendOf(t *testing.T, res map[string]any) []any {
+	t.Helper()
+	pts, _ := res["trend"].([]any)
+	if len(pts) != 7 {
+		t.Fatalf("%s trend = %v, want seven days", res["type"], res["trend"])
+	}
+	return pts
+}
+
+// TestTenantResourcesFlowsCarryASevenDayTrend: task runs and issues created have
+// no limit; each states the newest day's count and a seven-day trend that sums
+// the workspaces of the tenant, zero on the days without a row (spec R6 section
+// 3b.4, rule 1).
+func TestTenantResourcesFlowsCarryASevenDayTrend(t *testing.T) {
+	e := newEnv(t)
+	setResourceFixture(e)
+	e.reader.flows = map[string][]usage.DayFlow{
+		wsID: {
+			{Day: t0.AddDate(0, 0, -6), TasksRun: 3},
+			{Day: t0.AddDate(0, 0, -4), TasksRun: 5, IssuesCreated: 2},
+			{Day: t0, TasksRun: 2, IssuesCreated: 1},
+		},
+		secondWsID: {{Day: t0, TasksRun: 4}},
+	}
+
+	rec := e.do(suppID, "GET", "/api/platform/tenants/"+tenantID+"/resources", "")
+	wantStatus(t, rec, http.StatusOK)
+	body := decode(t, rec)
+
+	total, _ := body["resources"].([]any)
+	tasks := resourceOf(t, total, "tasks_run")
+	if tasks["used"] != float64(6) || tasks["limit"] != nil {
+		t.Fatalf("tenant runs = %v, want the newest day of each workspace (2 + 4) and no limit", tasks)
+	}
+	pts := trendOf(t, tasks)
+	want := []float64{3, 0, 5, 0, 0, 0, 6}
+	for i, p := range pts {
+		m, _ := p.(map[string]any)
+		if m["day"] != day(6-i) || m["used"] != want[i] {
+			t.Fatalf("runs trend[%d] = %v, want day %s used %v", i, m, day(6-i), want[i])
+		}
+	}
+	issues := resourceOf(t, total, "issues_created")
+	if issues["used"] != float64(1) {
+		t.Fatalf("tenant created = %v, want 1", issues)
+	}
+	if last, _ := trendOf(t, issues)[6].(map[string]any); last["used"] != float64(1) {
+		t.Fatalf("created trend today = %v, want 1", last)
+	}
 }
 
 // TestSystemResourcesTotalsTopAndOverLimit: system_admin sees the page totals,

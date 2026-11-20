@@ -385,6 +385,10 @@ type Reader interface {
 	// now: its plan, its overrides and its tenant (spec R6 section 3b.4). A nil
 	// limit is no limit.
 	WorkspaceLimits(ctx context.Context, workspaceID string, now time.Time) (map[string]*int64, error)
+	// AutopilotRuns returns the autopilot runs a workspace used in the period that holds now (spec R6 section 3b.4).
+	AutopilotRuns(ctx context.Context, workspaceID string, now time.Time) (int64, error)
+	// Flows returns a workspace's daily issues created and tasks run from since on, oldest first (spec R6 section 3b.4, rule 1).
+	Flows(ctx context.Context, workspaceID string, since time.Time) ([]usage.DayFlow, error)
 	// GetOrder returns found == false for an unknown order.
 	GetOrder(ctx context.Context, id string) (o OrderRow, found bool, err error)
 	// RecentOrders returns a workspace's newest orders first, up to limit.

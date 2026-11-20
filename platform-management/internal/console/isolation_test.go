@@ -67,10 +67,12 @@ func scanSQL(sql string) []string {
 // query for a content table would be named.
 // specFields are literal names the spec gives to runtime and task fields that
 // staff read: a runtime's agent CLI version and the count of its recent tasks
-// (spec R6 sections 3b.5, rules 1 and 3). They name metadata, not content.
+// (spec R6 sections 3b.5, rules 1 and 3). They name metadata, not content. The
+// daily counts of task runs and issues created are the flows of spec 3b.4
+// (rule 1); they are numbers, like the usage columns they come from.
 var specFields = map[string]bool{
 	"agent_version": true, "daemon_version": true, "tasks": true, "failed_tasks_7d": true,
-	"running_tasks": true,
+	"running_tasks": true, "tasks_run": true, "issues_created": true,
 }
 
 func scanGo(t *testing.T, name string, src []byte) []string {

@@ -1512,6 +1512,16 @@ func quotaFromRow(x db.QuotaRequest) quota.Request {
 	return out
 }
 
+// AutopilotRuns returns the autopilot runs a workspace used this period.
+func (r *PgxReader) AutopilotRuns(ctx context.Context, workspaceID string, now time.Time) (int64, error) {
+	return r.usage.AutopilotRuns(ctx, workspaceID, now)
+}
+
+// Flows returns a workspace's daily flows from since on.
+func (r *PgxReader) Flows(ctx context.Context, workspaceID string, since time.Time) ([]usage.DayFlow, error) {
+	return r.usage.Flows(ctx, workspaceID, since)
+}
+
 // WorkspaceLimits builds the workspace's entitlement policy and returns the
 // limit of each gate. The loader reads the subscription, the plan and the
 // tenant, the same way the Multica policy does.

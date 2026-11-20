@@ -70,12 +70,14 @@ type Deps struct {
 	// method but GET.
 	RequireOrigin func(http.Handler) http.Handler
 
-	Reader     Reader
-	Runner     Runner
-	Workspaces StatusSetter
-	Cache      AccountCache
-	Notifier   AccountNotifier
-	Payments   PaymentApplier
+	Reader Reader
+	// RateCounter reads the API requests of a workspace this minute (spec R6 section 3b.4).
+	RateCounter RateCounter
+	Runner      Runner
+	Workspaces  StatusSetter
+	Cache       AccountCache
+	Notifier    AccountNotifier
+	Payments    PaymentApplier
 	// Reconciler decides payment notices. *billing.Reconciler is one.
 	Reconciler NoticeResolver
 	Accounts   AccountRequests
