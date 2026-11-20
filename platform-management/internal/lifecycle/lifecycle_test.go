@@ -843,3 +843,27 @@ func TestRunStopsWhenTheContextEnds(t *testing.T) {
 		t.Error("a cancelled run moved a subscription")
 	}
 }
+
+// Spec R6 section 3c.1 rule 2 (I10): the subscription lifecycle changes subscriptions,
+// workspace status and notices, and never deletes a workspace. The job's
+// interfaces offer no call that deletes one, and a full run through the edges
+// leaves the workspace row in place.
+func TestSubscriptionLifecycleNeverDeletesAWorkspace(t *testing.T) {
+	for _, iface := range []reflect.Type{reflect.TypeOf((*Store)(nil)).Elem(), reflect.TypeOf((*Tx)(nil)).Elem()} {
+		for i := 0; i < iface.NumMethod(); i++ {
+			name := iface.Method(i).Name
+			if strings.Contains(name, "Workspace") && (strings.HasPrefix(name, "Delete") || strings.HasPrefix(name, "Remove")) {
+				t.Fatalf("%s exposes %s, which can delete a workspace", iface.Name(), name)
+			}
+		}
+	}
+
+	e := newEnv(t)
+	e.store.put(pastDueSub(wsID(1), t0))
+	e.store.ws[wsID(1)] = wsRow{Status: workspacestate.Active}
+	e.run(t, t0.Add(GracePeriod))
+	e.run(t, t0.Add(GracePeriod+ReadOnlyPeriod))
+	if _, ok := e.store.wsRow(wsID(1)); !ok {
+		t.Fatal("the workspace row was removed by the lifecycle")
+	}
+}
