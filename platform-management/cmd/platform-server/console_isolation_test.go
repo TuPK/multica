@@ -39,6 +39,8 @@ func TestConsoleRoutesDoNotReadWorkspaceContent(t *testing.T) {
 		"users": true, "limit-overrides": true,
 		// The tenant policy floor (spec R6 section 3c.4) is a settings row, not content.
 		"policy": true,
+		// Tenant resources (spec R6 section 3b.4, M38) count workspace totals, not content.
+		"resources": true,
 	}
 	for _, pattern := range patterns {
 		rest, ok := strings.CutPrefix(pattern, "/api/platform/")
