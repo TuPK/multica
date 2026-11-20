@@ -68,6 +68,18 @@ func (q *Queries) GetTenantIDByWorkspace(ctx context.Context, workspaceID pgtype
 	return tenant_id, err
 }
 
+const getTenantStatus = `-- name: GetTenantStatus :one
+SELECT status FROM tenant WHERE id = $1
+`
+
+// The status the platform set on the tenant: active, read_only or suspended (spec R6 3c.9).
+func (q *Queries) GetTenantStatus(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getTenantStatus, id)
+	var status string
+	err := row.Scan(&status)
+	return status, err
+}
+
 const linkWorkspaceToTenant = `-- name: LinkWorkspaceToTenant :exec
 INSERT INTO tenant_workspace (workspace_id, tenant_id) VALUES ($1, $2)
 `

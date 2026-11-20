@@ -168,3 +168,13 @@ WHERE workspace_id = @workspace_id
   AND id > @after
 ORDER BY id
 LIMIT @row_limit;
+
+-- name: GetReadyWorkspaceExport :one
+-- The newest archive of the workspace that is done and has not expired. A staff
+-- deletion that waits for an archive reads it (spec R6 3c.9).
+SELECT * FROM workspace_export
+WHERE workspace_id = @workspace_id
+  AND status = 'done'
+  AND expires_at > now()
+ORDER BY finished_at DESC NULLS LAST
+LIMIT 1;

@@ -329,6 +329,9 @@ const tenantNotFoundCode = "tenant_not_found"
 // tenantDeletingCode refuses a workspace into a tenant with an unfinished immediate deletion.
 const tenantDeletingCode = "tenant_deleting"
 
+// tenantNotActiveCode refuses a workspace into a suspended or read-only tenant.
+const tenantNotActiveCode = "tenant_not_active"
+
 // freeOwnedWorkspaceLimitCode is the code of the refusal. It is not
 // plan_limit_reached: no plan gate is involved and the response has no gate.
 const freeOwnedWorkspaceLimitCode = "free_workspace_limit_reached"
@@ -496,6 +499,17 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		}
 		if deleting {
 			writeErrorCode(w, http.StatusConflict, tenantDeletingCode, "the tenant is being deleted")
+			return
+		}
+		// A suspended or read-only tenant takes no new workspace (spec R6 3c.9, D106).
+		status, err := qtx.GetTenantStatus(r.Context(), tenantID)
+		if err != nil {
+			slog.Warn("tenant status check failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create workspace")
+			return
+		}
+		if status != "active" {
+			writeErrorCode(w, http.StatusConflict, tenantNotActiveCode, "the tenant is not active")
 			return
 		}
 		if err := tenantGate.Admit(r.Context(), qtx, tenantID, 1, planlimit.CountTenantWorkspaces(qtx, tenantID)); err != nil {

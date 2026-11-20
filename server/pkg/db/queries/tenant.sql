@@ -31,3 +31,7 @@ ORDER BY w.created_at, w.id;
 -- name: ListTenantWorkspaceIDs :many
 -- The workspaces linked to a tenant. A staff tenant deletion walks them one by one.
 SELECT workspace_id FROM tenant_workspace WHERE tenant_id = $1 ORDER BY workspace_id;
+
+-- name: GetTenantStatus :one
+-- The status the platform set on the tenant: active, read_only or suspended (spec R6 3c.9).
+SELECT status FROM tenant WHERE id = $1;

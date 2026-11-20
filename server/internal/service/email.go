@@ -510,3 +510,25 @@ func sanitizeSubjectField(s string) string {
 	runes := []rune(cleaned)
 	return string(runes[:maxSubjectFieldRunes-1]) + "…"
 }
+
+// SendWorkspaceExportReadyEmail mails an owner the link to a workspace archive,
+// sent before the workspace is deleted (spec R6 3c.9).
+func (s *EmailService) SendWorkspaceExportReadyEmail(to, workspaceName, link string) error {
+	const subject = "Your workspace export is ready"
+	body := fmt.Sprintf(`<p>The export of <strong>%s</strong> is ready. The link below downloads it and stays valid for seven days.</p><p><a href="%s">Download the export</a></p>`,
+		html.EscapeString(workspaceName), html.EscapeString(link))
+	if s.smtpHost != "" {
+		return s.sendSMTP(to, subject, body)
+	}
+	if s.client == nil {
+		fmt.Printf("[DEV] Workspace export link for %s: %s\n", to, link)
+		return nil
+	}
+	_, err := s.client.Emails.Send(&resend.SendEmailRequest{
+		From:    s.fromEmail,
+		To:      []string{to},
+		Subject: subject,
+		Html:    body,
+	})
+	return err
+}

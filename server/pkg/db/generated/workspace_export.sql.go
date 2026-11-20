@@ -230,6 +230,36 @@ func (q *Queries) GetLatestWorkspaceExport(ctx context.Context, workspaceID pgty
 	return i, err
 }
 
+const getReadyWorkspaceExport = `-- name: GetReadyWorkspaceExport :one
+SELECT id, workspace_id, requested_by, status, storage_key, size_bytes, error, created_at, started_at, finished_at, expires_at FROM workspace_export
+WHERE workspace_id = $1
+  AND status = 'done'
+  AND expires_at > now()
+ORDER BY finished_at DESC NULLS LAST
+LIMIT 1
+`
+
+// The newest archive of the workspace that is done and has not expired. A staff
+// deletion that waits for an archive reads it (spec R6 3c.9).
+func (q *Queries) GetReadyWorkspaceExport(ctx context.Context, workspaceID pgtype.UUID) (WorkspaceExport, error) {
+	row := q.db.QueryRow(ctx, getReadyWorkspaceExport, workspaceID)
+	var i WorkspaceExport
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.RequestedBy,
+		&i.Status,
+		&i.StorageKey,
+		&i.SizeBytes,
+		&i.Error,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const getWorkspaceExport = `-- name: GetWorkspaceExport :one
 SELECT id, workspace_id, requested_by, status, storage_key, size_bytes, error, created_at, started_at, finished_at, expires_at
 FROM workspace_export

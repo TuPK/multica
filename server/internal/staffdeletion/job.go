@@ -51,6 +51,8 @@ type Eraser interface {
 	DeleteWorkspaceForStaff(ctx context.Context, workspaceID string, origin handler.DeletionOrigin, inject func(stage string) error) (bool, error)
 	DeleteAccountForOrigin(ctx context.Context, userID string, now time.Time, origin handler.DeletionOrigin) (bool, error)
 	DeleteRuntimeForStaff(ctx context.Context, runtimeID string, origin handler.DeletionOrigin) (bool, error)
+	// NotifyExportReady mails a workspace's owners a link to its finished archive.
+	NotifyExportReady(ctx context.Context, workspaceID, storageKey string) error
 }
 
 // Deps are the collaborators of a Runner.
@@ -160,6 +162,11 @@ func (r *Runner) run(ctx context.Context, req db.PlatformDeletionRequest) error 
 	}
 	switch req.Kind {
 	case kindWorkspace:
+		if req.ExportFirst {
+			if err := r.awaitExports(ctx, req, []pgtype.UUID{req.TargetID}); err != nil {
+				return err
+			}
+		}
 		_, err := r.d.Eraser.DeleteWorkspaceForStaff(ctx, util.UUIDToString(req.TargetID), origin, r.d.Inject)
 		return err
 	case kindTenant:
@@ -179,6 +186,11 @@ func (r *Runner) runTenant(ctx context.Context, req db.PlatformDeletionRequest, 
 	ids, err := r.d.Queries.ListTenantWorkspaceIDs(ctx, req.TargetID)
 	if err != nil {
 		return fmt.Errorf("list tenant workspaces: %w", err)
+	}
+	if req.ExportFirst {
+		if err := r.awaitExports(ctx, req, ids); err != nil {
+			return err
+		}
 	}
 	for _, id := range ids {
 		if _, err := r.d.Eraser.DeleteWorkspaceForStaff(ctx, util.UUIDToString(id), origin, r.d.Inject); err != nil {
