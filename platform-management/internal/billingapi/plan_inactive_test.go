@@ -25,3 +25,18 @@ func TestDeactivatedPlanIsPlanInactive(t *testing.T) {
 		t.Fatal("unknown key is not plan_inactive")
 	}
 }
+
+// Spec R6 section 3b.1 rule 5: a checkout that names a deactivated plan is refused
+// as plan_inactive and creates no order. The hiding from the workspace's own plan
+// list is served by Multica (server/), not by this module.
+func TestInactivePlanIsHiddenFromWorkspacePlansAndRefusedAtCheckout(t *testing.T) {
+	e := newEnv(t)
+	at := time.Now()
+	e.plans.plans = append(e.plans.plans, plan.Plan{Key: "retired", Name: "Retired", IsPublic: true, ArchivedAt: &at})
+
+	rec := e.checkout(ownerID, obj{"workspace_id": wsID, "interval": "month", "idempotency_key": "k", "plan_key": "retired"})
+	wantCode(t, rec, 409, "plan_inactive")
+	if len(e.orders.drafts) != 0 {
+		t.Error("an order was created for an inactive plan")
+	}
+}
