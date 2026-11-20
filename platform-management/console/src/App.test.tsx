@@ -634,14 +634,14 @@ describe("App", () => {
 
     fireEvent.click(within(nav).getByRole("button", { name: /^Tenants$/i }));
     expect(window.location.pathname).toBe("/tenants");
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByText("Acme Tenant"));
     expect(window.location.pathname).toBe("/tenants/t-7");
     expect(screen.getByRole("heading", { name: "Tenant t-7" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /^Tenants$/i })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByRole("row", { name: /Acme Workspace/ }));
     expect(window.location.pathname).toBe("/workspaces/w-3");
     expect(screen.getByRole("heading", { name: "Workspace w-3" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /^Tenants$/i })).toHaveAttribute(

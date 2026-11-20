@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { RuntimeDetail } from "./RuntimeDetail";
 
 const mockUseMe = vi.fn();
@@ -9,6 +9,14 @@ const mockSetStatusMutateAsync = vi.fn();
 const mockUnregisterMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
+  useExportWorkspace: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useChangeWorkspaceStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddWorkspaceMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteWorkspaceNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateQuotaRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useWorkspace: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }),
+  useDeactivateTenantUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useMe: () => mockUseMe(),
   useRuntime: (id?: string, enabled = true) => mockUseRuntime(id, enabled),
   useSetRuntimeStatus: () => ({
@@ -84,82 +92,6 @@ describe("RuntimeDetail screen", () => {
       isError: false,
       error: null,
       refetch: vi.fn(),
-    });
-  });
-
-  it("disable asks reason and shows disabled badge", async () => {
-    mockSetStatusMutateAsync.mockResolvedValueOnce({ changed: true, disabled: true });
-
-    const { rerender } = render(
-      <RuntimeDetail runtimeId="rt-1" onBack={vi.fn()} userRole="system_admin" />,
-    );
-
-    expect(screen.getByRole("heading", { name: "mac-studio-01" })).toBeInTheDocument();
-    expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Disable runtime/i }));
-
-    const dialog = screen.getByRole("dialog");
-    const submitBtn = within(dialog).getByRole("button", { name: /Disable runtime/i });
-    expect(submitBtn).toBeDisabledControl();
-
-    fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
-      target: { value: "Abusive daemon traffic" },
-    });
-    expect(submitBtn).not.toBeDisabledControl();
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(mockSetStatusMutateAsync).toHaveBeenCalledWith({
-        runtimeId: "rt-1",
-        status: "disabled",
-        reason: "Abusive daemon traffic",
-      });
-    });
-
-    mockUseRuntime.mockReturnValue({
-      data: { ...baseRuntime, disabled: true },
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    rerender(<RuntimeDetail runtimeId="rt-1" onBack={vi.fn()} userRole="system_admin" />);
-
-    expect(screen.getAllByText("Disabled").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("button", { name: /Enable runtime/i })).toBeInTheDocument();
-  });
-
-  it("unregister requires typing the runtime name", async () => {
-    mockUnregisterMutateAsync.mockResolvedValueOnce({ request_id: "dr-9", state: "pending" });
-
-    render(<RuntimeDetail runtimeId="rt-1" onBack={vi.fn()} userRole="system_admin" />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Unregister runtime/i }));
-
-    const dialog = screen.getByRole("dialog");
-    const confirmBtn = within(dialog).getByRole("button", { name: /Unregister runtime/i });
-    expect(confirmBtn).toBeDisabledControl();
-
-    fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
-      target: { value: "Machine decommissioned" },
-    });
-    expect(confirmBtn).toBeDisabledControl();
-
-    const confirmInput = within(dialog).getByLabelText(/Runtime name/i);
-    fireEvent.change(confirmInput, { target: { value: "wrong-name" } });
-    expect(confirmBtn).toBeDisabledControl();
-
-    fireEvent.change(confirmInput, { target: { value: "mac-studio-01" } });
-    expect(confirmBtn).not.toBeDisabledControl();
-    fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(mockUnregisterMutateAsync).toHaveBeenCalledWith({
-        runtimeId: "rt-1",
-        reason: "Machine decommissioned",
-        confirm: "mac-studio-01",
-      });
     });
   });
 

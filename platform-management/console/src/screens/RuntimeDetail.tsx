@@ -1,5 +1,4 @@
 import { Card } from "@astryxdesign/core/Card";
-import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
@@ -14,22 +13,16 @@ import {
   TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@astryxdesign/core/Button";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Ban, CheckCircle2, Server, Trash2 } from "@multica/ui/icons";
-import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
+import { Server } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { MetadataList, MetadataListItem } from "../components/MetadataList";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
-import { TypeToConfirmDialog } from "../components/TypeToConfirmDialog";
-import { getApiErrorMessage } from "../api/client";
 import {
   useMe,
   useRuntime,
-  useSetRuntimeStatus,
-  useUnregisterRuntime,
   type RuntimeStatus,
   type RuntimeTask } from "../api/hooks";
 import type { AuditEvent } from "../api/schemas";
@@ -84,7 +77,6 @@ export function RuntimeDetail({
     effectiveRole === "system_admin" ||
     effectiveRole === "admin" ||
     effectiveRole === "support";
-  const canControlRuntime = effectiveRole === "system_admin";
 
   const {
     data: runtime,
@@ -93,14 +85,7 @@ export function RuntimeDetail({
     error,
     refetch } = useRuntime(runtimeId, canRead);
 
-  const setRuntimeStatus = useSetRuntimeStatus();
-  const unregisterRuntime = useUnregisterRuntime();
 
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [unregisterDialogOpen, setUnregisterDialogOpen] = useState(false);
-  const [unregisterError, setUnregisterError] = useState<string | null>(null);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   if (effectiveRole && !canRead) {
     return (
@@ -153,43 +138,6 @@ export function RuntimeDetail({
     );
   }
 
-  const nextStatus: "disabled" | "enabled" = runtime.disabled ? "enabled" : "disabled";
-
-  const handleConfirmStatusChange = async (reason: string) => {
-    setStatusError(null);
-    try {
-      await setRuntimeStatus.mutateAsync({
-        runtimeId: runtime.id,
-        status: nextStatus,
-        reason });
-      setStatusDialogOpen(false);
-      setActionNotice(
-        nextStatus === "disabled" ? t("Runtime disabled.") : t("Runtime enabled."),
-      );
-    } catch (err) {
-      setStatusError(getApiErrorMessage(err, t("Failed to update runtime status")));
-    }
-  };
-
-  const handleConfirmUnregister = async ({
-    reason,
-    confirm }: {
-    reason: string;
-    confirm: string;
-  }) => {
-    setUnregisterError(null);
-    try {
-      const res = await unregisterRuntime.mutateAsync({
-        runtimeId: runtime.id,
-        reason,
-        confirm });
-      setUnregisterDialogOpen(false);
-      setActionNotice(t("Runtime unregister requested ({0}).", res.request_id));
-    } catch (err) {
-      setUnregisterError(getApiErrorMessage(err, t("Failed to unregister runtime")));
-    }
-  };
-
   return (
     <Layout
       header={
@@ -197,8 +145,8 @@ export function RuntimeDetail({
           <PageHeader
             title={runtime.name || runtime.id}
             backAction={back}
-            badge={
-              <div className="flex flex-wrap items-center gap-2">
+            details={
+              <>
                 <ConnectionStatusBadge status={runtime.status} />
                 {runtime.disabled && (
                   <Badge
@@ -207,36 +155,10 @@ export function RuntimeDetail({
                     icon={<StatusDot variant="error" label={t("Disabled")} aria-hidden="true" />}
                   />
                 )}
-              </div>
-            }
-            meta={<span className="font-mono">{runtime.id}</span>}
-            actions={
-              canControlRuntime ? (
-                <>
-                  <Button
-                    type="button"
-                    label={runtime.disabled ? t("Enable runtime") : t("Disable runtime")}
-                    variant="secondary"
-                    size="sm"
-                    icon={runtime.disabled ? <CheckCircle2 className="size-3.5" aria-hidden="true" /> : <Ban className="size-3.5" aria-hidden="true" />}
-                    onClick={() => {
-                      setStatusError(null);
-                      setStatusDialogOpen(true);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    label={t("Unregister runtime")}
-                    variant="destructive"
-                    size="sm"
-                    icon={<Trash2 className="size-3.5" aria-hidden="true" />}
-                    onClick={() => {
-                      setUnregisterError(null);
-                      setUnregisterDialogOpen(true);
-                    }}
-                  />
-                </>
-              ) : undefined
+                <span className="font-mono text-caption text-muted-foreground">
+                  {t("• ID:")} {runtime.id}
+                </span>
+              </>
             }
           />
         </LayoutHeader>
@@ -244,13 +166,6 @@ export function RuntimeDetail({
       content={
         <LayoutContent padding={0}>
           <div className="space-y-6">
-            {actionNotice && (
-              <Banner
-                status="info"
-                role="status"
-                title={actionNotice}
-              />
-            )}
 
             <Section className="space-y-4">
               <Heading level={3}>{t("Runtime Details")}</Heading>
@@ -434,46 +349,6 @@ export function RuntimeDetail({
             </Section>
           </div>
 
-          {canControlRuntime && (
-            <>
-              <ConfirmReasonDialog
-                open={statusDialogOpen}
-                onOpenChange={(open) => {
-                  if (!setRuntimeStatus.isPending) {
-                    setStatusDialogOpen(open);
-                    if (!open) setStatusError(null);
-                  }
-                }}
-                title={runtime.disabled ? t("Enable runtime") : t("Disable runtime")}
-                description={
-                  runtime.disabled
-                    ? t("Re-enabling allows this daemon to reconnect and claim queued tasks.")
-                    : t("Disabling rejects daemon routes and blocks task claims until re-enabled.")
-                }
-                confirmLabel={runtime.disabled ? t("Enable runtime") : t("Disable runtime")}
-                confirmVariant={runtime.disabled ? "default" : "destructive"}
-                isPending={setRuntimeStatus.isPending}
-                error={statusError}
-                onConfirm={handleConfirmStatusChange}
-              />
-
-              <TypeToConfirmDialog
-                open={unregisterDialogOpen}
-                onOpenChange={(open) => {
-                  setUnregisterDialogOpen(open);
-                  if (!open) setUnregisterError(null);
-                }}
-                title={t("Unregister runtime")}
-                description={t("Unregistering queues permanent removal of this runtime and cannot be undone.")}
-                expectedText={runtime.name || runtime.id}
-                confirmInputLabel={t("Runtime name")}
-                confirmLabel={t("Unregister runtime")}
-                confirmVariant="destructive"
-                error={unregisterError}
-                onConfirm={handleConfirmUnregister}
-              />
-            </>
-          )}
         </LayoutContent>
       }
     />

@@ -14,8 +14,8 @@ import {
 import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@astryxdesign/core/Button";
 import { Inbox, RefreshCw, X } from "@multica/ui/icons";
-import { RowActions } from "../components/RowActions";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
+import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -227,6 +227,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                     <TableRow
                       key={notice.id}
                       data-state={isSelected ? "selected" : undefined}
+                      onClick={() => setSelectedId(notice.id)}
                     >
                       <TableCell>
                         <Text type="supporting" hasTabularNumbers>
@@ -251,8 +252,24 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                           {formatReviewReason(notice.review_reason)}
                         </Text>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <RowActions label={t("payment notice")} actions={[{ label: t("View"), onSelect: () => setSelectedId(notice.id) }]} />
+                      <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                        <RowActions
+                          label={t("payment notice")}
+                          actions={
+                            notice.state === "needs_review"
+                              ? [
+                                  {
+                                    label: t("Dismiss"),
+                                    destructive: true,
+                                    onSelect: () => {
+                                      setSelectedId(notice.id);
+                                      handleOpenDismissDialog();
+                                    },
+                                  },
+                                ]
+                              : []
+                          }
+                        />
                       </TableCell>
                     </TableRow>
                   );

@@ -6,8 +6,6 @@ import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import { RadioList, RadioListItem } from "@astryxdesign/core/RadioList";
 import { Section } from "@astryxdesign/core/Section";
 import {
-  pixel,
-  proportional,
   Table,
   TableBody,
   TableCell,
@@ -16,7 +14,6 @@ import {
   TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@astryxdesign/core/Button";
-import { RowActions, useRowActionsWidth } from "../components/RowActions";
 import { Banner } from "@astryxdesign/core/Banner";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { Selector } from "@astryxdesign/core/Selector";
@@ -26,23 +23,18 @@ import { TabList, Tab } from "@astryxdesign/core/TabList";
 import {
   Building2,
   Gauge,
-  Lock,
-  SlidersHorizontal,
-  Trash2 } from "@multica/ui/icons";
+  SlidersHorizontal } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
 import { MetadataList, MetadataListItem } from "../components/MetadataList";
-import { TypeToConfirmDialog } from "../components/TypeToConfirmDialog";
-import { getApiErrorMessage, getLimitOverrideErrorMessage } from "../api/client";
+import { getLimitOverrideErrorMessage } from "../api/client";
 import {
-  useDeleteTenantNow,
   useLegalHolds,
   useMe,
   useSetTenantLimitOverride,
-  useSetTenantStatus,
   useTenant,
   useTenantResources } from "../api/hooks";
 import { LIMIT_GATES, type ResourceUsageItem, type TenantWorkspace } from "../api/schemas";
@@ -56,6 +48,7 @@ import {
   resourceTypeLabel } from "./Resources";
 import { formatBytes, maxWorkspacesLabel, statusSummaryText } from "./Tenants";
 import { TenantPolicy } from "./TenantPolicy";
+import { WorkspaceAccountMenu } from "./WorkspaceAccountMenu";
 import { TenantUsers } from "./TenantUsers";
 import { t } from "../i18n";
 
@@ -91,11 +84,8 @@ export function TenantDetail({
   onSelectWorkspace,
   onSelectUser,
   userRole }: TenantDetailProps) {
-  const actionsWidth = useRowActionsWidth(96);
   const { data: me } = useMe();
   const effectiveRole = userRole ?? me?.role;
-  const canDeleteTenant = effectiveRole === "system_admin";
-  const canManageTenantStatus = effectiveRole === "system_admin";
   const canViewPolicy =
     !effectiveRole ||
     effectiveRole === "system_admin" ||
@@ -115,18 +105,6 @@ export function TenantDetail({
     refetch: refetchResources } = useTenantResources(tenantId, activeTab === "resources");
   const legalHoldsQuery = useLegalHolds(effectiveRole === "system_admin");
   const setLimitOverride = useSetTenantLimitOverride();
-  const deleteTenantNow = useDeleteTenantNow();
-  const setTenantStatus = useSetTenantStatus();
-
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
-
-  const [statusDialogMode, setStatusDialogMode] = useState<"lock" | "unlock" | null>(null);
-  const [lockTargetStatus, setLockTargetStatus] = useState<"suspended" | "read_only">("suspended");
-  const [statusReason, setStatusReason] = useState("");
-  const [statusDialogError, setStatusDialogError] = useState<string | null>(null);
-  const [statusNotice, setStatusNotice] = useState<string | null>(null);
 
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideGate, setOverrideGate] = useState<string>("agents");
@@ -159,60 +137,6 @@ export function TenantDetail({
       </div>
     );
   }
-
-  const handleConfirmDeleteTenant = async ({
-    reason,
-    confirm,
-    export_first }: {
-    reason: string;
-    confirm: string;
-    export_first?: boolean;
-  }) => {
-    setDeleteError(null);
-    try {
-      const res = await deleteTenantNow.mutateAsync({
-        tenantId,
-        reason,
-        confirm,
-        ...(export_first !== undefined ? { export_first } : {}) });
-      setDeleteDialogOpen(false);
-      setDeleteNotice(t("Immediate deletion requested ({0}).", res.request_id));
-    } catch (err) {
-      setDeleteError(getApiErrorMessage(err, t("Failed to start tenant deletion")));
-    }
-  };
-
-  const openStatusDialog = (mode: "lock" | "unlock") => {
-    setStatusDialogMode(mode);
-    setLockTargetStatus("suspended");
-    setStatusReason("");
-    setStatusDialogError(null);
-  };
-
-  const handleSubmitTenantStatus = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!statusDialogMode || setTenantStatus.isPending) return;
-    const trimmedReason = statusReason.trim();
-    if (!trimmedReason) {
-      setStatusDialogError(t("A reason is required."));
-      return;
-    }
-
-    const nextStatus = statusDialogMode === "unlock" ? "active" : lockTargetStatus;
-    setStatusDialogError(null);
-    try {
-      const res = await setTenantStatus.mutateAsync({
-        tenantId,
-        status: nextStatus,
-        reason: trimmedReason });
-      setStatusDialogMode(null);
-      setStatusNotice(
-        t("Tenant status updated to {0} across {1} workspace(s).", res.status, res.workspace_ids.length),
-      );
-    } catch (err) {
-      setStatusDialogError(getApiErrorMessage(err, t("Failed to update tenant status")));
-    }
-  };
 
   const hasLegalHold =
     effectiveRole === "system_admin" &&
@@ -284,69 +208,17 @@ export function TenantDetail({
     <div className="space-y-6">
       <PageHeader
         title={tenant.name || tenant.id}
-        badge={
-          <div className="inline-flex items-center gap-2">
+        details={
+          <>
             <StatusBadge status={tenant.status} />
             {hasLegalHold && <Badge variant="error" label={t("Legal hold")} />}
-          </div>
+            <span className="font-mono text-caption text-muted-foreground">
+              {t("• ID:")} {tenant.id}
+            </span>
+          </>
         }
         backAction={back}
-        description={<span className="font-mono text-caption">{tenant.id}</span>}
-        actions={
-          canManageTenantStatus || canDeleteTenant ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {canManageTenantStatus && tenant.status !== "suspended" && (
-                <Button
-                  type="button"
-                  label={t("Lock tenant")}
-                  variant="secondary"
-                  size="sm"
-                  icon={<Lock className="size-3.5" aria-hidden="true" />}
-                  onClick={() => openStatusDialog("lock")}
-                />
-              )}
-              {canManageTenantStatus &&
-                (tenant.status === "suspended" || tenant.status === "read_only") && (
-                  <Button
-                    type="button"
-                    label={t("Unlock tenant")}
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => openStatusDialog("unlock")}
-                  />
-                )}
-              {canDeleteTenant && (
-                <Button
-                  label={t("Delete tenant")}
-                  variant="destructive"
-                  size="sm"
-                  icon={<Trash2 className="size-3.5" aria-hidden="true" />}
-                  onClick={() => {
-                    setDeleteError(null);
-                    setDeleteDialogOpen(true);
-                  }}
-                />
-              )}
-            </div>
-          ) : undefined
-        }
       />
-
-      {statusNotice && (
-        <Banner
-          status="info"
-          role="status"
-          title={statusNotice}
-        />
-      )}
-
-      {deleteNotice && (
-        <Banner
-          status="info"
-          role="status"
-          title={deleteNotice}
-        />
-      )}
 
       <Card padding={4}>
         <MetadataList columns={3}>
@@ -400,83 +272,68 @@ export function TenantDetail({
                 title={t("This tenant has no workspaces")}
               />
             ) : (
-              <div className="overflow-x-auto">
-                <Table
-                  data={tenant.workspaces}
-                  idKey="id"
-                  density="balanced"
-                  dividers="rows"
-                  hasHover
-                  columns={[
-                    {
-                      key: "name",
-                      header: t("Workspace"),
-                      width: proportional(2, { minWidth: 200 }),
-                      renderCell: (workspace) => (
-                        <>
-                          <div className="truncate font-medium text-foreground" title={workspace.name}>
+              <Card padding={0} className="overflow-x-auto">
+                <Table density="balanced" dividers="rows" hasHover>
+                  <TableHeader>
+                    <TableRow isHeaderRow>
+                      <TableHeaderCell>{t("Workspace")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Plan")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Status")}</TableHeaderCell>
+                      <TableHeaderCell className="text-right">{t("Members")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Owner")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Usage")}</TableHeaderCell>
+                      <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tenant.workspaces.map((workspace) => (
+                      <TableRow key={workspace.id} onClick={() => onSelectWorkspace(workspace.id)}>
+                        <TableCell>
+                          <div className="max-w-56 truncate font-medium text-foreground" title={workspace.name}>
                             {workspace.name}
                           </div>
-                          <div className="truncate font-mono text-caption text-muted-foreground" title={workspace.slug}>
+                          <div className="max-w-44 truncate font-mono text-caption text-muted-foreground" title={workspace.slug}>
                             {workspace.slug}
                           </div>
-                        </>
-                      ) },
-                    {
-                      key: "plan_key",
-                      header: t("Plan"),
-                      width: proportional(1, { minWidth: 100 }),
-                      renderCell: (workspace) => <Text type="supporting">{workspace.plan_key || "-"}</Text> },
-                    {
-                      key: "status",
-                      header: t("Status"),
-                      width: proportional(1, { minWidth: 110 }),
-                      renderCell: (workspace) => <StatusBadge status={workspace.status} /> },
-                    {
-                      key: "member_count",
-                      header: t("Members"),
-                      width: pixel(96),
-                      align: "end",
-                      renderCell: (workspace) => (
-                        <Text type="body" hasTabularNumbers>
-                          {workspace.member_count}
-                        </Text>
-                      ) },
-                    {
-                      key: "owner",
-                      header: t("Owner"),
-                      width: proportional(1.5, { minWidth: 160 }),
-                      renderCell: (workspace) => (
-                        <Text type="supporting">{workspace.owner?.email ?? "-"}</Text>
-                      ) },
-                    {
-                      key: "usage",
-                      header: t("Usage"),
-                      width: proportional(1.5, { minWidth: 160 }),
-                      renderCell: (workspace) => (
-                        <span
-                          data-testid="workspace-usage"
-                          title={workspace.usage_day ? t("Usage on {0} (UTC)", workspace.usage_day) : t("No usage recorded yet")}
-                        >
-                          <Text type="supporting" hasTabularNumbers>
-                            {usageSummary(workspace)}
+                        </TableCell>
+                        <TableCell>
+                          <Text type="supporting">{workspace.plan_key || "-"}</Text>
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={workspace.status} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Text type="body" hasTabularNumbers>
+                            {workspace.member_count}
                           </Text>
-                        </span>
-                      ) },
-                    {
-                      key: "actions",
-                      header: t("Action"),
-                      width: pixel(actionsWidth),
-                      align: "end",
-                      renderCell: (workspace) => (
-                        <RowActions
-                          label={t("workspace {0}", workspace.name)}
-                          actions={[{ label: t("View"), onSelect: () => onSelectWorkspace(workspace.id) }]}
-                        />
-                      ) },
-                  ]}
-                />
-              </div>
+                        </TableCell>
+                        <TableCell>
+                          <Text type="supporting">{workspace.owner?.email ?? "-"}</Text>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            data-testid="workspace-usage"
+                            title={workspace.usage_day ? t("Usage on {0} (UTC)", workspace.usage_day) : t("No usage recorded yet")}
+                          >
+                            <Text type="supporting" hasTabularNumbers>
+                              {usageSummary(workspace)}
+                            </Text>
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                          <WorkspaceAccountMenu
+                            workspaceId={workspace.id}
+                            workspaceName={workspace.name}
+                            workspaceSlug={workspace.slug}
+                            workspaceStatus={workspace.status}
+                            role={effectiveRole}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
             )}
           </Section>
         </>
@@ -793,105 +650,6 @@ export function TenantDetail({
         </Dialog>
       )}
 
-      {canManageTenantStatus && (
-        <Dialog
-          isOpen={statusDialogMode !== null}
-          onOpenChange={(open) => {
-            if (!open && !setTenantStatus.isPending) {
-              setStatusDialogMode(null);
-              setStatusDialogError(null);
-            }
-          }}
-          purpose="form"
-          width={448}
-        >
-
-            <form onSubmit={handleSubmitTenantStatus} className="space-y-4">
-              <DialogHeader title={statusDialogMode === "unlock" ? t("Unlock tenant") : t("Lock tenant")} subtitle={statusDialogMode === "unlock"
-                    ? t("Restore all locked workspaces in this tenant back to active status.")
-                    : t("Cascade a status lock across every active workspace belonging to this tenant.")} />
-
-              {statusDialogError && (
-                <Banner
-                  status="error"
-                  role="alert"
-                  title={statusDialogError}
-                />
-              )}
-
-              {statusDialogMode === "lock" && (
-                <Selector
-                  label={t("Target status")}
-                  width="100%"
-                  options={[
-                    { value: "suspended", label: t("Suspended") },
-                    { value: "read_only", label: t("Read-only") },
-                  ]}
-                  value={lockTargetStatus}
-                  onChange={(val) => {
-                    if (val === "suspended" || val === "read_only") {
-                      setLockTargetStatus(val);
-                    }
-                  }}
-                />
-              )}
-
-              <TextArea
-                id="tenant-status-reason"
-                label={t("Reason")}
-                value={statusReason}
-                onChange={(value) => setStatusReason(value)}
-                placeholder={t("Explain why this tenant is being updated...")}
-                isDisabled={setTenantStatus.isPending}
-                rows={3}
-                width="100%"
-              />
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  isDisabled={setTenantStatus.isPending}
-                  label={t("Cancel")}
-                  onClick={() => ((open) => {
-            if (!open && !setTenantStatus.isPending) {
-              setStatusDialogMode(null);
-              setStatusDialogError(null);
-            }
-          })(false)}
-                />
-                <Button
-                  type="submit"
-                  label={statusDialogMode === "unlock" ? t("Unlock tenant") : t("Apply lock")}
-                  variant={statusDialogMode === "unlock" ? "primary" : "destructive"}
-                  isDisabled={!statusReason.trim() || setTenantStatus.isPending}
-                  isLoading={setTenantStatus.isPending}
-                  aria-busy={setTenantStatus.isPending || undefined}
-                />
-              </div>
-            </form>
-
-        </Dialog>
-      )}
-
-      {canDeleteTenant && (
-        <TypeToConfirmDialog
-          open={deleteDialogOpen}
-          onOpenChange={(open) => {
-            setDeleteDialogOpen(open);
-            if (!open) setDeleteError(null);
-          }}
-          title={t("Delete tenant")}
-          description={t("Immediate deletion permanently removes this tenant and all of its workspaces.")}
-          expectedText={tenant.name || tenant.id}
-          confirmInputLabel={t("Tenant name")}
-          confirmLabel={t("Delete tenant")}
-          confirmVariant="destructive"
-          showExportFirst
-          error={deleteError}
-          onConfirm={handleConfirmDeleteTenant}
-        />
-      )}
     </div>
   );
 }

@@ -1,13 +1,23 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { Tenants } from "./Tenants";
 
 const mockUseTenants = vi.fn();
+const mockUseMe = vi.fn();
+const mockSetTenantStatusMutateAsync = vi.fn();
+const mockDeleteTenantNowMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
   useTenants: (filters: { q?: string }) => mockUseTenants(filters),
+  useMe: () => mockUseMe(),
+  useSetTenantStatus: () => ({ mutateAsync: mockSetTenantStatusMutateAsync, isPending: false }),
+  useDeleteTenantNow: () => ({ mutateAsync: mockDeleteTenantNowMutateAsync, isPending: false }),
 }));
+
+function asRole(role: string) {
+  mockUseMe.mockReturnValue({ data: { user_id: "u-1", email: "u@example.com", role, tenant_id: null } });
+}
 
 const mockTenantsList = [
   {
@@ -52,6 +62,7 @@ function listOf(tenants: unknown[]) {
 describe("Tenants screen workspace columns", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    asRole("system_admin");
   });
 
   it("renders one row per tenant with workspace count and max_workspaces", () => {
@@ -98,22 +109,66 @@ describe("Tenants screen", () => {
     expect(screen.getByText("Gamma Delta")).toBeInTheDocument();
   });
 
-  it("calls onSelectTenant when View button is clicked", () => {
-    mockUseTenants.mockReturnValue({
-      data: { tenants: mockTenantsList, next_cursor: null },
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    });
+  it("opens the tenant detail when a row is clicked, with no View action", () => {
+    listOf(mockTenantsList);
     const onSelect = vi.fn();
 
     render(<Tenants onSelectTenant={onSelect} />);
 
-    const viewButtons = screen.getAllByRole("button", { name: "View" });
-    expect(viewButtons[0]).toBeDefined();
-    fireEvent.click(viewButtons[0]!);
-
+    expect(screen.queryByRole("button", { name: "View" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Beta Alpha"));
     expect(onSelect).toHaveBeenCalledWith("t-1");
+  });
+
+  it("locks an active tenant from its row action", async () => {
+    listOf(mockTenantsList);
+    mockSetTenantStatusMutateAsync.mockResolvedValueOnce({ status: "suspended", workspace_ids: ["ws-1"] });
+
+    render(<Tenants onSelectTenant={vi.fn()} />);
+
+    fireEvent.click(within(rowOf("Beta Alpha")).getByRole("button", { name: /Lock tenant/i }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Reason/i), { target: { value: "Fraud hold" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Apply lock/i }));
+
+    await waitFor(() => {
+      expect(mockSetTenantStatusMutateAsync).toHaveBeenCalledWith({
+        tenantId: "t-1",
+        status: "suspended",
+        reason: "Fraud hold",
+      });
+    });
+  });
+
+  it("deletes a tenant from its row action after typing its name", async () => {
+    listOf(mockTenantsList);
+    mockDeleteTenantNowMutateAsync.mockResolvedValueOnce({ request_id: "dr-9", state: "pending" });
+
+    render(<Tenants onSelectTenant={vi.fn()} />);
+
+    fireEvent.click(within(rowOf("Gamma Delta")).getByRole("button", { name: /Delete tenant/i }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Reason/i), { target: { value: "Contract ended" } });
+    fireEvent.change(within(dialog).getByLabelText(/Tenant name/i), { target: { value: "Gamma Delta" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete tenant" }));
+
+    await waitFor(() => {
+      expect(mockDeleteTenantNowMutateAsync).toHaveBeenCalledWith({
+        tenantId: "t-2",
+        reason: "Contract ended",
+        confirm: "Gamma Delta",
+        export_first: false,
+      });
+    });
+  });
+
+  it("shows no tenant actions to an admin", () => {
+    asRole("admin");
+    listOf(mockTenantsList);
+
+    render(<Tenants onSelectTenant={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: /Lock tenant|Delete tenant/i })).not.toBeInTheDocument();
   });
 
   it("handles loading, error, and empty states", () => {
@@ -170,6 +225,7 @@ describe("Tenants screen", () => {
   });
 
   it("admin sees only the tenant returned by the API and no delete-tenant action", () => {
+    asRole("admin");
     listOf([mockTenantsList[0]]);
     render(<Tenants onSelectTenant={vi.fn()} />);
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Resources } from "./Resources";
 
@@ -123,7 +123,7 @@ describe("Resources screen", () => {
     const topTenantRow = screen.getByText("Beta Labs").closest("tr") as HTMLElement;
     expect(topTenantRow).toHaveTextContent("business");
     expect(topTenantRow).toHaveTextContent("1.0 KB");
-    fireEvent.click(within(topTenantRow).getByRole("button", { name: "View" }));
+    fireEvent.click(topTenantRow);
     expect(onSelectTenant).toHaveBeenCalledWith("t-2");
 
     unmount();

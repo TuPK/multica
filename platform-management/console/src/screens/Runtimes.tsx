@@ -18,11 +18,11 @@ import { Button } from "@astryxdesign/core/Button";
 import { Selector } from "@astryxdesign/core/Selector";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { RefreshCw, Search, Server } from "@multica/ui/icons";
-import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
+import { RuntimeAccountMenu } from "./RuntimeAccountMenu";
 import { useMe, useRuntimes, useTenants, type Runtime, type RuntimeStatus } from "../api/hooks";
 import type { StaffRole } from "../components/types";
 import { t } from "../i18n";
@@ -281,7 +281,7 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                       </TableHeader>
                       <TableBody>
                         {runtimes.map((rt: Runtime) => (
-                          <TableRow key={rt.id}>
+                          <TableRow key={rt.id} onClick={() => onSelectRuntime(rt.id)}>
                             <TableCell>
                               <div
                                 className="max-w-52 truncate font-medium text-foreground"
@@ -324,8 +324,13 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                                   : "-"}
                               </Text>
                             </TableCell>
-                            <TableCell className="text-right">
-                              <RowActions label={t("runtime")} actions={[{ label: t("View"), onSelect: () => onSelectRuntime(rt.id) }]} />
+                            <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                              <RuntimeAccountMenu
+                                runtimeId={rt.id}
+                                runtimeName={rt.name || rt.id}
+                                disabled={rt.disabled}
+                                canControlRuntime={effectiveRole === "system_admin"}
+                              />
                             </TableCell>
                           </TableRow>
                         ))}

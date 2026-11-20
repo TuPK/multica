@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { UserDetail } from "./UserDetail";
-import { PlatformApiError } from "../api/client";
 
 const mockUseMe = vi.fn();
 const mockUseUser = vi.fn();
@@ -19,6 +18,14 @@ const mockChangeWorkspaceMemberRoleMutateAsync = vi.fn();
 const mockCreateQuotaRequestMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
+  useExportWorkspace: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useChangeWorkspaceStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddWorkspaceMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteWorkspaceNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useWorkspace: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }),
+  useSetRuntimeStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnregisterRuntime: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useMe: () => mockUseMe(),
   useUser: () => mockUseUser(),
   useTenantUser: (tenantId?: string, userId?: string, enabled?: boolean) =>
@@ -136,74 +143,6 @@ describe("UserDetail screen", () => {
       audit_events: [],
     };
 
-    it("tenant deactivate asks reason and lists the workspaces it removes the user from", async () => {
-      mockUseUser.mockReturnValue({ data: mockActiveUser, isLoading: false, isError: false, refetch: vi.fn() });
-      mockUseTenantUser.mockReturnValue({
-        data: {
-          ...mockTenantUserDetail,
-          workspaces: [
-            { workspace_id: "ws-1", name: "Engineering", member_role: "admin" },
-            { workspace_id: "ws-2", name: "Product", member_role: "member" },
-          ],
-        },
-        isLoading: false,
-        isError: false,
-      });
-      mockDeactivateTenantUserMutateAsync.mockResolvedValueOnce({
-        request_ids: ["mr-1", "mr-2"],
-      });
-
-      render(<UserDetail userId="u-active" tenantId="t-1" onBack={vi.fn()} userRole="admin" />);
-
-      fireEvent.click(screen.getByRole("button", { name: "Deactivate in tenant" }));
-      const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getByText("Engineering")).toBeInTheDocument();
-      expect(within(dialog).getByText("Product")).toBeInTheDocument();
-
-      const confirmBtn = within(dialog).getByRole("button", { name: "Deactivate in tenant" });
-      expect(confirmBtn).toBeDisabledControl();
-
-      const reasonInput = within(dialog).getByLabelText(/Reason/i);
-      fireEvent.change(reasonInput, { target: { value: "   " } });
-      expect(confirmBtn).toBeDisabledControl();
-
-      fireEvent.change(reasonInput, { target: { value: "Contractor offboarding" } });
-      expect(confirmBtn).not.toBeDisabledControl();
-      fireEvent.click(confirmBtn);
-
-      await waitFor(() => {
-        expect(mockDeactivateTenantUserMutateAsync).toHaveBeenCalledWith({
-          tenantId: "t-1",
-          userId: "u-active",
-          reason: "Contractor offboarding",
-        });
-      });
-    });
-
-    it("keeps deactivate dialog open and shows mapped error when owner blocks deactivation", async () => {
-      mockUseUser.mockReturnValue({ data: mockActiveUser, isLoading: false, isError: false, refetch: vi.fn() });
-      mockUseTenantUser.mockReturnValue({
-        data: mockTenantUserDetail,
-        isLoading: false,
-        isError: false,
-      });
-      mockDeactivateTenantUserMutateAsync.mockRejectedValueOnce(
-        new PlatformApiError(409, "owner_role_immutable", "an owner cannot be removed by staff"),
-      );
-
-      render(<UserDetail userId="u-active" tenantId="t-1" onBack={vi.fn()} userRole="admin" />);
-
-      fireEvent.click(screen.getByRole("button", { name: "Deactivate in tenant" }));
-      const dialog = screen.getByRole("dialog");
-      const reasonInput = within(dialog).getByLabelText(/Reason/i);
-      fireEvent.change(reasonInput, { target: { value: "Departure" } });
-      fireEvent.click(within(dialog).getByRole("button", { name: "Deactivate in tenant" }));
-
-      expect(await within(dialog).findByRole("alert")).toHaveTextContent(/owner/i);
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(reasonInput).toHaveValue("Departure");
-    });
-
     it("change role offers admin member viewer only", async () => {
       const user = userEvent.setup();
       mockUseUser.mockReturnValue({ data: mockActiveUser, isLoading: false, isError: false, refetch: vi.fn() });
@@ -306,7 +245,7 @@ describe("UserDetail screen", () => {
       expect(screen.queryByRole("button", { name: "Sign out everywhere" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Reset two-step sign-in" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Delete account" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Deactivate in tenant" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Deactivate in tenant" })).not.toBeInTheDocument();
     });
 
     it("allocation opens the workspace action not a per-user quota", async () => {

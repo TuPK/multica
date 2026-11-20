@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
-import { pixel, proportional, Table } from "@astryxdesign/core/Table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
@@ -9,8 +16,8 @@ import { PageHeader } from "../components/PageHeader";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
-import { RowActions, useRowActionsWidth } from "../components/RowActions";
-import { useTenants } from "../api/hooks";
+import { TenantAccountMenu } from "./TenantAccountMenu";
+import { useMe, useTenants } from "../api/hooks";
 import type { Tenant } from "../api/schemas";
 import { t } from "../i18n";
 
@@ -46,7 +53,9 @@ interface TenantsProps {
 }
 
 export function Tenants({ onSelectTenant }: TenantsProps) {
-  const actionsWidth = useRowActionsWidth(96);
+  const { data: me } = useMe();
+  const canManageTenantStatus = me?.role === "system_admin";
+  const canDeleteTenant = me?.role === "system_admin";
   const [search, setSearch] = useState("");
   const {
     data,
@@ -115,90 +124,70 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
       {!isLoading && !isError && tenants.length > 0 && (
         <div className="space-y-4">
           <Card padding={0} className="overflow-x-auto">
-            <Table
-              data={tenants}
-              idKey="id"
-              density="balanced"
-              dividers="rows"
-              hasHover
-              columns={[
-                {
-                  key: "name",
-                  header: t("Name"),
-                  width: proportional(2, { minWidth: 200 }),
-                  renderCell: (tenant) => (
-                    <>
-                      <div className="truncate font-medium text-foreground" title={tenant.name}>
+            <Table density="balanced" dividers="rows" hasHover>
+              <TableHeader>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>{t("Name")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Workspaces")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Max workspaces")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Best plan")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Workspace status")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Last Activity")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tenants.map((tenant: Tenant) => (
+                  <TableRow key={tenant.id} onClick={() => onSelectTenant(tenant.id)}>
+                    <TableCell>
+                      <div className="max-w-60 truncate font-medium text-foreground" title={tenant.name}>
                         {tenant.name}
                       </div>
-                      <div className="truncate font-mono text-caption text-muted-foreground" title={tenant.id}>
+                      <div
+                        className="max-w-44 truncate font-mono text-caption text-muted-foreground"
+                        title={tenant.id}
+                      >
                         {tenant.id}
                       </div>
-                    </>
-                  ),
-                },
-                {
-                  key: "workspace_count",
-                  header: t("Workspaces"),
-                  width: pixel(120),
-                  align: "end",
-                  renderCell: (tenant) => (
-                    <div data-testid="tenant-workspace-count">
-                      <Text type="body" hasTabularNumbers>
-                        {tenant.workspace_count}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div data-testid="tenant-workspace-count">
+                        <Text type="body" hasTabularNumbers>
+                          {tenant.workspace_count}
+                        </Text>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div data-testid="tenant-max-workspaces">
+                        <Text type="body" hasTabularNumbers>
+                          {maxWorkspacesLabel(tenant.max_workspaces)}
+                        </Text>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Text type="supporting">{tenant.best_plan_key || "-"}</Text>
+                    </TableCell>
+                    <TableCell>
+                      <Text type="supporting">{statusSummaryText(tenant.status_summary)}</Text>
+                    </TableCell>
+                    <TableCell>
+                      <Text type="supporting" hasTabularNumbers>
+                        {tenant.last_activity_at ? new Date(tenant.last_activity_at).toLocaleString() : "-"}
                       </Text>
-                    </div>
-                  ),
-                },
-                {
-                  key: "max_workspaces",
-                  header: t("Max workspaces"),
-                  width: proportional(1, { minWidth: 120 }),
-                  align: "end",
-                  renderCell: (tenant) => (
-                    <div data-testid="tenant-max-workspaces">
-                      <Text type="body" hasTabularNumbers>
-                        {maxWorkspacesLabel(tenant.max_workspaces)}
-                      </Text>
-                    </div>
-                  ),
-                },
-                {
-                  key: "best_plan_key",
-                  header: t("Best plan"),
-                  width: proportional(1, { minWidth: 110 }),
-                  renderCell: (tenant) => <Text type="supporting">{tenant.best_plan_key || "-"}</Text>,
-                },
-                {
-                  key: "status_summary",
-                  header: t("Workspace status"),
-                  width: proportional(1.5, { minWidth: 160 }),
-                  renderCell: (tenant) => <Text type="supporting">{statusSummaryText(tenant.status_summary)}</Text>,
-                },
-                {
-                  key: "last_activity_at",
-                  header: t("Last Activity"),
-                  width: proportional(1.3, { minWidth: 150 }),
-                  renderCell: (tenant) => (
-                    <Text type="supporting" hasTabularNumbers>
-                      {tenant.last_activity_at ? new Date(tenant.last_activity_at).toLocaleString() : "-"}
-                    </Text>
-                  ),
-                },
-                {
-                  key: "actions",
-                  header: t("Action"),
-                  width: pixel(actionsWidth),
-                  align: "end",
-                  renderCell: (tenant) => (
-                    <RowActions
-                      label={t("tenant {0}", tenant.name)}
-                      actions={[{ label: t("View"), onSelect: () => onSelectTenant(tenant.id) }]}
-                    />
-                  ),
-                },
-              ]}
-            />
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                      <TenantAccountMenu
+                        tenantId={tenant.id}
+                        tenantName={tenant.name || tenant.id}
+                        tenantStatus={tenant.status}
+                        canManageTenantStatus={canManageTenantStatus}
+                        canDeleteTenant={canDeleteTenant}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </Card>
 
           {hasNextPage && (

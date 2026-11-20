@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Card } from "@astryxdesign/core/Card";
 import { Divider } from "@astryxdesign/core/Divider";
-import { HStack } from "@astryxdesign/core/HStack";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Section } from "@astryxdesign/core/Section";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
@@ -14,23 +13,14 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { Selector } from "@astryxdesign/core/Selector";
 import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
-import { NumberInput } from "@astryxdesign/core/NumberInput";
 import {
   Activity,
-  ArrowUpCircle,
   Ban,
-  CalendarClock,
-  CheckCircle2,
   CreditCard,
-  Download,
   History,
-  Lock,
   Plus,
-  RotateCcw,
-  Trash2,
   UserPlus } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
-import { TypeToConfirmDialog } from "../components/TypeToConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -45,24 +35,17 @@ import {
   useWorkspaceBillingProfile,
   useWorkspaceNotes,
   useWorkspaceAudit,
-  useChangeWorkspaceStatus,
-  useExportWorkspace,
   useAddWorkspaceNote,
-  useUpdateSubscription,
   useSetBillingProfileVerified,
   useUpdateWorkspaceBillingProfile,
   useCancelOrder,
   useMemberRequests,
-  useAddWorkspaceMember,
   useCancelMemberRequest,
-  useDeleteWorkspaceNow,
-  useCreateQuotaRequest,
-  type MemberRole } from "../api/hooks";
+  } from "../api/hooks";
 import { getApiErrorMessage, PlatformApiError } from "../api/client";
 import { formatBytes } from "./Tenants";
 import type { StaffRole } from "../components/types";
 import {
-  LIMIT_GATES,
   type Note,
   type AuditEvent,
   type Order,
@@ -74,7 +57,7 @@ import {
 import { formatMinorAmount } from "../money";
 import { t } from "../i18n";
 
-function formatWorkspaceConflictError(err: unknown, fallback: string): string {
+export function formatWorkspaceConflictError(err: unknown, fallback: string): string {
   if (err instanceof PlatformApiError) {
     const status = typeof err.details?.status === "string" ? err.details.status : null;
     const allowedList = Array.isArray(err.details?.allowed)
@@ -96,11 +79,6 @@ function formatWorkspaceConflictError(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
-const MEMBER_ROLE_ITEMS: Array<{ value: MemberRole; label: string }> = [
-  { value: "admin", label: "Admin" },
-  { value: "member", label: "Member" },
-  { value: "viewer", label: "Viewer" },
-];
 
 interface WorkspaceDetailProps {
   workspaceId: string;
@@ -383,10 +361,6 @@ function isBillingProfileField(value: string): value is BillingProfileField {
   return (BILLING_PROFILE_FIELDS as readonly string[]).includes(value);
 }
 
-const BILLING_INTERVAL_ITEMS = [
-  { value: "month", label: "Month" },
-  { value: "year", label: "Year" },
-];
 
 const ACCOUNT_KIND_ITEMS = [
   { value: "individual", label: "Individual" },
@@ -420,10 +394,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     data: auditData,
     isLoading: auditLoading } = useWorkspaceAudit(workspaceId);
 
-  const changeStatus = useChangeWorkspaceStatus();
-  const exportWorkspace = useExportWorkspace();
   const addNote = useAddWorkspaceNote();
-  const updateSubscription = useUpdateSubscription();
   const setBillingProfileVerified = useSetBillingProfileVerified();
   const updateBillingProfile = useUpdateWorkspaceBillingProfile();
   const cancelOrder = useCancelOrder();
@@ -449,24 +420,10 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
   >({});
   const [profileFormError, setProfileFormError] = useState<string | null>(null);
 
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [targetStatus, setTargetStatus] = useState("active");
-  const [statusError, setStatusError] = useState<string | null>(null);
 
-  const [quickActionNotice, setQuickActionNotice] = useState<string | null>(null);
-  const [quickActionError, setQuickActionError] = useState<string | null>(null);
 
   const [noteBody, setNoteBody] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
-
-  // Subscription dialog state
-  const [subDialogOpen, setSubDialogOpen] = useState(false);
-  const [subPlanKey, setSubPlanKey] = useState("pro");
-  const [subSeats, setSubSeats] = useState(1);
-  const [subInterval, setSubInterval] = useState("month");
-  const [subTrialEnd, setSubTrialEnd] = useState("");
-  const [subReason, setSubReason] = useState("");
-  const [subError, setSubError] = useState<string | null>(null);
 
   // Usage debt write-off dialog state
   const [writeOffOrder, setWriteOffOrder] = useState<WorkspaceUsageUnpaidOrder | null>(null);
@@ -475,14 +432,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
   const effectiveRole = userRole ?? me?.role;
   const canEditSubscription = effectiveRole === "billing" || effectiveRole === "system_admin";
   const canWriteOff = me === null ? false : (me?.role ?? userRole) === "system_admin";
-  const canLockWorkspace =
-    effectiveRole === "system_admin" ||
-    effectiveRole === "admin" ||
-    effectiveRole === "support";
-  const canExportWorkspace = effectiveRole === "system_admin" || effectiveRole === "admin";
   const canManageMembers = effectiveRole === "system_admin" || effectiveRole === "admin";
-  const canDeleteWorkspace = effectiveRole === "system_admin" || effectiveRole === "admin";
-  const canRequestQuota = !effectiveRole || effectiveRole === "system_admin" || effectiveRole === "admin";
 
   const {
     data: memberRequests = [],
@@ -491,31 +441,10 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     error: memberRequestsErrorObj,
     refetch: refetchMemberRequests } = useMemberRequests(workspaceId, canManageMembers);
 
-  const addWorkspaceMember = useAddWorkspaceMember();
   const cancelMemberRequest = useCancelMemberRequest();
-  const deleteWorkspaceNow = useDeleteWorkspaceNow();
-  const createQuotaRequest = useCreateQuotaRequest();
 
-  // Quota request dialog state
-  const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
-  const [quotaGate, setQuotaGate] = useState<string>("agents");
-  const [quotaRequestedValue, setQuotaRequestedValue] = useState("");
-  const [quotaReason, setQuotaReason] = useState("");
-  const [quotaError, setQuotaError] = useState<string | null>(null);
-  const [quotaNotice, setQuotaNotice] = useState<string | null>(null);
-
-  // Add member dialog state
-  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
-  const [memberEmail, setMemberEmail] = useState("");
-  const [memberRole, setMemberRole] = useState<MemberRole>("member");
-  const [memberError, setMemberError] = useState<string | null>(null);
   const [cancelingRequestId, setCancelingRequestId] = useState<string | null>(null);
   const [memberRequestError, setMemberRequestError] = useState<string | null>(null);
-
-  // Immediate workspace deletion dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
 
   if (workspaceLoading) {
     return <LoadingState message={t("Loading workspace details...")} />;
@@ -534,78 +463,6 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
       />
     );
   }
-
-  const handleOpenStatusDialog = () => {
-    setTargetStatus(workspace.state?.status || workspace.status || "active");
-    setStatusError(null);
-    setStatusDialogOpen(true);
-  };
-
-  const handleOpenQuickStatus = (nextStatus: "active" | "read_only" | "suspended" | "pending_deletion") => {
-    setTargetStatus(nextStatus);
-    setStatusError(null);
-    setQuickActionError(null);
-    setStatusDialogOpen(true);
-  };
-
-  const handleExportWorkspace = async () => {
-    if (!canExportWorkspace || exportWorkspace.isPending) return;
-    setQuickActionError(null);
-    setQuickActionNotice(null);
-    try {
-      const res = await exportWorkspace.mutateAsync({ workspaceId });
-      setQuickActionNotice(
-        res ? t("Workspace export queued ({0})", res.export_id) : t("Workspace export queued"),
-      );
-    } catch (err: unknown) {
-      setQuickActionError(
-        formatWorkspaceConflictError(err, t("Failed to request workspace export")),
-      );
-    }
-  };
-
-  const handleConfirmStatusChange = async (reason: string) => {
-    setStatusError(null);
-    try {
-      await changeStatus.mutateAsync({
-        workspaceId,
-        status: targetStatus as "active" | "read_only" | "suspended" | "pending_deletion",
-        reason });
-      setStatusDialogOpen(false);
-    } catch (err: unknown) {
-      setStatusError(
-        formatWorkspaceConflictError(err, t("Failed to change workspace status")),
-      );
-    }
-  };
-
-  const handleOpenSubDialog = () => {
-    setSubPlanKey(workspace.subscription?.plan_key || "pro");
-    setSubSeats(workspace.subscription?.seats ?? 1);
-    setSubInterval(workspace.subscription?.interval || "month");
-    setSubTrialEnd(workspace.subscription?.trial_end || "");
-    setSubReason("");
-    setSubError(null);
-    setSubDialogOpen(true);
-  };
-
-  const handleSaveSubscription = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!subReason.trim() || updateSubscription.isPending) return;
-    setSubError(null);
-    try {
-      await updateSubscription.mutateAsync({
-        workspaceId,
-        planKey: subPlanKey,
-        seats: Number(subSeats),
-        interval: subInterval,
-        trialEnd: subTrialEnd.trim() || null,
-        reason: subReason.trim() });
-      setSubDialogOpen(false);
-    } catch (err: unknown) {
-      setSubError(err instanceof Error ? err.message : t("Failed to update subscription"));
-    }
-  };
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -768,37 +625,6 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     }
   };
 
-  const availableStatuses = [
-    { value: "active", label: t("Active") },
-    { value: "read_only", label: t("Read-only") },
-    { value: "suspended", label: t("Suspended") },
-    ...(effectiveRole === "system_admin" || effectiveRole === "admin"
-      ? [{ value: "pending_deletion", label: t("Pending deletion") }]
-      : []),
-  ];
-
-  const handleOpenMemberDialog = () => {
-    setMemberEmail("");
-    setMemberRole("member");
-    setMemberError(null);
-    setMemberDialogOpen(true);
-  };
-
-  const handleAddMemberSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = memberEmail.trim();
-    if (!trimmed || addWorkspaceMember.isPending) return;
-    setMemberError(null);
-    try {
-      await addWorkspaceMember.mutateAsync({
-        workspaceId,
-        email: trimmed,
-        role: memberRole });
-      setMemberDialogOpen(false);
-    } catch (err: unknown) {
-      setMemberError(getApiErrorMessage(err, t("Failed to add member")));
-    }
-  };
 
   const handleCancelMemberRequest = async (requestId: string) => {
     setCancelingRequestId(requestId);
@@ -812,63 +638,6 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     }
   };
 
-  const handleConfirmDeleteNow = async ({
-    reason,
-    confirm,
-    export_first }: {
-    reason: string;
-    confirm: string;
-    export_first?: boolean;
-  }) => {
-    setDeleteError(null);
-    try {
-      const res = await deleteWorkspaceNow.mutateAsync({
-        workspaceId,
-        reason,
-        confirm,
-        ...(export_first !== undefined ? { export_first } : {}) });
-      setDeleteDialogOpen(false);
-      setDeleteNotice(t("Immediate deletion requested ({0}).", res.request_id));
-    } catch (err: unknown) {
-      setDeleteError(getApiErrorMessage(err, t("Failed to start workspace deletion")));
-    }
-  };
-
-  const handleOpenQuotaDialog = () => {
-    setQuotaGate("agents");
-    setQuotaRequestedValue("");
-    setQuotaReason("");
-    setQuotaError(null);
-    setQuotaDialogOpen(true);
-  };
-
-  const handleSubmitQuotaRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (createQuotaRequest.isPending) return;
-    const parsedValue = Number(quotaRequestedValue.trim());
-    if (quotaRequestedValue.trim() === "" || !Number.isInteger(parsedValue) || parsedValue <= 0) {
-      setQuotaError(t("Requested value must be a positive whole number."));
-      return;
-    }
-    const trimmedReason = quotaReason.trim();
-    if (!trimmedReason) {
-      setQuotaError(t("A reason is required."));
-      return;
-    }
-    setQuotaError(null);
-    try {
-      const created = await createQuotaRequest.mutateAsync({
-        workspaceId,
-        gate: quotaGate,
-        requested_value: parsedValue,
-        reason: trimmedReason });
-      setQuotaDialogOpen(false);
-      setQuotaNotice(t("Quota increase requested ({0}).", created.id));
-    } catch (err: unknown) {
-      setQuotaError(getApiErrorMessage(err, t("Failed to submit quota increase request")));
-    }
-  };
-
   const notes: Note[] = Array.isArray(notesData)
     ? notesData
     : (notesData as unknown as { notes?: Note[] })?.notes || [];
@@ -877,14 +646,6 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     : (auditData as unknown as { events?: AuditEvent[] })?.events || [];
 
   const currentStatus = workspace.state?.status || workspace.status;
-
-  const allowedSet = Array.isArray(workspace.allowed)
-    ? new Set(workspace.allowed)
-    : null;
-  const isQuickAllowed = (keys: string[], fallback: boolean): boolean => {
-    if (allowedSet === null) return fallback;
-    return keys.some((k) => allowedSet.has(k));
-  };
 
   const seatsPurchased =
     workspace.seats?.purchased ?? workspace.subscription?.seats ?? 0;
@@ -929,78 +690,18 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     <div className="space-y-8">
       <PageHeader
         title={workspace.name}
-        badge={<StatusBadge status={currentStatus} />}
-        meta={
-          <span className="font-mono">
-            {workspace.slug} {t("• ID:")} {workspace.id}
-          </span>
-        }
-        backAction={{ label: backLabel, onClick: onBack }}
-        actions={
+        details={
           <>
-            <Button
-              label={t("Change status")}
-              variant="secondary"
-              size="sm"
-              onClick={handleOpenStatusDialog}
-            />
-            {canEditSubscription && (
-              <Button
-                label={t("Edit subscription")}
-                variant="secondary"
-                size="sm"
-                onClick={handleOpenSubDialog}
-              />
-            )}
-            {canManageMembers && (
-              <Button
-                label={t("Add member")}
-                variant="secondary"
-                size="sm"
-                icon={<UserPlus className="size-3.5" aria-hidden="true" />}
-                onClick={handleOpenMemberDialog}
-              />
-            )}
-            {canRequestQuota && (
-              <Button
-                label={t("Request quota increase")}
-                variant="secondary"
-                size="sm"
-                icon={<ArrowUpCircle className="size-3.5" aria-hidden="true" />}
-                onClick={handleOpenQuotaDialog}
-              />
-            )}
-            {canDeleteWorkspace && (
-              <Button
-                label={t("Delete workspace")}
-                variant="destructive"
-                size="sm"
-                icon={<Trash2 className="size-3.5" aria-hidden="true" />}
-                onClick={() => {
-                  setDeleteError(null);
-                  setDeleteDialogOpen(true);
-                }}
-              />
-            )}
+            <StatusBadge status={currentStatus} />
+            <span className="font-mono text-caption text-muted-foreground">
+              {workspace.slug} {t("• ID:")} {workspace.id}
+            </span>
           </>
         }
+        backAction={{ label: backLabel, onClick: onBack }}
       />
 
-      {quotaNotice && (
-        <Banner
-          status="info"
-          role="status"
-          title={quotaNotice}
-        />
-      )}
 
-      {deleteNotice && (
-        <Banner
-          status="info"
-          role="status"
-          title={deleteNotice}
-        />
-      )}
 
       {(workspace.state?.reason || workspace.state?.deletion_scheduled_at) && (
         <div className="space-y-3">
@@ -1022,137 +723,6 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
           )}
         </div>
       )}
-
-      {/* Quick Actions Bar */}
-      <Section
-        variant="transparent"
-        padding={0}
-        className="space-y-3"
-        data-testid="workspace-quick-actions"
-      >
-        <Heading level={3}>{t("Quick Actions")}</Heading>
-        <HStack wrap="wrap" gap={2} align="center">
-          {canLockWorkspace && (
-            <>
-              <Button
-                type="button"
-                label={t("Suspend")}
-                variant="secondary"
-                size="sm"
-                icon={<Ban className="size-3.5" aria-hidden="true" />}
-                onClick={() => handleOpenQuickStatus("suspended")}
-                isDisabled={
-                  !isQuickAllowed(
-                    ["suspend", "suspended"],
-                    currentStatus !== "suspended" && currentStatus !== "pending_deletion",
-                  )
-                }
-              />
-              <Button
-                type="button"
-                label={t("Read-only")}
-                variant="secondary"
-                size="sm"
-                icon={<Lock className="size-3.5" aria-hidden="true" />}
-                onClick={() => handleOpenQuickStatus("read_only")}
-                isDisabled={
-                  !isQuickAllowed(
-                    ["read_only"],
-                    currentStatus !== "read_only" && currentStatus !== "pending_deletion",
-                  )
-                }
-              />
-              <Button
-                type="button"
-                label={t("Unlock")}
-                variant="secondary"
-                size="sm"
-                icon={<CheckCircle2 className="size-3.5" aria-hidden="true" />}
-                onClick={() => handleOpenQuickStatus("active")}
-                isDisabled={
-                  !isQuickAllowed(
-                    ["unlock", "activate", "active"],
-                    currentStatus !== "active",
-                  )
-                }
-              />
-            </>
-          )}
-          {canDeleteWorkspace && (
-            <>
-              <Button
-                type="button"
-                label={t("Schedule deletion")}
-                variant="secondary"
-                size="sm"
-                icon={<CalendarClock className="size-3.5" aria-hidden="true" />}
-                onClick={() => handleOpenQuickStatus("pending_deletion")}
-                isDisabled={
-                  !isQuickAllowed(
-                    ["schedule_deletion", "pending_deletion"],
-                    currentStatus !== "pending_deletion",
-                  )
-                }
-              />
-              <Button
-                type="button"
-                label={t("Cancel deletion")}
-                variant="secondary"
-                size="sm"
-                icon={<RotateCcw className="size-3.5" aria-hidden="true" />}
-                onClick={() => handleOpenQuickStatus("active")}
-                isDisabled={
-                  !isQuickAllowed(
-                    ["cancel_deletion"],
-                    currentStatus === "pending_deletion",
-                  )
-                }
-              />
-            </>
-          )}
-          {canExportWorkspace && (
-            <Button
-              type="button"
-              label={t("Export data")}
-              variant="secondary"
-              size="sm"
-              icon={<Download className="size-3.5" aria-hidden="true" />}
-              isLoading={exportWorkspace.isPending}
-              aria-busy={exportWorkspace.isPending || undefined}
-              onClick={() => void handleExportWorkspace()}
-              isDisabled={!isQuickAllowed(["export"], true) || exportWorkspace.isPending}
-            />
-          )}
-          <Button
-            type="button"
-            label={t("View audit log")}
-            variant="ghost"
-            size="sm"
-            icon={<History className="size-3.5" aria-hidden="true" />}
-            onClick={() => {
-              document
-                .getElementById("workspace-audit-log")
-                ?.scrollIntoView({ behavior: "smooth" });
-            }}
-          />
-        </HStack>
-
-        {quickActionNotice && (
-          <Banner
-            status="info"
-            role="status"
-            title={quickActionNotice}
-          />
-        )}
-
-        {quickActionError && (
-          <Banner
-            status="error"
-            role="alert"
-            title={quickActionError}
-          />
-        )}
-      </Section>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <Section variant="transparent" padding={0} className="space-y-4 lg:col-span-2">
@@ -1717,124 +1287,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         )}
       </Section>
 
-      <ConfirmReasonDialog
-        open={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
-        title={t("Change workspace status")}
-        description={t("Select the new status and provide a justification.")}
-        confirmLabel={t("Update status")}
-        isPending={changeStatus.isPending}
-        error={statusError}
-        onConfirm={handleConfirmStatusChange}
-      >
-        <Selector
-          label={t("Target status")}
-          width="100%"
-          options={availableStatuses.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
-          value={targetStatus}
-          onChange={(val) => {
-              if (val) setTargetStatus(val);
-            }}
-        />
-      </ConfirmReasonDialog>
 
-      {/* Edit Subscription Dialog */}
-      <Dialog
-        isOpen={subDialogOpen}
-        onOpenChange={setSubDialogOpen}
-        purpose="form"
-      >
-
-          <form onSubmit={handleSaveSubscription} className="flex flex-col gap-4">
-            <DialogHeader title={t("Edit Subscription")} subtitle={t("Update subscription plan, seats, billing interval, and trial period.")} />
-
-            <div className="flex flex-col gap-3">
-              <TextInput
-                label={t("Plan")}
-                id={"sub-plan-key-input"}
-                isRequired
-                value={subPlanKey}
-                onChange={(value) => setSubPlanKey(value)}
-                placeholder={t("e.g. pro, business, enterprise")}
-                isDisabled={updateSubscription.isPending}
-                width="100%"
-              />
-
-              <div className="grid grid-cols-2 gap-3">
-                <NumberInput
-                  label={t("Seats")}
-                  id={"sub-seats-input"}
-                  isRequired
-                  min={0}
-                  value={subSeats}
-                  onChange={(value) => setSubSeats(Number(value))}
-                  isDisabled={updateSubscription.isPending}
-                  width="100%"
-                />
-
-                <Selector
-                  label={t("Billing Interval")}
-                  isRequired
-                  width="100%"
-                  options={BILLING_INTERVAL_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
-                  value={subInterval}
-                  onChange={(val) => {
-                      if (val) setSubInterval(val);
-                    }}
-                />
-              </div>
-
-              <TextInput
-                id="sub-trial-end-input"
-                label={t("Trial End (RFC3339 or blank)")}
-                value={subTrialEnd}
-                onChange={(value) => setSubTrialEnd(value)}
-                placeholder={t("e.g. 2026-12-01T00:00:00Z")}
-                isDisabled={updateSubscription.isPending}
-                width="100%"
-              />
-
-              <TextArea
-                label={t("Reason")}
-                id={"sub-reason-input"}
-                isRequired
-                value={subReason}
-                onChange={(value) => setSubReason(value)}
-                placeholder={t("Provide a reason for this subscription change...")}
-                rows={3}
-                isDisabled={updateSubscription.isPending}
-                width="100%"
-              />
-            </div>
-
-            {subError && (
-              <Banner
-                status="error"
-                role="alert"
-                title={subError}
-              />
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button
-        type="button"
-        isDisabled={updateSubscription.isPending}
-        label={t("Cancel")}
-        variant="secondary"
-        onClick={() => setSubDialogOpen(false)}
-      />
-              <Button
-                type="submit"
-                label={t("Save subscription")}
-                variant="primary"
-                isLoading={updateSubscription.isPending}
-                aria-busy={updateSubscription.isPending}
-                isDisabled={!subReason.trim() || updateSubscription.isPending}
-              />
-            </div>
-          </form>
-
-      </Dialog>
 
       {/* Edit Billing Profile Dialog */}
       <Dialog
@@ -1958,166 +1411,8 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         onConfirm={handleConfirmWriteOff}
       />
 
-      <Dialog
-        isOpen={memberDialogOpen}
-        onOpenChange={(open) => !addWorkspaceMember.isPending && setMemberDialogOpen(open)}
-        purpose="form"
-      >
 
-          <form onSubmit={handleAddMemberSubmit} className="space-y-4">
-            <DialogHeader title={t("Add member")} />
 
-            <TextInput
-              id="add-member-email"
-              label={t("Email address")}
-              type="email"
-              value={memberEmail}
-              onChange={(value) => setMemberEmail(value)}
-              placeholder={t("member@example.com")}
-              isRequired
-              isDisabled={addWorkspaceMember.isPending}
-              width="100%"
-            />
-
-            <Selector
-              label={t("Member role")}
-              width="100%"
-              options={MEMBER_ROLE_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
-              value={memberRole}
-              onChange={(val) => {
-                  if (val) setMemberRole(val as MemberRole);
-                }}
-            />
-
-            {memberError && (
-              <Banner
-                status="error"
-                role="alert"
-                title={memberError}
-              />
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="secondary"
-                type="button"
-                isDisabled={addWorkspaceMember.isPending}
-                label={t("Cancel")}
-                onClick={() => ((open) => !addWorkspaceMember.isPending && setMemberDialogOpen(open))(false)}
-              />
-              <Button
-                type="submit"
-                label={t("Add member")}
-                variant="primary"
-                isLoading={addWorkspaceMember.isPending}
-                aria-busy={addWorkspaceMember.isPending}
-                isDisabled={!memberEmail.trim() || addWorkspaceMember.isPending}
-              />
-            </div>
-          </form>
-
-      </Dialog>
-
-      <Dialog
-        isOpen={quotaDialogOpen}
-        onOpenChange={(open) => {
-          if (!createQuotaRequest.isPending) {
-            setQuotaDialogOpen(open);
-            if (!open) setQuotaError(null);
-          }
-        }}
-        purpose="form"
-        width={448}
-      >
-
-          <form onSubmit={handleSubmitQuotaRequest} className="space-y-4">
-            <DialogHeader title={t("Request quota increase")} subtitle={<>{t("Submit a limit increase request for")} {workspace.name || workspace.slug}{t(". System administrators review pending requests.")}</>} />
-
-            {quotaError && (
-              <Banner
-                status="error"
-                role="alert"
-                title={quotaError}
-              />
-            )}
-
-            <Selector
-              label={t("Gate")}
-              width="100%"
-              options={LIMIT_GATES.map((g) => ({ value: g, label: g }))}
-              value={quotaGate}
-              onChange={(val) => val && setQuotaGate(val)}
-            />
-
-            <NumberInput
-              id="workspace-quota-value"
-              label={t("Requested value")}
-              min={1}
-              step={1}
-              value={quotaRequestedValue.trim() === "" ? null : Number(quotaRequestedValue)}
-              onChange={(value) => setQuotaRequestedValue(value === null ? "" : String(value))}
-              placeholder="25"
-              isDisabled={createQuotaRequest.isPending}
-              width="100%"
-            />
-
-            <TextArea
-              id="workspace-quota-reason"
-              label={t("Reason")}
-              value={quotaReason}
-              onChange={(value) => setQuotaReason(value)}
-              placeholder={t("Explain why the workspace needs this quota increase...")}
-              isDisabled={createQuotaRequest.isPending}
-              rows={3}
-              width="100%"
-            />
-
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                isDisabled={createQuotaRequest.isPending}
-                label={t("Cancel")}
-                onClick={() => ((open) => {
-          if (!createQuotaRequest.isPending) {
-            setQuotaDialogOpen(open);
-            if (!open) setQuotaError(null);
-          }
-        })(false)}
-              />
-              <Button
-                type="submit"
-                label={t("Submit request")}
-                variant="primary"
-                isLoading={createQuotaRequest.isPending}
-                aria-busy={createQuotaRequest.isPending || undefined}
-                isDisabled={
-                  !quotaRequestedValue.trim() ||
-                  !quotaReason.trim() ||
-                  createQuotaRequest.isPending
-                }
-              />
-            </div>
-          </form>
-
-      </Dialog>
-
-      <TypeToConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={(open) => {
-          setDeleteDialogOpen(open);
-          if (!open) setDeleteError(null);
-        }}
-        title={t("Delete workspace")}
-        description={t("Immediate deletion permanently removes this workspace and cannot be undone once started.")}
-        expectedText={workspace.slug}
-        confirmInputLabel={t("Workspace slug")}
-        confirmLabel={t("Delete workspace")}
-        confirmVariant="destructive"
-        showExportFirst
-        error={deleteError}
-        onConfirm={handleConfirmDeleteNow}
-      />
     </div>
   );
 }

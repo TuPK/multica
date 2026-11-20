@@ -10,6 +10,16 @@ const mockUseTenants = vi.fn();
 const mockFetchNextPage = vi.fn();
 
 vi.mock("../api/hooks", () => ({
+  useExportWorkspace: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useChangeWorkspaceStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddWorkspaceMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteWorkspaceNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateQuotaRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useWorkspace: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }),
+  useSetRuntimeStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnregisterRuntime: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeactivateTenantUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useMe: () => mockUseMe(),
   useRuntimes: (filters?: Record<string, unknown>, enabled = true) =>
     mockUseRuntimes(filters, enabled),
@@ -103,7 +113,7 @@ describe("Runtimes screen", () => {
     expect(row2).toHaveTextContent("0.4.0");
     expect(within(row2).getAllByText("-").length).toBeGreaterThanOrEqual(1);
 
-    fireEvent.click(within(row1).getByRole("button", { name: "View" }));
+    fireEvent.click(row1);
     expect(onSelectRuntime).toHaveBeenCalledWith("rt-1");
   });
 

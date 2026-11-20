@@ -16,12 +16,12 @@ import { Button } from "@astryxdesign/core/Button";
 import { Selector } from "@astryxdesign/core/Selector";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Search, Users as UsersIcon } from "@multica/ui/icons";
-import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { StatusBadge } from "../components/StatusBadge";
 import { useMe, useTenantUsers, type TenantUser } from "../api/hooks";
+import { TenantUserDeactivateMenu } from "./TenantUserDeactivateMenu";
 import {
   ACCOUNT_STATUSES,
   TENANT_MEMBER_ROLES,
@@ -246,7 +246,7 @@ export function TenantUsers({
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user: TenantUser) => (
-                  <TableRow key={user.user_id}>
+                  <TableRow key={user.user_id} onClick={() => onSelectUser(user.user_id)}>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span
@@ -298,8 +298,12 @@ export function TenantUsers({
                           : "-"}
                       </Text>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <RowActions label={t("user")} actions={[{ label: t("View"), onSelect: () => onSelectUser(user.user_id) }]} />
+                    <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                      <TenantUserDeactivateMenu
+                        tenantId={tenantId}
+                        user={user}
+                        canManageMembers={effectiveRole === "system_admin" || effectiveRole === "admin"}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

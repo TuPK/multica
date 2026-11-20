@@ -9,6 +9,16 @@ const mockUseTenantUsers = vi.fn();
 const mockFetchNextPage = vi.fn();
 
 vi.mock("../api/hooks", () => ({
+  useExportWorkspace: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useChangeWorkspaceStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddWorkspaceMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteWorkspaceNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateQuotaRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useWorkspace: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }),
+  useSetRuntimeStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnregisterRuntime: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeactivateTenantUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useMe: () => mockUseMe(),
   useTenantUsers: (tenantId: string | undefined, filters: Record<string, unknown>) =>
     mockUseTenantUsers(tenantId, filters),
@@ -102,7 +112,7 @@ describe("TenantUsers screen", () => {
     expect(bobRow).toHaveTextContent("1");
     expect(within(bobRow).getAllByText("-").length).toBeGreaterThanOrEqual(1);
 
-    fireEvent.click(within(aliceRow).getByRole("button", { name: "View" }));
+    fireEvent.click(aliceRow);
     expect(onSelectUser).toHaveBeenCalledWith("u-1");
   });
 

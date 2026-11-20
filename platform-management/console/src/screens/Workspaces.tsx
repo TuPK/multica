@@ -17,11 +17,11 @@ import { Button } from "@astryxdesign/core/Button";
 import { Selector } from "@astryxdesign/core/Selector";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { LayoutGrid, Search } from "@multica/ui/icons";
-import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
+import { WorkspaceAccountMenu } from "./WorkspaceAccountMenu";
 import { StatusBadge } from "../components/StatusBadge";
 import {
   useMe,
@@ -228,11 +228,11 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                             <TableHeaderCell className="text-right">{t("Members")}</TableHeaderCell>
                             <TableHeaderCell>{t("Created")}</TableHeaderCell>
                             <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
-                          </TableRow>
+                        </TableRow>
                         </TableHeader>
                         <TableBody>
                           {workspaces.map((ws: WorkspaceListItem) => (
-                            <TableRow key={ws.id}>
+                            <TableRow key={ws.id} onClick={() => onSelectWorkspace(ws.id)}>
                               <TableCell>
                                 <div
                                   className="max-w-56 truncate font-medium text-foreground"
@@ -280,8 +280,14 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                                     : "-"}
                                 </Text>
                               </TableCell>
-                              <TableCell className="text-right">
-                                <RowActions label={t("workspace")} actions={[{ label: t("View"), onSelect: () => onSelectWorkspace(ws.id) }]} />
+                              <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                                <WorkspaceAccountMenu
+                                  workspaceId={ws.id}
+                                  workspaceName={ws.name}
+                                  workspaceSlug={ws.slug || ws.id}
+                                  workspaceStatus={ws.status}
+                                  role={effectiveRole}
+                                />
                               </TableCell>
                             </TableRow>
                           ))}

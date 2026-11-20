@@ -23,7 +23,6 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
-import { RowActions } from "../components/RowActions";
 import {
   useMe,
   useSystemResources,
@@ -395,14 +394,11 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                               <TableHeaderCell className="text-right">{t("Issues")}</TableHeaderCell>
                               <TableHeaderCell className="text-right">{t("Storage")}</TableHeaderCell>
                               <TableHeaderCell>{t("Status")}</TableHeaderCell>
-                              {onSelectTenant && (
-                                <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
-                              )}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {tenantRows.map((row: SystemTopTenant) => (
-                              <TableRow key={row.tenant_id || row.tenant_name}>
+                              <TableRow key={row.tenant_id || row.tenant_name} onClick={onSelectTenant && row.tenant_id ? () => onSelectTenant(row.tenant_id) : undefined}>
                                 <TableCell>
                                   <div
                                     className="max-w-52 truncate font-medium text-foreground"
@@ -452,19 +448,6 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                                 <TableCell>
                                   <ResourceStateBadge state={row.state} />
                                 </TableCell>
-                                {onSelectTenant && (
-                                  <TableCell className="text-right">
-                                    <RowActions
-                                      label={t("tenant {0}", row.tenant_id)}
-                                      actions={[
-                                        {
-                                          label: t("View"),
-                                          disabled: !row.tenant_id,
-                                          onSelect: () => onSelectTenant(row.tenant_id) },
-                                      ]}
-                                    />
-                                  </TableCell>
-                                )}
                               </TableRow>
                             ))}
                           </TableBody>

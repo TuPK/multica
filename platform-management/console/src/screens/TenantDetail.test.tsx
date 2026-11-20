@@ -14,6 +14,16 @@ const mockSetTenantStatusMutateAsync = vi.fn();
 const mockUseLegalHolds = vi.fn();
 
 vi.mock("../api/hooks", () => ({
+  useExportWorkspace: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useChangeWorkspaceStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddWorkspaceMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteWorkspaceNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateQuotaRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useWorkspace: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }),
+  useSetRuntimeStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnregisterRuntime: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeactivateTenantUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useMe: () => mockUseMe(),
   useTenant: (id?: string) => mockUseTenant(id),
   useTenantUsers: (tenantId?: string, filters?: Record<string, unknown>) =>
@@ -145,13 +155,13 @@ describe("TenantDetail screen", () => {
     expect(main).toHaveTextContent("pro");
     expect(main).toHaveTextContent("owner@example.com");
     expect(main).toHaveTextContent("3 members");
-    fireEvent.click(within(main).getByRole("button", { name: "View" }));
+    fireEvent.click(main);
     expect(onSelect).toHaveBeenCalledWith("w-1");
 
     const side = screen.getAllByText("Side workspace")[0]!.closest("tr") as HTMLElement;
     expect(side).toHaveTextContent("free");
     expect(within(side).queryByText("owner@example.com")).not.toBeInTheDocument();
-    fireEvent.click(within(side).getByRole("button", { name: "View" }));
+    fireEvent.click(side);
     expect(onSelect).toHaveBeenLastCalledWith("w-2");
   });
 
@@ -206,48 +216,6 @@ describe("TenantDetail screen", () => {
     expect(screen.getByText("This tenant has no workspaces")).toBeInTheDocument();
   });
 
-  it("admin sees only the tenant returned by the API and no delete-tenant action", () => {
-    loaded(tenant);
-    for (const role of ["admin", "support", "billing"] as const) {
-      mockUseMe.mockReturnValue({
-        data: { user_id: `u-${role}`, email: `${role}@example.com`, role, tenant_id: role === "admin" ? "t-1" : null },
-      });
-      const { unmount } = render(
-        <TenantDetail tenantId="t-1" onBack={vi.fn()} onSelectWorkspace={vi.fn()} userRole={role} />,
-      );
-      expect(screen.getByRole("heading", { name: "Acme Group" })).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Delete tenant/i })).not.toBeInTheDocument();
-      unmount();
-    }
-  });
-
-  it("system_admin deletes tenant with required reason and tenant name confirmation", async () => {
-    loaded(tenant);
-    mockDeleteTenantNowMutateAsync.mockResolvedValueOnce({ request_id: "dr-9", state: "pending" });
-
-    render(<TenantDetail tenantId="t-1" onBack={vi.fn()} onSelectWorkspace={vi.fn()} userRole="system_admin" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Delete tenant" }));
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("button", { name: "Delete tenant" })).toBeDisabledControl();
-
-    fireEvent.change(within(dialog).getByLabelText(/Reason/i), { target: { value: "Contract ended" } });
-    fireEvent.change(within(dialog).getByLabelText(/Tenant name/i), { target: { value: "Acme Group" } });
-
-    const confirmBtn = within(dialog).getByRole("button", { name: "Delete tenant" });
-    expect(confirmBtn).not.toBeDisabledControl();
-    fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(mockDeleteTenantNowMutateAsync).toHaveBeenCalledWith({
-        tenantId: "t-1",
-        reason: "Contract ended",
-        confirm: "Acme Group",
-        export_first: false,
-      });
-    });
-  });
-
   it("switches to the Users tab and renders TenantUsers", async () => {
     const user = userEvent.setup();
     loaded(tenant);
@@ -293,7 +261,7 @@ describe("TenantDetail screen", () => {
     });
     expect(screen.getByText("member@acme.test")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByText("member@acme.test").closest("tr")!);
     expect(onSelectUser).toHaveBeenCalledWith("u-1");
   });
 
@@ -455,7 +423,7 @@ describe("TenantDetail screen", () => {
     });
   });
 
-  it("shows Policy tab, legal hold mark, and lock tenant only for system_admin", async () => {
+  it("shows Policy tab and legal hold mark", async () => {
     const user = userEvent.setup();
     mockUseLegalHolds.mockReturnValue({
       data: [
@@ -490,26 +458,10 @@ describe("TenantDetail screen", () => {
     );
 
     expect(screen.getByText("Legal hold")).toBeInTheDocument();
-    const lockBtn = screen.getByRole("button", { name: /Lock tenant/i });
-    expect(lockBtn).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Lock tenant|Delete tenant/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: /Policy/i }));
     expect(screen.getByRole("heading", { name: /Effective policy/i })).toBeInTheDocument();
-
-    await user.click(lockBtn);
-    const dialog = screen.getByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
-      target: { value: "Fraud hold" },
-    });
-    await user.click(within(dialog).getByRole("button", { name: /Apply lock/i }));
-
-    await waitFor(() => {
-      expect(mockSetTenantStatusMutateAsync).toHaveBeenCalledWith({
-        tenantId: "t-1",
-        status: "suspended",
-        reason: "Fraud hold",
-      });
-    });
 
     mockUseMe.mockReturnValue({
       data: { user_id: "u-admin", email: "admin@example.com", role: "admin", tenant_id: "t-1" },
@@ -522,7 +474,6 @@ describe("TenantDetail screen", () => {
         userRole="admin"
       />,
     );
-    expect(screen.queryByRole("button", { name: /Lock tenant/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Legal hold")).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Policy/i })).toBeInTheDocument();
   });

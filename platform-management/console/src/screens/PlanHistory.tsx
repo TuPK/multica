@@ -81,16 +81,16 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
                 ? { label: t("Back to plans"), onClick: onBack }
                 : undefined
             }
-            meta={
+            details={
               plan ? (
                 <span>
                   {plan.name}{" "}
-                  <span className="font-mono text-muted-foreground">
+                  <span className="font-mono text-caption text-muted-foreground">
                     ({plan.key})
                   </span>
                 </span>
               ) : planKey ? (
-                <span className="font-mono">{planKey}</span>
+                <span className="font-mono text-caption text-muted-foreground">{planKey}</span>
               ) : undefined
             }
           />

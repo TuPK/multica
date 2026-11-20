@@ -27,6 +27,9 @@ const mockExportWorkspaceMutateAsync = vi.fn();
 let mockUpdateBillingProfileIsPending = false;
 
 vi.mock("../api/hooks", () => ({
+  useSetRuntimeStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnregisterRuntime: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeactivateTenantUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useMe: () => mockUseMe(),
   useWorkspace: () => mockUseWorkspace(),
   useWorkspaceUsage: () => mockUseWorkspaceUsage(),
@@ -237,74 +240,6 @@ describe("WorkspaceDetail screen", () => {
     expect(screen.getByText("workspace.status_changed")).toBeInTheDocument();
   });
 
-  it("role gating: support role does not see Pending deletion option in change status dialog", async () => {
-    const user = userEvent.setup();
-    render(
-      <WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="support" />
-    );
-
-    await user.click(screen.getByRole("button", { name: "Change status" }));
-    expect(screen.getByRole("heading", { name: "Change workspace status" })).toBeInTheDocument();
-
-    const trigger = screen.getByRole("combobox", { name: /Target status/i });
-    await user.click(trigger);
-
-    const options = await screen.findAllByRole("option");
-    const optionLabels = options.map((opt) => opt.textContent);
-
-    expect(optionLabels).toContain("Active");
-    expect(optionLabels).toContain("Read-only");
-    expect(optionLabels).toContain("Suspended");
-    expect(optionLabels).not.toContain("Pending deletion");
-  });
-
-  it("role gating: admin role sees Pending deletion option in change status dialog", async () => {
-    const user = userEvent.setup();
-    render(
-      <WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />
-    );
-
-    await user.click(screen.getByRole("button", { name: "Change status" }));
-    expect(screen.getByRole("heading", { name: "Change workspace status" })).toBeInTheDocument();
-
-    const trigger = screen.getByRole("combobox", { name: /Target status/i });
-    await user.click(trigger);
-
-    const options = await screen.findAllByRole("option");
-    const optionLabels = options.map((opt) => opt.textContent);
-
-    expect(optionLabels).toContain("Pending deletion");
-  });
-
-  it("the reason is required before a status change can be confirmed", async () => {
-    mockChangeWorkspaceStatusMutateAsync.mockResolvedValue({ changed: true });
-    render(
-      <WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Change status" }));
-
-    const confirmBtn = screen.getByRole("button", { name: "Update status" });
-    expect(confirmBtn).toBeDisabledControl();
-
-    const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/Reason/i);
-    fireEvent.change(reasonInput, { target: { value: "   " } });
-    expect(confirmBtn).toBeDisabledControl();
-
-    fireEvent.change(reasonInput, { target: { value: "Suspending due to TOS violation" } });
-    expect(confirmBtn).not.toBeDisabledControl();
-
-    fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(mockChangeWorkspaceStatusMutateAsync).toHaveBeenCalledWith({
-        workspaceId: "t-123",
-        status: "active",
-        reason: "Suspending due to TOS violation",
-      });
-    });
-  });
-
   it("adds an internal note", async () => {
     mockAddWorkspaceNoteMutateAsync.mockResolvedValue({});
     render(
@@ -342,44 +277,6 @@ describe("WorkspaceDetail screen", () => {
     expect(screen.getByRole("heading", { name: "Recent Orders" })).toBeInTheDocument();
     expect(screen.getByText("MUL99999999")).toBeInTheDocument();
     expect(screen.getByText(/1,100,000/)).toBeInTheDocument();
-  });
-
-  it("subscription panel: edit subscription requires reason and submits PUT /workspaces/{id}/subscription", async () => {
-    mockUpdateSubscriptionMutateAsync.mockResolvedValue({
-      changed: true,
-      subscription: { ...mockWorkspaceData.subscription, seats: 10 },
-    });
-
-    render(
-      <WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="billing" />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Edit subscription" }));
-    expect(screen.getByRole("heading", { name: "Edit Subscription" })).toBeInTheDocument();
-
-    const seatsInput = screen.getByLabelText(/Seats/i);
-    fireEvent.change(seatsInput, { target: { value: "10" } });
-    fireEvent.blur(seatsInput);
-
-    const submitBtn = screen.getByRole("button", { name: "Save subscription" });
-    expect(submitBtn).toBeDisabledControl();
-
-    const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/Reason/i);
-    fireEvent.change(reasonInput, { target: { value: "Customer upgraded over phone" } });
-    expect(submitBtn).not.toBeDisabledControl();
-
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(mockUpdateSubscriptionMutateAsync).toHaveBeenCalledWith({
-        workspaceId: "t-123",
-        planKey: "pro",
-        seats: 10,
-        interval: "month",
-        trialEnd: "2026-11-15T00:00:00Z",
-        reason: "Customer upgraded over phone",
-      });
-    });
   });
 
   it("subscription panel: support role cannot edit subscription", () => {
@@ -1042,52 +939,6 @@ describe("WorkspaceDetail screen", () => {
   });
 
   describe("R6 S13 member requests and immediate workspace deletion", () => {
-    it("add member form offers the member roles admin, member and viewer but not owner", async () => {
-      const user = userEvent.setup();
-      mockAddWorkspaceMemberMutateAsync.mockResolvedValueOnce({
-        id: "mr-1",
-        workspace_id: "t-123",
-        kind: "add",
-        email: "newbie@example.com",
-        role: "viewer",
-        state: "pending",
-        error_code: "",
-        attempts: 0,
-        user_id: "",
-        member_id: "",
-        user_created: false,
-        requested_by: "u-sys",
-        requested_by_label: "sys@example.com",
-        created_at: "2026-11-19T10:00:00Z",
-        updated_at: "2026-11-19T10:00:00Z",
-        completed_at: null,
-      });
-
-      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
-
-      await user.click(screen.getByRole("button", { name: "Add member" }));
-      const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getByRole("heading", { name: "Add member" })).toBeInTheDocument();
-
-      await user.click(within(dialog).getByRole("combobox", { name: /Member role/i }));
-      const options = await screen.findAllByRole("option");
-      const labels = options.map((opt) => opt.textContent);
-      expect(labels).toEqual(["Admin", "Member", "Viewer"]);
-      expect(labels).not.toContain("Owner");
-
-      await user.click(options.find((opt) => opt.textContent === "Viewer")!);
-      await user.type(within(dialog).getByLabelText(/Email address/i), "newbie@example.com");
-      await user.click(within(dialog).getByRole("button", { name: "Add member" }));
-
-      await waitFor(() => {
-        expect(mockAddWorkspaceMemberMutateAsync).toHaveBeenCalledWith({
-          workspaceId: "t-123",
-          email: "newbie@example.com",
-          role: "viewer",
-        });
-      });
-    });
-
     it("shows request state and error_code", async () => {
       mockUseMemberRequests.mockReturnValue({
         data: [
@@ -1154,194 +1005,7 @@ describe("WorkspaceDetail screen", () => {
       });
     });
 
-    it("admin sees add member and delete workspace for a workspace in scope", async () => {
-      mockDeleteWorkspaceNowMutateAsync.mockResolvedValueOnce({
-        request_id: "dr-1",
-        state: "pending",
-      });
-
-      const { unmount } = render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
-      expect(screen.getByRole("button", { name: "Add member" })).toBeInTheDocument();
-      const deleteBtn = screen.getByRole("button", { name: "Delete workspace" });
-      expect(deleteBtn).toBeInTheDocument();
-
-      fireEvent.click(deleteBtn);
-      const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getByRole("button", { name: "Delete workspace" })).toBeDisabledControl();
-
-      fireEvent.change(within(dialog).getByLabelText(/Reason/i), { target: { value: "Customer offboarding" } });
-      fireEvent.change(within(dialog).getByLabelText(/Workspace slug/i), { target: { value: "acme" } });
-      const confirmBtn = within(dialog).getByRole("button", { name: "Delete workspace" });
-      expect(confirmBtn).not.toBeDisabledControl();
-
-      fireEvent.click(confirmBtn);
-      await waitFor(() => {
-        expect(mockDeleteWorkspaceNowMutateAsync).toHaveBeenCalledWith({
-          workspaceId: "t-123",
-          reason: "Customer offboarding",
-          confirm: "acme",
-          export_first: false,
-        });
-      });
-      unmount();
-
-      for (const role of ["support", "billing"] as const) {
-        const view = render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole={role} />);
-        expect(screen.queryByRole("button", { name: "Add member" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Delete workspace" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Member Requests" })).not.toBeInTheDocument();
-        view.unmount();
-      }
-    });
   });
 
-  describe("R6 S23 seats, status history and quick actions", () => {
-    it("quick actions follow allowed[] and show the 409 state conflict", async () => {
-      mockUseWorkspace.mockReturnValue({
-        data: {
-          ...mockWorkspaceData,
-          status: "suspended",
-          state: { ...mockWorkspaceData.state, status: "suspended" },
-          tenant: { id: "ten-1", name: "Acme Tenant" },
-          seats: { purchased: 5, used: 3, held: 1 },
-          allowed: ["unlock", "export"],
-          status_history: [
-            {
-              id: "sh-1",
-              status: "suspended",
-              reason: "Past due",
-              actor: "ops@example.com",
-              created_at: "2026-11-18T10:00:00Z",
-            },
-          ],
-        },
-        isLoading: false,
-        isError: false,
-        refetch: vi.fn(),
-      });
-      mockExportWorkspaceMutateAsync.mockRejectedValueOnce(
-        new PlatformApiError(409, "workspace_state_conflict", "the workspace state does not allow this action", {
-          status: "pending_deletion",
-          allowed: ["active", "read_only", "suspended"],
-        }),
-      );
 
-      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="admin" />);
-
-      // Seats breakdown & status history rendered
-      expect(screen.getByText("Seats used")).toBeInTheDocument();
-      expect(screen.getByText("Seats held")).toBeInTheDocument();
-      expect(screen.getByText("Past due")).toBeInTheDocument();
-      expect(screen.getByText("ops@example.com")).toBeInTheDocument();
-      expect(screen.getByText("Acme Tenant")).toBeInTheDocument();
-
-      // Quick actions follow allowed[]
-      const quickBar = screen.getByTestId("workspace-quick-actions");
-      expect(within(quickBar).getByRole("button", { name: "Unlock" })).not.toBeDisabledControl();
-      expect(within(quickBar).getByRole("button", { name: "Export data" })).not.toBeDisabledControl();
-      expect(within(quickBar).getByRole("button", { name: "Suspend" })).toBeDisabledControl();
-      expect(within(quickBar).getByRole("button", { name: "Cancel deletion" })).toBeDisabledControl();
-
-      // Trigger export and observe 409 workspace_state_conflict with status + allowed[]
-      fireEvent.click(within(quickBar).getByRole("button", { name: "Export data" }));
-
-      await waitFor(() => {
-        const alert = findAlert(quickBar);
-        expect(alert).toHaveTextContent("the workspace state does not allow this action");
-        expect(alert).toHaveTextContent("pending_deletion");
-        expect(alert).toHaveTextContent("active, read_only, suspended");
-      });
-    });
-  });
-
-  describe("R6 S36 quota request and export-first deletion", () => {
-    it("system_admin and admin can request quota increase while support cannot", async () => {
-      mockCreateQuotaRequestMutateAsync.mockResolvedValueOnce({
-        id: "qr-new",
-        workspace_id: "t-123",
-        tenant_id: "ten-1",
-        gate: "agents",
-        current_value: 5,
-        requested_value: 25,
-        approved_value: null,
-        state: "pending",
-        reason: "Growing agent pool",
-        decision_reason: "",
-        requested_by: "u-admin",
-        decided_by: "",
-        created_at: "2026-11-19T12:00:00Z",
-        decided_at: null,
-      });
-
-      const { rerender } = render(
-        <WorkspaceDetail workspaceId="t-123" backLabel="Back" onBack={vi.fn()} userRole="admin" />,
-      );
-
-      fireEvent.click(screen.getByRole("button", { name: /Request quota increase/i }));
-      const dialog = screen.getByRole("dialog");
-      fireEvent.change(within(dialog).getByLabelText(/Requested value/i), {
-        target: { value: "25" },
-      });
-      fireEvent.blur(within(dialog).getByLabelText(/Requested value/i));
-      fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
-        target: { value: "Growing agent pool" },
-      });
-      fireEvent.click(within(dialog).getByRole("button", { name: "Submit request" }));
-
-      await waitFor(() => {
-        expect(mockCreateQuotaRequestMutateAsync).toHaveBeenCalledWith({
-          workspaceId: "t-123",
-          gate: "agents",
-          requested_value: 25,
-          reason: "Growing agent pool",
-        });
-      });
-
-      mockUseMe.mockReturnValue({
-        data: { user_id: "u-supp", email: "support@example.com", role: "support" },
-      });
-      rerender(
-        <WorkspaceDetail workspaceId="t-123" backLabel="Back" onBack={vi.fn()} userRole="support" />,
-      );
-      expect(
-        screen.queryByRole("button", { name: /Request quota increase/i }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("forwards export_first=true when delete workspace switch is enabled", async () => {
-      mockDeleteWorkspaceNowMutateAsync.mockResolvedValueOnce({
-        request_id: "dr-exp",
-        state: "pending",
-      });
-
-      render(
-        <WorkspaceDetail
-          workspaceId="t-123"
-          backLabel="Back"
-          onBack={vi.fn()}
-          userRole="system_admin"
-        />,
-      );
-
-      fireEvent.click(screen.getByRole("button", { name: /Delete workspace/i }));
-      const dialog = screen.getByRole("dialog");
-      fireEvent.click(within(dialog).getByRole("switch", { name: /Export data before deleting/i }));
-      fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
-        target: { value: "Export archive before delete" },
-      });
-      fireEvent.change(within(dialog).getByLabelText(/Workspace slug/i), {
-        target: { value: "acme" },
-      });
-      fireEvent.click(within(dialog).getByRole("button", { name: "Delete workspace" }));
-
-      await waitFor(() => {
-        expect(mockDeleteWorkspaceNowMutateAsync).toHaveBeenCalledWith({
-          workspaceId: "t-123",
-          reason: "Export archive before delete",
-          confirm: "acme",
-          export_first: true,
-        });
-      });
-    });
-  });
 });

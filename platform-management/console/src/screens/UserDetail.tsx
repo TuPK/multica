@@ -21,9 +21,7 @@ import { NumberInput } from "@astryxdesign/core/NumberInput";
 import { RowActions } from "../components/RowActions";
 import {
   Activity,
-  Building2,
-  UserMinus } from "@multica/ui/icons";
-import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
+  Building2 } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -35,7 +33,6 @@ import {
   useMe,
   useUser,
   useTenantUser,
-  useDeactivateTenantUser,
   useRemoveWorkspaceMember,
   useChangeWorkspaceMemberRole,
   useCreateQuotaRequest,
@@ -112,7 +109,6 @@ export function UserDetail({
     Boolean(effectiveTenantId),
   );
 
-  const deactivateTenantUser = useDeactivateTenantUser();
   const removeWorkspaceMember = useRemoveWorkspaceMember();
   const changeWorkspaceMemberRole = useChangeWorkspaceMemberRole();
   const createQuotaRequest = useCreateQuotaRequest();
@@ -120,8 +116,6 @@ export function UserDetail({
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   // Tenant deactivation dialog state
-  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
-  const [deactivateError, setDeactivateError] = useState<string | null>(null);
 
   // Change member role dialog state
   const [roleDialogWorkspace, setRoleDialogWorkspace] = useState<Membership | null>(null);
@@ -180,9 +174,6 @@ export function UserDetail({
         role: w.member_role }))
     : user.memberships;
 
-  const canDeactivateInTenant =
-    canManageMembers && Boolean(effectiveTenantId) && memberships.length > 0 && !isStaffTarget;
-
   const allocationItems: TenantUserAllocationItem[] =
     tenantUser?.allocation?.length
       ? tenantUser.allocation
@@ -195,25 +186,6 @@ export function UserDetail({
 
   const hasMembershipActions =
     canManageMembers || canEditWorkspaceAllocation || canRequestWorkspaceQuota;
-
-  const handleConfirmDeactivateInTenant = async (reason: string) => {
-    if (!effectiveTenantId) return;
-    setDeactivateError(null);
-    try {
-      const res = await deactivateTenantUser.mutateAsync({
-        tenantId: effectiveTenantId,
-        userId,
-        reason });
-      setDeactivateDialogOpen(false);
-      setActionNotice(
-        t("Tenant deactivation requested ({0} workspace removal requests).", res.request_ids.length),
-      );
-    } catch (err: unknown) {
-      setDeactivateError(
-        getMemberChangeErrorMessage(err, t("Failed to deactivate user in tenant")),
-      );
-    }
-  };
 
   const handleOpenRoleDialog = (membership: Membership) => {
     setRoleDialogWorkspace(membership);
@@ -297,7 +269,6 @@ export function UserDetail({
     }
   };
 
-  const hasOwnerWorkspace = memberships.some((m) => m.role === "owner");
 
   return (
     <div className="space-y-8">
@@ -315,25 +286,6 @@ export function UserDetail({
           </>
         }
         backAction={{ label: backLabel, onClick: onBack }}
-        actions={
-          <>
-            {canDeactivateInTenant && (
-              <Button
-                label={t("Deactivate in tenant")}
-                variant="secondary"
-                size="sm"
-                icon={<UserMinus className="size-4" aria-hidden="true" />}
-                onClick={() => {
-                  setDeactivateError(null);
-                  setDeactivateDialogOpen(true);
-                }}
-                className="gap-1.5"
-              />
-            )}
-
-
-          </>
-        }
       />
 
       {actionNotice && (
@@ -589,44 +541,6 @@ export function UserDetail({
         </>
       )}
 
-      <ConfirmReasonDialog
-        open={deactivateDialogOpen}
-        onOpenChange={(open) => {
-          setDeactivateDialogOpen(open);
-          if (!open) setDeactivateError(null);
-        }}
-        title={t("Deactivate user in tenant")}
-        description={t("Removes this user from the tenant workspaces below without changing their global account or other tenants.")}
-        confirmLabel={t("Deactivate in tenant")}
-        confirmVariant="destructive"
-        isPending={deactivateTenantUser.isPending}
-        error={deactivateError}
-        onConfirm={handleConfirmDeactivateInTenant}
-      >
-        <div className="space-y-2">
-          <Text type="supporting" weight="medium" as="div">
-            {t("Workspaces affected (")}{memberships.length})
-          </Text>
-          <div className="space-y-1.5">
-            {memberships.map((ws) => (
-              <Card key={ws.workspace_id} padding={2}>
-                <div className="flex items-center justify-between gap-2">
-                  <Text type="body" weight="medium">
-                    {ws.name || ws.workspace_id}
-                  </Text>
-                  <StatusBadge status={ws.role} />
-                </div>
-              </Card>
-            ))}
-          </div>
-          {hasOwnerWorkspace && (
-            <Banner
-              status="info"
-              title={t("This user is an owner in at least one workspace. Staff cannot remove an owner until ownership is transferred.")}
-            />
-          )}
-        </div>
-      </ConfirmReasonDialog>
 
       <Dialog
         isOpen={roleDialogWorkspace !== null}

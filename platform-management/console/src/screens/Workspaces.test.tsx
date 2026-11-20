@@ -11,6 +11,16 @@ const mockUsePlans = vi.fn();
 const mockFetchNextPage = vi.fn();
 
 vi.mock("../api/hooks", () => ({
+  useExportWorkspace: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useChangeWorkspaceStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddWorkspaceMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteWorkspaceNow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateQuotaRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useWorkspace: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }),
+  useSetRuntimeStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnregisterRuntime: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeactivateTenantUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useMe: () => mockUseMe(),
   useWorkspaces: (filters: Record<string, unknown>) => mockUseWorkspaces(filters),
   useTenants: () => mockUseTenants(),
@@ -144,7 +154,7 @@ describe("Workspaces screen", () => {
     expect(mockFetchNextPage).toHaveBeenCalledTimes(1);
 
     // Open workspace detail
-    fireEvent.click(screen.getAllByRole("button", { name: "View" })[0]!);
+    fireEvent.click(screen.getByText("Acme Core").closest("tr")!);
     expect(onSelectWorkspace).toHaveBeenCalledWith("ws-1");
   });
 

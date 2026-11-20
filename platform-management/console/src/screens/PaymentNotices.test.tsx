@@ -116,20 +116,20 @@ describe("PaymentNotices screen", () => {
   it("opens the detail of one notice with its event id and candidate orders", () => {
     render(<PaymentNotices userRole="billing" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getAllByText("MUL12345678")[0]!.closest("tr")!);
 
     expect(mockUsePaymentNotice).toHaveBeenLastCalledWith(NOTICE_ID);
     expect(screen.getByText("evt-123")).toBeInTheDocument();
     expect(screen.getByText("33333333-3333-4333-8333-333333333333")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Match" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Dismiss" }).length).toBeGreaterThan(0);
   });
 
   it("says when no order matches the notice", () => {
     mockUsePaymentNotice.mockImplementation(() => detailResult({ ...mockDetail, candidates: [] }));
     render(<PaymentNotices userRole="billing" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getAllByText("MUL12345678")[0]!.closest("tr")!);
 
     expect(screen.getByText("No matching orders")).toBeInTheDocument();
   });
@@ -137,7 +137,7 @@ describe("PaymentNotices screen", () => {
   it("asks for a reason before a manual match and sends the order id with it", async () => {
     mockResolveMutateAsync.mockResolvedValue(mockNotice);
     render(<PaymentNotices userRole="billing" />);
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getAllByText("MUL12345678")[0]!.closest("tr")!);
     fireEvent.click(screen.getByRole("button", { name: "Match" }));
 
     const confirm = screen.getByRole("button", { name: "Match payment" });
@@ -159,8 +159,8 @@ describe("PaymentNotices screen", () => {
   it("asks for a reason before dismissing and sends it with the notice id", async () => {
     mockDismissMutateAsync.mockResolvedValue({ ...mockNotice, state: "dismissed" });
     render(<PaymentNotices userRole="billing" />);
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    fireEvent.click(screen.getAllByText("MUL12345678")[0]!.closest("tr")!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Dismiss" }).at(-1)!);
 
     const confirm = screen.getByRole("button", { name: "Dismiss notice" });
     expect(confirm).toBeDisabledControl();
@@ -181,7 +181,7 @@ describe("PaymentNotices screen", () => {
       new PlatformApiError(409, "payment_notice_closed", "the payment notice is no longer waiting for review"),
     );
     render(<PaymentNotices userRole="billing" />);
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getAllByText("MUL12345678")[0]!.closest("tr")!);
     fireEvent.click(screen.getByRole("button", { name: "Match" }));
     fireEvent.change(within(screen.getByRole("dialog")).getByLabelText(/Reason/), { target: { value: "Matched by hand" } });
     fireEvent.click(screen.getByRole("button", { name: "Match payment" }));
