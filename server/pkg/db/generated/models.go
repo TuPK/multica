@@ -2056,6 +2056,7 @@ type Plan struct {
 	IsPublic       bool               `json:"is_public"`
 	Sort           int32              `json:"sort"`
 	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
+	Description    string             `json:"description"`
 	Audience       string             `json:"audience"`
 	BillingModel   string             `json:"billing_model"`
 	UsageRates     []byte             `json:"usage_rates"`

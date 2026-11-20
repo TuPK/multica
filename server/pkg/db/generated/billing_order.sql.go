@@ -107,7 +107,7 @@ func (q *Queries) GetWorkspacePlanKey(ctx context.Context, workspaceID pgtype.UU
 
 const listPublicPlans = `-- name: ListPublicPlans :many
 
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, description, audience, billing_model, usage_rates, usage_terms, version FROM plan
 WHERE is_public AND archived_at IS NULL
 ORDER BY sort, key
 `
@@ -139,6 +139,7 @@ func (q *Queries) ListPublicPlans(ctx context.Context) ([]Plan, error) {
 			&i.IsPublic,
 			&i.Sort,
 			&i.ArchivedAt,
+			&i.Description,
 			&i.Audience,
 			&i.BillingModel,
 			&i.UsageRates,
