@@ -289,3 +289,46 @@ func TestAccountDeletionJobSkipsAccountsWithStaffRequest(t *testing.T) {
 		t.Error("account_deletion lists an account with a live staff request")
 	}
 }
+
+// A staff account deletion with no workspace to settle clears the email from
+// the request row and from the audit row, so neither keeps the deleted address.
+func TestStaffAccountDeletionClearsTargetLabelEmail(t *testing.T) {
+	ctx := context.Background()
+	user, email := accountUser(t, "clear label")
+	reqID := stageAccountRequest(t, user, email, []map[string]string{}, "pending")
+
+	if _, err := newRunner(nil).RunOnce(ctx); err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+	if state, _, _ := requestState(t, reqID); state != "completed" {
+		t.Fatalf("account request state = %q, want completed", state)
+	}
+	if n := count(t, `SELECT count(*) FROM platform_deletion_request WHERE id = $1::uuid AND target_label = $2`, reqID, deletedUserLabel); n != 1 {
+		t.Errorf("request target_label is not %q", deletedUserLabel)
+	}
+	if n := count(t, `SELECT count(*) FROM audit_event WHERE action = $1 AND target_id = $2 AND target_label = $3`, ActionAccountDeleted, user, deletedUserLabel); n != 1 {
+		t.Errorf("account.deleted rows with the cleared label = %d, want 1", n)
+	}
+	if n := count(t, `SELECT count(*) FROM audit_event WHERE target_id = $1 AND (target_label = $2 OR detail::text LIKE '%' || $2 || '%')`, user, email); n != 0 {
+		t.Errorf("audit rows still carry the deleted email: %d", n)
+	}
+}
+
+// The account deletion audit row is written by staff, not by the user, and
+// names the deleted user only by the anonymized label.
+func TestStaffAccountDeletionAuditActorsAreStaffAndAnonymized(t *testing.T) {
+	ctx := context.Background()
+	user, email := accountUser(t, "audit actors")
+	reqID := stageAccountRequest(t, user, email, []map[string]string{}, "pending")
+
+	if _, err := newRunner(nil).RunOnce(ctx); err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+	if n := count(t, `SELECT count(*) FROM audit_event WHERE action = $1 AND target_id = $2 AND actor_type = 'staff'
+		AND actor_label = 'staff tester' AND detail->>'origin' = 'staff' AND detail->>'request_id' = $3`, ActionAccountDeleted, user, reqID); n != 1 {
+		t.Errorf("account.deleted rows by staff with the request id = %d, want 1", n)
+	}
+	if n := count(t, `SELECT count(*) FROM audit_event WHERE action = $1 AND target_id = $2 AND actor_type = 'user'`, ActionAccountDeleted, user); n != 0 {
+		t.Errorf("account.deleted rows with a user actor = %d, want 0", n)
+	}
+}
