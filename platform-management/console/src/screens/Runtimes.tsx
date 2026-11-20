@@ -1,3 +1,4 @@
+import { Card } from "@astryxdesign/core/Card";
 import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { HStack } from "@astryxdesign/core/HStack";
@@ -265,8 +266,8 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
 
               {!isLoading && !isError && runtimes.length > 0 && (
                 <div className="space-y-4">
-                  <div className="overflow-x-auto">
-                    <Table density="balanced" dividers="rows" hasHover>
+                  <Card padding={0} className="overflow-x-auto">
+                    <Table density="compact" dividers="rows" hasHover>
                       <TableHeader>
                         <TableRow isHeaderRow>
                           <TableHeaderCell>{t("Runtime")}</TableHeaderCell>
@@ -330,7 +331,7 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </Card>
 
                   {hasNextPage && (
                     <div className="flex justify-center pt-2">

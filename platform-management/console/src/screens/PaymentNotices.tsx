@@ -357,7 +357,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                     {detail.candidates.length === 0 ? (
                       <EmptyState isCompact title={t("No matching orders")} />
                     ) : (
-                      <ul className="divide-y divide-surface-border rounded-lg border border-surface-border bg-page-canvas/50">
+                      <Card padding={0} elevation="none"><ul className="divide-y divide-surface-border">
                         {detail.candidates.map((candidate: NoticeCandidate) => (
                           <li key={candidate.order_id} className="space-y-2.5 p-3">
                             <div className="flex items-start justify-between gap-2">
@@ -413,7 +413,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                             </dl>
                           </li>
                         ))}
-                      </ul>
+                      </ul></Card>
                     )}
                   </div>
                 </div>

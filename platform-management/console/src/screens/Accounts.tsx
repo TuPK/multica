@@ -844,7 +844,7 @@ export function Accounts({ userRole }: AccountsProps) {
                 />
               </div>
 
-              <div className="space-y-3 rounded-lg border border-surface-border p-3">
+              <Card padding={3} elevation="none" className="space-y-3">
                 <div className="space-y-1">
                   <CheckboxInput
                     id="account-trial"
@@ -877,17 +877,17 @@ export function Accounts({ userRole }: AccountsProps) {
                 />
 
                 {fieldErrors.activation && (
-                  <p className="text-caption text-destructive">{fieldErrors.activation}</p>
+                  <Text type="supporting" className="text-destructive">{fieldErrors.activation}</Text>
                 )}
-              </div>
+              </Card>
 
               {kind === "business" && (
-                <fieldset className="space-y-3 rounded-lg border border-surface-border p-3">
+                <Card padding={3} elevation="none" className="space-y-3"><fieldset className="space-y-3">
                   <legend className="px-1 text-caption font-semibold text-foreground">
                     {t("Billing profile")}
                   </legend>
                   {fieldErrors.billing_profile && (
-                    <p className="text-caption text-destructive">{fieldErrors.billing_profile}</p>
+                    <Text type="supporting" className="text-destructive">{fieldErrors.billing_profile}</Text>
                   )}
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -944,7 +944,7 @@ export function Accounts({ userRole }: AccountsProps) {
                     width="100%"
                     status={fieldErrors["billing_profile.invoice_email"] ? { type: "error", message: fieldErrors["billing_profile.invoice_email"] } : undefined}
                   />
-                </fieldset>
+                </fieldset></Card>
               )}
             </div>
 

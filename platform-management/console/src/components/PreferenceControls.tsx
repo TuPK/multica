@@ -1,3 +1,4 @@
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { LANGUAGES, setLanguage, t, useLanguage, type Language } from "../i18n";
 import { THEMES, setTheme, useTheme, type Theme } from "../theme";
 
@@ -18,61 +19,31 @@ function themeLabel(theme: Theme): string {
 export function LanguageSwitch() {
   const language = useLanguage();
   return (
-    <div
-      role="group"
-      aria-label={t("Language")}
-      className="inline-flex shrink-0 rounded-md border border-surface-border p-0.5"
+    <SegmentedControl
+      size="sm"
+      label={t("Language")}
+      value={language}
+      onChange={(value) => setLanguage(value as Language)}
     >
-      {LANGUAGES.map((code) => {
-        const selected = code === language;
-        return (
-          <button
-            key={code}
-            type="button"
-            aria-pressed={selected}
-            onClick={() => setLanguage(code)}
-            className={
-              "rounded px-2 py-0.5 text-label " +
-              (selected
-                ? "bg-surface-selected text-foreground"
-                : "text-muted-foreground hover:text-foreground")
-            }
-          >
-            {LANGUAGE_LABELS[code]}
-          </button>
-        );
-      })}
-    </div>
+      {LANGUAGES.map((code) => (
+        <SegmentedControlItem key={code} value={code} label={LANGUAGE_LABELS[code]} />
+      ))}
+    </SegmentedControl>
   );
 }
 
 export function ThemeSwitch() {
   const theme = useTheme();
   return (
-    <div
-      role="group"
-      aria-label={t("Theme")}
-      className="inline-flex shrink-0 rounded-md border border-surface-border p-0.5"
+    <SegmentedControl
+      size="sm"
+      label={t("Theme")}
+      value={theme}
+      onChange={(value) => setTheme(value as Theme)}
     >
-      {THEMES.map((option) => {
-        const selected = option === theme;
-        return (
-          <button
-            key={option}
-            type="button"
-            aria-pressed={selected}
-            onClick={() => setTheme(option)}
-            className={
-              "rounded px-2 py-0.5 text-label " +
-              (selected
-                ? "bg-surface-selected text-foreground"
-                : "text-muted-foreground hover:text-foreground")
-            }
-          >
-            {themeLabel(option)}
-          </button>
-        );
-      })}
-    </div>
+      {THEMES.map((option) => (
+        <SegmentedControlItem key={option} value={option} label={themeLabel(option)} />
+      ))}
+    </SegmentedControl>
   );
 }

@@ -1,3 +1,4 @@
+import { Card } from "@astryxdesign/core/Card";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
@@ -119,12 +120,12 @@ export function TypeToConfirmDialog({
 
         {showExportFirst && (
           <>
-            <div className="rounded-md border border-border bg-secondary/40 p-3">
+            <Card padding={3} elevation="none">
               <Text type="supporting" color="primary">
                 {ownersNotice}
               </Text>
-            </div>
-            <div className="rounded-md border border-border p-3">
+            </Card>
+            <Card padding={3} elevation="none">
               <Switch
                 label={t("Export data before deleting")}
                 description={t("Queues a pre-deletion workspace archive before purge starts.")}
@@ -135,7 +136,7 @@ export function TypeToConfirmDialog({
                 onChange={(checked) => setExportFirst(checked)}
                 isDisabled={pending}
               />
-            </div>
+            </Card>
           </>
         )}
 

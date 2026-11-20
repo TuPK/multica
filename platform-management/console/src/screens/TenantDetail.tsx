@@ -610,7 +610,7 @@ export function TenantDetail({
                   {resourcesData.workspaces.length > 0 && (
                     <Section variant="transparent" padding={0} className="space-y-3">
                       <Heading level={3}>{t("By Workspace")}</Heading>
-                      <div className="overflow-x-auto">
+                      <Card padding={0} className="overflow-x-auto">
                         <Table density="compact" dividers="rows" hasHover>
                           <TableHeader>
                             <TableRow isHeaderRow>
@@ -670,7 +670,7 @@ export function TenantDetail({
                             ))}
                           </TableBody>
                         </Table>
-                      </div>
+                      </Card>
                     </Section>
                   )}
                 </div>

@@ -1,8 +1,9 @@
+import { Card } from "@astryxdesign/core/Card";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack, Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
-import { MetadataList, MetadataListItem } from "@astryxdesign/core/MetadataList";
+import { MetadataList, MetadataListItem } from "../components/MetadataList";
 import { Section } from "@astryxdesign/core/Section";
 import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@astryxdesign/core/Button";
@@ -225,7 +226,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                 <Heading level={3}>{t("Effective policy")}</Heading>
                 <Badge variant="neutral" label={t("Version {0}", data.version)} />
               </HStack>
-              <MetadataList columns="multi" label={{ position: "start" }}>
+              <MetadataList columns={3}>
                 <MetadataListItem label={t("Allowed invite domains")}>
                   <HStack
                     data-testid="effective-policy-allowed_invite_domains"
@@ -334,7 +335,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
               />
 
               <div className="space-y-3">
-                <div className="rounded-md border border-border p-3">
+                <Card padding={3} elevation="none">
                   <Switch
                     label={t("Allow share links")}
                     description={t("Workspaces can only enable public share links when the tenant allows them.")}
@@ -348,9 +349,9 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                     }}
                     isDisabled={!canEdit || updatePolicy.isPending}
                   />
-                </div>
+                </Card>
 
-                <div className="rounded-md border border-border p-3">
+                <Card padding={3} elevation="none">
                   <Switch
                     label={t("Require SSO")}
                     labelPosition="start"
@@ -363,9 +364,9 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                     }}
                     isDisabled={!canEdit || updatePolicy.isPending}
                   />
-                </div>
+                </Card>
 
-                <div className="rounded-md border border-border p-3">
+                <Card padding={3} elevation="none">
                   <Switch
                     label={t("Require MFA")}
                     labelPosition="start"
@@ -378,7 +379,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                     }}
                     isDisabled={!canEdit || updatePolicy.isPending}
                   />
-                </div>
+                </Card>
               </div>
 
               <NumberInput

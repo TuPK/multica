@@ -1,3 +1,4 @@
+import { Card } from "@astryxdesign/core/Card";
 import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -337,7 +338,7 @@ export function RuntimeDetail({
                   isCompact
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <Card padding={0} className="overflow-x-auto">
                   <Table density="compact" dividers="rows" hasHover>
                     <TableHeader>
                       <TableRow isHeaderRow>
@@ -382,7 +383,7 @@ export function RuntimeDetail({
                       ))}
                     </TableBody>
                   </Table>
-                </div>
+                </Card>
               )}
             </Section>
 
@@ -395,7 +396,7 @@ export function RuntimeDetail({
                   isCompact
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <Card padding={0} className="overflow-x-auto">
                   <Table density="compact" dividers="rows" hasHover>
                     <TableHeader>
                       <TableRow isHeaderRow>
@@ -428,7 +429,7 @@ export function RuntimeDetail({
                       ))}
                     </TableBody>
                   </Table>
-                </div>
+                </Card>
               )}
             </Section>
           </div>

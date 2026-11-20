@@ -273,7 +273,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                       isCompact
                     />
                   ) : (
-                    <div className="overflow-x-auto">
+                    <Card padding={0} className="overflow-x-auto">
                       <Table density="compact" dividers="rows" hasHover>
                         <TableHeader>
                           <TableRow isHeaderRow>
@@ -362,7 +362,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                           })}
                         </TableBody>
                       </Table>
-                    </div>
+                    </Card>
                   )}
                 </Section>
 
@@ -382,8 +382,8 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                     />
                   ) : (
                     <div className="space-y-4">
-                      <div className="overflow-x-auto">
-                        <Table density="balanced" dividers="rows" hasHover>
+                      <Card padding={0} className="overflow-x-auto">
+                        <Table density="compact" dividers="rows" hasHover>
                           <TableHeader>
                             <TableRow isHeaderRow>
                               <TableHeaderCell>{t("Tenant")}</TableHeaderCell>
@@ -469,7 +469,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                             ))}
                           </TableBody>
                         </Table>
-                      </div>
+                      </Card>
 
                       {hasNextPage && (
                         <div className="flex justify-center pt-2">
@@ -492,7 +492,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                 {byPlan.length > 0 && (
                   <Section className="space-y-4">
                     <Heading level={3}>{t("Usage by Plan")}</Heading>
-                    <div className="overflow-x-auto">
+                    <Card padding={0} className="overflow-x-auto">
                       <Table density="compact" dividers="rows" hasHover>
                         <TableHeader>
                           <TableRow isHeaderRow>
@@ -537,7 +537,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                           })}
                         </TableBody>
                       </Table>
-                    </div>
+                    </Card>
                   </Section>
                 )}
               </div>

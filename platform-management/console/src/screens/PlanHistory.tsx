@@ -1,3 +1,4 @@
+import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
 import { Section } from "@astryxdesign/core/Section";
@@ -123,7 +124,7 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
                 )}
 
                 {!isLoading && !isError && entries.length > 0 && (
-                  <div className="overflow-x-auto">
+                  <Card padding={0} className="overflow-x-auto">
                     <Table density="compact" dividers="rows" hasHover>
                       <TableHeader>
                         <TableRow isHeaderRow>
@@ -213,7 +214,7 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </Card>
                 )}
               </div>
             </Section>

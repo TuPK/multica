@@ -7,6 +7,7 @@ import { Heading } from "@astryxdesign/core/Heading";
 import { Section } from "@astryxdesign/core/Section";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
+import { Token } from "@astryxdesign/core/Token";
 import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
 import { TextInput } from "@astryxdesign/core/TextInput";
@@ -246,11 +247,8 @@ function MonthlyUsageSection({
               <Heading level={3}>{t("Missing days")}</Heading>
               <ul className="flex flex-wrap gap-2">
                 {usageData.missing_days.map((day) => (
-                  <li
-                    key={day}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-muted/40 px-2.5 py-1 text-caption"
-                  >
-                    <Text type="code">{day}</Text>
+                  <li key={day} className="inline-flex items-center gap-1.5">
+                    <Token label={day} />
                     <Badge variant="neutral" label={t("missing")} />
                   </li>
                 ))}

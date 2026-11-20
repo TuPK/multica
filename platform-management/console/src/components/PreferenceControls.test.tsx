@@ -32,17 +32,17 @@ describe("header language and theme switches", () => {
 
     expect(getLanguage()).toBe("en");
     expect(document.documentElement.dataset.theme).toBe("blue-white");
-    expect(screen.getByRole("button", { name: "EN" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("radio", { name: "EN" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
   });
 
   it("switches the interface to Vietnamese and remembers the choice", () => {
     renderLayout();
 
-    fireEvent.click(screen.getByRole("button", { name: "VI" }));
+    fireEvent.click(screen.getByRole("radio", { name: "VI" }));
 
     expect(getLanguage()).toBe("vi");
-    expect(screen.getByRole("button", { name: "VI" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("radio", { name: "VI" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("button", { name: "Đăng xuất" })).toBeInTheDocument();
     expect(window.localStorage.getItem("platform-console.language")).toBe("vi");
   });
@@ -50,10 +50,10 @@ describe("header language and theme switches", () => {
   it("applies the selected theme to the root element and remembers it", () => {
     renderLayout();
 
-    const theme = screen.getByRole("group", { name: "Theme" });
-    fireEvent.click(within(theme).getByRole("button", { name: "Dark" }));
+    const theme = screen.getByRole("radiogroup", { name: "Theme" });
+    fireEvent.click(within(theme).getByRole("radio", { name: "Dark" }));
 
-    expect(within(theme).getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(theme).getByRole("radio", { name: "Dark" })).toHaveAttribute("aria-checked", "true");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(window.localStorage.getItem("platform-console.theme")).toBe("dark");
   });
