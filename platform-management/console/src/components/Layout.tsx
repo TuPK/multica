@@ -3,7 +3,6 @@ import { AppShell } from "@astryxdesign/core/AppShell";
 import {
   SideNav,
   SideNavCollapseButton,
-  SideNavHeading,
   SideNavItem,
   SideNavSection,
 } from "@astryxdesign/core/SideNav";
@@ -143,34 +142,9 @@ export function Layout({
             hasButton: false,
           }}
           header={
-            <SideNavHeading
-              heading="Platform Console"
-              icon={<Shield className="size-4 shrink-0" aria-hidden="true" />}
-            />
-          }
-          footer={
-            isCollapsed ? undefined : (
-              <div className="flex items-center justify-between gap-2 border-t border-surface-border px-1 pt-3">
-                <span
-                  className="min-w-0 flex-1 truncate text-label text-muted-foreground"
-                  title={user.email}
-                >
-                  {user.email}
-                </span>
-                <StatusBadge status={user.role} />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={onLogout}
-                  title="Sign out"
-                  aria-label="Sign out"
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                >
-                  <LogOut className="size-4" aria-hidden="true" />
-                </Button>
-              </div>
-            )
+            <div className="flex h-8 items-center px-1">
+              <img src="/brand/delegora-logo-on-light.svg" alt="Delegora" className="h-7 w-auto" />
+            </div>
           }
           footerIcons={
             <>
@@ -230,6 +204,23 @@ export function Layout({
       }
     >
       <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-5 sm:p-6">
+        <div className="mb-4 flex items-center justify-end gap-2">
+          <span className="min-w-0 truncate text-label text-muted-foreground" title={user.email}>
+            {user.email}
+          </span>
+          <StatusBadge status={user.role} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={onLogout}
+            title="Sign out"
+            aria-label="Sign out"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
         {children}
       </div>
     </AppShell>

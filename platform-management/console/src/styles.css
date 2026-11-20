@@ -72,23 +72,23 @@
      theme keeps its black accent, so the accent tokens are redirected to the
      Multica info blue. Surfaces stay white; the page body gets a faint blue tint. */
   [data-astryx-theme="neutral"] {
-    --color-accent: light-dark(#0074e2, #6d9cfe);
-    --color-accent-muted: light-dark(#b9d7ff, #88bcff3D);
-    --color-text-accent: light-dark(#0067ce, #a1caff);
-    --color-icon-accent: light-dark(#0067ce, #a1caff);
-    --color-background-body: light-dark(#f3f7fd, #1b1b1b);
-    --color-background-muted: light-dark(#eaf2fc, #1b1b1b);
+    --color-accent: #0074e2;
+    --color-accent-muted: #b9d7ff;
+    --color-text-accent: #0067ce;
+    --color-icon-accent: #0067ce;
+    --color-background-body: #f3f7fd;
+    --color-background-muted: #eaf2fc;
 
     /* Sidebar: the Astryx SideNav reads these --sidebar* tokens, not the
        color-* ones above, so they are set to the same blue-white palette. */
-    --sidebar: light-dark(#e8f2fd, #17202c);
-    --sidebar-foreground: light-dark(#0b2a4a, #e6eef8);
-    --sidebar-border: light-dark(#c9ddf5, #2a3a50);
-    --sidebar-primary: light-dark(#0074e2, #6d9cfe);
-    --sidebar-primary-foreground: light-dark(#ffffff, #111111);
-    --sidebar-accent: light-dark(#d3e6fc, #22344d);
-    --sidebar-accent-foreground: light-dark(#0067ce, #a1caff);
-    --sidebar-ring: light-dark(#0074e2, #6d9cfe);
+    --sidebar: #e8f2fd;
+    --sidebar-foreground: #0b2a4a;
+    --sidebar-border: #c9ddf5;
+    --sidebar-primary: #0074e2;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #d3e6fc;
+    --sidebar-accent-foreground: #0067ce;
+    --sidebar-ring: #0074e2;
   }
 
   /* Keep selected rows unmistakably highlighted at rest and on hover inside
