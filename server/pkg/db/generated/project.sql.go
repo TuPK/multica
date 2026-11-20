@@ -367,6 +367,29 @@ func (q *Queries) GetProjectIssueStats(ctx context.Context, arg GetProjectIssueS
 	return items, nil
 }
 
+const getSquadWorkProjectID = `-- name: GetSquadWorkProjectID :one
+SELECT id FROM project
+WHERE workspace_id = $1
+  AND $2::uuid = ANY(squad_ids)
+  AND status NOT IN ('completed', 'cancelled')
+ORDER BY created_at ASC, id ASC
+LIMIT 1
+`
+
+type GetSquadWorkProjectIDParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	SquadID     pgtype.UUID `json:"squad_id"`
+}
+
+// The open project a squad holds, which is where its work and its repository are.
+// A squad works one open project at a time; the oldest wins if that ever breaks.
+func (q *Queries) GetSquadWorkProjectID(ctx context.Context, arg GetSquadWorkProjectIDParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getSquadWorkProjectID, arg.WorkspaceID, arg.SquadID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const listProjects = `-- name: ListProjects :many
 SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
 WHERE workspace_id = $1

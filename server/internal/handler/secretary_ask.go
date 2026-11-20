@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/logger"
@@ -212,6 +214,23 @@ func (h *Handler) SecretaryAsk(w http.ResponseWriter, r *http.Request) {
 		}
 		if a.SquadID != "" {
 			payload["assignee_type"], payload["assignee_id"] = "squad", a.SquadID
+			// The squad's work, and its repository, live in the project the squad
+			// holds. Left to inherit, the child would take the desk's project and
+			// its agents would see no repository. A squad with no project keeps
+			// the desk.
+			squadUUID, err := util.ParseUUID(a.SquadID)
+			if err != nil {
+				fail(http.StatusBadRequest, "addressee squad_id is not a valid id")
+				return
+			}
+			projectID, err := h.Queries.GetSquadWorkProjectID(r.Context(), db.GetSquadWorkProjectIDParams{WorkspaceID: wsUUID, SquadID: squadUUID})
+			switch {
+			case err == nil:
+				payload["project_id"] = util.UUIDToString(projectID)
+			case !errors.Is(err, pgx.ErrNoRows):
+				fail(http.StatusInternalServerError, "failed to find the squad's project")
+				return
+			}
 		} else {
 			payload["assignee_type"], payload["assignee_id"] = "agent", a.AgentID
 		}

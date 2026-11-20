@@ -98,6 +98,56 @@ func TestSecretaryAsk_LeaderAddresseeIsFiledToTheSquad(t *testing.T) {
 	}
 }
 
+// A squad's child is filed in the project the squad holds, not in the desk, so
+// the leader and its members work where the repository is. The request itself
+// stays in the desk, apart from the repository's run lanes. A squad that holds no
+// project keeps the desk, and an addressee that is not a squad's leader does too.
+func TestSecretaryAsk_ChildrenAreFiledInTheSquadsProject(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	f := seedDirectiveRun(t, "How is the product doing?")
+	desk := dbfx.Project(t, "Secretary desk", testutil.Cols{"workspace_id": testWorkspaceID})
+	repoProject := dbfx.Project(t, "Repo project "+uuid.NewString(), testutil.Cols{"workspace_id": testWorkspaceID})
+	leader := createHandlerTestAgent(t, "ask project leader "+uuid.NewString(), nil)
+	squadID := dbfx.Squad(t, "Ask project squad "+uuid.NewString(), leader)
+	dbfx.Exec(t, `UPDATE project SET squad_ids = ARRAY[$2::uuid] WHERE id = $1`, repoProject, squadID)
+	bareLeader := createHandlerTestAgent(t, "ask bare leader "+uuid.NewString(), nil)
+	dbfx.Squad(t, "Ask bare squad "+uuid.NewString(), bareLeader)
+	plain := createHandlerTestAgent(t, "ask plain agent "+uuid.NewString(), nil)
+
+	deadline := time.Now().Add(72 * time.Hour).UTC().Format(time.RFC3339)
+	var out SecretaryAskResponse
+	askCall(t, f, map[string]any{
+		"question":        "How is the product doing?",
+		"chat_session_id": f.sessionID,
+		"due_date":        time.Now().Add(72 * time.Hour).Format("2006-01-02"),
+		"deadline":        deadline,
+		"addressees": []map[string]any{
+			{"agent_id": leader, "title": "Leader with a project", "description": "Answer the boss."},
+			{"agent_id": bareLeader, "title": "Leader without a project", "description": "Answer the boss."},
+			{"agent_id": plain, "title": "Plain agent", "description": "Answer the boss."},
+		},
+	}).Want(http.StatusCreated).JSON(&out)
+
+	projectOf := func(id string) string {
+		var p string
+		dbfx.QueryRow(t, `SELECT COALESCE(project_id::text, '') FROM issue WHERE id = $1`, id).Scan(&p)
+		return p
+	}
+	if got := projectOf(out.RequestID); got != desk {
+		t.Errorf("request project = %q, want the desk %q", got, desk)
+	}
+	if got := projectOf(out.ChildIDs[0]); got != repoProject {
+		t.Errorf("child of the squad with a project: project = %q, want %q", got, repoProject)
+	}
+	for _, i := range []int{1, 2} {
+		if got := projectOf(out.ChildIDs[i]); got != desk {
+			t.Errorf("child %d (no squad project): project = %q, want the desk %q", i, got, desk)
+		}
+	}
+}
+
 // The call is refused outside the Secretary's own turn in that chat, and for an
 // invalid request body; nothing is filed on a refusal.
 func TestSecretaryAsk_RefusedWithoutFilingAnything(t *testing.T) {

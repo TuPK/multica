@@ -85,6 +85,16 @@ WHERE workspace_id = sqlc.arg('workspace_id')
   AND status NOT IN ('completed', 'cancelled')
 LIMIT 1;
 
+-- name: GetSquadWorkProjectID :one
+-- The open project a squad holds, which is where its work and its repository are.
+-- A squad works one open project at a time; the oldest wins if that ever breaks.
+SELECT id FROM project
+WHERE workspace_id = sqlc.arg('workspace_id')
+  AND sqlc.arg('squad_id')::uuid = ANY(squad_ids)
+  AND status NOT IN ('completed', 'cancelled')
+ORDER BY created_at ASC, id ASC
+LIMIT 1;
+
 -- name: ClearSquadFromOtherProjects :many
 -- Removes the squad from its other projects that the viewer sees. Only finished ones can remain once GetOpenSquadProject is clear.
 UPDATE project SET squad_ids = array_remove(squad_ids, sqlc.arg('squad_id')::uuid), updated_at = now()
