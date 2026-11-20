@@ -308,6 +308,63 @@ func TestAttributionForIssueTask_SystemCommentFallsThroughToIssueProvenance(t *t
 	}
 }
 
+// TestAttributionForIssueTask_SquadRequestInheritsParentIssueHuman covers the
+// squad hand-off that lost the human (TUPK-1153, 2026-11-20). The Secretary
+// agent, acting for a human, creates a parent issue (agent_create origin). It
+// then assigns a sub-issue to a squad under that parent, which stamps the
+// sub-issue origin_type=squad_request with origin_id = the parent issue. The
+// squad leader's run must inherit the human from the parent's origin task, not
+// fall back to the agent owner (owner_fallback), or every private-agent
+// @-mention the leader makes is refused by canInvokeAgent.
+func TestAttributionForIssueTask_SquadRequestInheritsParentIssueHuman(t *testing.T) {
+	pool := newResolveOriginatorPool(t)
+	_, _, originTaskID, userID, workspaceID := seedOriginatorFanout(t, pool)
+	ctx := context.Background()
+
+	var agentID string
+	if err := pool.QueryRow(ctx, `
+		SELECT agent_id::text FROM agent_task_queue WHERE id = $1
+	`, util.UUIDToString(originTaskID)).Scan(&agentID); err != nil {
+		t.Fatalf("load origin task agent: %v", err)
+	}
+
+	var parentIssueID string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO issue (workspace_id, number, title, creator_type, creator_id, origin_type, origin_id)
+		VALUES ($1, (SELECT COALESCE(MAX(number), 0) + 1 FROM issue WHERE workspace_id = $1), 'parent-from-secretary', 'agent', $2, 'agent_create', $3)
+		RETURNING id
+	`, util.UUIDToString(workspaceID), agentID, util.UUIDToString(originTaskID)).Scan(&parentIssueID); err != nil {
+		t.Fatalf("seed parent issue: %v", err)
+	}
+
+	var childIssueID string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO issue (workspace_id, number, title, creator_type, creator_id, origin_type, origin_id, parent_issue_id)
+		VALUES ($1, (SELECT COALESCE(MAX(number), 0) + 1 FROM issue WHERE workspace_id = $1), 'squad-subissue', 'agent', $2, 'squad_request', $3, $3)
+		RETURNING id
+	`, util.UUIDToString(workspaceID), agentID, parentIssueID).Scan(&childIssueID); err != nil {
+		t.Fatalf("seed squad sub-issue: %v", err)
+	}
+
+	var child db.Issue
+	if err := pool.QueryRow(ctx, `
+		SELECT id, workspace_id, creator_type, creator_id, origin_type, origin_id
+		FROM issue WHERE id = $1
+	`, childIssueID).Scan(&child.ID, &child.WorkspaceID, &child.CreatorType, &child.CreatorID, &child.OriginType, &child.OriginID); err != nil {
+		t.Fatalf("load sub-issue: %v", err)
+	}
+
+	svc := &TaskService{Queries: db.New(pool)}
+	got := svc.attributionForIssueTask(ctx, child, pgtype.UUID{}, attribution.SourceDelegation, pgtype.UUID{})
+	if got.Source != attribution.SourceDelegation {
+		t.Fatalf("source = %q, want delegation (squad sub-issue must inherit the parent's human, not owner_fallback)", got.Source)
+	}
+	if !got.UserID.Valid || got.UserID.Bytes != userID.Bytes {
+		t.Errorf("originator = %s, want %s (human behind the parent issue's origin task)",
+			util.UUIDToString(got.UserID), util.UUIDToString(userID))
+	}
+}
+
 // TestResolveOriginatorForIssueTask_MemberCreatedNoComment covers direct issue
 // assignment/creation: there is no trigger comment to inspect, but the issue's
 // human creator is still the run originator for Composio overlay gating.

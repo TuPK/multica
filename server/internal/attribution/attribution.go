@@ -355,6 +355,22 @@ func ClassifyDirect(f DirectFacts) Result {
 	}
 }
 
+// InheritFromIssue attributes a run on a squad hand-off issue to the human its
+// parent issue resolved to, as one delegation hop. An unattributed parent stays
+// unattributed so the caller's owner_fallback still applies.
+func InheritFromIssue(issueID pgtype.UUID, parent Result) Result {
+	if !parent.UserID.Valid {
+		return finalizeAttribution(Result{Source: SourceUnattributed, EvidenceKind: EvidenceIssueAssignment, EvidenceRefID: issueID})
+	}
+	return finalizeAttribution(Result{
+		UserID:              parent.UserID,
+		Source:              SourceDelegation,
+		DelegatedFromTaskID: parent.DelegatedFromTaskID,
+		EvidenceKind:        EvidenceIssueAssignment,
+		EvidenceRefID:       issueID,
+	})
+}
+
 // DirectHumanRun builds attribution for a run a member triggered directly through
 // a path that carries no issue and no trigger comment — a chat message or a
 // quick-create request. userID is the member who acted (the chat sender / the

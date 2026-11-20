@@ -589,6 +589,16 @@ func (s *TaskService) attributionForIssueTask(ctx context.Context, issue db.Issu
 		}
 		return triggerOwnerAttribution(ctx, s.Queries, triggerID, issue.WorkspaceID, issue.OriginID, attribution.EvidenceIssueAssignment, issue.ID)
 	}
+	// A squad hand-off (handler stamps squad_request on a sub-issue assigned to a
+	// squad under a parent) keeps the parent as its origin, not the agent task that
+	// created the parent, so the origin-task branch below never sees the human. Take
+	// the human the parent's own provenance resolves to, so the squad leader's run
+	// carries the same top-of-chain human as the work that requested it.
+	if s != nil && s.Queries != nil && issue.OriginType.Valid && issue.OriginType.String == "squad_request" && issue.OriginID.Valid {
+		if root, ok := s.squadRequestRootIssue(ctx, issue); ok {
+			return attribution.InheritFromIssue(issue.ID, s.attributionForIssueTask(ctx, root, pgtype.UUID{}, agentAuthoredSource, pgtype.UUID{}))
+		}
+	}
 	facts := attribution.DirectFacts{
 		IssueID:     issue.ID,
 		CreatorType: issue.CreatorType,
@@ -611,6 +621,29 @@ func (s *TaskService) attributionForIssueTask(ctx context.Context, issue db.Issu
 		}
 	}
 	return attribution.ClassifyDirect(facts)
+}
+
+// maxSquadRequestHops bounds the squad_request parent walk. Hand-offs normally
+// nest one or two levels deep; the bound stops a corrupt origin cycle from
+// looping forever.
+const maxSquadRequestHops = 8
+
+// squadRequestRootIssue follows squad_request origins up to the first issue that
+// is not itself a squad hand-off. It returns false when the chain is too deep, a
+// parent is missing, or a parent lies outside the issue's workspace (MUL-4252).
+func (s *TaskService) squadRequestRootIssue(ctx context.Context, issue db.Issue) (db.Issue, bool) {
+	cur := issue
+	for hop := 0; hop < maxSquadRequestHops; hop++ {
+		if !cur.OriginType.Valid || cur.OriginType.String != "squad_request" || !cur.OriginID.Valid {
+			return cur, true
+		}
+		parent, err := s.Queries.GetIssue(ctx, cur.OriginID)
+		if err != nil || parent.WorkspaceID != issue.WorkspaceID {
+			return db.Issue{}, false
+		}
+		cur = parent
+	}
+	return db.Issue{}, false
 }
 
 // ruleOwnerAttribution resolves the rule_owner attribution for an autopilot run
