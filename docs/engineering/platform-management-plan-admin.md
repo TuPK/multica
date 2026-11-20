@@ -2,7 +2,7 @@
 
 Đặc tả: [platform-management-spec-admin.md](platform-management-spec-admin.md) (gọi là "spec R6"; mục dẫn bằng số mục trần). Kế hoạch gốc: [platform-management-plan.md](platform-management-plan.md) ("kế hoạch gốc"). Tài liệu này là các slice có thứ tự, kiểm được, cho bốn quyết định đã chốt: thêm người vào workspace có sẵn, tenant nhiều workspace, xóa ngay workspace hoặc tenant, xóa ngay tài khoản. Không sửa kế hoạch gốc.
 
-Ngày viết 2026-11-19, bản cập nhật lần hai (vai trò `system_admin`, `admin` theo tenant) và lần ba (nhóm quản trị QT1 đến QT19, slice S16 đến S38) cùng ngày; đọc mã ở **HEAD `7c9684daa`**. **Chưa có mã nào của đợt này được viết.** Đường dẫn ghi "mới" chưa tồn tại; "đổi" đã tồn tại ở HEAD này.
+Ngày viết 2026-11-19, bản cập nhật lần hai (vai trò `system_admin`, `admin` theo tenant) và lần ba (nhóm quản trị QT1 đến QT19, slice S16 đến S38) cùng ngày; đọc mã ở **HEAD `7c9684daa`**. **Trạng thái (cập nhật 2026-11-20): slice S0 đến S37 đã có mã trên `main`; S38 là cổng G-R6b và là phần còn lại.** Đường dẫn ghi "mới" trong các slice đã làm đã tồn tại; "đổi" đã tồn tại ở HEAD này.
 
 ## 0. Cách đọc và quy ước
 
@@ -49,10 +49,10 @@ DATABASE_URL="$TESTDSN" bash scripts/require-test-database.sh
 **Điều cần kiểm trước mỗi slice có migration.** Số chưa bị chiếm:
 
 ```bash
-ls server/migrations | sed 's/_.*//' | sort -n | uniq | awk '($1>=941 && $1<=947) || ($1>=1016 && $1<=1037)'
+ls server/migrations | sed 's/_.*//' | sort -n | uniq | awk '($1==938) || ($1>=941 && $1<=946) || ($1>=1016 && $1<=1039)'
 ```
 
-Lệnh phải không in số của slice sắp thêm. Nếu một số đã bị chiếm, đổi số trong slice và trong spec R6 mục 8 trong cùng commit. Sau khi thêm migration: [GN] `./internal/migrations -run 'TestMigrationFilesHaveMatchingDirections|TestMigrationNumericPrefixesAreUnique'` (trong `server/`) và [GN] `./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`. Ghi chú về thứ tự áp dụng số bốn chữ số: spec R6 mục 5.4.
+Lệnh này in các số R6 đã có trên đĩa (938, 941 đến 946, 1016 đến 1029, 1031 đến 1039; 947 và 1030 không có). Trước khi thêm migration mới, số mới không được nằm trong danh sách này. Nếu một số đã bị chiếm, đổi số trong slice và trong spec R6 mục 8 trong cùng commit. Sau khi thêm migration: [GN] `./internal/migrations -run 'TestMigrationFilesHaveMatchingDirections|TestMigrationNumericPrefixesAreUnique'` (trong `server/`) và [GN] `./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`. Ghi chú về thứ tự áp dụng số bốn chữ số: spec R6 mục 5.4.
 
 **Quy tắc schemacheck.** Slice nào thêm migration cho bảng mà platform đọc hay ghi thì thêm phiên bản đó vào `platform-management/internal/schemacheck/schemacheck.go` trong cùng commit (kế hoạch gốc 0.2 điều 13); test `TestEveryPlatformTableMigrationIsRequired` (`platform-management/internal/schemacheck/schemacheck_test.go:100`) đỏ nếu thiếu.
 
@@ -587,7 +587,7 @@ S8 và S10 cùng sửa bước "delete platform state" của `deleteWorkspaceDat
   - Chạy `TestPermissionMatrixMatchesSpec` mở rộng tới M30 đến M52 và `TestEveryRouteInEveryRouteTableHasAMatrixRow` trên bảng route cuối cùng; mọi route mới sau S0 phải có hàng ở 3.6 hoặc 3c.10.
   - Rà theo bảng bảo mật spec R6 mục 11: mỗi dòng nêu tên một test cụ thể trong PR.
   - Kiểm: không bước nào chạy `make test`, `make check`, `make migrate-up` hay tạo cơ sở dữ liệu; chuỗi giao diện đủ bảy ngôn ngữ; với mọi cấu hình mới để trống toàn bộ test hiện có xanh (AC143).
-  - Bảng kiểm triển khai: chạy `server/cmd/migrate up` cho 941 đến 947 và 1016 đến 1037; bật `PLATFORM_APPROVAL_ACTIONS` khi có từ hai `system_admin`; đặt giữ hồ sơ pháp lý trước khi xóa ngay một đối tượng đang có vụ việc.
+  - Bảng kiểm triển khai: chạy `server/cmd/migrate up` cho các migration R6 có trên đĩa: 938, 941 đến 946, 1016 đến 1029 và 1031 đến 1039. Đã kiểm bằng `ls server/migrations` ngày 2026-11-20. Lưu ý: 947 không có, vì cột `plan.description` nằm ở `938_plan_description` (sửa trong `e189735c5`, để chạy sau bảng `plan` ở 670); 1030 không có; chính sách tenant là 1033 và 1034, quota 1035 đến 1037, giữ hồ sơ pháp lý 1038 và 1039; 1031 và 1032 là `platform_runtime` (S21), không phải chỗ trống. Spec R6 mục 8 và mục 12 còn ghi số cũ (947, 1030, 1031 cho các bảng này), cần đồng bộ với danh sách trên; bật `PLATFORM_APPROVAL_ACTIONS` khi có từ hai `system_admin`; đặt giữ hồ sơ pháp lý trước khi xóa ngay một đối tượng đang có vụ việc.
 - **Test đỏ trước:** không có test mới; slice này chạy và đối chiếu toàn bộ.
 - **Lệnh kiểm chứng:** [PRE]; [B]; [GA]; [T]; [PW]; [PB]; [PI]; `git diff --check`; `git status --short` không có tệp lạ.
 

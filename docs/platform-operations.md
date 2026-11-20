@@ -581,3 +581,80 @@ Các mục dưới là việc cần làm. Mục này không ghi mục nào đã 
 5. `PLATFORM_CONSOLE_ORIGIN` khớp với origin console dùng để gọi API thử lại.
 6. Luồng trên sandbox đã chạy: một đơn phát hành được, một đơn `needs_info` được khách sửa, và API thử lại được gọi thành công một lần.
 7. `TestSepaySandboxLive` đã chạy với khóa sandbox của nhóm.
+
+## 15. R6: hướng dẫn cho nhà vận hành
+
+Nguồn: spec R6 mục 3c.5 đến 3c.9 ([platform-management-spec-admin.md](engineering/platform-management-spec-admin.md)) và ma trận quyền ở `platform-management/internal/staff/access.go`. Mục này chỉ ghi điều đã đọc trong mã trên `main` ngày 2026-11-20. Chưa chạy các luồng này trên môi trường thật. Mọi route console nằm dưới `/api/platform`.
+
+### 15.1 Giữ hồ sơ pháp lý (legal hold)
+
+Chỉ `system_admin` đặt, gỡ và xem hồ sơ giữ (`legal_holds.manage`). `admin` không thấy lý do hay mã vụ việc; họ chỉ gặp lỗi 409 `legal_hold` khi thử xóa.
+
+- **Đặt:** `POST /api/platform/legal-holds` với `scope_kind` (`tenant`, `workspace` hoặc `account`), `scope_id`, `reason` (1 đến 500 ký tự) và `case_ref` (1 đến 100 ký tự). Cả hai chuỗi đều bắt buộc. Thành công trả 201. Nếu phạm vi đã có hồ sơ còn hiệu lực, trả 409 `legal_hold_exists`.
+- **Gỡ:** `POST /api/platform/legal-holds/{id}/release`.
+- **Xem:** `GET /api/platform/legal-holds?limit=` (1 đến 500, mặc định 100).
+- Hồ sơ không có hạn. Hồ sơ phạm vi `tenant` cũng chặn xóa workspace thuộc tenant đó (`checkWorkspaceHeld`, `server/internal/handler/legal_hold.go:22`, đọc `tenant_id` của workspace).
+- Hồ sơ không ảnh hưởng vận hành thường ngày. Nó chỉ chặn xóa.
+
+**Điều bị chặn:** xóa workspace (cả owner tự xóa lẫn pha 2 của xóa ngay), xóa tài khoản, và việc nền xóa nhật ký kiểm toán. Dòng kiểm toán thuộc workspace, tenant hoặc tài khoản đang bị giữ không bị xóa (`DeleteAuditEventsBefore`, `server/pkg/db/queries/audit_event.sql:38`). Mỗi lần xóa bị chặn ghi `deletion.blocked_by_hold`.
+
+**Quy trình:**
+
+1. Ghi mã vụ việc vào `case_ref` và lý do vào `reason`. Hai trường này không vào nhật ký kiểm toán; nhật ký chỉ ghi `legal_hold_id`.
+2. Đặt hồ sơ đúng phạm vi cần giữ. Muốn giữ cả tenant, đặt trên `tenant`; hồ sơ này cũng áp cho mọi workspace của tenant.
+3. Gọi `GET /api/platform/legal-holds` để xác nhận hồ sơ đã có.
+4. Khi vụ việc đóng, gỡ bằng `release`. Từ lúc gỡ, các việc xóa lại được thực hiện bình thường.
+
+### 15.2 Duyệt chéo cho xóa ngay
+
+**Bật:** đặt biến `PLATFORM_APPROVAL_ACTIONS` cho tiến trình platform rồi khởi động lại platform. Biến đọc lúc khởi động (`platform-management/internal/config/config.go:353`). Giá trị là danh sách cách nhau bằng dấu phẩy; khoảng trắng quanh tên được bỏ qua. Chỉ hai tên được nhận: `tenant.delete_now` và `account.delete_now`. Tên khác làm platform thoát khi khởi động, với thông báo nêu tên biến, nên một lỗi gõ không tắt duyệt âm thầm. Bỏ trống thì mặc định là không duyệt (xóa ngay như R1 đến R5).
+
+```bash
+PLATFORM_APPROVAL_ACTIONS=tenant.delete_now,account.delete_now
+```
+
+Chỉ bật khi có ít nhất hai `system_admin` đang hoạt động. Nếu chỉ có một, yêu cầu bị từ chối ngay với 409 `approver_unavailable`.
+
+**Luồng:**
+
+- `POST /api/platform/tenants/{id}/delete-now` hoặc `POST /api/platform/users/{id}/delete-now` chỉ tạo yêu cầu ở trạng thái `awaiting_approval` và ghi `deletion.approval_requested`. Chưa đặt trạng thái hay xóa gì. Tạo mới trả 202.
+- `GET /api/platform/approvals` liệt kê yêu cầu đang chờ.
+- `POST /api/platform/approvals/{id}/approve` hoặc `/reject` do một `system_admin` **khác** người yêu cầu thực hiện. Cùng người thì trả 409 `approver_must_differ`. Duyệt thì chạy xóa như bình thường; từ chối đặt `canceled`.
+- Quá 24 giờ không ai duyệt, việc nền `deletion_approval_expiry` (mỗi phút) đặt `canceled` với lý do `approval_expired`.
+- `admin` không tạo được hai hành động này. Xóa ngay workspace không qua duyệt chéo.
+
+### 15.3 Yêu cầu tăng hạn mức
+
+- **Tạo:** owner hoặc người có `billing.manage` gửi `POST /api/workspaces/{id}/quota-requests` trong Multica. Console dùng `POST /api/platform/workspaces/{id}/quota-requests`, cho `system_admin` và `admin` của tenant đó.
+- **Nội dung:** `gate` là một trong chín khóa `issue_count`, `autopilot_runs`, `agents`, `runtimes`, `storage_bytes`, `api_rate_per_minute`, `audit_retention_days`, `member_groups`, `max_workspaces` (`platform-management/internal/plan/plan.go:25`). `requested_value` phải lớn hơn giá trị hiệu lực hiện tại. `reason` bắt buộc.
+- Mỗi workspace có tối đa một yêu cầu đang chờ cho mỗi gate. Gửi thêm trả 409 `quota_request_pending`.
+- **Duyệt và từ chối:** chỉ `system_admin`. `POST /api/platform/quota-requests/{id}/approve` nhận `{value?, reason}`; `value` có thể thấp hơn mức xin nhưng phải lớn hơn giá trị hiện tại. `POST .../deny` nhận `{reason}`.
+- Duyệt ghi giới hạn riêng cho workspace đó trong cùng giao dịch với việc đổi trạng thái yêu cầu. Người xin nhận email kết quả. Email lỗi không làm hỏng quyết định đã ghi.
+- **Xem:** `GET /api/platform/quota-requests` và `GET /api/platform/quota-requests/{id}`.
+
+### 15.4 Xuất nhật ký kiểm toán
+
+`GET /api/platform/audit-events/export`, với các tham số:
+
+- `from`, `to`: RFC 3339, `from` trước `to`, khoảng tối đa 31 ngày. Vi phạm trả 400 `export_range_invalid` hoặc `export_range_too_large`.
+- `format`: `ndjson` (mặc định) hoặc `csv`.
+- `limit`: 1 đến 1000, mặc định 1000. Trang sau lấy giá trị từ header `X-Next-Cursor`, gửi lại bằng `cursor`.
+- Lọc tùy chọn: `workspace_id`, `action`, `actor_id`.
+- **Quyền:** `system_admin` xuất toàn hệ thống; `admin` chỉ xuất dòng của tenant mình; các vai trò khác không xuất được.
+- Mỗi lần xuất ghi `audit.exported` với khoảng thời gian, định dạng, số dòng và bộ lọc.
+- **Đã biết:** cột `tenant_id` trong tệp xuất hiện tại luôn rỗng (`auditRowJSON`, `platform-management/internal/console/audit_export.go`). Chưa sửa.
+
+### 15.5 Khóa cả tenant
+
+`POST /api/platform/tenants/{id}/status` với thân `{"status": "active" | "read_only" | "suspended", "reason": "..."}`. `reason` bắt buộc. Quyền: `system_admin`, `support`, và `admin` của tenant đó (`tenants.status`).
+
+- **Khóa:** mọi workspace của tenant được ghi cùng trạng thái trong một giao dịch, với lý do `tenant_status`. Workspace đã bị khóa vì lý do khác giữ nguyên lý do và trạng thái.
+- **Mở (`active`):** chỉ khôi phục các workspace có lý do `tenant_status`.
+- Khóa tenant không đặt `pending_deletion`. Xóa tenant đi đường riêng (mục 15.2).
+- **Workspace mới:** tạo workspace trong tenant không ở trạng thái `active` trả 409 `tenant_not_active` (`server/internal/handler/workspace.go:512`).
+- Trạng thái workspace có tác dụng như mục 8 và mục 9, tùy trạng thái.
+
+### 15.6 Chưa kiểm
+
+- Email gửi người xin hạn mức và việc nền duyệt chéo (mục 15.2) chưa chạy trên môi trường thật.
+- Các luồng trên chưa được thử trên giao diện console.
