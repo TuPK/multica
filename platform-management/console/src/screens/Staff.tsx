@@ -6,31 +6,14 @@ import {
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+  TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@multica/ui/components/ui/dialog";
-import { Field, FieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { AlertCircle, Shield, UserPlus } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { Shield, UserPlus } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -44,8 +27,7 @@ import {
   useUpdateStaff,
   useRemoveStaff,
   useTenants,
-  type SettableStaffRole,
-} from "../api/hooks";
+  type SettableStaffRole } from "../api/hooks";
 import type { StaffMember } from "../components/types";
 import { t } from "../i18n";
 
@@ -86,8 +68,7 @@ export function Staff() {
   const tenants = Array.isArray(tenantsData) ? tenantsData : [];
   const tenantItems = tenants.map((t) => ({
     value: t.id,
-    label: t.name ? `${t.name} (${t.id})` : t.id,
-  }));
+    label: t.name ? `${t.name} (${t.id})` : t.id }));
   const tenantNameById = new Map(tenants.map((t) => [t.id, t.name || t.id]));
 
   const handleOpenAddDialog = () => {
@@ -155,8 +136,7 @@ export function Staff() {
     setRemoveError(null);
     try {
       await removeStaff.mutateAsync({
-        userId: staffToRemove.user_id,
-      });
+        userId: staffToRemove.user_id });
       setRemoveDialogOpen(false);
       setStaffToRemove(null);
     } catch (err: unknown) {
@@ -175,18 +155,23 @@ export function Staff() {
       <PageHeader
         title={t("Staff Management")}
         actions={
-          <Button size="sm" onClick={handleOpenAddDialog} className="gap-1.5">
-            <UserPlus className="size-4" aria-hidden="true" />
-            <span>{t("Add staff")}</span>
-          </Button>
+          <Button
+            label={t("Add staff")}
+            variant="primary"
+            size="sm"
+            icon={<UserPlus className="size-4" aria-hidden="true" />}
+            onClick={handleOpenAddDialog}
+            className="gap-1.5"
+          />
         }
       />
 
       {removeError && !removeDialogOpen && (
-        <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
-          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-          <AlertDescription>{removeError}</AlertDescription>
-        </Alert>
+        <Banner
+          status="error"
+          role="alert"
+          title={removeError}
+        />
       )}
 
       {isLoading && <LoadingState message={t("Loading staff...")} />}
@@ -205,9 +190,12 @@ export function Staff() {
           title={t("No staff members")}
           description={t("There are currently no staff members configured.")}
           actions={
-            <Button variant="outline" size="sm" onClick={handleOpenAddDialog}>
-              {t("Add staff")}
-            </Button>
+            <Button
+              label={t("Add staff")}
+              variant="secondary"
+              size="sm"
+              onClick={handleOpenAddDialog}
+            />
           }
         />
       )}
@@ -270,241 +258,177 @@ export function Staff() {
         </Card>
       )}
 
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent>
+      <Dialog
+        isOpen={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        purpose="form"
+      >
+
           <form onSubmit={handleAddSubmit} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>{t("Add staff member")}</DialogTitle>
-              <DialogDescription>
-                {t("Grant platform console access to an existing Multica account.")}
-              </DialogDescription>
-            </DialogHeader>
+            <DialogHeader title={t("Add staff member")} subtitle={t("Grant platform console access to an existing Multica account.")} />
 
-            <Field>
-              <FieldLabel htmlFor="staff-email-input" className="text-label">
-                {t("Email address")}
-              </FieldLabel>
-              <Input
-                id="staff-email-input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("user@example.com")}
-                required
-                disabled={addStaff.isPending}
-              />
-            </Field>
+            <TextInput
+              id="staff-email-input"
+              label={t("Email address")}
+              type="email"
+              value={email}
+              onChange={(value) => setEmail(value)}
+              placeholder={t("user@example.com")}
+              isRequired
+              isDisabled={addStaff.isPending}
+              width="100%"
+            />
 
-            <Field>
-              <FieldLabel htmlFor="staff-role-select" className="text-label">
-                {t("Staff role")}
-              </FieldLabel>
-              <Select
-                items={STAFF_ROLE_ITEMS}
-                value={role}
-                onValueChange={(val) => {
+            <Selector
+              label={t("Staff role")}
+              width="100%"
+              options={STAFF_ROLE_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+              value={role}
+              onChange={(val) => {
                   if (val) {
                     const nextRole = val as SettableStaffRole;
                     setRole(nextRole);
                     if (nextRole !== "admin") setTenantId("");
                   }
                 }}
-                disabled={addStaff.isPending}
-              >
-                <SelectTrigger id="staff-role-select" aria-label={t("Staff role")} className="w-full">
-                  <SelectValue>
-                    {t(STAFF_ROLE_ITEMS.find((item) => item.value === role)?.label ?? role)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {STAFF_ROLE_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {t(item.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            />
 
             {role === "admin" && (
-              <Field>
-                <FieldLabel htmlFor="staff-tenant-select" className="text-label">
-                  {t("Tenant")}
-                </FieldLabel>
-                <Select
-                  items={tenantItems}
-                  value={tenantId}
-                  onValueChange={(val) => setTenantId(val ?? "")}
-                  disabled={addStaff.isPending}
-                >
-                  <SelectTrigger id="staff-tenant-select" aria-label={t("Tenant")} className="w-full">
-                    <SelectValue placeholder={t("Select tenant")}>
-                      {t(tenantItems.find((item) => item.value === tenantId)?.label ?? "")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tenantItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(item.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+              <Selector
+                label={t("Tenant")}
+                width="100%"
+                options={tenantItems.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+                value={tenantId}
+                onChange={(val) => setTenantId(val ?? "")}
+              />
             )}
 
             {addError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{addError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={addError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" type="button" disabled={addStaff.isPending} />}
-              >
-                {t("Cancel")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
+              <Button
+        type="button"
+        isDisabled={addStaff.isPending}
+        label={t("Cancel")}
+        variant="secondary"
+        onClick={() => setAddDialogOpen(false)}
+      />
               <Button
                 type="submit"
-                disabled={!email.trim() || (role === "admin" && !tenantId) || addStaff.isPending}
+                label={t("Add staff")}
+                variant="primary"
+                isLoading={addStaff.isPending}
                 aria-busy={addStaff.isPending}
-              >
-                {addStaff.isPending && <Spinner className="size-3.5" />}
-                {t("Add staff")}
-              </Button>
-            </DialogFooter>
+                isDisabled={!email.trim() || (role === "admin" && !tenantId) || addStaff.isPending}
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
-      <Dialog open={editDialogOpen} onOpenChange={(open) => !updateStaff.isPending && setEditDialogOpen(open)}>
-        <DialogContent>
-          <form onSubmit={handleEditSubmit} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>{t("Edit staff member")}</DialogTitle>
-              <DialogDescription>
-                {staffToEdit?.email}
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog
+        isOpen={editDialogOpen}
+        onOpenChange={(open) => !updateStaff.isPending && setEditDialogOpen(open)}
+        purpose="form"
+      >
 
-            <Field>
-              <FieldLabel htmlFor="edit-staff-role-select" className="text-label">
-                {t("Staff role")}
-              </FieldLabel>
-              <Select
-                items={STAFF_ROLE_ITEMS}
-                value={editRole}
-                onValueChange={(val) => {
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <DialogHeader title={t("Edit staff member")} subtitle={staffToEdit?.email} />
+
+            <Selector
+              label={t("Staff role")}
+              width="100%"
+              options={STAFF_ROLE_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+              value={editRole}
+              onChange={(val) => {
                   if (val) {
                     const nextRole = val as SettableStaffRole;
                     setEditRole(nextRole);
                     if (nextRole !== "admin") setEditTenantId("");
                   }
                 }}
-                disabled={updateStaff.isPending}
-              >
-                <SelectTrigger id="edit-staff-role-select" aria-label={t("Staff role")} className="w-full">
-                  <SelectValue>
-                    {t(STAFF_ROLE_ITEMS.find((item) => item.value === editRole)?.label ?? editRole)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {STAFF_ROLE_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {t(item.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            />
 
             {editRole === "admin" && (
-              <Field>
-                <FieldLabel htmlFor="edit-staff-tenant-select" className="text-label">
-                  {t("Tenant")}
-                </FieldLabel>
-                <Select
-                  items={tenantItems}
-                  value={editTenantId}
-                  onValueChange={(val) => setEditTenantId(val ?? "")}
-                  disabled={updateStaff.isPending}
-                >
-                  <SelectTrigger id="edit-staff-tenant-select" aria-label={t("Tenant")} className="w-full">
-                    <SelectValue placeholder={t("Select tenant")}>
-                      {t(tenantItems.find((item) => item.value === editTenantId)?.label ?? "")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tenantItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(item.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+              <Selector
+                label={t("Tenant")}
+                width="100%"
+                options={tenantItems.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+                value={editTenantId}
+                onChange={(val) => setEditTenantId(val ?? "")}
+              />
             )}
 
             {editError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{editError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={editError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" type="button" disabled={updateStaff.isPending} />}
-              >
-                {t("Cancel")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
+              <Button
+        type="button"
+        isDisabled={updateStaff.isPending}
+        label={t("Cancel")}
+        variant="secondary"
+        onClick={() => ((open) => !updateStaff.isPending && setEditDialogOpen(open))(false)}
+      />
               <Button
                 type="submit"
-                disabled={(editRole === "admin" && !editTenantId) || updateStaff.isPending}
+                label={t("Save changes")}
+                variant="primary"
+                isLoading={updateStaff.isPending}
                 aria-busy={updateStaff.isPending}
-              >
-                {updateStaff.isPending && <Spinner className="size-3.5" />}
-                {t("Save changes")}
-              </Button>
-            </DialogFooter>
+                isDisabled={(editRole === "admin" && !editTenantId) || updateStaff.isPending}
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
-      <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("Remove staff member")}</DialogTitle>
-            <DialogDescription>
-              {t("Are you sure you want to revoke staff access for")}{" "}
-              <strong className="text-foreground">{staffToRemove?.email}</strong>?
-            </DialogDescription>
-          </DialogHeader>
+      <Dialog
+        isOpen={removeDialogOpen}
+        onOpenChange={setRemoveDialogOpen}
+        purpose="info"
+      >
+
+          <DialogHeader title={t("Remove staff member")} subtitle={<>{t("Are you sure you want to revoke staff access for")}{" "}
+              <strong className="text-foreground">{staffToRemove?.email}</strong>?</>} />
 
           {removeError && (
-            <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-              <AlertDescription className="text-caption">{removeError}</AlertDescription>
-            </Alert>
+            <Banner
+              status="error"
+              role="alert"
+              title={removeError}
+            />
           )}
 
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" disabled={removeStaff.isPending} />}>
-              {t("Cancel")}
-            </DialogClose>
+          <div className="flex justify-end gap-2">
             <Button
+        type="button"
+        isDisabled={removeStaff.isPending}
+        label={t("Cancel")}
+        variant="secondary"
+        onClick={() => setRemoveDialogOpen(false)}
+      />
+            <Button
+              label={t("Remove")}
               variant="destructive"
+              isLoading={removeStaff.isPending}
               onClick={handleConfirmRemove}
-              disabled={removeStaff.isPending}
               aria-busy={removeStaff.isPending}
-            >
-              {removeStaff.isPending && <Spinner className="size-3.5" />}
-              {t("Remove")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+              isDisabled={removeStaff.isPending}
+            />
+          </div>
+
       </Dialog>
     </div>
   );

@@ -11,20 +11,12 @@ import {
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+  TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { RefreshCw, Search, Server, X } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Selector } from "@astryxdesign/core/Selector";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { RefreshCw, Search, Server } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -52,8 +44,7 @@ const DISABLED_OPTIONS: Array<{ value: string; label: string }> = [
 
 export function RuntimeStatusCell({
   status,
-  disabled,
-}: {
+  disabled }: {
   status: RuntimeStatus;
   disabled: boolean;
 }) {
@@ -113,14 +104,12 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
     refetch,
     hasNextPage,
     fetchNextPage,
-    isFetchingNextPage,
-  } = useRuntimes(
+    isFetchingNextPage } = useRuntimes(
     {
       q: search.trim() || undefined,
       status: statusFilter || undefined,
       disabled: disabledFilter || undefined,
-      tenant_id: !isTenantAdmin && tenantFilter ? tenantFilter : undefined,
-    },
+      tenant_id: !isTenantAdmin && tenantFilter ? tenantFilter : undefined },
     canRead,
   );
 
@@ -165,15 +154,15 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
             actions={
               <Button
                 type="button"
-                variant="outline"
+                label={t("Refresh")}
+                variant="secondary"
                 size="sm"
+                icon={<RefreshCw className="size-3.5" aria-hidden="true" />}
+                isLoading={isFetching}
                 onClick={() => void refetch()}
-                disabled={Boolean(isFetching)}
                 aria-busy={Boolean(isFetching) || undefined}
-              >
-                {isFetching ? <Spinner className="size-3.5" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
-                <span>{t("Refresh")}</span>
-              </Button>
+                isDisabled={Boolean(isFetching)}
+              />
             }
           />
         </LayoutHeader>
@@ -181,96 +170,62 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
       content={
         <LayoutContent padding={0}>
           <div className="space-y-6">
-            <Section className="space-y-4">
+            <Section>
+              <div className="space-y-4">
               <HStack wrap="wrap" gap={2} align="center">
-                <div className="relative w-full max-w-sm">
-                  <Search
-                    aria-hidden="true"
-                    className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input
-                    type="search"
-                    aria-label={t("Search runtimes")}
-                    placeholder={t("Search by runtime name...")}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pr-8 pl-8"
-                  />
-                  {search && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={t("Clear search")}
-                      onClick={() => setSearch("")}
-                      className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="size-3.5" aria-hidden="true" />
-                    </Button>
-                  )}
-                </div>
+                <div className="w-full max-w-sm">
+  <TextInput
+    type="search"
+    label={t("Search runtimes")}
+    isLabelHidden
+    width="100%"
+    startIcon={<Search className="size-4" aria-hidden="true" />}
+    hasClear
+    placeholder={t("Search by runtime name...")}
+    value={search}
+    onChange={(value) => setSearch(value)}
+  />
+</div>
 
-                <Select
-                  items={STATUS_OPTIONS}
+                <Selector
+                  label={t("Filter by status")}
+                  isLabelHidden
+                  width={160}
+                  options={STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
                   value={statusFilter || "all"}
-                  onValueChange={(value) =>
-                    setStatusFilter(!value || value === "all" ? "" : value)
-                  }
-                >
-                  <SelectTrigger aria-label={t("Filter by status")} className="w-40">
-                    <SelectValue placeholder={t("All statuses")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {t(opt.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(value) =>
+                    setStatusFilter(!value || value === "all" ? "" : value)}
+                />
 
-                <Select
-                  items={DISABLED_OPTIONS}
+                <Selector
+                  label={t("Filter by access state")}
+                  isLabelHidden
+                  width={176}
+                  options={DISABLED_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
                   value={disabledFilter ? "true" : "all"}
-                  onValueChange={(value) => setDisabledFilter(value === "true")}
-                >
-                  <SelectTrigger aria-label={t("Filter by access state")} className="w-44">
-                    <SelectValue placeholder={t("All access states")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DISABLED_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {t(opt.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => setDisabledFilter(value === "true")}
+                />
 
                 {!isTenantAdmin && (
-                  <Select
-                    items={tenantOptions}
+                  <Selector
+                    label={t("Filter by tenant")}
+                    isLabelHidden
+                    width={192}
+                    options={tenantOptions.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
                     value={tenantFilter || "all"}
-                    onValueChange={(value) =>
-                      setTenantFilter(!value || value === "all" ? "" : value)
-                    }
-                  >
-                    <SelectTrigger aria-label={t("Filter by tenant")} className="w-48">
-                      <SelectValue placeholder={t("All tenants")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tenantOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {t(opt.label)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) =>
+                      setTenantFilter(!value || value === "all" ? "" : value)}
+                  />
                 )}
 
                 {hasActiveFilters && (
-                  <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
-                    {t("Clear filters")}
-                  </Button>
+                  <Button
+                    type="button"
+                    label={t("Clear filters")}
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                  />
                 )}
               </HStack>
 
@@ -297,9 +252,12 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                   }
                   actions={
                     hasActiveFilters ? (
-                      <Button variant="outline" size="sm" onClick={clearFilters}>
-                        {t("Clear filters")}
-                      </Button>
+                      <Button
+                        label={t("Clear filters")}
+                        variant="secondary"
+                        size="sm"
+                        onClick={clearFilters}
+                      />
                     ) : undefined
                   }
                 />
@@ -378,21 +336,19 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                     <div className="flex justify-center pt-2">
                       <Button
                         type="button"
-                        variant="outline"
+                        label={isFetchingNextPage ? t("Loading...") : t("Load more")}
+                        variant="secondary"
                         size="sm"
-                        disabled={isFetchingNextPage}
+                        isLoading={isFetchingNextPage}
                         aria-busy={isFetchingNextPage || undefined}
                         onClick={() => void fetchNextPage()}
-                      >
-                        {isFetchingNextPage && (
-                          <Spinner className="size-4" aria-hidden="true" />
-                        )}
-                        {isFetchingNextPage ? t("Loading...") : t("Load more")}
-                      </Button>
+                        isDisabled={isFetchingNextPage}
+                      />
                     </div>
                   )}
                 </div>
               )}
+              </div>
             </Section>
           </div>
         </LayoutContent>

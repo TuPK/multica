@@ -11,6 +11,74 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countBillingOrdersCreatedByDay = `-- name: CountBillingOrdersCreatedByDay :many
+SELECT (o.created_at AT TIME ZONE 'UTC')::date AS day, count(*)::bigint AS total
+FROM billing_order o
+WHERE o.created_at >= $1::timestamptz
+GROUP BY 1
+`
+
+type CountBillingOrdersCreatedByDayRow struct {
+	Day   pgtype.Date `json:"day"`
+	Total int64       `json:"total"`
+}
+
+// Billing orders created per UTC day since the instant given, whatever their status.
+func (q *Queries) CountBillingOrdersCreatedByDay(ctx context.Context, since pgtype.Timestamptz) ([]CountBillingOrdersCreatedByDayRow, error) {
+	rows, err := q.db.Query(ctx, countBillingOrdersCreatedByDay, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountBillingOrdersCreatedByDayRow{}
+	for rows.Next() {
+		var i CountBillingOrdersCreatedByDayRow
+		if err := rows.Scan(&i.Day, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countBillingOrdersPaidByDay = `-- name: CountBillingOrdersPaidByDay :many
+SELECT (o.paid_at AT TIME ZONE 'UTC')::date AS day, count(*)::bigint AS total
+FROM billing_order o
+WHERE o.status = 'paid' AND o.paid_at >= $1::timestamptz
+GROUP BY 1
+`
+
+type CountBillingOrdersPaidByDayRow struct {
+	Day   pgtype.Date `json:"day"`
+	Total int64       `json:"total"`
+}
+
+// Billing orders paid per UTC day of their payment since the instant given. The
+// order states have no "confirmed" value: a confirmed payment is the paid state,
+// with paid_at set.
+func (q *Queries) CountBillingOrdersPaidByDay(ctx context.Context, since pgtype.Timestamptz) ([]CountBillingOrdersPaidByDayRow, error) {
+	rows, err := q.db.Query(ctx, countBillingOrdersPaidByDay, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountBillingOrdersPaidByDayRow{}
+	for rows.Next() {
+		var i CountBillingOrdersPaidByDayRow
+		if err := rows.Scan(&i.Day, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countNonActiveWorkspacesByStatus = `-- name: CountNonActiveWorkspacesByStatus :many
 SELECT pw.status, count(*)::bigint AS workspaces
 FROM platform_workspace pw
@@ -45,6 +113,40 @@ func (q *Queries) CountNonActiveWorkspacesByStatus(ctx context.Context) ([]Count
 	return items, nil
 }
 
+const countOperationsQueue = `-- name: CountOperationsQueue :one
+SELECT
+    (SELECT count(*) FROM platform_deletion_request d WHERE d.state = 'awaiting_approval')::bigint AS pending_approvals,
+    (SELECT count(*) FROM platform_deletion_request d WHERE d.state = 'pending')::bigint AS pending_deletions,
+    (SELECT count(*) FROM quota_request q WHERE q.state = 'pending')::bigint AS pending_quota_requests,
+    (SELECT count(*) FROM einvoice_issuance e WHERE e.state = 'failed')::bigint AS failed_einvoices,
+    (SELECT count(*) FROM legal_hold h WHERE h.released_at IS NULL)::bigint AS active_legal_holds
+`
+
+type CountOperationsQueueRow struct {
+	PendingApprovals     int64 `json:"pending_approvals"`
+	PendingDeletions     int64 `json:"pending_deletions"`
+	PendingQuotaRequests int64 `json:"pending_quota_requests"`
+	FailedEinvoices      int64 `json:"failed_einvoices"`
+	ActiveLegalHolds     int64 `json:"active_legal_holds"`
+}
+
+// The items waiting in the operations queue, counted as the list screens filter
+// them: approvals are the deletion requests awaiting approval, deletions the
+// pending ones; failed e-invoices are the records in the failed state; active
+// legal holds are the holds not yet released.
+func (q *Queries) CountOperationsQueue(ctx context.Context) (CountOperationsQueueRow, error) {
+	row := q.db.QueryRow(ctx, countOperationsQueue)
+	var i CountOperationsQueueRow
+	err := row.Scan(
+		&i.PendingApprovals,
+		&i.PendingDeletions,
+		&i.PendingQuotaRequests,
+		&i.FailedEinvoices,
+		&i.ActiveLegalHolds,
+	)
+	return i, err
+}
+
 const countSignupsSince = `-- name: CountSignupsSince :one
 SELECT count(*)::bigint FROM "user"
 WHERE created_at >= $1
@@ -66,6 +168,40 @@ func (q *Queries) CountWorkspaces(ctx context.Context) (int64, error) {
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const countWorkspacesCreatedByDay = `-- name: CountWorkspacesCreatedByDay :many
+SELECT (w.created_at AT TIME ZONE 'UTC')::date AS day, count(*)::bigint AS total
+FROM workspace w
+WHERE w.created_at >= $1::timestamptz
+GROUP BY 1
+`
+
+type CountWorkspacesCreatedByDayRow struct {
+	Day   pgtype.Date `json:"day"`
+	Total int64       `json:"total"`
+}
+
+// New workspaces per UTC day since the instant given. A day with none is absent;
+// the reader fills it with zero.
+func (q *Queries) CountWorkspacesCreatedByDay(ctx context.Context, since pgtype.Timestamptz) ([]CountWorkspacesCreatedByDayRow, error) {
+	rows, err := q.db.Query(ctx, countWorkspacesCreatedByDay, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountWorkspacesCreatedByDayRow{}
+	for rows.Next() {
+		var i CountWorkspacesCreatedByDayRow
+		if err := rows.Scan(&i.Day, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getPlatformAccountForUpdate = `-- name: GetPlatformAccountForUpdate :one

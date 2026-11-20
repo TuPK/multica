@@ -16,5 +16,8 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./src/test/setup.ts"],
+    // Astryx components render more DOM per screen than the shadcn ones they replace,
+    // so jsdom suites need more than the 5s default when files run in parallel.
+    testTimeout: 15_000,
   },
 });

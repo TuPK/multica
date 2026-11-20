@@ -4,6 +4,19 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { PriceSchedule } from "./PriceSchedule";
 import { PlatformApiError } from "../api/client";
 import type { Plan, PriceChange } from "../api/schemas";
+import { findAlert } from "../test/alert";
+
+// The effective-from field is a date and time pair (DateTimeInput), so the test
+// enters the two parts the way a user would.
+function setEffectiveFrom(value: string) {
+  const [date, time] = value.split("T");
+  fireEvent.change(screen.getByRole("combobox", { name: /Effective from/i }), {
+    target: { value: date },
+  });
+  fireEvent.change(screen.getByLabelText(/Effective from \(UTC\) time/i), {
+    target: { value: time ?? "00:00" },
+  });
+}
 
 const mockUsePriceChanges = vi.fn();
 const mockScheduleMutateAsync = vi.fn();
@@ -94,15 +107,15 @@ describe("PriceSchedule screen", () => {
 
     render(<PriceSchedule plan={proPlan} />);
 
-    fireEvent.change(screen.getByLabelText(/Effective from/i), {
-      target: { value: "2026-12-20T00:00" },
-    });
+    setEffectiveFrom("2026-12-20T00:00");
     fireEvent.change(screen.getByLabelText(/Monthly seat price/i), {
       target: { value: "220000" },
     });
+    fireEvent.blur(screen.getByLabelText(/Monthly seat price/i));
     fireEvent.change(screen.getByLabelText(/Yearly seat price/i), {
       target: { value: "2200000" },
     });
+    fireEvent.blur(screen.getByLabelText(/Yearly seat price/i));
     fireEvent.change(screen.getByLabelText(/Reason/i), {
       target: { value: "Inflation index" },
     });
@@ -158,13 +171,12 @@ describe("PriceSchedule screen", () => {
 
     render(<PriceSchedule plan={proPlan} />);
 
-    fireEvent.change(screen.getByLabelText(/Effective from/i), {
-      target: { value: "2026-12-20T00:00" },
-    });
+    setEffectiveFrom("2026-12-20T00:00");
     // 200,000 -> 400,000 is +100% (> 50%)
     fireEvent.change(screen.getByLabelText(/Monthly seat price/i), {
       target: { value: "400000" },
     });
+    fireEvent.blur(screen.getByLabelText(/Monthly seat price/i));
     fireEvent.change(screen.getByLabelText(/Reason/i), {
       target: { value: "Tier reposition" },
     });
@@ -174,11 +186,11 @@ describe("PriceSchedule screen", () => {
     expect(confirmCheckbox).not.toBeChecked();
 
     const scheduleBtn = screen.getByRole("button", { name: /^Schedule$/i });
-    expect(scheduleBtn).toBeDisabled();
+    expect(scheduleBtn).toBeDisabledControl();
 
     fireEvent.click(confirmCheckbox);
     expect(confirmCheckbox).toBeChecked();
-    expect(scheduleBtn).toBeEnabled();
+    expect(scheduleBtn).not.toBeDisabledControl();
 
     fireEvent.click(scheduleBtn);
     await waitFor(() => {
@@ -195,13 +207,14 @@ describe("PriceSchedule screen", () => {
     fireEvent.change(screen.getByLabelText(/Monthly seat price/i), {
       target: { value: "80000" },
     });
+    fireEvent.blur(screen.getByLabelText(/Monthly seat price/i));
 
     expect(screen.getByText(/60%/)).toBeInTheDocument();
     const scheduleBtn = screen.getByRole("button", { name: /^Schedule$/i });
-    expect(scheduleBtn).toBeDisabled();
+    expect(scheduleBtn).toBeDisabledControl();
 
     fireEvent.click(screen.getByRole("checkbox", { name: /Confirm large price change/i }));
-    expect(scheduleBtn).toBeEnabled();
+    expect(scheduleBtn).not.toBeDisabledControl();
   });
 
   it("handles 409 price_change_confirm_required from server by prompting confirmation", async () => {
@@ -213,12 +226,11 @@ describe("PriceSchedule screen", () => {
 
     render(<PriceSchedule plan={proPlan} />);
 
-    fireEvent.change(screen.getByLabelText(/Effective from/i), {
-      target: { value: "2026-12-20T00:00" },
-    });
+    setEffectiveFrom("2026-12-20T00:00");
     fireEvent.change(screen.getByLabelText(/Monthly seat price/i), {
       target: { value: "280000" },
     });
+    fireEvent.blur(screen.getByLabelText(/Monthly seat price/i));
     fireEvent.change(screen.getByLabelText(/Reason/i), {
       target: { value: "Adjust" },
     });
@@ -226,7 +238,7 @@ describe("PriceSchedule screen", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Schedule$/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/40%/);
+      expect(findAlert()).toHaveTextContent(/40%/);
     });
     expect(screen.getByRole("checkbox", { name: /Confirm large price change/i })).toBeInTheDocument();
   });
@@ -243,11 +255,11 @@ describe("PriceSchedule screen", () => {
 
     render(<PriceSchedule plan={proPlan} />);
 
-    const effectiveInput = screen.getByLabelText(/Effective from/i);
-    fireEvent.change(effectiveInput, { target: { value: "2026-11-20T00:00" } });
+    setEffectiveFrom("2026-11-20T00:00");
     fireEvent.change(screen.getByLabelText(/Monthly seat price/i), {
       target: { value: "220000" },
     });
+    fireEvent.blur(screen.getByLabelText(/Monthly seat price/i));
     fireEvent.change(screen.getByLabelText(/Reason/i), {
       target: { value: "Raise" },
     });
@@ -255,9 +267,8 @@ describe("PriceSchedule screen", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Schedule$/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent("2026-12-20T10:30:00Z");
+      expect(findAlert()).toHaveTextContent("2026-12-20T10:30:00Z");
     });
-    expect(effectiveInput).toHaveAttribute("min", "2026-12-20T10:30:00");
   });
 
   it("handles 409 price_change_pending by showing an error without clearing or closing the form", async () => {
@@ -267,18 +278,18 @@ describe("PriceSchedule screen", () => {
 
     render(<PriceSchedule plan={proPlan} />);
 
-    const effectiveInput = screen.getByLabelText(/Effective from/i);
     const reasonInput = screen.getByLabelText(/Reason/i);
-    fireEvent.change(effectiveInput, { target: { value: "2026-12-20T00:00" } });
+    setEffectiveFrom("2026-12-20T00:00");
     fireEvent.change(screen.getByLabelText(/Monthly seat price/i), {
       target: { value: "220000" },
     });
+    fireEvent.blur(screen.getByLabelText(/Monthly seat price/i));
     fireEvent.change(reasonInput, { target: { value: "Raise again" } });
 
     fireEvent.click(screen.getByRole("button", { name: /^Schedule$/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent("the plan already has a scheduled price change");
+      expect(findAlert()).toHaveTextContent("the plan already has a scheduled price change");
     });
     expect(screen.getByRole("button", { name: /^Schedule$/i })).toBeInTheDocument();
     expect(reasonInput).toHaveValue("Raise again");

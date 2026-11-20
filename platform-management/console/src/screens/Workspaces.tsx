@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
+import { Card } from "@astryxdesign/core/Card";
 import { Section } from "@astryxdesign/core/Section";
 import {
   Table,
@@ -12,17 +13,10 @@ import {
   TableRow,
 } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { LayoutGrid, Search, X } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Selector } from "@astryxdesign/core/Selector";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { LayoutGrid, Search } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -137,101 +131,57 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
             <Section>
               <div className="space-y-4">
                 <HStack wrap="wrap" gap={2} align="center">
-                  <div className="relative w-full max-w-sm">
-                    <Search
-                      aria-hidden="true"
-                      className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                    />
-                    <Input
+                  <div className="w-full max-w-sm">
+                    <TextInput
                       type="search"
-                      aria-label={t("Search workspaces")}
+                      label={t("Search workspaces")}
+                      isLabelHidden
+                      width="100%"
+                      startIcon={<Search className="size-4" aria-hidden="true" />}
+                      hasClear
                       placeholder={t("Search by workspace name or slug...")}
                       value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="pl-8 pr-8"
+                      onChange={(value) => setSearch(value)}
                     />
-                    {search && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label={t("Clear search")}
-                        onClick={() => setSearch("")}
-                        className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="size-3.5" aria-hidden="true" />
-                      </Button>
-                    )}
                   </div>
 
-                  <Select
-                    items={STATUS_OPTIONS}
+                  <Selector
+                    label={t("Filter by status")}
+                    isLabelHidden
+                    width={176}
+                    options={STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
                     value={statusFilter || "all"}
-                    onValueChange={(value) =>
-                      setStatusFilter(value === "all" ? "" : (value ?? ""))
-                    }
-                  >
-                    <SelectTrigger aria-label={t("Filter by status")} className="w-44">
-                      <SelectValue placeholder={t("All statuses")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {t(opt.label)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) => setStatusFilter(value === "all" ? "" : value)}
+                  />
 
                   {canReadPlans && (
-                    <Select
-                      items={planOptions}
+                    <Selector
+                      label={t("Filter by plan")}
+                      isLabelHidden
+                      width={176}
+                      options={planOptions}
                       value={planFilter || "all"}
-                      onValueChange={(value) =>
-                        setPlanFilter(value === "all" ? "" : (value ?? ""))
-                      }
-                    >
-                      <SelectTrigger aria-label={t("Filter by plan")} className="w-44">
-                        <SelectValue placeholder={t("All plans")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {planOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {t(opt.label)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={(value) => setPlanFilter(value === "all" ? "" : value)}
+                    />
                   )}
 
-                  <Select
-                    items={tenantOptions}
+                  <Selector
+                    label={t("Filter by tenant")}
+                    isLabelHidden
+                    width={192}
+                    options={tenantOptions}
                     value={tenantFilter || "all"}
-                    onValueChange={(value) =>
-                      setTenantFilter(value === "all" ? "" : (value ?? ""))
-                    }
-                  >
-                    <SelectTrigger aria-label={t("Filter by tenant")} className="w-48">
-                      <SelectValue placeholder={t("All tenants")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tenantOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {t(opt.label)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) => setTenantFilter(value === "all" ? "" : value)}
+                  />
 
                   {hasActiveFilters && (
                     <Button
                       type="button"
+                      label={t("Clear filters")}
                       variant="ghost"
                       size="sm"
                       onClick={clearFilters}
-                    >
-                      {t("Clear filters")}
-                    </Button>
+                    />
                   )}
                 </HStack>
 
@@ -258,9 +208,7 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                     }
                     actions={
                       hasActiveFilters ? (
-                        <Button variant="outline" size="sm" onClick={clearFilters}>
-                          {t("Clear filters")}
-                        </Button>
+                        <Button label={t("Clear filters")} variant="secondary" size="sm" onClick={clearFilters} />
                       ) : undefined
                     }
                   />
@@ -268,8 +216,8 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
 
                 {!isLoading && !isError && workspaces.length > 0 && (
                   <div className="space-y-4">
-                    <div className="overflow-x-auto">
-                      <Table density="balanced" dividers="rows" hasHover>
+                    <Card padding={0} className="overflow-x-auto">
+                      <Table density="compact" dividers="rows" hasHover>
                         <TableHeader>
                           <TableRow isHeaderRow>
                             <TableHeaderCell>{t("Workspace")}</TableHeaderCell>
@@ -339,23 +287,20 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
+                    </Card>
 
                     {hasNextPage && (
                       <div className="flex justify-center pt-2">
                         <Button
                           type="button"
-                          variant="outline"
+                          label={isFetchingNextPage ? t("Loading...") : t("Load more")}
+                          variant="secondary"
                           size="sm"
-                          disabled={isFetchingNextPage}
+                          isDisabled={isFetchingNextPage}
+                          isLoading={isFetchingNextPage}
                           aria-busy={isFetchingNextPage || undefined}
                           onClick={() => void fetchNextPage()}
-                        >
-                          {isFetchingNextPage && (
-                            <Spinner className="size-4" aria-hidden="true" />
-                          )}
-                          {isFetchingNextPage ? t("Loading...") : t("Load more")}
-                        </Button>
+                        />
                       </div>
                     )}
                   </div>

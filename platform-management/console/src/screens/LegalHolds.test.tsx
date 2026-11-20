@@ -65,22 +65,22 @@ describe("LegalHolds screen", () => {
     fireEvent.click(screen.getByRole("button", { name: /Place legal hold/i }));
     const dialog = screen.getByRole("dialog");
     const submitBtn = within(dialog).getByRole("button", { name: /^Place hold$/i });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     fireEvent.change(within(dialog).getByLabelText(/Scope ID/i), {
       target: { value: "t-2" },
     });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     fireEvent.change(within(dialog).getByLabelText(/Case reference/i), {
       target: { value: "CASE-99" },
     });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
       target: { value: "Litigation preservation" },
     });
-    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).not.toBeDisabledControl();
 
     fireEvent.click(submitBtn);
     await waitFor(() => {
@@ -91,7 +91,7 @@ describe("LegalHolds screen", () => {
         reason: "Litigation preservation",
       });
     });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("admin has no menu entry", () => {

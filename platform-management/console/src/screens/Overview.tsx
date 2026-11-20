@@ -18,10 +18,11 @@ import {
   ChartAxis,
   ChartGrid,
   ChartSwatch,
+  area,
   bar,
+  line,
 } from "@astryxdesign/charts";
-import { Button } from "@multica/ui/components/ui/button";
-import { Spinner } from "@multica/ui/components/ui/spinner";
+import { Button } from "@astryxdesign/core/Button";
 import {
   Activity,
   AlertTriangle,
@@ -74,7 +75,21 @@ function integerTick(value: unknown): string {
   return Number.isInteger(n) ? String(n) : "";
 }
 
-export function Overview() {
+// The series days are UTC dates. The label is formatted in UTC so it never shifts a day.
+function formatDayLabel(day: string): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return day;
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" }).format(date);
+}
+
+interface OverviewProps {
+  // Opens another screen. The queue panel has no links without it.
+  onNavigate?: (screen: string) => void;
+  // Whether the signed-in staff member may open a screen; the link is hidden otherwise.
+  canNavigate?: (screen: string) => boolean;
+}
+
+export function Overview({ onNavigate, canNavigate }: OverviewProps = {}) {
   const { data, isLoading, isFetching, isError, error, refetch } = useOverview();
 
   if (isLoading) {
@@ -98,9 +113,7 @@ export function Overview() {
         title={t("No overview data")}
         description={t("Unable to load workspace metrics.")}
         actions={
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            {t("Refresh")}
-          </Button>
+          <Button label={t("Refresh")} variant="secondary" size="sm" onClick={() => refetch()} />
         }
       />
     );
@@ -185,6 +198,35 @@ export function Overview() {
 
   const hasSupportingTables = hasUsageSnapshot || pendingCurrencyEntries.length > 0;
 
+  // Daily activity: the sign-up, order and usage series share one row per day.
+  const dailySeries = data.daily_series;
+  const hasSeries = dailySeries.length > 0;
+  const seriesChartData = dailySeries.map((point) => ({
+    label: formatDayLabel(point.day),
+    signups: point.workspaces_created,
+    orders_created: point.orders_created,
+    orders_paid: point.orders_paid,
+    issues_created: point.usage_issues_created,
+    tasks_run: point.usage_tasks_run,
+  }));
+
+  const runtimeOnline = data.runtimes_by_status.online;
+  const runtimeOffline = data.runtimes_by_status.offline;
+  const runtimeTotal = runtimeOnline + runtimeOffline;
+  const runtimeData = [
+    { status: t("Online"), count: runtimeOnline, color: "var(--color-success)" },
+    { status: t("Offline"), count: runtimeOffline, color: "var(--color-warning)" },
+  ];
+
+  const queue = data.operations;
+  const queueItems = [
+    { key: "approvals", screen: "approvals", label: t("Pending approvals"), count: queue.pending_approvals },
+    { key: "deletions", screen: "deletion-requests", label: t("Pending deletion requests"), count: queue.pending_deletions },
+    { key: "quota", screen: "quota-requests", label: t("Pending quota requests"), count: queue.pending_quota_requests },
+    { key: "einvoices", screen: "einvoices", label: t("E-invoice failures"), count: queue.failed_einvoices },
+    { key: "legal-holds", screen: "legal-holds", label: t("Active legal holds"), count: queue.active_legal_holds },
+  ];
+
   // Chart inputs. Storage is a byte size, not a count, so it stays out of the usage chart.
   const usageChartData = usageRows
     .filter((row) => row.raw !== null)
@@ -201,20 +243,15 @@ export function Overview() {
         actions={
           <Button
             type="button"
-            variant="outline"
+            label={t("Refresh")}
+            variant="secondary"
             size="sm"
             onClick={() => refetch()}
-            disabled={Boolean(isFetching)}
+            isDisabled={Boolean(isFetching)}
+            isLoading={Boolean(isFetching)}
             aria-busy={Boolean(isFetching)}
-            className="gap-1.5"
-          >
-            {isFetching ? (
-              <Spinner className="size-3.5" />
-            ) : (
-              <RefreshCw className="size-3.5" aria-hidden="true" />
-            )}
-            <span>{t("Refresh")}</span>
-          </Button>
+            icon={<RefreshCw className="size-3.5" aria-hidden="true" />}
+          />
         }
       />
 
@@ -397,7 +434,7 @@ export function Overview() {
 
       <Divider />
 
-      {/* Band 2: Charts band using @astryxdesign/charts */}
+      {/* Band 3: Charts band using @astryxdesign/charts */}
       <Section variant="transparent" padding={0} aria-label={t("Distribution charts")} className="space-y-4">
         <div
           className={
@@ -495,7 +532,153 @@ export function Overview() {
         </div>
       </Section>
 
-      {/* Band 3: Supporting tables band */}
+      <Divider />
+
+      {/* Band 2: Daily activity over the last 30 days */}
+      <Section variant="transparent" padding={0} aria-label={t("Activity charts")}>
+        <div className="flex flex-col gap-4">
+        <Card padding={4} className="space-y-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <Heading level={2}>{t("Activity, last 30 days")}</Heading>
+            <Text type="supporting">{t("Sign-ups and orders per day")}</Text>
+          </div>
+          {hasSeries ? (
+            <Chart
+              data={seriesChartData as unknown as Record<string, unknown>[]}
+              xKey="label"
+              series={[
+                line("signups", {
+                  label: t("New workspaces"),
+                  color: "var(--data-color-1, #0171e3)",
+                }),
+                line("orders_created", {
+                  label: t("Orders created"),
+                  color: "var(--data-color-2, #eb6e00)",
+                }),
+                line("orders_paid", {
+                  label: t("Orders paid"),
+                  color: "var(--data-color-3, #0b991f)",
+                }),
+              ]}
+              height={240}
+              grid={<ChartGrid horizontal />}
+              axes={
+                <>
+                  <ChartAxis position="bottom" maxTicks={6} />
+                  <ChartAxis position="left" tickCount={4} tickFormat={integerTick} />
+                </>
+              }
+              legend
+              tooltip
+              title={t("Workspaces and orders per day")}
+            />
+          ) : (
+            <Text type="supporting">{t("No activity data")}</Text>
+          )}
+        </Card>
+
+        {hasSeries && (
+          <Card padding={4} className="space-y-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <Heading level={2}>{t("Usage trend, last 30 days")}</Heading>
+              <Text type="supporting">{t("All workspaces, UTC days")}</Text>
+            </div>
+            <Chart
+              data={seriesChartData as unknown as Record<string, unknown>[]}
+              xKey="label"
+              series={[
+                area("tasks_run", {
+                  label: t("Tasks Run"),
+                  color: "var(--data-color-4, #6b1efd)",
+                  opacity: 0.18,
+                }),
+                line("issues_created", {
+                  label: t("Issues Created"),
+                  color: "var(--data-color-1, #0171e3)",
+                }),
+              ]}
+              height={220}
+              grid={<ChartGrid horizontal />}
+              axes={
+                <>
+                  <ChartAxis position="bottom" maxTicks={6} />
+                  <ChartAxis position="left" tickCount={4} tickFormat={integerTick} />
+                </>
+              }
+              legend
+              tooltip
+              title={t("Tasks run and issues created per day")}
+            />
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card padding={4} className="space-y-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <Heading level={2}>{t("Runtimes")}</Heading>
+              <Text type="supporting" hasTabularNumbers>
+                {runtimeTotal.toLocaleString()} {t("total")}
+              </Text>
+            </div>
+            {runtimeTotal > 0 ? (
+              <Chart
+                data={runtimeData as unknown as Record<string, unknown>[]}
+                xKey="status"
+                series={[
+                  bar("count", {
+                    label: t("Runtimes"),
+                    radius: 4,
+                    color: (datum) => String(datum.color ?? "var(--data-color-1)"),
+                  }),
+                ]}
+                height={200}
+                grid={<ChartGrid horizontal />}
+                axes={
+                  <>
+                    <ChartAxis position="bottom" />
+                    <ChartAxis position="left" tickCount={4} tickFormat={integerTick} />
+                  </>
+                }
+                tooltip
+                title={t("Runtimes by status ({0} total)", runtimeTotal.toLocaleString())}
+              />
+            ) : (
+              <Text type="supporting">{t("No runtimes registered")}</Text>
+            )}
+          </Card>
+
+          <Card padding={4} className="space-y-3">
+            <Heading level={2}>{t("Operations queue")}</Heading>
+            <div className="divide-y divide-border">
+              {queueItems.map((item) => (
+                <div key={item.key} className="flex items-center justify-between gap-3 py-2">
+                  <Text type="body" weight="medium">
+                    {item.label}
+                  </Text>
+                  <div className="flex items-center gap-3">
+                    <Text type="body" weight="semibold" hasTabularNumbers>
+                      {item.count.toLocaleString()}
+                    </Text>
+                    {onNavigate && canNavigate?.(item.screen) && (
+                      <Button
+                        type="button"
+                        label={t("Open")}
+                        variant="secondary"
+                        size="sm"
+                        aria-label={t("Open {0}", item.label)}
+                        onClick={() => onNavigate(item.screen)}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+        </div>
+      </Section>
+
+      {/* Band 4: Supporting tables band */}
       {hasSupportingTables && (
         <>
           <Divider />

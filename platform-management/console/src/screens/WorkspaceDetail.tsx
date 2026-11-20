@@ -7,32 +7,15 @@ import { Heading } from "@astryxdesign/core/Heading";
 import { Section } from "@astryxdesign/core/Section";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@multica/ui/components/ui/dialog";
-import { Field, FieldError, FieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Textarea } from "@multica/ui/components/ui/textarea";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
 import {
   Activity,
-  AlertCircle,
-  AlertTriangle,
   ArrowUpCircle,
   Ban,
   CalendarClock,
@@ -40,13 +23,11 @@ import {
   CreditCard,
   Download,
   History,
-  Info,
   Lock,
   Plus,
   RotateCcw,
   Trash2,
-  UserPlus,
-} from "@multica/ui/icons";
+  UserPlus } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { TypeToConfirmDialog } from "../components/TypeToConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -75,8 +56,7 @@ import {
   useCancelMemberRequest,
   useDeleteWorkspaceNow,
   useCreateQuotaRequest,
-  type MemberRole,
-} from "../api/hooks";
+  type MemberRole } from "../api/hooks";
 import { getApiErrorMessage, PlatformApiError } from "../api/client";
 import { formatBytes } from "./Tenants";
 import type { StaffRole } from "../components/types";
@@ -89,8 +69,7 @@ import {
   type MemberRequest,
   type WorkspaceUsage,
   type WorkspaceUsageRow,
-  type WorkspaceUsageUnpaidOrder,
-} from "../api/schemas";
+  type WorkspaceUsageUnpaidOrder } from "../api/schemas";
 import { formatMinorAmount } from "../money";
 import { t } from "../i18n";
 
@@ -155,8 +134,7 @@ function MonthlyUsageSection({
   error,
   onRetry,
   canWriteOff,
-  onWriteOff,
-}: MonthlyUsageSectionProps) {
+  onWriteOff }: MonthlyUsageSectionProps) {
   const actionsWidth = useRowActionsWidth(120);
   return (
     <Section variant="transparent" padding={0} data-testid="usage-month" className="space-y-4">
@@ -202,14 +180,12 @@ function MonthlyUsageSection({
                         <Text type="code" hasTabularNumbers>
                           {row.day}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "meter",
                       header: t("Meter"),
                       width: proportional(1.2, { minWidth: 130 }),
-                      renderCell: (row) => <Text type="code">{row.meter}</Text>,
-                    },
+                      renderCell: (row) => <Text type="code">{row.meter}</Text> },
                     {
                       key: "quantity",
                       header: t("Quantity"),
@@ -223,8 +199,7 @@ function MonthlyUsageSection({
                             {formatUsageQuantity(row)}
                           </Text>
                         </span>
-                      ),
-                    },
+                      ) },
                     {
                       key: "unit_price",
                       header: t("Unit price"),
@@ -234,8 +209,7 @@ function MonthlyUsageSection({
                         <Text type="supporting" hasTabularNumbers>
                           {row.unit_price.toLocaleString()} / {row.per.toLocaleString()}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "discount_pct",
                       header: t("Discount"),
@@ -245,8 +219,7 @@ function MonthlyUsageSection({
                         <Text type="supporting" hasTabularNumbers>
                           {row.discount_pct > 0 ? `${row.discount_pct}%` : "-"}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "net_amount",
                       header: t("Net amount"),
@@ -256,14 +229,12 @@ function MonthlyUsageSection({
                         <Text type="body" weight="medium" hasTabularNumbers>
                           {row.net_amount.toLocaleString()}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "note",
                       header: t("Note"),
                       width: proportional(1.5, { minWidth: 120 }),
-                      renderCell: (row) => <Text type="supporting">{row.note || "-"}</Text>,
-                    },
+                      renderCell: (row) => <Text type="supporting">{row.note || "-"}</Text> },
                   ]}
                 />
               </Card>
@@ -306,8 +277,7 @@ function MonthlyUsageSection({
                       key: "id",
                       header: t("Order"),
                       width: proportional(1.5, { minWidth: 140 }),
-                      renderCell: (order) => <Text type="code">{order.id}</Text>,
-                    },
+                      renderCell: (order) => <Text type="code">{order.id}</Text> },
                     {
                       key: "period_start",
                       header: t("Period"),
@@ -318,8 +288,7 @@ function MonthlyUsageSection({
                             ? `${order.period_start.slice(0, 10)} – ${order.period_end.slice(0, 10)}`
                             : "-"}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "created_at",
                       header: t("Created"),
@@ -328,8 +297,7 @@ function MonthlyUsageSection({
                         <Text type="supporting" hasTabularNumbers>
                           {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "amount",
                       header: t("Amount"),
@@ -339,8 +307,7 @@ function MonthlyUsageSection({
                         <Text type="body" weight="medium" hasTabularNumbers>
                           {order.amount.toLocaleString()}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "vat_amount",
                       header: t("VAT"),
@@ -350,14 +317,12 @@ function MonthlyUsageSection({
                         <Text type="supporting" hasTabularNumbers>
                           {order.vat_amount.toLocaleString()}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "status",
                       header: t("Status"),
                       width: proportional(1, { minWidth: 110 }),
-                      renderCell: (order) => <StatusBadge status={order.status} />,
-                    },
+                      renderCell: (order) => <StatusBadge status={order.status} /> },
                     ...(canWriteOff
                       ? [
                           {
@@ -372,8 +337,7 @@ function MonthlyUsageSection({
                                   { label: t("Write off"), destructive: true, onSelect: () => onWriteOff(order) },
                                 ]}
                               />
-                            ),
-                          },
+                            ) },
                         ]
                       : []),
                   ]}
@@ -408,16 +372,14 @@ const BILLING_PROFILE_INCOMPLETE_MESSAGES: Record<BillingProfileField, string> =
   legal_name: "Legal name is required.",
   tax_code: "Tax code is required.",
   address: "Address is required.",
-  invoice_email: "Invoice email is required.",
-};
+  invoice_email: "Invoice email is required." };
 
 const BILLING_PROFILE_INVALID_MESSAGES: Record<BillingProfileField, string> = {
   account_kind: "Select a valid account kind.",
   legal_name: "Legal name is invalid or exceeds 255 characters.",
   tax_code: "Enter a valid 10-digit (or 10-3) tax code.",
   address: "Address is invalid or exceeds 255 characters.",
-  invoice_email: "Enter a valid invoice email address.",
-};
+  invoice_email: "Enter a valid invoice email address." };
 
 function isBillingProfileField(value: string): value is BillingProfileField {
   return (BILLING_PROFILE_FIELDS as readonly string[]).includes(value);
@@ -440,30 +402,25 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     isLoading: workspaceLoading,
     isError: workspaceError,
     error: workspaceErrorObj,
-    refetch: refetchWorkspace,
-  } = useWorkspace(workspaceId);
+    refetch: refetchWorkspace } = useWorkspace(workspaceId);
 
   const {
     data: usageData,
     isLoading: usageLoading,
     isError: usageError,
     error: usageErrorObj,
-    refetch: refetchUsage,
-  } = useWorkspaceUsage(workspaceId);
+    refetch: refetchUsage } = useWorkspaceUsage(workspaceId);
 
   const {
-    data: billingProfile,
-  } = useWorkspaceBillingProfile(workspaceId);
+    data: billingProfile } = useWorkspaceBillingProfile(workspaceId);
 
   const {
     data: notesData,
-    isLoading: notesLoading,
-  } = useWorkspaceNotes(workspaceId);
+    isLoading: notesLoading } = useWorkspaceNotes(workspaceId);
 
   const {
     data: auditData,
-    isLoading: auditLoading,
-  } = useWorkspaceAudit(workspaceId);
+    isLoading: auditLoading } = useWorkspaceAudit(workspaceId);
 
   const changeStatus = useChangeWorkspaceStatus();
   const exportWorkspace = useExportWorkspace();
@@ -534,8 +491,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     isLoading: memberRequestsLoading,
     isError: memberRequestsError,
     error: memberRequestsErrorObj,
-    refetch: refetchMemberRequests,
-  } = useMemberRequests(workspaceId, canManageMembers);
+    refetch: refetchMemberRequests } = useMemberRequests(workspaceId, canManageMembers);
 
   const addWorkspaceMember = useAddWorkspaceMember();
   const cancelMemberRequest = useCancelMemberRequest();
@@ -616,8 +572,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
       await changeStatus.mutateAsync({
         workspaceId,
         status: targetStatus as "active" | "read_only" | "suspended" | "pending_deletion",
-        reason,
-      });
+        reason });
       setStatusDialogOpen(false);
     } catch (err: unknown) {
       setStatusError(
@@ -647,8 +602,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         seats: Number(subSeats),
         interval: subInterval,
         trialEnd: subTrialEnd.trim() || null,
-        reason: subReason.trim(),
-      });
+        reason: subReason.trim() });
       setSubDialogOpen(false);
     } catch (err: unknown) {
       setSubError(err instanceof Error ? err.message : t("Failed to update subscription"));
@@ -662,8 +616,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     try {
       await addNote.mutateAsync({
         workspaceId,
-        body: noteBody.trim(),
-      });
+        body: noteBody.trim() });
       setNoteBody("");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("Failed to add note");
@@ -682,8 +635,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     try {
       await cancelOrder.mutateAsync({
         orderId: writeOffOrder.id,
-        reason,
-      });
+        reason });
       setWriteOffOrder(null);
     } catch (err: unknown) {
       setWriteOffError(err instanceof Error ? err.message : t("Failed to write off order"));
@@ -738,8 +690,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         legal_name: profileLegalNameInput.trim(),
         tax_code: profileTaxCodeInput.trim(),
         address: profileAddressInput.trim(),
-        invoice_email: profileInvoiceEmailInput.trim(),
-      });
+        invoice_email: profileInvoiceEmailInput.trim() });
       const { changed: _changed, ...savedProfile } = res;
       setProfileOverride({ workspaceId, profile: savedProfile });
       setProfileError(null);
@@ -786,8 +737,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
     try {
       const res = await setBillingProfileVerified.mutateAsync({
         workspaceId,
-        verified: !isProfileVerified,
-      });
+        verified: !isProfileVerified });
       if (res) {
         setProfileOverride({
           workspaceId,
@@ -796,9 +746,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
             tax_code: profileTaxCode,
             address: profileAddress,
             invoice_email: profileInvoiceEmail,
-            ...res,
-          },
-        });
+            ...res } });
       }
     } catch (err: unknown) {
       if (err instanceof PlatformApiError && err.code === "billing_profile_incomplete") {
@@ -810,16 +758,14 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
           message:
             fields.length > 0
               ? t("Missing billing profile fields: {0}", fields.join(", "))
-              : err.message,
-        });
+              : err.message });
       } else {
         setProfileError({
           workspaceId,
           message:
             err instanceof Error
               ? err.message
-              : t("Failed to update billing profile verification"),
-        });
+              : t("Failed to update billing profile verification") });
       }
     }
   };
@@ -849,8 +795,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
       await addWorkspaceMember.mutateAsync({
         workspaceId,
         email: trimmed,
-        role: memberRole,
-      });
+        role: memberRole });
       setMemberDialogOpen(false);
     } catch (err: unknown) {
       setMemberError(getApiErrorMessage(err, t("Failed to add member")));
@@ -872,8 +817,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
   const handleConfirmDeleteNow = async ({
     reason,
     confirm,
-    export_first,
-  }: {
+    export_first }: {
     reason: string;
     confirm: string;
     export_first?: boolean;
@@ -884,8 +828,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         workspaceId,
         reason,
         confirm,
-        ...(export_first !== undefined ? { export_first } : {}),
-      });
+        ...(export_first !== undefined ? { export_first } : {}) });
       setDeleteDialogOpen(false);
       setDeleteNotice(t("Immediate deletion requested ({0}).", res.request_id));
     } catch (err: unknown) {
@@ -920,8 +863,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         workspaceId,
         gate: quotaGate,
         requested_value: parsedValue,
-        reason: trimmedReason,
-      });
+        reason: trimmedReason });
       setQuotaDialogOpen(false);
       setQuotaNotice(t("Quota increase requested ({0}).", created.id));
     } catch (err: unknown) {
@@ -961,8 +903,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         statusLabel: "",
         reason: entry.reason || "-",
         actor: entry.actor || "-",
-        created_at: entry.created_at,
-      }))
+        created_at: entry.created_at }))
     : auditEvents
         .filter(
           (ev) =>
@@ -984,8 +925,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                   : t("Status changed"),
           reason: "-",
           actor: ev.actor_label || ev.actor_id || "-",
-          created_at: ev.created_at,
-        }));
+          created_at: ev.created_at }));
 
   return (
     <div className="space-y-8">
@@ -1000,76 +940,87 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         backAction={{ label: backLabel, onClick: onBack }}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={handleOpenStatusDialog}>
-              {t("Change status")}
-            </Button>
+            <Button
+              label={t("Change status")}
+              variant="secondary"
+              size="sm"
+              onClick={handleOpenStatusDialog}
+            />
             {canEditSubscription && (
-              <Button variant="outline" size="sm" onClick={handleOpenSubDialog}>
-                {t("Edit subscription")}
-              </Button>
+              <Button
+                label={t("Edit subscription")}
+                variant="secondary"
+                size="sm"
+                onClick={handleOpenSubDialog}
+              />
             )}
             {canManageMembers && (
-              <Button variant="outline" size="sm" onClick={handleOpenMemberDialog}>
-                <UserPlus className="size-3.5" aria-hidden="true" />
-                <span>{t("Add member")}</span>
-              </Button>
+              <Button
+                label={t("Add member")}
+                variant="secondary"
+                size="sm"
+                icon={<UserPlus className="size-3.5" aria-hidden="true" />}
+                onClick={handleOpenMemberDialog}
+              />
             )}
             {canRequestQuota && (
-              <Button variant="outline" size="sm" onClick={handleOpenQuotaDialog}>
-                <ArrowUpCircle className="size-3.5" aria-hidden="true" />
-                <span>{t("Request quota increase")}</span>
-              </Button>
+              <Button
+                label={t("Request quota increase")}
+                variant="secondary"
+                size="sm"
+                icon={<ArrowUpCircle className="size-3.5" aria-hidden="true" />}
+                onClick={handleOpenQuotaDialog}
+              />
             )}
             {canDeleteWorkspace && (
               <Button
+                label={t("Delete workspace")}
                 variant="destructive"
                 size="sm"
+                icon={<Trash2 className="size-3.5" aria-hidden="true" />}
                 onClick={() => {
                   setDeleteError(null);
                   setDeleteDialogOpen(true);
                 }}
-              >
-                <Trash2 className="size-3.5" aria-hidden="true" />
-                <span>{t("Delete workspace")}</span>
-              </Button>
+              />
             )}
           </>
         }
       />
 
       {quotaNotice && (
-        <Alert role="status">
-          <Info className="size-4" aria-hidden="true" />
-          <AlertDescription>{quotaNotice}</AlertDescription>
-        </Alert>
+        <Banner
+          status="info"
+          role="status"
+          title={quotaNotice}
+        />
       )}
 
       {deleteNotice && (
-        <Alert role="status">
-          <Info className="size-4" aria-hidden="true" />
-          <AlertDescription>{deleteNotice}</AlertDescription>
-        </Alert>
+        <Banner
+          status="info"
+          role="status"
+          title={deleteNotice}
+        />
       )}
 
       {(workspace.state?.reason || workspace.state?.deletion_scheduled_at) && (
         <div className="space-y-3">
           {workspace.state?.reason && (
-            <Alert role="status" className="border-surface-border bg-surface">
-              <Info className="size-4 text-info" aria-hidden="true" />
-              <AlertTitle className="text-label font-semibold">{t("State Reason")}</AlertTitle>
-              <AlertDescription className="text-body text-muted-foreground">
-                {workspace.state.reason}
-              </AlertDescription>
-            </Alert>
+            <Banner
+              status="info"
+              role="status"
+              title={t("State Reason")}
+              description={workspace.state.reason}
+            />
           )}
           {workspace.state?.deletion_scheduled_at && (
-            <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
-              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-              <AlertTitle className="text-label font-semibold">{t("Deletion Scheduled")}</AlertTitle>
-              <AlertDescription className="text-body tabular-nums">
-                {new Date(workspace.state.deletion_scheduled_at).toLocaleString()}
-              </AlertDescription>
-            </Alert>
+            <Banner
+              status="error"
+              role="alert"
+              title={t("Deletion Scheduled")}
+              description={new Date(workspace.state.deletion_scheduled_at).toLocaleString()}
+            />
           )}
         </div>
       )}
@@ -1087,129 +1038,121 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
             <>
               <Button
                 type="button"
-                variant="outline"
+                label={t("Suspend")}
+                variant="secondary"
                 size="sm"
-                disabled={
+                icon={<Ban className="size-3.5" aria-hidden="true" />}
+                onClick={() => handleOpenQuickStatus("suspended")}
+                isDisabled={
                   !isQuickAllowed(
                     ["suspend", "suspended"],
                     currentStatus !== "suspended" && currentStatus !== "pending_deletion",
                   )
                 }
-                onClick={() => handleOpenQuickStatus("suspended")}
-              >
-                <Ban className="size-3.5" aria-hidden="true" />
-                <span>{t("Suspend")}</span>
-              </Button>
+              />
               <Button
                 type="button"
-                variant="outline"
+                label={t("Read-only")}
+                variant="secondary"
                 size="sm"
-                disabled={
+                icon={<Lock className="size-3.5" aria-hidden="true" />}
+                onClick={() => handleOpenQuickStatus("read_only")}
+                isDisabled={
                   !isQuickAllowed(
                     ["read_only"],
                     currentStatus !== "read_only" && currentStatus !== "pending_deletion",
                   )
                 }
-                onClick={() => handleOpenQuickStatus("read_only")}
-              >
-                <Lock className="size-3.5" aria-hidden="true" />
-                <span>{t("Read-only")}</span>
-              </Button>
+              />
               <Button
                 type="button"
-                variant="outline"
+                label={t("Unlock")}
+                variant="secondary"
                 size="sm"
-                disabled={
+                icon={<CheckCircle2 className="size-3.5" aria-hidden="true" />}
+                onClick={() => handleOpenQuickStatus("active")}
+                isDisabled={
                   !isQuickAllowed(
                     ["unlock", "activate", "active"],
                     currentStatus !== "active",
                   )
                 }
-                onClick={() => handleOpenQuickStatus("active")}
-              >
-                <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                <span>{t("Unlock")}</span>
-              </Button>
+              />
             </>
           )}
           {canDeleteWorkspace && (
             <>
               <Button
                 type="button"
-                variant="outline"
+                label={t("Schedule deletion")}
+                variant="secondary"
                 size="sm"
-                disabled={
+                icon={<CalendarClock className="size-3.5" aria-hidden="true" />}
+                onClick={() => handleOpenQuickStatus("pending_deletion")}
+                isDisabled={
                   !isQuickAllowed(
                     ["schedule_deletion", "pending_deletion"],
                     currentStatus !== "pending_deletion",
                   )
                 }
-                onClick={() => handleOpenQuickStatus("pending_deletion")}
-              >
-                <CalendarClock className="size-3.5" aria-hidden="true" />
-                <span>{t("Schedule deletion")}</span>
-              </Button>
+              />
               <Button
                 type="button"
-                variant="outline"
+                label={t("Cancel deletion")}
+                variant="secondary"
                 size="sm"
-                disabled={
+                icon={<RotateCcw className="size-3.5" aria-hidden="true" />}
+                onClick={() => handleOpenQuickStatus("active")}
+                isDisabled={
                   !isQuickAllowed(
                     ["cancel_deletion"],
                     currentStatus === "pending_deletion",
                   )
                 }
-                onClick={() => handleOpenQuickStatus("active")}
-              >
-                <RotateCcw className="size-3.5" aria-hidden="true" />
-                <span>{t("Cancel deletion")}</span>
-              </Button>
+              />
             </>
           )}
           {canExportWorkspace && (
             <Button
               type="button"
-              variant="outline"
+              label={t("Export data")}
+              variant="secondary"
               size="sm"
-              disabled={!isQuickAllowed(["export"], true) || exportWorkspace.isPending}
+              icon={<Download className="size-3.5" aria-hidden="true" />}
+              isLoading={exportWorkspace.isPending}
               aria-busy={exportWorkspace.isPending || undefined}
               onClick={() => void handleExportWorkspace()}
-            >
-              {exportWorkspace.isPending ? (
-                <Spinner className="size-3.5" aria-hidden="true" />
-              ) : (
-                <Download className="size-3.5" aria-hidden="true" />
-              )}
-              <span>{t("Export data")}</span>
-            </Button>
+              isDisabled={!isQuickAllowed(["export"], true) || exportWorkspace.isPending}
+            />
           )}
           <Button
             type="button"
+            label={t("View audit log")}
             variant="ghost"
             size="sm"
+            icon={<History className="size-3.5" aria-hidden="true" />}
             onClick={() => {
               document
                 .getElementById("workspace-audit-log")
                 ?.scrollIntoView({ behavior: "smooth" });
             }}
-          >
-            <History className="size-3.5" aria-hidden="true" />
-            <span>{t("View audit log")}</span>
-          </Button>
+          />
         </HStack>
 
         {quickActionNotice && (
-          <Alert role="status">
-            <Info className="size-4 shrink-0" aria-hidden="true" />
-            <AlertDescription className="text-caption">{quickActionNotice}</AlertDescription>
-          </Alert>
+          <Banner
+            status="info"
+            role="status"
+            title={quickActionNotice}
+          />
         )}
 
         {quickActionError && (
-          <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-            <AlertDescription className="text-caption">{quickActionError}</AlertDescription>
-          </Alert>
+          <Banner
+            status="error"
+            role="alert"
+            title={quickActionError}
+          />
         )}
       </Section>
 
@@ -1253,33 +1196,34 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         <Section variant="transparent" padding={0} className="space-y-4">
           <Heading level={2}>{t("Internal Notes")}</Heading>
           <form onSubmit={handleAddNote} className="space-y-2">
-            <Textarea
+            <TextArea
+              label={t("Internal Notes")}
+              isLabelHidden
+              width="100%"
               value={noteBody}
-              onChange={(e) => setNoteBody(e.target.value)}
+              onChange={(value) => setNoteBody(value)}
               placeholder={t("Write an internal note...")}
               rows={3}
-              disabled={addNote.isPending}
+              isDisabled={addNote.isPending}
             />
             {noteError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{noteError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={noteError}
+              />
             )}
             <Button
               type="submit"
+              label={t("Add note")}
+              variant="primary"
               size="sm"
+              icon={<Plus className="size-3.5" aria-hidden="true" />}
+              isLoading={addNote.isPending}
               className="w-full gap-1"
-              disabled={!noteBody.trim() || addNote.isPending}
               aria-busy={addNote.isPending}
-            >
-              {addNote.isPending ? (
-                <Spinner className="size-3.5" />
-              ) : (
-                <Plus className="size-3.5" aria-hidden="true" />
-              )}
-              {t("Add note")}
-            </Button>
+              isDisabled={!noteBody.trim() || addNote.isPending}
+            />
           </form>
 
           <div className="space-y-2">
@@ -1352,19 +1296,21 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
           <Heading level={2}>{t("Billing profile")}</Heading>
           {canEditSubscription && (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleOpenProfileDialog}>
-                {t("Edit")}
-              </Button>
               <Button
-                variant="outline"
+                label={t("Edit")}
+                variant="secondary"
                 size="sm"
+                onClick={handleOpenProfileDialog}
+              />
+              <Button
+                label={isProfileVerified ? t("Unverify") : t("Verify")}
+                variant="secondary"
+                size="sm"
+                isLoading={setBillingProfileVerified.isPending}
                 onClick={handleToggleProfileVerified}
-                disabled={setBillingProfileVerified.isPending}
                 aria-busy={setBillingProfileVerified.isPending}
-              >
-                {setBillingProfileVerified.isPending && <Spinner className="size-3.5" />}
-                {isProfileVerified ? t("Unverify") : t("Verify")}
-              </Button>
+                isDisabled={setBillingProfileVerified.isPending}
+              />
             </div>
           )}
         </div>
@@ -1394,10 +1340,11 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         </MetadataList>
 
         {activeProfileError && (
-          <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-            <AlertDescription className="text-caption">{activeProfileError}</AlertDescription>
-          </Alert>
+          <Banner
+            status="error"
+            role="alert"
+            title={activeProfileError}
+          />
         )}
       </Section>
 
@@ -1479,10 +1426,11 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
           <Section variant="transparent" padding={0} className="space-y-4">
             <Heading level={2}>{t("Member Requests")}</Heading>
             {memberRequestError && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription>{memberRequestError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={memberRequestError}
+              />
             )}
             {memberRequestsLoading && <LoadingState message={t("Loading member requests...")} />}
             {memberRequestsError && (
@@ -1516,20 +1464,17 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                         <Text type="body" weight="medium">
                           {req.email}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "role",
                       header: t("Role"),
                       width: pixel(110),
-                      renderCell: (req: MemberRequest) => <StatusBadge status={req.role} />,
-                    },
+                      renderCell: (req: MemberRequest) => <StatusBadge status={req.role} /> },
                     {
                       key: "state",
                       header: t("State"),
                       width: pixel(120),
-                      renderCell: (req: MemberRequest) => <StatusBadge status={req.state} />,
-                    },
+                      renderCell: (req: MemberRequest) => <StatusBadge status={req.state} /> },
                     {
                       key: "error_code",
                       header: t("Error"),
@@ -1541,8 +1486,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                           </span>
                         ) : (
                           <Text type="supporting">—</Text>
-                        ),
-                    },
+                        ) },
                     {
                       key: "attempts",
                       header: t("Attempts"),
@@ -1551,8 +1495,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                         <Text type="body" hasTabularNumbers>
                           {req.attempts}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "created_at",
                       header: t("Requested"),
@@ -1561,8 +1504,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                         <Text type="supporting" hasTabularNumbers>
                           {req.created_at ? new Date(req.created_at).toLocaleString() : "—"}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "action",
                       header: "",
@@ -1572,18 +1514,17 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                         const rowBusy = cancelingRequestId === req.id;
                         return (
                           <Button
+                            label={t("Cancel")}
                             variant="destructive"
-                            size="xs"
-                            disabled={rowBusy}
+                            size="sm"
+                            icon={<Ban className="size-3" aria-hidden="true" />}
+                            isLoading={rowBusy}
                             aria-busy={rowBusy || undefined}
                             onClick={() => handleCancelMemberRequest(req.id)}
-                          >
-                            {rowBusy ? <Spinner /> : <Ban className="size-3" aria-hidden="true" />}
-                            {t("Cancel")}
-                          </Button>
+                            isDisabled={rowBusy}
+                          />
                         );
-                      },
-                    },
+                      } },
                   ]}
                 />
               </Card>
@@ -1620,8 +1561,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                     <Text type="supporting" hasTabularNumbers>
                       {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
                     </Text>
-                  ),
-                },
+                  ) },
                 {
                   key: "transfer_code",
                   header: t("Transfer Code"),
@@ -1630,8 +1570,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                     <Text type="code" weight="semibold">
                       {order.transfer_code}
                     </Text>
-                  ),
-                },
+                  ) },
                 {
                   key: "plan_key",
                   header: t("Plan & Seats"),
@@ -1640,8 +1579,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                     <Text type="body" className="capitalize">
                       {order.plan_key} &bull; {order.seats} {t("seats (")}{order.interval})
                     </Text>
-                  ),
-                },
+                  ) },
                 {
                   key: "amount",
                   header: t("Total (incl. VAT)"),
@@ -1650,14 +1588,12 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                     <Text type="body" weight="medium" hasTabularNumbers>
                       {formatMinorAmount(order.amount + order.vat_amount, order.currency)}
                     </Text>
-                  ),
-                },
+                  ) },
                 {
                   key: "status",
                   header: t("Status"),
                   width: proportional(1, { minWidth: 110 }),
-                  renderCell: (order: Order) => <StatusBadge status={order.status} />,
-                },
+                  renderCell: (order: Order) => <StatusBadge status={order.status} /> },
               ]}
             />
           </Card>
@@ -1694,8 +1630,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                         ? new Date(row.created_at).toLocaleString()
                         : "-"}
                     </Text>
-                  ),
-                },
+                  ) },
                 {
                   key: "status",
                   header: t("Status"),
@@ -1705,22 +1640,19 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                       <StatusBadge status={row.status} />
                     ) : (
                       <Text type="body">{row.statusLabel}</Text>
-                    ),
-                },
+                    ) },
                 {
                   key: "reason",
                   header: t("Reason"),
                   width: proportional(1.6, { minWidth: 160 }),
                   renderCell: (row) => (
                     <Text type="supporting">{row.reason}</Text>
-                  ),
-                },
+                  ) },
                 {
                   key: "actor",
                   header: t("Actor"),
                   width: proportional(1.4, { minWidth: 150 }),
-                  renderCell: (row) => <Text type="body">{row.actor}</Text>,
-                },
+                  renderCell: (row) => <Text type="body">{row.actor}</Text> },
               ]}
             />
           </div>
@@ -1763,28 +1695,24 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                     <Text type="supporting" hasTabularNumbers>
                       {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
                     </Text>
-                  ),
-                },
+                  ) },
                 {
                   key: "action",
                   header: t("Action"),
                   width: proportional(1.4, { minWidth: 150 }),
-                  renderCell: (event: AuditEvent) => <Text type="code">{event.action}</Text>,
-                },
+                  renderCell: (event: AuditEvent) => <Text type="code">{event.action}</Text> },
                 {
                   key: "actor_label",
                   header: t("Actor"),
                   width: proportional(1.5, { minWidth: 160 }),
-                  renderCell: (event: AuditEvent) => <Text type="body">{event.actor_label}</Text>,
-                },
+                  renderCell: (event: AuditEvent) => <Text type="body">{event.actor_label}</Text> },
                 {
                   key: "target_label",
                   header: t("Target"),
                   width: proportional(1.5, { minWidth: 160 }),
                   renderCell: (event: AuditEvent) => (
                     <Text type="body">{event.target_label || event.target_id}</Text>
-                  ),
-                },
+                  ) },
               ]}
             />
           </Card>
@@ -1801,216 +1729,140 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         error={statusError}
         onConfirm={handleConfirmStatusChange}
       >
-        <Field>
-          <FieldLabel htmlFor="target-status-select" className="text-label">
-            {t("Target status")}
-          </FieldLabel>
-          <Select
-            items={availableStatuses}
-            value={targetStatus}
-            onValueChange={(val) => {
+        <Selector
+          label={t("Target status")}
+          width="100%"
+          options={availableStatuses.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+          value={targetStatus}
+          onChange={(val) => {
               if (val) setTargetStatus(val);
             }}
-            disabled={changeStatus.isPending}
-          >
-            <SelectTrigger id="target-status-select" aria-label={t("Target status")} className="w-full">
-              <SelectValue>
-                {t(availableStatuses.find((opt) => opt.value === targetStatus)?.label ?? targetStatus)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {availableStatuses.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {t(opt.label)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
+        />
       </ConfirmReasonDialog>
 
       {/* Edit Subscription Dialog */}
-      <Dialog open={subDialogOpen} onOpenChange={setSubDialogOpen}>
-        <DialogContent>
+      <Dialog
+        isOpen={subDialogOpen}
+        onOpenChange={setSubDialogOpen}
+        purpose="form"
+      >
+
           <form onSubmit={handleSaveSubscription} className="flex flex-col gap-4">
-            <DialogHeader>
-              <DialogTitle>{t("Edit Subscription")}</DialogTitle>
-              <DialogDescription>
-                {t("Update subscription plan, seats, billing interval, and trial period.")}
-              </DialogDescription>
-            </DialogHeader>
+            <DialogHeader title={t("Edit Subscription")} subtitle={t("Update subscription plan, seats, billing interval, and trial period.")} />
 
             <div className="flex flex-col gap-3">
-              <Field>
-                <FieldLabel htmlFor="sub-plan-key-input" className="text-label">
-                  {t("Plan")} <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Input
-                  id="sub-plan-key-input"
-                  value={subPlanKey}
-                  onChange={(e) => setSubPlanKey(e.target.value)}
-                  placeholder={t("e.g. pro, business, enterprise")}
-                  required
-                  disabled={updateSubscription.isPending}
-                />
-              </Field>
+              <TextInput
+                label={t("Plan")}
+                id={"sub-plan-key-input"}
+                isRequired
+                value={subPlanKey}
+                onChange={(value) => setSubPlanKey(value)}
+                placeholder={t("e.g. pro, business, enterprise")}
+                isDisabled={updateSubscription.isPending}
+                width="100%"
+              />
 
               <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="sub-seats-input" className="text-label">
-                    {t("Seats")} <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="sub-seats-input"
-                    type="number"
-                    min={0}
-                    value={subSeats}
-                    onChange={(e) => setSubSeats(Number(e.target.value))}
-                    required
-                    disabled={updateSubscription.isPending}
-                  />
-                </Field>
+                <NumberInput
+                  label={t("Seats")}
+                  id={"sub-seats-input"}
+                  isRequired
+                  min={0}
+                  value={subSeats}
+                  onChange={(value) => setSubSeats(Number(value))}
+                  isDisabled={updateSubscription.isPending}
+                  width="100%"
+                />
 
-                <Field>
-                  <FieldLabel htmlFor="sub-interval-select" className="text-label">
-                    {t("Billing Interval")} <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Select
-                    items={BILLING_INTERVAL_ITEMS}
-                    value={subInterval}
-                    onValueChange={(val) => {
+                <Selector
+                  label={t("Billing Interval")}
+                  isRequired
+                  width="100%"
+                  options={BILLING_INTERVAL_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+                  value={subInterval}
+                  onChange={(val) => {
                       if (val) setSubInterval(val);
                     }}
-                    disabled={updateSubscription.isPending}
-                  >
-                    <SelectTrigger
-                      id="sub-interval-select"
-                      aria-label={t("Billing Interval")}
-                      className="w-full"
-                    >
-                      <SelectValue>
-                        {t(BILLING_INTERVAL_ITEMS.find((i) => i.value === subInterval)?.label ??
-                          subInterval)}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BILLING_INTERVAL_ITEMS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {t(item.label)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
+                />
               </div>
 
-              <Field>
-                <FieldLabel htmlFor="sub-trial-end-input" className="text-label">
-                  {t("Trial End (RFC3339 or blank)")}
-                </FieldLabel>
-                <Input
-                  id="sub-trial-end-input"
-                  value={subTrialEnd}
-                  onChange={(e) => setSubTrialEnd(e.target.value)}
-                  placeholder={t("e.g. 2026-12-01T00:00:00Z")}
-                  disabled={updateSubscription.isPending}
-                />
-              </Field>
+              <TextInput
+                id="sub-trial-end-input"
+                label={t("Trial End (RFC3339 or blank)")}
+                value={subTrialEnd}
+                onChange={(value) => setSubTrialEnd(value)}
+                placeholder={t("e.g. 2026-12-01T00:00:00Z")}
+                isDisabled={updateSubscription.isPending}
+                width="100%"
+              />
 
-              <Field>
-                <FieldLabel htmlFor="sub-reason-input" className="text-label">
-                  {t("Reason")} <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Textarea
-                  id="sub-reason-input"
-                  value={subReason}
-                  onChange={(e) => setSubReason(e.target.value)}
-                  placeholder={t("Provide a reason for this subscription change...")}
-                  rows={3}
-                  required
-                  disabled={updateSubscription.isPending}
-                />
-              </Field>
+              <TextArea
+                label={t("Reason")}
+                id={"sub-reason-input"}
+                isRequired
+                value={subReason}
+                onChange={(value) => setSubReason(value)}
+                placeholder={t("Provide a reason for this subscription change...")}
+                rows={3}
+                isDisabled={updateSubscription.isPending}
+                width="100%"
+              />
             </div>
 
             {subError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{subError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={subError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" type="button" disabled={updateSubscription.isPending} />}
-              >
-                {t("Cancel")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
+              <Button
+        type="button"
+        isDisabled={updateSubscription.isPending}
+        label={t("Cancel")}
+        variant="secondary"
+        onClick={() => setSubDialogOpen(false)}
+      />
               <Button
                 type="submit"
-                disabled={!subReason.trim() || updateSubscription.isPending}
+                label={t("Save subscription")}
+                variant="primary"
+                isLoading={updateSubscription.isPending}
                 aria-busy={updateSubscription.isPending}
-              >
-                {updateSubscription.isPending && <Spinner className="size-3.5" />}
-                {t("Save subscription")}
-              </Button>
-            </DialogFooter>
+                isDisabled={!subReason.trim() || updateSubscription.isPending}
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
       {/* Edit Billing Profile Dialog */}
-      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
-        <DialogContent>
+      <Dialog
+        isOpen={profileDialogOpen}
+        onOpenChange={setProfileDialogOpen}
+        purpose="form"
+      >
+
           <form noValidate onSubmit={handleSaveBillingProfile} className="flex flex-col gap-4">
-            <DialogHeader>
-              <DialogTitle>{t("Edit Billing Profile")}</DialogTitle>
-              <DialogDescription>
-                {t("Update workspace account kind and billing contact details.")}
-              </DialogDescription>
-            </DialogHeader>
+            <DialogHeader title={t("Edit Billing Profile")} subtitle={t("Update workspace account kind and billing contact details.")} />
 
             <div className="flex flex-col gap-3">
-              <Field data-invalid={Boolean(profileFieldErrors.account_kind) || undefined}>
-                <FieldLabel htmlFor="bp-account-kind" className="text-label">
-                  {t("Account kind")}
-                </FieldLabel>
-                <Select
-                  items={ACCOUNT_KIND_ITEMS}
-                  value={profileKind}
-                  onValueChange={(val) => {
+              <Selector
+                label={t("Account kind")}
+                id="bp-account-kind"
+                width="100%"
+                options={ACCOUNT_KIND_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+                value={profileKind}
+                onChange={(val) => {
                     if (val === "individual" || val === "business") {
                       setProfileKind(val);
                       clearProfileFieldError("account_kind");
                     }
                   }}
-                  disabled={updateBillingProfile.isPending}
-                >
-                  <SelectTrigger
-                    id="bp-account-kind"
-                    aria-label={t("Account kind")}
-                    aria-invalid={Boolean(profileFieldErrors.account_kind)}
-                    className="w-full"
-                  >
-                    <SelectValue>
-                      {t(ACCOUNT_KIND_ITEMS.find((i) => i.value === profileKind)?.label ??
-                        profileKind)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ACCOUNT_KIND_ITEMS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(item.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {profileFieldErrors.account_kind && (
-                  <FieldError className="text-caption">
-                    {profileFieldErrors.account_kind}
-                  </FieldError>
-                )}
-              </Field>
+                status={profileFieldErrors.account_kind ? { type: "error", message: profileFieldErrors.account_kind } : undefined}
+              />
 
               {[
                 {
@@ -2019,88 +1871,72 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
                   label: t("Legal name"),
                   type: "text",
                   value: profileLegalNameInput,
-                  setValue: setProfileLegalNameInput,
-                },
+                  setValue: setProfileLegalNameInput },
                 {
                   field: "tax_code" as const,
                   id: "bp-tax-code",
                   label: t("Tax code"),
                   type: "text",
                   value: profileTaxCodeInput,
-                  setValue: setProfileTaxCodeInput,
-                },
+                  setValue: setProfileTaxCodeInput },
                 {
                   field: "address" as const,
                   id: "bp-address",
                   label: t("Address"),
                   type: "text",
                   value: profileAddressInput,
-                  setValue: setProfileAddressInput,
-                },
+                  setValue: setProfileAddressInput },
                 {
                   field: "invoice_email" as const,
                   id: "bp-invoice-email",
                   label: t("Invoice email"),
                   type: "email",
                   value: profileInvoiceEmailInput,
-                  setValue: setProfileInvoiceEmailInput,
-                },
+                  setValue: setProfileInvoiceEmailInput },
               ].map(({ field, id, label, type, value, setValue }) => (
-                <Field
-                  key={field}
-                  data-invalid={Boolean(profileFieldErrors[field]) || undefined}
-                >
-                  <FieldLabel htmlFor={id} className="text-label">
-                    {label}
-                  </FieldLabel>
-                  <Input
-                    id={id}
-                    type={type}
-                    value={value}
-                    onChange={(e) => {
-                      setValue(e.target.value);
+                <TextInput
+                  label={label}
+                  id={id}
+                  type={type as "text" | "email"}
+                  value={value}
+                  onChange={(value) => {
+                      setValue(value);
                       clearProfileFieldError(field);
                     }}
-                    aria-invalid={Boolean(profileFieldErrors[field])}
-                    disabled={updateBillingProfile.isPending}
-                  />
-                  {profileFieldErrors[field] && (
-                    <FieldError className="text-caption">
-                      {profileFieldErrors[field]}
-                    </FieldError>
-                  )}
-                </Field>
+                  isDisabled={updateBillingProfile.isPending}
+                  width="100%"
+                  status={profileFieldErrors[field] ? { type: "error", message: profileFieldErrors[field] } : undefined}
+                />
               ))}
             </div>
 
             {profileFormError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{profileFormError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={profileFormError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={
-                  <Button variant="outline" type="button" disabled={updateBillingProfile.isPending} />
-                }
-              >
-                {t("Cancel")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                type="button"
+                isDisabled={updateBillingProfile.isPending}
+                label={t("Cancel")}
+                onClick={() => setProfileDialogOpen(false)}
+              />
               <Button
                 type="submit"
-                disabled={updateBillingProfile.isPending}
+                label={t("Save")}
+                variant="primary"
+                isLoading={updateBillingProfile.isPending}
                 aria-busy={updateBillingProfile.isPending}
-              >
-                {updateBillingProfile.isPending && (
-                  <Spinner className="size-3.5" aria-hidden="true" />
-                )}
-                {t("Save")}
-              </Button>
-            </DialogFooter>
+                isDisabled={updateBillingProfile.isPending}
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
       <ConfirmReasonDialog
@@ -2125,188 +1961,147 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
       />
 
       <Dialog
-        open={memberDialogOpen}
+        isOpen={memberDialogOpen}
         onOpenChange={(open) => !addWorkspaceMember.isPending && setMemberDialogOpen(open)}
+        purpose="form"
       >
-        <DialogContent>
+
           <form onSubmit={handleAddMemberSubmit} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>{t("Add member")}</DialogTitle>
-            </DialogHeader>
+            <DialogHeader title={t("Add member")} />
 
-            <Field>
-              <FieldLabel htmlFor="add-member-email" className="text-label">
-                {t("Email address")}
-              </FieldLabel>
-              <Input
-                id="add-member-email"
-                type="email"
-                value={memberEmail}
-                onChange={(e) => setMemberEmail(e.target.value)}
-                placeholder={t("member@example.com")}
-                required
-                disabled={addWorkspaceMember.isPending}
-              />
-            </Field>
+            <TextInput
+              id="add-member-email"
+              label={t("Email address")}
+              type="email"
+              value={memberEmail}
+              onChange={(value) => setMemberEmail(value)}
+              placeholder={t("member@example.com")}
+              isRequired
+              isDisabled={addWorkspaceMember.isPending}
+              width="100%"
+            />
 
-            <Field>
-              <FieldLabel htmlFor="add-member-role" className="text-label">
-                {t("Member role")}
-              </FieldLabel>
-              <Select
-                items={MEMBER_ROLE_ITEMS}
-                value={memberRole}
-                onValueChange={(val) => {
+            <Selector
+              label={t("Member role")}
+              width="100%"
+              options={MEMBER_ROLE_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+              value={memberRole}
+              onChange={(val) => {
                   if (val) setMemberRole(val as MemberRole);
                 }}
-                disabled={addWorkspaceMember.isPending}
-              >
-                <SelectTrigger id="add-member-role" aria-label={t("Member role")} className="w-full">
-                  <SelectValue>
-                    {t(MEMBER_ROLE_ITEMS.find((item) => item.value === memberRole)?.label ?? memberRole)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {MEMBER_ROLE_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {t(item.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            />
 
             {memberError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{memberError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={memberError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={
-                  <Button
-                    variant="outline"
-                    type="button"
-                    disabled={addWorkspaceMember.isPending}
-                  />
-                }
-              >
-                {t("Cancel")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                type="button"
+                isDisabled={addWorkspaceMember.isPending}
+                label={t("Cancel")}
+                onClick={() => ((open) => !addWorkspaceMember.isPending && setMemberDialogOpen(open))(false)}
+              />
               <Button
                 type="submit"
-                disabled={!memberEmail.trim() || addWorkspaceMember.isPending}
+                label={t("Add member")}
+                variant="primary"
+                isLoading={addWorkspaceMember.isPending}
                 aria-busy={addWorkspaceMember.isPending}
-              >
-                {addWorkspaceMember.isPending && <Spinner className="size-3.5" />}
-                {t("Add member")}
-              </Button>
-            </DialogFooter>
+                isDisabled={!memberEmail.trim() || addWorkspaceMember.isPending}
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
       <Dialog
-        open={quotaDialogOpen}
+        isOpen={quotaDialogOpen}
         onOpenChange={(open) => {
           if (!createQuotaRequest.isPending) {
             setQuotaDialogOpen(open);
             if (!open) setQuotaError(null);
           }
         }}
+        purpose="form"
+        width={448}
       >
-        <DialogContent className="sm:max-w-md">
+
           <form onSubmit={handleSubmitQuotaRequest} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>{t("Request quota increase")}</DialogTitle>
-              <DialogDescription>
-                {t("Submit a limit increase request for")} {workspace.name || workspace.slug}{t(". System administrators review pending requests.")}
-              </DialogDescription>
-            </DialogHeader>
+            <DialogHeader title={t("Request quota increase")} subtitle={<>{t("Submit a limit increase request for")} {workspace.name || workspace.slug}{t(". System administrators review pending requests.")}</>} />
 
             {quotaError && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" aria-hidden="true" />
-                <AlertDescription>{quotaError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={quotaError}
+              />
             )}
 
-            <Field>
-              <FieldLabel htmlFor="workspace-quota-gate">{t("Gate")}</FieldLabel>
-              <Select
-                items={LIMIT_GATES.map((g) => ({ value: g, label: g }))}
-                value={quotaGate}
-                onValueChange={(val) => val && setQuotaGate(val)}
-              >
-                <SelectTrigger id="workspace-quota-gate" aria-label={t("Gate")} className="w-full">
-                  <SelectValue>{quotaGate}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {LIMIT_GATES.map((gate) => (
-                    <SelectItem key={gate} value={gate}>
-                      {gate}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            <Selector
+              label={t("Gate")}
+              width="100%"
+              options={LIMIT_GATES.map((g) => ({ value: g, label: g }))}
+              value={quotaGate}
+              onChange={(val) => val && setQuotaGate(val)}
+            />
 
-            <Field>
-              <FieldLabel htmlFor="workspace-quota-value">{t("Requested value")}</FieldLabel>
-              <Input
-                id="workspace-quota-value"
-                type="number"
-                min={1}
-                step={1}
-                value={quotaRequestedValue}
-                onChange={(e) => setQuotaRequestedValue(e.target.value)}
-                placeholder="25"
-                disabled={createQuotaRequest.isPending}
+            <NumberInput
+              id="workspace-quota-value"
+              label={t("Requested value")}
+              min={1}
+              step={1}
+              value={quotaRequestedValue.trim() === "" ? null : Number(quotaRequestedValue)}
+              onChange={(value) => setQuotaRequestedValue(value === null ? "" : String(value))}
+              placeholder="25"
+              isDisabled={createQuotaRequest.isPending}
+              width="100%"
+            />
+
+            <TextArea
+              id="workspace-quota-reason"
+              label={t("Reason")}
+              value={quotaReason}
+              onChange={(value) => setQuotaReason(value)}
+              placeholder={t("Explain why the workspace needs this quota increase...")}
+              isDisabled={createQuotaRequest.isPending}
+              rows={3}
+              width="100%"
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                isDisabled={createQuotaRequest.isPending}
+                label={t("Cancel")}
+                onClick={() => ((open) => {
+          if (!createQuotaRequest.isPending) {
+            setQuotaDialogOpen(open);
+            if (!open) setQuotaError(null);
+          }
+        })(false)}
               />
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="workspace-quota-reason">{t("Reason")}</FieldLabel>
-              <Textarea
-                id="workspace-quota-reason"
-                value={quotaReason}
-                onChange={(e) => setQuotaReason(e.target.value)}
-                placeholder={t("Explain why the workspace needs this quota increase...")}
-                disabled={createQuotaRequest.isPending}
-                rows={3}
-              />
-            </Field>
-
-            <DialogFooter>
-              <DialogClose
-                render={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={createQuotaRequest.isPending}
-                  />
-                }
-              >
-                {t("Cancel")}
-              </DialogClose>
               <Button
                 type="submit"
-                variant="default"
-                disabled={
+                label={t("Submit request")}
+                variant="primary"
+                isLoading={createQuotaRequest.isPending}
+                aria-busy={createQuotaRequest.isPending || undefined}
+                isDisabled={
                   !quotaRequestedValue.trim() ||
                   !quotaReason.trim() ||
                   createQuotaRequest.isPending
                 }
-                aria-busy={createQuotaRequest.isPending || undefined}
-              >
-                {createQuotaRequest.isPending && <Spinner className="size-3.5" />}
-                {t("Submit request")}
-              </Button>
-            </DialogFooter>
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
       <TypeToConfirmDialog

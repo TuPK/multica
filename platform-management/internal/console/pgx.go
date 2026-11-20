@@ -495,7 +495,11 @@ func (r *PgxReader) ListAuditEvents(ctx context.Context, q AuditQuery) ([]AuditR
 	return out, nil
 }
 
-func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overview, error) {
+// overviewSeriesDays is the length of the daily series on the overview.
+const overviewSeriesDays = 30
+
+func (r *PgxReader) Overview(ctx context.Context, now time.Time) (Overview, error) {
+	signupsSince := now.Add(-signupWindow)
 	total, err := r.q.CountWorkspaces(ctx)
 	if err != nil {
 		return Overview{}, err
@@ -528,11 +532,29 @@ func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overv
 	if err != nil {
 		return Overview{}, err
 	}
+	series, err := r.overviewSeries(ctx, now)
+	if err != nil {
+		return Overview{}, err
+	}
+	runtimes, err := r.q.CountRuntimesByStatus(ctx)
+	if err != nil {
+		return Overview{}, err
+	}
+	queue, err := r.q.CountOperationsQueue(ctx)
+	if err != nil {
+		return Overview{}, err
+	}
 	o := Overview{
 		WorkspacesWithoutTenant: withoutTenant,
 		PendingOrders:           pending, PendingByCurrency: byCurrency, Usage: totals,
 		WorkspacesTotal: total, NonActive: make(map[string]int64, len(rows)), Signups: signups,
 		ByPlan: make(map[string]int64, len(plans)),
+		Series: series, RuntimesByStatus: map[string]int64{"online": 0, "offline": 0},
+		Operations: OperationsQueue{
+			PendingApprovals: queue.PendingApprovals, PendingDeletions: queue.PendingDeletions,
+			PendingQuotaRequests: queue.PendingQuotaRequests, FailedEinvoices: queue.FailedEinvoices,
+			ActiveLegalHolds: queue.ActiveLegalHolds,
+		},
 	}
 	for _, row := range rows {
 		o.NonActive[row.Status] = row.Workspaces
@@ -540,7 +562,71 @@ func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overv
 	for _, row := range plans {
 		o.ByPlan[row.PlanKey] = row.Workspaces
 	}
+	for _, row := range runtimes {
+		o.RuntimesByStatus[row.Status] = row.Total
+	}
 	return o, nil
+}
+
+// overviewSeries returns the last overviewSeriesDays UTC days, oldest first. Each
+// count query returns only the days that had activity; the others stay zero.
+func (r *PgxReader) overviewSeries(ctx context.Context, now time.Time) ([]DayCount, error) {
+	first := seriesStart(now)
+	days := make([]DayCount, overviewSeriesDays)
+	index := make(map[string]int, overviewSeriesDays)
+	for i := range days {
+		key := first.AddDate(0, 0, i).Format(time.DateOnly)
+		days[i].Day = key
+		index[key] = i
+	}
+	since := pgtype.Timestamptz{Time: first, Valid: true}
+
+	created, err := r.q.CountWorkspacesCreatedByDay(ctx, since)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range created {
+		if i, ok := index[row.Day.Time.Format(time.DateOnly)]; ok {
+			days[i].WorkspacesCreated = row.Total
+		}
+	}
+	ordered, err := r.q.CountBillingOrdersCreatedByDay(ctx, since)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range ordered {
+		if i, ok := index[row.Day.Time.Format(time.DateOnly)]; ok {
+			days[i].OrdersCreated = row.Total
+		}
+	}
+	paid, err := r.q.CountBillingOrdersPaidByDay(ctx, since)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range paid {
+		if i, ok := index[row.Day.Time.Format(time.DateOnly)]; ok {
+			days[i].OrdersPaid = row.Total
+		}
+	}
+	usageDays, err := r.q.SumIssuesAndTasksByDay(ctx, pgtype.Date{Time: first, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range usageDays {
+		if i, ok := index[row.Day.Time.Format(time.DateOnly)]; ok {
+			days[i].IssuesCreated = row.IssuesCreated
+			days[i].TasksRun = row.TasksRun
+		}
+	}
+	return days, nil
+}
+
+// seriesStart is midnight UTC of the first day of the overview series: the
+// current UTC day and the overviewSeriesDays-1 days before it.
+func seriesStart(now time.Time) time.Time {
+	u := now.UTC()
+	today := time.Date(u.Year(), u.Month(), u.Day(), 0, 0, 0, 0, time.UTC)
+	return today.AddDate(0, 0, -(overviewSeriesDays - 1))
 }
 
 // pendingByCurrencySQL sums the pending orders once per currency.

@@ -1,5 +1,4 @@
 import { useId, useMemo, useState, type FormEvent } from "react";
-import { Field } from "@astryxdesign/core/Field";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack, Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
 import { Section } from "@astryxdesign/core/Section";
@@ -9,31 +8,15 @@ import {
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+  TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@multica/ui/components/ui/dialog";
-import { Field as UiField, FieldLabel as UiFieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import { AlertCircle, Lock, Plus, RefreshCw } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Lock, Plus, RefreshCw } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -44,8 +27,7 @@ import {
   useLegalHolds,
   useMe,
   usePlaceLegalHold,
-  useReleaseLegalHold,
-} from "../api/hooks";
+  useReleaseLegalHold } from "../api/hooks";
 import type { LegalHold, LegalHoldScopeKind } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { t } from "../i18n";
@@ -133,8 +115,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
         scope_kind: scopeKind,
         scope_id: scopeId.trim(),
         case_ref: caseRef.trim(),
-        reason: reason.trim(),
-      });
+        reason: reason.trim() });
       setPlaceDialogOpen(false);
     } catch (err) {
       setPlaceError(getLegalHoldErrorMessage(err, t("Failed to place legal hold")));
@@ -162,23 +143,23 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                 <HStack gap={2} align="center">
                             <Button
                               type="button"
-                              variant="outline"
+                              label={t("Refresh")}
+                              variant="secondary"
                               size="sm"
+                              icon={<RefreshCw className="size-4" aria-hidden="true" />}
+                              isLoading={query.isFetching}
                               onClick={() => query.refetch()}
-                              disabled={query.isFetching}
                               aria-busy={query.isFetching || undefined}
-                            >
-                              {query.isFetching ? (
-                                <Spinner />
-                              ) : (
-                                <RefreshCw className="size-4" aria-hidden="true" />
-                              )}
-                              {t("Refresh")}
-                            </Button>
-                            <Button type="button" variant="default" size="sm" onClick={openPlaceDialog}>
-                              <Plus className="size-4" aria-hidden="true" />
-                              {t("Place legal hold")}
-                            </Button>
+                              isDisabled={query.isFetching}
+                            />
+                            <Button
+                              type="button"
+                              label={t("Place legal hold")}
+                              variant="primary"
+                              size="sm"
+                              icon={<Plus className="size-4" aria-hidden="true" />}
+                              onClick={openPlaceDialog}
+                            />
                           </HStack>
               </>
             }
@@ -192,29 +173,18 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
               <Heading level={3}>{t("Holds")}</Heading>
               <HStack wrap="wrap" gap={3} align="center">
                 <div className="w-56">
-                  <Select
-                    items={[...STATUS_FILTERS]}
+                  <Selector
+                    label={t("Hold status")}
+                    isLabelHidden
+                    width="100%"
+                    options={STATUS_FILTERS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
                     value={statusFilter}
-                    onValueChange={(val) => {
+                    onChange={(val) => {
                       if (val === "all" || val === "active" || val === "released") {
                         setStatusFilter(val);
                       }
                     }}
-                  >
-                    <SelectTrigger aria-label={t("Hold status")} className="w-full">
-                      <SelectValue>
-                        {t(STATUS_FILTERS.find((item) => item.value === statusFilter)?.label ??
-                          t("All holds"))}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_FILTERS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {t(item.label)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
               </HStack>
 
@@ -290,8 +260,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                                   onSelect: () => {
                                     setReleaseTarget(hold);
                                     setReleaseError(null);
-                                  },
-                                },
+                                  } },
                               ]}
                             />
                           )}
@@ -307,159 +276,146 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
       </LayoutContent>
 
       <Dialog
-        open={placeDialogOpen}
+        isOpen={placeDialogOpen}
         onOpenChange={(open) => {
           if (!open && !placeHold.isPending) {
             setPlaceDialogOpen(false);
           }
         }}
+        purpose="form"
+        width={512}
+        maxHeight="85vh"
       >
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+
           <form onSubmit={handlePlaceSubmit} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>{t("Place legal hold")}</DialogTitle>
-              <DialogDescription>
-                {t("Prevents permanent deletion of the target tenant, workspace, or account until released.")}
-              </DialogDescription>
-            </DialogHeader>
+            <DialogHeader title={t("Place legal hold")} subtitle={t("Prevents permanent deletion of the target tenant, workspace, or account until released.")} />
 
             {placeError && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertDescription>{placeError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={placeError}
+              />
             )}
 
-            <UiField>
-              <UiFieldLabel htmlFor="legal-hold-scope-kind" className="text-label">
-                {t("Scope kind")}
-              </UiFieldLabel>
-              <Select
-                items={[...SCOPE_OPTIONS]}
-                value={scopeKind}
-                onValueChange={(val) => {
+            <Selector
+              label={t("Scope kind")}
+              width="100%"
+              options={SCOPE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+              value={scopeKind}
+              onChange={(val) => {
                   if (val === "tenant" || val === "workspace" || val === "account") {
                     setScopeKind(val);
                   }
                 }}
-              >
-                <SelectTrigger id="legal-hold-scope-kind" aria-label={t("Scope kind")} className="w-full">
-                  <SelectValue>
-                    {t(SCOPE_OPTIONS.find((item) => item.value === scopeKind)?.label ?? t("Tenant"))}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {SCOPE_OPTIONS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {t(item.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </UiField>
+            />
 
-            <Field label={t("Scope ID")} inputID={scopeIdInputId} isRequired width="100%">
-              <Input
-                id={scopeIdInputId}
-                value={scopeId}
-                onChange={(e) => setScopeId(e.target.value)}
-                placeholder={t("UUID of the tenant, workspace, or account")}
-                disabled={placeHold.isPending}
-              />
-            </Field>
+            <TextInput
+              label={t("Scope ID")}
+              id={scopeIdInputId}
+              isRequired
+              width="100%"
+              value={scopeId}
+              onChange={(value) => setScopeId(value)}
+              placeholder={t("UUID of the tenant, workspace, or account")}
+              isDisabled={placeHold.isPending}
+            />
 
-            <Field label={t("Case reference")} inputID={caseRefInputId} isRequired width="100%">
-              <Input
-                id={caseRefInputId}
-                value={caseRef}
-                onChange={(e) => setCaseRef(e.target.value)}
-                placeholder={t("CASE-2026-001")}
-                disabled={placeHold.isPending}
-              />
-            </Field>
+            <TextInput
+              label={t("Case reference")}
+              id={caseRefInputId}
+              isRequired
+              width="100%"
+              value={caseRef}
+              onChange={(value) => setCaseRef(value)}
+              placeholder={t("CASE-2026-001")}
+              isDisabled={placeHold.isPending}
+            />
 
-            <Field label={t("Reason")} inputID={reasonInputId} isRequired width="100%">
-              <Textarea
-                id={reasonInputId}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={t("Explain the litigation or compliance preservation basis...")}
-                disabled={placeHold.isPending}
-                rows={3}
-              />
-            </Field>
+            <TextArea
+              label={t("Reason")}
+              id={reasonInputId}
+              isRequired
+              width="100%"
+              value={reason}
+              onChange={(value) => setReason(value)}
+              placeholder={t("Explain the litigation or compliance preservation basis...")}
+              isDisabled={placeHold.isPending}
+              rows={3}
+            />
 
-            <DialogFooter>
+            <div className="flex justify-end gap-2">
               <Button
                 type="button"
-                variant="outline"
+                label={t("Cancel")}
+                variant="secondary"
                 onClick={() => setPlaceDialogOpen(false)}
-                disabled={placeHold.isPending}
-              >
-                {t("Cancel")}
-              </Button>
+                isDisabled={placeHold.isPending}
+              />
               <Button
                 type="submit"
-                variant="default"
-                disabled={!canSubmitPlace}
+                label={t("Place hold")}
+                variant="primary"
+                isLoading={placeHold.isPending}
                 aria-busy={placeHold.isPending || undefined}
-              >
-                {placeHold.isPending && <Spinner />}
-                {t("Place hold")}
-              </Button>
-            </DialogFooter>
+                isDisabled={!canSubmitPlace}
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
       <Dialog
-        open={releaseTarget !== null}
+        isOpen={releaseTarget !== null}
         onOpenChange={(open) => {
           if (!open && !releaseHold.isPending) {
             setReleaseTarget(null);
             setReleaseError(null);
           }
         }}
+        purpose="info"
+        width={448}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("Release legal hold")}</DialogTitle>
-            {releaseTarget && (
-              <DialogDescription>
-                {t("Release hold")} {releaseTarget.case_ref} {t("covering")} {releaseTarget.scope_kind}{" "}
-                {releaseTarget.scope_id}?
-              </DialogDescription>
-            )}
-          </DialogHeader>
+
+          <DialogHeader
+            title={t("Release legal hold")}
+            subtitle={
+              releaseTarget ? (
+                <>
+                  {t("Release hold")} {releaseTarget.case_ref} {t("covering")} {releaseTarget.scope_kind}{" "}
+                  {releaseTarget.scope_id}?
+                </>
+              ) : undefined
+            }
+          />
 
           {releaseError && (
-            <Alert variant="destructive">
-              <AlertCircle className="size-4" />
-              <AlertDescription>{releaseError}</AlertDescription>
-            </Alert>
+            <Banner
+              status="error"
+              role="alert"
+              title={releaseError}
+            />
           )}
 
-          <DialogFooter>
+          <div className="flex justify-end gap-2">
             <Button
               type="button"
-              variant="outline"
+              label={t("Cancel")}
+              variant="secondary"
               onClick={() => setReleaseTarget(null)}
-              disabled={releaseHold.isPending}
-            >
-              {t("Cancel")}
-            </Button>
+              isDisabled={releaseHold.isPending}
+            />
             <Button
               type="button"
-              variant="default"
-              disabled={releaseHold.isPending}
+              label={t("Release hold")}
+              variant="primary"
+              isLoading={releaseHold.isPending}
               aria-busy={releaseHold.isPending || undefined}
               onClick={handleReleaseConfirm}
-            >
-              {releaseHold.isPending && <Spinner />}
-              {t("Release hold")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+              isDisabled={releaseHold.isPending}
+            />
+          </div>
+
       </Dialog>
     </Layout>
   );

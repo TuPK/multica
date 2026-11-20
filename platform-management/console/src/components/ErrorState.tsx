@@ -1,6 +1,6 @@
-import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import { AlertCircle } from "@multica/ui/icons";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@astryxdesign/core/Button";
+import { Heading } from "@astryxdesign/core/Heading";
 import { t } from "../i18n";
 
 export function ErrorState({
@@ -13,23 +13,17 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 p-4">
-      <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-      <AlertTitle>
-        <h3 className="font-heading text-title-sm font-semibold">{title}</h3>
-      </AlertTitle>
-      {(message || onRetry) && (
-        <AlertDescription className="col-start-2 space-y-3 text-body text-muted-foreground">
-          {message && <p>{message}</p>}
-          {onRetry && (
-            <div>
-              <Button variant="outline" size="sm" onClick={onRetry}>
-                {t("Try again")}
-              </Button>
-            </div>
-          )}
-        </AlertDescription>
+    <Banner
+      role="alert"
+      status="error"
+      container="card"
+      collapsible={false}
+      title={<Heading level={3}>{title}</Heading>}
+      description={message}
+    >
+      {onRetry && (
+        <Button label={t("Try again")} variant="secondary" size="sm" onClick={onRetry} />
       )}
-    </Alert>
+    </Banner>
   );
 }

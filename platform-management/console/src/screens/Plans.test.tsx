@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { Plans } from "./Plans";
 import { PlatformApiError } from "../api/client";
+import { findAlert } from "../test/alert";
 
 const mockUsePlans = vi.fn();
 const mockUsePriceChanges = vi.fn();
@@ -132,11 +133,11 @@ describe("Plans screen", () => {
     expect(screen.getByRole("columnheader", { name: "Audience" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Billing Model" })).toBeInTheDocument();
     expect(screen.getByText("Pro Plan")).toBeInTheDocument();
-    expect(screen.getByText("Business")).toBeInTheDocument();
-    expect(screen.getByText("Seat")).toBeInTheDocument();
+    expect(screen.getAllByText("Business").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Seat")[0]).toBeInTheDocument();
     expect(screen.getByText("Legacy Plan")).toBeInTheDocument();
-    expect(screen.getByText("Any")).toBeInTheDocument();
-    expect(screen.getByText("Usage")).toBeInTheDocument();
+    expect(screen.getAllByText("Any")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Usage")[0]).toBeInTheDocument();
     expect(screen.getByText("pro")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit plan Pro Plan" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Price schedule plan Pro Plan" })).toBeInTheDocument();
@@ -204,11 +205,12 @@ describe("Plans screen", () => {
 
     expect(screen.getByRole("heading", { name: "Edit Plan: Pro Plan" })).toBeInTheDocument();
 
-    const nameInput = screen.getByLabelText(/Plan Name/i);
+    const nameInput = within(screen.getByRole("dialog")).getByLabelText(/Plan Name/i);
     fireEvent.change(nameInput, { target: { value: "Pro Plus" } });
 
-    const trialInput = screen.getByLabelText(/Trial Days/i);
+    const trialInput = within(screen.getByRole("dialog")).getByLabelText(/Trial Days/i);
     fireEvent.change(trialInput, { target: { value: "30" } });
+    fireEvent.blur(trialInput);
 
     const saveBtn = screen.getByRole("button", { name: "Save changes" });
     fireEvent.click(saveBtn);
@@ -256,7 +258,7 @@ describe("Plans screen", () => {
 
     const dialog = screen.getByRole("dialog");
     await waitFor(() => {
-      expect(within(dialog).getByRole("alert")).toHaveTextContent("subscriptions use this plan; archive it instead");
+      expect(findAlert(dialog)).toHaveTextContent("subscriptions use this plan; archive it instead");
     });
   });
 
@@ -273,7 +275,7 @@ describe("Plans screen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Edit plan Pro Plan" }));
 
-    const currencyInput = screen.getByLabelText(/Currency/i);
+    const currencyInput = within(screen.getByRole("dialog")).getByLabelText(/Currency/i);
     fireEvent.change(currencyInput, { target: { value: "usd" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
@@ -284,12 +286,9 @@ describe("Plans screen", () => {
       );
     });
 
-    const currencyFieldContainer = currencyInput.closest("div")!;
-    await waitFor(() => {
-      expect(currencyFieldContainer).toHaveTextContent(
-        "The currency can't change because this plan has subscriptions or orders.",
-      );
-    });
+    await screen.findByText(
+      "The currency can't change because this plan has subscriptions or orders.",
+    );
   });
 
   it("keeps other save errors unchanged", async () => {
@@ -301,14 +300,14 @@ describe("Plans screen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Edit plan Pro Plan" }));
 
-    const currencyInput = screen.getByLabelText(/Currency/i);
+    const currencyInput = within(screen.getByRole("dialog")).getByLabelText(/Currency/i);
     fireEvent.change(currencyInput, { target: { value: "US" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     const dialog = screen.getByRole("dialog");
     await waitFor(() => {
-      expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      expect(findAlert(dialog)).toHaveTextContent(
         "currency must be a three-letter lower-case code",
       );
     });
@@ -374,7 +373,7 @@ describe("Plans screen", () => {
 
     const dialog = screen.getByRole("dialog");
     await waitFor(() => {
-      expect(within(dialog).getByRole("alert")).toHaveTextContent("subscriptions use this plan; archive it instead");
+      expect(findAlert(dialog)).toHaveTextContent("subscriptions use this plan; archive it instead");
     });
   });
 
@@ -390,6 +389,7 @@ describe("Plans screen", () => {
 
     const issueLimitInput = screen.getByLabelText(/Issue limit/i);
     fireEvent.change(issueLimitInput, { target: { value: "100" } });
+    fireEvent.blur(issueLimitInput);
 
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 

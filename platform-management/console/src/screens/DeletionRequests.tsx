@@ -6,28 +6,19 @@ import {
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+  TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { AlertCircle, RefreshCw, Trash2 } from "@multica/ui/icons";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
+import { RefreshCw, Trash2 } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Banner } from "@astryxdesign/core/Banner";
 import { getApiErrorMessage } from "../api/client";
 import {
   useCancelDeletionRequest,
   useDeletionRequests,
   useMe,
   useRetryDeletionRequest,
-  type DeletionRequest,
-} from "../api/hooks";
+  type DeletionRequest } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -88,8 +79,7 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
   const { data: requests = [], isLoading, isError, error, refetch, isFetching } =
     useDeletionRequests({
       kind: kindFilter || undefined,
-      state: stateFilter || undefined,
-    });
+      state: stateFilter || undefined });
 
   const cancelMutation = useCancelDeletionRequest();
   const retryMutation = useRetryDeletionRequest();
@@ -144,59 +134,44 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
         title={t("Deletion requests")}
         actions={
           <Button
-            variant="outline"
+            label={t("Refresh")}
+            variant="secondary"
             size="sm"
+            icon={<RefreshCw className="size-3.5" aria-hidden="true" />}
+            isLoading={isFetching}
             onClick={() => refetch()}
-            disabled={isFetching}
             aria-busy={isFetching || undefined}
-          >
-            {isFetching ? <Spinner /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
-            <span>{t("Refresh")}</span>
-          </Button>
+            isDisabled={isFetching}
+          />
         }
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Select
-          items={KIND_OPTIONS}
+        <Selector
+          label={t("Filter by kind")}
+          isLabelHidden
+          width={176}
+          options={KIND_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
           value={kindFilter || "all"}
-          onValueChange={(value) => setKindFilter(value === "all" ? "" : (value ?? ""))}
-        >
-          <SelectTrigger aria-label={t("Filter by kind")} className="w-44">
-            <SelectValue placeholder={t("All kinds")} />
-          </SelectTrigger>
-          <SelectContent>
-            {KIND_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {t(opt.label)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(value) => setKindFilter(value === "all" ? "" : (value ?? ""))}
+        />
 
-        <Select
-          items={STATE_OPTIONS}
+        <Selector
+          label={t("Filter by state")}
+          isLabelHidden
+          width={176}
+          options={STATE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
           value={stateFilter || "all"}
-          onValueChange={(value) => setStateFilter(value === "all" ? "" : (value ?? ""))}
-        >
-          <SelectTrigger aria-label={t("Filter by state")} className="w-44">
-            <SelectValue placeholder={t("All states")} />
-          </SelectTrigger>
-          <SelectContent>
-            {STATE_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {t(opt.label)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(value) => setStateFilter(value === "all" ? "" : (value ?? ""))}
+        />
       </div>
 
       {actionError && (
-        <Alert variant="destructive">
-          <AlertCircle className="size-4" />
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
+        <Banner
+          status="error"
+          role="alert"
+          title={actionError}
+        />
       )}
 
       {isLoading && <LoadingState message={t("Loading deletion requests...")} />}

@@ -498,6 +498,14 @@ describe("audit events", () => {
 });
 
 describe("overview", () => {
+  const emptyQueue = {
+    pending_approvals: 0,
+    pending_deletions: 0,
+    pending_quota_requests: 0,
+    failed_einvoices: 0,
+    active_legal_holds: 0,
+  };
+
   it("parses the counts", () => {
     const overview = parseOverview({
       workspaces_by_status: { active: 5, read_only: 1, suspended: 2, pending_deletion: 0 },
@@ -506,7 +514,66 @@ describe("overview", () => {
     expect(overview).toEqual({
       workspaces_by_status: { active: 5, read_only: 1, suspended: 2, pending_deletion: 0 },
       signups_7d: 9,
+      daily_series: [],
+      runtimes_by_status: { online: 0, offline: 0 },
+      operations: emptyQueue,
     });
+  });
+
+  it("parses the 30-day series, the runtime status counts and the operations queue", () => {
+    const point = {
+      day: "2026-11-20",
+      workspaces_created: 2,
+      orders_created: 3,
+      orders_paid: 1,
+      usage_issues_created: 40,
+      usage_tasks_run: 7,
+    };
+    const overview = parseOverview({
+      workspaces_by_status: {},
+      signups_7d: 0,
+      daily_series: [point],
+      runtimes_by_status: { online: 4, offline: 2 },
+      operations: { ...emptyQueue, pending_approvals: 1, failed_einvoices: 3 },
+    });
+    expect(overview?.daily_series).toEqual([point]);
+    expect(overview?.runtimes_by_status).toEqual({ online: 4, offline: 2 });
+    expect(overview?.operations.pending_approvals).toBe(1);
+    expect(overview?.operations.failed_einvoices).toBe(3);
+  });
+
+  it("gives a point of the series its zero counts and keeps a missing runtime status at zero", () => {
+    const overview = parseOverview({
+      workspaces_by_status: {},
+      signups_7d: 0,
+      daily_series: [{ day: "2026-11-19" }],
+      runtimes_by_status: { online: 2 },
+    });
+    expect(overview?.daily_series).toEqual([
+      {
+        day: "2026-11-19",
+        workspaces_created: 0,
+        orders_created: 0,
+        orders_paid: 0,
+        usage_issues_created: 0,
+        usage_tasks_run: 0,
+      },
+    ]);
+    expect(overview?.runtimes_by_status).toEqual({ online: 2, offline: 0 });
+  });
+
+  it("falls back to the empty value for a malformed addition and keeps the counts", () => {
+    const overview = parseOverview({
+      workspaces_by_status: { active: 1 },
+      signups_7d: 2,
+      daily_series: "not a list",
+      runtimes_by_status: { online: "many" },
+      operations: { pending_approvals: "x" },
+    });
+    expect(overview).toMatchObject({ signups_7d: 2, workspaces_by_status: { active: 1 } });
+    expect(overview?.daily_series).toEqual([]);
+    expect(overview?.runtimes_by_status).toEqual({ online: 0, offline: 0 });
+    expect(overview?.operations).toEqual(emptyQueue);
   });
 
   it("zero-fills a missing known status and keeps an unknown one", () => {

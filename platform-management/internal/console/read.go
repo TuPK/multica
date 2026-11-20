@@ -546,10 +546,11 @@ func (h *Handler) listAuditEvents(w http.ResponseWriter, r *http.Request) {
 const signupWindow = 7 * 24 * time.Hour
 
 // overview returns the workspace counts by state and by plan, the last week's
-// sign-ups, and the pending orders' amounts grouped by currency.
-// Active is the rest: the total less the workspaces in another state.
+// sign-ups, and the pending orders' amounts grouped by currency. Active is the
+// rest: the total less the workspaces in another state. The series, runtime
+// and operations fields are additions; older clients ignore them.
 func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
-	o, err := h.Reader.Overview(r.Context(), h.Now().Add(-signupWindow))
+	o, err := h.Reader.Overview(r.Context(), h.Now())
 	if err != nil {
 		h.fail(w, r, "overview", err)
 		return
@@ -580,5 +581,30 @@ func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	for k, v := range o.Usage.Map() {
 		body[k] = v
 	}
+	body["daily_series"] = dailySeriesJSON(o.Series)
+	runtimes := map[string]int64{"online": 0, "offline": 0}
+	for status, n := range o.RuntimesByStatus {
+		runtimes[status] = n
+	}
+	body["runtimes_by_status"] = runtimes
+	body["operations"] = map[string]int64{
+		"pending_approvals":      o.Operations.PendingApprovals,
+		"pending_deletions":      o.Operations.PendingDeletions,
+		"pending_quota_requests": o.Operations.PendingQuotaRequests,
+		"failed_einvoices":       o.Operations.FailedEinvoices,
+		"active_legal_holds":     o.Operations.ActiveLegalHolds,
+	}
 	writeJSON(w, http.StatusOK, body)
+}
+
+// dailySeriesJSON is the overview's daily series, oldest day first.
+func dailySeriesJSON(days []DayCount) []map[string]any {
+	out := make([]map[string]any, len(days))
+	for i, d := range days {
+		out[i] = map[string]any{
+			"day": d.Day, "workspaces_created": d.WorkspacesCreated, "orders_created": d.OrdersCreated,
+			"orders_paid": d.OrdersPaid, "usage_issues_created": d.IssuesCreated, "usage_tasks_run": d.TasksRun,
+		}
+	}
+	return out
 }

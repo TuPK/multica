@@ -1,25 +1,17 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
-import { Field } from "@astryxdesign/core/Field";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack, Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
 import { MetadataList, MetadataListItem } from "@astryxdesign/core/MetadataList";
 import { Section } from "@astryxdesign/core/Section";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import { Field as UiField, FieldLabel as UiFieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Switch } from "@multica/ui/components/ui/switch";
-import { AlertCircle, CheckCircle2, RefreshCw } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Switch } from "@astryxdesign/core/Switch";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { Selector } from "@astryxdesign/core/Selector";
+import { RefreshCw } from "@multica/ui/icons";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { getTenantPolicyErrorMessage } from "../api/client";
@@ -127,14 +119,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const domainsId = useId();
-  const shareLinksId = useId();
-  const shareLinksLabelId = useId();
-  const requireSsoId = useId();
-  const requireSsoLabelId = useId();
-  const requireMfaId = useId();
-  const requireMfaLabelId = useId();
   const sessionId = useId();
-  const sessionErrorId = useId();
 
   useEffect(() => {
     const policy = policyQuery.data?.policy;
@@ -185,8 +170,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
         share_links_enabled: shareLinksEnabled,
         require_sso: requireSso,
         require_mfa: requireMfa,
-        session_max_age_hours: parsedHours,
-      });
+        session_max_age_hours: parsedHours });
       setSaveSuccess(true);
     } catch (err) {
       setSaveError(getTenantPolicyErrorMessage(err, t("Failed to update tenant policy")));
@@ -203,35 +187,19 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
           <div className="space-y-3">
             <Heading level={3}>{t("Tenant")}</Heading>
             <div className="max-w-sm">
-              <UiField>
-                <UiFieldLabel htmlFor="tenant-policy-tenant-select" className="text-label">
-                  {t("Tenant")}
-                </UiFieldLabel>
-                <Select
-                  items={tenantOptions.map((item) => ({ value: item.id, label: item.name }))}
-                  value={activeTenantId}
-                  onValueChange={(val) => {
-                    if (val) {
-                      setSelectedTenantId(val);
-                      setSaveSuccess(false);
-                    }
-                  }}
-                >
-                  <SelectTrigger id="tenant-policy-tenant-select" aria-label={t("Tenant")} className="w-full">
-                    <SelectValue>
-                      {tenantOptions.find((item) => item.id === activeTenantId)?.name ||
-                        t("Select a tenant")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tenantOptions.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </UiField>
+              <Selector
+                label={t("Tenant")}
+                isLabelHidden
+                width="100%"
+                options={tenantOptions.map((item) => ({ value: item.id, label: item.name }))}
+                value={activeTenantId}
+                onChange={(val) => {
+                  if (val) {
+                    setSelectedTenantId(val);
+                    setSaveSuccess(false);
+                  }
+                }}
+              />
             </div>
           </div>
         </Section>
@@ -336,149 +304,112 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
               <Heading level={3}>{t("Tenant policy floor")}</Heading>
               <form onSubmit={handleSubmit} className="space-y-4">
               {saveError && (
-                <Alert variant="destructive">
-                  <AlertCircle className="size-4" />
-                  <AlertDescription>{saveError}</AlertDescription>
-                </Alert>
+                <Banner
+                  status="error"
+                  role="alert"
+                  title={saveError}
+                />
               )}
 
               {saveSuccess && (
-                <Alert>
-                  <CheckCircle2 className="size-4" />
-                  <AlertDescription>{t("Tenant policy updated.")}</AlertDescription>
-                </Alert>
+                <Banner
+                  status="info"
+                  title={t("Tenant policy updated.")}
+                />
               )}
 
-              <Field
+              <TextInput
                 label={t("Allowed invite domains")}
-                inputID={domainsId}
+                id={domainsId}
                 isOptional
                 description={t("Comma-separated email domains enforced as the tenant intersection.")}
                 width="100%"
-              >
-                <Input
-                  id={domainsId}
-                  value={domainsInput}
-                  onChange={(e) => {
-                    setDomainsInput(e.target.value);
+                value={domainsInput}
+                onChange={(value) => {
+                    setDomainsInput(value);
                     setSaveSuccess(false);
                   }}
-                  placeholder={t("acme.com, partner.org")}
-                  disabled={!canEdit || updatePolicy.isPending}
-                />
-              </Field>
+                placeholder={t("acme.com, partner.org")}
+                isDisabled={!canEdit || updatePolicy.isPending}
+              />
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-                  <div className="min-w-0">
-                    <label
-                      id={shareLinksLabelId}
-                      htmlFor={shareLinksId}
-                      className="text-body font-medium text-foreground"
-                    >
-                      {t("Allow share links")}
-                    </label>
-                    <Text type="supporting" as="div">
-                      {t("Workspaces can only enable public share links when the tenant allows them.")}
-                    </Text>
-                  </div>
+                <div className="rounded-md border border-border p-3">
                   <Switch
-                    id={shareLinksId}
-                    aria-labelledby={shareLinksLabelId}
-                    checked={shareLinksEnabled}
-                    onCheckedChange={(checked) => {
+                    label={t("Allow share links")}
+                    description={t("Workspaces can only enable public share links when the tenant allows them.")}
+                    labelPosition="start"
+                    labelSpacing="spread"
+                    width="100%"
+                    value={shareLinksEnabled}
+                    onChange={(checked) => {
                       setShareLinksEnabled(checked);
                       setSaveSuccess(false);
                     }}
-                    disabled={!canEdit || updatePolicy.isPending}
+                    isDisabled={!canEdit || updatePolicy.isPending}
                   />
                 </div>
 
-                <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-                  <div className="min-w-0">
-                    <label
-                      id={requireSsoLabelId}
-                      htmlFor={requireSsoId}
-                      className="text-body font-medium text-foreground"
-                    >
-                      {t("Require SSO")}
-                    </label>
-                  </div>
+                <div className="rounded-md border border-border p-3">
                   <Switch
-                    id={requireSsoId}
-                    aria-labelledby={requireSsoLabelId}
-                    checked={requireSso}
-                    onCheckedChange={(checked) => {
+                    label={t("Require SSO")}
+                    labelPosition="start"
+                    labelSpacing="spread"
+                    width="100%"
+                    value={requireSso}
+                    onChange={(checked) => {
                       setRequireSso(checked);
                       setSaveSuccess(false);
                     }}
-                    disabled={!canEdit || updatePolicy.isPending}
+                    isDisabled={!canEdit || updatePolicy.isPending}
                   />
                 </div>
 
-                <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-                  <div className="min-w-0">
-                    <label
-                      id={requireMfaLabelId}
-                      htmlFor={requireMfaId}
-                      className="text-body font-medium text-foreground"
-                    >
-                      {t("Require MFA")}
-                    </label>
-                  </div>
+                <div className="rounded-md border border-border p-3">
                   <Switch
-                    id={requireMfaId}
-                    aria-labelledby={requireMfaLabelId}
-                    checked={requireMfa}
-                    onCheckedChange={(checked) => {
+                    label={t("Require MFA")}
+                    labelPosition="start"
+                    labelSpacing="spread"
+                    width="100%"
+                    value={requireMfa}
+                    onChange={(checked) => {
                       setRequireMfa(checked);
                       setSaveSuccess(false);
                     }}
-                    disabled={!canEdit || updatePolicy.isPending}
+                    isDisabled={!canEdit || updatePolicy.isPending}
                   />
                 </div>
               </div>
 
-              <Field
+              <NumberInput
                 label={t("Session max age (hours)")}
-                inputID={sessionId}
+                id={sessionId}
                 isOptional
                 description={t("Set 0 to leave session lifetime unrestricted by the tenant floor.")}
-                status={
-                  sessionError
-                    ? { type: "error", message: sessionError, messageID: sessionErrorId }
-                    : undefined
-                }
+                status={sessionError ? { type: "error", message: sessionError } : undefined}
                 width="100%"
-              >
-                <Input
-                  id={sessionId}
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={sessionMaxAgeInput}
-                  onChange={(e) => {
-                    setSessionMaxAgeInput(e.target.value);
-                    setSessionError(null);
-                    setSaveSuccess(false);
-                  }}
-                  aria-describedby={sessionError ? sessionErrorId : undefined}
-                  aria-invalid={sessionError ? true : undefined}
-                  disabled={!canEdit || updatePolicy.isPending}
-                />
-              </Field>
+                min={0}
+                step={1}
+                isIntegerOnly
+                value={sessionMaxAgeInput.trim() === "" ? null : Number(sessionMaxAgeInput)}
+                onChange={(value) => {
+                  setSessionMaxAgeInput(value === null ? "" : String(value));
+                  setSessionError(null);
+                  setSaveSuccess(false);
+                }}
+                isDisabled={!canEdit || updatePolicy.isPending}
+              />
 
               {canEdit && (
                 <HStack justify="end">
                   <Button
                     type="submit"
-                    variant="default"
-                    disabled={updatePolicy.isPending}
+                    label={t("Save policy")}
+                    variant="primary"
+                    isLoading={updatePolicy.isPending}
                     aria-busy={updatePolicy.isPending || undefined}
-                  >
-                    {updatePolicy.isPending && <Spinner />}
-                    {t("Save policy")}
-                  </Button>
+                    isDisabled={updatePolicy.isPending}
+                  />
                 </HStack>
               )}
               </form>
@@ -501,20 +432,16 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
             actions={
               <>
                 <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => policyQuery.refetch()}
-                            disabled={policyQuery.isFetching || !activeTenantId}
-                            aria-busy={policyQuery.isFetching || undefined}
-                          >
-                            {policyQuery.isFetching ? (
-                              <Spinner />
-                            ) : (
-                              <RefreshCw className="size-4" aria-hidden="true" />
-                            )}
-                            {t("Refresh")}
-                          </Button>
+                  type="button"
+                  label={t("Refresh")}
+                  variant="secondary"
+                  size="sm"
+                  icon={<RefreshCw className="size-4" aria-hidden="true" />}
+                  isLoading={policyQuery.isFetching}
+                  onClick={() => policyQuery.refetch()}
+                  aria-busy={policyQuery.isFetching || undefined}
+                  isDisabled={policyQuery.isFetching || !activeTenantId}
+                />
               </>
             }
           />

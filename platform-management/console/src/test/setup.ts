@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { configure } from "@testing-library/react";
 import "@multica/vitest-setup/web-storage";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 
 // Row actions render as inline buttons while the sidebar is collapsed and as a
 // "..." menu while it is expanded. Screen tests address the buttons directly,
@@ -12,6 +12,29 @@ vi.mock("../components/sidebar-state", () => ({
 }));
 
 configure({ asyncUtilTimeout: 5_000 });
+
+// Astryx controls mark a disabled button with aria-disabled and keep it focusable,
+// so jest-dom's toBeDisabled (native disabled only) does not see them.
+expect.extend({
+  toBeDisabledControl(received: Element) {
+    const disabled =
+      received.hasAttribute("disabled") || received.getAttribute("aria-disabled") === "true";
+    return {
+      pass: disabled,
+      message: () =>
+        `expected ${received.outerHTML.slice(0, 120)} to be disabled (native or aria-disabled)`,
+    };
+  },
+});
+
+declare module "vitest" {
+  interface Assertion<T = any> {
+    toBeDisabledControl(): void;
+  }
+  interface AsymmetricMatchersContaining {
+    toBeDisabledControl(): void;
+  }
+}
 
 // jsdom lacks these browser APIs, which Base UI dialogs and selects use. Pure
 // logic suites opt out of jsdom with `// @vitest-environment node` and share

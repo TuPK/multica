@@ -2,12 +2,10 @@ import { useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import { Field, FieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { AlertCircle, Info, Shield } from "@multica/ui/icons";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@astryxdesign/core/Button";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Shield } from "@multica/ui/icons";
 import { useSendCode, useVerifyCode } from "../api/hooks";
 import { t } from "../i18n";
 
@@ -96,125 +94,100 @@ export function Login({ onSuccess }: LoginProps) {
         </div>
 
         <div className="space-y-4">
-          {infoMessage && (
-            <Alert role="status" className="border-info/30 bg-info/10 text-foreground">
-              <Info className="size-4 text-info" aria-hidden="true" />
-              <AlertDescription className="text-caption text-foreground">
-                {infoMessage}
-              </AlertDescription>
-            </Alert>
-          )}
+          {infoMessage && <Banner role="status" status="info" title={infoMessage} />}
 
-          {errorMessage && (
-            <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
-              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-              <AlertDescription className="text-caption">{errorMessage}</AlertDescription>
-            </Alert>
-          )}
+          {errorMessage && <Banner role="alert" status="error" title={errorMessage} />}
 
           {step === "email" ? (
             <form onSubmit={handleSendCode} className="space-y-4">
-              <Field>
-                <FieldLabel htmlFor="email-input" className="text-label">
-                  {t("Email address")}
-                </FieldLabel>
-                <Input
-                  id="email-input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t("staff@example.com")}
-                  required
-                  disabled={sendCode.isPending}
-                  autoComplete="email"
-                />
-              </Field>
+              <TextInput
+                id="email-input"
+                type="email"
+                label={t("Email address")}
+                width="100%"
+                value={email}
+                onChange={(value) => setEmail(value)}
+                placeholder={t("staff@example.com")}
+                isRequired
+                isDisabled={sendCode.isPending}
+                autoComplete="email"
+              />
               <Button
                 type="submit"
-                className="w-full"
-                disabled={!email.trim() || sendCode.isPending}
+                label={t("Send sign-in code")}
+                variant="primary"
+                width="100%"
+                isDisabled={!email.trim() || sendCode.isPending}
+                isLoading={sendCode.isPending}
                 aria-busy={sendCode.isPending}
-              >
-                {sendCode.isPending && <Spinner className="size-3.5" />}
-                {t("Send sign-in code")}
-              </Button>
+              />
             </form>
           ) : step === "code" ? (
             <form onSubmit={handleVerifyCode} className="space-y-4">
-              <Field>
-                <FieldLabel htmlFor="code-input" className="text-label">
-                  {t("6-digit code")}
-                </FieldLabel>
-                <Input
-                  id="code-input"
-                  type="text"
-                  inputMode="numeric"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="000000"
-                  maxLength={6}
-                  required
-                  disabled={verifyCode.isPending}
-                  autoFocus
-                  className="text-center font-mono tabular-nums tracking-widest"
-                />
-              </Field>
+              <TextInput
+                id="code-input"
+                type="text"
+                inputMode="numeric"
+                label={t("6-digit code")}
+                width="100%"
+                value={code}
+                onChange={(value) => setCode(value.slice(0, 6))}
+                placeholder="000000"
+                isRequired
+                isDisabled={verifyCode.isPending}
+                hasAutoFocus
+                controlClassName="text-center font-mono tabular-nums tracking-widest"
+              />
               <Button
                 type="submit"
-                className="w-full"
-                disabled={!code.trim() || verifyCode.isPending}
+                label={t("Sign in")}
+                variant="primary"
+                width="100%"
+                isDisabled={!code.trim() || verifyCode.isPending}
+                isLoading={verifyCode.isPending}
                 aria-busy={verifyCode.isPending}
-              >
-                {verifyCode.isPending && <Spinner className="size-3.5" />}
-                {t("Sign in")}
-              </Button>
+              />
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full text-caption"
+                label={t("Use a different email")}
+                width="100%"
                 onClick={backToEmail}
-              >
-                {t("Use a different email")}
-              </Button>
+              />
             </form>
           ) : (
             <form onSubmit={handleVerifyTotp} className="space-y-4">
-              <Field>
-                <FieldLabel htmlFor="totp-input" className="text-label">
-                  {t("Authenticator code")}
-                </FieldLabel>
-                <Input
-                  id="totp-input"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  value={totp}
-                  onChange={(e) => setTotp(e.target.value)}
-                  placeholder="000000"
-                  maxLength={6}
-                  required
-                  disabled={verifyCode.isPending}
-                  autoFocus
-                  className="text-center font-mono tabular-nums tracking-widest"
-                />
-              </Field>
+              <TextInput
+                id="totp-input"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                label={t("Authenticator code")}
+                width="100%"
+                value={totp}
+                onChange={(value) => setTotp(value.slice(0, 6))}
+                placeholder="000000"
+                isRequired
+                isDisabled={verifyCode.isPending}
+                hasAutoFocus
+                controlClassName="text-center font-mono tabular-nums tracking-widest"
+              />
               <Button
                 type="submit"
-                className="w-full"
-                disabled={!totp.trim() || verifyCode.isPending}
+                label={t("Sign in")}
+                variant="primary"
+                width="100%"
+                isDisabled={!totp.trim() || verifyCode.isPending}
+                isLoading={verifyCode.isPending}
                 aria-busy={verifyCode.isPending}
-              >
-                {verifyCode.isPending && <Spinner className="size-3.5" />}
-                {t("Sign in")}
-              </Button>
+              />
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full text-caption"
+                label={t("Start over")}
+                width="100%"
                 onClick={backToEmail}
-              >
-                {t("Start over")}
-              </Button>
+              />
             </form>
           )}
         </div>

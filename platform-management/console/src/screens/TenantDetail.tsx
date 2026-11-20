@@ -13,42 +13,22 @@ import {
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+  TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
+import { Button } from "@astryxdesign/core/Button";
 import { RowActions, useRowActionsWidth } from "../components/RowActions";
+import { Banner } from "@astryxdesign/core/Banner";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { TabList, Tab } from "@astryxdesign/core/TabList";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@multica/ui/components/ui/dialog";
-import { Field, FieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import {
-  AlertCircle,
   Building2,
   Gauge,
-  Info,
   Lock,
   SlidersHorizontal,
-  Trash2,
-} from "@multica/ui/icons";
+  Trash2 } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
@@ -64,8 +44,7 @@ import {
   useSetTenantLimitOverride,
   useSetTenantStatus,
   useTenant,
-  useTenantResources,
-} from "../api/hooks";
+  useTenantResources } from "../api/hooks";
 import { LIMIT_GATES, type ResourceUsageItem, type TenantWorkspace } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import {
@@ -74,8 +53,7 @@ import {
   formatResourceLimit,
   resolveResourceState,
   ResourceStateBadge,
-  resourceTypeLabel,
-} from "./Resources";
+  resourceTypeLabel } from "./Resources";
 import { formatBytes, maxWorkspacesLabel, statusSummaryText } from "./Tenants";
 import { TenantPolicy } from "./TenantPolicy";
 import { TenantUsers } from "./TenantUsers";
@@ -105,16 +83,14 @@ function usageSummary(workspace: TenantWorkspace): string {
 
 const LIMIT_GATE_OPTIONS: Array<{ value: string; label: string }> = LIMIT_GATES.map((gate) => ({
   value: gate,
-  label: `${resourceTypeLabel(gate)} (${gate})`,
-}));
+  label: `${resourceTypeLabel(gate)} (${gate})` }));
 
 export function TenantDetail({
   tenantId,
   onBack,
   onSelectWorkspace,
   onSelectUser,
-  userRole,
-}: TenantDetailProps) {
+  userRole }: TenantDetailProps) {
   const actionsWidth = useRowActionsWidth(96);
   const { data: me } = useMe();
   const effectiveRole = userRole ?? me?.role;
@@ -136,8 +112,7 @@ export function TenantDetail({
     isLoading: resourcesLoading,
     isError: resourcesError,
     error: resourcesErrorObj,
-    refetch: refetchResources,
-  } = useTenantResources(tenantId, activeTab === "resources");
+    refetch: refetchResources } = useTenantResources(tenantId, activeTab === "resources");
   const legalHoldsQuery = useLegalHolds(effectiveRole === "system_admin");
   const setLimitOverride = useSetTenantLimitOverride();
   const deleteTenantNow = useDeleteTenantNow();
@@ -188,8 +163,7 @@ export function TenantDetail({
   const handleConfirmDeleteTenant = async ({
     reason,
     confirm,
-    export_first,
-  }: {
+    export_first }: {
     reason: string;
     confirm: string;
     export_first?: boolean;
@@ -200,8 +174,7 @@ export function TenantDetail({
         tenantId,
         reason,
         confirm,
-        ...(export_first !== undefined ? { export_first } : {}),
-      });
+        ...(export_first !== undefined ? { export_first } : {}) });
       setDeleteDialogOpen(false);
       setDeleteNotice(t("Immediate deletion requested ({0}).", res.request_id));
     } catch (err) {
@@ -231,8 +204,7 @@ export function TenantDetail({
       const res = await setTenantStatus.mutateAsync({
         tenantId,
         status: nextStatus,
-        reason: trimmedReason,
-      });
+        reason: trimmedReason });
       setStatusDialogMode(null);
       setStatusNotice(
         t("Tenant status updated to {0} across {1} workspace(s).", res.status, res.workspace_ids.length),
@@ -289,8 +261,7 @@ export function TenantDetail({
         gate: overrideGate,
         value: nextValue,
         workspace_ids: overrideWorkspaceId !== "all" ? [overrideWorkspaceId] : undefined,
-        reason: trimmedReason,
-      });
+        reason: trimmedReason });
       setOverrideDialogOpen(false);
       setOverrideNotice(
         nextValue === null
@@ -306,8 +277,7 @@ export function TenantDetail({
     { value: "all", label: t("All workspaces") },
     ...tenant.workspaces.map((ws) => ({
       value: ws.id,
-      label: ws.name || ws.slug || ws.id,
-    })),
+      label: ws.name || ws.slug || ws.id })),
   ];
 
   return (
@@ -328,37 +298,34 @@ export function TenantDetail({
               {canManageTenantStatus && tenant.status !== "suspended" && (
                 <Button
                   type="button"
-                  variant="outline"
+                  label={t("Lock tenant")}
+                  variant="secondary"
                   size="sm"
+                  icon={<Lock className="size-3.5" aria-hidden="true" />}
                   onClick={() => openStatusDialog("lock")}
-                >
-                  <Lock className="size-3.5" aria-hidden="true" />
-                  <span>{t("Lock tenant")}</span>
-                </Button>
+                />
               )}
               {canManageTenantStatus &&
                 (tenant.status === "suspended" || tenant.status === "read_only") && (
                   <Button
                     type="button"
-                    variant="outline"
+                    label={t("Unlock tenant")}
+                    variant="secondary"
                     size="sm"
                     onClick={() => openStatusDialog("unlock")}
-                  >
-                    <span>{t("Unlock tenant")}</span>
-                  </Button>
+                  />
                 )}
               {canDeleteTenant && (
                 <Button
+                  label={t("Delete tenant")}
                   variant="destructive"
                   size="sm"
+                  icon={<Trash2 className="size-3.5" aria-hidden="true" />}
                   onClick={() => {
                     setDeleteError(null);
                     setDeleteDialogOpen(true);
                   }}
-                >
-                  <Trash2 className="size-3.5" aria-hidden="true" />
-                  <span>{t("Delete tenant")}</span>
-                </Button>
+                />
               )}
             </div>
           ) : undefined
@@ -366,17 +333,19 @@ export function TenantDetail({
       />
 
       {statusNotice && (
-        <Alert role="status">
-          <Info className="size-4" aria-hidden="true" />
-          <AlertDescription>{statusNotice}</AlertDescription>
-        </Alert>
+        <Banner
+          status="info"
+          role="status"
+          title={statusNotice}
+        />
       )}
 
       {deleteNotice && (
-        <Alert role="status">
-          <Info className="size-4" aria-hidden="true" />
-          <AlertDescription>{deleteNotice}</AlertDescription>
-        </Alert>
+        <Banner
+          status="info"
+          role="status"
+          title={deleteNotice}
+        />
       )}
 
       <Card padding={4}>
@@ -397,30 +366,32 @@ export function TenantDetail({
         </MetadataList>
       </Card>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => {
-          if (
-            value === "workspaces" ||
-            value === "users" ||
-            value === "resources" ||
-            value === "policy"
-          ) {
-            setActiveTab(value);
-          }
-        }}
-        className="space-y-4"
-      >
+      <div className="space-y-4">
         <div className="border-b border-surface-border">
-          <TabsList variant="line" aria-label={t("Tenant sections")}>
-            <TabsTrigger value="workspaces">{t("Workspaces")}</TabsTrigger>
-            <TabsTrigger value="users">{t("Users")}</TabsTrigger>
-            <TabsTrigger value="resources">{t("Resources")}</TabsTrigger>
-            {canViewPolicy && <TabsTrigger value="policy">{t("Policy")}</TabsTrigger>}
-          </TabsList>
+          <TabList
+            role="tablist"
+            value={activeTab}
+            onChange={(value) => {
+              if (
+                value === "workspaces" ||
+                value === "users" ||
+                value === "resources" ||
+                value === "policy"
+              ) {
+                setActiveTab(value);
+              }
+            }}
+            aria-label={t("Tenant sections")}
+          >
+            <Tab value="workspaces" label={t("Workspaces")} />
+            <Tab value="users" label={t("Users")} />
+            <Tab value="resources" label={t("Resources")} />
+            {canViewPolicy && <Tab value="policy" label={t("Policy")} />}
+          </TabList>
         </div>
 
-        <TabsContent value="workspaces">
+        {activeTab === "workspaces" && (
+<>
           <Section variant="transparent" padding={0} className="space-y-4">
             <Heading level={3}>{t("Workspaces")}</Heading>
             {tenant.workspaces.length === 0 ? (
@@ -450,20 +421,17 @@ export function TenantDetail({
                             {workspace.slug}
                           </div>
                         </>
-                      ),
-                    },
+                      ) },
                     {
                       key: "plan_key",
                       header: t("Plan"),
                       width: proportional(1, { minWidth: 100 }),
-                      renderCell: (workspace) => <Text type="supporting">{workspace.plan_key || "-"}</Text>,
-                    },
+                      renderCell: (workspace) => <Text type="supporting">{workspace.plan_key || "-"}</Text> },
                     {
                       key: "status",
                       header: t("Status"),
                       width: proportional(1, { minWidth: 110 }),
-                      renderCell: (workspace) => <StatusBadge status={workspace.status} />,
-                    },
+                      renderCell: (workspace) => <StatusBadge status={workspace.status} /> },
                     {
                       key: "member_count",
                       header: t("Members"),
@@ -473,16 +441,14 @@ export function TenantDetail({
                         <Text type="body" hasTabularNumbers>
                           {workspace.member_count}
                         </Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "owner",
                       header: t("Owner"),
                       width: proportional(1.5, { minWidth: 160 }),
                       renderCell: (workspace) => (
                         <Text type="supporting">{workspace.owner?.email ?? "-"}</Text>
-                      ),
-                    },
+                      ) },
                     {
                       key: "usage",
                       header: t("Usage"),
@@ -496,8 +462,7 @@ export function TenantDetail({
                             {usageSummary(workspace)}
                           </Text>
                         </span>
-                      ),
-                    },
+                      ) },
                     {
                       key: "actions",
                       header: t("Action"),
@@ -508,16 +473,17 @@ export function TenantDetail({
                           label={t("workspace {0}", workspace.name)}
                           actions={[{ label: t("View"), onSelect: () => onSelectWorkspace(workspace.id) }]}
                         />
-                      ),
-                    },
+                      ) },
                   ]}
                 />
               </div>
             )}
           </Section>
-        </TabsContent>
+        </>
+)}
 
-        <TabsContent value="users">
+        {activeTab === "users" && (
+<>
           {activeTab === "users" && (
             <TenantUsers
               tenantId={tenantId}
@@ -526,9 +492,11 @@ export function TenantDetail({
               userRole={effectiveRole}
             />
           )}
-        </TabsContent>
+        </>
+)}
 
-        <TabsContent value="resources">
+        {activeTab === "resources" && (
+<>
           {activeTab === "resources" && (
             <Section variant="transparent" padding={0} className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -536,21 +504,21 @@ export function TenantDetail({
                 {canSetLimitOverride && (
                   <Button
                     type="button"
-                    variant="outline"
+                    label={t("Set extra limit")}
+                    variant="secondary"
                     size="sm"
+                    icon={<SlidersHorizontal className="size-3.5" aria-hidden="true" />}
                     onClick={handleOpenOverrideDialog}
-                  >
-                    <SlidersHorizontal className="size-3.5" aria-hidden="true" />
-                    <span>{t("Set extra limit")}</span>
-                  </Button>
+                  />
                 )}
               </div>
 
               {overrideNotice && (
-                <Alert role="status">
-                  <Info className="size-4" aria-hidden="true" />
-                  <AlertDescription>{overrideNotice}</AlertDescription>
-                </Alert>
+                <Banner
+                  status="info"
+                  role="status"
+                  title={overrideNotice}
+                />
               )}
 
               {resourcesLoading && <LoadingState message={t("Loading tenant resources...")} />}
@@ -570,12 +538,11 @@ export function TenantDetail({
               {!resourcesLoading && !resourcesError && resourcesData && (
                 <div className="space-y-6">
                   {!resourcesData.complete && (
-                    <Alert role="status">
-                      <Info className="size-4" aria-hidden="true" />
-                      <AlertDescription>
-                        {t("Resource counters are partial across the tenant's workspaces.")}
-                      </AlertDescription>
-                    </Alert>
+                    <Banner
+                      status="info"
+                      role="status"
+                      title={t("Resource counters are partial across the tenant's workspaces.")}
+                    />
                   )}
 
                   {resourcesData.resources.length === 0 ? (
@@ -710,68 +677,47 @@ export function TenantDetail({
               )}
             </Section>
           )}
-        </TabsContent>
+        </>
+)}
 
-        {canViewPolicy && (
-          <TabsContent value="policy">
-            <TenantPolicy tenantId={tenantId} userRole={effectiveRole} embedded />
-          </TabsContent>
+        {canViewPolicy && activeTab === "policy" && (
+          <TenantPolicy tenantId={tenantId} userRole={effectiveRole} embedded />
         )}
-      </Tabs>
+      </div>
 
       {canSetLimitOverride && (
         <Dialog
-          open={overrideDialogOpen}
+          isOpen={overrideDialogOpen}
           onOpenChange={(open) => {
             if (!setLimitOverride.isPending) {
               setOverrideDialogOpen(open);
               if (!open) setOverrideError(null);
             }
           }}
+          purpose="form"
         >
-          <DialogContent>
+
             <form onSubmit={handleSubmitOverride} className="flex flex-col gap-4">
-              <DialogHeader>
-                <DialogTitle>{t("Set extra limit")}</DialogTitle>
-                <DialogDescription>
-                  {t("Override one plan limit gate across workspaces of this tenant, or release an existing override.")}
-                </DialogDescription>
-              </DialogHeader>
+              <DialogHeader title={t("Set extra limit")} subtitle={t("Override one plan limit gate across workspaces of this tenant, or release an existing override.")} />
 
               {overrideError && (
-                <Alert variant="destructive">
-                  <AlertCircle className="size-4" aria-hidden="true" />
-                  <AlertDescription>{overrideError}</AlertDescription>
-                </Alert>
+                <Banner
+                  status="error"
+                  role="alert"
+                  title={overrideError}
+                />
               )}
 
-              <Field>
-                <FieldLabel htmlFor="override-gate-select" className="text-label">
-                  {t("Limit gate")} <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Select
-                  items={LIMIT_GATE_OPTIONS}
-                  value={overrideGate}
-                  onValueChange={(val) => {
+              <Selector
+                label={t("Limit gate")}
+                isRequired
+                width="100%"
+                options={LIMIT_GATE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+                value={overrideGate}
+                onChange={(val) => {
                     if (val) setOverrideGate(val);
                   }}
-                  disabled={setLimitOverride.isPending}
-                >
-                  <SelectTrigger id="override-gate-select" aria-label={t("Limit gate")} className="w-full">
-                    <SelectValue>
-                      {t(LIMIT_GATE_OPTIONS.find((item) => item.value === overrideGate)?.label ??
-                        overrideGate)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LIMIT_GATE_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(item.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+              />
 
               <RadioList
                 label={t("Override action")}
@@ -784,194 +730,147 @@ export function TenantDetail({
               </RadioList>
 
               {overrideMode === "set" && (
-                <Field>
-                  <FieldLabel htmlFor="override-value-input" className="text-label">
-                    {t("Extra limit value")} <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="override-value-input"
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={overrideValue}
-                    onChange={(e) => setOverrideValue(e.target.value)}
-                    placeholder={t("e.g. 25")}
-                    disabled={setLimitOverride.isPending}
-                  />
-                </Field>
+                <NumberInput
+                  label={t("Extra limit value")}
+                  id={"override-value-input"}
+                  isRequired
+                  min={0}
+                  step={1}
+                  value={overrideValue.trim() === "" ? null : Number(overrideValue)}
+                  onChange={(value) => setOverrideValue(value === null ? "" : String(value))}
+                  placeholder={t("e.g. 25")}
+                  isDisabled={setLimitOverride.isPending}
+                  width="100%"
+                />
               )}
 
-              <Field>
-                <FieldLabel htmlFor="override-workspace-select" className="text-label">
-                  {t("Target workspaces")}
-                </FieldLabel>
-                <Select
-                  items={workspaceScopeOptions}
-                  value={overrideWorkspaceId}
-                  onValueChange={(val) => {
+              <Selector
+                label={t("Target workspaces")}
+                width="100%"
+                options={workspaceScopeOptions.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+                value={overrideWorkspaceId}
+                onChange={(val) => {
                     if (val) setOverrideWorkspaceId(val);
                   }}
-                  disabled={setLimitOverride.isPending}
-                >
-                  <SelectTrigger
-                    id="override-workspace-select"
-                    aria-label={t("Target workspaces")}
-                    className="w-full"
-                  >
-                    <SelectValue>
-                      {t(workspaceScopeOptions.find((item) => item.value === overrideWorkspaceId)
-                        ?.label ?? t("All workspaces"))}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workspaceScopeOptions.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(item.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+              />
 
-              <Field>
-                <FieldLabel htmlFor="override-reason-input" className="text-label">
-                  {t("Reason")} <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Textarea
-                  id="override-reason-input"
-                  value={overrideReason}
-                  onChange={(e) => setOverrideReason(e.target.value)}
-                  placeholder={t("Explain why this override is being changed...")}
-                  rows={3}
-                  disabled={setLimitOverride.isPending}
+              <TextArea
+                label={t("Reason")}
+                id={"override-reason-input"}
+                isRequired
+                value={overrideReason}
+                onChange={(value) => setOverrideReason(value)}
+                placeholder={t("Explain why this override is being changed...")}
+                rows={3}
+                isDisabled={setLimitOverride.isPending}
+                width="100%"
+              />
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  isDisabled={setLimitOverride.isPending}
+                  label={t("Cancel")}
+                  onClick={() => ((open) => {
+            if (!setLimitOverride.isPending) {
+              setOverrideDialogOpen(open);
+              if (!open) setOverrideError(null);
+            }
+          })(false)}
                 />
-              </Field>
-
-              <DialogFooter>
-                <DialogClose
-                  render={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={setLimitOverride.isPending}
-                    />
-                  }
-                >
-                  {t("Cancel")}
-                </DialogClose>
                 <Button
                   type="submit"
-                  variant="default"
-                  disabled={setLimitOverride.isPending}
+                  label={t("Save limit")}
+                  variant="primary"
+                  isLoading={setLimitOverride.isPending}
                   aria-busy={setLimitOverride.isPending || undefined}
-                >
-                  {setLimitOverride.isPending && <Spinner className="size-3.5" />}
-                  {t("Save limit")}
-                </Button>
-              </DialogFooter>
+                  isDisabled={setLimitOverride.isPending}
+                />
+              </div>
             </form>
-          </DialogContent>
+
         </Dialog>
       )}
 
       {canManageTenantStatus && (
         <Dialog
-          open={statusDialogMode !== null}
+          isOpen={statusDialogMode !== null}
           onOpenChange={(open) => {
             if (!open && !setTenantStatus.isPending) {
               setStatusDialogMode(null);
               setStatusDialogError(null);
             }
           }}
+          purpose="form"
+          width={448}
         >
-          <DialogContent className="sm:max-w-md">
+
             <form onSubmit={handleSubmitTenantStatus} className="space-y-4">
-              <DialogHeader>
-                <DialogTitle>
-                  {statusDialogMode === "unlock" ? t("Unlock tenant") : t("Lock tenant")}
-                </DialogTitle>
-                <DialogDescription>
-                  {statusDialogMode === "unlock"
+              <DialogHeader title={statusDialogMode === "unlock" ? t("Unlock tenant") : t("Lock tenant")} subtitle={statusDialogMode === "unlock"
                     ? t("Restore all locked workspaces in this tenant back to active status.")
-                    : t("Cascade a status lock across every active workspace belonging to this tenant.")}
-                </DialogDescription>
-              </DialogHeader>
+                    : t("Cascade a status lock across every active workspace belonging to this tenant.")} />
 
               {statusDialogError && (
-                <Alert variant="destructive">
-                  <AlertCircle className="size-4" aria-hidden="true" />
-                  <AlertDescription>{statusDialogError}</AlertDescription>
-                </Alert>
+                <Banner
+                  status="error"
+                  role="alert"
+                  title={statusDialogError}
+                />
               )}
 
               {statusDialogMode === "lock" && (
-                <Field>
-                  <FieldLabel htmlFor="tenant-lock-status">{t("Target status")}</FieldLabel>
-                  <Select
-                    items={[
-                      { value: "suspended", label: t("Suspended") },
-                      { value: "read_only", label: t("Read-only") },
-                    ]}
-                    value={lockTargetStatus}
-                    onValueChange={(val) => {
-                      if (val === "suspended" || val === "read_only") {
-                        setLockTargetStatus(val);
-                      }
-                    }}
-                  >
-                    <SelectTrigger
-                      id="tenant-lock-status"
-                      aria-label={t("Target status")}
-                      className="w-full"
-                    >
-                      <SelectValue>
-                        {lockTargetStatus === "read_only" ? t("Read-only") : t("Suspended")}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="suspended">{t("Suspended")}</SelectItem>
-                      <SelectItem value="read_only">{t("Read-only")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
+                <Selector
+                  label={t("Target status")}
+                  width="100%"
+                  options={[
+                    { value: "suspended", label: t("Suspended") },
+                    { value: "read_only", label: t("Read-only") },
+                  ]}
+                  value={lockTargetStatus}
+                  onChange={(val) => {
+                    if (val === "suspended" || val === "read_only") {
+                      setLockTargetStatus(val);
+                    }
+                  }}
+                />
               )}
 
-              <Field>
-                <FieldLabel htmlFor="tenant-status-reason">{t("Reason")}</FieldLabel>
-                <Textarea
-                  id="tenant-status-reason"
-                  value={statusReason}
-                  onChange={(e) => setStatusReason(e.target.value)}
-                  placeholder={t("Explain why this tenant is being updated...")}
-                  disabled={setTenantStatus.isPending}
-                  rows={3}
-                />
-              </Field>
+              <TextArea
+                id="tenant-status-reason"
+                label={t("Reason")}
+                value={statusReason}
+                onChange={(value) => setStatusReason(value)}
+                placeholder={t("Explain why this tenant is being updated...")}
+                isDisabled={setTenantStatus.isPending}
+                rows={3}
+                width="100%"
+              />
 
-              <DialogFooter>
-                <DialogClose
-                  render={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={setTenantStatus.isPending}
-                    />
-                  }
-                >
-                  {t("Cancel")}
-                </DialogClose>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  isDisabled={setTenantStatus.isPending}
+                  label={t("Cancel")}
+                  onClick={() => ((open) => {
+            if (!open && !setTenantStatus.isPending) {
+              setStatusDialogMode(null);
+              setStatusDialogError(null);
+            }
+          })(false)}
+                />
                 <Button
                   type="submit"
-                  variant={statusDialogMode === "unlock" ? "default" : "destructive"}
-                  disabled={!statusReason.trim() || setTenantStatus.isPending}
+                  label={statusDialogMode === "unlock" ? t("Unlock tenant") : t("Apply lock")}
+                  variant={statusDialogMode === "unlock" ? "primary" : "destructive"}
+                  isDisabled={!statusReason.trim() || setTenantStatus.isPending}
+                  isLoading={setTenantStatus.isPending}
                   aria-busy={setTenantStatus.isPending || undefined}
-                >
-                  {setTenantStatus.isPending && <Spinner className="size-3.5" />}
-                  {statusDialogMode === "unlock" ? t("Unlock tenant") : t("Apply lock")}
-                </Button>
-              </DialogFooter>
+                />
+              </div>
             </form>
-          </DialogContent>
+
         </Dialog>
       )}
 

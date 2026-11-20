@@ -140,7 +140,7 @@ describe("TenantDetail screen", () => {
 
     expect(mockUseTenant).toHaveBeenCalledWith("t-1");
     expect(screen.getByRole("heading", { name: "Acme Group" })).toBeInTheDocument();
-    const main = screen.getByText("Main workspace").closest("tr") as HTMLElement;
+    const main = screen.getAllByText("Main workspace")[0]!.closest("tr") as HTMLElement;
     expect(main).toHaveTextContent("main");
     expect(main).toHaveTextContent("pro");
     expect(main).toHaveTextContent("owner@example.com");
@@ -148,7 +148,7 @@ describe("TenantDetail screen", () => {
     fireEvent.click(within(main).getByRole("button", { name: "View" }));
     expect(onSelect).toHaveBeenCalledWith("w-1");
 
-    const side = screen.getByText("Side workspace").closest("tr") as HTMLElement;
+    const side = screen.getAllByText("Side workspace")[0]!.closest("tr") as HTMLElement;
     expect(side).toHaveTextContent("free");
     expect(within(side).queryByText("owner@example.com")).not.toBeInTheDocument();
     fireEvent.click(within(side).getByRole("button", { name: "View" }));
@@ -172,9 +172,9 @@ describe("TenantDetail screen", () => {
   it("shows a workspace with no usage row as an empty value, not zeros", () => {
     loaded(tenant);
     render(<TenantDetail tenantId="t-1" onBack={vi.fn()} onSelectWorkspace={vi.fn()} />);
-    const side = screen.getByText("Side workspace").closest("tr") as HTMLElement;
+    const side = screen.getAllByText("Side workspace")[0]!.closest("tr") as HTMLElement;
     expect(within(side).getByTestId("workspace-usage").textContent).toBe("-");
-    expect(within(screen.getByText("Main workspace").closest("tr") as HTMLElement).getByTestId("workspace-usage")).toHaveTextContent("2.0 KB");
+    expect(within(screen.getAllByText("Main workspace")[0]!.closest("tr") as HTMLElement).getByTestId("workspace-usage")).toHaveTextContent("2.0 KB");
   });
 
   it("goes back to the tenant list", () => {
@@ -229,13 +229,13 @@ describe("TenantDetail screen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Delete tenant" }));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("button", { name: "Delete tenant" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Delete tenant" })).toBeDisabledControl();
 
     fireEvent.change(within(dialog).getByLabelText(/Reason/i), { target: { value: "Contract ended" } });
     fireEvent.change(within(dialog).getByLabelText(/Tenant name/i), { target: { value: "Acme Group" } });
 
     const confirmBtn = within(dialog).getByRole("button", { name: "Delete tenant" });
-    expect(confirmBtn).toBeEnabled();
+    expect(confirmBtn).not.toBeDisabledControl();
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
@@ -419,6 +419,7 @@ describe("TenantDetail screen", () => {
     fireEvent.change(within(dialog).getByLabelText(/Extra limit value/i), {
       target: { value: "25" },
     });
+    fireEvent.blur(within(dialog).getByLabelText(/Extra limit value/i));
     fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
       target: { value: "Enterprise add-on" },
     });

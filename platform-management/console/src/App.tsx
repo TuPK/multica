@@ -195,7 +195,7 @@ function routeToPath(route: RouteState): string {
   return SCREEN_PATHS[route.screen];
 }
 
-function canAccessScreen(screen: Screen, role: StaffRole): boolean {
+function canAccessScreen(screen: string, role: StaffRole): boolean {
   if (screen === "overview") {
     return role !== "admin";
   }
@@ -350,7 +350,7 @@ export function App() {
   const renderScreen = () => {
     switch (effectiveRoute.screen) {
       case "overview":
-        return <Overview />;
+        return <Overview onNavigate={handleNavigate} canNavigate={(s) => canAccessScreen(s, me.role)} />;
       case "tenants":
         return <Tenants onSelectTenant={openTenant} />;
       case "workspaces":
@@ -477,7 +477,11 @@ export function App() {
       case "audit":
         return <Audit />;
       default:
-        return me.role === "admin" ? <Tenants onSelectTenant={openTenant} /> : <Overview />;
+        return me.role === "admin" ? (
+          <Tenants onSelectTenant={openTenant} />
+        ) : (
+          <Overview onNavigate={handleNavigate} canNavigate={(s) => canAccessScreen(s, me.role)} />
+        );
     }
   };
 

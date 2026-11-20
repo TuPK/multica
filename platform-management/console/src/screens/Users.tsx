@@ -9,10 +9,9 @@ import {
   TableRow,
 } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Search, Users as UsersIcon, X } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Search, Users as UsersIcon } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
@@ -51,31 +50,18 @@ export function Users({ onSelectUser }: UsersProps) {
       <PageHeader title={t("Users")} />
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full max-w-sm">
-          <Search
-            className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            aria-label={t("Search users")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("Search by email or name...")}
-            className="pr-8 pl-9"
-          />
-          {search && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label={t("Clear search")}
-              onClick={() => setSearch("")}
-              className="absolute top-1 right-1 text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-3.5" aria-hidden="true" />
-            </Button>
-          )}
+        <div className="w-full max-w-sm">
+        <TextInput
+          type="search"
+          label={t("Search users")}
+          isLabelHidden
+          width="100%"
+          startIcon={<Search className="size-4" aria-hidden="true" />}
+          hasClear
+          value={search}
+          onChange={(value) => setSearch(value)}
+          placeholder={t("Search by email or name...")}
+        />
         </div>
       </div>
 
@@ -100,9 +86,7 @@ export function Users({ onSelectUser }: UsersProps) {
           }
           actions={
             search ? (
-              <Button variant="outline" size="sm" onClick={() => setSearch("")}>
-                {t("Clear search")}
-              </Button>
+              <Button label={t("Clear search")} variant="secondary" size="sm" onClick={() => setSearch("")} />
             ) : undefined
           }
         />
@@ -164,14 +148,13 @@ export function Users({ onSelectUser }: UsersProps) {
           {hasNextPage && (
             <div className="flex justify-center pt-2">
               <Button
-                variant="outline"
+                label={t("Load more")}
+                variant="secondary"
                 onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
+                isDisabled={isFetchingNextPage}
+                isLoading={isFetchingNextPage}
                 aria-busy={isFetchingNextPage}
-              >
-                {isFetchingNextPage && <Spinner className="size-3.5" />}
-                {t("Load more")}
-              </Button>
+              />
             </div>
           )}
         </div>

@@ -1,11 +1,6 @@
 import type { ReactNode } from "react";
-import { Button } from "@multica/ui/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
+import { Button } from "@astryxdesign/core/Button";
+import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { t } from "../i18n";
 import { MoreHorizontal, type IconComponent } from "@multica/ui/icons";
 import { useSidebarCollapsed } from "./sidebar-state";
@@ -42,30 +37,28 @@ export function RowActions({ actions, label }: RowActionsProps): ReactNode {
             return (
               <Button
                 key={t(action.label)}
-                variant="ghost"
-                size="icon-sm"
-                title={action.title ?? action.label}
-                aria-label={`${t(action.label)} ${label}`}
-                disabled={action.disabled || action.busy}
-                aria-busy={action.busy || undefined}
-                className={action.destructive ? "text-destructive hover:text-destructive" : undefined}
+                label={`${t(action.label)} ${label}`}
+                icon={<Icon className="size-3.5" aria-hidden="true" />}
+                isIconOnly
+                tooltip={action.title ?? action.label}
+                variant={action.destructive ? "destructive" : "ghost"}
+                size="sm"
+                isDisabled={action.disabled || action.busy}
+                isLoading={action.busy}
                 onClick={action.onSelect}
-              >
-                <Icon className="size-3.5" aria-hidden="true" />
-              </Button>
+              />
             );
           }
           return (
             <Button
               key={t(action.label)}
-              variant={action.destructive ? "destructive" : action.primary ? "default" : "outline"}
+              label={t(action.label)}
+              variant={action.destructive ? "destructive" : action.primary ? "primary" : "secondary"}
               size="sm"
-              disabled={action.disabled || action.busy}
-              aria-busy={action.busy || undefined}
+              isDisabled={action.disabled || action.busy}
+              isLoading={action.busy}
               onClick={action.onSelect}
-            >
-              {t(action.label)}
-            </Button>
+            />
           );
         })}
       </div>
@@ -74,32 +67,28 @@ export function RowActions({ actions, label }: RowActionsProps): ReactNode {
 
   return (
     <div className="flex items-center justify-end">
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button variant="ghost" size="icon-sm" aria-label={t("Actions for {0}", label)} />
-          }
-        >
-          <MoreHorizontal className="size-4" aria-hidden="true" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-44">
-          {actions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <DropdownMenuItem
-                key={t(action.label)}
-                variant={action.destructive ? "destructive" : "default"}
-                disabled={action.disabled || action.busy}
-                title={action.title}
-                onClick={action.onSelect}
-              >
-                {Icon ? <Icon className="size-3.5" aria-hidden="true" /> : null}
-                {t(action.label)}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <DropdownMenu
+        button={{
+          label: t("Actions for {0}", label),
+          icon: <MoreHorizontal className="size-4" aria-hidden="true" />,
+          isIconOnly: true,
+          variant: "ghost",
+          size: "sm",
+        }}
+        alignment="end"
+        menuWidth={176}
+        items={actions.map((action) => {
+          const Icon = action.icon;
+          return {
+            id: t(action.label),
+            label: t(action.label),
+            icon: Icon ? <Icon className="size-3.5" aria-hidden="true" /> : undefined,
+            variant: action.destructive ? "destructive" : "default",
+            isDisabled: action.disabled || action.busy,
+            onClick: action.onSelect,
+          };
+        })}
+      />
     </div>
   );
 }

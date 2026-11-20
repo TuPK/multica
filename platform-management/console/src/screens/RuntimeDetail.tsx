@@ -10,12 +10,11 @@ import {
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+  TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import { Ban, CheckCircle2, Info, Server, Trash2 } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Ban, CheckCircle2, Server, Trash2 } from "@multica/ui/icons";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -31,8 +30,7 @@ import {
   useSetRuntimeStatus,
   useUnregisterRuntime,
   type RuntimeStatus,
-  type RuntimeTask,
-} from "../api/hooks";
+  type RuntimeTask } from "../api/hooks";
 import type { AuditEvent } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { t } from "../i18n";
@@ -78,8 +76,7 @@ export function RuntimeDetail({
   runtimeId,
   onBack,
   onSelectWorkspace,
-  userRole,
-}: RuntimeDetailProps) {
+  userRole }: RuntimeDetailProps) {
   const { data: me } = useMe();
   const effectiveRole = userRole ?? me?.role;
   const canRead =
@@ -93,8 +90,7 @@ export function RuntimeDetail({
     isLoading,
     isError,
     error,
-    refetch,
-  } = useRuntime(runtimeId, canRead);
+    refetch } = useRuntime(runtimeId, canRead);
 
   const setRuntimeStatus = useSetRuntimeStatus();
   const unregisterRuntime = useUnregisterRuntime();
@@ -164,8 +160,7 @@ export function RuntimeDetail({
       await setRuntimeStatus.mutateAsync({
         runtimeId: runtime.id,
         status: nextStatus,
-        reason,
-      });
+        reason });
       setStatusDialogOpen(false);
       setActionNotice(
         nextStatus === "disabled" ? t("Runtime disabled.") : t("Runtime enabled."),
@@ -177,8 +172,7 @@ export function RuntimeDetail({
 
   const handleConfirmUnregister = async ({
     reason,
-    confirm,
-  }: {
+    confirm }: {
     reason: string;
     confirm: string;
   }) => {
@@ -187,8 +181,7 @@ export function RuntimeDetail({
       const res = await unregisterRuntime.mutateAsync({
         runtimeId: runtime.id,
         reason,
-        confirm,
-      });
+        confirm });
       setUnregisterDialogOpen(false);
       setActionNotice(t("Runtime unregister requested ({0}).", res.request_id));
     } catch (err) {
@@ -221,32 +214,26 @@ export function RuntimeDetail({
                 <>
                   <Button
                     type="button"
-                    variant="outline"
+                    label={runtime.disabled ? t("Enable runtime") : t("Disable runtime")}
+                    variant="secondary"
                     size="sm"
+                    icon={runtime.disabled ? <CheckCircle2 className="size-3.5" aria-hidden="true" /> : <Ban className="size-3.5" aria-hidden="true" />}
                     onClick={() => {
                       setStatusError(null);
                       setStatusDialogOpen(true);
                     }}
-                  >
-                    {runtime.disabled ? (
-                      <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                    ) : (
-                      <Ban className="size-3.5" aria-hidden="true" />
-                    )}
-                    <span>{runtime.disabled ? t("Enable runtime") : t("Disable runtime")}</span>
-                  </Button>
+                  />
                   <Button
                     type="button"
+                    label={t("Unregister runtime")}
                     variant="destructive"
                     size="sm"
+                    icon={<Trash2 className="size-3.5" aria-hidden="true" />}
                     onClick={() => {
                       setUnregisterError(null);
                       setUnregisterDialogOpen(true);
                     }}
-                  >
-                    <Trash2 className="size-3.5" aria-hidden="true" />
-                    <span>{t("Unregister runtime")}</span>
-                  </Button>
+                  />
                 </>
               ) : undefined
             }
@@ -257,10 +244,11 @@ export function RuntimeDetail({
         <LayoutContent padding={0}>
           <div className="space-y-6">
             {actionNotice && (
-              <Alert role="status">
-                <Info className="size-4" aria-hidden="true" />
-                <AlertDescription>{actionNotice}</AlertDescription>
-              </Alert>
+              <Banner
+                status="info"
+                role="status"
+                title={actionNotice}
+              />
             )}
 
             <Section className="space-y-4">
@@ -316,13 +304,12 @@ export function RuntimeDetail({
                   {onSelectWorkspace && runtime.workspace_id ? (
                     <Button
                       type="button"
-                      variant="link"
+                      label={runtime.workspace_id}
+                      variant="ghost"
                       size="sm"
                       className="h-auto p-0 font-mono"
                       onClick={() => onSelectWorkspace(runtime.workspace_id)}
-                    >
-                      {runtime.workspace_id}
-                    </Button>
+                    />
                   ) : (
                     runtime.workspace_id || "-"
                   )}

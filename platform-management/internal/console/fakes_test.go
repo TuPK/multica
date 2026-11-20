@@ -136,7 +136,7 @@ type fakeReader struct {
 	lastUsers          UserSearch
 	lastNotes          NoteQuery
 	lastAudit          AuditQuery
-	lastSince          time.Time
+	lastNow            time.Time
 
 	lastOrderStatus billing.Status
 	lastNewestFirst bool
@@ -411,8 +411,8 @@ func (r *fakeReader) ListAuditEvents(_ context.Context, q AuditQuery) ([]AuditRo
 	return r.events, r.err
 }
 
-func (r *fakeReader) Overview(_ context.Context, since time.Time) (Overview, error) {
-	r.lastSince = since
+func (r *fakeReader) Overview(_ context.Context, now time.Time) (Overview, error) {
+	r.lastNow = now
 	return r.overview, r.err
 }
 

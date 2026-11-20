@@ -29,7 +29,7 @@ import {
   UserPlus,
   Users,
 } from "@multica/ui/icons";
-import { Button } from "@multica/ui/components/ui/button";
+import { Button } from "@astryxdesign/core/Button";
 import { StatusBadge } from "./StatusBadge";
 import type { MeResponse } from "./types";
 import { SidebarCollapsedProvider } from "./sidebar-state";
@@ -145,15 +145,15 @@ export function Layout({
       <StatusBadge status={user.role} />
       <Button
         type="button"
+        label={t("Sign out")}
+        icon={<LogOut className="size-4" aria-hidden="true" />}
+        isIconOnly
+        tooltip={t("Sign out")}
         variant="ghost"
-        size="icon-sm"
+        size="sm"
         onClick={onLogout}
-        title={t("Sign out")}
-        aria-label={t("Sign out")}
-        className="shrink-0 text-muted-foreground hover:text-foreground"
-      >
-        <LogOut className="size-4" aria-hidden="true" />
-      </Button>
+        className="shrink-0"
+      />
     </>
   );
 
@@ -209,14 +209,13 @@ export function Layout({
               {isCollapsed && (
                 <Button
                   type="button"
+                  label={t("Sign out")}
+                  icon={<LogOut className="size-4" aria-hidden="true" />}
+                  isIconOnly
                   variant="ghost"
-                  size="icon-sm"
+                  size="sm"
                   onClick={onLogout}
-                  aria-label={t("Sign out")}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <LogOut className="size-4" aria-hidden="true" />
-                </Button>
+                />
               )}
             </>
           }

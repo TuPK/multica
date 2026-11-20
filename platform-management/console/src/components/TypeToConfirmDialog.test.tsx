@@ -2,6 +2,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { TypeToConfirmDialog } from "./TypeToConfirmDialog";
+import { findAlert } from "../test/alert";
 
 describe("TypeToConfirmDialog", () => {
   it("keeps submit disabled until reason is non-empty and typed text matches", async () => {
@@ -24,25 +25,25 @@ describe("TypeToConfirmDialog", () => {
     const reasonInput = screen.getByLabelText(/Reason/i);
     const confirmInput = screen.getByLabelText(/Workspace slug/i);
 
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     // Reason only -> still disabled
     fireEvent.change(reasonInput, { target: { value: "Customer requested" } });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     // Whitespace-only reason + matching confirm -> still disabled
     fireEvent.change(reasonInput, { target: { value: "   " } });
     fireEvent.change(confirmInput, { target: { value: "acme-ws" } });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     // Valid reason + wrong case (case-sensitive by default) -> still disabled
     fireEvent.change(reasonInput, { target: { value: "Customer requested" } });
     fireEvent.change(confirmInput, { target: { value: "ACME-WS" } });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     // Valid reason + exact match (with outer spaces trimmed) -> enabled
     fireEvent.change(confirmInput, { target: { value: " acme-ws " } });
-    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).not.toBeDisabledControl();
 
     fireEvent.click(submitBtn);
     await waitFor(() => {
@@ -76,9 +77,9 @@ describe("TypeToConfirmDialog", () => {
 
     fireEvent.change(reasonInput, { target: { value: "Legal erasure" } });
     fireEvent.change(confirmInput, { target: { value: "user@example.com" } });
-    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).not.toBeDisabledControl();
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Failed to submit");
+    expect(findAlert()).toHaveTextContent("Failed to submit");
     expect(reasonInput).toHaveValue("Legal erasure");
     expect(confirmInput).toHaveValue("user@example.com");
   });
@@ -103,9 +104,9 @@ describe("TypeToConfirmDialog", () => {
     expect(screen.getByText(/owners will be notified/i)).toBeInTheDocument();
 
     const exportSwitch = screen.getByRole("switch", { name: /Export data before deleting/i });
-    expect(exportSwitch).toHaveAttribute("aria-checked", "false");
+    expect(exportSwitch).not.toBeChecked();
     fireEvent.click(exportSwitch);
-    expect(exportSwitch).toHaveAttribute("aria-checked", "true");
+    expect(exportSwitch).toBeChecked();
 
     fireEvent.change(screen.getByLabelText(/Reason/i), { target: { value: "Offboarding" } });
     fireEvent.change(screen.getByLabelText(/Workspace slug/i), { target: { value: "acme-ws" } });

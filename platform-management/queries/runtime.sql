@@ -86,3 +86,10 @@ DELETE FROM platform_runtime WHERE runtime_id = $1;
 
 -- name: PlatformRuntimeDisabled :one
 SELECT EXISTS (SELECT 1 FROM platform_runtime WHERE runtime_id = $1);
+
+-- name: CountRuntimesByStatus :many
+-- The runtimes of every workspace in each status (online or offline). A status
+-- with no runtime is absent.
+SELECT r.status, count(*)::bigint AS total
+FROM agent_runtime r
+GROUP BY r.status;

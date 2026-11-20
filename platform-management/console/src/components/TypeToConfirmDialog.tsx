@@ -1,20 +1,11 @@
-import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
-import { Field, Text } from "@astryxdesign/core";
-import { AlertCircle } from "@multica/ui/icons";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@multica/ui/components/ui/dialog";
-import { Input } from "@multica/ui/components/ui/input";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Switch } from "@multica/ui/components/ui/switch";
-import { Textarea } from "@multica/ui/components/ui/textarea";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@astryxdesign/core/Button";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { Switch } from "@astryxdesign/core/Switch";
+import { Text } from "@astryxdesign/core/Text";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { TextInput } from "@astryxdesign/core/TextInput";
 import { getApiErrorMessage } from "../api/client";
 import { t } from "../i18n";
 
@@ -72,11 +63,6 @@ export function TypeToConfirmDialog({
   const [pending, setPending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const reasonId = useId();
-  const confirmId = useId();
-  const exportFirstId = useId();
-  const exportFirstLabelId = useId();
-
   useEffect(() => {
     if (open) {
       setReason("");
@@ -119,108 +105,83 @@ export function TypeToConfirmDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            {description && <DialogDescription>{description}</DialogDescription>}
-          </DialogHeader>
+    <Dialog
+      isOpen={open}
+      onOpenChange={(next) => !pending && onOpenChange(next)}
+      purpose="form"
+      width={512}
+      maxHeight="85vh"
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <DialogHeader title={title} subtitle={description} />
 
-          {displayError && (
-            <Alert variant="destructive">
-              <AlertCircle className="size-4" />
-              <AlertDescription>{displayError}</AlertDescription>
-            </Alert>
-          )}
+        {displayError && <Banner role="alert" status="error" title={displayError} />}
 
-          {showExportFirst && (
-            <>
-              <div className="rounded-md border border-border bg-secondary/40 p-3">
-                <Text type="supporting" color="primary">
-                  {ownersNotice}
-                </Text>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-                <div className="min-w-0">
-                  <label
-                    id={exportFirstLabelId}
-                    htmlFor={exportFirstId}
-                    className="text-body font-medium text-foreground"
-                  >
-                    {t("Export data before deleting")}
-                  </label>
-                  <Text type="supporting" as="div">
-                    {t("Queues a pre-deletion workspace archive before purge starts.")}
-                  </Text>
-                </div>
-                <Switch
-                  id={exportFirstId}
-                  aria-labelledby={exportFirstLabelId}
-                  checked={exportFirst}
-                  onCheckedChange={setExportFirst}
-                  disabled={pending}
-                />
-              </div>
-            </>
-          )}
+        {showExportFirst && (
+          <>
+            <div className="rounded-md border border-border bg-secondary/40 p-3">
+              <Text type="supporting" color="primary">
+                {ownersNotice}
+              </Text>
+            </div>
+            <div className="rounded-md border border-border p-3">
+              <Switch
+                label={t("Export data before deleting")}
+                description={t("Queues a pre-deletion workspace archive before purge starts.")}
+                labelPosition="start"
+                labelSpacing="spread"
+                width="100%"
+                value={exportFirst}
+                onChange={(checked) => setExportFirst(checked)}
+                isDisabled={pending}
+              />
+            </div>
+          </>
+        )}
 
-          {children}
+        {children}
 
-          <Field
-            label={reasonLabel}
-            inputID={reasonId}
-            isRequired
-            width="100%"
-          >
-            <Textarea
-              id={reasonId}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={reasonPlaceholder}
-              disabled={pending}
-              rows={3}
-            />
-          </Field>
+        <TextArea
+          label={reasonLabel}
+          isRequired
+          width="100%"
+          value={reason}
+          onChange={(value) => setReason(value)}
+          placeholder={reasonPlaceholder}
+          isDisabled={pending}
+          rows={3}
+        />
 
-          <Field
-            label={confirmInputLabel}
-            inputID={confirmId}
-            description={expectedText ? t("Type \"{0}\" to confirm.", expectedText) : undefined}
-            isRequired
-            width="100%"
-          >
-            <Input
-              id={confirmId}
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder={confirmInputPlaceholder ?? expectedText}
-              disabled={pending}
-              autoComplete="off"
-            />
-          </Field>
+        <TextInput
+          label={confirmInputLabel}
+          description={expectedText ? t("Type \"{0}\" to confirm.", expectedText) : undefined}
+          isRequired
+          width="100%"
+          value={confirmText}
+          onChange={(value) => setConfirmText(value)}
+          placeholder={confirmInputPlaceholder ?? expectedText}
+          isDisabled={pending}
+          autoComplete="off"
+        />
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={pending}
-            >
-              {t("Cancel")}
-            </Button>
-            <Button
-              type="submit"
-              variant={confirmVariant}
-              disabled={!canSubmit}
-              aria-busy={pending || undefined}
-            >
-              {pending && <Spinner />}
-              {confirmLabel}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+        <div className="flex justify-end gap-2">
+          <Button
+            label={t("Cancel")}
+            type="button"
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
+            isDisabled={pending}
+          />
+          <Button
+            label={confirmLabel}
+            type="submit"
+            variant={confirmVariant === "destructive" ? "destructive" : "primary"}
+            isDisabled={!canSubmit}
+            isLoading={pending}
+            aria-busy={pending || undefined}
+          />
+        </div>
+      </form>
     </Dialog>
   );
 }

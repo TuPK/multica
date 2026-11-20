@@ -141,10 +141,10 @@ describe("PaymentNotices screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Match" }));
 
     const confirm = screen.getByRole("button", { name: "Match payment" });
-    expect(confirm).toBeDisabled();
+    expect(confirm).toBeDisabledControl();
 
-    fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: "Customer sent the wrong code" } });
-    expect(confirm).toBeEnabled();
+    fireEvent.change(within(screen.getByRole("dialog")).getByLabelText(/Reason/), { target: { value: "Customer sent the wrong code" } });
+    expect(confirm).not.toBeDisabledControl();
     fireEvent.click(confirm);
 
     await waitFor(() =>
@@ -163,9 +163,9 @@ describe("PaymentNotices screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
 
     const confirm = screen.getByRole("button", { name: "Dismiss notice" });
-    expect(confirm).toBeDisabled();
+    expect(confirm).toBeDisabledControl();
 
-    fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: "Test transfer from the bank" } });
+    fireEvent.change(within(screen.getByRole("dialog")).getByLabelText(/Reason/), { target: { value: "Test transfer from the bank" } });
     fireEvent.click(confirm);
 
     await waitFor(() =>
@@ -183,7 +183,7 @@ describe("PaymentNotices screen", () => {
     render(<PaymentNotices userRole="billing" />);
     fireEvent.click(screen.getByRole("button", { name: "View" }));
     fireEvent.click(screen.getByRole("button", { name: "Match" }));
-    fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: "Matched by hand" } });
+    fireEvent.change(within(screen.getByRole("dialog")).getByLabelText(/Reason/), { target: { value: "Matched by hand" } });
     fireEvent.click(screen.getByRole("button", { name: "Match payment" }));
 
     const dialog = screen.getByRole("dialog");

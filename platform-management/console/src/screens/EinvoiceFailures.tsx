@@ -12,9 +12,8 @@ import {
   TableRow,
 } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Button } from "@multica/ui/components/ui/button";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
+import { Button } from "@astryxdesign/core/Button";
+import { TabList, Tab } from "@astryxdesign/core/TabList";
 import { ExternalLink, FileText, RefreshCw, X } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -109,39 +108,35 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
           items.length > 0 ? (
             <Button
               type="button"
-              variant="outline"
+              label={t("Refresh")}
+              variant="secondary"
               size="sm"
+              icon={<RefreshCw className="size-3.5" aria-hidden="true" />}
+              isLoading={isFetching}
               onClick={() => refetch()}
-              disabled={Boolean(isFetching)}
               aria-busy={Boolean(isFetching)}
               className="gap-1.5"
-            >
-              {isFetching ? (
-                <Spinner className="size-3.5" />
-              ) : (
-                <RefreshCw className="size-3.5" aria-hidden="true" />
-              )}
-              <span>{t("Refresh")}</span>
-            </Button>
+              isDisabled={Boolean(isFetching)}
+            />
           ) : undefined
         }
       />
 
-      <Tabs
-        value={activeTab || "default"}
-        onValueChange={(value) => {
-          setActiveTab((value === "default" ? "" : value) as EinvoiceFilterState);
-          setSelectedKey(null);
-        }}
-      >
+      <>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border">
-          <TabsList variant="line" aria-label={t("E-invoice state")}>
+          <TabList
+            role="tablist"
+            value={activeTab || "default"}
+            onChange={(value) => {
+              setActiveTab((value === "default" ? "" : value) as EinvoiceFilterState);
+              setSelectedKey(null);
+            }}
+            aria-label={t("E-invoice state")}
+          >
             {STATE_TABS.map((tab) => (
-              <TabsTrigger key={tab.value || "default"} value={tab.value || "default"}>
-                {t(tab.label)}
-              </TabsTrigger>
+              <Tab key={tab.value || "default"} value={tab.value || "default"} label={t(tab.label)} />
             ))}
-          </TabsList>
+          </TabList>
 
           {activeTab === "" && !isLoading && !isError && items.length > 0 && (
             <div
@@ -163,7 +158,7 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
             </div>
           )}
         </div>
-      </Tabs>
+      </>
 
       {isLoading && <LoadingState message={t("Loading e-invoices...")} />}
 
@@ -181,13 +176,19 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
           title={t("No e-invoices found")}
           actions={
             activeTab ? (
-              <Button variant="outline" size="sm" onClick={() => setActiveTab("")}>
-                {t("View needing attention")}
-              </Button>
+              <Button
+                label={t("View needing attention")}
+                variant="secondary"
+                size="sm"
+                onClick={() => setActiveTab("")}
+              />
             ) : (
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                {t("Refresh")}
-              </Button>
+              <Button
+                label={t("Refresh")}
+                variant="secondary"
+                size="sm"
+                onClick={() => refetch()}
+              />
             )
           }
         />
@@ -347,13 +348,13 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                     </Text>
                   </div>
                   <Button
+                    label={t("Close details")}
                     variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("Close details")}
+                    size="sm"
+                    isIconOnly
+                    icon={<X className="size-4" aria-hidden="true" />}
                     onClick={() => setSelectedKey(null)}
-                  >
-                    <X className="size-4" aria-hidden="true" />
-                  </Button>
+                  />
                 </div>
 
                 <Divider />

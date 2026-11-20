@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { Approvals } from "./Approvals";
 import { PlatformApiError } from "../api/client";
+import { findAlert } from "../test/alert";
 
 const mockUseMe = vi.fn();
 const mockUseApprovals = vi.fn();
@@ -83,18 +84,18 @@ describe("Approvals screen", () => {
     expect(ownRow).toHaveTextContent(/approver must differ/i);
     const ownApproveBtn = within(ownRow).getByRole("button", { name: "Approve" });
     const ownRejectBtn = within(ownRow).getByRole("button", { name: "Reject" });
-    expect(ownApproveBtn).toBeDisabled();
-    expect(ownRejectBtn).toBeDisabled();
+    expect(ownApproveBtn).toBeDisabledControl();
+    expect(ownRejectBtn).toBeDisabledControl();
     fireEvent.click(ownApproveBtn);
     expect(mockApproveMutateAsync).not.toHaveBeenCalled();
 
     const otherRow = screen.getByText("leaver@example.com").closest("tr") as HTMLElement;
     const otherApproveBtn = within(otherRow).getByRole("button", { name: "Approve" });
-    expect(otherApproveBtn).toBeEnabled();
+    expect(otherApproveBtn).not.toBeDisabledControl();
     fireEvent.click(otherApproveBtn);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent("the approver must differ from the requester");
+      expect(findAlert()).toHaveTextContent("the approver must differ from the requester");
     });
 
     mockApproveMutateAsync.mockResolvedValueOnce({ request_id: "ap-other", state: "pending" });

@@ -16,7 +16,19 @@ vi.mock("./api/hooks", () => ({
   useSendCode: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useVerifyCode: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useOverview: () => ({
-    data: { workspaces_by_status: { active: 5 }, signups_7d: 12 },
+    data: {
+      workspaces_by_status: { active: 5 },
+      signups_7d: 12,
+      daily_series: [],
+      runtimes_by_status: { online: 0, offline: 0 },
+      operations: {
+        pending_approvals: 0,
+        pending_deletions: 0,
+        pending_quota_requests: 0,
+        failed_einvoices: 0,
+        active_legal_holds: 0,
+      },
+    },
     isLoading: false,
     isError: false,
   }),

@@ -75,9 +75,10 @@ describe("QuotaRequests screen", () => {
 
     const dialog = screen.getByRole("dialog");
     const valueInput = within(dialog).getByLabelText(/Approved value/i);
-    expect(valueInput).toHaveValue(20);
+    expect(valueInput).toHaveValue("20");
 
     fireEvent.change(valueInput, { target: { value: "12" } });
+    fireEvent.blur(valueInput);
     fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
       target: { value: "Approved partial increase for Q4" },
     });
@@ -91,7 +92,7 @@ describe("QuotaRequests screen", () => {
         reason: "Approved partial increase for Q4",
       });
     });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("admin cannot approve", () => {
@@ -131,12 +132,12 @@ describe("QuotaRequests screen", () => {
 
     const dialog = screen.getByRole("dialog");
     const confirmBtn = within(dialog).getByRole("button", { name: "Deny request" });
-    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toBeDisabledControl();
 
     fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
       target: { value: "Upgrade plan instead" },
     });
-    expect(confirmBtn).toBeEnabled();
+    expect(confirmBtn).not.toBeDisabledControl();
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {

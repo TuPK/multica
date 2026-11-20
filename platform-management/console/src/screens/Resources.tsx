@@ -13,20 +13,12 @@ import {
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+  TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { AlertCircle, Gauge, RefreshCw } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Gauge, RefreshCw } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -39,8 +31,7 @@ import {
   type ResourceState,
   type SystemResourcePlanSummary,
   type SystemResourceTypeSummary,
-  type SystemTopTenant,
-} from "../api/hooks";
+  type SystemTopTenant } from "../api/hooks";
 import type { StaffRole } from "../components/types";
 import { formatBytes } from "./Tenants";
 import { t } from "../i18n";
@@ -75,8 +66,7 @@ export const RESOURCE_TYPE_LABELS: Record<string, string> = {
   member_groups: "Member groups",
   max_workspaces: "Max workspaces",
   api_rate_per_minute: "API rate (/min)",
-  audit_retention_days: "Audit retention (days)",
-};
+  audit_retention_days: "Audit retention (days)" };
 
 export function resourceTypeLabel(type: string, label?: string): string {
   if (label && label.trim() !== "") return label;
@@ -167,8 +157,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
     refetch,
     hasNextPage,
     fetchNextPage,
-    isFetchingNextPage,
-  } = useSystemResources({ sort: sort || undefined }, canView);
+    isFetchingNextPage } = useSystemResources({ sort: sort || undefined }, canView);
 
   if (effectiveRole && !canView) {
     return (
@@ -196,15 +185,15 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
             actions={
               <Button
                 type="button"
-                variant="outline"
+                label={t("Refresh")}
+                variant="secondary"
                 size="sm"
+                icon={<RefreshCw className="size-3.5" aria-hidden="true" />}
+                isLoading={isFetching}
                 onClick={() => void refetch()}
-                disabled={Boolean(isFetching)}
                 aria-busy={Boolean(isFetching) || undefined}
-              >
-                {isFetching ? <Spinner className="size-3.5" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
-                <span>{t("Refresh")}</span>
-              </Button>
+                isDisabled={Boolean(isFetching)}
+              />
             }
           />
         </LayoutHeader>
@@ -213,31 +202,22 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
         <LayoutContent padding={0}>
           <div className="space-y-6">
             {data && !data.complete && (
-              <Alert role="status">
-                <AlertCircle className="size-4" aria-hidden="true" />
-                <AlertDescription>
-                  {t("Resource totals are partial across the loaded pages; load remaining pages for complete totals.")}
-                </AlertDescription>
-              </Alert>
+              <Banner
+                status="info"
+                role="status"
+                title={t("Resource totals are partial across the loaded pages; load remaining pages for complete totals.")}
+              />
             )}
 
             <HStack wrap="wrap" gap={2} align="center">
-              <Select
-                items={SORT_OPTIONS}
+              <Selector
+                label={t("Sort by")}
+                isLabelHidden
+                width={208}
+                options={SORT_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
                 value={sort || "default"}
-                onValueChange={(value) => setSort(!value || value === "default" ? "" : value)}
-              >
-                <SelectTrigger aria-label={t("Sort by")} className="w-52">
-                  <SelectValue placeholder={t("Default order")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {SORT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {t(opt.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(value) => setSort(!value || value === "default" ? "" : value)}
+              />
             </HStack>
 
             {isLoading && <LoadingState message={t("Loading resources...")} />}
@@ -323,13 +303,12 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                                   {onSelectTenant && row.tenant_id ? (
                                     <Button
                                       type="button"
-                                      variant="link"
+                                      label={row.tenant_name || row.tenant_id}
+                                      variant="ghost"
                                       size="sm"
                                       className="h-auto p-0 font-medium"
                                       onClick={() => onSelectTenant(row.tenant_id)}
-                                    >
-                                      {row.tenant_name || row.tenant_id}
-                                    </Button>
+                                    />
                                   ) : (
                                     <Text type="body" weight="medium">
                                       {row.tenant_name || row.tenant_id || "-"}
@@ -340,13 +319,12 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                                   {onSelectWorkspace && row.workspace_id ? (
                                     <Button
                                       type="button"
-                                      variant="link"
+                                      label={row.workspace_name || row.workspace_id}
+                                      variant="ghost"
                                       size="sm"
                                       className="h-auto p-0"
                                       onClick={() => onSelectWorkspace(row.workspace_id)}
-                                    >
-                                      {row.workspace_name || row.workspace_id}
-                                    </Button>
+                                    />
                                   ) : (
                                     <Text type="body">
                                       {row.workspace_name || row.workspace_id || "-"}
@@ -482,8 +460,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                                         {
                                           label: t("View"),
                                           disabled: !row.tenant_id,
-                                          onSelect: () => onSelectTenant(row.tenant_id),
-                                        },
+                                          onSelect: () => onSelectTenant(row.tenant_id) },
                                       ]}
                                     />
                                   </TableCell>
@@ -498,17 +475,14 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                         <div className="flex justify-center pt-2">
                           <Button
                             type="button"
-                            variant="outline"
+                            label={isFetchingNextPage ? t("Loading...") : t("Load more")}
+                            variant="secondary"
                             size="sm"
-                            disabled={isFetchingNextPage}
+                            isLoading={isFetchingNextPage}
                             aria-busy={isFetchingNextPage || undefined}
                             onClick={() => void fetchNextPage()}
-                          >
-                            {isFetchingNextPage && (
-                              <Spinner className="size-4" aria-hidden="true" />
-                            )}
-                            {isFetchingNextPage ? t("Loading...") : t("Load more")}
-                          </Button>
+                            isDisabled={isFetchingNextPage}
+                          />
                         </div>
                       )}
                     </div>

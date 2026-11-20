@@ -1,12 +1,8 @@
 import { useState } from "react";
-import { Calendar } from "@multica/ui/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@multica/ui/components/ui/popover";
+import { Button } from "@astryxdesign/core/Button";
+import { Calendar, type ISODateString } from "@astryxdesign/core/Calendar";
+import { Popover } from "@astryxdesign/core/Popover";
 import { CalendarDays, Check } from "@multica/ui/icons";
-import { cn } from "@multica/ui/lib/utils";
 import { t } from "../i18n";
 
 /** Formats a local Date as YYYY-MM-DD without UTC timezone shift. */
@@ -46,8 +42,8 @@ interface DatePickerFieldProps {
 }
 
 /**
- * Shared calendar date field built on @multica/ui Popover + Calendar.
- * Keeps trigger height (32px) aligned with Input and SelectTrigger on filter rows.
+ * Shared calendar date field built on the Astryx Popover + Calendar.
+ * Keeps trigger height (32px) aligned with TextInput and Selector on filter rows.
  */
 export function DatePickerField({
   id,
@@ -60,61 +56,49 @@ export function DatePickerField({
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
   const selected = parseDateOnly(value);
+  const selectedIso = selected ? (formatDateOnly(selected) as ISODateString) : null;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        id={id}
-        type="button"
-        disabled={disabled}
-        className={cn(
-          "flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 py-1 text-left text-body transition-colors outline-none hover:bg-surface-hover focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50",
-          className,
-        )}
-      >
-        <span
-          className={cn(
-            "truncate tabular-nums",
-            selected ? "text-foreground" : "text-muted-foreground",
-          )}
-        >
-          {selected ? value : placeholder}
-        </span>
-        <CalendarDays
-          className="size-4 shrink-0 text-muted-foreground"
-          aria-hidden="true"
-        />
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
-        <button
-          type="button"
-          onClick={() => {
-            onChange("");
-            setOpen(false);
-          }}
-          className="flex w-full items-center gap-3 border-b border-surface-border px-3 py-2 text-left text-body transition-colors hover:bg-surface-hover"
-        >
-          <span className="flex min-w-0 flex-1 items-center gap-2 text-muted-foreground">
-            {emptyLabel}
-          </span>
-          <Check
-            className={cn(
-              "size-3.5 shrink-0 text-muted-foreground",
-              selected && "invisible",
-            )}
-            aria-hidden="true"
+    <Popover
+      isOpen={open}
+      onOpenChange={setOpen}
+      content={
+        <div className="flex flex-col">
+          <Button
+            label={emptyLabel}
+            variant="ghost"
+            width="100%"
+            endContent={selected ? undefined : <Check className="size-3.5" aria-hidden="true" />}
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
           />
-        </button>
-        <Calendar
-          mode="single"
-          selected={selected}
-          defaultMonth={selected}
-          onSelect={(day) => {
-            onChange(day ? formatDateOnly(day) : "");
-            setOpen(false);
-          }}
+          <Calendar
+            mode="single"
+            value={selectedIso}
+            focusDate={selectedIso ?? undefined}
+            onChange={(day) => {
+              onChange(day);
+              setOpen(false);
+            }}
+          />
+        </div>
+      }
+    >
+      {(triggerProps) => (
+        <Button
+          {...triggerProps}
+          id={id}
+          label={selected ? value : placeholder}
+          variant="secondary"
+          size="md"
+          width="100%"
+          className={className}
+          isDisabled={disabled}
+          endContent={<CalendarDays className="size-4 shrink-0" aria-hidden="true" />}
         />
-      </PopoverContent>
+      )}
     </Popover>
   );
 }

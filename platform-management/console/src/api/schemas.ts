@@ -746,6 +746,32 @@ export type AuditPage = z.output<typeof AuditPageSchema>;
 
 // Overview
 
+// One UTC day of the overview's 30-day series. Usage meters are per-day flows.
+const DailyCountPointSchema = z.object({
+  day: z.string(),
+  workspaces_created: count,
+  orders_created: count,
+  orders_paid: count,
+  usage_issues_created: count,
+  usage_tasks_run: count,
+});
+
+// Items waiting in the operations queue, counted as the list screens filter them.
+const OperationsQueueSchema = z.object({
+  pending_approvals: count,
+  pending_deletions: count,
+  pending_quota_requests: count,
+  failed_einvoices: count,
+  active_legal_holds: count,
+});
+const EMPTY_OPERATIONS_QUEUE = {
+  pending_approvals: 0,
+  pending_deletions: 0,
+  pending_quota_requests: 0,
+  failed_einvoices: 0,
+  active_legal_holds: 0,
+};
+
 export const OverviewSchema = z.object({
   workspaces_by_status: z
     .record(z.string(), z.number())
@@ -782,8 +808,17 @@ export const OverviewSchema = z.object({
   usage_issues_created: z.number().optional(),
   usage_tasks_run: z.number().optional(),
   usage_storage_bytes: z.number().optional(),
+  // Additions: an older server sends none of them. A malformed one falls back
+  // to its empty value so the rest of the overview still renders.
+  daily_series: z.array(DailyCountPointSchema).catch([]),
+  runtimes_by_status: z
+    .record(z.string(), z.number())
+    .catch({})
+    .transform((byStatus) => ({ online: 0, offline: 0, ...byStatus })),
+  operations: OperationsQueueSchema.catch(EMPTY_OPERATIONS_QUEUE),
 });
 export type Overview = z.output<typeof OverviewSchema>;
+export type DailyCountPoint = z.output<typeof DailyCountPointSchema>;
 
 // Parsers. A list that fails to parse becomes an empty page. A single record
 // has no honest empty value, so its fallback is null and the hook turns that

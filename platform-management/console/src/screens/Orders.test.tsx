@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { Orders } from "./Orders";
 import { PlatformApiError } from "../api/client";
+import { findAlert } from "../test/alert";
 
 const mockUseOrders = vi.fn();
 const mockUseOrderEinvoices = vi.fn();
@@ -139,11 +140,11 @@ describe("Orders screen", () => {
     expect(screen.getByRole("heading", { name: /confirm payment/i })).toBeInTheDocument();
 
     const submitBtn = screen.getByRole("button", { name: "Confirm payment" });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
-    const reasonInput = screen.getByLabelText(/reason/i);
+    const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/reason/i);
     fireEvent.change(reasonInput, { target: { value: "Bank wire received at Vietcombank" } });
-    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).not.toBeDisabledControl();
 
     fireEvent.click(submitBtn);
 
@@ -166,11 +167,11 @@ describe("Orders screen", () => {
     expect(screen.getByRole("heading", { name: /cancel order/i })).toBeInTheDocument();
 
     const submitBtn = screen.getByRole("button", { name: "Cancel order" });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
-    const reasonInput = screen.getByLabelText(/reason/i);
+    const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/reason/i);
     fireEvent.change(reasonInput, { target: { value: "Customer requested cancellation" } });
-    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).not.toBeDisabledControl();
 
     fireEvent.click(submitBtn);
 
@@ -190,13 +191,13 @@ describe("Orders screen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^confirm/i }));
 
-    const reasonInput = screen.getByLabelText(/reason/i);
+    const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/reason/i);
     fireEvent.change(reasonInput, { target: { value: "Manual override attempt" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Confirm payment" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent("This order has expired and cannot be confirmed");
+      expect(findAlert()).toHaveTextContent("This order has expired and cannot be confirmed");
     });
   });
 
@@ -370,7 +371,7 @@ describe("Orders screen", () => {
     });
     rerender(<Orders userRole="billing" />);
     const dialog = within(screen.getByRole("dialog"));
-    expect(dialog.getByRole("alert")).toHaveTextContent("order not found");
+    expect(findAlert(screen.getByRole("dialog"))).toHaveTextContent("order not found");
     fireEvent.click(dialog.getByRole("button", { name: "Try again" }));
     expect(refetchHistory).toHaveBeenCalledTimes(1);
   });
@@ -410,7 +411,7 @@ describe("Orders screen", () => {
     fireEvent.click(writeOffBtn);
     expect(screen.getByRole("heading", { name: "Write off usage order" })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/Reason/i), {
+    fireEvent.change(within(screen.getByRole("dialog")).getByLabelText(/Reason/i), {
       target: { value: "Approved goodwill write-off" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Write off order" }));

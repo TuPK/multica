@@ -101,12 +101,12 @@ describe("RuntimeDetail screen", () => {
 
     const dialog = screen.getByRole("dialog");
     const submitBtn = within(dialog).getByRole("button", { name: /Disable runtime/i });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
       target: { value: "Abusive daemon traffic" },
     });
-    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).not.toBeDisabledControl();
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -139,19 +139,19 @@ describe("RuntimeDetail screen", () => {
 
     const dialog = screen.getByRole("dialog");
     const confirmBtn = within(dialog).getByRole("button", { name: /Unregister runtime/i });
-    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toBeDisabledControl();
 
     fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
       target: { value: "Machine decommissioned" },
     });
-    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toBeDisabledControl();
 
     const confirmInput = within(dialog).getByLabelText(/Runtime name/i);
     fireEvent.change(confirmInput, { target: { value: "wrong-name" } });
-    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toBeDisabledControl();
 
     fireEvent.change(confirmInput, { target: { value: "mac-studio-01" } });
-    expect(confirmBtn).toBeEnabled();
+    expect(confirmBtn).not.toBeDisabledControl();
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {

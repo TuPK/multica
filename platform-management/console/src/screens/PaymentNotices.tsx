@@ -12,8 +12,7 @@ import {
   TableRow,
 } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Button } from "@multica/ui/components/ui/button";
-import { Spinner } from "@multica/ui/components/ui/spinner";
+import { Button } from "@astryxdesign/core/Button";
 import { Inbox, RefreshCw, X } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
@@ -172,20 +171,15 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
           queueCount > 0 ? (
             <Button
               type="button"
-              variant="outline"
+              label={t("Refresh")}
+              variant="secondary"
               size="sm"
               onClick={() => refetch()}
-              disabled={Boolean(isFetching)}
+              isDisabled={Boolean(isFetching)}
+              isLoading={Boolean(isFetching)}
+              icon={<RefreshCw className="size-3.5" aria-hidden="true" />}
               aria-busy={Boolean(isFetching)}
-              className="gap-1.5"
-            >
-              {isFetching ? (
-                <Spinner className="size-3.5" />
-              ) : (
-                <RefreshCw className="size-3.5" aria-hidden="true" />
-              )}
-              <span>{t("Refresh")}</span>
-            </Button>
+            />
           ) : undefined
         }
       />
@@ -206,9 +200,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
           title={t("No payment notices need review")}
           description={t("Incoming transfers that cannot be matched automatically will appear in this queue.")}
           actions={
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              {t("Refresh")}
-            </Button>
+            <Button label={t("Refresh")} variant="secondary" size="sm" onClick={() => refetch()} />
           }
         />
       )}
@@ -302,21 +294,20 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                     <div className="flex shrink-0 items-center gap-1.5">
                       {detail.state === "needs_review" && (
                         <Button
+                          label={t("Dismiss")}
                           variant="destructive"
                           size="sm"
                           onClick={handleOpenDismissDialog}
-                        >
-                          {t("Dismiss")}
-                        </Button>
+                        />
                       )}
                       <Button
+                        label={t("Close")}
+                        icon={<X className="size-4" aria-hidden="true" />}
+                        isIconOnly
                         variant="ghost"
-                        size="icon-sm"
-                        aria-label={t("Close")}
+                        size="sm"
                         onClick={() => setSelectedId(null)}
-                      >
-                        <X className="size-4" aria-hidden="true" />
-                      </Button>
+                      />
                     </div>
                   </div>
 
@@ -386,11 +377,11 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                               </div>
                               {detail.state === "needs_review" && (
                                 <Button
+                                  label={t("Match")}
+                                  variant="primary"
                                   size="sm"
                                   onClick={() => handleOpenMatchDialog(candidate)}
-                                >
-                                  {t("Match")}
-                                </Button>
+                                />
                               )}
                             </div>
 

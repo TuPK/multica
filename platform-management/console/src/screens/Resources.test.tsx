@@ -161,7 +161,7 @@ describe("Resources screen", () => {
 
     render(<Resources userRole="system_admin" />);
 
-    expect(screen.getByRole("status")).toHaveTextContent(/partial|incomplete/i);
+    expect(screen.getByText(/partial|incomplete/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("combobox", { name: /Sort by/i }));
     await user.click(await screen.findByRole("option", { name: "Agents" }));

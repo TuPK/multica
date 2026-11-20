@@ -32,10 +32,10 @@ describe("Login screen", () => {
     expect(emailInput).toBeInTheDocument();
 
     const sendButton = screen.getByRole("button", { name: /Send sign-in code/i });
-    expect(sendButton).toBeDisabled();
+    expect(sendButton).toBeDisabledControl();
 
     fireEvent.change(emailInput, { target: { value: "staff@example.com" } });
-    expect(sendButton).toBeEnabled();
+    expect(sendButton).not.toBeDisabledControl();
 
     fireEvent.click(sendButton);
 

@@ -11,10 +11,9 @@ import {
   TableRow,
 } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { AlertCircle, RefreshCw, ShieldCheck } from "@multica/ui/icons";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@astryxdesign/core/Button";
+import { RefreshCw, ShieldCheck } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -92,20 +91,16 @@ export function Approvals({ userRole }: ApprovalsProps) {
             actions={
               <>
                 <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => query.refetch()}
-                            disabled={query.isFetching}
-                            aria-busy={query.isFetching || undefined}
-                          >
-                            {query.isFetching ? (
-                              <Spinner />
-                            ) : (
-                              <RefreshCw className="size-4" aria-hidden="true" />
-                            )}
-                            {t("Refresh")}
-                          </Button>
+                  type="button"
+                  label={t("Refresh")}
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => query.refetch()}
+                  isDisabled={query.isFetching}
+                  isLoading={query.isFetching}
+                  icon={<RefreshCw className="size-4" aria-hidden="true" />}
+                  aria-busy={query.isFetching || undefined}
+                />
               </>
             }
           />
@@ -114,10 +109,7 @@ export function Approvals({ userRole }: ApprovalsProps) {
       <LayoutContent padding={0}>
         <div className="space-y-6">
           {actionError && (
-            <Alert variant="destructive">
-              <AlertCircle className="size-4" />
-              <AlertDescription>{actionError}</AlertDescription>
-            </Alert>
+            <Banner role="alert" status="error" title={actionError} />
           )}
 
           <Section padding={4}>

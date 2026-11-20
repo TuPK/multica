@@ -3,31 +3,15 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Card } from "@astryxdesign/core/Card";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { Selector } from "@astryxdesign/core/Selector";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@multica/ui/components/ui/dialog";
-import { Field, FieldError, FieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import {
-  AlertCircle,
   CalendarClock,
   CheckCircle2,
   CircleOff,
@@ -35,8 +19,7 @@ import {
   Layers,
   Pencil,
   Plus,
-  Trash2,
-} from "@multica/ui/icons";
+  Trash2 } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -52,8 +35,7 @@ import {
   useActivatePlan,
   useDeactivatePlan,
   useDeletePlan,
-  useMe,
-} from "../api/hooks";
+  useMe } from "../api/hooks";
 import { PlatformApiError } from "../api/client";
 import type { StaffRole } from "../components/types";
 import type { Limits, Plan, PlanAudience, PlanBillingModel, PlanState } from "../api/schemas";
@@ -66,14 +48,12 @@ const AUDIENCE_LABELS: Record<PlanAudience, string> = {
   any: "Any",
   individual: "Individual",
   business: "Business",
-  unknown: "Unknown",
-};
+  unknown: "Unknown" };
 
 const BILLING_MODEL_LABELS: Record<PlanBillingModel, string> = {
   seat: "Seat",
   usage: "Usage",
-  unknown: "Unknown",
-};
+  unknown: "Unknown" };
 
 const LIMIT_FIELDS: ReadonlyArray<{ key: string; label: string }> = [
   { key: "issue_count", label: "Issue limit" },
@@ -121,8 +101,7 @@ function findLoweredLimits(previousLimits: Limits, nextLimits: Limits): LoweredL
         key,
         label,
         previous: typeof prevVal === "number" ? prevVal : null,
-        next: nextVal,
-      });
+        next: nextVal });
     }
   }
   return lowered;
@@ -237,23 +216,27 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               key={key}
               type="button"
               size="sm"
-              variant={historyPlanKey === key ? "default" : "outline"}
+              label={key}
+              variant={historyPlanKey === key ? "primary" : "secondary"}
               onClick={() => setHistoryPlanKey(key)}
-            >
-              {key}
-            </Button>
+            />
           ))}
           <form onSubmit={handleCustomSubmit} className="flex items-center gap-2">
-            <Input
-              aria-label={t("Custom plan key")}
+            <TextInput
+              label={t("Custom plan key")}
+              isLabelHidden
+              width={176}
               value={customPlanKey}
-              onChange={(e) => setCustomPlanKey(e.target.value)}
+              onChange={(value) => setCustomPlanKey(value)}
               placeholder={t("Other plan key...")}
-              className="h-7 w-44"
             />
-            <Button type="submit" size="sm" variant="outline" disabled={!customPlanKey.trim()}>
-              {t("Load")}
-            </Button>
+            <Button
+              type="submit"
+              label={t("Load")}
+              variant="secondary"
+              size="sm"
+              isDisabled={!customPlanKey.trim()}
+            />
           </form>
         </div>
 
@@ -333,8 +316,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
         is_public: newIsPublic,
         sort: Number(newSortOrder),
         audience: newAudience,
-        billing_model: newBillingModel,
-      });
+        billing_model: newBillingModel });
       setCreateDialogOpen(false);
     } catch (err: unknown) {
       if (err instanceof PlatformApiError || err instanceof Error) {
@@ -385,8 +367,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
         min_seats: minSeats !== null && !isNaN(minSeats) ? Number(minSeats) : null,
         is_public: isPublic,
         sort: Number(sortOrder),
-        archived,
-      });
+        archived });
       setEditDialogOpen(false);
       setSelectedPlan(null);
       setConfirmLowerLimits(false);
@@ -488,19 +469,24 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
         title={t("Plans Catalogue")}
         actions={
           canWritePlans ? (
-            <Button type="button" size="sm" onClick={handleOpenCreate}>
-              <Plus className="size-3.5" aria-hidden="true" />
-              {t("Create plan")}
-            </Button>
+            <Button
+              type="button"
+              label={t("Create plan")}
+              variant="primary"
+              size="sm"
+              icon={<Plus className="size-3.5" aria-hidden="true" />}
+              onClick={handleOpenCreate}
+            />
           ) : undefined
         }
       />
 
       {lifecycleError && (
-        <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-          <AlertDescription className="text-caption">{lifecycleError}</AlertDescription>
-        </Alert>
+        <Banner
+          status="error"
+          role="alert"
+          title={lifecycleError}
+        />
       )}
 
       {isLoading && <LoadingState message={t("Loading plans...")} />}
@@ -554,8 +540,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                     </div>
                   )}
                 </>
-              ),
-            },
+              ) },
             {
               key: "audience",
               header: t("Audience"),
@@ -563,8 +548,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               renderCell: (plan) => {
                 const audience = plan.audience ?? "any";
                 return <Badge variant="neutral" label={t(AUDIENCE_LABELS[audience] ?? audience)} />;
-              },
-            },
+              } },
             {
               key: "billing_model",
               header: t("Billing Model"),
@@ -574,8 +558,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                 return (
                   <Badge variant="blue" label={t(BILLING_MODEL_LABELS[billingModel] ?? billingModel)} />
                 );
-              },
-            },
+              } },
             {
               key: "pricing",
               header: t("Pricing (Monthly / Yearly)"),
@@ -593,8 +576,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                       : "-"}
                   </Text>
                 </>
-              ),
-            },
+              ) },
             {
               key: "seats",
               header: t("Seats Configuration"),
@@ -605,8 +587,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                     ? t("{0} fixed seats", plan.seats_fixed)
                     : t("{0} min seats", plan.min_seats || 1)}
                 </Text>
-              ),
-            },
+              ) },
             {
               key: "trial_days",
               header: t("Trial"),
@@ -615,8 +596,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                 <Text type="body" hasTabularNumbers>
                   {plan.trial_days > 0 ? t("{0} days", plan.trial_days) : t("No trial")}
                 </Text>
-              ),
-            },
+              ) },
             {
               key: "is_public",
               header: t("Visibility"),
@@ -626,16 +606,14 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                   variant={plan.is_public ? "teal" : "neutral"}
                   label={plan.is_public ? t("Public") : t("Private")}
                 />
-              ),
-            },
+              ) },
             {
               key: "status",
               header: t("Status"),
               width: proportional(1, { minWidth: 76 }),
               renderCell: (plan) => (
                 <StatusBadge status={getPlanState(plan)} />
-              ),
-            },
+              ) },
             ...(canWritePlans
               ? [
                   {
@@ -661,15 +639,13 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                               onSelect: () => {
                                 setSelectedSchedulePlan(plan);
                                 setSchedulePlanKey(plan.key);
-                              },
-                            },
+                              } },
                             { label: t("Edit"), icon: Pencil, onSelect: () => handleOpenEdit(plan) },
                             { label: t("Delete"), icon: Trash2, destructive: true, onSelect: () => handleOpenDelete(plan) },
                           ]}
                         />
                       );
-                    },
-                  },
+                    } },
                 ]
               : []),
           ]}
@@ -678,400 +654,289 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
       )}
 
       {/* Create Plan Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+      <Dialog
+        isOpen={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        purpose="form"
+      >
+
           <form onSubmit={handleCreatePlan} className="flex flex-col gap-4">
-            <DialogHeader>
-              <DialogTitle>{t("Create plan")}</DialogTitle>
-              <DialogDescription>
-                {t("Define a new subscription plan and its initial pricing.")}
-              </DialogDescription>
-            </DialogHeader>
+            <DialogHeader title={t("Create plan")} subtitle={t("Define a new subscription plan and its initial pricing.")} />
 
             <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
               <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="create-plan-key" className="text-label">
-                    {t("Plan Key")} <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="create-plan-key"
-                    value={newKey}
-                    onChange={(e) => setNewKey(e.target.value)}
-                    placeholder={t("e.g. team_pro")}
-                    required
-                    disabled={createPlan.isPending}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="create-plan-name" className="text-label">
-                    {t("Plan Name")} <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="create-plan-name"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    required
-                    disabled={createPlan.isPending}
-                  />
-                </Field>
+                <TextInput
+                  label={t("Plan Key")}
+                  id={"create-plan-key"}
+                  isRequired
+                  value={newKey}
+                  onChange={(value) => setNewKey(value)}
+                  placeholder={t("e.g. team_pro")}
+                  isDisabled={createPlan.isPending}
+                  width="100%"
+                />
+                <TextInput
+                  label={t("Plan Name")}
+                  id={"create-plan-name"}
+                  isRequired
+                  value={newName}
+                  onChange={(value) => setNewName(value)}
+                  isDisabled={createPlan.isPending}
+                  width="100%"
+                />
               </div>
 
-              <Field>
-                <FieldLabel htmlFor="create-plan-description" className="text-label">
-                  {t("Description")}
-                </FieldLabel>
-                <Textarea
-                  id="create-plan-description"
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder={t("Optional summary shown in catalogue and plan settings")}
-                  disabled={createPlan.isPending}
-                />
-              </Field>
+              <TextArea
+                id="create-plan-description"
+                label={t("Description")}
+                value={newDescription}
+                onChange={(value) => setNewDescription(value)}
+                placeholder={t("Optional summary shown in catalogue and plan settings")}
+                isDisabled={createPlan.isPending}
+                width="100%"
+              />
 
               <div className="grid grid-cols-3 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="create-plan-currency" className="text-label">
-                    {t("Currency")} <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="create-plan-currency"
-                    value={newCurrency}
-                    onChange={(e) => setNewCurrency(e.target.value)}
-                    required
-                    disabled={createPlan.isPending}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="create-plan-audience" className="text-label">
-                    {t("Audience")}
-                  </FieldLabel>
-                  <Select
-                    items={[
-                      { value: "any", label: t("Any") },
-                      { value: "individual", label: t("Individual") },
-                      { value: "business", label: t("Business") },
-                    ]}
-                    value={newAudience}
-                    onValueChange={(v) =>
-                      setNewAudience((v ?? "any") as Exclude<PlanAudience, "unknown">)
-                    }
-                    disabled={createPlan.isPending}
-                  >
-                    <SelectTrigger id="create-plan-audience">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">{t("Any")}</SelectItem>
-                      <SelectItem value="individual">{t("Individual")}</SelectItem>
-                      <SelectItem value="business">{t("Business")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="create-plan-billing" className="text-label">
-                    {t("Billing model")}
-                  </FieldLabel>
-                  <Select
-                    items={[
-                      { value: "seat", label: t("Seat") },
-                      { value: "usage", label: t("Usage") },
-                    ]}
-                    value={newBillingModel}
-                    onValueChange={(v) =>
-                      setNewBillingModel((v ?? "seat") as Exclude<PlanBillingModel, "unknown">)
-                    }
-                    disabled={createPlan.isPending}
-                  >
-                    <SelectTrigger id="create-plan-billing">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="seat">{t("Seat")}</SelectItem>
-                      <SelectItem value="usage">{t("Usage")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="create-price-month" className="text-label">
-                    {t("Monthly seat price (minor)")}
-                  </FieldLabel>
-                  <Input
-                    id="create-price-month"
-                    type="number"
-                    min={0}
-                    value={newSeatPriceMonth}
-                    onChange={(e) => setNewSeatPriceMonth(e.target.value)}
-                    placeholder={t("Blank if free / N/A")}
-                    disabled={createPlan.isPending}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="create-price-year" className="text-label">
-                    {t("Yearly seat price (minor)")}
-                  </FieldLabel>
-                  <Input
-                    id="create-price-year"
-                    type="number"
-                    min={0}
-                    value={newSeatPriceYear}
-                    onChange={(e) => setNewSeatPriceYear(e.target.value)}
-                    placeholder={t("Blank if free / N/A")}
-                    disabled={createPlan.isPending}
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="create-trial-days" className="text-label">
-                    {t("Trial Days")}
-                  </FieldLabel>
-                  <Input
-                    id="create-trial-days"
-                    type="number"
-                    min={0}
-                    value={newTrialDays}
-                    onChange={(e) => setNewTrialDays(Number(e.target.value))}
-                    disabled={createPlan.isPending}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="create-sort-order" className="text-label">
-                    {t("Sort Order")}
-                  </FieldLabel>
-                  <Input
-                    id="create-sort-order"
-                    type="number"
-                    value={newSortOrder}
-                    onChange={(e) => setNewSortOrder(Number(e.target.value))}
-                    disabled={createPlan.isPending}
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="create-min-seats" className="text-label">
-                    {t("Min Seats (Optional)")}
-                  </FieldLabel>
-                  <Input
-                    id="create-min-seats"
-                    type="number"
-                    min={1}
-                    value={newMinSeats ?? ""}
-                    onChange={(e) =>
-                      setNewMinSeats(e.target.value === "" ? null : Number(e.target.value))
-                    }
-                    disabled={createPlan.isPending}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="create-fixed-seats" className="text-label">
-                    {t("Fixed Seats (Optional)")}
-                  </FieldLabel>
-                  <Input
-                    id="create-fixed-seats"
-                    type="number"
-                    min={1}
-                    value={newSeatsFixed ?? ""}
-                    onChange={(e) =>
-                      setNewSeatsFixed(e.target.value === "" ? null : Number(e.target.value))
-                    }
-                    disabled={createPlan.isPending}
-                  />
-                </Field>
-              </div>
-
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="create-plan-public"
-                  checked={newIsPublic}
-                  onCheckedChange={(checked) => setNewIsPublic(Boolean(checked))}
-                  disabled={createPlan.isPending}
+                <TextInput
+                  label={t("Currency")}
+                  id={"create-plan-currency"}
+                  isRequired
+                  value={newCurrency}
+                  onChange={(value) => setNewCurrency(value)}
+                  isDisabled={createPlan.isPending}
+                  width="100%"
                 />
-                <FieldLabel htmlFor="create-plan-public" className="text-body font-normal">
-                  {t("Public plan")}
-                </FieldLabel>
-              </Field>
+                <Selector
+                  label={t("Audience")}
+                  width="100%"
+                  options={[
+                    { value: "any", label: t("Any") },
+                    { value: "individual", label: t("Individual") },
+                    { value: "business", label: t("Business") },
+                  ]}
+                  value={newAudience}
+                  onChange={(v) => setNewAudience((v ?? "any") as Exclude<PlanAudience, "unknown">)}
+                  isDisabled={createPlan.isPending}
+                />
+                <Selector
+                  label={t("Billing model")}
+                  width="100%"
+                  options={[
+                    { value: "seat", label: t("Seat") },
+                    { value: "usage", label: t("Usage") },
+                  ]}
+                  value={newBillingModel}
+                  onChange={(v) => setNewBillingModel((v ?? "seat") as Exclude<PlanBillingModel, "unknown">)}
+                  isDisabled={createPlan.isPending}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <NumberInput
+                  id="create-price-month"
+                  label={t("Monthly seat price (minor)")}
+                  min={0}
+                  value={newSeatPriceMonth.trim() === "" ? null : Number(newSeatPriceMonth)}
+                  onChange={(value) => setNewSeatPriceMonth(value === null ? "" : String(value))}
+                  placeholder={t("Blank if free / N/A")}
+                  isDisabled={createPlan.isPending}
+                  width="100%"
+                />
+                <NumberInput
+                  id="create-price-year"
+                  label={t("Yearly seat price (minor)")}
+                  min={0}
+                  value={newSeatPriceYear.trim() === "" ? null : Number(newSeatPriceYear)}
+                  onChange={(value) => setNewSeatPriceYear(value === null ? "" : String(value))}
+                  placeholder={t("Blank if free / N/A")}
+                  isDisabled={createPlan.isPending}
+                  width="100%"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <NumberInput
+                  id="create-trial-days"
+                  label={t("Trial Days")}
+                  min={0}
+                  value={newTrialDays}
+                  onChange={(value) => setNewTrialDays(value ?? 0)}
+                  isDisabled={createPlan.isPending}
+                  width="100%"
+                />
+                <NumberInput
+                  id="create-sort-order"
+                  label={t("Sort Order")}
+                  value={newSortOrder}
+                  onChange={(value) => setNewSortOrder(value ?? 0)}
+                  isDisabled={createPlan.isPending}
+                  width="100%"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <NumberInput
+                  id="create-min-seats"
+                  label={t("Min Seats (Optional)")}
+                  min={1}
+                  value={newMinSeats}
+                  onChange={(value) => setNewMinSeats(value)}
+                  isDisabled={createPlan.isPending}
+                  width="100%"
+                />
+                <NumberInput
+                  id="create-fixed-seats"
+                  label={t("Fixed Seats (Optional)")}
+                  min={1}
+                  value={newSeatsFixed}
+                  onChange={(value) => setNewSeatsFixed(value)}
+                  isDisabled={createPlan.isPending}
+                  width="100%"
+                />
+              </div>
+
+              <CheckboxInput
+                label={t("Public plan")}
+                value={newIsPublic}
+                onChange={(checked) => setNewIsPublic(checked)}
+                isDisabled={createPlan.isPending}
+              />
             </div>
 
             {createError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{createError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={createError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" type="button" disabled={createPlan.isPending} />}
-              >
-                {t("Cancel")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
+              <Button
+        type="button"
+        isDisabled={createPlan.isPending}
+        label={t("Cancel")}
+        variant="secondary"
+        onClick={() => setCreateDialogOpen(false)}
+      />
               <Button
                 type="submit"
-                disabled={!newKey.trim() || !newName.trim() || !newCurrency.trim() || createPlan.isPending}
+                label={t("Create plan")}
+                variant="primary"
+                isLoading={createPlan.isPending}
                 aria-busy={createPlan.isPending || undefined}
-              >
-                {createPlan.isPending && <Spinner className="size-3.5" />}
-                {t("Create plan")}
-              </Button>
-            </DialogFooter>
+                isDisabled={!newKey.trim() || !newName.trim() || !newCurrency.trim() || createPlan.isPending}
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
       {/* Edit Plan Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+      <Dialog
+        isOpen={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        purpose="form"
+      >
+
           <form onSubmit={handleSavePlan} className="flex flex-col gap-4">
-            <DialogHeader>
-              <DialogTitle>{t("Edit Plan:")} {selectedPlan?.name}</DialogTitle>
-              <DialogDescription>
-                {t("Update non-price metadata and seat configuration for this plan.")}
-              </DialogDescription>
-            </DialogHeader>
+            <DialogHeader title={<>{t("Edit Plan:")} {selectedPlan?.name}</>} subtitle={t("Update non-price metadata and seat configuration for this plan.")} />
 
             <div className="flex flex-col gap-3">
-              <Field>
-                <FieldLabel htmlFor="plan-name-input" className="text-label">
-                  {t("Plan Name")} <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Input
-                  id="plan-name-input"
-                  value={planName}
-                  onChange={(e) => setPlanName(e.target.value)}
-                  required
-                  disabled={putPlan.isPending}
-                />
-              </Field>
+              <TextInput
+                label={t("Plan Name")}
+                id={"plan-name-input"}
+                isRequired
+                value={planName}
+                onChange={(value) => setPlanName(value)}
+                isDisabled={putPlan.isPending}
+                width="100%"
+              />
 
-              <Field>
-                <FieldLabel htmlFor="plan-description-input" className="text-label">
-                  {t("Description")}
-                </FieldLabel>
-                <Textarea
-                  id="plan-description-input"
-                  value={planDescription}
-                  onChange={(e) => setPlanDescription(e.target.value)}
-                  placeholder={t("Optional summary shown in catalogue and plan settings")}
-                  disabled={putPlan.isPending}
-                />
-              </Field>
+              <TextArea
+                id="plan-description-input"
+                label={t("Description")}
+                value={planDescription}
+                onChange={(value) => setPlanDescription(value)}
+                placeholder={t("Optional summary shown in catalogue and plan settings")}
+                isDisabled={putPlan.isPending}
+                width="100%"
+              />
 
-              <Field data-invalid={Boolean(currencyError) || undefined}>
-                <FieldLabel htmlFor="plan-currency-input" className="text-label">
-                  {t("Currency")}
-                </FieldLabel>
-                <Input
-                  id="plan-currency-input"
-                  value={currency}
-                  onChange={(e) => {
-                    setCurrency(e.target.value);
+              <TextInput
+                label={t("Currency")}
+                id="plan-currency-input"
+                value={currency}
+                onChange={(value) => {
+                    setCurrency(value);
                     setCurrencyError(null);
                   }}
-                  placeholder={t("ISO 4217 code")}
-                  aria-invalid={Boolean(currencyError)}
-                  aria-describedby={currencyError ? "plan-currency-error" : undefined}
-                  disabled={putPlan.isPending}
-                />
-                {currencyError && (
-                  <FieldError id="plan-currency-error" role="alert" className="text-caption">
-                    {currencyError}
-                  </FieldError>
-                )}
-              </Field>
+                placeholder={t("ISO 4217 code")}
+                aria-describedby={currencyError ? "plan-currency-error" : undefined}
+                isDisabled={putPlan.isPending}
+                width="100%"
+                status={currencyError ? { type: "error", message: currencyError } : undefined}
+              />
 
               <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="trial-days-input" className="text-label">
-                    {t("Trial Days")}
-                  </FieldLabel>
-                  <Input
-                    id="trial-days-input"
-                    type="number"
-                    min={0}
-                    value={trialDays}
-                    onChange={(e) => setTrialDays(Number(e.target.value))}
-                    disabled={putPlan.isPending}
-                  />
-                </Field>
+                <NumberInput
+                  id="trial-days-input"
+                  label={t("Trial Days")}
+                  min={0}
+                  value={trialDays}
+                  onChange={(value) => setTrialDays(value ?? 0)}
+                  isDisabled={putPlan.isPending}
+                  width="100%"
+                />
 
-                <Field>
-                  <FieldLabel htmlFor="sort-order-input" className="text-label">
-                    {t("Sort Order")}
-                  </FieldLabel>
-                  <Input
-                    id="sort-order-input"
-                    type="number"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(Number(e.target.value))}
-                    disabled={putPlan.isPending}
-                  />
-                </Field>
+                <NumberInput
+                  id="sort-order-input"
+                  label={t("Sort Order")}
+                  value={sortOrder}
+                  onChange={(value) => setSortOrder(value ?? 0)}
+                  isDisabled={putPlan.isPending}
+                  width="100%"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="min-seats-input" className="text-label">
-                    {t("Min Seats (Optional)")}
-                  </FieldLabel>
-                  <Input
-                    id="min-seats-input"
-                    type="number"
-                    min={1}
-                    value={minSeats ?? ""}
-                    onChange={(e) => setMinSeats(e.target.value === "" ? null : Number(e.target.value))}
-                    placeholder={t("Leave blank if N/A")}
-                    disabled={putPlan.isPending}
-                  />
-                </Field>
+                <NumberInput
+                  id="min-seats-input"
+                  label={t("Min Seats (Optional)")}
+                  min={1}
+                  value={minSeats}
+                  onChange={(value) => setMinSeats(value)}
+                  placeholder={t("Leave blank if N/A")}
+                  isDisabled={putPlan.isPending}
+                  width="100%"
+                />
 
-                <Field>
-                  <FieldLabel htmlFor="seats-fixed-input" className="text-label">
-                    {t("Fixed Seats (Optional)")}
-                  </FieldLabel>
-                  <Input
-                    id="seats-fixed-input"
-                    type="number"
-                    min={1}
-                    value={seatsFixed ?? ""}
-                    onChange={(e) => setSeatsFixed(e.target.value === "" ? null : Number(e.target.value))}
-                    placeholder={t("Leave blank if variable")}
-                    disabled={putPlan.isPending}
-                  />
-                </Field>
+                <NumberInput
+                  id="seats-fixed-input"
+                  label={t("Fixed Seats (Optional)")}
+                  min={1}
+                  value={seatsFixed}
+                  onChange={(value) => setSeatsFixed(value)}
+                  placeholder={t("Leave blank if variable")}
+                  isDisabled={putPlan.isPending}
+                  width="100%"
+                />
               </div>
 
               <div className="flex flex-col gap-2.5 pt-1">
-                <Field orientation="horizontal">
-                  <Checkbox
-                    id="plan-is-public"
-                    checked={isPublic}
-                    onCheckedChange={(checked) => setIsPublic(Boolean(checked))}
-                    disabled={putPlan.isPending}
-                  />
-                  <FieldLabel htmlFor="plan-is-public" className="text-body font-normal">
-                    {t("Public plan (visible in client pricing catalogue)")}
-                  </FieldLabel>
-                </Field>
+                <CheckboxInput
+                  label={t("Public plan (visible in client pricing catalogue)")}
+                  value={isPublic}
+                  onChange={(checked) => setIsPublic(checked)}
+                  isDisabled={putPlan.isPending}
+                />
 
-                <Field orientation="horizontal">
-                  <Checkbox
-                    id="plan-archived"
-                    checked={archived}
-                    onCheckedChange={(checked) => setArchived(Boolean(checked))}
-                    disabled={putPlan.isPending}
-                  />
-                  <FieldLabel htmlFor="plan-archived" className="text-body font-normal">
-                    {t("Archived (existing subscribers retain, no new signups)")}
-                  </FieldLabel>
-                </Field>
+                <CheckboxInput
+                  label={t("Archived (existing subscribers retain, no new signups)")}
+                  value={archived}
+                  onChange={(checked) => setArchived(checked)}
+                  isDisabled={putPlan.isPending}
+                />
               </div>
 
               <div className="space-y-2 border-t border-border pt-3">
@@ -1080,136 +945,113 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                 </Text>
                 <div className="grid max-h-48 grid-cols-2 gap-3 overflow-y-auto pr-1">
                   {LIMIT_FIELDS.map((field) => (
-                    <Field key={field.key}>
-                      <FieldLabel
-                        htmlFor={`edit-limit-${field.key}`}
-                        className="text-label"
-                      >
-                        {t(field.label)}
-                      </FieldLabel>
-                      <Input
-                        id={`edit-limit-${field.key}`}
-                        type="number"
-                        min={0}
-                        value={draftLimits[field.key] ?? ""}
-                        onChange={(e) => {
-                          const raw = e.target.value;
+                    <NumberInput
+                      label={t(field.label)}
+                      id={`edit-limit-${field.key}`}
+                      min={0}
+                      value={draftLimits[field.key] ?? null}
+                      onChange={(value) => {
                           setConfirmLowerLimits(false);
                           setAffectedSubscriptions(null);
                           setDraftLimits((prev) => ({
                             ...prev,
-                            [field.key]: raw === "" ? null : Number(raw),
-                          }));
+                            [field.key]: value }));
                         }}
-                        placeholder={t("Unlimited")}
-                        disabled={putPlan.isPending}
-                      />
-                    </Field>
+                      placeholder={t("Unlimited")}
+                      isDisabled={putPlan.isPending}
+                      width="100%"
+                    />
                   ))}
                 </div>
               </div>
             </div>
 
             {confirmLowerLimits && (loweredLimits.length > 0 || affectedSubscriptions !== null) && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption space-y-1">
-                  <div className="font-medium">
-                    {t("Lowered limits affect active subscribers")}
-                    {affectedSubscriptions !== null
-                      ? t(" ({0} subscribers)", affectedSubscriptions)
-                      : ""}
-                    :
-                  </div>
-                  {loweredLimits.length > 0 && (
-                    <div>
-                      {loweredLimits
-                        .map(
-                          (item) =>
-                            `${t(item.label)}: ${item.previous === null ? t("Unlimited") : item.previous} -> ${item.next}`,
-                        )
-                        .join(", ")}
-                    </div>
-                  )}
-                </AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={<><div className="font-medium"> {t("Lowered limits affect active subscribers")} {affectedSubscriptions !== null ? t(" ({0} subscribers)", affectedSubscriptions) : ""} : </div> {loweredLimits.length > 0 && ( <div> {loweredLimits .map( (item) => `${t(item.label)}: ${item.previous === null ? t("Unlimited") : item.previous} -> ${item.next}`, ) .join(", ")} </div> )}</>}
+              />
             )}
 
             {editError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{editError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={editError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" type="button" disabled={putPlan.isPending} />}
-              >
-                {t("Cancel")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
+              <Button
+        type="button"
+        isDisabled={putPlan.isPending}
+        label={t("Cancel")}
+        variant="secondary"
+        onClick={() => setEditDialogOpen(false)}
+      />
               {confirmLowerLimits && (loweredLimits.length > 0 || affectedSubscriptions !== null) ? (
                 <Button
                   type="button"
+                  label={t("Confirm limit reduction")}
                   variant="destructive"
-                  disabled={!planName.trim() || putPlan.isPending}
+                  isLoading={putPlan.isPending}
                   aria-busy={putPlan.isPending}
                   onClick={() => void submitSavePlan()}
-                >
-                  {putPlan.isPending && <Spinner className="size-3.5" />}
-                  {t("Confirm limit reduction")}
-                </Button>
+                  isDisabled={!planName.trim() || putPlan.isPending}
+                />
               ) : (
                 <Button
                   type="submit"
-                  disabled={!planName.trim() || putPlan.isPending}
+                  label={t("Save changes")}
+                  variant="primary"
+                  isLoading={putPlan.isPending}
                   aria-busy={putPlan.isPending}
-                >
-                  {putPlan.isPending && <Spinner className="size-3.5" />}
-                  {t("Save changes")}
-                </Button>
+                  isDisabled={!planName.trim() || putPlan.isPending}
+                />
               )}
-            </DialogFooter>
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
       {/* Delete Plan Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+      <Dialog
+        isOpen={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        purpose="info"
+      >
+
           <div className="flex flex-col gap-4">
-            <DialogHeader>
-              <DialogTitle>{t("Delete Plan:")} {planToDelete?.name}</DialogTitle>
-              <DialogDescription>
-                {t("Are you sure you want to delete plan \"")}{planToDelete?.key}{t("\"? A plan with any active or past workspace subscriptions cannot be deleted and must be archived instead.")}
-              </DialogDescription>
-            </DialogHeader>
+            <DialogHeader title={<>{t("Delete Plan:")} {planToDelete?.name}</>} subtitle={<>{t("Are you sure you want to delete plan \"")}{planToDelete?.key}{t("\"? A plan with any active or past workspace subscriptions cannot be deleted and must be archived instead.")}</>} />
 
             {deleteError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{deleteError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={deleteError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" type="button" disabled={deletePlan.isPending} />}
-              >
-                {t("Cancel")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
               <Button
+        type="button"
+        isDisabled={deletePlan.isPending}
+        label={t("Cancel")}
+        variant="secondary"
+        onClick={() => setDeleteDialogOpen(false)}
+      />
+              <Button
+                label={t("Confirm delete")}
                 variant="destructive"
+                isLoading={deletePlan.isPending}
                 onClick={handleConfirmDelete}
-                disabled={deletePlan.isPending}
                 aria-busy={deletePlan.isPending}
-              >
-                {deletePlan.isPending && <Spinner className="size-3.5" />}
-                {t("Confirm delete")}
-              </Button>
-            </DialogFooter>
+                isDisabled={deletePlan.isPending}
+              />
+            </div>
           </div>
-        </DialogContent>
+
       </Dialog>
     </div>
   );

@@ -4,19 +4,12 @@ import { Heading } from "@astryxdesign/core/Heading";
 import { Section } from "@astryxdesign/core/Section";
 import { proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import { Field, FieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Activity, AlertCircle, Download } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Field } from "@astryxdesign/core/Field";
+import { Activity, Download } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { DatePickerField } from "../components/DatePickerField";
 import { LoadingState } from "../components/LoadingState";
@@ -58,8 +51,7 @@ export function Audit() {
     action: action || undefined,
     actor_id: actorId || undefined,
     from: from ? new Date(from).toISOString() : undefined,
-    to: to ? new Date(to).toISOString() : undefined,
-  };
+    to: to ? new Date(to).toISOString() : undefined };
 
   const {
     data,
@@ -69,8 +61,7 @@ export function Audit() {
     refetch,
     hasNextPage,
     fetchNextPage,
-    isFetchingNextPage,
-  } = useAuditEvents(filters);
+    isFetchingNextPage } = useAuditEvents(filters);
 
   const events: AuditEvent[] = Array.isArray(data)
     ? data
@@ -119,8 +110,7 @@ export function Audit() {
         to: new Date(endExclusiveMs).toISOString(),
         format: exportFormat,
         action: action || undefined,
-        actor_id: actorId || undefined,
-      });
+        actor_id: actorId || undefined });
 
       if (typeof URL.createObjectURL === "function") {
         const mimeType =
@@ -150,57 +140,37 @@ export function Audit() {
         title={t("Audit Log")}
         actions={
           hasFilters ? (
-            <Button variant="outline" size="sm" onClick={clearFilters}>
-              {t("Clear filters")}
-            </Button>
+            <Button
+              label={t("Clear filters")}
+              variant="secondary"
+              size="sm"
+              onClick={clearFilters}
+            />
           ) : undefined
         }
       />
 
       <Card padding={4}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field>
-            <FieldLabel htmlFor="audit-action-select" className="text-label">
-              {t("Action")}
-            </FieldLabel>
-            <Select
-              items={actionItems}
-              value={action || "all"}
-              onValueChange={(val) => setAction(!val || val === "all" ? "" : val)}
-            >
-              <SelectTrigger id="audit-action-select" aria-label={t("Action")} className="w-full">
-                <SelectValue>
-                  {t(actionItems.find((item) => item.value === (action || "all"))?.label ??
-                    t("All actions"))}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {actionItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {t(item.label)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          <Selector
+            label={t("Action")}
+            width="100%"
+            options={actionItems.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+            value={action || "all"}
+            onChange={(val) => setAction(!val || val === "all" ? "" : val)}
+          />
 
-          <Field>
-            <FieldLabel htmlFor="audit-actor-input" className="text-label">
-              {t("Actor ID")}
-            </FieldLabel>
-            <Input
-              id="audit-actor-input"
-              type="text"
-              value={actorId}
-              onChange={(e) => setActorId(e.target.value)}
-              placeholder={t("Filter by actor ID...")}
-            />
-          </Field>
+          <TextInput
+            id="audit-actor-input"
+            label={t("Actor ID")}
+            type="text"
+            value={actorId}
+            onChange={(value) => setActorId(value)}
+            placeholder={t("Filter by actor ID...")}
+            width="100%"
+          />
 
-          <Field>
-            <FieldLabel htmlFor="audit-from-input" className="text-label">
-              {t("From Date")}
-            </FieldLabel>
+          <Field label={t("From Date")} inputID="audit-from-input" width="100%">
             <DatePickerField
               id="audit-from-input"
               value={from}
@@ -209,10 +179,7 @@ export function Audit() {
             />
           </Field>
 
-          <Field>
-            <FieldLabel htmlFor="audit-to-input" className="text-label">
-              {t("To Date")}
-            </FieldLabel>
+          <Field label={t("To Date")} inputID="audit-to-input" width="100%">
             <DatePickerField
               id="audit-to-input"
               value={to}
@@ -228,10 +195,11 @@ export function Audit() {
           <div className="space-y-4">
             <Heading level={3}>{t("Export audit log")}</Heading>
             {exportError && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertDescription>{exportError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={exportError}
+              />
             )}
             {exportNotice && (
               <Text type="supporting" color="secondary" role="status">
@@ -239,10 +207,7 @@ export function Audit() {
               </Text>
             )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
-              <Field>
-                <FieldLabel htmlFor="audit-export-from-input" className="text-label">
-                  {t("Export from")}
-                </FieldLabel>
+              <Field label={t("Export from")} inputID="audit-export-from-input" width="100%">
                 <DatePickerField
                   id="audit-export-from-input"
                   value={exportFrom}
@@ -251,10 +216,7 @@ export function Audit() {
                 />
               </Field>
 
-              <Field>
-                <FieldLabel htmlFor="audit-export-to-input" className="text-label">
-                  {t("Export to")}
-                </FieldLabel>
+              <Field label={t("Export to")} inputID="audit-export-to-input" width="100%">
                 <DatePickerField
                   id="audit-export-to-input"
                   value={exportTo}
@@ -263,52 +225,27 @@ export function Audit() {
                 />
               </Field>
 
-              <Field>
-                <FieldLabel htmlFor="audit-export-format-select" className="text-label">
-                  {t("Format")}
-                </FieldLabel>
-                <Select
-                  items={EXPORT_FORMAT_ITEMS}
-                  value={exportFormat}
-                  onValueChange={(val) => {
+              <Selector
+                label={t("Format")}
+                width="100%"
+                options={EXPORT_FORMAT_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+                value={exportFormat}
+                onChange={(val) => {
                     if (val === "csv" || val === "ndjson") setExportFormat(val);
                   }}
-                >
-                  <SelectTrigger
-                    id="audit-export-format-select"
-                    aria-label={t("Format")}
-                    className="w-full"
-                  >
-                    <SelectValue>
-                      {t(EXPORT_FORMAT_ITEMS.find((item) => item.value === exportFormat)?.label ??
-                        t("NDJSON (.ndjson)"))}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EXPORT_FORMAT_ITEMS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(item.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+              />
 
               <div>
                 <Button
                   type="button"
-                  variant="outline"
-                  disabled={exportAudit.isPending}
+                  label={t("Export audit log")}
+                  variant="secondary"
+                  icon={<Download className="size-4" aria-hidden="true" />}
+                  isLoading={exportAudit.isPending}
                   aria-busy={exportAudit.isPending || undefined}
                   onClick={handleExport}
-                >
-                  {exportAudit.isPending ? (
-                    <Spinner />
-                  ) : (
-                    <Download className="size-4" aria-hidden="true" />
-                  )}
-                  {t("Export audit log")}
-                </Button>
+                  isDisabled={exportAudit.isPending}
+                />
               </div>
             </div>
             <Text type="supporting" color="secondary">
@@ -335,9 +272,12 @@ export function Audit() {
           description={t("Try adjusting your filter criteria.")}
           actions={
             hasFilters ? (
-              <Button variant="outline" size="sm" onClick={clearFilters}>
-                {t("Clear filters")}
-              </Button>
+              <Button
+                label={t("Clear filters")}
+                variant="secondary"
+                size="sm"
+                onClick={clearFilters}
+              />
             ) : undefined
           }
         />
@@ -361,8 +301,7 @@ export function Audit() {
                     <Text type="supporting" hasTabularNumbers>
                       {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
                     </Text>
-                  ),
-                },
+                  ) },
                 {
                   key: "action",
                   header: t("Action"),
@@ -371,8 +310,7 @@ export function Audit() {
                     <Text type="code" weight="medium">
                       {event.action}
                     </Text>
-                  ),
-                },
+                  ) },
                 {
                   key: "actor_label",
                   header: t("Actor"),
@@ -382,8 +320,7 @@ export function Audit() {
                       <Text type="body">{event.actor_label}</Text>
                       <Text type="supporting">{event.actor_type}</Text>
                     </div>
-                  ),
-                },
+                  ) },
                 {
                   key: "target_label",
                   header: t("Target"),
@@ -393,8 +330,7 @@ export function Audit() {
                       <Text type="body">{event.target_label || event.target_id}</Text>
                       <Text type="supporting">{event.target_type}</Text>
                     </div>
-                  ),
-                },
+                  ) },
                 {
                   key: "detail",
                   header: t("Details"),
@@ -406,8 +342,7 @@ export function Audit() {
                     >
                       {event.detail ? JSON.stringify(event.detail) : "-"}
                     </span>
-                  ),
-                },
+                  ) },
               ]}
             />
           </Card>
@@ -415,14 +350,13 @@ export function Audit() {
           {hasNextPage && (
             <div className="flex justify-center pt-2">
               <Button
-                variant="outline"
+                label={t("Load more")}
+                variant="secondary"
+                isLoading={isFetchingNextPage}
                 onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
                 aria-busy={isFetchingNextPage}
-              >
-                {isFetchingNextPage && <Spinner className="size-3.5" />}
-                {t("Load more")}
-              </Button>
+                isDisabled={isFetchingNextPage}
+              />
             </div>
           )}
         </div>

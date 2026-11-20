@@ -10,18 +10,10 @@ import {
   TableRow,
 } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Button } from "@multica/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from "@multica/ui/components/ui/dialog";
-import { Field, FieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
+import { Button } from "@astryxdesign/core/Button";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { Tab, TabList } from "@astryxdesign/core/TabList";
+import { TextInput } from "@astryxdesign/core/TextInput";
 import { Copy, Check, CreditCard, ExternalLink } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
@@ -185,22 +177,20 @@ export function Orders({ userRole }: OrdersProps) {
     <div className="space-y-6">
       <PageHeader title={t("Orders")} />
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => {
-          if (value) setActiveTab(value as OrderStatus);
-        }}
-      >
-        <div className="border-b border-surface-border">
-          <TabsList variant="line" aria-label={t("Order status")}>
-            {STATUS_TABS.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value}>
-                {t(tab.label)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-      </Tabs>
+      <div className="border-b border-surface-border">
+        <TabList
+          role="tablist"
+          value={activeTab}
+          onChange={(value) => {
+            if (value) setActiveTab(value as OrderStatus);
+          }}
+          aria-label={t("Order status")}
+        >
+          {STATUS_TABS.map((tab) => (
+            <Tab key={tab.value} value={tab.value} label={t(tab.label)} />
+          ))}
+        </TabList>
+      </div>
 
       {isLoading && <LoadingState message={t("Loading orders...")} />}
 
@@ -268,18 +258,20 @@ export function Orders({ userRole }: OrdersProps) {
                       <div className="flex items-center gap-1.5 font-mono text-body font-semibold">
                         <span>{order.transfer_code}</span>
                         <Button
+                          label={t("Copy transfer code")}
                           variant="ghost"
-                          size="icon-xs"
+                          size="sm"
+                          isIconOnly
+                          icon={
+                            isCopied ? (
+                              <Check className="size-3.5 text-success" aria-hidden="true" />
+                            ) : (
+                              <Copy className="size-3.5" aria-hidden="true" />
+                            )
+                          }
                           onClick={() => handleCopyTransferCode(order.transfer_code)}
-                          aria-label={t("Copy transfer code")}
                           className="text-muted-foreground hover:text-foreground"
-                        >
-                          {isCopied ? (
-                            <Check className="size-3.5 text-success" aria-hidden="true" />
-                          ) : (
-                            <Copy className="size-3.5" aria-hidden="true" />
-                          )}
-                        </Button>
+                        />
                       </div>
                     </TableCell>
                     <TableCell>
@@ -360,18 +352,15 @@ export function Orders({ userRole }: OrdersProps) {
         error={confirmError}
         onConfirm={handleConfirmPayment}
       >
-        <Field>
-          <FieldLabel htmlFor="transfer-reference-input" className="text-label">
-            {t("Bank transfer reference (optional)")}
-          </FieldLabel>
-          <Input
-            id="transfer-reference-input"
-            value={transferReference}
-            onChange={(e) => setTransferReference(e.target.value)}
-            placeholder={t("e.g. FT26111600123")}
-            disabled={confirmOrder.isPending}
-          />
-        </Field>
+        <TextInput
+          id="transfer-reference-input"
+          label={t("Bank transfer reference (optional)")}
+          width="100%"
+          value={transferReference}
+          onChange={(value) => setTransferReference(value)}
+          placeholder={t("e.g. FT26111600123")}
+          isDisabled={confirmOrder.isPending}
+        />
       </ConfirmReasonDialog>
 
       {/* Cancel / Write-off Reason Dialog */}
@@ -393,15 +382,14 @@ export function Orders({ userRole }: OrdersProps) {
 
       {/* E-invoice History Dialog */}
       <Dialog
-        open={historyOrderId !== null}
+        isOpen={historyOrderId !== null}
         onOpenChange={(open) => {
           if (!open) setHistoryOrderId(null);
         }}
+        purpose="info"
+        width={768}
       >
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{t("E-invoice history")}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader title={t("E-invoice history")} />
 
           {historyLoading && <LoadingState message={t("Loading e-invoice history...")} />}
 
@@ -502,12 +490,14 @@ export function Orders({ userRole }: OrdersProps) {
             </Card>
           )}
 
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" type="button" />}>
-              {t("Close")}
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              label={t("Close")}
+              variant="secondary"
+              onClick={() => setHistoryOrderId(null)}
+            />
+          </div>
       </Dialog>
     </div>
   );

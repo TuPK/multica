@@ -1,5 +1,4 @@
 import { useId, useState, type FormEvent } from "react";
-import { Field } from "@astryxdesign/core/Field";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack, Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
 import { Section } from "@astryxdesign/core/Section";
@@ -9,30 +8,15 @@ import {
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+  TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@multica/ui/components/ui/dialog";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import { AlertCircle, ArrowUpCircle, RefreshCw } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { Selector } from "@astryxdesign/core/Selector";
+import { ArrowUpCircle, RefreshCw } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -44,8 +28,7 @@ import {
   useApproveQuotaRequest,
   useDenyQuotaRequest,
   useMe,
-  useQuotaRequests,
-} from "../api/hooks";
+  useQuotaRequests } from "../api/hooks";
 import type { QuotaRequest } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { t } from "../i18n";
@@ -84,9 +67,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
   const [denySubmitError, setDenySubmitError] = useState<string | null>(null);
 
   const approvedValueId = useId();
-  const approvedValueErrorId = useId();
   const approveReasonId = useId();
-  const approveReasonErrorId = useId();
 
   const query = useQuotaRequests(
     { state: stateFilter || undefined },
@@ -148,8 +129,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
       await approveMutation.mutateAsync({
         id: approveTarget.id,
         value: parsedValue,
-        reason: trimmedReason,
-      });
+        reason: trimmedReason });
       setApproveTarget(null);
     } catch (err) {
       setApproveSubmitError(getApiErrorMessage(err, t("Failed to approve quota request")));
@@ -175,20 +155,16 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
             actions={
               <>
                 <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => query.refetch()}
-                            disabled={query.isFetching}
-                            aria-busy={query.isFetching || undefined}
-                          >
-                            {query.isFetching ? (
-                              <Spinner />
-                            ) : (
-                              <RefreshCw className="size-4" aria-hidden="true" />
-                            )}
-                            {t("Refresh")}
-                          </Button>
+                  type="button"
+                  label={t("Refresh")}
+                  variant="secondary"
+                  size="sm"
+                  icon={<RefreshCw className="size-4" aria-hidden="true" />}
+                  isLoading={query.isFetching}
+                  onClick={() => query.refetch()}
+                  aria-busy={query.isFetching || undefined}
+                  isDisabled={query.isFetching}
+                />
               </>
             }
           />
@@ -201,25 +177,14 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
               <Heading level={3}>{t("Requests")}</Heading>
               <HStack wrap="wrap" gap={3} align="center">
                 <div className="w-56">
-                  <Select
-                    items={[...STATE_OPTIONS]}
+                  <Selector
+                    label={t("State")}
+                    isLabelHidden
+                    width="100%"
+                    options={STATE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
                     value={stateFilter || "all"}
-                    onValueChange={(val) => setStateFilter(!val || val === "all" ? "" : val)}
-                  >
-                    <SelectTrigger aria-label={t("State")} className="w-full">
-                      <SelectValue>
-                        {t(STATE_OPTIONS.find((item) => item.value === (stateFilter || "all"))
-                          ?.label ?? t("All states"))}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATE_OPTIONS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {t(item.label)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(val) => setStateFilter(!val || val === "all" ? "" : val)}
+                  />
                 </div>
               </HStack>
 
@@ -311,8 +276,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                                     onSelect: () => {
                                       setDenyTarget(req);
                                       setDenySubmitError(null);
-                                    },
-                                  },
+                                    } },
                                 ]}
                               />
                             ) : (
@@ -330,14 +294,13 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                 <div className="flex justify-center pt-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    label={t("Load more")}
+                    variant="secondary"
+                    isLoading={query.isFetchingNextPage}
                     onClick={() => query.fetchNextPage()}
-                    disabled={query.isFetchingNextPage}
                     aria-busy={query.isFetchingNextPage || undefined}
-                  >
-                    {query.isFetchingNextPage && <Spinner />}
-                    {t("Load more")}
-                  </Button>
+                    isDisabled={query.isFetchingNextPage}
+                  />
                 </div>
               )}
             </div>
@@ -346,106 +309,97 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
       </LayoutContent>
 
       <Dialog
-        open={approveTarget !== null}
+        isOpen={approveTarget !== null}
         onOpenChange={(open) => {
           if (!open && !approveMutation.isPending) {
             setApproveTarget(null);
           }
         }}
+        purpose="form"
+        width={512}
+        maxHeight="85vh"
       >
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+
           <form onSubmit={handleApproveSubmit} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>{t("Approve quota request")}</DialogTitle>
-              {approveTarget && (
-                <DialogDescription>
-                  {t("Gate")} {approveTarget.gate}{t(": current")} {approveTarget.current_value}{t(", requested")}{" "}
-                  {approveTarget.requested_value}{t(". You may approve a lower increase.")}
-                </DialogDescription>
-              )}
-            </DialogHeader>
+            <DialogHeader
+              title={t("Approve quota request")}
+              subtitle={
+                approveTarget ? (
+                  <>
+                    {t("Gate")} {approveTarget.gate}{t(": current")} {approveTarget.current_value}{t(", requested")}{" "}
+                    {approveTarget.requested_value}{t(". You may approve a lower increase.")}
+                  </>
+                ) : undefined
+              }
+            />
 
             {approveSubmitError && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertDescription>{approveSubmitError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={approveSubmitError}
+              />
             )}
 
-            <Field
+            <NumberInput
               label={t("Approved value")}
-              inputID={approvedValueId}
+              id={approvedValueId}
               isRequired
               status={
                 valueFieldError
-                  ? { type: "error", message: valueFieldError, messageID: approvedValueErrorId }
+                  ? { type: "error", message: valueFieldError }
                   : undefined
               }
               width="100%"
-            >
-              <Input
-                id={approvedValueId}
-                type="number"
-                step={1}
-                min={approveTarget ? (approveTarget.current_value ?? 0) + 1 : 1}
-                value={approvedValueInput}
-                onChange={(e) => {
-                  setApprovedValueInput(e.target.value);
+              step={1}
+              min={approveTarget ? (approveTarget.current_value ?? 0) + 1 : 1}
+              value={approvedValueInput.trim() === "" ? null : Number(approvedValueInput)}
+              onChange={(value) => {
+                  setApprovedValueInput(value === null ? "" : String(value));
                   setValueFieldError(null);
                 }}
-                aria-describedby={valueFieldError ? approvedValueErrorId : undefined}
-                aria-invalid={valueFieldError ? true : undefined}
-                disabled={approveMutation.isPending}
-              />
-            </Field>
+              isDisabled={approveMutation.isPending}
+            />
 
-            <Field
+            <TextArea
               label={t("Reason")}
-              inputID={approveReasonId}
+              id={approveReasonId}
               isRequired
               status={
                 reasonFieldError
-                  ? { type: "error", message: reasonFieldError, messageID: approveReasonErrorId }
+                  ? { type: "error", message: reasonFieldError }
                   : undefined
               }
               width="100%"
-            >
-              <Textarea
-                id={approveReasonId}
-                value={approveReasonInput}
-                onChange={(e) => {
-                  setApproveReasonInput(e.target.value);
+              value={approveReasonInput}
+              onChange={(value) => {
+                  setApproveReasonInput(value);
                   setReasonFieldError(null);
                 }}
-                placeholder={t("Explain the approved limit and duration...")}
-                aria-describedby={reasonFieldError ? approveReasonErrorId : undefined}
-                aria-invalid={reasonFieldError ? true : undefined}
-                disabled={approveMutation.isPending}
-                rows={3}
-              />
-            </Field>
+              placeholder={t("Explain the approved limit and duration...")}
+              isDisabled={approveMutation.isPending}
+              rows={3}
+            />
 
-            <DialogFooter>
+            <div className="flex justify-end gap-2">
               <Button
                 type="button"
-                variant="outline"
+                label={t("Cancel")}
+                variant="secondary"
                 onClick={() => setApproveTarget(null)}
-                disabled={approveMutation.isPending}
-              >
-                {t("Cancel")}
-              </Button>
+                isDisabled={approveMutation.isPending}
+              />
               <Button
                 type="submit"
-                variant="default"
-                disabled={approveMutation.isPending}
+                label={t("Approve request")}
+                variant="primary"
+                isLoading={approveMutation.isPending}
                 aria-busy={approveMutation.isPending || undefined}
-              >
-                {approveMutation.isPending && <Spinner />}
-                {t("Approve request")}
-              </Button>
-            </DialogFooter>
+                isDisabled={approveMutation.isPending}
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
       <ConfirmReasonDialog

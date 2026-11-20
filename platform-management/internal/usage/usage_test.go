@@ -1,6 +1,7 @@
 package usage
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/platform-management/internal/db"
+	"github.com/multica-ai/multica/platform-management/internal/testdb"
 )
 
 func pgUUID(t *testing.T, s string) pgtype.UUID {
@@ -123,5 +125,41 @@ func TestEveryLatestQueryFiltersByWorkspace(t *testing.T) {
 		if !regexp.MustCompile(`workspace_id\s*(=|= ANY)\s*\(?\$1`).MatchString(block) {
 			t.Errorf("%s has no workspace_id filter:\n%s", name, block)
 		}
+	}
+}
+
+// The overview's daily series sums each day's usage rows over the workspaces.
+// The day is far in the past so no other test's rows fall on it.
+func TestSumIssuesAndTasksByDaySumsEachDayOverWorkspaces(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	day := time.Date(1999, 6, 1, 0, 0, 0, 0, time.UTC)
+	for _, row := range []struct {
+		issues, tasks int
+	}{{3, 5}, {4, 6}} {
+		if _, err := pool.Exec(ctx, `INSERT INTO platform_usage_daily (workspace_id, day, issues_created, tasks_run)
+			VALUES (gen_random_uuid(), $1, $2, $3)`, day, row.issues, row.tasks); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() {
+		pool.Exec(ctx, `DELETE FROM platform_usage_daily WHERE day = $1`, day)
+	})
+
+	rows, err := db.New(pool).SumIssuesAndTasksByDay(ctx, pgtype.Date{Time: day, Valid: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, r := range rows {
+		if r.Day.Time.Equal(day) {
+			found = true
+			if r.IssuesCreated != 7 || r.TasksRun != 11 {
+				t.Fatalf("day sums = %+v, want 7 issues and 11 tasks", r)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("no row for %s in %+v", day.Format(time.DateOnly), rows)
 	}
 }

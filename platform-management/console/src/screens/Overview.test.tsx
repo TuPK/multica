@@ -5,6 +5,34 @@ import { Overview } from "./Overview";
 
 const mockUseOverview = vi.fn();
 
+// The fields the parsed overview always carries, empty when the server sent none.
+const NO_ACTIVITY = {
+  daily_series: [],
+  runtimes_by_status: { online: 0, offline: 0 },
+  operations: {
+    pending_approvals: 0,
+    pending_deletions: 0,
+    pending_quota_requests: 0,
+    failed_einvoices: 0,
+    active_legal_holds: 0,
+  },
+};
+
+// Thirty UTC days ending 2026-11-20, each with one sign-up.
+function thirtyDaySeries() {
+  return Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(Date.UTC(2026, 9, 22 + i));
+    return {
+      day: d.toISOString().slice(0, 10),
+      workspaces_created: 1,
+      orders_created: i === 29 ? 3 : 0,
+      orders_paid: i === 29 ? 1 : 0,
+      usage_issues_created: 4,
+      usage_tasks_run: 9,
+    };
+  });
+}
+
 vi.mock("../api/hooks", () => ({
   useOverview: () => mockUseOverview(),
 }));
@@ -24,6 +52,7 @@ describe("Overview screen", () => {
           pending_deletion: 1,
         },
         signups_7d: 19,
+        ...NO_ACTIVITY,
       },
       isLoading: false,
       isError: false,
@@ -58,6 +87,7 @@ describe("Overview screen", () => {
           pending_deletion: 0,
         },
         signups_7d: 4,
+        ...NO_ACTIVITY,
         pending_orders: 3,
         pending_by_currency: {
           vnd: { orders: 3, amount: 600000, vat_amount: 60000 },
@@ -116,6 +146,7 @@ describe("Overview screen", () => {
       data: {
         workspaces_by_status: { active: 2, read_only: 0, suspended: 0, pending_deletion: 0 },
         signups_7d: 1,
+        ...NO_ACTIVITY,
       },
       isLoading: false,
       isFetching: false,
@@ -126,6 +157,66 @@ describe("Overview screen", () => {
     render(<Overview />);
     fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("charts the 30-day activity, the usage trend and the runtimes, and lists the operations queue", () => {
+    const onNavigate = vi.fn();
+    mockUseOverview.mockReturnValue({
+      data: {
+        workspaces_by_status: { active: 5, read_only: 0, suspended: 0, pending_deletion: 0 },
+        signups_7d: 3,
+        daily_series: thirtyDaySeries(),
+        runtimes_by_status: { online: 4, offline: 3 },
+        operations: {
+          pending_approvals: 2,
+          pending_deletions: 1,
+          pending_quota_requests: 0,
+          failed_einvoices: 5,
+          active_legal_holds: 1,
+        },
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<Overview onNavigate={onNavigate} canNavigate={(screen) => screen !== "legal-holds"} />);
+
+    expect(screen.getByRole("heading", { name: "Activity, last 30 days" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Workspaces and orders per day/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Tasks run and issues created per day/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Runtimes by status \(7 total\)/ })).toBeInTheDocument();
+
+    const queue = screen.getByRole("heading", { name: "Operations queue" }).parentElement!;
+    expect(within(queue).getByText("E-invoice failures")).toBeInTheDocument();
+    expect(within(queue).getByText("5")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open E-invoice failures" }));
+    expect(onNavigate).toHaveBeenLastCalledWith("einvoices");
+    fireEvent.click(screen.getByRole("button", { name: "Open Pending approvals" }));
+    expect(onNavigate).toHaveBeenLastCalledWith("approvals");
+    // The legal-holds link is hidden for a staff member who may not open it.
+    expect(screen.queryByRole("button", { name: "Open Active legal holds" })).not.toBeInTheDocument();
+  });
+
+  it("shows no activity and no queue links without a navigation handler", () => {
+    mockUseOverview.mockReturnValue({
+      data: {
+        workspaces_by_status: { active: 1, read_only: 0, suspended: 0, pending_deletion: 0 },
+        signups_7d: 0,
+        ...NO_ACTIVITY,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<Overview />);
+
+    expect(screen.getByText("No activity data")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Usage trend, last 30 days" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Operations queue" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Open / })).not.toBeInTheDocument();
   });
 
   it("handles loading, error, and empty states", () => {

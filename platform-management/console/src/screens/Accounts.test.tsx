@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Accounts } from "./Accounts";
 import { PlatformApiError } from "../api/client";
 import { AccountApiError } from "../api/hooks";
+import { findAlert } from "../test/alert";
 
 const mockUseAccountRequests = vi.fn();
 const mockUsePlans = vi.fn();
@@ -270,7 +271,7 @@ describe("Accounts screen", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Submit request" }));
 
     await waitFor(() => {
-      expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      expect(findAlert(dialog)).toHaveTextContent(
         /an account with this email already exists/i,
       );
     });
@@ -413,7 +414,7 @@ describe("Accounts screen", () => {
     await waitFor(() => {
       expect(mockResendMutateAsync).toHaveBeenCalledWith({ id: "req-3" });
     });
-    expect(screen.getByRole("alert")).toHaveTextContent(/90 seconds/i);
+    expect(findAlert()).toHaveTextContent(/90 seconds/i);
   });
 
   it("shows a send failure message on 502 from resend-welcome", async () => {
@@ -426,7 +427,7 @@ describe("Accounts screen", () => {
     fireEvent.click(within(completedRow).getByRole("button", { name: "Resend welcome" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/failed to send welcome email/i);
+      expect(findAlert()).toHaveTextContent(/failed to send welcome email/i);
     });
   });
 
@@ -468,7 +469,7 @@ describe("Accounts screen", () => {
     render(<Accounts userRole="system_admin" />, { wrapper });
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(findAlert()).toBeInTheDocument();
     });
     expect(screen.getByText(/Failed to load account requests/i)).toBeInTheDocument();
   });
@@ -504,7 +505,7 @@ describe("Accounts screen", () => {
     fillCommonIndividualFields(dialog1, "act@example.com");
     fireEvent.click(within(dialog1).getByRole("button", { name: "Submit request" }));
     await waitFor(() => {
-      expect(within(dialog1).getByRole("alert")).toHaveTextContent(/a paid plan needs activation/i);
+      expect(findAlert(dialog1)).toHaveTextContent(/a paid plan needs activation/i);
     });
 
     // 409 plan_audience_mismatch
@@ -513,8 +514,8 @@ describe("Accounts screen", () => {
     );
     fireEvent.click(within(dialog1).getByRole("button", { name: "Submit request" }));
     await waitFor(() => {
-      expect(within(dialog1).getByLabelText(/^Plan$/i)).toHaveAttribute("aria-invalid", "true");
-      expect(within(dialog1).getByRole("alert")).toHaveTextContent(/not sold to this kind/i);
+      expect(within(dialog1).getByRole("combobox", { name: /^Plan$/i })).toHaveAttribute("aria-invalid", "true");
+      expect(findAlert(dialog1)).toHaveTextContent(/not sold to this kind/i);
     });
 
     // 429 account_create_rate_limited with Retry-After
@@ -523,14 +524,14 @@ describe("Accounts screen", () => {
     );
     fireEvent.click(within(dialog1).getByRole("button", { name: "Submit request" }));
     await waitFor(() => {
-      expect(within(dialog1).getByRole("alert")).toHaveTextContent(/2 minutes/i);
+      expect(findAlert(dialog1)).toHaveTextContent(/2 minutes/i);
     });
 
     // Generic 500 error
     mockCreateMutateAsync.mockRejectedValueOnce(new PlatformApiError(500, "internal", "db crashed"));
     fireEvent.click(within(dialog1).getByRole("button", { name: "Submit request" }));
     await waitFor(() => {
-      expect(within(dialog1).getByRole("alert")).toHaveTextContent(/Unable to create account request/i);
+      expect(findAlert(dialog1)).toHaveTextContent(/Unable to create account request/i);
     });
   });
 
@@ -547,7 +548,7 @@ describe("Accounts screen", () => {
     fireEvent.click(within(confirmDialog).getByRole("button", { name: "Confirm cancel" }));
 
     await waitFor(() => {
-      expect(within(confirmDialog).getByRole("alert")).toHaveTextContent(
+      expect(findAlert(confirmDialog)).toHaveTextContent(
         /only a pending request can be canceled/i,
       );
     });

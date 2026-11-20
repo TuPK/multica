@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Audit } from "./Audit";
 
@@ -112,30 +112,24 @@ describe("Audit screen", () => {
     const fromTrigger = screen.getByLabelText(/From Date/i);
     await user.click(fromTrigger);
 
-    await screen.findByRole("button", { name: /Any date/i });
-    const day15 = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-day]")).find(
-      (btn) => btn.textContent?.trim() === "15",
-    );
-    expect(day15).toBeDefined();
-    await user.click(day15!);
+    await screen.findAllByRole("button", { name: /Any date/i });
+    const day15 = within(screen.getByRole("dialog")).getByRole("button", { name: /November 15, 2026/ });
+    await user.click(day15);
 
     const lastCall = mockUseAuditEvents.mock.calls.at(-1)?.[0] as { from?: string; to?: string };
     expect(lastCall?.from).toMatch(/^\d{4}-\d{2}-15T00:00:00\.000Z$/);
 
     const toTrigger = screen.getByLabelText(/To Date/i);
     await user.click(toTrigger);
-    await screen.findByRole("button", { name: /Any date/i });
-    const day20 = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-day]")).find(
-      (btn) => btn.textContent?.trim() === "20",
-    );
-    expect(day20).toBeDefined();
-    await user.click(day20!);
+    await screen.findAllByRole("button", { name: /Any date/i });
+    const day20 = within(screen.getByRole("dialog")).getByRole("button", { name: /November 20, 2026/ });
+    await user.click(day20);
 
     const withToCall = mockUseAuditEvents.mock.calls.at(-1)?.[0] as { from?: string; to?: string };
     expect(withToCall?.to).toMatch(/^\d{4}-\d{2}-20T00:00:00\.000Z$/);
 
     await user.click(fromTrigger);
-    const anyDateBtn = await screen.findByRole("button", { name: /Any date/i });
+    const anyDateBtn = within(await screen.findByRole("dialog")).getByRole("button", { name: /Any date/i });
     await user.click(anyDateBtn);
 
     expect(mockUseAuditEvents).toHaveBeenLastCalledWith(
@@ -210,23 +204,16 @@ describe("Audit screen", () => {
 
     const exportFromTrigger = screen.getByLabelText(/Export from/i);
     await user.click(exportFromTrigger);
-    const prevBtn = await screen.findByRole("button", { name: /previous/i });
+    const prevBtn = within(await screen.findByRole("dialog")).getByRole("button", { name: /previous/i });
     await user.click(prevBtn);
-    await user.click(prevBtn);
-    const day1 = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-day]")).find(
-      (btn) => btn.textContent?.trim() === "1",
-    );
-    expect(day1).toBeDefined();
-    await user.click(day1!);
+    const day1 = within(screen.getByRole("dialog")).getByRole("button", { name: /October 1, 2026/ });
+    await user.click(day1);
 
     const exportToTrigger = screen.getByLabelText(/Export to/i);
     await user.click(exportToTrigger);
-    await screen.findByRole("button", { name: /Any date/i });
-    const day15 = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-day]")).find(
-      (btn) => btn.textContent?.trim() === "15",
-    );
-    expect(day15).toBeDefined();
-    await user.click(day15!);
+    await screen.findAllByRole("button", { name: /Any date/i });
+    const day15 = screen.getByRole("button", { name: /November 15, 2026/ });
+    await user.click(day15);
 
     await user.click(screen.getByRole("button", { name: /Export audit log/i }));
 

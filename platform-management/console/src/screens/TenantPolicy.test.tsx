@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TenantPolicy } from "./TenantPolicy";
 import { PlatformApiError } from "../api/client";
+import { findAlert } from "../test/alert";
 
 const mockUseMe = vi.fn();
 const mockUseTenants = vi.fn();
@@ -167,7 +168,7 @@ describe("TenantPolicy screen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Save policy/i }));
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/workspace policies/i);
+      expect(findAlert()).toHaveTextContent(/workspace policies/i);
     });
   });
 });

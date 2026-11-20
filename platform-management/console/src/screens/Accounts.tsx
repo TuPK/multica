@@ -3,30 +3,15 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Card } from "@astryxdesign/core/Card";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@multica/ui/components/ui/dialog";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
-import { AlertCircle, CheckCircle2, UserPlus } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { TabList, Tab } from "@astryxdesign/core/TabList";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { UserPlus } from "@multica/ui/icons";
 import { RowActions, useRowActionsWidth, type RowAction } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -41,8 +26,7 @@ import {
   useCancelAccountRequest,
   useResendWelcome,
   AccountApiError,
-  type CreateAccountInput,
-} from "../api/hooks";
+  type CreateAccountInput } from "../api/hooks";
 import { PlatformApiError } from "../api/client";
 import type { StaffRole } from "../components/types";
 import type { AccountRequest, AccountRequestState, Plan } from "../api/schemas";
@@ -78,8 +62,7 @@ const ERROR_CODE_LABELS: Record<string, string> = {
   email_domain_blocked: "Email domain blocked",
   slug_unavailable: "Workspace slug unavailable",
   finalize_failed: "Subscription finalization failed",
-  internal: "Internal error",
-};
+  internal: "Internal error" };
 
 const FIELD_ERROR_MESSAGES: Record<string, string> = {
   kind: "Select a valid account kind.",
@@ -96,8 +79,7 @@ const FIELD_ERROR_MESSAGES: Record<string, string> = {
   "billing_profile.legal_name": "Legal name is required.",
   "billing_profile.tax_code": "Enter a valid 10-digit (or 10-3) tax code.",
   "billing_profile.address": "Address is required.",
-  "billing_profile.invoice_email": "Enter a valid invoice email address.",
-};
+  "billing_profile.invoice_email": "Enter a valid invoice email address." };
 
 function createIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -146,8 +128,7 @@ function extractErrorDetails(err: unknown): {
       code: err.code,
       message: err.message,
       fields: err.fields,
-      retryAfter: err.retryAfter,
-    };
+      retryAfter: err.retryAfter };
   }
   if (err instanceof PlatformApiError) {
     return {
@@ -155,8 +136,7 @@ function extractErrorDetails(err: unknown): {
       code: err.code,
       message: err.message,
       fields: [],
-      retryAfter: null,
-    };
+      retryAfter: null };
   }
   if (err instanceof Error) {
     return { status: null, code: null, message: err.message, fields: [], retryAfter: null };
@@ -391,11 +371,8 @@ export function Accounts({ userRole }: AccountsProps) {
               legal_name: legalName.trim(),
               tax_code: taxCode.trim(),
               address: address.trim(),
-              invoice_email: invoiceEmail.trim().toLowerCase(),
-            },
-          }
-        : {}),
-    };
+              invoice_email: invoiceEmail.trim().toLowerCase() } }
+        : {}) };
 
     try {
       await createAccount.mutateAsync({ input, idempotencyKey });
@@ -416,8 +393,7 @@ export function Accounts({ userRole }: AccountsProps) {
         }
         case "account_activation_required":
           setFieldErrors({
-            activation: t("Trial or complimentary reason required."),
-          });
+            activation: t("Trial or complimentary reason required.") });
           setFormError(details.message || t("A paid plan requires either a trial or a complimentary reason."));
           break;
         case "account_email_exists":
@@ -484,57 +460,55 @@ export function Accounts({ userRole }: AccountsProps) {
   const requestList = requests ?? [];
   const planItems = activePlans.map((p) => ({
     value: p.key,
-    label: `${p.name} (${p.key})`,
-  }));
+    label: `${p.name} (${p.key})` }));
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={t("Accounts")}
         actions={
-          <Button size="sm" onClick={handleOpenCreate} className="gap-1.5">
-            <UserPlus className="size-4" aria-hidden="true" />
-            <span>{t("Create account")}</span>
-          </Button>
+          <Button
+            label={t("Create account")}
+            variant="primary"
+            size="sm"
+            icon={<UserPlus className="size-4" aria-hidden="true" />}
+            onClick={handleOpenCreate}
+            className="gap-1.5"
+          />
         }
       />
 
       {actionNotice && (
-        <Alert
+        <Banner
+          status="info"
           role="status"
-          className="border-success/30 bg-success/10 text-success"
-        >
-          <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden="true" />
-          <AlertDescription className="text-body text-success">
-            {actionNotice}
-          </AlertDescription>
-        </Alert>
+          title={actionNotice}
+        />
       )}
 
       {actionError && (
-        <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
-          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-          <AlertDescription className="text-body">{actionError}</AlertDescription>
-        </Alert>
+        <Banner
+          status="error"
+          role="alert"
+          title={actionError}
+        />
       )}
 
-      <Tabs
-        value={stateFilter || "all"}
-        onValueChange={(value) => {
-          const found = STATE_TABS.find((t) => t.value === value);
-          setStateFilter(found ? found.filter : "");
-        }}
-      >
-        <div className="border-b border-surface-border">
-          <TabsList variant="line" aria-label={t("Account request state")}>
-            {STATE_TABS.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value}>
-                {t(tab.label)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-      </Tabs>
+      <div className="border-b border-surface-border">
+        <TabList
+          role="tablist"
+          value={stateFilter || "all"}
+          onChange={(value) => {
+            const found = STATE_TABS.find((t) => t.value === value);
+            setStateFilter(found ? found.filter : "");
+          }}
+          aria-label={t("Account request state")}
+        >
+          {STATE_TABS.map((tab) => (
+            <Tab key={tab.value} value={tab.value} label={t(tab.label)} />
+          ))}
+        </TabList>
+      </div>
 
       {isLoading && <LoadingState message={t("Loading account requests...")} />}
 
@@ -557,13 +531,19 @@ export function Accounts({ userRole }: AccountsProps) {
           }
           actions={
             stateFilter ? (
-              <Button variant="outline" size="sm" onClick={() => setStateFilter("")}>
-                {t("Show all")}
-              </Button>
+              <Button
+                label={t("Show all")}
+                variant="secondary"
+                size="sm"
+                onClick={() => setStateFilter("")}
+              />
             ) : (
-              <Button size="sm" onClick={handleOpenCreate}>
-                {t("Create account")}
-              </Button>
+              <Button
+                label={t("Create account")}
+                variant="primary"
+                size="sm"
+                onClick={handleOpenCreate}
+              />
             )
           }
         />
@@ -587,8 +567,7 @@ export function Accounts({ userRole }: AccountsProps) {
                     <AccountStateBadge req={req} />
                     {req.logged_in === false && <Badge variant="neutral" label={t("Never logged in")} />}
                   </div>
-                ),
-              },
+                ) },
               {
                 key: "email",
                 header: t("Email"),
@@ -604,14 +583,12 @@ export function Accounts({ userRole }: AccountsProps) {
                       </Text>
                     )}
                   </>
-                ),
-              },
+                ) },
               {
                 key: "kind",
                 header: t("Kind"),
                 width: proportional(0.6, { minWidth: 56 }),
-                renderCell: (req) => <Text type="body" className="capitalize">{req.kind}</Text>,
-              },
+                renderCell: (req) => <Text type="body" className="capitalize">{req.kind}</Text> },
               {
                 key: "plan_key",
                 header: t("Plan"),
@@ -625,8 +602,7 @@ export function Accounts({ userRole }: AccountsProps) {
                       {req.seats} {t("seats •")} {req.interval}
                     </Text>
                   </>
-                ),
-              },
+                ) },
               {
                 key: "workspace_name",
                 header: t("Workspace Name"),
@@ -645,8 +621,7 @@ export function Accounts({ userRole }: AccountsProps) {
                       </div>
                     )}
                   </>
-                ),
-              },
+                ) },
               {
                 key: "error_code",
                 header: t("Error Code"),
@@ -658,8 +633,7 @@ export function Accounts({ userRole }: AccountsProps) {
                     </Text>
                   ) : (
                     <Text type="supporting">-</Text>
-                  ),
-              },
+                  ) },
               {
                 key: "attempts",
                 header: t("Attempts"),
@@ -669,8 +643,7 @@ export function Accounts({ userRole }: AccountsProps) {
                   <Text type="body" hasTabularNumbers>
                     {req.attempts}
                   </Text>
-                ),
-              },
+                ) },
               {
                 key: "created_at",
                 header: t("Created"),
@@ -679,8 +652,7 @@ export function Accounts({ userRole }: AccountsProps) {
                   <Text type="supporting" hasTabularNumbers>
                     {req.created_at ? new Date(req.created_at).toLocaleString() : "-"}
                   </Text>
-                ),
-              },
+                ) },
               {
                 key: "actions",
                 header: t("Actions"),
@@ -700,332 +672,209 @@ export function Accounts({ userRole }: AccountsProps) {
                       onSelect: () => {
                         setCancelTarget(req);
                         setCancelError(null);
-                      },
-                    });
+                      } });
                   }
                   if (canResend) {
                     actions.push({
                       label: t("Resend welcome"),
                       busy: isResending,
-                      onSelect: () => handleResendWelcome(req),
-                    });
+                      onSelect: () => handleResendWelcome(req) });
                   }
                   return <RowActions label={t("account request {0}", req.email)} actions={actions} />;
-                },
-              },
+                } },
             ]}
           />
         </Card>
       )}
 
       {/* Create Account Request Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-xl">
+      <Dialog
+        isOpen={createOpen}
+        onOpenChange={setCreateOpen}
+        purpose="form"
+        width={576}
+      >
+
           <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <DialogHeader>
-              <DialogTitle>{t("Create account")}</DialogTitle>
-            </DialogHeader>
+            <DialogHeader title={t("Create account")} />
 
             <div className="flex flex-col gap-3">
-              <Field data-invalid={Boolean(fieldErrors.kind) || undefined}>
-                <FieldLabel htmlFor="account-kind" className="text-label">
-                  {t("Account kind")}
-                </FieldLabel>
-                <Select
-                  items={ACCOUNT_KIND_ITEMS}
-                  value={kind}
-                  onValueChange={(val) => {
+              <Selector
+                label={t("Account kind")}
+                id="account-kind"
+                width="100%"
+                options={ACCOUNT_KIND_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+                value={kind}
+                onChange={(val) => {
                     if (val === "individual" || val === "business") {
                       handleKindChange(val);
                     }
                   }}
-                  disabled={createAccount.isPending}
-                >
-                  <SelectTrigger
-                    id="account-kind"
-                    aria-label={t("Account kind")}
-                    aria-invalid={Boolean(fieldErrors.kind)}
-                    className="w-full"
-                  >
-                    <SelectValue>
-                      {t(ACCOUNT_KIND_ITEMS.find((i) => i.value === kind)?.label ?? kind)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ACCOUNT_KIND_ITEMS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(item.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fieldErrors.kind && (
-                  <FieldError role={undefined} className="text-caption">{fieldErrors.kind}</FieldError>
-                )}
-              </Field>
+                status={fieldErrors.kind ? { type: "error", message: fieldErrors.kind } : undefined}
+              />
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field data-invalid={Boolean(fieldErrors.email) || undefined}>
-                  <FieldLabel htmlFor="account-email" className="text-label">
-                    {t("Email")}
-                  </FieldLabel>
-                  <Input
-                    id="account-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
+                <TextInput
+                  label={t("Email")}
+                  id="account-email"
+                  type="email"
+                  value={email}
+                  onChange={(value) => {
+                      setEmail(value);
                       clearFieldError("email");
                       clearFieldError("confirm_email");
                     }}
-                    placeholder={t("user@example.com")}
-                    aria-invalid={Boolean(fieldErrors.email)}
-                    disabled={createAccount.isPending}
-                  />
-                  {fieldErrors.email && (
-                    <FieldError role={undefined} className="text-caption">{fieldErrors.email}</FieldError>
-                  )}
-                </Field>
+                  placeholder={t("user@example.com")}
+                  isDisabled={createAccount.isPending}
+                  width="100%"
+                  status={fieldErrors.email ? { type: "error", message: fieldErrors.email } : undefined}
+                />
 
-                <Field data-invalid={Boolean(confirmEmailError) || undefined}>
-                  <FieldLabel htmlFor="account-confirm-email" className="text-label">
-                    {t("Confirm email")}
-                  </FieldLabel>
-                  <Input
-                    id="account-confirm-email"
-                    type="email"
-                    value={confirmEmail}
-                    onChange={(e) => {
-                      setConfirmEmail(e.target.value);
+                <TextInput
+                  label={t("Confirm email")}
+                  id="account-confirm-email"
+                  type="email"
+                  value={confirmEmail}
+                  onChange={(value) => {
+                      setConfirmEmail(value);
                       clearFieldError("confirm_email");
                     }}
-                    placeholder={t("user@example.com")}
-                    aria-invalid={Boolean(confirmEmailError)}
-                    disabled={createAccount.isPending}
-                  />
-                  {confirmEmailError && (
-                    <FieldError role={undefined} className="text-caption">{confirmEmailError}</FieldError>
-                  )}
-                </Field>
+                  placeholder={t("user@example.com")}
+                  isDisabled={createAccount.isPending}
+                  width="100%"
+                  status={confirmEmailError ? { type: "error", message: confirmEmailError } : undefined}
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field data-invalid={Boolean(fieldErrors.display_name) || undefined}>
-                  <FieldLabel htmlFor="account-display-name" className="text-label">
-                    {t("Display name")}
-                  </FieldLabel>
-                  <Input
-                    id="account-display-name"
-                    value={displayName}
-                    onChange={(e) => {
-                      setDisplayName(e.target.value);
+                <TextInput
+                  label={t("Display name")}
+                  id="account-display-name"
+                  value={displayName}
+                  onChange={(value) => {
+                      setDisplayName(value.slice(0, 100));
                       clearFieldError("display_name");
                     }}
-                    maxLength={100}
-                    aria-invalid={Boolean(fieldErrors.display_name)}
-                    disabled={createAccount.isPending}
-                  />
-                  {fieldErrors.display_name && (
-                    <FieldError role={undefined} className="text-caption">{fieldErrors.display_name}</FieldError>
-                  )}
-                </Field>
+                  isDisabled={createAccount.isPending}
+                  width="100%"
+                  status={fieldErrors.display_name ? { type: "error", message: fieldErrors.display_name } : undefined}
+                />
 
-                <Field data-invalid={Boolean(fieldErrors.workspace_name) || undefined}>
-                  <FieldLabel htmlFor="account-workspace-name" className="text-label">
-                    {t("Workspace name")}
-                  </FieldLabel>
-                  <Input
-                    id="account-workspace-name"
-                    value={workspaceName}
-                    onChange={(e) => {
-                      setWorkspaceName(e.target.value);
+                <TextInput
+                  label={t("Workspace name")}
+                  id="account-workspace-name"
+                  value={workspaceName}
+                  onChange={(value) => {
+                      setWorkspaceName(value.slice(0, 100));
                       clearFieldError("workspace_name");
                     }}
-                    maxLength={100}
-                    aria-invalid={Boolean(fieldErrors.workspace_name)}
-                    disabled={createAccount.isPending}
-                  />
-                  {fieldErrors.workspace_name && (
-                    <FieldError role={undefined} className="text-caption">{fieldErrors.workspace_name}</FieldError>
-                  )}
-                </Field>
+                  isDisabled={createAccount.isPending}
+                  width="100%"
+                  status={fieldErrors.workspace_name ? { type: "error", message: fieldErrors.workspace_name } : undefined}
+                />
               </div>
 
-              <Field data-invalid={Boolean(fieldErrors.workspace_slug) || undefined}>
-                <FieldLabel htmlFor="account-workspace-slug" className="text-label">
-                  {t("Workspace slug (optional)")}
-                </FieldLabel>
-                <Input
-                  id="account-workspace-slug"
-                  value={workspaceSlug}
-                  onChange={(e) => {
-                    setWorkspaceSlug(e.target.value);
+              <TextInput
+                label={t("Workspace slug (optional)")}
+                id="account-workspace-slug"
+                value={workspaceSlug}
+                onChange={(value) => {
+                    setWorkspaceSlug(value);
                     clearFieldError("workspace_slug");
                   }}
-                  placeholder={t("auto-generated if blank")}
-                  aria-invalid={Boolean(fieldErrors.workspace_slug)}
-                  disabled={createAccount.isPending}
-                />
-                {fieldErrors.workspace_slug && (
-                  <FieldError role={undefined} className="text-caption">{fieldErrors.workspace_slug}</FieldError>
-                )}
-              </Field>
+                placeholder={t("auto-generated if blank")}
+                isDisabled={createAccount.isPending}
+                width="100%"
+                status={fieldErrors.workspace_slug ? { type: "error", message: fieldErrors.workspace_slug } : undefined}
+              />
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <Field data-invalid={Boolean(fieldErrors.plan_key) || undefined}>
-                  <FieldLabel htmlFor="account-plan-key" className="text-label">
-                    {t("Plan")}
-                  </FieldLabel>
-                  {activePlans.length > 0 ? (
-                    <Select
-                      items={planItems}
-                      value={effectivePlanKey}
-                      onValueChange={(val) => {
-                        if (val) handlePlanChange(val);
-                      }}
-                      disabled={createAccount.isPending}
-                    >
-                      <SelectTrigger
-                        id="account-plan-key"
-                        aria-label={t("Plan")}
-                        aria-invalid={Boolean(fieldErrors.plan_key)}
-                        className="w-full"
-                      >
-                        <SelectValue>
-                          {t(planItems.find((i) => i.value === effectivePlanKey)?.label ??
-                            effectivePlanKey)}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {planItems.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {t(item.label)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      id="account-plan-key"
-                      value={effectivePlanKey}
-                      onChange={(e) => handlePlanChange(e.target.value)}
-                      aria-invalid={Boolean(fieldErrors.plan_key)}
-                      disabled={createAccount.isPending}
-                    />
-                  )}
-                  {fieldErrors.plan_key && (
-                    <FieldError role={undefined} className="text-caption">{fieldErrors.plan_key}</FieldError>
-                  )}
-                </Field>
-
-                <Field data-invalid={Boolean(fieldErrors.seats) || undefined}>
-                  <FieldLabel htmlFor="account-seats" className="text-label">
-                    {t("Seats")}
-                  </FieldLabel>
-                  <Input
-                    id="account-seats"
-                    type="number"
-                    min={1}
-                    value={seats}
-                    onChange={(e) => {
-                      setSeats(e.target.value);
-                      clearFieldError("seats");
+                {activePlans.length > 0 ? (
+                  <Selector
+                    label={t("Plan")}
+                    width="100%"
+                    options={planItems.map((item) => ({ value: item.value, label: t(item.label) }))}
+                    value={effectivePlanKey}
+                    onChange={(val) => {
+                      if (val) handlePlanChange(val);
                     }}
-                    aria-invalid={Boolean(fieldErrors.seats)}
-                    disabled={createAccount.isPending}
+                    isDisabled={createAccount.isPending}
+                    status={fieldErrors.plan_key ? { type: "error", message: fieldErrors.plan_key } : undefined}
                   />
-                  {fieldErrors.seats && (
-                    <FieldError role={undefined} className="text-caption">{fieldErrors.seats}</FieldError>
-                  )}
-                </Field>
+                ) : (
+                  <TextInput
+                    id="account-plan-key"
+                    label={t("Plan")}
+                    width="100%"
+                    value={effectivePlanKey}
+                    onChange={(value) => handlePlanChange(value)}
+                    isDisabled={createAccount.isPending}
+                    status={fieldErrors.plan_key ? { type: "error", message: fieldErrors.plan_key } : undefined}
+                  />
+                )}
 
-                <Field data-invalid={Boolean(fieldErrors.interval) || undefined}>
-                  <FieldLabel htmlFor="account-interval" className="text-label">
-                    {t("Interval")}
-                  </FieldLabel>
-                  <Select
-                    items={INTERVAL_ITEMS}
-                    value={interval}
-                    onValueChange={(val) => {
+                <NumberInput
+                  label={t("Seats")}
+                  id="account-seats"
+                  min={1}
+                  isIntegerOnly
+                  value={seats.trim() === "" ? null : Number(seats)}
+                  onChange={(value) => {
+                    setSeats(value === null ? "" : String(value));
+                    clearFieldError("seats");
+                  }}
+                  isDisabled={createAccount.isPending}
+                  width="100%"
+                  status={fieldErrors.seats ? { type: "error", message: fieldErrors.seats } : undefined}
+                />
+
+                <Selector
+                  label={t("Interval")}
+                  id="account-interval"
+                  width="100%"
+                  options={INTERVAL_ITEMS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+                  value={interval}
+                  onChange={(val) => {
                       if (val === "month" || val === "year") {
                         setInterval(val);
                         clearFieldError("interval");
                       }
                     }}
-                    disabled={createAccount.isPending}
-                  >
-                    <SelectTrigger
-                      id="account-interval"
-                      aria-label={t("Interval")}
-                      aria-invalid={Boolean(fieldErrors.interval)}
-                      className="w-full"
-                    >
-                      <SelectValue>
-                        {t(INTERVAL_ITEMS.find((i) => i.value === interval)?.label ?? interval)}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {INTERVAL_ITEMS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {t(item.label)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {fieldErrors.interval && (
-                    <FieldError role={undefined} className="text-caption">{fieldErrors.interval}</FieldError>
-                  )}
-                </Field>
+                  status={fieldErrors.interval ? { type: "error", message: fieldErrors.interval } : undefined}
+                />
               </div>
 
               <div className="space-y-3 rounded-lg border border-surface-border p-3">
                 <div className="space-y-1">
-                  <Field orientation="horizontal">
-                    <Checkbox
-                      id="account-trial"
-                      checked={trial}
-                      onCheckedChange={(checked) => {
-                        setTrial(Boolean(checked));
-                        clearFieldError("trial");
-                        clearFieldError("activation");
-                      }}
-                      disabled={createAccount.isPending}
-                    />
-                    <FieldLabel htmlFor="account-trial" className="text-body font-medium">
-                      {t("Trial")}
-                    </FieldLabel>
-                  </Field>
-                  <p className="text-caption text-muted-foreground">
-                    {t("A trial starts now and ends after the plan's trial days.")}
-                  </p>
-                  {fieldErrors.trial && (
-                    <FieldError role={undefined} className="text-caption">{fieldErrors.trial}</FieldError>
-                  )}
+                  <CheckboxInput
+                    id="account-trial"
+                    label={t("Trial")}
+                    description={t("A trial starts now and ends after the plan's trial days.")}
+                    value={trial}
+                    onChange={(checked) => {
+                      setTrial(checked);
+                      clearFieldError("trial");
+                      clearFieldError("activation");
+                    }}
+                    isDisabled={createAccount.isPending}
+                    status={fieldErrors.trial ? { type: "error", message: fieldErrors.trial } : undefined}
+                  />
                 </div>
 
-                <Field data-invalid={Boolean(fieldErrors.comp_reason) || undefined}>
-                  <FieldLabel htmlFor="account-comp-reason" className="text-label">
-                    {t("Complimentary reason")}
-                  </FieldLabel>
-                  <Input
-                    id="account-comp-reason"
-                    value={compReason}
-                    onChange={(e) => {
-                      setCompReason(e.target.value);
+                <TextInput
+                  label={t("Complimentary reason")}
+                  id="account-comp-reason"
+                  value={compReason}
+                  onChange={(value) => {
+                      setCompReason(value.slice(0, 500));
                       clearFieldError("comp_reason");
                       clearFieldError("activation");
                     }}
-                    maxLength={500}
-                    aria-invalid={Boolean(fieldErrors.comp_reason)}
-                    disabled={createAccount.isPending}
-                  />
-                  <FieldDescription className="text-caption">
-                    {t("Grants one full billing interval at no charge.")}
-                  </FieldDescription>
-                  {fieldErrors.comp_reason && (
-                    <FieldError role={undefined} className="text-caption">{fieldErrors.comp_reason}</FieldError>
-                  )}
-                </Field>
+                  isDisabled={createAccount.isPending}
+                  width="100%"
+                  status={fieldErrors.comp_reason ? { type: "error", message: fieldErrors.comp_reason } : undefined}
+                  description={t("Grants one full billing interval at no charge.")}
+                />
 
                 {fieldErrors.activation && (
                   <p className="text-caption text-destructive">{fieldErrors.activation}</p>
@@ -1042,166 +891,140 @@ export function Accounts({ userRole }: AccountsProps) {
                   )}
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Field data-invalid={Boolean(fieldErrors["billing_profile.legal_name"]) || undefined}>
-                      <FieldLabel htmlFor="billing-legal-name" className="text-label">
-                        {t("Legal name")}
-                      </FieldLabel>
-                      <Input
-                        id="billing-legal-name"
-                        value={legalName}
-                        onChange={(e) => {
-                          setLegalName(e.target.value);
+                    <TextInput
+                      label={t("Legal name")}
+                      id="billing-legal-name"
+                      value={legalName}
+                      onChange={(value) => {
+                          setLegalName(value);
                           clearFieldError("billing_profile.legal_name");
                         }}
-                        aria-invalid={Boolean(fieldErrors["billing_profile.legal_name"])}
-                        disabled={createAccount.isPending}
-                      />
-                      {fieldErrors["billing_profile.legal_name"] && (
-                        <FieldError role={undefined} className="text-caption">
-                          {fieldErrors["billing_profile.legal_name"]}
-                        </FieldError>
-                      )}
-                    </Field>
+                      isDisabled={createAccount.isPending}
+                      width="100%"
+                      status={fieldErrors["billing_profile.legal_name"] ? { type: "error", message: fieldErrors["billing_profile.legal_name"] } : undefined}
+                    />
 
-                    <Field data-invalid={Boolean(fieldErrors["billing_profile.tax_code"]) || undefined}>
-                      <FieldLabel htmlFor="billing-tax-code" className="text-label">
-                        {t("Tax code")}
-                      </FieldLabel>
-                      <Input
-                        id="billing-tax-code"
-                        value={taxCode}
-                        onChange={(e) => {
-                          setTaxCode(e.target.value);
+                    <TextInput
+                      label={t("Tax code")}
+                      id="billing-tax-code"
+                      value={taxCode}
+                      onChange={(value) => {
+                          setTaxCode(value);
                           clearFieldError("billing_profile.tax_code");
                         }}
-                        aria-invalid={Boolean(fieldErrors["billing_profile.tax_code"])}
-                        disabled={createAccount.isPending}
-                      />
-                      {fieldErrors["billing_profile.tax_code"] && (
-                        <FieldError role={undefined} className="text-caption">
-                          {fieldErrors["billing_profile.tax_code"]}
-                        </FieldError>
-                      )}
-                    </Field>
+                      isDisabled={createAccount.isPending}
+                      width="100%"
+                      status={fieldErrors["billing_profile.tax_code"] ? { type: "error", message: fieldErrors["billing_profile.tax_code"] } : undefined}
+                    />
                   </div>
 
-                  <Field data-invalid={Boolean(fieldErrors["billing_profile.address"]) || undefined}>
-                    <FieldLabel htmlFor="billing-address" className="text-label">
-                      {t("Address")}
-                    </FieldLabel>
-                    <Input
-                      id="billing-address"
-                      value={address}
-                      onChange={(e) => {
-                        setAddress(e.target.value);
+                  <TextInput
+                    label={t("Address")}
+                    id="billing-address"
+                    value={address}
+                    onChange={(value) => {
+                        setAddress(value);
                         clearFieldError("billing_profile.address");
                       }}
-                      aria-invalid={Boolean(fieldErrors["billing_profile.address"])}
-                      disabled={createAccount.isPending}
-                    />
-                    {fieldErrors["billing_profile.address"] && (
-                      <FieldError role={undefined} className="text-caption">
-                        {fieldErrors["billing_profile.address"]}
-                      </FieldError>
-                    )}
-                  </Field>
+                    isDisabled={createAccount.isPending}
+                    width="100%"
+                    status={fieldErrors["billing_profile.address"] ? { type: "error", message: fieldErrors["billing_profile.address"] } : undefined}
+                  />
 
-                  <Field data-invalid={Boolean(fieldErrors["billing_profile.invoice_email"]) || undefined}>
-                    <FieldLabel htmlFor="billing-invoice-email" className="text-label">
-                      {t("Invoice email")}
-                    </FieldLabel>
-                    <Input
-                      id="billing-invoice-email"
-                      type="email"
-                      value={invoiceEmail}
-                      onChange={(e) => {
-                        setInvoiceEmail(e.target.value);
+                  <TextInput
+                    label={t("Invoice email")}
+                    id="billing-invoice-email"
+                    type="email"
+                    value={invoiceEmail}
+                    onChange={(value) => {
+                        setInvoiceEmail(value);
                         clearFieldError("billing_profile.invoice_email");
                       }}
-                      aria-invalid={Boolean(fieldErrors["billing_profile.invoice_email"])}
-                      disabled={createAccount.isPending}
-                    />
-                    {fieldErrors["billing_profile.invoice_email"] && (
-                      <FieldError role={undefined} className="text-caption">
-                        {fieldErrors["billing_profile.invoice_email"]}
-                      </FieldError>
-                    )}
-                  </Field>
+                    isDisabled={createAccount.isPending}
+                    width="100%"
+                    status={fieldErrors["billing_profile.invoice_email"] ? { type: "error", message: fieldErrors["billing_profile.invoice_email"] } : undefined}
+                  />
                 </fieldset>
               )}
             </div>
 
             {formError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{formError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={formError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" type="button" disabled={createAccount.isPending} />}
-              >
-                {t("Cancel")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
+              <Button
+        type="button"
+        isDisabled={createAccount.isPending}
+        label={t("Cancel")}
+        variant="secondary"
+        onClick={() => setCreateOpen(false)}
+      />
               <Button
                 type="submit"
-                disabled={createAccount.isPending}
+                label={t("Submit request")}
+                variant="primary"
+                isLoading={createAccount.isPending}
                 aria-busy={createAccount.isPending}
-              >
-                {createAccount.isPending && <Spinner className="size-3.5" />}
-                {t("Submit request")}
-              </Button>
-            </DialogFooter>
+                isDisabled={createAccount.isPending}
+              />
+            </div>
           </form>
-        </DialogContent>
+
       </Dialog>
 
       {/* Cancel Request Confirmation Dialog */}
       <Dialog
-        open={cancelTarget !== null}
+        isOpen={cancelTarget !== null}
         onOpenChange={(open) => {
           if (!open) {
             setCancelTarget(null);
             setCancelError(null);
           }
         }}
+        purpose="info"
       >
-        <DialogContent>
+
           <div className="flex flex-col gap-4">
-            <DialogHeader>
-              <DialogTitle>{t("Cancel account request")}</DialogTitle>
-              <DialogDescription>
-                {t("Cancel the pending account request for")}{" "}
-                <strong className="text-foreground">{cancelTarget?.email}</strong>{t("? This cannot be undone.")}
-              </DialogDescription>
-            </DialogHeader>
+            <DialogHeader title={t("Cancel account request")} subtitle={<>{t("Cancel the pending account request for")}{" "}
+                <strong className="text-foreground">{cancelTarget?.email}</strong>{t("? This cannot be undone.")}</>} />
 
             {cancelError && (
-              <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription className="text-caption">{cancelError}</AlertDescription>
-              </Alert>
+              <Banner
+                status="error"
+                role="alert"
+                title={cancelError}
+              />
             )}
 
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" type="button" disabled={cancelAccount.isPending} />}
-              >
-                {t("Keep request")}
-              </DialogClose>
+            <div className="flex justify-end gap-2">
               <Button
+        type="button"
+        isDisabled={cancelAccount.isPending}
+        label={t("Keep request")}
+        variant="secondary"
+        onClick={() => ((open) => {
+          if (!open) {
+            setCancelTarget(null);
+            setCancelError(null);
+          }
+        })(false)}
+      />
+              <Button
+                label={t("Confirm cancel")}
                 variant="destructive"
+                isLoading={cancelAccount.isPending}
                 onClick={handleConfirmCancel}
-                disabled={cancelAccount.isPending}
                 aria-busy={cancelAccount.isPending}
-              >
-                {cancelAccount.isPending && <Spinner className="size-3.5" />}
-                {t("Confirm cancel")}
-              </Button>
-            </DialogFooter>
+                isDisabled={cancelAccount.isPending}
+              />
+            </div>
           </div>
-        </DialogContent>
+
       </Dialog>
     </div>
   );

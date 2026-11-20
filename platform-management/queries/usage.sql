@@ -48,3 +48,15 @@ SELECT
     (SELECT count(*) FROM agent_runtime r WHERE r.workspace_id = $1)::bigint AS runtimes,
     (SELECT count(*) FROM issue i WHERE i.workspace_id = $1)::bigint AS issues_total,
     (SELECT COALESCE(sum(t.size_bytes), 0) FROM attachment t WHERE t.workspace_id = $1)::bigint AS storage_bytes;
+
+-- name: SumIssuesAndTasksByDay :many
+-- The platform-wide issues created and tasks run per day since $1: each day's
+-- rows summed over the workspaces. Both meters are per-day flows. A day with no
+-- row is absent.
+SELECT
+    day,
+    COALESCE(sum(issues_created), 0)::bigint AS issues_created,
+    COALESCE(sum(tasks_run), 0)::bigint AS tasks_run
+FROM platform_usage_daily
+WHERE day >= sqlc.arg('since')::date
+GROUP BY day;

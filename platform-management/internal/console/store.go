@@ -179,6 +179,33 @@ type Overview struct {
 	PendingByCurrency map[string]CurrencyTotal
 	// Usage sums the newest daily usage row of each workspace that has one.
 	Usage usage.Totals
+	// Series has one entry per UTC day of the last overviewSeriesDays days,
+	// oldest first, with zero where nothing happened.
+	Series []DayCount
+	// RuntimesByStatus counts the runtimes of every workspace in each status
+	// (online, offline). Both keys are always present.
+	RuntimesByStatus map[string]int64
+	// Operations counts the items waiting in the operations queue.
+	Operations OperationsQueue
+}
+
+// DayCount is the activity of one UTC day. Day is YYYY-MM-DD.
+type DayCount struct {
+	Day               string
+	WorkspacesCreated int64
+	OrdersCreated     int64
+	OrdersPaid        int64
+	IssuesCreated     int64
+	TasksRun          int64
+}
+
+// OperationsQueue counts the items the list screens show as waiting.
+type OperationsQueue struct {
+	PendingApprovals     int64
+	PendingDeletions     int64
+	PendingQuotaRequests int64
+	FailedEinvoices      int64
+	ActiveLegalHolds     int64
 }
 
 // CurrencyTotal is the count and the amounts, in minor units of one currency,
@@ -346,8 +373,9 @@ type Reader interface {
 	ListNotes(ctx context.Context, q NoteQuery) ([]Note, error)
 	ListStaff(ctx context.Context) ([]StaffRow, error)
 	ListAuditEvents(ctx context.Context, q AuditQuery) ([]AuditRow, error)
-	// Overview counts the workspaces and the accounts created since signupsSince.
-	Overview(ctx context.Context, signupsSince time.Time) (Overview, error)
+	// Overview counts the platform as of now: the workspaces and accounts created
+	// in the last week, and the last overviewSeriesDays days of activity.
+	Overview(ctx context.Context, now time.Time) (Overview, error)
 	// ListOrders returns up to limit orders in status, ordered by creation time,
 	// of the workspaces within scope.
 	ListOrders(ctx context.Context, status billing.Status, newestFirst bool, limit int, scope Scope) ([]OrderRow, error)

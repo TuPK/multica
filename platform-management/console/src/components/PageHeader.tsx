@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Divider } from "@astryxdesign/core/Divider";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
-import { Button } from "@multica/ui/components/ui/button";
+import { Button } from "@astryxdesign/core/Button";
 import { t } from "../i18n";
 import { ArrowLeft } from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
@@ -34,21 +34,20 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <header className={cn("space-y-2", className)}>
+    <header className={cn("space-y-2 pb-4", className)}>
       <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 items-center gap-2">
           {backAction && (
             <Button
-              type="button"
+              label={t(backAction.label)}
+              icon={<ArrowLeft className="size-4" aria-hidden="true" />}
+              isIconOnly
+              tooltip={t(backAction.label)}
               variant="ghost"
-              size="icon-sm"
+              size="sm"
               onClick={backAction.onClick}
-              aria-label={t(backAction.label)}
-              title={t(backAction.label)}
-              className="-ml-2 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="size-4" aria-hidden="true" />
-            </Button>
+              className="-ml-2"
+            />
           )}
           <Heading level={1}>{title}</Heading>
           {badge}

@@ -2,10 +2,9 @@ import { useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Building2, Search, X } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Building2, Search } from "@multica/ui/icons";
 import { PageHeader } from "../components/PageHeader";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
@@ -71,31 +70,18 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
       <PageHeader title={t("Tenants")} />
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full max-w-sm">
-          <Search
-            className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            aria-label={t("Search tenants")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("Search by tenant, workspace or owner email...")}
-            className="pr-8 pl-9"
-          />
-          {search && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label={t("Clear search")}
-              onClick={() => setSearch("")}
-              className="absolute top-1 right-1 text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-3.5" aria-hidden="true" />
-            </Button>
-          )}
+        <div className="w-full max-w-sm">
+        <TextInput
+          type="search"
+          label={t("Search tenants")}
+          isLabelHidden
+          width="100%"
+          startIcon={<Search className="size-4" aria-hidden="true" />}
+          hasClear
+          value={search}
+          onChange={(value) => setSearch(value)}
+          placeholder={t("Search by tenant, workspace or owner email...")}
+        />
         </div>
       </div>
 
@@ -120,9 +106,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
           }
           actions={
             search ? (
-              <Button variant="outline" size="sm" onClick={() => setSearch("")}>
-                {t("Clear search")}
-              </Button>
+              <Button label={t("Clear search")} variant="secondary" size="sm" onClick={() => setSearch("")} />
             ) : undefined
           }
         />
@@ -220,14 +204,13 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
           {hasNextPage && (
             <div className="flex justify-center pt-2">
               <Button
-                variant="outline"
+                label={t("Load more")}
+                variant="secondary"
                 onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
+                isDisabled={isFetchingNextPage}
+                isLoading={isFetchingNextPage}
                 aria-busy={isFetchingNextPage}
-              >
-                {isFetchingNextPage && <Spinner className="size-3.5" />}
-                {t("Load more")}
-              </Button>
+              />
             </div>
           )}
         </div>

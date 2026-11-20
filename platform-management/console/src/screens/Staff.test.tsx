@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { Staff } from "./Staff";
 import { PlatformApiError } from "../api/client";
+import { findAlert } from "../test/alert";
 
 const mockUseStaff = vi.fn();
 const mockUseTenants = vi.fn();
@@ -101,7 +102,7 @@ describe("Staff screen", () => {
     await user.click(roleSelect);
     await user.click(await screen.findByRole("option", { name: "Billing" }));
 
-    await user.click(screen.getByRole("button", { name: "Add staff" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add staff" }));
 
     await waitFor(() => {
       expect(mockAddStaffMutateAsync).toHaveBeenCalledWith({
@@ -125,7 +126,7 @@ describe("Staff screen", () => {
 
     expect(screen.getByRole("heading", { name: "Remove staff member" })).toBeInTheDocument();
 
-    const confirmRemoveBtn = screen.getByRole("button", { name: "Remove" });
+    const confirmRemoveBtn = within(screen.getByRole("dialog")).getByRole("button", { name: "Remove" });
     fireEvent.click(confirmRemoveBtn);
 
     await waitFor(() => {
@@ -157,17 +158,17 @@ describe("Staff screen", () => {
 
     const tenantSelect = within(dialog).getByRole("combobox", { name: /Tenant/i });
     expect(tenantSelect).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Add staff" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Add staff" })).toBeDisabledControl();
 
     await user.click(tenantSelect);
     await user.click(await screen.findByRole("option", { name: /Beta Tenant/i }));
-    expect(within(dialog).getByRole("button", { name: "Add staff" })).toBeEnabled();
+    expect(within(dialog).getByRole("button", { name: "Add staff" })).not.toBeDisabledControl();
 
     // Switching to System Admin hides the tenant field again
     await user.click(within(dialog).getByRole("combobox", { name: /Staff role/i }));
     await user.click(await screen.findByRole("option", { name: "System Admin" }));
     expect(within(dialog).queryByRole("combobox", { name: /Tenant/i })).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Add staff" })).toBeEnabled();
+    expect(within(dialog).getByRole("button", { name: "Add staff" })).not.toBeDisabledControl();
   });
 
   it("shows the 400 tenant_required message", async () => {
@@ -190,7 +191,7 @@ describe("Staff screen", () => {
     await user.click(within(dialog).getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
-      expect(within(dialog).getByRole("alert")).toHaveTextContent("the admin role needs a tenant_id");
+      expect(findAlert(dialog)).toHaveTextContent("the admin role needs a tenant_id");
     });
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });

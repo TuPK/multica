@@ -9,20 +9,12 @@ import {
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow,
-} from "@astryxdesign/core/Table";
+  TableRow } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Search, Users as UsersIcon, X } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Selector } from "@astryxdesign/core/Selector";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Search, Users as UsersIcon } from "@multica/ui/icons";
 import { RowActions } from "../components/RowActions";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -32,8 +24,7 @@ import { useMe, useTenantUsers, type TenantUser } from "../api/hooks";
 import {
   ACCOUNT_STATUSES,
   TENANT_MEMBER_ROLES,
-  type StaffRole,
-} from "../api/schemas";
+  type StaffRole } from "../api/schemas";
 import { t } from "../i18n";
 
 interface TenantUsersProps {
@@ -50,24 +41,21 @@ const ACCOUNT_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
     label:
       status === "pending_deletion"
         ? t("Pending deletion")
-        : status.charAt(0).toUpperCase() + status.slice(1),
-  })),
+        : status.charAt(0).toUpperCase() + status.slice(1) })),
 ];
 
 const MEMBER_ROLE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "all", label: "All roles" },
   ...TENANT_MEMBER_ROLES.map((role) => ({
     value: role,
-    label: role.charAt(0).toUpperCase() + role.slice(1),
-  })),
+    label: role.charAt(0).toUpperCase() + role.slice(1) })),
 ];
 
 export function TenantUsers({
   tenantId,
   workspaces = [],
   onSelectUser,
-  userRole,
-}: TenantUsersProps) {
+  userRole }: TenantUsersProps) {
   const { data: me } = useMe();
   const effectiveRole = userRole ?? me?.role;
   const isSystemAdmin = effectiveRole === "system_admin";
@@ -85,13 +73,11 @@ export function TenantUsers({
     refetch,
     hasNextPage,
     fetchNextPage,
-    isFetchingNextPage,
-  } = useTenantUsers(tenantId, {
+    isFetchingNextPage } = useTenantUsers(tenantId, {
     q: search.trim() || undefined,
     account_status: statusFilter || undefined,
     workspace_id: workspaceFilter || undefined,
-    member_role: roleFilter || undefined,
-  });
+    member_role: roleFilter || undefined });
 
   const workspaceOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -156,94 +142,58 @@ export function TenantUsers({
       </div>
 
       <HStack wrap="wrap" gap={2} align="center">
-        <div className="relative w-full max-w-sm">
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            type="search"
-            aria-label={t("Search users")}
-            placeholder={t("Search by email or name...")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pr-8 pl-8"
-          />
-          {search && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label={t("Clear search")}
-              onClick={() => setSearch("")}
-              className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-3.5" aria-hidden="true" />
-            </Button>
-          )}
-        </div>
+        <div className="w-full max-w-sm">
+  <TextInput
+    type="search"
+    label={t("Search users")}
+    isLabelHidden
+    width="100%"
+    startIcon={<Search className="size-4" aria-hidden="true" />}
+    hasClear
+    placeholder={t("Search by email or name...")}
+    value={search}
+    onChange={(value) => setSearch(value)}
+  />
+</div>
 
-        <Select
-          items={ACCOUNT_STATUS_OPTIONS}
+        <Selector
+          label={t("Filter by status")}
+          isLabelHidden
+          width={176}
+          options={ACCOUNT_STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
           value={statusFilter || "all"}
-          onValueChange={(value) =>
-            setStatusFilter(value === "all" ? "" : (value ?? ""))
-          }
-        >
-          <SelectTrigger aria-label={t("Filter by status")} className="w-44">
-            <SelectValue placeholder={t("All statuses")} />
-          </SelectTrigger>
-          <SelectContent>
-            {ACCOUNT_STATUS_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {t(opt.label)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(value) =>
+            setStatusFilter(value === "all" ? "" : (value ?? ""))}
+        />
 
-        <Select
-          items={workspaceOptions}
+        <Selector
+          label={t("Filter by workspace")}
+          isLabelHidden
+          width={192}
+          options={workspaceOptions.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
           value={workspaceFilter || "all"}
-          onValueChange={(value) =>
-            setWorkspaceFilter(value === "all" ? "" : (value ?? ""))
-          }
-        >
-          <SelectTrigger aria-label={t("Filter by workspace")} className="w-48">
-            <SelectValue placeholder={t("All workspaces")} />
-          </SelectTrigger>
-          <SelectContent>
-            {workspaceOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {t(opt.label)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(value) =>
+            setWorkspaceFilter(value === "all" ? "" : (value ?? ""))}
+        />
 
-        <Select
-          items={MEMBER_ROLE_OPTIONS}
+        <Selector
+          label={t("Filter by role")}
+          isLabelHidden
+          width={160}
+          options={MEMBER_ROLE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
           value={roleFilter || "all"}
-          onValueChange={(value) =>
-            setRoleFilter(value === "all" ? "" : (value ?? ""))
-          }
-        >
-          <SelectTrigger aria-label={t("Filter by role")} className="w-40">
-            <SelectValue placeholder={t("All roles")} />
-          </SelectTrigger>
-          <SelectContent>
-            {MEMBER_ROLE_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {t(opt.label)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(value) =>
+            setRoleFilter(value === "all" ? "" : (value ?? ""))}
+        />
 
         {hasActiveFilters && (
-          <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
-            {t("Clear filters")}
-          </Button>
+          <Button
+            type="button"
+            label={t("Clear filters")}
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+          />
         )}
       </HStack>
 
@@ -268,9 +218,12 @@ export function TenantUsers({
           }
           actions={
             hasActiveFilters ? (
-              <Button variant="outline" size="sm" onClick={clearFilters}>
-                {t("Clear filters")}
-              </Button>
+              <Button
+                label={t("Clear filters")}
+                variant="secondary"
+                size="sm"
+                onClick={clearFilters}
+              />
             ) : undefined
           }
         />
@@ -357,17 +310,14 @@ export function TenantUsers({
             <div className="flex justify-center pt-2">
               <Button
                 type="button"
-                variant="outline"
+                label={isFetchingNextPage ? t("Loading...") : t("Load more")}
+                variant="secondary"
                 size="sm"
-                disabled={isFetchingNextPage}
+                isLoading={isFetchingNextPage}
                 aria-busy={isFetchingNextPage || undefined}
                 onClick={() => void fetchNextPage()}
-              >
-                {isFetchingNextPage && (
-                  <Spinner className="size-4" aria-hidden="true" />
-                )}
-                {isFetchingNextPage ? t("Loading...") : t("Load more")}
-              </Button>
+                isDisabled={isFetchingNextPage}
+              />
             </div>
           )}
         </div>

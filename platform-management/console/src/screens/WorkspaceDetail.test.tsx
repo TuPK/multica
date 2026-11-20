@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { WorkspaceDetail } from "./WorkspaceDetail";
 import { PlatformApiError } from "../api/client";
+import { findAlert } from "../test/alert";
 
 const mockUseMe = vi.fn();
 const mockUseWorkspace = vi.fn();
@@ -284,14 +285,14 @@ describe("WorkspaceDetail screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change status" }));
 
     const confirmBtn = screen.getByRole("button", { name: "Update status" });
-    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toBeDisabledControl();
 
-    const reasonInput = screen.getByLabelText(/Reason/i);
+    const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/Reason/i);
     fireEvent.change(reasonInput, { target: { value: "   " } });
-    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toBeDisabledControl();
 
     fireEvent.change(reasonInput, { target: { value: "Suspending due to TOS violation" } });
-    expect(confirmBtn).toBeEnabled();
+    expect(confirmBtn).not.toBeDisabledControl();
 
     fireEvent.click(confirmBtn);
 
@@ -312,10 +313,10 @@ describe("WorkspaceDetail screen", () => {
 
     const noteInput = screen.getByPlaceholderText(/Write an internal note.../i);
     const addBtn = screen.getByRole("button", { name: /Add note/i });
-    expect(addBtn).toBeDisabled();
+    expect(addBtn).toBeDisabledControl();
 
     fireEvent.change(noteInput, { target: { value: "Investigated billing query." } });
-    expect(addBtn).toBeEnabled();
+    expect(addBtn).not.toBeDisabledControl();
 
     fireEvent.click(addBtn);
 
@@ -358,13 +359,14 @@ describe("WorkspaceDetail screen", () => {
 
     const seatsInput = screen.getByLabelText(/Seats/i);
     fireEvent.change(seatsInput, { target: { value: "10" } });
+    fireEvent.blur(seatsInput);
 
     const submitBtn = screen.getByRole("button", { name: "Save subscription" });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
-    const reasonInput = screen.getByLabelText(/Reason/i);
+    const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/Reason/i);
     fireEvent.change(reasonInput, { target: { value: "Customer upgraded over phone" } });
-    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).not.toBeDisabledControl();
 
     fireEvent.click(submitBtn);
 
@@ -564,15 +566,15 @@ describe("WorkspaceDetail screen", () => {
       expect(screen.getByRole("heading", { name: /write off/i })).toBeInTheDocument();
 
       const submitBtn = screen.getByRole("button", { name: /write off order/i });
-      expect(submitBtn).toBeDisabled();
+      expect(submitBtn).toBeDisabledControl();
 
-      const reasonInput = screen.getByLabelText(/reason/i);
+      const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/reason/i);
       fireEvent.change(reasonInput, { target: { value: "   " } });
-      expect(submitBtn).toBeDisabled();
+      expect(submitBtn).toBeDisabledControl();
       expect(mockCancelOrderMutateAsync).not.toHaveBeenCalled();
 
       fireEvent.change(reasonInput, { target: { value: "Customer disputed usage spike" } });
-      expect(submitBtn).toBeEnabled();
+      expect(submitBtn).not.toBeDisabledControl();
 
       fireEvent.click(submitBtn);
 
@@ -601,11 +603,11 @@ describe("WorkspaceDetail screen", () => {
       const unpaidRegion = screen.getByTestId("usage-unpaid-orders");
       fireEvent.click(within(unpaidRegion).getAllByRole("button", { name: /write off/i })[0]!);
 
-      fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: "Goodwill credit" } });
+      fireEvent.change(within(screen.getByRole("dialog")).getByLabelText(/reason/i), { target: { value: "Goodwill credit" } });
       fireEvent.click(screen.getByRole("button", { name: /write off order/i }));
 
       await waitFor(() => {
-        expect(within(screen.getByRole("dialog")).getByRole("alert")).toHaveTextContent(
+        expect(findAlert(screen.getByRole("dialog"))).toHaveTextContent(
           "only an admin can write off a usage invoice",
         );
       });
@@ -706,7 +708,7 @@ describe("WorkspaceDetail screen", () => {
       fireEvent.click(within(card).getByRole("button", { name: "Verify" }));
 
       await waitFor(() => {
-        const alert = within(card).getByRole("alert");
+        const alert = findAlert(card);
         expect(alert).toHaveTextContent("legal_name");
         expect(alert).toHaveTextContent("tax_code");
         expect(alert).toHaveTextContent("address");
@@ -930,12 +932,12 @@ describe("WorkspaceDetail screen", () => {
 
       // Editing clears that field's error
       fireEvent.change(within(dialog).getByLabelText(/Tax code/i), { target: { value: "0101234567" } });
-      expect(within(dialog).getByLabelText(/Tax code/i)).toHaveAttribute("aria-invalid", "false");
+      expect(within(dialog).getByLabelText(/Tax code/i)).not.toHaveAttribute("aria-invalid", "true");
       expect(within(dialog).queryByText(/Tax code is required/i)).not.toBeInTheDocument();
 
       mockUpdateBillingProfileIsPending = true;
       rerender(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="system_admin" />);
-      expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" })).toBeDisabledControl();
     });
 
     it("shows invalid field errors on 400 billing_profile_invalid and message on 409 plan_audience_mismatch", async () => {
@@ -962,13 +964,13 @@ describe("WorkspaceDetail screen", () => {
       await waitFor(() => {
         expect(within(dialog).getByLabelText(/Tax code/i)).toHaveAttribute("aria-invalid", "true");
       });
-      expect(within(dialog).getByLabelText(/Legal name/i)).toHaveAttribute("aria-invalid", "false");
+      expect(within(dialog).getByLabelText(/Legal name/i)).not.toHaveAttribute("aria-invalid", "true");
       expect(within(dialog).getByText(/10-digit/i)).toBeInTheDocument();
 
       fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
-        expect(within(dialog).getByRole("alert")).toHaveTextContent(
+        expect(findAlert(dialog)).toHaveTextContent(
           /current plan is only available for business accounts/i,
         );
       });
@@ -1031,7 +1033,7 @@ describe("WorkspaceDetail screen", () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
-        expect(within(dialog).getByRole("alert")).toHaveTextContent(
+        expect(findAlert(dialog)).toHaveTextContent(
           /The server answered with data the console cannot read/i,
         );
       });
@@ -1165,12 +1167,12 @@ describe("WorkspaceDetail screen", () => {
 
       fireEvent.click(deleteBtn);
       const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getByRole("button", { name: "Delete workspace" })).toBeDisabled();
+      expect(within(dialog).getByRole("button", { name: "Delete workspace" })).toBeDisabledControl();
 
       fireEvent.change(within(dialog).getByLabelText(/Reason/i), { target: { value: "Customer offboarding" } });
       fireEvent.change(within(dialog).getByLabelText(/Workspace slug/i), { target: { value: "acme" } });
       const confirmBtn = within(dialog).getByRole("button", { name: "Delete workspace" });
-      expect(confirmBtn).toBeEnabled();
+      expect(confirmBtn).not.toBeDisabledControl();
 
       fireEvent.click(confirmBtn);
       await waitFor(() => {
@@ -1235,16 +1237,16 @@ describe("WorkspaceDetail screen", () => {
 
       // Quick actions follow allowed[]
       const quickBar = screen.getByTestId("workspace-quick-actions");
-      expect(within(quickBar).getByRole("button", { name: "Unlock" })).toBeEnabled();
-      expect(within(quickBar).getByRole("button", { name: "Export data" })).toBeEnabled();
-      expect(within(quickBar).getByRole("button", { name: "Suspend" })).toBeDisabled();
-      expect(within(quickBar).getByRole("button", { name: "Cancel deletion" })).toBeDisabled();
+      expect(within(quickBar).getByRole("button", { name: "Unlock" })).not.toBeDisabledControl();
+      expect(within(quickBar).getByRole("button", { name: "Export data" })).not.toBeDisabledControl();
+      expect(within(quickBar).getByRole("button", { name: "Suspend" })).toBeDisabledControl();
+      expect(within(quickBar).getByRole("button", { name: "Cancel deletion" })).toBeDisabledControl();
 
       // Trigger export and observe 409 workspace_state_conflict with status + allowed[]
       fireEvent.click(within(quickBar).getByRole("button", { name: "Export data" }));
 
       await waitFor(() => {
-        const alert = within(quickBar).getByRole("alert");
+        const alert = findAlert(quickBar);
         expect(alert).toHaveTextContent("the workspace state does not allow this action");
         expect(alert).toHaveTextContent("pending_deletion");
         expect(alert).toHaveTextContent("active, read_only, suspended");
@@ -1280,6 +1282,7 @@ describe("WorkspaceDetail screen", () => {
       fireEvent.change(within(dialog).getByLabelText(/Requested value/i), {
         target: { value: "25" },
       });
+      fireEvent.blur(within(dialog).getByLabelText(/Requested value/i));
       fireEvent.change(within(dialog).getByLabelText(/Reason/i), {
         target: { value: "Growing agent pool" },
       });

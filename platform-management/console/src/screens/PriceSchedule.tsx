@@ -12,14 +12,13 @@ import {
   TableRow,
 } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
-import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
-import { Button } from "@multica/ui/components/ui/button";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
-import { Field, FieldLabel } from "@multica/ui/components/ui/field";
-import { Input } from "@multica/ui/components/ui/input";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import { AlertCircle, AlertTriangle, CalendarClock, CheckCircle2 } from "@multica/ui/icons";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { DateTimeInput, type ISODateTimeString } from "@astryxdesign/core/DateTimeInput";
+import { CalendarClock } from "@multica/ui/icons";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -386,111 +385,96 @@ export function PriceSchedule({
             <Card padding={5}>
               <form onSubmit={handleSchedule} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-3">
-                <Field>
-                  <FieldLabel htmlFor="price-effective-from" className="text-label">
-                    {t("Effective from (UTC)")} <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Input
+                <div className="flex flex-col gap-2">
+                  <DateTimeInput
                     id="price-effective-from"
-                    type="datetime-local"
-                    step={1}
-                    min={minEffectiveFrom ? toDateTimeLocalUTC(minEffectiveFrom) : undefined}
-                    value={effectiveFrom}
-                    onChange={(e) => {
-                      setEffectiveFrom(e.target.value);
+                    label={t("Effective from (UTC)")}
+                    isRequired
+                    width="100%"
+                    min={minEffectiveFrom ? (toDateTimeLocalUTC(minEffectiveFrom) as ISODateTimeString) : undefined}
+                    value={(effectiveFrom || undefined) as ISODateTimeString | undefined}
+                    onChange={(value) => {
+                      setEffectiveFrom(value ?? "");
                       setPreview(null);
                     }}
-                    required
-                    disabled={schedulePriceChange.isPending}
+                    isDisabled={schedulePriceChange.isPending}
+                    description={
+                      minEffectiveFrom
+                        ? `${t("Minimum effective date (UTC):")} ${minEffectiveFrom}`
+                        : undefined
+                    }
                   />
-                  {minEffectiveFrom && (
-                    <p className="font-mono text-caption text-muted-foreground">
-                      {t("Minimum effective date (UTC):")} {minEffectiveFrom}
-                    </p>
-                  )}
-                </Field>
+                </div>
 
-                <Field>
-                  <FieldLabel htmlFor="price-seat-month" className="text-label">
-                    {t("Monthly seat price")} {currency ? `(${currency.toUpperCase()})` : ""}
-                  </FieldLabel>
-                  <Input
-                    id="price-seat-month"
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={seatPriceMonth}
-                    onChange={(e) => {
-                      setSeatPriceMonth(e.target.value);
-                      setConfirmLargeChange(false);
-                      invalidatePreviewAndConfirm();
-                    }}
-                    disabled={schedulePriceChange.isPending}
-                  />
-                </Field>
+                <NumberInput
+                  id="price-seat-month"
+                  min={0}
+                  step={1}
+                  isIntegerOnly
+                  label={`${t("Monthly seat price")}${currency ? ` (${currency.toUpperCase()})` : ""}`}
+                  width="100%"
+                  value={seatPriceMonth.trim() === "" ? null : Number(seatPriceMonth)}
+                  onChange={(value) => {
+                    setSeatPriceMonth(value === null ? "" : String(value));
+                    setConfirmLargeChange(false);
+                    invalidatePreviewAndConfirm();
+                  }}
+                  isDisabled={schedulePriceChange.isPending}
+                />
 
-                <Field>
-                  <FieldLabel htmlFor="price-seat-year" className="text-label">
-                    {t("Yearly seat price")} {currency ? `(${currency.toUpperCase()})` : ""}
-                  </FieldLabel>
-                  <Input
-                    id="price-seat-year"
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={seatPriceYear}
-                    onChange={(e) => {
-                      setSeatPriceYear(e.target.value);
-                      setConfirmLargeChange(false);
-                      invalidatePreviewAndConfirm();
-                    }}
-                    disabled={schedulePriceChange.isPending}
-                  />
-                </Field>
+                <NumberInput
+                  id="price-seat-year"
+                  min={0}
+                  step={1}
+                  isIntegerOnly
+                  label={`${t("Yearly seat price")}${currency ? ` (${currency.toUpperCase()})` : ""}`}
+                  width="100%"
+                  value={seatPriceYear.trim() === "" ? null : Number(seatPriceYear)}
+                  onChange={(value) => {
+                    setSeatPriceYear(value === null ? "" : String(value));
+                    setConfirmLargeChange(false);
+                    invalidatePreviewAndConfirm();
+                  }}
+                  isDisabled={schedulePriceChange.isPending}
+                />
               </div>
 
-              <Field>
-                <FieldLabel htmlFor="price-reason" className="text-label">
-                  {t("Reason")} <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Textarea
-                  id="price-reason"
-                  value={reason}
-                  onChange={(e) => {
-                    setReason(e.target.value);
-                    setPreview(null);
-                  }}
-                  maxLength={500}
-                  rows={2}
-                  placeholder={t("Reason for this price change...")}
-                  required
-                  disabled={schedulePriceChange.isPending}
-                />
-              </Field>
+              <TextArea
+                id="price-reason"
+                label={t("Reason")}
+                isRequired
+                width="100%"
+                value={reason}
+                onChange={(value) => {
+                  setReason(value.slice(0, 500));
+                  setPreview(null);
+                }}
+                rows={2}
+                placeholder={t("Reason for this price change...")}
+                isDisabled={schedulePriceChange.isPending}
+              />
 
               {needsConfirm && (
-                <Alert role="status" className="border-warning/40 bg-warning/10 text-foreground">
-                  <AlertTriangle className="size-4 text-warning" aria-hidden="true" />
-                  <AlertTitle className="text-body font-medium text-foreground">
-                    {t("Large price change (")}{warningPct}{t("% exceeds")} {LARGE_CHANGE_CONFIRM_PCT}{t("% threshold).")}
-                  </AlertTitle>
-                  <AlertDescription className="col-start-2 pt-1.5 text-foreground">
-                    <Field orientation="horizontal">
-                      <Checkbox
-                        id="confirm-large-change"
-                        checked={confirmLargeChange}
-                        onCheckedChange={(checked) => setConfirmLargeChange(Boolean(checked))}
-                        disabled={schedulePriceChange.isPending}
-                      />
-                      <FieldLabel
-                        htmlFor="confirm-large-change"
-                        className="text-body font-normal text-foreground"
-                      >
-                        {t("Confirm large price change")}
-                      </FieldLabel>
-                    </Field>
-                  </AlertDescription>
-                </Alert>
+                <Banner
+                  status="info"
+                  role="status"
+                  title={
+                    <>
+                      {t("Large price change (")}
+                      {warningPct}
+                      {t("% exceeds")} {LARGE_CHANGE_CONFIRM_PCT}
+                      {t("% threshold).")}
+                    </>
+                  }
+                  description={
+                    <CheckboxInput
+                      label={t("Confirm large price change")}
+                      value={confirmLargeChange}
+                      onChange={(checked) => setConfirmLargeChange(checked)}
+                      isDisabled={schedulePriceChange.isPending}
+                    />
+                  }
+                />
               )}
 
               {preview && (
@@ -516,45 +500,41 @@ export function PriceSchedule({
               )}
 
               {formError && (
-                <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-                  <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                  <AlertDescription className="text-caption">{formError}</AlertDescription>
-                </Alert>
+                <Banner
+                  status="error"
+                  role="alert"
+                  title={formError}
+                />
               )}
 
               {formNotice && (
-                <Alert
+                <Banner
+                  status="info"
                   role="status"
-                  className="border-success/30 bg-success/10 py-2 text-success"
-                >
-                  <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden="true" />
-                  <AlertDescription className="text-caption text-success">
-                    {formNotice}
-                  </AlertDescription>
-                </Alert>
+                  title={formNotice}
+                />
               )}
 
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   type="button"
-                  variant="outline"
+                  label={t("Preview impact")}
+                  variant="secondary"
+                  isLoading={schedulePriceChange.isPending}
                   onClick={handlePreview}
-                  disabled={schedulePriceChange.isPending}
                   aria-busy={schedulePriceChange.isPending}
-                >
-                  {schedulePriceChange.isPending && <Spinner className="size-3.5" />}
-                  {t("Preview impact")}
-                </Button>
+                  isDisabled={schedulePriceChange.isPending}
+                />
                 <Button
                   type="submit"
-                  disabled={
+                  label={t("Schedule")}
+                  variant="primary"
+                  isLoading={schedulePriceChange.isPending}
+                  aria-busy={schedulePriceChange.isPending}
+                  isDisabled={
                     schedulePriceChange.isPending || (needsConfirm && !confirmLargeChange)
                   }
-                  aria-busy={schedulePriceChange.isPending}
-                >
-                  {schedulePriceChange.isPending && <Spinner className="size-3.5" />}
-                  {t("Schedule")}
-                </Button>
+                />
               </div>
               </form>
             </Card>
@@ -570,10 +550,11 @@ export function PriceSchedule({
         </Heading>
 
         {cancelError && (
-          <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 py-2">
-            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-            <AlertDescription className="text-caption">{cancelError}</AlertDescription>
-          </Alert>
+          <Banner
+            status="error"
+            role="alert"
+            title={cancelError}
+          />
         )}
 
         {historyLoading && <LoadingState message={t("Loading price change history...")} />}

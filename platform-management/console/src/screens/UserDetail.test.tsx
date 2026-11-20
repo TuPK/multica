@@ -129,8 +129,8 @@ describe("UserDetail screen", () => {
     expect(screen.getByText(/active@example.com • ID: u-active/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Suspend account" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign out everywhere" })).toBeInTheDocument();
-    expect(screen.getByText("Engineering")).toBeInTheDocument();
-    expect(screen.getByText("Product")).toBeInTheDocument();
+    expect(screen.getAllByText("Engineering")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Product")[0]).toBeInTheDocument();
   });
 
   it("renders reinstate button for suspended user", () => {
@@ -161,15 +161,15 @@ describe("UserDetail screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Suspend account" }));
     expect(screen.getByRole("heading", { name: "Suspend user account" })).toBeInTheDocument();
 
-    const confirmBtn = screen.getByRole("button", { name: "Suspend account" });
-    expect(confirmBtn).toBeDisabled();
+    const confirmBtn = within(screen.getByRole("dialog")).getByRole("button", { name: "Suspend account" });
+    expect(confirmBtn).toBeDisabledControl();
 
-    const reasonInput = screen.getByLabelText(/Reason/i);
+    const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/Reason/i);
     fireEvent.change(reasonInput, { target: { value: "   " } });
-    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toBeDisabledControl();
 
     fireEvent.change(reasonInput, { target: { value: "Spam behavior detected" } });
-    expect(confirmBtn).toBeEnabled();
+    expect(confirmBtn).not.toBeDisabledControl();
 
     fireEvent.click(confirmBtn);
 
@@ -199,11 +199,11 @@ describe("UserDetail screen", () => {
     expect(screen.getByRole("heading", { name: "Sign out everywhere" })).toBeInTheDocument();
 
     const confirmBtn = screen.getByRole("button", { name: "Revoke all sessions" });
-    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toBeDisabledControl();
 
-    const reasonInput = screen.getByLabelText(/Reason/i);
+    const reasonInput = within(screen.getByRole("dialog")).getByLabelText(/Reason/i);
     fireEvent.change(reasonInput, { target: { value: "Credential breach" } });
-    expect(confirmBtn).toBeEnabled();
+    expect(confirmBtn).not.toBeDisabledControl();
 
     fireEvent.click(confirmBtn);
 
@@ -320,22 +320,22 @@ describe("UserDetail screen", () => {
 
     const submitBtn = within(dialog).getByRole("button", { name: "Delete account" });
     // Still disabled because neither blocking workspace is resolved
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     // Choose Transfer for ws-1 (still disabled without successor AND ws-2 unresolved)
     const ws1Group = within(dialog).getByRole("radiogroup", { name: /Resolution for engineering/i });
     await user.click(within(ws1Group).getByRole("radio", { name: /Transfer ownership/i }));
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeDisabledControl();
 
     // Pick successor for ws-1
     await user.click(within(dialog).getByRole("combobox", { name: /Successor for engineering/i }));
     await user.click(await screen.findByRole("option", { name: /Lead/i }));
-    expect(submitBtn).toBeDisabled(); // ws-2 still unresolved
+    expect(submitBtn).toBeDisabledControl(); // ws-2 still unresolved
 
     // Choose Delete for ws-2 -> submit now enabled!
     const ws2Group = within(dialog).getByRole("radiogroup", { name: /Resolution for side-proj/i });
     await user.click(within(ws2Group).getByRole("radio", { name: /Delete workspace now/i }));
-    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).not.toBeDisabledControl();
 
     await user.click(submitBtn);
     await waitFor(() => {
@@ -436,14 +436,14 @@ describe("UserDetail screen", () => {
       expect(within(dialog).getByText("Product")).toBeInTheDocument();
 
       const confirmBtn = within(dialog).getByRole("button", { name: "Deactivate in tenant" });
-      expect(confirmBtn).toBeDisabled();
+      expect(confirmBtn).toBeDisabledControl();
 
       const reasonInput = within(dialog).getByLabelText(/Reason/i);
       fireEvent.change(reasonInput, { target: { value: "   " } });
-      expect(confirmBtn).toBeDisabled();
+      expect(confirmBtn).toBeDisabledControl();
 
       fireEvent.change(reasonInput, { target: { value: "Contractor offboarding" } });
-      expect(confirmBtn).toBeEnabled();
+      expect(confirmBtn).not.toBeDisabledControl();
       fireEvent.click(confirmBtn);
 
       await waitFor(() => {
@@ -494,11 +494,11 @@ describe("UserDetail screen", () => {
 
       render(<UserDetail userId="u-active" tenantId="t-1" onBack={vi.fn()} userRole="admin" />);
 
-      const ownerRow = screen.getByText("Engineering").closest("tr") as HTMLElement;
-      expect(within(ownerRow).getByRole("button", { name: "Change role" })).toBeDisabled();
-      expect(within(ownerRow).getByRole("button", { name: "Remove" })).toBeDisabled();
+      const ownerRow = screen.getAllByText("Engineering")[0]!.closest("tr") as HTMLElement;
+      expect(within(ownerRow).getByRole("button", { name: "Change role" })).toBeDisabledControl();
+      expect(within(ownerRow).getByRole("button", { name: "Remove" })).toBeDisabledControl();
 
-      const memberRow = screen.getByText("Product").closest("tr") as HTMLElement;
+      const memberRow = screen.getAllByText("Product")[0]!.closest("tr") as HTMLElement;
       await user.click(within(memberRow).getByRole("button", { name: "Change role" }));
 
       const dialog = screen.getByRole("dialog");
@@ -541,8 +541,8 @@ describe("UserDetail screen", () => {
         <UserDetail userId="u-active" tenantId="t-1" onBack={vi.fn()} userRole="admin" />,
       );
 
-      const memberRow = screen.getByText("Product").closest("tr") as HTMLElement;
-      expect(within(memberRow).getByRole("button", { name: "Change role" })).toBeDisabled();
+      const memberRow = screen.getAllByText("Product")[0]!.closest("tr") as HTMLElement;
+      expect(within(memberRow).getByRole("button", { name: "Change role" })).toBeDisabledControl();
 
       mockUseMe.mockReturnValue({
         data: { user_id: "u-other-admin", email: "other@example.com", role: "admin", tenant_id: "t-1" },
@@ -652,6 +652,7 @@ describe("UserDetail screen", () => {
       await user.click(within(dialog).getByRole("combobox", { name: /Resource gate/i }));
       await user.click(await screen.findByRole("option", { name: "Agents" }));
       fireEvent.change(within(dialog).getByLabelText(/Requested limit/i), { target: { value: "15" } });
+      fireEvent.blur(within(dialog).getByLabelText(/Requested limit/i));
       fireEvent.change(within(dialog).getByLabelText(/Reason/i), { target: { value: "Need more agents" } });
       await user.click(within(dialog).getByRole("button", { name: "Submit request" }));
 

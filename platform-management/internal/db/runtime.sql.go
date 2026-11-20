@@ -24,6 +24,39 @@ func (q *Queries) CountRuntimeFailedTasks(ctx context.Context, runtimeID pgtype.
 	return column_1, err
 }
 
+const countRuntimesByStatus = `-- name: CountRuntimesByStatus :many
+SELECT r.status, count(*)::bigint AS total
+FROM agent_runtime r
+GROUP BY r.status
+`
+
+type CountRuntimesByStatusRow struct {
+	Status string `json:"status"`
+	Total  int64  `json:"total"`
+}
+
+// The runtimes of every workspace in each status (online or offline). A status
+// with no runtime is absent.
+func (q *Queries) CountRuntimesByStatus(ctx context.Context) ([]CountRuntimesByStatusRow, error) {
+	rows, err := q.db.Query(ctx, countRuntimesByStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountRuntimesByStatusRow{}
+	for rows.Next() {
+		var i CountRuntimesByStatusRow
+		if err := rows.Scan(&i.Status, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const disablePlatformRuntime = `-- name: DisablePlatformRuntime :exec
 INSERT INTO platform_runtime (runtime_id, status, reason, changed_by, changed_at)
 VALUES ($1, 'disabled', $2, $3, now())

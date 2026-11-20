@@ -730,8 +730,8 @@ func TestOverviewComputesActiveAsTheRest(t *testing.T) {
 	if by["active"] != float64(90) || by["read_only"] != float64(3) || by["suspended"] != float64(5) || by["pending_deletion"] != float64(2) || m["signups_7d"] != float64(17) {
 		t.Fatalf("overview = %v", m)
 	}
-	if want := t0.Add(-7 * 24 * time.Hour); !e.reader.lastSince.Equal(want) {
-		t.Fatalf("signups since %v, want %v", e.reader.lastSince, want)
+	if !e.reader.lastNow.Equal(t0) {
+		t.Fatalf("overview read as of %v, want %v", e.reader.lastNow, t0)
 	}
 	byPlan, _ := m["by_plan"].(map[string]any)
 	if len(byPlan) != 3 || byPlan["free"] != float64(70) || byPlan["pro"] != float64(25) || byPlan["business"] != float64(5) {
@@ -743,6 +743,54 @@ func TestOverviewComputesActiveAsTheRest(t *testing.T) {
 	by, _ = decode(t, e.do(billID, "GET", "/api/platform/overview", ""))["workspaces_by_status"].(map[string]any)
 	if by["active"] != float64(0) {
 		t.Fatalf("active = %v", by["active"])
+	}
+}
+
+// The series, runtime and queue fields are additions: each is in the payload
+// with its keys even when the reader has nothing for it.
+func TestOverviewReturnsSeriesRuntimesAndOperations(t *testing.T) {
+	e := newEnv(t)
+	series := make([]DayCount, overviewSeriesDays)
+	series[overviewSeriesDays-1] = DayCount{Day: "2026-11-20", WorkspacesCreated: 2, OrdersCreated: 3, OrdersPaid: 1, IssuesCreated: 40, TasksRun: 7}
+	e.reader.overview = Overview{
+		Series:           series,
+		RuntimesByStatus: map[string]int64{"online": 4},
+		Operations:       OperationsQueue{PendingApprovals: 1, PendingDeletions: 2, PendingQuotaRequests: 3, FailedEinvoices: 4, ActiveLegalHolds: 5},
+	}
+	m := decode(t, e.do(billID, "GET", "/api/platform/overview", ""))
+
+	days, ok := m["daily_series"].([]any)
+	if !ok || len(days) != overviewSeriesDays {
+		t.Fatalf("daily_series = %v, want %d days", m["daily_series"], overviewSeriesDays)
+	}
+	last := days[overviewSeriesDays-1].(map[string]any)
+	if last["day"] != "2026-11-20" || last["workspaces_created"] != float64(2) || last["orders_created"] != float64(3) ||
+		last["orders_paid"] != float64(1) || last["usage_issues_created"] != float64(40) || last["usage_tasks_run"] != float64(7) {
+		t.Fatalf("newest day = %v", last)
+	}
+	if first := days[0].(map[string]any); first["workspaces_created"] != float64(0) || first["usage_tasks_run"] != float64(0) {
+		t.Fatalf("empty day = %v, want zeros", first)
+	}
+	rt, _ := m["runtimes_by_status"].(map[string]any)
+	if rt["online"] != float64(4) || rt["offline"] != float64(0) {
+		t.Fatalf("runtimes_by_status = %v, want online 4 and offline 0", rt)
+	}
+	ops, _ := m["operations"].(map[string]any)
+	want := map[string]float64{"pending_approvals": 1, "pending_deletions": 2, "pending_quota_requests": 3, "failed_einvoices": 4, "active_legal_holds": 5}
+	for k, v := range want {
+		if ops[k] != v {
+			t.Fatalf("operations.%s = %v, want %v (all: %v)", k, ops[k], v, ops)
+		}
+	}
+
+	// With nothing read, the series is an empty list and the runtimes are zero.
+	e.reader.overview = Overview{}
+	m = decode(t, e.do(billID, "GET", "/api/platform/overview", ""))
+	if days, ok := m["daily_series"].([]any); !ok || len(days) != 0 {
+		t.Fatalf("empty daily_series = %#v, want []", m["daily_series"])
+	}
+	if rt, _ := m["runtimes_by_status"].(map[string]any); rt["online"] != float64(0) || rt["offline"] != float64(0) {
+		t.Fatalf("empty runtimes_by_status = %v", rt)
 	}
 }
 

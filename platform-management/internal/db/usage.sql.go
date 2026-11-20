@@ -104,6 +104,45 @@ func (q *Queries) ListLatestUsageDaily(ctx context.Context, dollar_1 []pgtype.UU
 	return items, nil
 }
 
+const sumIssuesAndTasksByDay = `-- name: SumIssuesAndTasksByDay :many
+SELECT
+    day,
+    COALESCE(sum(issues_created), 0)::bigint AS issues_created,
+    COALESCE(sum(tasks_run), 0)::bigint AS tasks_run
+FROM platform_usage_daily
+WHERE day >= $1::date
+GROUP BY day
+`
+
+type SumIssuesAndTasksByDayRow struct {
+	Day           pgtype.Date `json:"day"`
+	IssuesCreated int64       `json:"issues_created"`
+	TasksRun      int64       `json:"tasks_run"`
+}
+
+// The platform-wide issues created and tasks run per day since $1: each day's
+// rows summed over the workspaces. Both meters are per-day flows. A day with no
+// row is absent.
+func (q *Queries) SumIssuesAndTasksByDay(ctx context.Context, since pgtype.Date) ([]SumIssuesAndTasksByDayRow, error) {
+	rows, err := q.db.Query(ctx, sumIssuesAndTasksByDay, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SumIssuesAndTasksByDayRow{}
+	for rows.Next() {
+		var i SumIssuesAndTasksByDayRow
+		if err := rows.Scan(&i.Day, &i.IssuesCreated, &i.TasksRun); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sumLatestUsageDaily = `-- name: SumLatestUsageDaily :one
 WITH latest AS (
     SELECT DISTINCT ON (workspace_id)
