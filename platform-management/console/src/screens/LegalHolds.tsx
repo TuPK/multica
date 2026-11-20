@@ -48,6 +48,7 @@ import {
 } from "../api/hooks";
 import type { LegalHold, LegalHoldScopeKind } from "../api/schemas";
 import type { StaffRole } from "../components/types";
+import { t } from "../i18n";
 
 export interface LegalHoldsProps {
   userRole?: StaffRole;
@@ -98,10 +99,10 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
 
   if (!canAccess) {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -135,7 +136,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
       });
       setPlaceDialogOpen(false);
     } catch (err) {
-      setPlaceError(getLegalHoldErrorMessage(err, "Failed to place legal hold"));
+      setPlaceError(getLegalHoldErrorMessage(err, t("Failed to place legal hold")));
     }
   };
 
@@ -146,7 +147,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
       await releaseHold.mutateAsync({ id: releaseTarget.id });
       setReleaseTarget(null);
     } catch (err) {
-      setReleaseError(getLegalHoldErrorMessage(err, "Failed to release legal hold"));
+      setReleaseError(getLegalHoldErrorMessage(err, t("Failed to release legal hold")));
     }
   };
 
@@ -154,7 +155,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
     <Layout height="auto">
       <LayoutHeader hasDivider>
         <HStack justify="between" align="center" wrap="wrap" gap={3}>
-          <Heading level={1}>Legal holds</Heading>
+          <Heading level={1}>{t("Legal holds")}</Heading>
           <HStack gap={2} align="center">
             <Button
               type="button"
@@ -169,11 +170,11 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
               ) : (
                 <RefreshCw className="size-4" aria-hidden="true" />
               )}
-              Refresh
+              {t("Refresh")}
             </Button>
             <Button type="button" variant="default" size="sm" onClick={openPlaceDialog}>
               <Plus className="size-4" aria-hidden="true" />
-              Place legal hold
+              {t("Place legal hold")}
             </Button>
           </HStack>
         </HStack>
@@ -183,7 +184,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
         <div className="space-y-6">
           <Section padding={4}>
             <div className="space-y-4">
-              <Heading level={3}>Holds</Heading>
+              <Heading level={3}>{t("Holds")}</Heading>
               <HStack wrap="wrap" gap={3} align="center">
                 <div className="w-56">
                   <Select
@@ -195,16 +196,16 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                       }
                     }}
                   >
-                    <SelectTrigger aria-label="Hold status" className="w-full">
+                    <SelectTrigger aria-label={t("Hold status")} className="w-full">
                       <SelectValue>
-                        {STATUS_FILTERS.find((item) => item.value === statusFilter)?.label ??
-                          "All holds"}
+                        {t(STATUS_FILTERS.find((item) => item.value === statusFilter)?.label ??
+                          t("All holds"))}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {STATUS_FILTERS.map((item) => (
                         <SelectItem key={item.value} value={item.value}>
-                          {item.label}
+                          {t(item.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -212,11 +213,11 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                 </div>
               </HStack>
 
-              {query.isLoading && <LoadingState message="Loading legal holds..." />}
+              {query.isLoading && <LoadingState message={t("Loading legal holds...")} />}
 
               {query.isError && (
                 <ErrorState
-                  title="Failed to load legal holds"
+                  title={t("Failed to load legal holds")}
                   message={query.error instanceof Error ? query.error.message : undefined}
                   onRetry={query.refetch}
                 />
@@ -225,8 +226,8 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
               {!query.isLoading && !query.isError && holds.length === 0 && (
                 <EmptyState
                   icon={<Lock className="size-5" aria-hidden="true" />}
-                  title="No legal holds"
-                  description="Active preservation holds block immediate deletion of the covered entity."
+                  title={t("No legal holds")}
+                  description={t("Active preservation holds block immediate deletion of the covered entity.")}
                 />
               )}
 
@@ -234,12 +235,12 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                 <Table density="compact" dividers="rows" hasHover>
                   <TableHeader>
                     <TableRow isHeaderRow>
-                      <TableHeaderCell>Case reference</TableHeaderCell>
-                      <TableHeaderCell>Scope</TableHeaderCell>
-                      <TableHeaderCell>Reason</TableHeaderCell>
-                      <TableHeaderCell>Placed by</TableHeaderCell>
-                      <TableHeaderCell>Status</TableHeaderCell>
-                      <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                      <TableHeaderCell>{t("Case reference")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Scope")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Reason")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Placed by")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Status")}</TableHeaderCell>
+                      <TableHeaderCell className="text-right">{t("Actions")}</TableHeaderCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -269,7 +270,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                         <TableCell>
                           <StatusBadge
                             status={hold.released ? "released" : "legal_hold"}
-                            label={hold.released ? "Released" : "Active"}
+                            label={hold.released ? t("Released") : t("Active")}
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -277,10 +278,10 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                             <Text type="supporting">—</Text>
                           ) : (
                             <RowActions
-                              label={`legal hold ${hold.id}`}
+                              label={t("legal hold {0}", hold.id)}
                               actions={[
                                 {
-                                  label: "Release",
+                                  label: t("Release"),
                                   onSelect: () => {
                                     setReleaseTarget(hold);
                                     setReleaseError(null);
@@ -311,9 +312,9 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <form onSubmit={handlePlaceSubmit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Place legal hold</DialogTitle>
+              <DialogTitle>{t("Place legal hold")}</DialogTitle>
               <DialogDescription>
-                Prevents permanent deletion of the target tenant, workspace, or account until released.
+                {t("Prevents permanent deletion of the target tenant, workspace, or account until released.")}
               </DialogDescription>
             </DialogHeader>
 
@@ -326,7 +327,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
 
             <UiField>
               <UiFieldLabel htmlFor="legal-hold-scope-kind" className="text-label">
-                Scope kind
+                {t("Scope kind")}
               </UiFieldLabel>
               <Select
                 items={[...SCOPE_OPTIONS]}
@@ -337,47 +338,47 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                   }
                 }}
               >
-                <SelectTrigger id="legal-hold-scope-kind" aria-label="Scope kind" className="w-full">
+                <SelectTrigger id="legal-hold-scope-kind" aria-label={t("Scope kind")} className="w-full">
                   <SelectValue>
-                    {SCOPE_OPTIONS.find((item) => item.value === scopeKind)?.label ?? "Tenant"}
+                    {t(SCOPE_OPTIONS.find((item) => item.value === scopeKind)?.label ?? t("Tenant"))}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {SCOPE_OPTIONS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </UiField>
 
-            <Field label="Scope ID" inputID={scopeIdInputId} isRequired width="100%">
+            <Field label={t("Scope ID")} inputID={scopeIdInputId} isRequired width="100%">
               <Input
                 id={scopeIdInputId}
                 value={scopeId}
                 onChange={(e) => setScopeId(e.target.value)}
-                placeholder="UUID of the tenant, workspace, or account"
+                placeholder={t("UUID of the tenant, workspace, or account")}
                 disabled={placeHold.isPending}
               />
             </Field>
 
-            <Field label="Case reference" inputID={caseRefInputId} isRequired width="100%">
+            <Field label={t("Case reference")} inputID={caseRefInputId} isRequired width="100%">
               <Input
                 id={caseRefInputId}
                 value={caseRef}
                 onChange={(e) => setCaseRef(e.target.value)}
-                placeholder="CASE-2026-001"
+                placeholder={t("CASE-2026-001")}
                 disabled={placeHold.isPending}
               />
             </Field>
 
-            <Field label="Reason" inputID={reasonInputId} isRequired width="100%">
+            <Field label={t("Reason")} inputID={reasonInputId} isRequired width="100%">
               <Textarea
                 id={reasonInputId}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Explain the litigation or compliance preservation basis..."
+                placeholder={t("Explain the litigation or compliance preservation basis...")}
                 disabled={placeHold.isPending}
                 rows={3}
               />
@@ -390,7 +391,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                 onClick={() => setPlaceDialogOpen(false)}
                 disabled={placeHold.isPending}
               >
-                Cancel
+                {t("Cancel")}
               </Button>
               <Button
                 type="submit"
@@ -399,7 +400,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
                 aria-busy={placeHold.isPending || undefined}
               >
                 {placeHold.isPending && <Spinner />}
-                Place hold
+                {t("Place hold")}
               </Button>
             </DialogFooter>
           </form>
@@ -417,10 +418,10 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Release legal hold</DialogTitle>
+            <DialogTitle>{t("Release legal hold")}</DialogTitle>
             {releaseTarget && (
               <DialogDescription>
-                Release hold {releaseTarget.case_ref} covering {releaseTarget.scope_kind}{" "}
+                {t("Release hold")} {releaseTarget.case_ref} {t("covering")} {releaseTarget.scope_kind}{" "}
                 {releaseTarget.scope_id}?
               </DialogDescription>
             )}
@@ -440,7 +441,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
               onClick={() => setReleaseTarget(null)}
               disabled={releaseHold.isPending}
             >
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button
               type="button"
@@ -450,7 +451,7 @@ export function LegalHolds({ userRole }: LegalHoldsProps) {
               onClick={handleReleaseConfirm}
             >
               {releaseHold.isPending && <Spinner />}
-              Release hold
+              {t("Release hold")}
             </Button>
           </DialogFooter>
         </DialogContent>

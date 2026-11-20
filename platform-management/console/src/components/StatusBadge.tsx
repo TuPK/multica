@@ -1,6 +1,7 @@
 import { Badge, type BadgeVariant } from "@astryxdesign/core/Badge";
 import { StatusDot as AstryxStatusDot, type StatusDotVariant } from "@astryxdesign/core/StatusDot";
 import { Text } from "@astryxdesign/core/Text";
+import { t } from "../i18n";
 
 type StatusPresentation =
   | {
@@ -108,7 +109,7 @@ export function StatusBadge({ status, label }: { status: string; label?: string 
     return <Badge variant="neutral" label={label ?? status} />;
   }
 
-  const text = label ?? config.label;
+  const text = label ?? t(config.label);
 
   if (config.kind === "quiet") {
     return (

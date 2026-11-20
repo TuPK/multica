@@ -28,6 +28,7 @@ import {
   useRejectApproval,
 } from "../api/hooks";
 import type { StaffRole } from "../components/types";
+import { t } from "../i18n";
 
 export interface ApprovalsProps {
   userRole?: StaffRole;
@@ -47,10 +48,10 @@ export function Approvals({ userRole }: ApprovalsProps) {
 
   if (!canAccess) {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -64,7 +65,7 @@ export function Approvals({ userRole }: ApprovalsProps) {
     try {
       await approveMutation.mutateAsync({ id });
     } catch (err) {
-      setActionError(getApprovalErrorMessage(err, "Failed to approve request"));
+      setActionError(getApprovalErrorMessage(err, t("Failed to approve request")));
     } finally {
       setBusyId(null);
     }
@@ -76,7 +77,7 @@ export function Approvals({ userRole }: ApprovalsProps) {
     try {
       await rejectMutation.mutateAsync({ id });
     } catch (err) {
-      setActionError(getApprovalErrorMessage(err, "Failed to reject request"));
+      setActionError(getApprovalErrorMessage(err, t("Failed to reject request")));
     } finally {
       setBusyId(null);
     }
@@ -86,7 +87,7 @@ export function Approvals({ userRole }: ApprovalsProps) {
     <Layout height="auto">
       <LayoutHeader hasDivider>
         <HStack justify="between" align="center" wrap="wrap" gap={3}>
-          <Heading level={1}>Approvals</Heading>
+          <Heading level={1}>{t("Approvals")}</Heading>
           <Button
             type="button"
             variant="outline"
@@ -100,7 +101,7 @@ export function Approvals({ userRole }: ApprovalsProps) {
             ) : (
               <RefreshCw className="size-4" aria-hidden="true" />
             )}
-            Refresh
+            {t("Refresh")}
           </Button>
         </HStack>
       </LayoutHeader>
@@ -116,12 +117,12 @@ export function Approvals({ userRole }: ApprovalsProps) {
 
           <Section padding={4}>
             <div className="space-y-4">
-              <Heading level={3}>Pending approvals</Heading>
-              {query.isLoading && <LoadingState message="Loading pending approvals..." />}
+              <Heading level={3}>{t("Pending approvals")}</Heading>
+              {query.isLoading && <LoadingState message={t("Loading pending approvals...")} />}
 
               {query.isError && (
                 <ErrorState
-                  title="Failed to load approvals"
+                  title={t("Failed to load approvals")}
                   message={query.error instanceof Error ? query.error.message : undefined}
                   onRetry={query.refetch}
                 />
@@ -130,8 +131,8 @@ export function Approvals({ userRole }: ApprovalsProps) {
               {!query.isLoading && !query.isError && approvals.length === 0 && (
                 <EmptyState
                   icon={<ShieldCheck className="size-5" aria-hidden="true" />}
-                  title="No approvals awaiting review"
-                  description="Two-person confirmation requests will appear here when queued."
+                  title={t("No approvals awaiting review")}
+                  description={t("Two-person confirmation requests will appear here when queued.")}
                 />
               )}
 
@@ -139,12 +140,12 @@ export function Approvals({ userRole }: ApprovalsProps) {
                 <Table density="compact" dividers="rows" hasHover>
                   <TableHeader>
                     <TableRow isHeaderRow>
-                      <TableHeaderCell>Target</TableHeaderCell>
-                      <TableHeaderCell>Kind</TableHeaderCell>
-                      <TableHeaderCell>Reason</TableHeaderCell>
-                      <TableHeaderCell>Requested by</TableHeaderCell>
-                      <TableHeaderCell>State</TableHeaderCell>
-                      <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                      <TableHeaderCell>{t("Target")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Kind")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Reason")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Requested by")}</TableHeaderCell>
+                      <TableHeaderCell>{t("State")}</TableHeaderCell>
+                      <TableHeaderCell className="text-right">{t("Actions")}</TableHeaderCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -179,7 +180,7 @@ export function Approvals({ userRole }: ApprovalsProps) {
                               </Text>
                               {isSelfRequest && (
                                 <Text type="supporting" color="secondary" as="div">
-                                  Approver must differ from requester
+                                  {t("Approver must differ from requester")}
                                 </Text>
                               )}
                             </div>
@@ -189,17 +190,17 @@ export function Approvals({ userRole }: ApprovalsProps) {
                           </TableCell>
                           <TableCell className="text-right">
                             <RowActions
-                              label={`approval request for ${req.target_label || req.target_id}`}
+                              label={t("approval request for {0}", req.target_label || req.target_id)}
                               actions={[
                                 {
-                                  label: "Approve",
+                                  label: t("Approve"),
                                   primary: true,
                                   busy: rowBusy && approveMutation.isPending,
                                   disabled: isSelfRequest || rowBusy,
                                   onSelect: () => handleApprove(req.id),
                                 },
                                 {
-                                  label: "Reject",
+                                  label: t("Reject"),
                                   destructive: true,
                                   busy: rowBusy && rejectMutation.isPending,
                                   disabled: isSelfRequest || rowBusy,

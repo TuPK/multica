@@ -27,6 +27,7 @@ import { useEinvoices, useMe, type EinvoiceFilterState } from "../api/hooks";
 import { isSafeHttpsUrl, type Einvoice } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { formatMinorAmount } from "../money";
+import { t } from "../i18n";
 
 interface EinvoiceFailuresProps {
   userRole?: StaffRole;
@@ -77,10 +78,10 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
   // Role gating: Only billing and system_admin roles can view e-invoice issuance records
   if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "system_admin") {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -96,11 +97,11 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="E-invoices"
+        title={t("E-invoices")}
         meta={
           !isLoading && !isError ? (
             <span className="tabular-nums">
-              {items.length} {items.length === 1 ? "record" : "records"} in current view
+              {items.length} {items.length === 1 ? "record" : "records"} {t("in current view")}
             </span>
           ) : undefined
         }
@@ -120,7 +121,7 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
               ) : (
                 <RefreshCw className="size-3.5" aria-hidden="true" />
               )}
-              <span>Refresh</span>
+              <span>{t("Refresh")}</span>
             </Button>
           ) : undefined
         }
@@ -134,29 +135,29 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border">
-          <TabsList variant="line" aria-label="E-invoice state">
+          <TabsList variant="line" aria-label={t("E-invoice state")}>
             {STATE_TABS.map((tab) => (
               <TabsTrigger key={tab.value || "default"} value={tab.value || "default"}>
-                {tab.label}
+                {t(tab.label)}
               </TabsTrigger>
             ))}
           </TabsList>
 
           {activeTab === "" && !isLoading && !isError && items.length > 0 && (
             <div
-              aria-label="Attention breakdown"
+              aria-label={t("Attention breakdown")}
               className="flex flex-wrap items-center gap-4 pb-2"
             >
               <span className="inline-flex items-center gap-1.5">
-                <StatusDot variant="error" label="Failed" aria-hidden="true" />
+                <StatusDot variant="error" label={t("Failed")} aria-hidden="true" />
                 <Text type="supporting" hasTabularNumbers>
-                  {failedCount} failed
+                  {failedCount} {t("failed")}
                 </Text>
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <StatusDot variant="warning" label="Needs buyer details" aria-hidden="true" />
+                <StatusDot variant="warning" label={t("Needs buyer details")} aria-hidden="true" />
                 <Text type="supporting" hasTabularNumbers>
-                  {needsInfoCount} missing buyer details
+                  {needsInfoCount} {t("missing buyer details")}
                 </Text>
               </span>
             </div>
@@ -164,12 +165,12 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
         </div>
       </Tabs>
 
-      {isLoading && <LoadingState message="Loading e-invoices..." />}
+      {isLoading && <LoadingState message={t("Loading e-invoices...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load e-invoices"
-          message={getErrorMessage(error, "An error occurred while loading e-invoices.")}
+          title={t("Failed to load e-invoices")}
+          message={getErrorMessage(error, t("An error occurred while loading e-invoices."))}
           onRetry={refetch}
         />
       )}
@@ -177,15 +178,15 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
       {!isLoading && !isError && items.length === 0 && (
         <EmptyState
           icon={<FileText className="size-4" />}
-          title="No e-invoices found"
+          title={t("No e-invoices found")}
           actions={
             activeTab ? (
               <Button variant="outline" size="sm" onClick={() => setActiveTab("")}>
-                View needing attention
+                {t("View needing attention")}
               </Button>
             ) : (
               <Button variant="outline" size="sm" onClick={() => refetch()}>
-                Refresh
+                {t("Refresh")}
               </Button>
             )
           }
@@ -204,14 +205,14 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
             <Table density="compact" dividers="rows" hasHover>
               <TableHeader>
                 <TableRow isHeaderRow>
-                  <TableHeaderCell>Order</TableHeaderCell>
-                  <TableHeaderCell>Workspace</TableHeaderCell>
-                  <TableHeaderCell>State</TableHeaderCell>
-                  <TableHeaderCell>Provider</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Total (incl. VAT)</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Attempts</TableHeaderCell>
-                  <TableHeaderCell>Details</TableHeaderCell>
-                  <TableHeaderCell>Updated</TableHeaderCell>
+                  <TableHeaderCell>{t("Order")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Workspace")}</TableHeaderCell>
+                  <TableHeaderCell>{t("State")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Provider")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Total (incl. VAT)")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Attempts")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Details")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Updated")}</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -239,7 +240,7 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                           {item.order_id}
                         </div>
                         <Text type="supporting" hasTabularNumbers as="div">
-                          rev {item.revision}
+                          {t("rev")} {item.revision}
                         </Text>
                       </TableCell>
                       <TableCell>
@@ -253,7 +254,7 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                       <TableCell>
                         <StatusBadge
                           status={item.state}
-                          label={item.state === "needs_info" ? "Needs buyer details" : undefined}
+                          label={item.state === "needs_info" ? t("Needs buyer details") : undefined}
                         />
                       </TableCell>
                       <TableCell>
@@ -264,7 +265,7 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                           {formatMinorAmount(totalAmount, item.currency)}
                         </Text>
                         <Text type="supporting" hasTabularNumbers as="div">
-                          Net: {formatMinorAmount(item.amount, item.currency)} + VAT:{" "}
+                          {t("Net:")} {formatMinorAmount(item.amount, item.currency)} {t("+ VAT:")}{" "}
                           {formatMinorAmount(item.vat_amount, item.currency)}
                         </Text>
                       </TableCell>
@@ -303,7 +304,7 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                             className="inline-flex items-center gap-1 text-brand underline underline-offset-3 hover:opacity-80"
                           >
                             <ExternalLink className="size-3.5" aria-hidden="true" />
-                            <span>View</span>
+                            <span>{t("View")}</span>
                           </a>
                         ) : null}
                         {!item.last_error_code &&
@@ -326,29 +327,29 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
           </Card>
 
           {selectedItem && (
-            <aside aria-label="E-invoice details">
+            <aside aria-label={t("E-invoice details")}>
               <Card padding={5} className="space-y-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Heading level={2}>E-invoice details</Heading>
+                      <Heading level={2}>{t("E-invoice details")}</Heading>
                       <StatusBadge
                         status={selectedItem.state}
                         label={
                           selectedItem.state === "needs_info"
-                            ? "Needs buyer details"
+                            ? t("Needs buyer details")
                             : undefined
                         }
                       />
                     </div>
                     <Text type="code" color="secondary" hasTabularNumbers as="p">
-                      rev {selectedItem.revision}
+                      {t("rev")} {selectedItem.revision}
                     </Text>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Close details"
+                    aria-label={t("Close details")}
                     onClick={() => setSelectedKey(null)}
                   >
                     <X className="size-4" aria-hidden="true" />
@@ -358,47 +359,47 @@ export function EinvoiceFailures({ userRole }: EinvoiceFailuresProps) {
                 <Divider />
 
                 <MetadataList columns={1}>
-                  <MetadataListItem label="Order ID" mono className="break-all">
+                  <MetadataListItem label={t("Order ID")} mono className="break-all">
                     {selectedItem.order_id}
                   </MetadataListItem>
-                  <MetadataListItem label="Workspace ID" mono className="break-all">
+                  <MetadataListItem label={t("Workspace ID")} mono className="break-all">
                     {selectedItem.workspace_id || "-"}
                   </MetadataListItem>
-                  <MetadataListItem label="Provider">
+                  <MetadataListItem label={t("Provider")}>
                     {selectedItem.provider || "-"}
                   </MetadataListItem>
-                  <MetadataListItem label="Total (incl. VAT)" tabular>
+                  <MetadataListItem label={t("Total (incl. VAT)")} tabular>
                     {formatMinorAmount(
                       selectedItem.amount + selectedItem.vat_amount,
                       selectedItem.currency,
                     )}
                   </MetadataListItem>
-                  <MetadataListItem label="Attempts" tabular>
+                  <MetadataListItem label={t("Attempts")} tabular>
                     {selectedItem.attempts}
                   </MetadataListItem>
                   {selectedItem.last_error_code && (
-                    <MetadataListItem label="Last error code" mono>
+                    <MetadataListItem label={t("Last error code")} mono>
                       <Text type="code" color="inherit" className="text-destructive">
                         {selectedItem.last_error_code}
                       </Text>
                     </MetadataListItem>
                   )}
                   {selectedItem.missing_fields.length > 0 && (
-                    <MetadataListItem label="Missing fields">
+                    <MetadataListItem label={t("Missing fields")}>
                       {selectedItem.missing_fields.join(", ")}
                     </MetadataListItem>
                   )}
                   {selectedItem.invoice_number && (
-                    <MetadataListItem label="Invoice number" mono>
+                    <MetadataListItem label={t("Invoice number")} mono>
                       {selectedItem.invoice_number}
                     </MetadataListItem>
                   )}
                   {selectedItem.next_attempt_at && (
-                    <MetadataListItem label="Next attempt" tabular>
+                    <MetadataListItem label={t("Next attempt")} tabular>
                       {formatDateTime(selectedItem.next_attempt_at)}
                     </MetadataListItem>
                   )}
-                  <MetadataListItem label="Updated" tabular>
+                  <MetadataListItem label={t("Updated")} tabular>
                     {formatDateTime(selectedItem.updated_at)}
                   </MetadataListItem>
                 </MetadataList>

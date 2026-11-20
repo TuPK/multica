@@ -14,6 +14,7 @@ import { Field, FieldLabel } from "@multica/ui/components/ui/field";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { AlertCircle } from "@multica/ui/icons";
+import { t } from "../i18n";
 
 interface ConfirmReasonDialogProps {
   open: boolean;
@@ -33,7 +34,7 @@ export function ConfirmReasonDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel = t("Confirm"),
   confirmVariant = "default",
   isPending = false,
   error = null,
@@ -67,13 +68,13 @@ export function ConfirmReasonDialog({
 
           <Field>
             <FieldLabel htmlFor="confirm-reason-input" className="text-label">
-              Reason <span className="text-destructive">*</span>
+              {t("Reason")} <span className="text-destructive">*</span>
             </FieldLabel>
             <Textarea
               id="confirm-reason-input"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Provide a reason for this action..."
+              placeholder={t("Provide a reason for this action...")}
               rows={3}
               required
               disabled={isPending}
@@ -89,7 +90,7 @@ export function ConfirmReasonDialog({
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" disabled={isPending} />}>
-              Cancel
+              {t("Cancel")}
             </DialogClose>
             <Button
               type="submit"

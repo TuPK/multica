@@ -78,6 +78,7 @@ import {
 } from "../api/hooks";
 import { MEMBER_ROLES, type AuditEvent } from "../api/schemas";
 import type { Membership, StaffRole } from "../components/types";
+import { t } from "../i18n";
 
 interface UserDetailProps {
   userId: string;
@@ -120,7 +121,7 @@ function formatLimitsSummary(allocation: TenantUserAllocationItem): string {
   return entries
     .map(([gate, limit]) => {
       const used = allocation.usage[gate];
-      const limitLabel = limit === null ? "Unlimited" : limit.toLocaleString();
+      const limitLabel = limit === null ? t("Unlimited") : limit.toLocaleString();
       return used !== undefined ? `${gate}: ${used.toLocaleString()} / ${limitLabel}` : `${gate}: ${limitLabel}`;
     })
     .join(" · ");
@@ -130,7 +131,7 @@ export function UserDetail({
   userId,
   tenantId,
   onBack,
-  backLabel = "Back to users",
+  backLabel = t("Back to users"),
   onSelectWorkspace,
   userRole,
 }: UserDetailProps) {
@@ -206,17 +207,17 @@ export function UserDetail({
   const [quotaError, setQuotaError] = useState<string | null>(null);
 
   if (isLoading) {
-    return <LoadingState message="Loading user details..." />;
+    return <LoadingState message={t("Loading user details...")} />;
   }
 
   if (isError || !user) {
     return (
       <ErrorState
-        title="Failed to load user"
+        title={t("Failed to load user")}
         message={
           error instanceof Error
             ? error.message
-            : "The user could not be found."
+            : t("The user could not be found.")
         }
         onRetry={refetch}
       />
@@ -315,9 +316,9 @@ export function UserDetail({
         resolutions: payloadResolutions,
       });
       setDeleteDialogOpen(false);
-      setActionNotice(`Immediate deletion requested (${res.request_id}).`);
+      setActionNotice(t("Immediate deletion requested ({0}).", res.request_id));
     } catch (err: unknown) {
-      setDeleteError(getApiErrorMessage(err, "Failed to start account deletion"));
+      setDeleteError(getApiErrorMessage(err, t("Failed to start account deletion")));
     }
   };
 
@@ -338,7 +339,7 @@ export function UserDetail({
       setStatusDialogOpen(false);
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : "Failed to change account status";
+        err instanceof Error ? err.message : t("Failed to change account status");
       setStatusError(msg);
     }
   };
@@ -353,7 +354,7 @@ export function UserDetail({
       setRevokeDialogOpen(false);
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : "Failed to revoke sessions";
+        err instanceof Error ? err.message : t("Failed to revoke sessions");
       setRevokeError(msg);
     }
   };
@@ -365,7 +366,7 @@ export function UserDetail({
       setMfaDialogOpen(false);
     } catch (err: unknown) {
       setMfaError(
-        err instanceof Error ? err.message : "Failed to reset two-step sign-in",
+        err instanceof Error ? err.message : t("Failed to reset two-step sign-in"),
       );
     }
   };
@@ -381,11 +382,11 @@ export function UserDetail({
       });
       setDeactivateDialogOpen(false);
       setActionNotice(
-        `Tenant deactivation requested (${res.request_ids.length} workspace removal request${res.request_ids.length === 1 ? "" : "s"}).`,
+        t("Tenant deactivation requested ({0} workspace removal requests).", res.request_ids.length),
       );
     } catch (err: unknown) {
       setDeactivateError(
-        getMemberChangeErrorMessage(err, "Failed to deactivate user in tenant"),
+        getMemberChangeErrorMessage(err, t("Failed to deactivate user in tenant")),
       );
     }
   };
@@ -410,12 +411,12 @@ export function UserDetail({
       setRoleDialogWorkspace(null);
       setActionNotice(
         res.changed === false
-          ? "Member role is already up to date."
-          : `Role change requested (${res.request_id}).`,
+          ? t("Member role is already up to date.")
+          : t("Role change requested ({0}).", res.request_id),
       );
     } catch (err: unknown) {
       setRoleError(
-        getMemberChangeErrorMessage(err, "Failed to change member role"),
+        getMemberChangeErrorMessage(err, t("Failed to change member role")),
       );
     }
   };
@@ -432,12 +433,12 @@ export function UserDetail({
       setRemoveDialogWorkspace(null);
       setActionNotice(
         res.request_id
-          ? `Member removal requested (${res.request_id}).`
-          : "Member removal requested.",
+          ? t("Member removal requested ({0}).", res.request_id)
+          : t("Member removal requested."),
       );
     } catch (err: unknown) {
       setRemoveError(
-        getMemberChangeErrorMessage(err, "Failed to remove member from workspace"),
+        getMemberChangeErrorMessage(err, t("Failed to remove member from workspace")),
       );
     }
   };
@@ -467,10 +468,10 @@ export function UserDetail({
       });
       const wsLabel = quotaDialogWorkspace.name || quotaDialogWorkspace.workspace_id;
       setQuotaDialogWorkspace(null);
-      setActionNotice(`Quota increase requested for ${wsLabel} (${res.id}).`);
+      setActionNotice(t("Quota increase requested for {0} ({1}).", wsLabel, res.id));
     } catch (err: unknown) {
       setQuotaError(
-        getMemberChangeErrorMessage(err, "Failed to submit quota request"),
+        getMemberChangeErrorMessage(err, t("Failed to submit quota request")),
       );
     }
   };
@@ -485,13 +486,13 @@ export function UserDetail({
           <div className="flex flex-wrap items-center gap-1.5">
             <StatusBadge status={accountStatus} />
             {effectiveRole === "system_admin" && isStaffTarget && (
-              <Badge variant="purple" label="Platform staff" />
+              <Badge variant="purple" label={t("Platform staff")} />
             )}
           </div>
         }
         meta={
           <span className="font-mono">
-            {user.email} &bull; ID: {user.id}
+            {user.email} {t("• ID:")} {user.id}
           </span>
         }
         backAction={{ label: backLabel, onClick: onBack }}
@@ -508,7 +509,7 @@ export function UserDetail({
                 className="gap-1.5"
               >
                 <UserMinus className="size-4" aria-hidden="true" />
-                <span>Deactivate in tenant</span>
+                <span>{t("Deactivate in tenant")}</span>
               </Button>
             )}
 
@@ -522,7 +523,7 @@ export function UserDetail({
                     className="gap-1.5"
                   >
                     <RotateCcw className="size-4" aria-hidden="true" />
-                    <span>Reinstate account</span>
+                    <span>{t("Reinstate account")}</span>
                   </Button>
                 ) : (
                   <Button
@@ -532,7 +533,7 @@ export function UserDetail({
                     className="gap-1.5"
                   >
                     <Ban className="size-4" aria-hidden="true" />
-                    <span>Suspend account</span>
+                    <span>{t("Suspend account")}</span>
                   </Button>
                 )}
 
@@ -546,7 +547,7 @@ export function UserDetail({
                   className="gap-1.5"
                 >
                   <LogOut className="size-4" aria-hidden="true" />
-                  <span>Sign out everywhere</span>
+                  <span>{t("Sign out everywhere")}</span>
                 </Button>
 
                 <Button
@@ -559,7 +560,7 @@ export function UserDetail({
                   className="gap-1.5"
                 >
                   <Shield className="size-4" aria-hidden="true" />
-                  <span>Reset two-step sign-in</span>
+                  <span>{t("Reset two-step sign-in")}</span>
                 </Button>
               </>
             )}
@@ -572,7 +573,7 @@ export function UserDetail({
                 className="gap-1.5"
               >
                 <Trash2 className="size-4" aria-hidden="true" />
-                <span>Delete account</span>
+                <span>{t("Delete account")}</span>
               </Button>
             )}
           </>
@@ -597,7 +598,7 @@ export function UserDetail({
         >
           <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
           <AlertTitle className="text-label font-semibold">
-            {isSuspended ? "Account suspended" : "Status Reason"}
+            {isSuspended ? t("Account suspended") : t("Status Reason")}
           </AlertTitle>
           {user.account?.reason && (
             <AlertDescription className="text-body">
@@ -608,20 +609,20 @@ export function UserDetail({
       )}
 
       <Section variant="transparent" padding={0} className="space-y-4">
-        <Heading level={2}>Account Record</Heading>
+        <Heading level={2}>{t("Account Record")}</Heading>
         <MetadataList columns={3}>
-          <MetadataListItem label="Account Status">
+          <MetadataListItem label={t("Account Status")}>
             <StatusBadge status={accountStatus} />
           </MetadataListItem>
-          <MetadataListItem label="Registered" tabular>
+          <MetadataListItem label={t("Registered")} tabular>
             {user.created_at ? new Date(user.created_at).toLocaleString() : "-"}
           </MetadataListItem>
           {tenantUser && (
             <>
-              <MetadataListItem label="Tenant seats" tabular>
+              <MetadataListItem label={t("Tenant seats")} tabular>
                 {tenantUser.seats.toLocaleString()}
               </MetadataListItem>
-              <MetadataListItem label="Last login" tabular>
+              <MetadataListItem label={t("Last login")} tabular>
                 {tenantUser.last_login_at
                   ? new Date(tenantUser.last_login_at).toLocaleString()
                   : "-"}
@@ -629,12 +630,12 @@ export function UserDetail({
             </>
           )}
           {user.account?.changed_at && (
-            <MetadataListItem label="Status Changed At" tabular>
+            <MetadataListItem label={t("Status Changed At")} tabular>
               {new Date(user.account.changed_at).toLocaleString()}
             </MetadataListItem>
           )}
           {user.account?.sessions_valid_after && (
-            <MetadataListItem label="Sessions Valid After" mono tabular>
+            <MetadataListItem label={t("Sessions Valid After")} mono tabular>
               {new Date(user.account.sessions_valid_after).toLocaleString()}
             </MetadataListItem>
           )}
@@ -644,12 +645,12 @@ export function UserDetail({
       <Divider />
 
       <Section variant="transparent" padding={0} className="space-y-4">
-        <Heading level={2}>Workspace Memberships</Heading>
+        <Heading level={2}>{t("Workspace Memberships")}</Heading>
         {memberships.length === 0 ? (
           <EmptyState
             icon={<Building2 className="size-5" aria-hidden="true" />}
-            title="No memberships"
-            description="This user does not belong to any workspaces."
+            title={t("No memberships")}
+            description={t("This user does not belong to any workspaces.")}
             isCompact
           />
         ) : (
@@ -657,11 +658,11 @@ export function UserDetail({
             <Table density="balanced" dividers="rows" hasHover>
               <TableHeader>
                 <TableRow isHeaderRow>
-                  <TableHeaderCell>Workspace Name</TableHeaderCell>
-                  <TableHeaderCell>Role</TableHeaderCell>
-                  <TableHeaderCell>Workspace ID</TableHeaderCell>
+                  <TableHeaderCell>{t("Workspace Name")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Role")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Workspace ID")}</TableHeaderCell>
                   {hasMembershipActions && (
-                    <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                    <TableHeaderCell className="text-right">{t("Actions")}</TableHeaderCell>
                   )}
                 </TableRow>
               </TableHeader>
@@ -686,29 +687,29 @@ export function UserDetail({
                       {hasMembershipActions && (
                         <TableCell className="text-right">
                           <RowActions
-                            label={`workspace ${membership.name}`}
+                            label={t("workspace {0}", membership.name)}
                             actions={[
                               ...(canManageMembers
                                 ? [
                                     {
-                                      label: "Change role",
+                                      label: t("Change role"),
                                       disabled: isOwner || isSelfTarget || isStaffTarget,
                                       title: isOwner
-                                        ? "Owner role cannot be changed by staff"
+                                        ? t("Owner role cannot be changed by staff")
                                         : isSelfTarget
-                                          ? "You cannot change your own role"
+                                          ? t("You cannot change your own role")
                                           : isStaffTarget
-                                            ? "Active staff members cannot be changed here"
+                                            ? t("Active staff members cannot be changed here")
                                             : undefined,
                                       onSelect: () => handleOpenRoleDialog(membership),
                                     },
                                     {
-                                      label: "Remove",
+                                      label: t("Remove"),
                                       disabled: isOwner || isStaffTarget,
                                       title: isOwner
-                                        ? "Owner cannot be removed by staff"
+                                        ? t("Owner cannot be removed by staff")
                                         : isStaffTarget
-                                          ? "Active staff members cannot be changed here"
+                                          ? t("Active staff members cannot be changed here")
                                           : undefined,
                                       onSelect: () => {
                                         setRemoveError(null);
@@ -720,7 +721,7 @@ export function UserDetail({
                               ...(canEditWorkspaceAllocation
                                 ? [
                                     {
-                                      label: "Workspace allocation",
+                                      label: t("Workspace allocation"),
                                       onSelect: () => onSelectWorkspace?.(membership.workspace_id),
                                     },
                                   ]
@@ -728,7 +729,7 @@ export function UserDetail({
                               ...(canRequestWorkspaceQuota
                                 ? [
                                     {
-                                      label: "Request quota increase",
+                                      label: t("Request quota increase"),
                                       onSelect: () => handleOpenQuotaDialog(membership),
                                     },
                                   ]
@@ -750,16 +751,16 @@ export function UserDetail({
         <>
           <Divider />
           <Section variant="transparent" padding={0} className="space-y-4">
-            <Heading level={3}>Workspace Resource Allocation</Heading>
+            <Heading level={3}>{t("Workspace Resource Allocation")}</Heading>
             <div className="overflow-x-auto">
               <Table density="compact" dividers="rows" hasHover>
                 <TableHeader>
                   <TableRow isHeaderRow>
-                    <TableHeaderCell>Workspace</TableHeaderCell>
-                    <TableHeaderCell>Role</TableHeaderCell>
-                    <TableHeaderCell>Seat</TableHeaderCell>
-                    <TableHeaderCell>Workspace seats</TableHeaderCell>
-                    <TableHeaderCell>Limits &amp; usage</TableHeaderCell>
+                    <TableHeaderCell>{t("Workspace")}</TableHeaderCell>
+                    <TableHeaderCell>{t("Role")}</TableHeaderCell>
+                    <TableHeaderCell>{t("Seat")}</TableHeaderCell>
+                    <TableHeaderCell>{t("Workspace seats")}</TableHeaderCell>
+                    <TableHeaderCell>{t("Limits & usage")}</TableHeaderCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -775,7 +776,7 @@ export function UserDetail({
                       </TableCell>
                       <TableCell>
                         <Text type="supporting">
-                          {item.occupies_seat ? "Occupied" : "Exempt"}
+                          {item.occupies_seat ? t("Occupied") : t("Exempt")}
                         </Text>
                       </TableCell>
                       <TableCell>
@@ -803,11 +804,11 @@ export function UserDetail({
         <>
           <Divider />
           <Section variant="transparent" padding={0} className="space-y-4">
-            <Heading level={3}>Recent Tenant Activity</Heading>
+            <Heading level={3}>{t("Recent Tenant Activity")}</Heading>
             {auditEvents.length === 0 ? (
               <EmptyState
                 icon={<Activity className="size-5" aria-hidden="true" />}
-                title="No recent tenant activity"
+                title={t("No recent tenant activity")}
                 isCompact
               />
             ) : (
@@ -815,10 +816,10 @@ export function UserDetail({
                 <Table density="compact" dividers="rows" hasHover>
                   <TableHeader>
                     <TableRow isHeaderRow>
-                      <TableHeaderCell>Time</TableHeaderCell>
-                      <TableHeaderCell>Action</TableHeaderCell>
-                      <TableHeaderCell>Actor</TableHeaderCell>
-                      <TableHeaderCell>Target</TableHeaderCell>
+                      <TableHeaderCell>{t("Time")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Action")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Actor")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Target")}</TableHeaderCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -854,9 +855,9 @@ export function UserDetail({
           setDeactivateDialogOpen(open);
           if (!open) setDeactivateError(null);
         }}
-        title="Deactivate user in tenant"
-        description="Removes this user from the tenant workspaces below without changing their global account or other tenants."
-        confirmLabel="Deactivate in tenant"
+        title={t("Deactivate user in tenant")}
+        description={t("Removes this user from the tenant workspaces below without changing their global account or other tenants.")}
+        confirmLabel={t("Deactivate in tenant")}
         confirmVariant="destructive"
         isPending={deactivateTenantUser.isPending}
         error={deactivateError}
@@ -864,7 +865,7 @@ export function UserDetail({
       >
         <div className="space-y-2">
           <Text type="supporting" weight="medium" as="div">
-            Workspaces affected ({memberships.length})
+            {t("Workspaces affected (")}{memberships.length})
           </Text>
           <div className="space-y-1.5">
             {memberships.map((ws) => (
@@ -882,7 +883,7 @@ export function UserDetail({
             <Alert>
               <Info className="size-4 shrink-0" aria-hidden="true" />
               <AlertDescription className="text-caption">
-                This user is an owner in at least one workspace. Staff cannot remove an owner until ownership is transferred.
+                {t("This user is an owner in at least one workspace. Staff cannot remove an owner until ownership is transferred.")}
               </AlertDescription>
             </Alert>
           )}
@@ -901,17 +902,17 @@ export function UserDetail({
         <DialogContent>
           <form onSubmit={handleSubmitRoleChange} className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Change member role</DialogTitle>
+              <DialogTitle>{t("Change member role")}</DialogTitle>
               <DialogDescription>
                 {roleDialogWorkspace
-                  ? `Update workspace role in ${roleDialogWorkspace.name || roleDialogWorkspace.workspace_id}.`
+                  ? t("Update workspace role in {0}.", roleDialogWorkspace.name || roleDialogWorkspace.workspace_id)
                   : ""}
               </DialogDescription>
             </DialogHeader>
 
             <Field>
               <FieldLabel htmlFor="change-member-role-select" className="text-label">
-                Member role
+                {t("Member role")}
               </FieldLabel>
               <Select
                 items={MEMBER_ROLE_ITEMS}
@@ -923,18 +924,18 @@ export function UserDetail({
               >
                 <SelectTrigger
                   id="change-member-role-select"
-                  aria-label="Member role"
+                  aria-label={t("Member role")}
                   className="w-full"
                 >
                   <SelectValue>
-                    {MEMBER_ROLE_ITEMS.find((item) => item.value === selectedRole)?.label ??
-                      selectedRole}
+                    {t(MEMBER_ROLE_ITEMS.find((item) => item.value === selectedRole)?.label ??
+                      selectedRole)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {MEMBER_ROLE_ITEMS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -958,7 +959,7 @@ export function UserDetail({
                   />
                 }
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -967,7 +968,7 @@ export function UserDetail({
                 aria-busy={changeWorkspaceMemberRole.isPending}
               >
                 {changeWorkspaceMemberRole.isPending && <Spinner className="size-3.5" />}
-                Save role
+                {t("Save role")}
               </Button>
             </DialogFooter>
           </form>
@@ -985,10 +986,10 @@ export function UserDetail({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove from workspace</DialogTitle>
+            <DialogTitle>{t("Remove from workspace")}</DialogTitle>
             <DialogDescription>
               {removeDialogWorkspace
-                ? `Queue removal of ${user.email} from ${removeDialogWorkspace.name || removeDialogWorkspace.workspace_id} and release their workspace seat.`
+                ? t("Queue removal of {0} from {1} and release their workspace seat.", user.email, removeDialogWorkspace.name || removeDialogWorkspace.workspace_id)
                 : ""}
             </DialogDescription>
           </DialogHeader>
@@ -1010,7 +1011,7 @@ export function UserDetail({
                 />
               }
             >
-              Cancel
+              {t("Cancel")}
             </DialogClose>
             <Button
               type="button"
@@ -1020,7 +1021,7 @@ export function UserDetail({
               onClick={handleConfirmRemoveMember}
             >
               {removeWorkspaceMember.isPending && <Spinner className="size-3.5" />}
-              Remove member
+              {t("Remove member")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1038,17 +1039,17 @@ export function UserDetail({
         <DialogContent>
           <form onSubmit={handleSubmitQuotaRequest} className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Request workspace quota increase</DialogTitle>
+              <DialogTitle>{t("Request workspace quota increase")}</DialogTitle>
               <DialogDescription>
                 {quotaDialogWorkspace
-                  ? `Quotas apply per workspace. Submit a request for ${quotaDialogWorkspace.name || quotaDialogWorkspace.workspace_id} (${quotaDialogWorkspace.workspace_id}).`
+                  ? t("Quotas apply per workspace. Submit a request for {0} ({1}).", quotaDialogWorkspace.name || quotaDialogWorkspace.workspace_id, quotaDialogWorkspace.workspace_id)
                   : ""}
               </DialogDescription>
             </DialogHeader>
 
             <Field>
               <FieldLabel htmlFor="quota-gate-select" className="text-label">
-                Resource gate
+                {t("Resource gate")}
               </FieldLabel>
               <Select
                 items={LIMIT_GATE_ITEMS}
@@ -1060,18 +1061,18 @@ export function UserDetail({
               >
                 <SelectTrigger
                   id="quota-gate-select"
-                  aria-label="Resource gate"
+                  aria-label={t("Resource gate")}
                   className="w-full"
                 >
                   <SelectValue>
-                    {LIMIT_GATE_ITEMS.find((item) => item.value === quotaGate)?.label ??
-                      quotaGate}
+                    {t(LIMIT_GATE_ITEMS.find((item) => item.value === quotaGate)?.label ??
+                      quotaGate)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {LIMIT_GATE_ITEMS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1080,7 +1081,7 @@ export function UserDetail({
 
             <Field>
               <FieldLabel htmlFor="quota-requested-value" className="text-label">
-                Requested limit <span className="text-destructive">*</span>
+                {t("Requested limit")} <span className="text-destructive">*</span>
               </FieldLabel>
               <Input
                 id="quota-requested-value"
@@ -1095,13 +1096,13 @@ export function UserDetail({
 
             <Field>
               <FieldLabel htmlFor="quota-reason-input" className="text-label">
-                Reason <span className="text-destructive">*</span>
+                {t("Reason")} <span className="text-destructive">*</span>
               </FieldLabel>
               <Textarea
                 id="quota-reason-input"
                 value={quotaReason}
                 onChange={(e) => setQuotaReason(e.target.value)}
-                placeholder="Explain why this workspace limit should be raised..."
+                placeholder={t("Explain why this workspace limit should be raised...")}
                 rows={3}
                 maxLength={500}
                 required
@@ -1126,7 +1127,7 @@ export function UserDetail({
                   />
                 }
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -1140,7 +1141,7 @@ export function UserDetail({
                 aria-busy={createQuotaRequest.isPending}
               >
                 {createQuotaRequest.isPending && <Spinner className="size-3.5" />}
-                Submit request
+                {t("Submit request")}
               </Button>
             </DialogFooter>
           </form>
@@ -1152,18 +1153,18 @@ export function UserDetail({
         onOpenChange={setStatusDialogOpen}
         title={
           statusDialogTarget === "suspended"
-            ? "Suspend user account"
-            : "Reinstate user account"
+            ? t("Suspend user account")
+            : t("Reinstate user account")
         }
         description={
           statusDialogTarget === "suspended"
-            ? "Suspending this account will block the user from accessing Multica."
-            : "Reinstating this account will allow the user to sign in again."
+            ? t("Suspending this account will block the user from accessing Multica.")
+            : t("Reinstating this account will allow the user to sign in again.")
         }
         confirmLabel={
           statusDialogTarget === "suspended"
-            ? "Suspend account"
-            : "Reinstate account"
+            ? t("Suspend account")
+            : t("Reinstate account")
         }
         confirmVariant={statusDialogTarget === "suspended" ? "destructive" : "default"}
         isPending={changeStatus.isPending}
@@ -1174,9 +1175,9 @@ export function UserDetail({
       <ConfirmReasonDialog
         open={revokeDialogOpen}
         onOpenChange={setRevokeDialogOpen}
-        title="Sign out everywhere"
-        description="Revoke all active sessions for this user. Every session issued before now will stop working."
-        confirmLabel="Revoke all sessions"
+        title={t("Sign out everywhere")}
+        description={t("Revoke all active sessions for this user. Every session issued before now will stop working.")}
+        confirmLabel={t("Revoke all sessions")}
         confirmVariant="destructive"
         isPending={revokeSessions.isPending}
         error={revokeError}
@@ -1186,9 +1187,9 @@ export function UserDetail({
       <Dialog open={mfaDialogOpen} onOpenChange={setMfaDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset two-step sign-in</DialogTitle>
+            <DialogTitle>{t("Reset two-step sign-in")}</DialogTitle>
             <DialogDescription>
-              The user signs in without a second step until they set it up again. They are not signed out, and they are told by email.
+              {t("The user signs in without a second step until they set it up again. They are not signed out, and they are told by email.")}
             </DialogDescription>
           </DialogHeader>
           {mfaError && (
@@ -1199,7 +1200,7 @@ export function UserDetail({
           )}
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
-              Cancel
+              {t("Cancel")}
             </DialogClose>
             <Button
               type="button"
@@ -1209,7 +1210,7 @@ export function UserDetail({
               onClick={handleConfirmResetMfa}
             >
               {resetMfa.isPending && <Spinner className="size-3.5" />}
-              Reset and email the user
+              {t("Reset and email the user")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1222,22 +1223,22 @@ export function UserDetail({
             setDeleteDialogOpen(open);
             if (!open) setDeleteError(null);
           }}
-          title="Delete account"
-          description="Immediate deletion permanently removes this account and queues ownership resolution for blocking workspaces."
+          title={t("Delete account")}
+          description={t("Immediate deletion permanently removes this account and queues ownership resolution for blocking workspaces.")}
           expectedText={user.email}
-          confirmInputLabel="Account email"
+          confirmInputLabel={t("Account email")}
           caseSensitive={false}
-          confirmLabel="Delete account"
+          confirmLabel={t("Delete account")}
           confirmVariant="destructive"
           error={deleteError}
           isConfirmDisabled={hasUnresolvedWorkspaces}
           onConfirm={handleConfirmDeleteAccount}
         >
-          {previewLoading && <LoadingState message="Checking workspace ownership..." />}
+          {previewLoading && <LoadingState message={t("Checking workspace ownership...")} />}
           {previewError && (
             <ErrorState
-              title="Failed to load ownership preview"
-              message={getApiErrorMessage(previewErrorObj, "Could not check workspace ownership.")}
+              title={t("Failed to load ownership preview")}
+              message={getApiErrorMessage(previewErrorObj, t("Could not check workspace ownership."))}
               onRetry={refetchPreview}
             />
           )}
@@ -1245,7 +1246,7 @@ export function UserDetail({
             <div className="space-y-4">
               {preview.deleted_with.length > 0 && (
                 <div className="space-y-2">
-                  <Heading level={3}>Deleted with account</Heading>
+                  <Heading level={3}>{t("Deleted with account")}</Heading>
                   <div className="space-y-1.5">
                     {preview.deleted_with.map((ws) => (
                       <Card key={ws.workspace_id} padding={3}>
@@ -1254,7 +1255,7 @@ export function UserDetail({
                             {ws.slug || ws.workspace_id}
                           </span>
                           <Text type="supporting">
-                            Sole member ({ws.member_count} member)
+                            {t("Sole member (")}{ws.member_count} {t("member)")}
                           </Text>
                         </div>
                       </Card>
@@ -1265,7 +1266,7 @@ export function UserDetail({
 
               {preview.need_choice.length > 0 && (
                 <div className="space-y-3">
-                  <Heading level={3}>Blocking sole-owner workspaces</Heading>
+                  <Heading level={3}>{t("Blocking sole-owner workspaces")}</Heading>
                   {preview.need_choice.map((ws) => {
                     const wsLabel = ws.slug || ws.workspace_id;
                     const choice = resolutions[ws.workspace_id];
@@ -1284,12 +1285,12 @@ export function UserDetail({
                             {wsLabel}
                           </span>
                           <Text type="supporting">
-                            {ws.member_count} members &bull; {ws.owner_count} owner
+                            {ws.member_count} {t("members •")} {ws.owner_count} {t("owner")}
                           </Text>
                         </div>
 
                         <RadioList
-                          label={`Resolution for ${wsLabel}`}
+                          label={t("Resolution for {0}", wsLabel)}
                           value={choice?.action ?? ""}
                           onChange={(val) =>
                             setResolutions((prev) => ({
@@ -1302,8 +1303,8 @@ export function UserDetail({
                             }))
                           }
                         >
-                          <RadioListItem value="transfer" label="Transfer ownership" />
-                          <RadioListItem value="delete" label="Delete workspace now" />
+                          <RadioListItem value="transfer" label={t("Transfer ownership")} />
+                          <RadioListItem value="delete" label={t("Delete workspace now")} />
                         </RadioList>
 
                         {choice?.action === "transfer" && (
@@ -1322,11 +1323,11 @@ export function UserDetail({
                               }
                             >
                               <SelectTrigger
-                                aria-label={`Successor for ${wsLabel}`}
+                                aria-label={t("Successor for {0}", wsLabel)}
                                 className="w-full"
                               >
-                                <SelectValue placeholder="Select successor">
-                                  {successorItems.find((item) => item.value === choice.successor_user_id)?.label}
+                                <SelectValue placeholder={t("Select successor")}>
+                                  {t(successorItems.find((item) => item.value === choice.successor_user_id)?.label ?? "")}
                                 </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
@@ -1339,7 +1340,7 @@ export function UserDetail({
                             </Select>
                           ) : (
                             <Text type="supporting">
-                              No eligible admin or member successors were returned for this workspace. Choose &ldquo;Delete workspace now&rdquo; or transfer ownership first.
+                              {t("No eligible admin or member successors were returned for this workspace. Choose “Delete workspace now” or transfer ownership first.")}
                             </Text>
                           )
                         )}

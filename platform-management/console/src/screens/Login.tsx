@@ -9,6 +9,7 @@ import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { AlertCircle, Info, Shield } from "@multica/ui/icons";
 import { useSendCode, useVerifyCode } from "../api/hooks";
+import { t } from "../i18n";
 
 interface LoginProps {
   onSuccess: () => void;
@@ -35,7 +36,7 @@ export function Login({ onSuccess }: LoginProps) {
       // The server returns 204 for every address, but in any case we show the same message
     }
     setStep("code");
-    setInfoMessage("If this address can sign in, a code has been sent");
+    setInfoMessage(t("If this address can sign in, a code has been sent"));
   };
 
   const handleVerifyCode = async (e: React.FormEvent) => {
@@ -51,7 +52,7 @@ export function Login({ onSuccess }: LoginProps) {
       }
       onSuccess();
     } catch {
-      setErrorMessage("That code is not valid.");
+      setErrorMessage(t("That code is not valid."));
     }
   };
 
@@ -63,7 +64,7 @@ export function Login({ onSuccess }: LoginProps) {
       await verifyCode.mutateAsync({ email: email.trim(), code: code.trim(), totp: totp.trim() });
       onSuccess();
     } catch {
-      setErrorMessage("That code is not valid.");
+      setErrorMessage(t("That code is not valid."));
     }
   };
 
@@ -83,14 +84,14 @@ export function Login({ onSuccess }: LoginProps) {
             <Shield className="size-5" aria-hidden="true" />
           </div>
           <Heading level={1} justify="center">
-            Platform Console
+            {t("Platform Console")}
           </Heading>
           <Text type="supporting" as="p" justify="center">
             {step === "email"
-              ? "Sign in with your staff email address"
+              ? t("Sign in with your staff email address")
               : step === "code"
-                ? "Enter the verification code"
-                : "Enter the code from your authenticator app"}
+                ? t("Enter the verification code")
+                : t("Enter the code from your authenticator app")}
           </Text>
         </div>
 
@@ -115,14 +116,14 @@ export function Login({ onSuccess }: LoginProps) {
             <form onSubmit={handleSendCode} className="space-y-4">
               <Field>
                 <FieldLabel htmlFor="email-input" className="text-label">
-                  Email address
+                  {t("Email address")}
                 </FieldLabel>
                 <Input
                   id="email-input"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="staff@example.com"
+                  placeholder={t("staff@example.com")}
                   required
                   disabled={sendCode.isPending}
                   autoComplete="email"
@@ -135,14 +136,14 @@ export function Login({ onSuccess }: LoginProps) {
                 aria-busy={sendCode.isPending}
               >
                 {sendCode.isPending && <Spinner className="size-3.5" />}
-                Send sign-in code
+                {t("Send sign-in code")}
               </Button>
             </form>
           ) : step === "code" ? (
             <form onSubmit={handleVerifyCode} className="space-y-4">
               <Field>
                 <FieldLabel htmlFor="code-input" className="text-label">
-                  6-digit code
+                  {t("6-digit code")}
                 </FieldLabel>
                 <Input
                   id="code-input"
@@ -165,7 +166,7 @@ export function Login({ onSuccess }: LoginProps) {
                 aria-busy={verifyCode.isPending}
               >
                 {verifyCode.isPending && <Spinner className="size-3.5" />}
-                Sign in
+                {t("Sign in")}
               </Button>
               <Button
                 type="button"
@@ -173,14 +174,14 @@ export function Login({ onSuccess }: LoginProps) {
                 className="w-full text-caption"
                 onClick={backToEmail}
               >
-                Use a different email
+                {t("Use a different email")}
               </Button>
             </form>
           ) : (
             <form onSubmit={handleVerifyTotp} className="space-y-4">
               <Field>
                 <FieldLabel htmlFor="totp-input" className="text-label">
-                  Authenticator code
+                  {t("Authenticator code")}
                 </FieldLabel>
                 <Input
                   id="totp-input"
@@ -204,7 +205,7 @@ export function Login({ onSuccess }: LoginProps) {
                 aria-busy={verifyCode.isPending}
               >
                 {verifyCode.isPending && <Spinner className="size-3.5" />}
-                Sign in
+                {t("Sign in")}
               </Button>
               <Button
                 type="button"
@@ -212,7 +213,7 @@ export function Login({ onSuccess }: LoginProps) {
                 className="w-full text-caption"
                 onClick={backToEmail}
               >
-                Start over
+                {t("Start over")}
               </Button>
             </form>
           )}

@@ -35,6 +35,7 @@ import {
 } from "../api/hooks";
 import type { AuditEvent } from "../api/schemas";
 import type { StaffRole } from "../components/types";
+import { t } from "../i18n";
 
 interface RuntimeDetailProps {
   runtimeId: string;
@@ -47,9 +48,9 @@ function ConnectionStatusBadge({ status }: { status: RuntimeStatus }) {
   if (status === "online") {
     return (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-        <StatusDot variant="success" label="Online" aria-hidden="true" />
+        <StatusDot variant="success" label={t("Online")} aria-hidden="true" />
         <Text type="body" color="primary">
-          Online
+          {t("Online")}
         </Text>
       </span>
     );
@@ -57,14 +58,14 @@ function ConnectionStatusBadge({ status }: { status: RuntimeStatus }) {
   if (status === "offline") {
     return (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-        <StatusDot variant="neutral" label="Offline" aria-hidden="true" />
+        <StatusDot variant="neutral" label={t("Offline")} aria-hidden="true" />
         <Text type="body" color="secondary">
-          Offline
+          {t("Offline")}
         </Text>
       </span>
     );
   }
-  return <Badge variant="neutral" label="Unknown" />;
+  return <Badge variant="neutral" label={t("Unknown")} />;
 }
 
 function auditReason(detail: Record<string, unknown> | null): string {
@@ -106,28 +107,28 @@ export function RuntimeDetail({
 
   if (effectiveRole && !canRead) {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
   }
 
-  const back = { label: "Back to runtimes", onClick: onBack };
+  const back = { label: t("Back to runtimes"), onClick: onBack };
 
   if (isLoading) {
     return (
       <Layout
         header={
           <LayoutHeader hasDivider>
-            <PageHeader title="Runtime" backAction={back} />
+            <PageHeader title={t("Runtime")} backAction={back} />
           </LayoutHeader>
         }
         content={
           <LayoutContent>
-            <LoadingState message="Loading runtime..." />
+            <LoadingState message={t("Loading runtime...")} />
           </LayoutContent>
         }
       />
@@ -139,13 +140,13 @@ export function RuntimeDetail({
       <Layout
         header={
           <LayoutHeader hasDivider>
-            <PageHeader title="Runtime" backAction={back} />
+            <PageHeader title={t("Runtime")} backAction={back} />
           </LayoutHeader>
         }
         content={
           <LayoutContent>
             <ErrorState
-              title="Failed to load runtime"
+              title={t("Failed to load runtime")}
               message={error instanceof Error ? error.message : undefined}
               onRetry={refetch}
             />
@@ -167,10 +168,10 @@ export function RuntimeDetail({
       });
       setStatusDialogOpen(false);
       setActionNotice(
-        nextStatus === "disabled" ? "Runtime disabled." : "Runtime enabled.",
+        nextStatus === "disabled" ? t("Runtime disabled.") : t("Runtime enabled."),
       );
     } catch (err) {
-      setStatusError(getApiErrorMessage(err, "Failed to update runtime status"));
+      setStatusError(getApiErrorMessage(err, t("Failed to update runtime status")));
     }
   };
 
@@ -189,9 +190,9 @@ export function RuntimeDetail({
         confirm,
       });
       setUnregisterDialogOpen(false);
-      setActionNotice(`Runtime unregister requested (${res.request_id}).`);
+      setActionNotice(t("Runtime unregister requested ({0}).", res.request_id));
     } catch (err) {
-      setUnregisterError(getApiErrorMessage(err, "Failed to unregister runtime"));
+      setUnregisterError(getApiErrorMessage(err, t("Failed to unregister runtime")));
     }
   };
 
@@ -208,8 +209,8 @@ export function RuntimeDetail({
                 {runtime.disabled && (
                   <Badge
                     variant="error"
-                    label="Disabled"
-                    icon={<StatusDot variant="error" label="Disabled" aria-hidden="true" />}
+                    label={t("Disabled")}
+                    icon={<StatusDot variant="error" label={t("Disabled")} aria-hidden="true" />}
                   />
                 )}
               </div>
@@ -232,7 +233,7 @@ export function RuntimeDetail({
                     ) : (
                       <Ban className="size-3.5" aria-hidden="true" />
                     )}
-                    <span>{runtime.disabled ? "Enable runtime" : "Disable runtime"}</span>
+                    <span>{runtime.disabled ? t("Enable runtime") : t("Disable runtime")}</span>
                   </Button>
                   <Button
                     type="button"
@@ -244,7 +245,7 @@ export function RuntimeDetail({
                     }}
                   >
                     <Trash2 className="size-3.5" aria-hidden="true" />
-                    <span>Unregister runtime</span>
+                    <span>{t("Unregister runtime")}</span>
                   </Button>
                 </>
               ) : undefined
@@ -263,55 +264,55 @@ export function RuntimeDetail({
             )}
 
             <Section className="space-y-4">
-              <Heading level={3}>Runtime Details</Heading>
+              <Heading level={3}>{t("Runtime Details")}</Heading>
               <MetadataList columns={3}>
-                <MetadataListItem label="Connection">
+                <MetadataListItem label={t("Connection")}>
                   <ConnectionStatusBadge status={runtime.status} />
                 </MetadataListItem>
-                <MetadataListItem label="Access state">
+                <MetadataListItem label={t("Access state")}>
                   {runtime.disabled ? (
                     <Badge
                       variant="error"
-                      label="Disabled"
-                      icon={<StatusDot variant="error" label="Disabled" aria-hidden="true" />}
+                      label={t("Disabled")}
+                      icon={<StatusDot variant="error" label={t("Disabled")} aria-hidden="true" />}
                     />
                   ) : (
                     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                      <StatusDot variant="success" label="Enabled" aria-hidden="true" />
+                      <StatusDot variant="success" label={t("Enabled")} aria-hidden="true" />
                       <Text type="body" color="primary">
-                        Enabled
+                        {t("Enabled")}
                       </Text>
                     </span>
                   )}
                 </MetadataListItem>
-                <MetadataListItem label="OS" mono>
+                <MetadataListItem label={t("OS")} mono>
                   {runtime.os || "-"}
                 </MetadataListItem>
-                <MetadataListItem label="Daemon version" mono>
+                <MetadataListItem label={t("Daemon version")} mono>
                   {runtime.daemon_version || "-"}
                 </MetadataListItem>
-                <MetadataListItem label="Agent version" mono>
+                <MetadataListItem label={t("Agent version")} mono>
                   {runtime.agent_version || "-"}
                 </MetadataListItem>
-                <MetadataListItem label="Last seen" tabular>
+                <MetadataListItem label={t("Last seen")} tabular>
                   {runtime.last_seen_at
                     ? new Date(runtime.last_seen_at).toLocaleString()
                     : "-"}
                 </MetadataListItem>
-                <MetadataListItem label="Running tasks" tabular>
+                <MetadataListItem label={t("Running tasks")} tabular>
                   {runtime.running_tasks.toLocaleString()}
                 </MetadataListItem>
-                <MetadataListItem label="Failed tasks (7d)" tabular>
+                <MetadataListItem label={t("Failed tasks (7d)")} tabular>
                   <span data-testid="runtime-failed-tasks-7d">
                     {runtime.failed_tasks_7d.toLocaleString()}
                   </span>
                 </MetadataListItem>
-                <MetadataListItem label="Created" tabular>
+                <MetadataListItem label={t("Created")} tabular>
                   {runtime.created_at
                     ? new Date(runtime.created_at).toLocaleString()
                     : "-"}
                 </MetadataListItem>
-                <MetadataListItem label="Workspace ID" mono>
+                <MetadataListItem label={t("Workspace ID")} mono>
                   {onSelectWorkspace && runtime.workspace_id ? (
                     <Button
                       type="button"
@@ -326,10 +327,10 @@ export function RuntimeDetail({
                     runtime.workspace_id || "-"
                   )}
                 </MetadataListItem>
-                <MetadataListItem label="Tenant ID" mono>
+                <MetadataListItem label={t("Tenant ID")} mono>
                   {runtime.tenant_id || "-"}
                 </MetadataListItem>
-                <MetadataListItem label="Owner ID" mono>
+                <MetadataListItem label={t("Owner ID")} mono>
                   {runtime.owner_id || "-"}
                 </MetadataListItem>
               </MetadataList>
@@ -337,15 +338,15 @@ export function RuntimeDetail({
 
             <Section className="space-y-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <Heading level={3}>Recent Tasks</Heading>
+                <Heading level={3}>{t("Recent Tasks")}</Heading>
                 <Text type="supporting" hasTabularNumbers>
-                  {runtime.tasks.length.toLocaleString()} shown
+                  {runtime.tasks.length.toLocaleString()} {t("shown")}
                 </Text>
               </div>
               {runtime.tasks.length === 0 ? (
                 <EmptyState
                   icon={<Server className="size-5" aria-hidden="true" />}
-                  title="No recent tasks"
+                  title={t("No recent tasks")}
                   isCompact
                 />
               ) : (
@@ -353,11 +354,11 @@ export function RuntimeDetail({
                   <Table density="compact" dividers="rows" hasHover>
                     <TableHeader>
                       <TableRow isHeaderRow>
-                        <TableHeaderCell>Task ID</TableHeaderCell>
-                        <TableHeaderCell>Status</TableHeaderCell>
-                        <TableHeaderCell>Error</TableHeaderCell>
-                        <TableHeaderCell>Created</TableHeaderCell>
-                        <TableHeaderCell>Completed</TableHeaderCell>
+                        <TableHeaderCell>{t("Task ID")}</TableHeaderCell>
+                        <TableHeaderCell>{t("Status")}</TableHeaderCell>
+                        <TableHeaderCell>{t("Error")}</TableHeaderCell>
+                        <TableHeaderCell>{t("Created")}</TableHeaderCell>
+                        <TableHeaderCell>{t("Completed")}</TableHeaderCell>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -371,7 +372,7 @@ export function RuntimeDetail({
                           </TableCell>
                           <TableCell>
                             {task.has_error ? (
-                              <Badge variant="error" label="Error" />
+                              <Badge variant="error" label={t("Error")} />
                             ) : (
                               <Text type="supporting">-</Text>
                             )}
@@ -399,11 +400,11 @@ export function RuntimeDetail({
             </Section>
 
             <Section className="space-y-4">
-              <Heading level={3}>Staff Audit Events</Heading>
+              <Heading level={3}>{t("Staff Audit Events")}</Heading>
               {runtime.audit_events.length === 0 ? (
                 <EmptyState
                   icon={<Server className="size-5" aria-hidden="true" />}
-                  title="No staff audit events"
+                  title={t("No staff audit events")}
                   isCompact
                 />
               ) : (
@@ -411,10 +412,10 @@ export function RuntimeDetail({
                   <Table density="compact" dividers="rows" hasHover>
                     <TableHeader>
                       <TableRow isHeaderRow>
-                        <TableHeaderCell>When</TableHeaderCell>
-                        <TableHeaderCell>Actor</TableHeaderCell>
-                        <TableHeaderCell>Action</TableHeaderCell>
-                        <TableHeaderCell>Reason</TableHeaderCell>
+                        <TableHeaderCell>{t("When")}</TableHeaderCell>
+                        <TableHeaderCell>{t("Actor")}</TableHeaderCell>
+                        <TableHeaderCell>{t("Action")}</TableHeaderCell>
+                        <TableHeaderCell>{t("Reason")}</TableHeaderCell>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -455,13 +456,13 @@ export function RuntimeDetail({
                     if (!open) setStatusError(null);
                   }
                 }}
-                title={runtime.disabled ? "Enable runtime" : "Disable runtime"}
+                title={runtime.disabled ? t("Enable runtime") : t("Disable runtime")}
                 description={
                   runtime.disabled
-                    ? "Re-enabling allows this daemon to reconnect and claim queued tasks."
-                    : "Disabling rejects daemon routes and blocks task claims until re-enabled."
+                    ? t("Re-enabling allows this daemon to reconnect and claim queued tasks.")
+                    : t("Disabling rejects daemon routes and blocks task claims until re-enabled.")
                 }
-                confirmLabel={runtime.disabled ? "Enable runtime" : "Disable runtime"}
+                confirmLabel={runtime.disabled ? t("Enable runtime") : t("Disable runtime")}
                 confirmVariant={runtime.disabled ? "default" : "destructive"}
                 isPending={setRuntimeStatus.isPending}
                 error={statusError}
@@ -474,11 +475,11 @@ export function RuntimeDetail({
                   setUnregisterDialogOpen(open);
                   if (!open) setUnregisterError(null);
                 }}
-                title="Unregister runtime"
-                description="Unregistering queues permanent removal of this runtime and cannot be undone."
+                title={t("Unregister runtime")}
+                description={t("Unregistering queues permanent removal of this runtime and cannot be undone.")}
                 expectedText={runtime.name || runtime.id}
-                confirmInputLabel="Runtime name"
-                confirmLabel="Unregister runtime"
+                confirmInputLabel={t("Runtime name")}
+                confirmLabel={t("Unregister runtime")}
                 confirmVariant="destructive"
                 error={unregisterError}
                 onConfirm={handleConfirmUnregister}

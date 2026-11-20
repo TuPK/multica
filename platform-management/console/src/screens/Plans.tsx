@@ -58,6 +58,7 @@ import { PlatformApiError } from "../api/client";
 import type { StaffRole } from "../components/types";
 import type { Limits, Plan, PlanAudience, PlanBillingModel, PlanState } from "../api/schemas";
 import { formatMinorAmount } from "../money";
+import { t } from "../i18n";
 
 const HISTORY_PLAN_KEYS = ["pro", "business", "unlimited", "enterprise", "free"] as const;
 
@@ -115,7 +116,7 @@ function findLoweredLimits(previousLimits: Limits, nextLimits: Limits): LoweredL
       prevVal === undefined ||
       (typeof prevVal === "number" && Number.isFinite(prevVal) && nextVal < prevVal);
     if (isLowered) {
-      const label = LIMIT_FIELDS.find((f) => f.key === key)?.label ?? key;
+      const label = t(LIMIT_FIELDS.find((f) => f.key === key)?.label ?? key);
       lowered.push({
         key,
         label,
@@ -207,10 +208,10 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
 
   if (effectiveRole && !canReadPlans && !isBilling) {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -226,8 +227,8 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Price Change History"
-          description="Read-only price change history per plan."
+          title={t("Price Change History")}
+          description={t("Read-only price change history per plan.")}
         />
 
         <div className="flex flex-wrap items-center gap-2">
@@ -244,14 +245,14 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
           ))}
           <form onSubmit={handleCustomSubmit} className="flex items-center gap-2">
             <Input
-              aria-label="Custom plan key"
+              aria-label={t("Custom plan key")}
               value={customPlanKey}
               onChange={(e) => setCustomPlanKey(e.target.value)}
-              placeholder="Other plan key..."
+              placeholder={t("Other plan key...")}
               className="h-7 w-44"
             />
             <Button type="submit" size="sm" variant="outline" disabled={!customPlanKey.trim()}>
-              Load
+              {t("Load")}
             </Button>
           </form>
         </div>
@@ -339,7 +340,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
       if (err instanceof PlatformApiError || err instanceof Error) {
         setCreateError(err.message);
       } else {
-        setCreateError("Failed to create plan");
+        setCreateError(t("Failed to create plan"));
       }
     }
   };
@@ -392,7 +393,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
     } catch (err: unknown) {
       if (err instanceof PlatformApiError && err.code === "plan_currency_locked") {
         setCurrencyError(
-          "The currency can't change because this plan has subscriptions or orders.",
+          t("The currency can't change because this plan has subscriptions or orders."),
         );
       } else if (
         err instanceof PlatformApiError &&
@@ -407,7 +408,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
       } else if (err instanceof Error) {
         setEditError(err.message);
       } else {
-        setEditError("Failed to update plan");
+        setEditError(t("Failed to update plan"));
       }
     }
   };
@@ -437,7 +438,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
         setLifecycleError(err.message);
       } else {
         setLifecycleError(
-          activate ? "Failed to activate plan" : "Failed to deactivate plan",
+          activate ? t("Failed to activate plan") : t("Failed to deactivate plan"),
         );
       }
     } finally {
@@ -471,12 +472,12 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
       if (err instanceof PlatformApiError && err.code === "plan_in_use") {
         setDeleteError(
           err.message ||
-            "Subscriptions use this plan; deactivate or archive it instead.",
+            t("Subscriptions use this plan; deactivate or archive it instead."),
         );
       } else if (err instanceof PlatformApiError || err instanceof Error) {
         setDeleteError(err.message);
       } else {
-        setDeleteError("Failed to delete plan");
+        setDeleteError(t("Failed to delete plan"));
       }
     }
   };
@@ -484,12 +485,12 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Plans Catalogue"
+        title={t("Plans Catalogue")}
         actions={
           canWritePlans ? (
             <Button type="button" size="sm" onClick={handleOpenCreate}>
               <Plus className="size-3.5" aria-hidden="true" />
-              Create plan
+              {t("Create plan")}
             </Button>
           ) : undefined
         }
@@ -502,12 +503,12 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
         </Alert>
       )}
 
-      {isLoading && <LoadingState message="Loading plans..." />}
+      {isLoading && <LoadingState message={t("Loading plans...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load plans"
-          message={error instanceof Error ? error.message : "An error occurred while loading plans."}
+          title={t("Failed to load plans")}
+          message={error instanceof Error ? error.message : t("An error occurred while loading plans.")}
           onRetry={refetch}
         />
       )}
@@ -515,8 +516,8 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
       {!isLoading && !isError && (!plans || plans.length === 0) && (
         <EmptyState
           icon={<Layers className="size-4" />}
-          title="No plans"
-          description="No plans configured in the catalogue."
+          title={t("No plans")}
+          description={t("No plans configured in the catalogue.")}
         />
       )}
 
@@ -531,7 +532,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
           columns={[
             {
               key: "name",
-              header: "Plan",
+              header: t("Plan"),
               width: proportional(2, { minWidth: 140 }),
               renderCell: (plan) => (
                 <>
@@ -557,34 +558,34 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
             },
             {
               key: "audience",
-              header: "Audience",
+              header: t("Audience"),
               width: proportional(1, { minWidth: 90 }),
               renderCell: (plan) => {
                 const audience = plan.audience ?? "any";
-                return <Badge variant="neutral" label={AUDIENCE_LABELS[audience] ?? audience} />;
+                return <Badge variant="neutral" label={t(AUDIENCE_LABELS[audience] ?? audience)} />;
               },
             },
             {
               key: "billing_model",
-              header: "Billing Model",
+              header: t("Billing Model"),
               width: proportional(1, { minWidth: 96 }),
               renderCell: (plan) => {
                 const billingModel = plan.billing_model ?? "seat";
                 return (
-                  <Badge variant="blue" label={BILLING_MODEL_LABELS[billingModel] ?? billingModel} />
+                  <Badge variant="blue" label={t(BILLING_MODEL_LABELS[billingModel] ?? billingModel)} />
                 );
               },
             },
             {
               key: "pricing",
-              header: "Pricing (Monthly / Yearly)",
+              header: t("Pricing (Monthly / Yearly)"),
               width: proportional(2, { minWidth: 120 }),
               renderCell: (plan) => (
                 <>
                   <Text type="body" weight="medium" hasTabularNumbers as="div" className="block">
                     {plan.seat_price_month !== null
                       ? `${formatMinorAmount(plan.seat_price_month, plan.currency)}/mo`
-                      : "Free / Fixed"}
+                      : t("Free / Fixed")}
                   </Text>
                   <Text type="supporting" hasTabularNumbers as="div" className="block">
                     {plan.seat_price_year !== null
@@ -596,40 +597,40 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
             },
             {
               key: "seats",
-              header: "Seats Configuration",
+              header: t("Seats Configuration"),
               width: proportional(1.5, { minWidth: 96 }),
               renderCell: (plan) => (
                 <Text type="body" hasTabularNumbers>
                   {plan.seats_fixed !== null
-                    ? `${plan.seats_fixed} fixed seats`
-                    : `${plan.min_seats || 1} min seats`}
+                    ? t("{0} fixed seats", plan.seats_fixed)
+                    : t("{0} min seats", plan.min_seats || 1)}
                 </Text>
               ),
             },
             {
               key: "trial_days",
-              header: "Trial",
+              header: t("Trial"),
               width: proportional(1, { minWidth: 64 }),
               renderCell: (plan) => (
                 <Text type="body" hasTabularNumbers>
-                  {plan.trial_days > 0 ? `${plan.trial_days} days` : "No trial"}
+                  {plan.trial_days > 0 ? t("{0} days", plan.trial_days) : t("No trial")}
                 </Text>
               ),
             },
             {
               key: "is_public",
-              header: "Visibility",
+              header: t("Visibility"),
               width: proportional(1, { minWidth: 84 }),
               renderCell: (plan) => (
                 <Badge
                   variant={plan.is_public ? "teal" : "neutral"}
-                  label={plan.is_public ? "Public" : "Private"}
+                  label={plan.is_public ? t("Public") : t("Private")}
                 />
               ),
             },
             {
               key: "status",
-              header: "Status",
+              header: t("Status"),
               width: proportional(1, { minWidth: 76 }),
               renderCell: (plan) => (
                 <StatusBadge status={getPlanState(plan)} />
@@ -639,31 +640,31 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               ? [
                   {
                     key: "actions",
-                    header: "Actions",
+                    header: t("Actions"),
                     width: pixel(actionsWidth),
                     align: "end" as const,
                     renderCell: (plan: Plan) => {
                       const rowBusy = lifecyclePendingKey === plan.key;
                       const lifecycle: RowAction =
                         getPlanState(plan) === "inactive"
-                          ? { label: "Activate", icon: CheckCircle2, busy: rowBusy, onSelect: () => handleToggleActive(plan, true) }
-                          : { label: "Deactivate", icon: CircleOff, busy: rowBusy, onSelect: () => handleToggleActive(plan, false) };
+                          ? { label: t("Activate"), icon: CheckCircle2, busy: rowBusy, onSelect: () => handleToggleActive(plan, true) }
+                          : { label: t("Deactivate"), icon: CircleOff, busy: rowBusy, onSelect: () => handleToggleActive(plan, false) };
                       return (
                         <RowActions
-                          label={`plan ${plan.name}`}
+                          label={t("plan {0}", plan.name)}
                           actions={[
                             lifecycle,
-                            { label: "History", icon: History, onSelect: () => handleViewHistory(plan.key) },
+                            { label: t("History"), icon: History, onSelect: () => handleViewHistory(plan.key) },
                             {
-                              label: "Price schedule",
+                              label: t("Price schedule"),
                               icon: CalendarClock,
                               onSelect: () => {
                                 setSelectedSchedulePlan(plan);
                                 setSchedulePlanKey(plan.key);
                               },
                             },
-                            { label: "Edit", icon: Pencil, onSelect: () => handleOpenEdit(plan) },
-                            { label: "Delete", icon: Trash2, destructive: true, onSelect: () => handleOpenDelete(plan) },
+                            { label: t("Edit"), icon: Pencil, onSelect: () => handleOpenEdit(plan) },
+                            { label: t("Delete"), icon: Trash2, destructive: true, onSelect: () => handleOpenDelete(plan) },
                           ]}
                         />
                       );
@@ -681,9 +682,9 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
         <DialogContent>
           <form onSubmit={handleCreatePlan} className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Create plan</DialogTitle>
+              <DialogTitle>{t("Create plan")}</DialogTitle>
               <DialogDescription>
-                Define a new subscription plan and its initial pricing.
+                {t("Define a new subscription plan and its initial pricing.")}
               </DialogDescription>
             </DialogHeader>
 
@@ -691,20 +692,20 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <div className="grid grid-cols-2 gap-3">
                 <Field>
                   <FieldLabel htmlFor="create-plan-key" className="text-label">
-                    Plan Key <span className="text-destructive">*</span>
+                    {t("Plan Key")} <span className="text-destructive">*</span>
                   </FieldLabel>
                   <Input
                     id="create-plan-key"
                     value={newKey}
                     onChange={(e) => setNewKey(e.target.value)}
-                    placeholder="e.g. team_pro"
+                    placeholder={t("e.g. team_pro")}
                     required
                     disabled={createPlan.isPending}
                   />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="create-plan-name" className="text-label">
-                    Plan Name <span className="text-destructive">*</span>
+                    {t("Plan Name")} <span className="text-destructive">*</span>
                   </FieldLabel>
                   <Input
                     id="create-plan-name"
@@ -718,13 +719,13 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
 
               <Field>
                 <FieldLabel htmlFor="create-plan-description" className="text-label">
-                  Description
+                  {t("Description")}
                 </FieldLabel>
                 <Textarea
                   id="create-plan-description"
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Optional summary shown in catalogue and plan settings"
+                  placeholder={t("Optional summary shown in catalogue and plan settings")}
                   disabled={createPlan.isPending}
                 />
               </Field>
@@ -732,7 +733,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <div className="grid grid-cols-3 gap-3">
                 <Field>
                   <FieldLabel htmlFor="create-plan-currency" className="text-label">
-                    Currency <span className="text-destructive">*</span>
+                    {t("Currency")} <span className="text-destructive">*</span>
                   </FieldLabel>
                   <Input
                     id="create-plan-currency"
@@ -744,13 +745,13 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="create-plan-audience" className="text-label">
-                    Audience
+                    {t("Audience")}
                   </FieldLabel>
                   <Select
                     items={[
-                      { value: "any", label: "Any" },
-                      { value: "individual", label: "Individual" },
-                      { value: "business", label: "Business" },
+                      { value: "any", label: t("Any") },
+                      { value: "individual", label: t("Individual") },
+                      { value: "business", label: t("Business") },
                     ]}
                     value={newAudience}
                     onValueChange={(v) =>
@@ -762,20 +763,20 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">Any</SelectItem>
-                      <SelectItem value="individual">Individual</SelectItem>
-                      <SelectItem value="business">Business</SelectItem>
+                      <SelectItem value="any">{t("Any")}</SelectItem>
+                      <SelectItem value="individual">{t("Individual")}</SelectItem>
+                      <SelectItem value="business">{t("Business")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="create-plan-billing" className="text-label">
-                    Billing model
+                    {t("Billing model")}
                   </FieldLabel>
                   <Select
                     items={[
-                      { value: "seat", label: "Seat" },
-                      { value: "usage", label: "Usage" },
+                      { value: "seat", label: t("Seat") },
+                      { value: "usage", label: t("Usage") },
                     ]}
                     value={newBillingModel}
                     onValueChange={(v) =>
@@ -787,8 +788,8 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="seat">Seat</SelectItem>
-                      <SelectItem value="usage">Usage</SelectItem>
+                      <SelectItem value="seat">{t("Seat")}</SelectItem>
+                      <SelectItem value="usage">{t("Usage")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
@@ -797,7 +798,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <div className="grid grid-cols-2 gap-3">
                 <Field>
                   <FieldLabel htmlFor="create-price-month" className="text-label">
-                    Monthly seat price (minor)
+                    {t("Monthly seat price (minor)")}
                   </FieldLabel>
                   <Input
                     id="create-price-month"
@@ -805,13 +806,13 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                     min={0}
                     value={newSeatPriceMonth}
                     onChange={(e) => setNewSeatPriceMonth(e.target.value)}
-                    placeholder="Blank if free / N/A"
+                    placeholder={t("Blank if free / N/A")}
                     disabled={createPlan.isPending}
                   />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="create-price-year" className="text-label">
-                    Yearly seat price (minor)
+                    {t("Yearly seat price (minor)")}
                   </FieldLabel>
                   <Input
                     id="create-price-year"
@@ -819,7 +820,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                     min={0}
                     value={newSeatPriceYear}
                     onChange={(e) => setNewSeatPriceYear(e.target.value)}
-                    placeholder="Blank if free / N/A"
+                    placeholder={t("Blank if free / N/A")}
                     disabled={createPlan.isPending}
                   />
                 </Field>
@@ -828,7 +829,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <div className="grid grid-cols-2 gap-3">
                 <Field>
                   <FieldLabel htmlFor="create-trial-days" className="text-label">
-                    Trial Days
+                    {t("Trial Days")}
                   </FieldLabel>
                   <Input
                     id="create-trial-days"
@@ -841,7 +842,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="create-sort-order" className="text-label">
-                    Sort Order
+                    {t("Sort Order")}
                   </FieldLabel>
                   <Input
                     id="create-sort-order"
@@ -856,7 +857,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <div className="grid grid-cols-2 gap-3">
                 <Field>
                   <FieldLabel htmlFor="create-min-seats" className="text-label">
-                    Min Seats (Optional)
+                    {t("Min Seats (Optional)")}
                   </FieldLabel>
                   <Input
                     id="create-min-seats"
@@ -871,7 +872,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="create-fixed-seats" className="text-label">
-                    Fixed Seats (Optional)
+                    {t("Fixed Seats (Optional)")}
                   </FieldLabel>
                   <Input
                     id="create-fixed-seats"
@@ -894,7 +895,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                   disabled={createPlan.isPending}
                 />
                 <FieldLabel htmlFor="create-plan-public" className="text-body font-normal">
-                  Public plan
+                  {t("Public plan")}
                 </FieldLabel>
               </Field>
             </div>
@@ -910,7 +911,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <DialogClose
                 render={<Button variant="outline" type="button" disabled={createPlan.isPending} />}
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -918,7 +919,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                 aria-busy={createPlan.isPending || undefined}
               >
                 {createPlan.isPending && <Spinner className="size-3.5" />}
-                Create plan
+                {t("Create plan")}
               </Button>
             </DialogFooter>
           </form>
@@ -930,16 +931,16 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
         <DialogContent>
           <form onSubmit={handleSavePlan} className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Edit Plan: {selectedPlan?.name}</DialogTitle>
+              <DialogTitle>{t("Edit Plan:")} {selectedPlan?.name}</DialogTitle>
               <DialogDescription>
-                Update non-price metadata and seat configuration for this plan.
+                {t("Update non-price metadata and seat configuration for this plan.")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="flex flex-col gap-3">
               <Field>
                 <FieldLabel htmlFor="plan-name-input" className="text-label">
-                  Plan Name <span className="text-destructive">*</span>
+                  {t("Plan Name")} <span className="text-destructive">*</span>
                 </FieldLabel>
                 <Input
                   id="plan-name-input"
@@ -952,20 +953,20 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
 
               <Field>
                 <FieldLabel htmlFor="plan-description-input" className="text-label">
-                  Description
+                  {t("Description")}
                 </FieldLabel>
                 <Textarea
                   id="plan-description-input"
                   value={planDescription}
                   onChange={(e) => setPlanDescription(e.target.value)}
-                  placeholder="Optional summary shown in catalogue and plan settings"
+                  placeholder={t("Optional summary shown in catalogue and plan settings")}
                   disabled={putPlan.isPending}
                 />
               </Field>
 
               <Field data-invalid={Boolean(currencyError) || undefined}>
                 <FieldLabel htmlFor="plan-currency-input" className="text-label">
-                  Currency
+                  {t("Currency")}
                 </FieldLabel>
                 <Input
                   id="plan-currency-input"
@@ -974,7 +975,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                     setCurrency(e.target.value);
                     setCurrencyError(null);
                   }}
-                  placeholder="ISO 4217 code"
+                  placeholder={t("ISO 4217 code")}
                   aria-invalid={Boolean(currencyError)}
                   aria-describedby={currencyError ? "plan-currency-error" : undefined}
                   disabled={putPlan.isPending}
@@ -989,7 +990,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <div className="grid grid-cols-2 gap-3">
                 <Field>
                   <FieldLabel htmlFor="trial-days-input" className="text-label">
-                    Trial Days
+                    {t("Trial Days")}
                   </FieldLabel>
                   <Input
                     id="trial-days-input"
@@ -1003,7 +1004,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
 
                 <Field>
                   <FieldLabel htmlFor="sort-order-input" className="text-label">
-                    Sort Order
+                    {t("Sort Order")}
                   </FieldLabel>
                   <Input
                     id="sort-order-input"
@@ -1018,7 +1019,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <div className="grid grid-cols-2 gap-3">
                 <Field>
                   <FieldLabel htmlFor="min-seats-input" className="text-label">
-                    Min Seats (Optional)
+                    {t("Min Seats (Optional)")}
                   </FieldLabel>
                   <Input
                     id="min-seats-input"
@@ -1026,14 +1027,14 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                     min={1}
                     value={minSeats ?? ""}
                     onChange={(e) => setMinSeats(e.target.value === "" ? null : Number(e.target.value))}
-                    placeholder="Leave blank if N/A"
+                    placeholder={t("Leave blank if N/A")}
                     disabled={putPlan.isPending}
                   />
                 </Field>
 
                 <Field>
                   <FieldLabel htmlFor="seats-fixed-input" className="text-label">
-                    Fixed Seats (Optional)
+                    {t("Fixed Seats (Optional)")}
                   </FieldLabel>
                   <Input
                     id="seats-fixed-input"
@@ -1041,7 +1042,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                     min={1}
                     value={seatsFixed ?? ""}
                     onChange={(e) => setSeatsFixed(e.target.value === "" ? null : Number(e.target.value))}
-                    placeholder="Leave blank if variable"
+                    placeholder={t("Leave blank if variable")}
                     disabled={putPlan.isPending}
                   />
                 </Field>
@@ -1056,7 +1057,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                     disabled={putPlan.isPending}
                   />
                   <FieldLabel htmlFor="plan-is-public" className="text-body font-normal">
-                    Public plan (visible in client pricing catalogue)
+                    {t("Public plan (visible in client pricing catalogue)")}
                   </FieldLabel>
                 </Field>
 
@@ -1068,14 +1069,14 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                     disabled={putPlan.isPending}
                   />
                   <FieldLabel htmlFor="plan-archived" className="text-body font-normal">
-                    Archived (existing subscribers retain, no new signups)
+                    {t("Archived (existing subscribers retain, no new signups)")}
                   </FieldLabel>
                 </Field>
               </div>
 
               <div className="space-y-2 border-t border-border pt-3">
                 <Text type="supporting" weight="medium" as="div" className="block">
-                  Limits (blank for unlimited)
+                  {t("Limits (blank for unlimited)")}
                 </Text>
                 <div className="grid max-h-48 grid-cols-2 gap-3 overflow-y-auto pr-1">
                   {LIMIT_FIELDS.map((field) => (
@@ -1084,7 +1085,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                         htmlFor={`edit-limit-${field.key}`}
                         className="text-label"
                       >
-                        {field.label}
+                        {t(field.label)}
                       </FieldLabel>
                       <Input
                         id={`edit-limit-${field.key}`}
@@ -1100,7 +1101,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                             [field.key]: raw === "" ? null : Number(raw),
                           }));
                         }}
-                        placeholder="Unlimited"
+                        placeholder={t("Unlimited")}
                         disabled={putPlan.isPending}
                       />
                     </Field>
@@ -1114,9 +1115,9 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                 <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
                 <AlertDescription className="text-caption space-y-1">
                   <div className="font-medium">
-                    Lowered limits affect active subscribers
+                    {t("Lowered limits affect active subscribers")}
                     {affectedSubscriptions !== null
-                      ? ` (${affectedSubscriptions} subscribers)`
+                      ? t(" ({0} subscribers)", affectedSubscriptions)
                       : ""}
                     :
                   </div>
@@ -1125,7 +1126,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                       {loweredLimits
                         .map(
                           (item) =>
-                            `${item.label}: ${item.previous === null ? "Unlimited" : item.previous} -> ${item.next}`,
+                            `${t(item.label)}: ${item.previous === null ? t("Unlimited") : item.previous} -> ${item.next}`,
                         )
                         .join(", ")}
                     </div>
@@ -1145,7 +1146,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <DialogClose
                 render={<Button variant="outline" type="button" disabled={putPlan.isPending} />}
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               {confirmLowerLimits && (loweredLimits.length > 0 || affectedSubscriptions !== null) ? (
                 <Button
@@ -1156,7 +1157,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                   onClick={() => void submitSavePlan()}
                 >
                   {putPlan.isPending && <Spinner className="size-3.5" />}
-                  Confirm limit reduction
+                  {t("Confirm limit reduction")}
                 </Button>
               ) : (
                 <Button
@@ -1165,7 +1166,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                   aria-busy={putPlan.isPending}
                 >
                   {putPlan.isPending && <Spinner className="size-3.5" />}
-                  Save changes
+                  {t("Save changes")}
                 </Button>
               )}
             </DialogFooter>
@@ -1178,9 +1179,9 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
         <DialogContent>
           <div className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Delete Plan: {planToDelete?.name}</DialogTitle>
+              <DialogTitle>{t("Delete Plan:")} {planToDelete?.name}</DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete plan "{planToDelete?.key}"? A plan with any active or past workspace subscriptions cannot be deleted and must be archived instead.
+                {t("Are you sure you want to delete plan \"")}{planToDelete?.key}{t("\"? A plan with any active or past workspace subscriptions cannot be deleted and must be archived instead.")}
               </DialogDescription>
             </DialogHeader>
 
@@ -1195,7 +1196,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
               <DialogClose
                 render={<Button variant="outline" type="button" disabled={deletePlan.isPending} />}
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 variant="destructive"
@@ -1204,7 +1205,7 @@ export function Plans({ userRole, onOpenHistory }: PlansProps) {
                 aria-busy={deletePlan.isPending}
               >
                 {deletePlan.isPending && <Spinner className="size-3.5" />}
-                Confirm delete
+                {t("Confirm delete")}
               </Button>
             </DialogFooter>
           </div>

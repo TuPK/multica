@@ -17,6 +17,7 @@ import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
 import { useMe, usePlan, usePlanHistory } from "../api/hooks";
 import type { PlanHistoryEntry, StaffRole } from "../api/schemas";
+import { t } from "../i18n";
 
 interface PlanHistoryProps {
   planKey: string | undefined;
@@ -26,7 +27,7 @@ interface PlanHistoryProps {
 
 function formatHistoryValue(value: unknown): string {
   if (value === null || value === undefined) return "-";
-  if (typeof value === "string") return value === "" ? "(empty)" : value;
+  if (typeof value === "string") return value === "" ? t("(empty)") : value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   return JSON.stringify(value);
 }
@@ -53,10 +54,10 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
 
   if (effectiveRole && !canView) {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -69,14 +70,14 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
           <PageHeader
             title={
               plan?.name
-                ? `Plan History: ${plan.name}`
+                ? t("Plan History: {0}", plan.name)
                 : planKey
-                  ? `Plan History: ${planKey}`
-                  : "Plan History"
+                  ? t("Plan History: {0}", planKey)
+                  : t("Plan History")
             }
             backAction={
               onBack
-                ? { label: "Back to plans", onClick: onBack }
+                ? { label: t("Back to plans"), onClick: onBack }
                 : undefined
             }
             meta={
@@ -99,15 +100,15 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
           <div className="space-y-6">
             <Section>
               <div className="space-y-4">
-                <Heading level={3}>Change log</Heading>
+                <Heading level={3}>{t("Change log")}</Heading>
 
                 {isLoading && (
-                  <LoadingState message="Loading plan history..." />
+                  <LoadingState message={t("Loading plan history...")} />
                 )}
 
                 {isError && (
                   <ErrorState
-                    title="Failed to load plan history"
+                    title={t("Failed to load plan history")}
                     message={error instanceof Error ? error.message : undefined}
                     onRetry={refetch}
                   />
@@ -116,8 +117,8 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
                 {!isLoading && !isError && entries.length === 0 && (
                   <EmptyState
                     icon={<History className="size-5" aria-hidden="true" />}
-                    title="No plan changes recorded"
-                    description="Plan updates, activations, and deactivations will appear here."
+                    title={t("No plan changes recorded")}
+                    description={t("Plan updates, activations, and deactivations will appear here.")}
                   />
                 )}
 
@@ -126,13 +127,13 @@ export function PlanHistory({ planKey, onBack, userRole }: PlanHistoryProps) {
                     <Table density="compact" dividers="rows" hasHover>
                       <TableHeader>
                         <TableRow isHeaderRow>
-                          <TableHeaderCell>When</TableHeaderCell>
-                          <TableHeaderCell>Who</TableHeaderCell>
-                          <TableHeaderCell>Action</TableHeaderCell>
-                          <TableHeaderCell>Field</TableHeaderCell>
-                          <TableHeaderCell>Old</TableHeaderCell>
-                          <TableHeaderCell>New</TableHeaderCell>
-                          <TableHeaderCell>Reason</TableHeaderCell>
+                          <TableHeaderCell>{t("When")}</TableHeaderCell>
+                          <TableHeaderCell>{t("Who")}</TableHeaderCell>
+                          <TableHeaderCell>{t("Action")}</TableHeaderCell>
+                          <TableHeaderCell>{t("Field")}</TableHeaderCell>
+                          <TableHeaderCell>{t("Old")}</TableHeaderCell>
+                          <TableHeaderCell>{t("New")}</TableHeaderCell>
+                          <TableHeaderCell>{t("Reason")}</TableHeaderCell>
                         </TableRow>
                       </TableHeader>
                       <TableBody>

@@ -21,6 +21,7 @@ import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
 import { useUsers } from "../api/hooks";
 import type { User } from "../api/schemas";
+import { t } from "../i18n";
 
 interface UsersProps {
   onSelectUser: (id: string) => void;
@@ -47,7 +48,7 @@ export function Users({ onSelectUser }: UsersProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Users" />
+      <PageHeader title={t("Users")} />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full max-w-sm">
@@ -57,10 +58,10 @@ export function Users({ onSelectUser }: UsersProps) {
           />
           <Input
             type="search"
-            aria-label="Search users"
+            aria-label={t("Search users")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by email or name..."
+            placeholder={t("Search by email or name...")}
             className="pr-8 pl-9"
           />
           {search && (
@@ -68,7 +69,7 @@ export function Users({ onSelectUser }: UsersProps) {
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label="Clear search"
+              aria-label={t("Clear search")}
               onClick={() => setSearch("")}
               className="absolute top-1 right-1 text-muted-foreground hover:text-foreground"
             >
@@ -78,11 +79,11 @@ export function Users({ onSelectUser }: UsersProps) {
         </div>
       </div>
 
-      {isLoading && <LoadingState message="Loading users..." />}
+      {isLoading && <LoadingState message={t("Loading users...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load users"
+          title={t("Failed to load users")}
           message={error instanceof Error ? error.message : undefined}
           onRetry={refetch}
         />
@@ -91,16 +92,16 @@ export function Users({ onSelectUser }: UsersProps) {
       {!isLoading && !isError && users.length === 0 && (
         <EmptyState
           icon={<UsersIcon className="size-5" aria-hidden="true" />}
-          title="No users found"
+          title={t("No users found")}
           description={
             search
-              ? "No users matched your search query."
-              : "There are currently no registered users."
+              ? t("No users matched your search query.")
+              : t("There are currently no registered users.")
           }
           actions={
             search ? (
               <Button variant="outline" size="sm" onClick={() => setSearch("")}>
-                Clear search
+                {t("Clear search")}
               </Button>
             ) : undefined
           }
@@ -113,12 +114,12 @@ export function Users({ onSelectUser }: UsersProps) {
             <Table density="balanced" dividers="rows" hasHover>
               <TableHeader>
                 <TableRow isHeaderRow>
-                  <TableHeaderCell>Email</TableHeaderCell>
-                  <TableHeaderCell>Name</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Workspaces</TableHeaderCell>
-                  <TableHeaderCell>Created</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Action</TableHeaderCell>
+                  <TableHeaderCell>{t("Email")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Name")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Status")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Workspaces")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Created")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -152,7 +153,7 @@ export function Users({ onSelectUser }: UsersProps) {
                       </Text>
                     </TableCell>
                     <TableCell className="text-right">
-                      <RowActions label="user" actions={[{ label: "View", onSelect: () => onSelectUser(user.id) }]} />
+                      <RowActions label={t("user")} actions={[{ label: t("View"), onSelect: () => onSelectUser(user.id) }]} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -169,7 +170,7 @@ export function Users({ onSelectUser }: UsersProps) {
                 aria-busy={isFetchingNextPage}
               >
                 {isFetchingNextPage && <Spinner className="size-3.5" />}
-                Load more
+                {t("Load more")}
               </Button>
             </div>
           )}

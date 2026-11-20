@@ -37,6 +37,7 @@ import {
   type WorkspaceListItem,
 } from "../api/hooks";
 import { WORKSPACE_STATUSES, type StaffRole } from "../api/schemas";
+import { t } from "../i18n";
 
 interface WorkspacesProps {
   onSelectWorkspace: (id: string) => void;
@@ -49,9 +50,9 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
     value: s,
     label:
       s === "read_only"
-        ? "Read-only"
+        ? t("Read-only")
         : s === "pending_deletion"
-          ? "Pending deletion"
+          ? t("Pending deletion")
           : s.charAt(0).toUpperCase() + s.slice(1),
   })),
 ];
@@ -90,7 +91,7 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
   });
 
   const planOptions: Array<{ value: string; label: string }> = [
-    { value: "all", label: "All plans" },
+    { value: "all", label: t("All plans") },
     ...plans.map((p) => ({
       value: p.key,
       label: p.name ? `${p.name} (${p.key})` : p.key,
@@ -98,7 +99,7 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
   ];
 
   const tenantOptions: Array<{ value: string; label: string }> = [
-    { value: "all", label: "All tenants" },
+    { value: "all", label: t("All tenants") },
     ...tenants.map((t) => ({
       value: t.id,
       label: t.name || t.id,
@@ -121,10 +122,10 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
       header={
         <LayoutHeader>
           <PageHeader
-            title="Workspaces"
+            title={t("Workspaces")}
             meta={
               !isLoading && !isError
-                ? `${workspaces.length.toLocaleString()} shown`
+                ? t("{0} shown", workspaces.length.toLocaleString())
                 : undefined
             }
           />
@@ -143,8 +144,8 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                     />
                     <Input
                       type="search"
-                      aria-label="Search workspaces"
-                      placeholder="Search by workspace name or slug..."
+                      aria-label={t("Search workspaces")}
+                      placeholder={t("Search by workspace name or slug...")}
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="pl-8 pr-8"
@@ -154,7 +155,7 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                         type="button"
                         variant="ghost"
                         size="icon-xs"
-                        aria-label="Clear search"
+                        aria-label={t("Clear search")}
                         onClick={() => setSearch("")}
                         className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
@@ -170,13 +171,13 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                       setStatusFilter(value === "all" ? "" : (value ?? ""))
                     }
                   >
-                    <SelectTrigger aria-label="Filter by status" className="w-44">
-                      <SelectValue placeholder="All statuses" />
+                    <SelectTrigger aria-label={t("Filter by status")} className="w-44">
+                      <SelectValue placeholder={t("All statuses")} />
                     </SelectTrigger>
                     <SelectContent>
                       {STATUS_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
+                          {t(opt.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -190,13 +191,13 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                         setPlanFilter(value === "all" ? "" : (value ?? ""))
                       }
                     >
-                      <SelectTrigger aria-label="Filter by plan" className="w-44">
-                        <SelectValue placeholder="All plans" />
+                      <SelectTrigger aria-label={t("Filter by plan")} className="w-44">
+                        <SelectValue placeholder={t("All plans")} />
                       </SelectTrigger>
                       <SelectContent>
                         {planOptions.map((opt) => (
                           <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
+                            {t(opt.label)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -210,13 +211,13 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                       setTenantFilter(value === "all" ? "" : (value ?? ""))
                     }
                   >
-                    <SelectTrigger aria-label="Filter by tenant" className="w-48">
-                      <SelectValue placeholder="All tenants" />
+                    <SelectTrigger aria-label={t("Filter by tenant")} className="w-48">
+                      <SelectValue placeholder={t("All tenants")} />
                     </SelectTrigger>
                     <SelectContent>
                       {tenantOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
+                          {t(opt.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -229,18 +230,18 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                       size="sm"
                       onClick={clearFilters}
                     >
-                      Clear filters
+                      {t("Clear filters")}
                     </Button>
                   )}
                 </HStack>
 
-                <Heading level={3}>Directory</Heading>
+                <Heading level={3}>{t("Directory")}</Heading>
 
-                {isLoading && <LoadingState message="Loading workspaces..." />}
+                {isLoading && <LoadingState message={t("Loading workspaces...")} />}
 
                 {isError && (
                   <ErrorState
-                    title="Failed to load workspaces"
+                    title={t("Failed to load workspaces")}
                     message={error instanceof Error ? error.message : undefined}
                     onRetry={refetch}
                   />
@@ -249,16 +250,16 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                 {!isLoading && !isError && workspaces.length === 0 && (
                   <EmptyState
                     icon={<LayoutGrid className="size-5" aria-hidden="true" />}
-                    title="No workspaces found"
+                    title={t("No workspaces found")}
                     description={
                       hasActiveFilters
-                        ? "No workspaces matched your current filters."
-                        : "There are no workspaces available for your account."
+                        ? t("No workspaces matched your current filters.")
+                        : t("There are no workspaces available for your account.")
                     }
                     actions={
                       hasActiveFilters ? (
                         <Button variant="outline" size="sm" onClick={clearFilters}>
-                          Clear filters
+                          {t("Clear filters")}
                         </Button>
                       ) : undefined
                     }
@@ -271,14 +272,14 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                       <Table density="balanced" dividers="rows" hasHover>
                         <TableHeader>
                           <TableRow isHeaderRow>
-                            <TableHeaderCell>Workspace</TableHeaderCell>
-                            <TableHeaderCell>Tenant</TableHeaderCell>
-                            <TableHeaderCell>Status</TableHeaderCell>
-                            <TableHeaderCell>Plan</TableHeaderCell>
-                            <TableHeaderCell>Owner</TableHeaderCell>
-                            <TableHeaderCell className="text-right">Members</TableHeaderCell>
-                            <TableHeaderCell>Created</TableHeaderCell>
-                            <TableHeaderCell className="text-right">Action</TableHeaderCell>
+                            <TableHeaderCell>{t("Workspace")}</TableHeaderCell>
+                            <TableHeaderCell>{t("Tenant")}</TableHeaderCell>
+                            <TableHeaderCell>{t("Status")}</TableHeaderCell>
+                            <TableHeaderCell>{t("Plan")}</TableHeaderCell>
+                            <TableHeaderCell>{t("Owner")}</TableHeaderCell>
+                            <TableHeaderCell className="text-right">{t("Members")}</TableHeaderCell>
+                            <TableHeaderCell>{t("Created")}</TableHeaderCell>
+                            <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -332,7 +333,7 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                                 </Text>
                               </TableCell>
                               <TableCell className="text-right">
-                                <RowActions label="workspace" actions={[{ label: "View", onSelect: () => onSelectWorkspace(ws.id) }]} />
+                                <RowActions label={t("workspace")} actions={[{ label: t("View"), onSelect: () => onSelectWorkspace(ws.id) }]} />
                               </TableCell>
                             </TableRow>
                           ))}
@@ -353,7 +354,7 @@ export function Workspaces({ onSelectWorkspace, userRole }: WorkspacesProps) {
                           {isFetchingNextPage && (
                             <Spinner className="size-4" aria-hidden="true" />
                           )}
-                          {isFetchingNextPage ? "Loading..." : "Load more"}
+                          {isFetchingNextPage ? t("Loading...") : t("Load more")}
                         </Button>
                       </div>
                     )}

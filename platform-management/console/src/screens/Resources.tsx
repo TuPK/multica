@@ -43,6 +43,7 @@ import {
 } from "../api/hooks";
 import type { StaffRole } from "../components/types";
 import { formatBytes } from "./Tenants";
+import { t } from "../i18n";
 
 interface ResourcesProps {
   onSelectTenant?: (tenantId: string) => void;
@@ -79,7 +80,7 @@ export const RESOURCE_TYPE_LABELS: Record<string, string> = {
 
 export function resourceTypeLabel(type: string, label?: string): string {
   if (label && label.trim() !== "") return label;
-  return RESOURCE_TYPE_LABELS[type] ?? (type || "Unknown");
+  return t(RESOURCE_TYPE_LABELS[type] ?? (type || "Unknown"));
 }
 
 export function formatResourceAmount(type: string, value: number): string {
@@ -90,7 +91,7 @@ export function formatResourceAmount(type: string, value: number): string {
 }
 
 export function formatResourceLimit(type: string, limit: number | null): string {
-  if (limit === null) return "Unlimited";
+  if (limit === null) return t("Unlimited");
   return formatResourceAmount(type, limit);
 }
 
@@ -123,9 +124,9 @@ export function ResourceStateBadge({ state }: { state: ResourceState }) {
     case "ok":
       return (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <StatusDot variant="success" label="OK" aria-hidden="true" />
+          <StatusDot variant="success" label={t("OK")} aria-hidden="true" />
           <Text type="body" color="primary">
-            OK
+            {t("OK")}
           </Text>
         </span>
       );
@@ -133,20 +134,20 @@ export function ResourceStateBadge({ state }: { state: ResourceState }) {
       return (
         <Badge
           variant="warning"
-          label="Warning"
-          icon={<StatusDot variant="warning" label="Warning" aria-hidden="true" />}
+          label={t("Warning")}
+          icon={<StatusDot variant="warning" label={t("Warning")} aria-hidden="true" />}
         />
       );
     case "over":
       return (
         <Badge
           variant="error"
-          label="Over limit"
-          icon={<StatusDot variant="error" label="Over limit" aria-hidden="true" />}
+          label={t("Over limit")}
+          icon={<StatusDot variant="error" label={t("Over limit")} aria-hidden="true" />}
         />
       );
     default:
-      return <Badge variant="neutral" label="Unknown" />;
+      return <Badge variant="neutral" label={t("Unknown")} />;
   }
 }
 
@@ -171,10 +172,10 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
 
   if (effectiveRole && !canView) {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -191,7 +192,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
       header={
         <LayoutHeader hasDivider>
           <PageHeader
-            title="Resources"
+            title={t("Resources")}
             actions={
               <Button
                 type="button"
@@ -202,7 +203,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                 aria-busy={Boolean(isFetching) || undefined}
               >
                 {isFetching ? <Spinner className="size-3.5" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
-                <span>Refresh</span>
+                <span>{t("Refresh")}</span>
               </Button>
             }
           />
@@ -215,7 +216,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
               <Alert role="status">
                 <AlertCircle className="size-4" aria-hidden="true" />
                 <AlertDescription>
-                  Resource totals are partial across the loaded pages; load remaining pages for complete totals.
+                  {t("Resource totals are partial across the loaded pages; load remaining pages for complete totals.")}
                 </AlertDescription>
               </Alert>
             )}
@@ -226,24 +227,24 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                 value={sort || "default"}
                 onValueChange={(value) => setSort(!value || value === "default" ? "" : value)}
               >
-                <SelectTrigger aria-label="Sort by" className="w-52">
-                  <SelectValue placeholder="Default order" />
+                <SelectTrigger aria-label={t("Sort by")} className="w-52">
+                  <SelectValue placeholder={t("Default order")} />
                 </SelectTrigger>
                 <SelectContent>
                   {SORT_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {t(opt.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </HStack>
 
-            {isLoading && <LoadingState message="Loading resources..." />}
+            {isLoading && <LoadingState message={t("Loading resources...")} />}
 
             {isError && (
               <ErrorState
-                title="Failed to load resources"
+                title={t("Failed to load resources")}
                 message={error instanceof Error ? error.message : undefined}
                 onRetry={refetch}
               />
@@ -253,7 +254,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
               <div className="space-y-6">
                 {byType.length > 0 && (
                   <Section variant="transparent" padding={0} className="space-y-3">
-                    <Heading level={3}>Platform Totals</Heading>
+                    <Heading level={3}>{t("Platform Totals")}</Heading>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       {byType.map((item: SystemResourceTypeSummary) => (
                         <Card key={item.type} padding={4}>
@@ -266,7 +267,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                             </Text>
                             {item.limit !== null && (
                               <Text type="supporting" hasTabularNumbers as="p">
-                                Limit {formatResourceLimit(item.type, item.limit)}
+                                {t("Limit")} {formatResourceLimit(item.type, item.limit)}
                                 {item.percent !== null ? ` (${Math.round(item.percent)}%)` : ""}
                               </Text>
                             )}
@@ -279,16 +280,16 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
 
                 <Section className="space-y-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <Heading level={3}>Over-limit &amp; Warning Workspaces</Heading>
+                    <Heading level={3}>{t("Over-limit & Warning Workspaces")}</Heading>
                     <Text type="supporting" hasTabularNumbers>
-                      {overLimit.length.toLocaleString()} flagged
+                      {overLimit.length.toLocaleString()} {t("flagged")}
                     </Text>
                   </div>
 
                   {overLimit.length === 0 ? (
                     <EmptyState
                       icon={<Gauge className="size-5" aria-hidden="true" />}
-                      title="No workspaces near or over limit"
+                      title={t("No workspaces near or over limit")}
                       isCompact
                     />
                   ) : (
@@ -296,12 +297,12 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                       <Table density="compact" dividers="rows" hasHover>
                         <TableHeader>
                           <TableRow isHeaderRow>
-                            <TableHeaderCell>Tenant</TableHeaderCell>
-                            <TableHeaderCell>Workspace</TableHeaderCell>
-                            <TableHeaderCell>Resource</TableHeaderCell>
-                            <TableHeaderCell className="text-right">Used / Limit</TableHeaderCell>
-                            <TableHeaderCell className="w-40">Usage</TableHeaderCell>
-                            <TableHeaderCell>Status</TableHeaderCell>
+                            <TableHeaderCell>{t("Tenant")}</TableHeaderCell>
+                            <TableHeaderCell>{t("Workspace")}</TableHeaderCell>
+                            <TableHeaderCell>{t("Resource")}</TableHeaderCell>
+                            <TableHeaderCell className="text-right">{t("Used / Limit")}</TableHeaderCell>
+                            <TableHeaderCell className="w-40">{t("Usage")}</TableHeaderCell>
+                            <TableHeaderCell>{t("Status")}</TableHeaderCell>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -368,7 +369,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                                       value={row.used}
                                       max={row.limit}
                                       variant={barVariant}
-                                      label={`${resourceTypeLabel(row.type)} usage`}
+                                      label={t("{0} usage", resourceTypeLabel(row.type))}
                                       isLabelHidden
                                     />
                                   ) : (
@@ -389,16 +390,16 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
 
                 <Section className="space-y-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <Heading level={3}>Top Tenants</Heading>
+                    <Heading level={3}>{t("Top Tenants")}</Heading>
                     <Text type="supporting" hasTabularNumbers>
-                      {tenantRows.length.toLocaleString()} shown
+                      {tenantRows.length.toLocaleString()} {t("shown")}
                     </Text>
                   </div>
 
                   {tenantRows.length === 0 ? (
                     <EmptyState
                       icon={<Gauge className="size-5" aria-hidden="true" />}
-                      title="No tenant resource data"
+                      title={t("No tenant resource data")}
                       isCompact
                     />
                   ) : (
@@ -407,17 +408,17 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                         <Table density="balanced" dividers="rows" hasHover>
                           <TableHeader>
                             <TableRow isHeaderRow>
-                              <TableHeaderCell>Tenant</TableHeaderCell>
-                              <TableHeaderCell>Plan</TableHeaderCell>
-                              <TableHeaderCell className="text-right">Workspaces</TableHeaderCell>
-                              <TableHeaderCell className="text-right">Members</TableHeaderCell>
-                              <TableHeaderCell className="text-right">Agents</TableHeaderCell>
-                              <TableHeaderCell className="text-right">Runtimes</TableHeaderCell>
-                              <TableHeaderCell className="text-right">Issues</TableHeaderCell>
-                              <TableHeaderCell className="text-right">Storage</TableHeaderCell>
-                              <TableHeaderCell>Status</TableHeaderCell>
+                              <TableHeaderCell>{t("Tenant")}</TableHeaderCell>
+                              <TableHeaderCell>{t("Plan")}</TableHeaderCell>
+                              <TableHeaderCell className="text-right">{t("Workspaces")}</TableHeaderCell>
+                              <TableHeaderCell className="text-right">{t("Members")}</TableHeaderCell>
+                              <TableHeaderCell className="text-right">{t("Agents")}</TableHeaderCell>
+                              <TableHeaderCell className="text-right">{t("Runtimes")}</TableHeaderCell>
+                              <TableHeaderCell className="text-right">{t("Issues")}</TableHeaderCell>
+                              <TableHeaderCell className="text-right">{t("Storage")}</TableHeaderCell>
+                              <TableHeaderCell>{t("Status")}</TableHeaderCell>
                               {onSelectTenant && (
-                                <TableHeaderCell className="text-right">Action</TableHeaderCell>
+                                <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
                               )}
                             </TableRow>
                           </TableHeader>
@@ -476,10 +477,10 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                                 {onSelectTenant && (
                                   <TableCell className="text-right">
                                     <RowActions
-                                      label={`tenant ${row.tenant_id}`}
+                                      label={t("tenant {0}", row.tenant_id)}
                                       actions={[
                                         {
-                                          label: "View",
+                                          label: t("View"),
                                           disabled: !row.tenant_id,
                                           onSelect: () => onSelectTenant(row.tenant_id),
                                         },
@@ -506,7 +507,7 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
                             {isFetchingNextPage && (
                               <Spinner className="size-4" aria-hidden="true" />
                             )}
-                            {isFetchingNextPage ? "Loading..." : "Load more"}
+                            {isFetchingNextPage ? t("Loading...") : t("Load more")}
                           </Button>
                         </div>
                       )}
@@ -516,15 +517,15 @@ export function Resources({ onSelectTenant, onSelectWorkspace, userRole }: Resou
 
                 {byPlan.length > 0 && (
                   <Section className="space-y-4">
-                    <Heading level={3}>Usage by Plan</Heading>
+                    <Heading level={3}>{t("Usage by Plan")}</Heading>
                     <div className="overflow-x-auto">
                       <Table density="compact" dividers="rows" hasHover>
                         <TableHeader>
                           <TableRow isHeaderRow>
-                            <TableHeaderCell>Plan</TableHeaderCell>
-                            <TableHeaderCell className="text-right">Tenants</TableHeaderCell>
-                            <TableHeaderCell className="text-right">Workspaces</TableHeaderCell>
-                            <TableHeaderCell>Totals</TableHeaderCell>
+                            <TableHeaderCell>{t("Plan")}</TableHeaderCell>
+                            <TableHeaderCell className="text-right">{t("Tenants")}</TableHeaderCell>
+                            <TableHeaderCell className="text-right">{t("Workspaces")}</TableHeaderCell>
+                            <TableHeaderCell>{t("Totals")}</TableHeaderCell>
                           </TableRow>
                         </TableHeader>
                         <TableBody>

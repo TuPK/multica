@@ -34,6 +34,7 @@ import {
   TENANT_MEMBER_ROLES,
   type StaffRole,
 } from "../api/schemas";
+import { t } from "../i18n";
 
 interface TenantUsersProps {
   tenantId: string;
@@ -48,7 +49,7 @@ const ACCOUNT_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
     value: status,
     label:
       status === "pending_deletion"
-        ? "Pending deletion"
+        ? t("Pending deletion")
         : status.charAt(0).toUpperCase() + status.slice(1),
   })),
 ];
@@ -105,7 +106,7 @@ export function TenantUsers({
       }
     }
     return [
-      { value: "all", label: "All workspaces" },
+      { value: "all", label: t("All workspaces") },
       ...[...map.entries()]
         .sort((a, b) => a[1].localeCompare(b[1]))
         .map(([id, name]) => ({ value: id, label: name })),
@@ -146,10 +147,10 @@ export function TenantUsers({
   return (
     <Section variant="transparent" padding={0} className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <Heading level={3}>Users</Heading>
+        <Heading level={3}>{t("Users")}</Heading>
         {!isLoading && !isError && (
           <Text type="supporting" hasTabularNumbers>
-            {filteredUsers.length.toLocaleString()} shown
+            {filteredUsers.length.toLocaleString()} {t("shown")}
           </Text>
         )}
       </div>
@@ -162,8 +163,8 @@ export function TenantUsers({
           />
           <Input
             type="search"
-            aria-label="Search users"
-            placeholder="Search by email or name..."
+            aria-label={t("Search users")}
+            placeholder={t("Search by email or name...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pr-8 pl-8"
@@ -173,7 +174,7 @@ export function TenantUsers({
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label="Clear search"
+              aria-label={t("Clear search")}
               onClick={() => setSearch("")}
               className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
@@ -189,13 +190,13 @@ export function TenantUsers({
             setStatusFilter(value === "all" ? "" : (value ?? ""))
           }
         >
-          <SelectTrigger aria-label="Filter by status" className="w-44">
-            <SelectValue placeholder="All statuses" />
+          <SelectTrigger aria-label={t("Filter by status")} className="w-44">
+            <SelectValue placeholder={t("All statuses")} />
           </SelectTrigger>
           <SelectContent>
             {ACCOUNT_STATUS_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -208,13 +209,13 @@ export function TenantUsers({
             setWorkspaceFilter(value === "all" ? "" : (value ?? ""))
           }
         >
-          <SelectTrigger aria-label="Filter by workspace" className="w-48">
-            <SelectValue placeholder="All workspaces" />
+          <SelectTrigger aria-label={t("Filter by workspace")} className="w-48">
+            <SelectValue placeholder={t("All workspaces")} />
           </SelectTrigger>
           <SelectContent>
             {workspaceOptions.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -227,13 +228,13 @@ export function TenantUsers({
             setRoleFilter(value === "all" ? "" : (value ?? ""))
           }
         >
-          <SelectTrigger aria-label="Filter by role" className="w-40">
-            <SelectValue placeholder="All roles" />
+          <SelectTrigger aria-label={t("Filter by role")} className="w-40">
+            <SelectValue placeholder={t("All roles")} />
           </SelectTrigger>
           <SelectContent>
             {MEMBER_ROLE_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -241,16 +242,16 @@ export function TenantUsers({
 
         {hasActiveFilters && (
           <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
-            Clear filters
+            {t("Clear filters")}
           </Button>
         )}
       </HStack>
 
-      {isLoading && <LoadingState message="Loading tenant users..." />}
+      {isLoading && <LoadingState message={t("Loading tenant users...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load tenant users"
+          title={t("Failed to load tenant users")}
           message={error instanceof Error ? error.message : undefined}
           onRetry={refetch}
         />
@@ -259,16 +260,16 @@ export function TenantUsers({
       {!isLoading && !isError && filteredUsers.length === 0 && (
         <EmptyState
           icon={<UsersIcon className="size-5" aria-hidden="true" />}
-          title="No users found"
+          title={t("No users found")}
           description={
             hasActiveFilters
-              ? "No tenant users matched your current filters."
-              : "This tenant has no workspace members yet."
+              ? t("No tenant users matched your current filters.")
+              : t("This tenant has no workspace members yet.")
           }
           actions={
             hasActiveFilters ? (
               <Button variant="outline" size="sm" onClick={clearFilters}>
-                Clear filters
+                {t("Clear filters")}
               </Button>
             ) : undefined
           }
@@ -281,12 +282,12 @@ export function TenantUsers({
             <Table density="balanced" dividers="rows" hasHover>
               <TableHeader>
                 <TableRow isHeaderRow>
-                  <TableHeaderCell>User</TableHeaderCell>
-                  <TableHeaderCell>Workspaces &amp; Roles</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Seats</TableHeaderCell>
-                  <TableHeaderCell>Last login</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Action</TableHeaderCell>
+                  <TableHeaderCell>{t("User")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Workspaces & Roles")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Status")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Seats")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Last login")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -301,7 +302,7 @@ export function TenantUsers({
                           {user.name || user.email || user.user_id}
                         </span>
                         {isSystemAdmin && user.is_staff && (
-                          <Badge variant="purple" label="Staff" />
+                          <Badge variant="purple" label={t("Staff")} />
                         )}
                       </div>
                       <div
@@ -344,7 +345,7 @@ export function TenantUsers({
                       </Text>
                     </TableCell>
                     <TableCell className="text-right">
-                      <RowActions label="user" actions={[{ label: "View", onSelect: () => onSelectUser(user.user_id) }]} />
+                      <RowActions label={t("user")} actions={[{ label: t("View"), onSelect: () => onSelectUser(user.user_id) }]} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -365,7 +366,7 @@ export function TenantUsers({
                 {isFetchingNextPage && (
                   <Spinner className="size-4" aria-hidden="true" />
                 )}
-                {isFetchingNextPage ? "Loading..." : "Load more"}
+                {isFetchingNextPage ? t("Loading...") : t("Load more")}
               </Button>
             </div>
           )}

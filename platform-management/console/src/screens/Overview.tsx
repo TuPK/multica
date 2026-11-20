@@ -39,6 +39,7 @@ import { PageHeader } from "../components/PageHeader";
 import { useOverview } from "../api/hooks";
 import { formatMinorAmount } from "../money";
 import { formatBytes } from "./Tenants";
+import { t } from "../i18n";
 
 const PLAN_SERIES_COLORS = [
   "var(--data-color-1, #0171e3)",
@@ -77,13 +78,13 @@ export function Overview() {
   const { data, isLoading, isFetching, isError, error, refetch } = useOverview();
 
   if (isLoading) {
-    return <LoadingState message="Loading overview..." />;
+    return <LoadingState message={t("Loading overview...")} />;
   }
 
   if (isError) {
     return (
       <ErrorState
-        title="Failed to load overview"
+        title={t("Failed to load overview")}
         message={error instanceof Error ? error.message : undefined}
         onRetry={refetch}
       />
@@ -94,11 +95,11 @@ export function Overview() {
     return (
       <EmptyState
         icon={<BarChart3 className="size-5" aria-hidden="true" />}
-        title="No overview data"
-        description="Unable to load workspace metrics."
+        title={t("No overview data")}
+        description={t("Unable to load workspace metrics.")}
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()}>
-            Refresh
+            {t("Refresh")}
           </Button>
         }
       />
@@ -167,14 +168,14 @@ export function Overview() {
 
   const usageRows = hasUsageSnapshot
     ? [
-        { label: "Usage Workspaces", raw: data.usage_workspaces ?? 0, formatted: String(data.usage_workspaces ?? 0) },
-        { label: "Members", raw: data.usage_members ?? 0, formatted: String(data.usage_members ?? 0) },
-        { label: "Agents", raw: data.usage_agents ?? 0, formatted: String(data.usage_agents ?? 0) },
-        { label: "Runtimes", raw: data.usage_runtimes ?? 0, formatted: String(data.usage_runtimes ?? 0) },
-        { label: "Total Issues", raw: data.usage_issues_total ?? 0, formatted: String(data.usage_issues_total ?? 0) },
-        { label: "Issues Created", raw: data.usage_issues_created ?? 0, formatted: String(data.usage_issues_created ?? 0) },
-        { label: "Tasks Run", raw: data.usage_tasks_run ?? 0, formatted: String(data.usage_tasks_run ?? 0) },
-        { label: "Storage", raw: null as number | null, formatted: formatBytes(data.usage_storage_bytes ?? 0) },
+        { label: t("Usage Workspaces"), raw: data.usage_workspaces ?? 0, formatted: String(data.usage_workspaces ?? 0) },
+        { label: t("Members"), raw: data.usage_members ?? 0, formatted: String(data.usage_members ?? 0) },
+        { label: t("Agents"), raw: data.usage_agents ?? 0, formatted: String(data.usage_agents ?? 0) },
+        { label: t("Runtimes"), raw: data.usage_runtimes ?? 0, formatted: String(data.usage_runtimes ?? 0) },
+        { label: t("Total Issues"), raw: data.usage_issues_total ?? 0, formatted: String(data.usage_issues_total ?? 0) },
+        { label: t("Issues Created"), raw: data.usage_issues_created ?? 0, formatted: String(data.usage_issues_created ?? 0) },
+        { label: t("Tasks Run"), raw: data.usage_tasks_run ?? 0, formatted: String(data.usage_tasks_run ?? 0) },
+        { label: t("Storage"), raw: null as number | null, formatted: formatBytes(data.usage_storage_bytes ?? 0) },
       ]
     : [];
   const maxUsageCount = Math.max(
@@ -187,7 +188,7 @@ export function Overview() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Platform Overview"
+        title={t("Platform Overview")}
         actions={
           <Button
             type="button"
@@ -203,13 +204,13 @@ export function Overview() {
             ) : (
               <RefreshCw className="size-3.5" aria-hidden="true" />
             )}
-            <span>Refresh</span>
+            <span>{t("Refresh")}</span>
           </Button>
         }
       />
 
       {/* Band 1: Headline KPI tiles */}
-      <Section variant="transparent" padding={0} aria-label="Workspace metrics">
+      <Section variant="transparent" padding={0} aria-label={t("Workspace metrics")}>
         <div className="flex flex-col gap-4">
         <div
           className={
@@ -221,7 +222,7 @@ export function Overview() {
           <Card padding={4}>
             <div className="flex items-center justify-between gap-2">
               <Text type="label" color="secondary">
-                Total Workspaces
+                {t("Total Workspaces")}
               </Text>
               <Building2 className="size-4 text-faint-foreground" aria-hidden="true" />
             </div>
@@ -230,7 +231,7 @@ export function Overview() {
                 {totalWorkspaces}
               </Text>
               <Text type="supporting" hasTabularNumbers as="p">
-                {formatShare(activeCount, totalWorkspaces)} active across platform
+                {formatShare(activeCount, totalWorkspaces)} {t("active across platform")}
               </Text>
             </div>
           </Card>
@@ -238,7 +239,7 @@ export function Overview() {
           <Card padding={4}>
             <div className="flex items-center justify-between gap-2">
               <Text type="label" color="secondary">
-                Active Workspaces
+                {t("Active Workspaces")}
               </Text>
               <Activity className="size-4 text-success" aria-hidden="true" />
             </div>
@@ -254,8 +255,8 @@ export function Overview() {
                 {activeCount}
               </Text>
               <div className="inline-flex items-center gap-1.5">
-                <StatusDot variant="success" label="Active" aria-hidden="true" />
-                <Text type="supporting">Operating normally</Text>
+                <StatusDot variant="success" label={t("Active")} aria-hidden="true" />
+                <Text type="supporting">{t("Operating normally")}</Text>
               </div>
             </div>
           </Card>
@@ -263,7 +264,7 @@ export function Overview() {
           <Card padding={4}>
             <div className="flex items-center justify-between gap-2">
               <Text type="label" color="secondary">
-                Sign-ups (7 Days)
+                {t("Sign-ups (7 Days)")}
               </Text>
               <Users className="size-4 text-brand" aria-hidden="true" />
             </div>
@@ -272,7 +273,7 @@ export function Overview() {
                 {data.signups_7d}
               </Text>
               <Text type="supporting" as="p">
-                New registrations
+                {t("New registrations")}
               </Text>
             </div>
           </Card>
@@ -281,7 +282,7 @@ export function Overview() {
             <Card padding={4}>
               <div className="flex items-center justify-between gap-2">
                 <Text type="label" color="secondary">
-                  Pending Orders
+                  {t("Pending Orders")}
                 </Text>
                 <CreditCard className="size-4 text-warning" aria-hidden="true" />
               </div>
@@ -291,8 +292,8 @@ export function Overview() {
                 </Text>
                 <Text type="supporting" hasTabularNumbers as="p">
                   {pendingCurrencyEntries.length > 0
-                    ? `${pendingCurrencyEntries.length} ${pendingCurrencyEntries.length === 1 ? "currency" : "currencies"} awaiting settlement`
-                    : "Awaiting settlement"}
+                    ? t("{0} {1} awaiting settlement", pendingCurrencyEntries.length, pendingCurrencyEntries.length === 1 ? "currency" : "currencies")
+                    : t("Awaiting settlement")}
                 </Text>
               </div>
             </Card>
@@ -304,9 +305,9 @@ export function Overview() {
           <Card padding={4}>
             <div className="flex items-center justify-between gap-2">
               <div className="inline-flex items-center gap-1.5">
-                <StatusDot variant="neutral" label="Read-Only" aria-hidden="true" />
+                <StatusDot variant="neutral" label={t("Read-Only")} aria-hidden="true" />
                 <Text type="label" color="secondary">
-                  Read-Only
+                  {t("Read-Only")}
                 </Text>
               </div>
               <Shield className="size-4 text-faint-foreground" aria-hidden="true" />
@@ -323,11 +324,11 @@ export function Overview() {
               <div className="inline-flex items-center gap-1.5">
                 <StatusDot
                   variant={suspendedCount > 0 ? "error" : "neutral"}
-                  label="Suspended"
+                  label={t("Suspended")}
                   aria-hidden="true"
                 />
                 <Text type="label" color="secondary">
-                  Suspended
+                  {t("Suspended")}
                 </Text>
               </div>
               <AlertTriangle
@@ -355,11 +356,11 @@ export function Overview() {
               <div className="inline-flex items-center gap-1.5">
                 <StatusDot
                   variant={pendingDeletionCount > 0 ? "error" : "neutral"}
-                  label="Pending Deletion"
+                  label={t("Pending Deletion")}
                   aria-hidden="true"
                 />
                 <Text type="label" color="secondary">
-                  Pending Deletion
+                  {t("Pending Deletion")}
                 </Text>
               </div>
               <AlertTriangle
@@ -388,7 +389,7 @@ export function Overview() {
       <Divider />
 
       {/* Band 2: Charts band using @astryxdesign/charts */}
-      <Section variant="transparent" padding={0} aria-label="Distribution charts" className="space-y-4">
+      <Section variant="transparent" padding={0} aria-label={t("Distribution charts")} className="space-y-4">
         <div
           className={
             planEntries.length > 0
@@ -398,9 +399,9 @@ export function Overview() {
         >
           <Card padding={4} className="space-y-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <Heading level={2}>Workspace Status Distribution</Heading>
+              <Heading level={2}>{t("Workspace Status Distribution")}</Heading>
               <Text type="supporting" hasTabularNumbers>
-                {totalWorkspaces.toLocaleString()} workspaces
+                {totalWorkspaces.toLocaleString()} {t("workspaces")}
               </Text>
             </div>
             <Chart
@@ -408,7 +409,7 @@ export function Overview() {
               xKey="status"
               series={[
                 bar("count", {
-                  label: "Workspaces",
+                  label: t("Workspaces"),
                   radius: 4,
                   color: (datum) => String(datum.color ?? "var(--data-color-1)"),
                 }),
@@ -422,7 +423,7 @@ export function Overview() {
                 </>
               }
               tooltip
-              title={`Workspace status distribution (${totalWorkspaces.toLocaleString()} workspaces)`}
+              title={t("Workspace status distribution ({0} workspaces)", totalWorkspaces.toLocaleString())}
             />
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {statusData.map((segment) => (
@@ -440,9 +441,9 @@ export function Overview() {
           {planData.length > 0 && (
             <Card padding={4} className="space-y-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <Heading level={2}>Subscriptions by Plan</Heading>
+                <Heading level={2}>{t("Subscriptions by Plan")}</Heading>
                 <Text type="supporting" hasTabularNumbers>
-                  {totalPlanSubscriptions.toLocaleString()} total
+                  {totalPlanSubscriptions.toLocaleString()} {t("total")}
                 </Text>
               </div>
               <Chart
@@ -450,7 +451,7 @@ export function Overview() {
                 xKey="plan"
                 series={[
                   bar("count", {
-                    label: "Subscriptions",
+                    label: t("Subscriptions"),
                     radius: 4,
                     color: (datum) => String(datum.color ?? "var(--data-color-1)"),
                   }),
@@ -464,7 +465,7 @@ export function Overview() {
                   </>
                 }
                 tooltip
-                title={`Subscriptions by plan (${totalPlanSubscriptions.toLocaleString()} total)`}
+                title={t("Subscriptions by plan ({0} total)", totalPlanSubscriptions.toLocaleString())}
               />
               <div className="flex flex-wrap gap-x-5 gap-y-2">
                 {planData.map((segment) => (
@@ -489,7 +490,7 @@ export function Overview() {
       {hasSupportingTables && (
         <>
           <Divider />
-          <Section variant="transparent" padding={0} aria-label="Supporting tables" className="space-y-6">
+          <Section variant="transparent" padding={0} aria-label={t("Supporting tables")} className="space-y-6">
             <div
               className={
                 hasUsageSnapshot && pendingCurrencyEntries.length > 0
@@ -500,7 +501,7 @@ export function Overview() {
               {hasUsageSnapshot && (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <Heading level={2}>Platform Usage Snapshot</Heading>
+                    <Heading level={2}>{t("Platform Usage Snapshot")}</Heading>
                     {data.usage_day && (
                       <Text type="code" color="secondary">
                         {data.usage_day}
@@ -511,17 +512,17 @@ export function Overview() {
                     <Table density="compact" dividers="rows" hasHover>
                       <TableHeader>
                         <TableRow isHeaderRow>
-                          <TableHeaderCell>Metric</TableHeaderCell>
-                          <TableHeaderCell className="w-40">Scale</TableHeaderCell>
-                          <TableHeaderCell className="text-right">Value</TableHeaderCell>
+                          <TableHeaderCell>{t("Metric")}</TableHeaderCell>
+                          <TableHeaderCell className="w-40">{t("Scale")}</TableHeaderCell>
+                          <TableHeaderCell className="text-right">{t("Value")}</TableHeaderCell>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {usageRows.map((row) => (
-                          <TableRow key={row.label}>
+                          <TableRow key={t(row.label)}>
                             <TableCell>
                               <Text type="body" weight="medium">
-                                {row.label}
+                                {t(row.label)}
                               </Text>
                             </TableCell>
                             <TableCell>
@@ -529,7 +530,7 @@ export function Overview() {
                                 <ProgressBar
                                   value={row.raw}
                                   max={maxUsageCount}
-                                  label={`${row.label} relative volume`}
+                                  label={t("{0} relative volume", t(row.label))}
                                   isLabelHidden
                                 />
                               ) : (
@@ -552,7 +553,7 @@ export function Overview() {
               {pendingCurrencyEntries.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <Heading level={2}>Pending Orders by Currency</Heading>
+                    <Heading level={2}>{t("Pending Orders by Currency")}</Heading>
                     <Text type="supporting" hasTabularNumbers>
                       {pendingCurrencyEntries.length}{" "}
                       {pendingCurrencyEntries.length === 1 ? "currency" : "currencies"}
@@ -562,11 +563,11 @@ export function Overview() {
                     <Table density="compact" dividers="rows" hasHover>
                       <TableHeader>
                         <TableRow isHeaderRow>
-                          <TableHeaderCell>Currency</TableHeaderCell>
-                          <TableHeaderCell className="text-right">Orders</TableHeaderCell>
-                          <TableHeaderCell className="text-right">Net</TableHeaderCell>
-                          <TableHeaderCell className="text-right">VAT</TableHeaderCell>
-                          <TableHeaderCell className="text-right">Total (incl. VAT)</TableHeaderCell>
+                          <TableHeaderCell>{t("Currency")}</TableHeaderCell>
+                          <TableHeaderCell className="text-right">{t("Orders")}</TableHeaderCell>
+                          <TableHeaderCell className="text-right">{t("Net")}</TableHeaderCell>
+                          <TableHeaderCell className="text-right">{t("VAT")}</TableHeaderCell>
+                          <TableHeaderCell className="text-right">{t("Total (incl. VAT)")}</TableHeaderCell>
                         </TableRow>
                       </TableHeader>
                       <TableBody>

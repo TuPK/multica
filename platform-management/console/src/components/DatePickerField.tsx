@@ -7,6 +7,7 @@ import {
 } from "@multica/ui/components/ui/popover";
 import { CalendarDays, Check } from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
+import { t } from "../i18n";
 
 /** Formats a local Date as YYYY-MM-DD without UTC timezone shift. */
 function formatDateOnly(date: Date): string {
@@ -52,8 +53,8 @@ export function DatePickerField({
   id,
   value,
   onChange,
-  placeholder = "Select date",
-  emptyLabel = "Any date",
+  placeholder = t("Select date"),
+  emptyLabel = t("Any date"),
   disabled = false,
   className,
 }: DatePickerFieldProps) {

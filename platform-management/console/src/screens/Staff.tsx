@@ -47,6 +47,7 @@ import {
   type SettableStaffRole,
 } from "../api/hooks";
 import type { StaffMember } from "../components/types";
+import { t } from "../i18n";
 
 const STAFF_ROLE_ITEMS: Array<{ value: SettableStaffRole; label: string }> = [
   { value: "support", label: "Support" },
@@ -110,7 +111,7 @@ export function Staff() {
       );
       setAddDialogOpen(false);
     } catch (err: unknown) {
-      setAddError(getApiErrorMessage(err, "Failed to add staff member"));
+      setAddError(getApiErrorMessage(err, t("Failed to add staff member")));
     }
   };
 
@@ -139,7 +140,7 @@ export function Staff() {
       setEditDialogOpen(false);
       setStaffToEdit(null);
     } catch (err: unknown) {
-      setEditError(getApiErrorMessage(err, "Failed to update staff member"));
+      setEditError(getApiErrorMessage(err, t("Failed to update staff member")));
     }
   };
 
@@ -163,8 +164,8 @@ export function Staff() {
         err instanceof Error
           ? err.message
           : (err as { code?: string })?.code === "last_admin"
-            ? "the last active administrator cannot be removed"
-            : "Failed to remove staff member";
+            ? t("the last active administrator cannot be removed")
+            : t("Failed to remove staff member");
       setRemoveError(msg);
     }
   };
@@ -172,11 +173,11 @@ export function Staff() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Staff Management"
+        title={t("Staff Management")}
         actions={
           <Button size="sm" onClick={handleOpenAddDialog} className="gap-1.5">
             <UserPlus className="size-4" aria-hidden="true" />
-            <span>Add staff</span>
+            <span>{t("Add staff")}</span>
           </Button>
         }
       />
@@ -188,11 +189,11 @@ export function Staff() {
         </Alert>
       )}
 
-      {isLoading && <LoadingState message="Loading staff..." />}
+      {isLoading && <LoadingState message={t("Loading staff...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load staff"
+          title={t("Failed to load staff")}
           message={error instanceof Error ? error.message : undefined}
           onRetry={refetch}
         />
@@ -201,11 +202,11 @@ export function Staff() {
       {!isLoading && !isError && staffList.length === 0 && (
         <EmptyState
           icon={<Shield className="size-5" aria-hidden="true" />}
-          title="No staff members"
-          description="There are currently no staff members configured."
+          title={t("No staff members")}
+          description={t("There are currently no staff members configured.")}
           actions={
             <Button variant="outline" size="sm" onClick={handleOpenAddDialog}>
-              Add staff
+              {t("Add staff")}
             </Button>
           }
         />
@@ -216,12 +217,12 @@ export function Staff() {
           <Table density="balanced" dividers="rows" hasHover>
             <TableHeader>
               <TableRow isHeaderRow>
-                <TableHeaderCell>Email</TableHeaderCell>
-                <TableHeaderCell>Role</TableHeaderCell>
-                <TableHeaderCell>Tenant</TableHeaderCell>
-                <TableHeaderCell>Created By</TableHeaderCell>
-                <TableHeaderCell>Created At</TableHeaderCell>
-                <TableHeaderCell className="text-right">Action</TableHeaderCell>
+                <TableHeaderCell>{t("Email")}</TableHeaderCell>
+                <TableHeaderCell>{t("Role")}</TableHeaderCell>
+                <TableHeaderCell>{t("Tenant")}</TableHeaderCell>
+                <TableHeaderCell>{t("Created By")}</TableHeaderCell>
+                <TableHeaderCell>{t("Created At")}</TableHeaderCell>
+                <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -245,7 +246,7 @@ export function Staff() {
                       <Text type="supporting">{tenantDisplay}</Text>
                     </TableCell>
                     <TableCell>
-                      <Text type="supporting">{member.created_by || "System"}</Text>
+                      <Text type="supporting">{member.created_by || t("System")}</Text>
                     </TableCell>
                     <TableCell>
                       <Text type="supporting" hasTabularNumbers>
@@ -254,10 +255,10 @@ export function Staff() {
                     </TableCell>
                     <TableCell className="text-right">
                       <RowActions
-                        label={`staff member ${member.email}`}
+                        label={t("staff member {0}", member.email)}
                         actions={[
-                          { label: "Edit", onSelect: () => handleOpenEditDialog(member) },
-                          { label: "Remove", destructive: true, onSelect: () => handleOpenRemoveDialog(member) },
+                          { label: t("Edit"), onSelect: () => handleOpenEditDialog(member) },
+                          { label: t("Remove"), destructive: true, onSelect: () => handleOpenRemoveDialog(member) },
                         ]}
                       />
                     </TableCell>
@@ -273,22 +274,22 @@ export function Staff() {
         <DialogContent>
           <form onSubmit={handleAddSubmit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Add staff member</DialogTitle>
+              <DialogTitle>{t("Add staff member")}</DialogTitle>
               <DialogDescription>
-                Grant platform console access to an existing Multica account.
+                {t("Grant platform console access to an existing Multica account.")}
               </DialogDescription>
             </DialogHeader>
 
             <Field>
               <FieldLabel htmlFor="staff-email-input" className="text-label">
-                Email address
+                {t("Email address")}
               </FieldLabel>
               <Input
                 id="staff-email-input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
+                placeholder={t("user@example.com")}
                 required
                 disabled={addStaff.isPending}
               />
@@ -296,7 +297,7 @@ export function Staff() {
 
             <Field>
               <FieldLabel htmlFor="staff-role-select" className="text-label">
-                Staff role
+                {t("Staff role")}
               </FieldLabel>
               <Select
                 items={STAFF_ROLE_ITEMS}
@@ -310,15 +311,15 @@ export function Staff() {
                 }}
                 disabled={addStaff.isPending}
               >
-                <SelectTrigger id="staff-role-select" aria-label="Staff role" className="w-full">
+                <SelectTrigger id="staff-role-select" aria-label={t("Staff role")} className="w-full">
                   <SelectValue>
-                    {STAFF_ROLE_ITEMS.find((item) => item.value === role)?.label ?? role}
+                    {t(STAFF_ROLE_ITEMS.find((item) => item.value === role)?.label ?? role)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {STAFF_ROLE_ITEMS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -328,7 +329,7 @@ export function Staff() {
             {role === "admin" && (
               <Field>
                 <FieldLabel htmlFor="staff-tenant-select" className="text-label">
-                  Tenant
+                  {t("Tenant")}
                 </FieldLabel>
                 <Select
                   items={tenantItems}
@@ -336,15 +337,15 @@ export function Staff() {
                   onValueChange={(val) => setTenantId(val ?? "")}
                   disabled={addStaff.isPending}
                 >
-                  <SelectTrigger id="staff-tenant-select" aria-label="Tenant" className="w-full">
-                    <SelectValue placeholder="Select tenant">
-                      {tenantItems.find((item) => item.value === tenantId)?.label}
+                  <SelectTrigger id="staff-tenant-select" aria-label={t("Tenant")} className="w-full">
+                    <SelectValue placeholder={t("Select tenant")}>
+                      {t(tenantItems.find((item) => item.value === tenantId)?.label ?? "")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {tenantItems.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                        {t(item.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -363,7 +364,7 @@ export function Staff() {
               <DialogClose
                 render={<Button variant="outline" type="button" disabled={addStaff.isPending} />}
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -371,7 +372,7 @@ export function Staff() {
                 aria-busy={addStaff.isPending}
               >
                 {addStaff.isPending && <Spinner className="size-3.5" />}
-                Add staff
+                {t("Add staff")}
               </Button>
             </DialogFooter>
           </form>
@@ -382,7 +383,7 @@ export function Staff() {
         <DialogContent>
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Edit staff member</DialogTitle>
+              <DialogTitle>{t("Edit staff member")}</DialogTitle>
               <DialogDescription>
                 {staffToEdit?.email}
               </DialogDescription>
@@ -390,7 +391,7 @@ export function Staff() {
 
             <Field>
               <FieldLabel htmlFor="edit-staff-role-select" className="text-label">
-                Staff role
+                {t("Staff role")}
               </FieldLabel>
               <Select
                 items={STAFF_ROLE_ITEMS}
@@ -404,15 +405,15 @@ export function Staff() {
                 }}
                 disabled={updateStaff.isPending}
               >
-                <SelectTrigger id="edit-staff-role-select" aria-label="Staff role" className="w-full">
+                <SelectTrigger id="edit-staff-role-select" aria-label={t("Staff role")} className="w-full">
                   <SelectValue>
-                    {STAFF_ROLE_ITEMS.find((item) => item.value === editRole)?.label ?? editRole}
+                    {t(STAFF_ROLE_ITEMS.find((item) => item.value === editRole)?.label ?? editRole)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {STAFF_ROLE_ITEMS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -422,7 +423,7 @@ export function Staff() {
             {editRole === "admin" && (
               <Field>
                 <FieldLabel htmlFor="edit-staff-tenant-select" className="text-label">
-                  Tenant
+                  {t("Tenant")}
                 </FieldLabel>
                 <Select
                   items={tenantItems}
@@ -430,15 +431,15 @@ export function Staff() {
                   onValueChange={(val) => setEditTenantId(val ?? "")}
                   disabled={updateStaff.isPending}
                 >
-                  <SelectTrigger id="edit-staff-tenant-select" aria-label="Tenant" className="w-full">
-                    <SelectValue placeholder="Select tenant">
-                      {tenantItems.find((item) => item.value === editTenantId)?.label}
+                  <SelectTrigger id="edit-staff-tenant-select" aria-label={t("Tenant")} className="w-full">
+                    <SelectValue placeholder={t("Select tenant")}>
+                      {t(tenantItems.find((item) => item.value === editTenantId)?.label ?? "")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {tenantItems.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                        {t(item.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -457,7 +458,7 @@ export function Staff() {
               <DialogClose
                 render={<Button variant="outline" type="button" disabled={updateStaff.isPending} />}
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -465,7 +466,7 @@ export function Staff() {
                 aria-busy={updateStaff.isPending}
               >
                 {updateStaff.isPending && <Spinner className="size-3.5" />}
-                Save changes
+                {t("Save changes")}
               </Button>
             </DialogFooter>
           </form>
@@ -475,9 +476,9 @@ export function Staff() {
       <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove staff member</DialogTitle>
+            <DialogTitle>{t("Remove staff member")}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to revoke staff access for{" "}
+              {t("Are you sure you want to revoke staff access for")}{" "}
               <strong className="text-foreground">{staffToRemove?.email}</strong>?
             </DialogDescription>
           </DialogHeader>
@@ -491,7 +492,7 @@ export function Staff() {
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" disabled={removeStaff.isPending} />}>
-              Cancel
+              {t("Cancel")}
             </DialogClose>
             <Button
               variant="destructive"
@@ -500,7 +501,7 @@ export function Staff() {
               aria-busy={removeStaff.isPending}
             >
               {removeStaff.isPending && <Spinner className="size-3.5" />}
-              Remove
+              {t("Remove")}
             </Button>
           </DialogFooter>
         </DialogContent>

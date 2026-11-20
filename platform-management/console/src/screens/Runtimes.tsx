@@ -32,6 +32,7 @@ import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
 import { useMe, useRuntimes, useTenants, type Runtime, type RuntimeStatus } from "../api/hooks";
 import type { StaffRole } from "../components/types";
+import { t } from "../i18n";
 
 interface RuntimesProps {
   onSelectRuntime: (id: string) => void;
@@ -60,26 +61,26 @@ export function RuntimeStatusCell({
     <div className="flex flex-wrap items-center gap-1.5">
       {status === "online" ? (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <StatusDot variant="success" label="Online" aria-hidden="true" />
+          <StatusDot variant="success" label={t("Online")} aria-hidden="true" />
           <Text type="body" color="primary">
-            Online
+            {t("Online")}
           </Text>
         </span>
       ) : status === "offline" ? (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <StatusDot variant="neutral" label="Offline" aria-hidden="true" />
+          <StatusDot variant="neutral" label={t("Offline")} aria-hidden="true" />
           <Text type="body" color="secondary">
-            Offline
+            {t("Offline")}
           </Text>
         </span>
       ) : (
-        <Badge variant="neutral" label="Unknown" />
+        <Badge variant="neutral" label={t("Unknown")} />
       )}
       {disabled && (
         <Badge
           variant="error"
-          label="Disabled"
-          icon={<StatusDot variant="error" label="Disabled" aria-hidden="true" />}
+          label={t("Disabled")}
+          icon={<StatusDot variant="error" label={t("Disabled")} aria-hidden="true" />}
         />
       )}
     </div>
@@ -125,17 +126,17 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
 
   if (effectiveRole && !canRead) {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
   }
 
   const tenantOptions = [
-    { value: "all", label: "All tenants" },
+    { value: "all", label: t("All tenants") },
     ...tenants.map((t) => ({ value: t.id, label: t.name || t.id })),
   ];
 
@@ -155,10 +156,10 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
       header={
         <LayoutHeader hasDivider>
           <PageHeader
-            title="Runtimes"
+            title={t("Runtimes")}
             meta={
               !isLoading && !isError
-                ? `${runtimes.length.toLocaleString()} shown`
+                ? t("{0} shown", runtimes.length.toLocaleString())
                 : undefined
             }
             actions={
@@ -171,7 +172,7 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                 aria-busy={Boolean(isFetching) || undefined}
               >
                 {isFetching ? <Spinner className="size-3.5" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
-                <span>Refresh</span>
+                <span>{t("Refresh")}</span>
               </Button>
             }
           />
@@ -189,8 +190,8 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                   />
                   <Input
                     type="search"
-                    aria-label="Search runtimes"
-                    placeholder="Search by runtime name..."
+                    aria-label={t("Search runtimes")}
+                    placeholder={t("Search by runtime name...")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pr-8 pl-8"
@@ -200,7 +201,7 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                       type="button"
                       variant="ghost"
                       size="icon-xs"
-                      aria-label="Clear search"
+                      aria-label={t("Clear search")}
                       onClick={() => setSearch("")}
                       className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
@@ -216,13 +217,13 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                     setStatusFilter(!value || value === "all" ? "" : value)
                   }
                 >
-                  <SelectTrigger aria-label="Filter by status" className="w-40">
-                    <SelectValue placeholder="All statuses" />
+                  <SelectTrigger aria-label={t("Filter by status")} className="w-40">
+                    <SelectValue placeholder={t("All statuses")} />
                   </SelectTrigger>
                   <SelectContent>
                     {STATUS_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
+                        {t(opt.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -233,13 +234,13 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                   value={disabledFilter ? "true" : "all"}
                   onValueChange={(value) => setDisabledFilter(value === "true")}
                 >
-                  <SelectTrigger aria-label="Filter by access state" className="w-44">
-                    <SelectValue placeholder="All access states" />
+                  <SelectTrigger aria-label={t("Filter by access state")} className="w-44">
+                    <SelectValue placeholder={t("All access states")} />
                   </SelectTrigger>
                   <SelectContent>
                     {DISABLED_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
+                        {t(opt.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -253,13 +254,13 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                       setTenantFilter(!value || value === "all" ? "" : value)
                     }
                   >
-                    <SelectTrigger aria-label="Filter by tenant" className="w-48">
-                      <SelectValue placeholder="All tenants" />
+                    <SelectTrigger aria-label={t("Filter by tenant")} className="w-48">
+                      <SelectValue placeholder={t("All tenants")} />
                     </SelectTrigger>
                     <SelectContent>
                       {tenantOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
+                          {t(opt.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -268,18 +269,18 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
 
                 {hasActiveFilters && (
                   <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
-                    Clear filters
+                    {t("Clear filters")}
                   </Button>
                 )}
               </HStack>
 
-              <Heading level={3}>Directory</Heading>
+              <Heading level={3}>{t("Directory")}</Heading>
 
-              {isLoading && <LoadingState message="Loading runtimes..." />}
+              {isLoading && <LoadingState message={t("Loading runtimes...")} />}
 
               {isError && (
                 <ErrorState
-                  title="Failed to load runtimes"
+                  title={t("Failed to load runtimes")}
                   message={error instanceof Error ? error.message : undefined}
                   onRetry={refetch}
                 />
@@ -288,16 +289,16 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
               {!isLoading && !isError && runtimes.length === 0 && (
                 <EmptyState
                   icon={<Server className="size-5" aria-hidden="true" />}
-                  title="No runtimes found"
+                  title={t("No runtimes found")}
                   description={
                     hasActiveFilters
-                      ? "No runtimes matched your current filters."
-                      : "There are no registered runtimes available for your scope."
+                      ? t("No runtimes matched your current filters.")
+                      : t("There are no registered runtimes available for your scope.")
                   }
                   actions={
                     hasActiveFilters ? (
                       <Button variant="outline" size="sm" onClick={clearFilters}>
-                        Clear filters
+                        {t("Clear filters")}
                       </Button>
                     ) : undefined
                   }
@@ -310,13 +311,13 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                     <Table density="balanced" dividers="rows" hasHover>
                       <TableHeader>
                         <TableRow isHeaderRow>
-                          <TableHeaderCell>Runtime</TableHeaderCell>
-                          <TableHeaderCell>Status</TableHeaderCell>
-                          <TableHeaderCell>OS</TableHeaderCell>
-                          <TableHeaderCell>Versions</TableHeaderCell>
-                          <TableHeaderCell className="text-right">Running tasks</TableHeaderCell>
-                          <TableHeaderCell>Last seen</TableHeaderCell>
-                          <TableHeaderCell className="text-right">Action</TableHeaderCell>
+                          <TableHeaderCell>{t("Runtime")}</TableHeaderCell>
+                          <TableHeaderCell>{t("Status")}</TableHeaderCell>
+                          <TableHeaderCell>{t("OS")}</TableHeaderCell>
+                          <TableHeaderCell>{t("Versions")}</TableHeaderCell>
+                          <TableHeaderCell className="text-right">{t("Running tasks")}</TableHeaderCell>
+                          <TableHeaderCell>{t("Last seen")}</TableHeaderCell>
+                          <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -345,10 +346,10 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                             <TableCell>
                               <div className="space-y-0.5">
                                 <div className="font-mono text-caption text-foreground">
-                                  Daemon: {rt.daemon_version || "-"}
+                                  {t("Daemon:")} {rt.daemon_version || "-"}
                                 </div>
                                 <div className="font-mono text-caption text-muted-foreground">
-                                  Agent: {rt.agent_version || "-"}
+                                  {t("Agent:")} {rt.agent_version || "-"}
                                 </div>
                               </div>
                             </TableCell>
@@ -365,7 +366,7 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                               </Text>
                             </TableCell>
                             <TableCell className="text-right">
-                              <RowActions label="runtime" actions={[{ label: "View", onSelect: () => onSelectRuntime(rt.id) }]} />
+                              <RowActions label={t("runtime")} actions={[{ label: t("View"), onSelect: () => onSelectRuntime(rt.id) }]} />
                             </TableCell>
                           </TableRow>
                         ))}
@@ -386,7 +387,7 @@ export function Runtimes({ onSelectRuntime, userRole }: RuntimesProps) {
                         {isFetchingNextPage && (
                           <Spinner className="size-4" aria-hidden="true" />
                         )}
-                        {isFetchingNextPage ? "Loading..." : "Load more"}
+                        {isFetchingNextPage ? t("Loading...") : t("Load more")}
                       </Button>
                     </div>
                   )}

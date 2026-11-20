@@ -34,6 +34,7 @@ import {
 import type { Notice, NoticeCandidate } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { formatMinorAmount } from "../money";
+import { t } from "../i18n";
 
 interface PaymentNoticesProps {
   userRole?: StaffRole;
@@ -51,7 +52,7 @@ const REVIEW_REASON_LABELS: Record<string, string> = {
 
 function formatReviewReason(reason: string): string {
   if (!reason) return "-";
-  return REVIEW_REASON_LABELS[reason] ?? reason;
+  return t(REVIEW_REASON_LABELS[reason] ?? reason);
 }
 
 function formatDateTime(value: string): string {
@@ -99,10 +100,10 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
   // Role gating: Only billing and system_admin roles can view the payment notices queue
   if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "system_admin") {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -128,7 +129,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
       setSelectedCandidate(null);
       setSelectedId(null);
     } catch (err: unknown) {
-      setMatchError(getErrorMessage(err, "Failed to match payment notice"));
+      setMatchError(getErrorMessage(err, t("Failed to match payment notice")));
     }
   };
 
@@ -149,7 +150,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
       setDismissDialogOpen(false);
       setSelectedId(null);
     } catch (err: unknown) {
-      setDismissError(getErrorMessage(err, "Failed to dismiss payment notice"));
+      setDismissError(getErrorMessage(err, t("Failed to dismiss payment notice")));
     }
   };
 
@@ -158,15 +159,15 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Payment notices"
+        title={t("Payment notices")}
         meta={
           !isLoading && !isError ? (
             <span className="tabular-nums">
-              {queueCount} {queueCount === 1 ? "notice" : "notices"} awaiting review
+              {queueCount} {queueCount === 1 ? "notice" : "notices"} {t("awaiting review")}
             </span>
           ) : undefined
         }
-        description="Match incoming bank transfers to pending orders or dismiss unmatched notices."
+        description={t("Match incoming bank transfers to pending orders or dismiss unmatched notices.")}
         actions={
           queueCount > 0 ? (
             <Button
@@ -183,18 +184,18 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
               ) : (
                 <RefreshCw className="size-3.5" aria-hidden="true" />
               )}
-              <span>Refresh</span>
+              <span>{t("Refresh")}</span>
             </Button>
           ) : undefined
         }
       />
 
-      {isLoading && <LoadingState message="Loading payment notices..." />}
+      {isLoading && <LoadingState message={t("Loading payment notices...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load payment notices"
-          message={getErrorMessage(error, "An error occurred while loading payment notices.")}
+          title={t("Failed to load payment notices")}
+          message={getErrorMessage(error, t("An error occurred while loading payment notices."))}
           onRetry={refetch}
         />
       )}
@@ -202,11 +203,11 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
       {!isLoading && !isError && (!notices || notices.length === 0) && (
         <EmptyState
           icon={<Inbox className="size-4" />}
-          title="No payment notices need review"
-          description="Incoming transfers that cannot be matched automatically will appear in this queue."
+          title={t("No payment notices need review")}
+          description={t("Incoming transfers that cannot be matched automatically will appear in this queue.")}
           actions={
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Refresh
+              {t("Refresh")}
             </Button>
           }
         />
@@ -219,12 +220,12 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
             <Table density="compact" dividers="rows" hasHover>
               <TableHeader>
                 <TableRow isHeaderRow>
-                  <TableHeaderCell>Received</TableHeaderCell>
-                  <TableHeaderCell>Transfer code</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Amount</TableHeaderCell>
-                  <TableHeaderCell>State</TableHeaderCell>
-                  <TableHeaderCell>Reason</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Action</TableHeaderCell>
+                  <TableHeaderCell>{t("Received")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Transfer code")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Amount")}</TableHeaderCell>
+                  <TableHeaderCell>{t("State")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Reason")}</TableHeaderCell>
+                  <TableHeaderCell className="text-right">{t("Action")}</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -259,7 +260,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                         </Text>
                       </TableCell>
                       <TableCell className="text-right">
-                        <RowActions label="payment notice" actions={[{ label: "View", onSelect: () => setSelectedId(notice.id) }]} />
+                        <RowActions label={t("payment notice")} actions={[{ label: t("View"), onSelect: () => setSelectedId(notice.id) }]} />
                       </TableCell>
                     </TableRow>
                   );
@@ -269,21 +270,21 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
           </Card>
 
           {/* Docked Inspector Rail */}
-          <aside aria-label="Notice details">
+          <aside aria-label={t("Notice details")}>
             <Card padding={5}>
               {selectedId === null ? (
                 <EmptyState
                   isCompact
                   icon={<Inbox className="size-5" aria-hidden="true" />}
-                  title="No notice selected"
-                  description="Select a payment notice from the queue to inspect candidate orders."
+                  title={t("No notice selected")}
+                  description={t("Select a payment notice from the queue to inspect candidate orders.")}
                 />
               ) : detailLoading ? (
-                <LoadingState message="Loading payment notice..." />
+                <LoadingState message={t("Loading payment notice...")} />
               ) : detailIsError || !detail ? (
                 <ErrorState
-                  title="Failed to load payment notice"
-                  message={getErrorMessage(detailError, "An error occurred while loading the payment notice.")}
+                  title={t("Failed to load payment notice")}
+                  message={getErrorMessage(detailError, t("An error occurred while loading the payment notice."))}
                   onRetry={refetchDetail}
                 />
               ) : (
@@ -291,7 +292,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Heading level={2}>Notice details</Heading>
+                        <Heading level={2}>{t("Notice details")}</Heading>
                         <StatusBadge status={detail.state} />
                       </div>
                       <Text type="code" color="secondary" as="p">
@@ -305,13 +306,13 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                           size="sm"
                           onClick={handleOpenDismissDialog}
                         >
-                          Dismiss
+                          {t("Dismiss")}
                         </Button>
                       )}
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        aria-label="Close"
+                        aria-label={t("Close")}
                         onClick={() => setSelectedId(null)}
                       >
                         <X className="size-4" aria-hidden="true" />
@@ -322,20 +323,20 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                   <Divider />
 
                   <MetadataList columns={2}>
-                    <MetadataListItem label="Amount" tabular>
+                    <MetadataListItem label={t("Amount")} tabular>
                       {formatMinorAmount(detail.amount, detail.currency)}
                     </MetadataListItem>
-                    <MetadataListItem label="Provider">
+                    <MetadataListItem label={t("Provider")}>
                       {detail.provider || "-"}
                     </MetadataListItem>
-                    <MetadataListItem label="Reason">
+                    <MetadataListItem label={t("Reason")}>
                       {formatReviewReason(detail.review_reason)}
                     </MetadataListItem>
-                    <MetadataListItem label="Received" tabular>
+                    <MetadataListItem label={t("Received")} tabular>
                       <Text type="supporting">{formatDateTime(detail.received_at)}</Text>
                     </MetadataListItem>
                     <MetadataListItem
-                      label="Provider event ID"
+                      label={t("Provider event ID")}
                       mono
                       className="break-all sm:col-span-2"
                     >
@@ -343,7 +344,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                     </MetadataListItem>
                     {detail.order_id && (
                       <MetadataListItem
-                        label="Order ID"
+                        label={t("Order ID")}
                         mono
                         className="break-all sm:col-span-2"
                       >
@@ -356,14 +357,14 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
 
                   <div className="space-y-3">
                     <div className="flex items-baseline justify-between gap-2">
-                      <Heading level={3}>Candidate orders</Heading>
+                      <Heading level={3}>{t("Candidate orders")}</Heading>
                       <Text type="supporting" hasTabularNumbers>
                         {detail.candidates.length}
                       </Text>
                     </div>
 
                     {detail.candidates.length === 0 ? (
-                      <EmptyState isCompact title="No matching orders" />
+                      <EmptyState isCompact title={t("No matching orders")} />
                     ) : (
                       <ul className="divide-y divide-surface-border rounded-lg border border-surface-border bg-page-canvas/50">
                         {detail.candidates.map((candidate: NoticeCandidate) => (
@@ -388,14 +389,14 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                                   size="sm"
                                   onClick={() => handleOpenMatchDialog(candidate)}
                                 >
-                                  Match
+                                  {t("Match")}
                                 </Button>
                               )}
                             </div>
 
                             <dl className="grid grid-cols-1 gap-1.5 text-caption">
                               <div className="flex items-baseline justify-between gap-2">
-                                <dt className="shrink-0 text-muted-foreground">Order</dt>
+                                <dt className="shrink-0 text-muted-foreground">{t("Order")}</dt>
                                 <dd
                                   className="min-w-0 truncate font-mono text-foreground"
                                   title={candidate.order_id}
@@ -404,7 +405,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                                 </dd>
                               </div>
                               <div className="flex items-baseline justify-between gap-2">
-                                <dt className="shrink-0 text-muted-foreground">Workspace</dt>
+                                <dt className="shrink-0 text-muted-foreground">{t("Workspace")}</dt>
                                 <dd
                                   className="min-w-0 truncate font-mono text-muted-foreground"
                                   title={candidate.workspace_id}
@@ -413,7 +414,7 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
                                 </dd>
                               </div>
                               <div className="flex items-baseline justify-between gap-2">
-                                <dt className="shrink-0 text-muted-foreground">Created</dt>
+                                <dt className="shrink-0 text-muted-foreground">{t("Created")}</dt>
                                 <dd className="tabular-nums text-muted-foreground">
                                   {formatDateTime(candidate.created_at)}
                                 </dd>
@@ -441,13 +442,13 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
             setMatchError(null);
           }
         }}
-        title="Match payment to order"
+        title={t("Match payment to order")}
         description={
           selectedCandidate
-            ? `Match this payment notice to order ${selectedCandidate.order_id} (${formatMinorAmount(selectedCandidate.amount + selectedCandidate.vat_amount, selectedCandidate.currency)}).`
+            ? t("Match this payment notice to order {0} ({1}).", selectedCandidate.order_id, formatMinorAmount(selectedCandidate.amount + selectedCandidate.vat_amount, selectedCandidate.currency))
             : ""
         }
-        confirmLabel="Match payment"
+        confirmLabel={t("Match payment")}
         isPending={resolveNotice.isPending}
         error={matchError}
         onConfirm={handleConfirmMatch}
@@ -462,9 +463,9 @@ export function PaymentNotices({ userRole }: PaymentNoticesProps) {
             setDismissError(null);
           }
         }}
-        title="Dismiss payment notice"
-        description="Dismiss this payment notice from the review queue without matching it to an order."
-        confirmLabel="Dismiss notice"
+        title={t("Dismiss payment notice")}
+        description={t("Dismiss this payment notice from the review queue without matching it to an order.")}
+        confirmLabel={t("Dismiss notice")}
         confirmVariant="destructive"
         isPending={dismissNotice.isPending}
         error={dismissError}

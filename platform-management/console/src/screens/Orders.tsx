@@ -41,6 +41,7 @@ import {
 } from "../api/schemas";
 import type { StaffRole } from "../components/types";
 import { formatMinorAmount } from "../money";
+import { t } from "../i18n";
 
 interface OrdersProps {
   userRole?: StaffRole;
@@ -99,10 +100,10 @@ export function Orders({ userRole }: OrdersProps) {
   // Role gating: billing, admin (read-only), and system_admin can view the orders screen
   if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "admin" && effectiveRole !== "system_admin") {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -140,7 +141,7 @@ export function Orders({ userRole }: OrdersProps) {
       if (err instanceof PlatformApiError || err instanceof Error) {
         setConfirmError(err.message);
       } else {
-        setConfirmError("Failed to confirm order payment");
+        setConfirmError(t("Failed to confirm order payment"));
       }
     }
   };
@@ -167,8 +168,8 @@ export function Orders({ userRole }: OrdersProps) {
       } else {
         setCancelError(
           selectedOrderForCancel.kind === "usage"
-            ? "Failed to write off order"
-            : "Failed to cancel order",
+            ? t("Failed to write off order")
+            : t("Failed to cancel order"),
         );
       }
     }
@@ -182,7 +183,7 @@ export function Orders({ userRole }: OrdersProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Orders" />
+      <PageHeader title={t("Orders")} />
 
       <Tabs
         value={activeTab}
@@ -191,22 +192,22 @@ export function Orders({ userRole }: OrdersProps) {
         }}
       >
         <div className="border-b border-surface-border">
-          <TabsList variant="line" aria-label="Order status">
+          <TabsList variant="line" aria-label={t("Order status")}>
             {STATUS_TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>
-                {tab.label}
+                {t(tab.label)}
               </TabsTrigger>
             ))}
           </TabsList>
         </div>
       </Tabs>
 
-      {isLoading && <LoadingState message="Loading orders..." />}
+      {isLoading && <LoadingState message={t("Loading orders...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load orders"
-          message={error instanceof Error ? error.message : "An error occurred while loading orders."}
+          title={t("Failed to load orders")}
+          message={error instanceof Error ? error.message : t("An error occurred while loading orders.")}
           onRetry={refetch}
         />
       )}
@@ -214,8 +215,8 @@ export function Orders({ userRole }: OrdersProps) {
       {!isLoading && !isError && (!orders || orders.length === 0) && (
         <EmptyState
           icon={<CreditCard className="size-4" />}
-          title="No orders"
-          description={`No orders found with status "${activeTab}".`}
+          title={t("No orders")}
+          description={t("No orders found with status \"{0}\".", activeTab)}
         />
       )}
 
@@ -224,16 +225,16 @@ export function Orders({ userRole }: OrdersProps) {
           <Table density="compact" dividers="rows" hasHover>
             <TableHeader>
               <TableRow isHeaderRow>
-                <TableHeaderCell>Workspace</TableHeaderCell>
-                <TableHeaderCell>Kind</TableHeaderCell>
-                <TableHeaderCell>Transfer Code</TableHeaderCell>
-                <TableHeaderCell>Plan & Seats</TableHeaderCell>
-                <TableHeaderCell>Total (incl. VAT)</TableHeaderCell>
-                <TableHeaderCell>Buyer Email</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>E-invoice</TableHeaderCell>
-                <TableHeaderCell>Expiry</TableHeaderCell>
-                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                <TableHeaderCell>{t("Workspace")}</TableHeaderCell>
+                <TableHeaderCell>{t("Kind")}</TableHeaderCell>
+                <TableHeaderCell>{t("Transfer Code")}</TableHeaderCell>
+                <TableHeaderCell>{t("Plan & Seats")}</TableHeaderCell>
+                <TableHeaderCell>{t("Total (incl. VAT)")}</TableHeaderCell>
+                <TableHeaderCell>{t("Buyer Email")}</TableHeaderCell>
+                <TableHeaderCell>{t("Status")}</TableHeaderCell>
+                <TableHeaderCell>{t("E-invoice")}</TableHeaderCell>
+                <TableHeaderCell>{t("Expiry")}</TableHeaderCell>
+                <TableHeaderCell className="text-right">{t("Actions")}</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -260,7 +261,7 @@ export function Orders({ userRole }: OrdersProps) {
                     <TableCell>
                       <Badge
                         variant="neutral"
-                        label={ORDER_KIND_LABELS[order.kind] ?? order.kind}
+                        label={t(ORDER_KIND_LABELS[order.kind] ?? order.kind)}
                       />
                     </TableCell>
                     <TableCell>
@@ -270,7 +271,7 @@ export function Orders({ userRole }: OrdersProps) {
                           variant="ghost"
                           size="icon-xs"
                           onClick={() => handleCopyTransferCode(order.transfer_code)}
-                          aria-label="Copy transfer code"
+                          aria-label={t("Copy transfer code")}
                           className="text-muted-foreground hover:text-foreground"
                         >
                           {isCopied ? (
@@ -286,7 +287,7 @@ export function Orders({ userRole }: OrdersProps) {
                         {order.plan_key} &bull; {order.interval}
                       </Text>
                       <Text type="supporting" hasTabularNumbers as="div">
-                        {order.seats} seats
+                        {order.seats} {t("seats")}
                       </Text>
                     </TableCell>
                     <TableCell>
@@ -294,7 +295,7 @@ export function Orders({ userRole }: OrdersProps) {
                         {formatMinorAmount(totalAmount, order.currency)}
                       </Text>
                       <Text type="supporting" hasTabularNumbers as="div">
-                        Net: {formatMinorAmount(order.amount, order.currency)} + VAT: {formatMinorAmount(order.vat_amount, order.currency)}
+                        {t("Net:")} {formatMinorAmount(order.amount, order.currency)} {t("+ VAT:")} {formatMinorAmount(order.vat_amount, order.currency)}
                       </Text>
                     </TableCell>
                     <TableCell>
@@ -303,7 +304,7 @@ export function Orders({ userRole }: OrdersProps) {
                       </Text>
                       {order.buyer.tax_code && (
                         <Text type="code" color="secondary" as="div">
-                          MST: {order.buyer.tax_code}
+                          {t("MST:")} {order.buyer.tax_code}
                         </Text>
                       )}
                     </TableCell>
@@ -324,19 +325,19 @@ export function Orders({ userRole }: OrdersProps) {
                     </TableCell>
                     <TableCell className="text-right">
                       <RowActions
-                        label={`order ${order.transfer_code}`}
+                        label={t("order {0}", order.transfer_code)}
                         actions={[
                           ...(activeTab === "pending" && canManageOrders
                             ? [
-                                { label: "Confirm", primary: true, onSelect: () => handleOpenConfirmDialog(order) },
+                                { label: t("Confirm"), primary: true, onSelect: () => handleOpenConfirmDialog(order) },
                                 ...(isUsageOrder
                                   ? canWriteOffUsage
-                                    ? [{ label: "Write off", destructive: true, onSelect: () => handleOpenCancelDialog(order) }]
+                                    ? [{ label: t("Write off"), destructive: true, onSelect: () => handleOpenCancelDialog(order) }]
                                     : []
-                                  : [{ label: "Cancel", destructive: true, onSelect: () => handleOpenCancelDialog(order) }]),
+                                  : [{ label: t("Cancel"), destructive: true, onSelect: () => handleOpenCancelDialog(order) }]),
                               ]
                             : []),
-                          { label: "History", onSelect: () => setHistoryOrderId(order.id) },
+                          { label: t("History"), onSelect: () => setHistoryOrderId(order.id) },
                         ]}
                       />
                     </TableCell>
@@ -352,22 +353,22 @@ export function Orders({ userRole }: OrdersProps) {
       <ConfirmReasonDialog
         open={confirmDialogOpen}
         onOpenChange={setConfirmDialogOpen}
-        title="Confirm payment"
-        description={`Confirm bank transfer payment for order ${selectedOrderForConfirm?.transfer_code || ""}. This will apply the subscription immediately.`}
-        confirmLabel="Confirm payment"
+        title={t("Confirm payment")}
+        description={t("Confirm bank transfer payment for order {0}. This will apply the subscription immediately.", selectedOrderForConfirm?.transfer_code || "")}
+        confirmLabel={t("Confirm payment")}
         isPending={confirmOrder.isPending}
         error={confirmError}
         onConfirm={handleConfirmPayment}
       >
         <Field>
           <FieldLabel htmlFor="transfer-reference-input" className="text-label">
-            Bank transfer reference (optional)
+            {t("Bank transfer reference (optional)")}
           </FieldLabel>
           <Input
             id="transfer-reference-input"
             value={transferReference}
             onChange={(e) => setTransferReference(e.target.value)}
-            placeholder="e.g. FT26111600123"
+            placeholder={t("e.g. FT26111600123")}
             disabled={confirmOrder.isPending}
           />
         </Field>
@@ -377,13 +378,13 @@ export function Orders({ userRole }: OrdersProps) {
       <ConfirmReasonDialog
         open={cancelDialogOpen}
         onOpenChange={setCancelDialogOpen}
-        title={isWriteOffTarget ? "Write off usage order" : "Cancel order"}
+        title={isWriteOffTarget ? t("Write off usage order") : t("Cancel order")}
         description={
           isWriteOffTarget
-            ? `Write off pending usage order ${selectedOrderForCancel?.transfer_code || ""}? Its lines will stay excluded from future invoices.`
-            : `Are you sure you want to cancel pending order ${selectedOrderForCancel?.transfer_code || ""}? This action cannot be undone.`
+            ? t("Write off pending usage order {0}? Its lines will stay excluded from future invoices.", selectedOrderForCancel?.transfer_code || "")
+            : t("Are you sure you want to cancel pending order {0}? This action cannot be undone.", selectedOrderForCancel?.transfer_code || "")
         }
-        confirmLabel={isWriteOffTarget ? "Write off order" : "Cancel order"}
+        confirmLabel={isWriteOffTarget ? t("Write off order") : t("Cancel order")}
         confirmVariant="destructive"
         isPending={cancelOrder.isPending}
         error={cancelError}
@@ -399,25 +400,25 @@ export function Orders({ userRole }: OrdersProps) {
       >
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>E-invoice history</DialogTitle>
+            <DialogTitle>{t("E-invoice history")}</DialogTitle>
           </DialogHeader>
 
-          {historyLoading && <LoadingState message="Loading e-invoice history..." />}
+          {historyLoading && <LoadingState message={t("Loading e-invoice history...")} />}
 
           {historyIsError && (
             <ErrorState
-              title="Failed to load e-invoice history"
+              title={t("Failed to load e-invoice history")}
               message={
                 historyError instanceof PlatformApiError || historyError instanceof Error
                   ? historyError.message
-                  : "An error occurred while loading e-invoice history."
+                  : t("An error occurred while loading e-invoice history.")
               }
               onRetry={refetchHistory}
             />
           )}
 
           {!historyLoading && !historyIsError && sortedHistory.length === 0 && (
-            <EmptyState title="No e-invoice for this order" isCompact />
+            <EmptyState title={t("No e-invoice for this order")} isCompact />
           )}
 
           {!historyLoading && !historyIsError && sortedHistory.length > 0 && (
@@ -425,13 +426,13 @@ export function Orders({ userRole }: OrdersProps) {
               <Table density="compact" dividers="rows" hasHover>
                 <TableHeader>
                   <TableRow isHeaderRow>
-                    <TableHeaderCell>Revision</TableHeaderCell>
-                    <TableHeaderCell>State</TableHeaderCell>
-                    <TableHeaderCell>Invoice number</TableHeaderCell>
-                    <TableHeaderCell>Buyer</TableHeaderCell>
-                    <TableHeaderCell>Attempts</TableHeaderCell>
-                    <TableHeaderCell>Last error</TableHeaderCell>
-                    <TableHeaderCell>Updated</TableHeaderCell>
+                    <TableHeaderCell>{t("Revision")}</TableHeaderCell>
+                    <TableHeaderCell>{t("State")}</TableHeaderCell>
+                    <TableHeaderCell>{t("Invoice number")}</TableHeaderCell>
+                    <TableHeaderCell>{t("Buyer")}</TableHeaderCell>
+                    <TableHeaderCell>{t("Attempts")}</TableHeaderCell>
+                    <TableHeaderCell>{t("Last error")}</TableHeaderCell>
+                    <TableHeaderCell>{t("Updated")}</TableHeaderCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -442,7 +443,7 @@ export function Orders({ userRole }: OrdersProps) {
                       <TableRow key={item.revision}>
                         <TableCell>
                           <Text type="code" color="secondary">
-                            rev {item.revision}
+                            {t("rev")} {item.revision}
                           </Text>
                         </TableCell>
                         <TableCell>
@@ -460,7 +461,7 @@ export function Orders({ userRole }: OrdersProps) {
                               className="inline-flex items-center gap-1 text-caption text-primary underline underline-offset-3 hover:opacity-80"
                             >
                               <ExternalLink className="size-3.5" aria-hidden="true" />
-                              <span>View</span>
+                              <span>{t("View")}</span>
                             </a>
                           )}
                         </TableCell>
@@ -503,7 +504,7 @@ export function Orders({ userRole }: OrdersProps) {
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Close
+              {t("Close")}
             </DialogClose>
           </DialogFooter>
         </DialogContent>

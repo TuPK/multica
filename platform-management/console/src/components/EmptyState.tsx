@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Card } from "@astryxdesign/core/Card";
 import { EmptyState as AstryxEmptyState } from "@astryxdesign/core/EmptyState";
 import { FileText } from "@multica/ui/icons";
+import { t } from "../i18n";
 
 interface EmptyStateProps {
   title?: string;
@@ -12,7 +13,7 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  title = "No items found",
+  title = t("No items found"),
   description,
   icon,
   actions,

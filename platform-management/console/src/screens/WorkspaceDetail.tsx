@@ -92,6 +92,7 @@ import {
   type WorkspaceUsageUnpaidOrder,
 } from "../api/schemas";
 import { formatMinorAmount } from "../money";
+import { t } from "../i18n";
 
 function formatWorkspaceConflictError(err: unknown, fallback: string): string {
   if (err instanceof PlatformApiError) {
@@ -104,9 +105,9 @@ function formatWorkspaceConflictError(err: unknown, fallback: string): string {
       (status || (allowedList && allowedList.length > 0))
     ) {
       const parts: string[] = [err.message || fallback];
-      if (status) parts.push(`Current status: ${status}`);
+      if (status) parts.push(t("Current status: {0}", status));
       if (allowedList && allowedList.length > 0) {
-        parts.push(`Allowed: ${allowedList.join(", ")}`);
+        parts.push(t("Allowed: {0}", allowedList.join(", ")));
       }
       return parts.join(" — ");
     }
@@ -160,29 +161,29 @@ function MonthlyUsageSection({
   return (
     <Section variant="transparent" padding={0} data-testid="usage-month" className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <Heading level={2}>Monthly Usage</Heading>
+        <Heading level={2}>{t("Monthly Usage")}</Heading>
         {usageData && (
           <Text type="code" color="secondary">
-            {usageData.period_start.slice(0, 10)} to {usageData.period_end.slice(0, 10)} (UTC)
+            {usageData.period_start.slice(0, 10)} {t("to")} {usageData.period_end.slice(0, 10)} {t("(UTC)")}
           </Text>
         )}
       </div>
 
-      {isLoading && <LoadingState message="Loading monthly usage..." />}
+      {isLoading && <LoadingState message={t("Loading monthly usage...")} />}
       {isError && (
         <ErrorState
-          title="Failed to load monthly usage"
-          message={error instanceof Error ? error.message : "Unable to load monthly usage."}
+          title={t("Failed to load monthly usage")}
+          message={error instanceof Error ? error.message : t("Unable to load monthly usage.")}
           onRetry={onRetry}
         />
       )}
       {!isLoading && !isError && usageData && (
         <div className="space-y-6">
           <div data-testid="usage-rows" className="space-y-2">
-            <Heading level={3}>Daily charges</Heading>
+            <Heading level={3}>{t("Daily charges")}</Heading>
             {usageData.rows.length === 0 ? (
               <Text type="supporting" as="p">
-                No rated usage rows for this month.
+                {t("No rated usage rows for this month.")}
               </Text>
             ) : (
               <Card padding={0} className="overflow-x-auto">
@@ -195,7 +196,7 @@ function MonthlyUsageSection({
                   columns={[
                     {
                       key: "day",
-                      header: "Day",
+                      header: t("Day"),
                       width: proportional(1, { minWidth: 110 }),
                       renderCell: (row) => (
                         <Text type="code" hasTabularNumbers>
@@ -205,18 +206,18 @@ function MonthlyUsageSection({
                     },
                     {
                       key: "meter",
-                      header: "Meter",
+                      header: t("Meter"),
                       width: proportional(1.2, { minWidth: 130 }),
                       renderCell: (row) => <Text type="code">{row.meter}</Text>,
                     },
                     {
                       key: "quantity",
-                      header: "Quantity",
+                      header: t("Quantity"),
                       width: proportional(1, { minWidth: 100 }),
                       align: "end",
                       renderCell: (row) => (
                         <span
-                          title={row.meter === "storage_bytes" ? `${row.quantity.toLocaleString()} bytes` : undefined}
+                          title={row.meter === "storage_bytes" ? t("{0} bytes", row.quantity.toLocaleString()) : undefined}
                         >
                           <Text type="body" hasTabularNumbers>
                             {formatUsageQuantity(row)}
@@ -226,7 +227,7 @@ function MonthlyUsageSection({
                     },
                     {
                       key: "unit_price",
-                      header: "Unit price",
+                      header: t("Unit price"),
                       width: proportional(1, { minWidth: 120 }),
                       align: "end",
                       renderCell: (row) => (
@@ -237,7 +238,7 @@ function MonthlyUsageSection({
                     },
                     {
                       key: "discount_pct",
-                      header: "Discount",
+                      header: t("Discount"),
                       width: pixel(90),
                       align: "end",
                       renderCell: (row) => (
@@ -248,7 +249,7 @@ function MonthlyUsageSection({
                     },
                     {
                       key: "net_amount",
-                      header: "Net amount",
+                      header: t("Net amount"),
                       width: proportional(1, { minWidth: 110 }),
                       align: "end",
                       renderCell: (row) => (
@@ -259,7 +260,7 @@ function MonthlyUsageSection({
                     },
                     {
                       key: "note",
-                      header: "Note",
+                      header: t("Note"),
                       width: proportional(1.5, { minWidth: 120 }),
                       renderCell: (row) => <Text type="supporting">{row.note || "-"}</Text>,
                     },
@@ -271,7 +272,7 @@ function MonthlyUsageSection({
 
           {usageData.missing_days.length > 0 && (
             <div data-testid="usage-missing-days" className="space-y-2">
-              <Heading level={3}>Missing days</Heading>
+              <Heading level={3}>{t("Missing days")}</Heading>
               <ul className="flex flex-wrap gap-2">
                 {usageData.missing_days.map((day) => (
                   <li
@@ -279,7 +280,7 @@ function MonthlyUsageSection({
                     className="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-muted/40 px-2.5 py-1 text-caption"
                   >
                     <Text type="code">{day}</Text>
-                    <Badge variant="neutral" label="missing" />
+                    <Badge variant="neutral" label={t("missing")} />
                   </li>
                 ))}
               </ul>
@@ -287,10 +288,10 @@ function MonthlyUsageSection({
           )}
 
           <div data-testid="usage-unpaid-orders" className="space-y-2">
-            <Heading level={3}>Unpaid usage orders</Heading>
+            <Heading level={3}>{t("Unpaid usage orders")}</Heading>
             {usageData.unpaid_orders.length === 0 ? (
               <Text type="supporting" as="p">
-                No unpaid usage orders.
+                {t("No unpaid usage orders.")}
               </Text>
             ) : (
               <Card padding={0} className="overflow-x-auto">
@@ -303,13 +304,13 @@ function MonthlyUsageSection({
                   columns={[
                     {
                       key: "id",
-                      header: "Order",
+                      header: t("Order"),
                       width: proportional(1.5, { minWidth: 140 }),
                       renderCell: (order) => <Text type="code">{order.id}</Text>,
                     },
                     {
                       key: "period_start",
-                      header: "Period",
+                      header: t("Period"),
                       width: proportional(1.8, { minWidth: 170 }),
                       renderCell: (order) => (
                         <Text type="code" color="secondary" hasTabularNumbers>
@@ -321,7 +322,7 @@ function MonthlyUsageSection({
                     },
                     {
                       key: "created_at",
-                      header: "Created",
+                      header: t("Created"),
                       width: proportional(1.5, { minWidth: 150 }),
                       renderCell: (order) => (
                         <Text type="supporting" hasTabularNumbers>
@@ -331,7 +332,7 @@ function MonthlyUsageSection({
                     },
                     {
                       key: "amount",
-                      header: "Amount",
+                      header: t("Amount"),
                       width: proportional(1, { minWidth: 100 }),
                       align: "end",
                       renderCell: (order) => (
@@ -342,7 +343,7 @@ function MonthlyUsageSection({
                     },
                     {
                       key: "vat_amount",
-                      header: "VAT",
+                      header: t("VAT"),
                       width: proportional(1, { minWidth: 90 }),
                       align: "end",
                       renderCell: (order) => (
@@ -353,7 +354,7 @@ function MonthlyUsageSection({
                     },
                     {
                       key: "status",
-                      header: "Status",
+                      header: t("Status"),
                       width: proportional(1, { minWidth: 110 }),
                       renderCell: (order) => <StatusBadge status={order.status} />,
                     },
@@ -361,14 +362,14 @@ function MonthlyUsageSection({
                       ? [
                           {
                             key: "actions",
-                            header: "Action",
+                            header: t("Action"),
                             width: pixel(actionsWidth),
                             align: "end" as const,
                             renderCell: (order: WorkspaceUsageUnpaidOrder) => (
                               <RowActions
-                                label={`unpaid order ${order.id}`}
+                                label={t("unpaid order {0}", order.id)}
                                 actions={[
-                                  { label: "Write off", destructive: true, onSelect: () => onWriteOff(order) },
+                                  { label: t("Write off"), destructive: true, onSelect: () => onWriteOff(order) },
                                 ]}
                               />
                             ),
@@ -432,7 +433,7 @@ const ACCOUNT_KIND_ITEMS = [
   { value: "business", label: "Business" },
 ];
 
-export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tenants", userRole }: WorkspaceDetailProps) {
+export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to tenants"), userRole }: WorkspaceDetailProps) {
   const { data: me } = useMe();
   const {
     data: workspace,
@@ -563,17 +564,17 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
 
   if (workspaceLoading) {
-    return <LoadingState message="Loading workspace details..." />;
+    return <LoadingState message={t("Loading workspace details...")} />;
   }
 
   if (workspaceError || !workspace) {
     return (
       <ErrorState
-        title="Failed to load workspace"
+        title={t("Failed to load workspace")}
         message={
           workspaceErrorObj instanceof Error
             ? workspaceErrorObj.message
-            : "The workspace could not be found."
+            : t("The workspace could not be found.")
         }
         onRetry={refetchWorkspace}
       />
@@ -600,11 +601,11 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
     try {
       const res = await exportWorkspace.mutateAsync({ workspaceId });
       setQuickActionNotice(
-        res ? `Workspace export queued (${res.export_id})` : "Workspace export queued",
+        res ? t("Workspace export queued ({0})", res.export_id) : t("Workspace export queued"),
       );
     } catch (err: unknown) {
       setQuickActionError(
-        formatWorkspaceConflictError(err, "Failed to request workspace export"),
+        formatWorkspaceConflictError(err, t("Failed to request workspace export")),
       );
     }
   };
@@ -620,7 +621,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
       setStatusDialogOpen(false);
     } catch (err: unknown) {
       setStatusError(
-        formatWorkspaceConflictError(err, "Failed to change workspace status"),
+        formatWorkspaceConflictError(err, t("Failed to change workspace status")),
       );
     }
   };
@@ -650,7 +651,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
       });
       setSubDialogOpen(false);
     } catch (err: unknown) {
-      setSubError(err instanceof Error ? err.message : "Failed to update subscription");
+      setSubError(err instanceof Error ? err.message : t("Failed to update subscription"));
     }
   };
 
@@ -665,7 +666,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
       });
       setNoteBody("");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to add note";
+      const msg = err instanceof Error ? err.message : t("Failed to add note");
       setNoteError(msg);
     }
   };
@@ -685,7 +686,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
       });
       setWriteOffOrder(null);
     } catch (err: unknown) {
-      setWriteOffError(err instanceof Error ? err.message : "Failed to write off order");
+      setWriteOffError(err instanceof Error ? err.message : t("Failed to write off order"));
     }
   };
 
@@ -757,7 +758,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
           const unmapped: string[] = [];
           for (const f of fields) {
             if (isBillingProfileField(f)) {
-              nextFieldErrors[f] = messages[f];
+              nextFieldErrors[f] = t(messages[f]);
             } else {
               unmapped.push(f);
             }
@@ -774,7 +775,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         return;
       }
       setProfileFormError(
-        err instanceof Error ? err.message : "Failed to update billing profile",
+        err instanceof Error ? err.message : t("Failed to update billing profile"),
       );
     }
   };
@@ -808,7 +809,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
           workspaceId,
           message:
             fields.length > 0
-              ? `Missing billing profile fields: ${fields.join(", ")}`
+              ? t("Missing billing profile fields: {0}", fields.join(", "))
               : err.message,
         });
       } else {
@@ -817,18 +818,18 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
           message:
             err instanceof Error
               ? err.message
-              : "Failed to update billing profile verification",
+              : t("Failed to update billing profile verification"),
         });
       }
     }
   };
 
   const availableStatuses = [
-    { value: "active", label: "Active" },
-    { value: "read_only", label: "Read-only" },
-    { value: "suspended", label: "Suspended" },
+    { value: "active", label: t("Active") },
+    { value: "read_only", label: t("Read-only") },
+    { value: "suspended", label: t("Suspended") },
     ...(effectiveRole === "system_admin" || effectiveRole === "admin"
-      ? [{ value: "pending_deletion", label: "Pending deletion" }]
+      ? [{ value: "pending_deletion", label: t("Pending deletion") }]
       : []),
   ];
 
@@ -852,7 +853,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
       });
       setMemberDialogOpen(false);
     } catch (err: unknown) {
-      setMemberError(getApiErrorMessage(err, "Failed to add member"));
+      setMemberError(getApiErrorMessage(err, t("Failed to add member")));
     }
   };
 
@@ -862,7 +863,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
     try {
       await cancelMemberRequest.mutateAsync({ workspaceId, requestId });
     } catch (err: unknown) {
-      setMemberRequestError(getApiErrorMessage(err, "Failed to cancel member request"));
+      setMemberRequestError(getApiErrorMessage(err, t("Failed to cancel member request")));
     } finally {
       setCancelingRequestId(null);
     }
@@ -886,9 +887,9 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         ...(export_first !== undefined ? { export_first } : {}),
       });
       setDeleteDialogOpen(false);
-      setDeleteNotice(`Immediate deletion requested (${res.request_id}).`);
+      setDeleteNotice(t("Immediate deletion requested ({0}).", res.request_id));
     } catch (err: unknown) {
-      setDeleteError(getApiErrorMessage(err, "Failed to start workspace deletion"));
+      setDeleteError(getApiErrorMessage(err, t("Failed to start workspace deletion")));
     }
   };
 
@@ -905,12 +906,12 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
     if (createQuotaRequest.isPending) return;
     const parsedValue = Number(quotaRequestedValue.trim());
     if (quotaRequestedValue.trim() === "" || !Number.isInteger(parsedValue) || parsedValue <= 0) {
-      setQuotaError("Requested value must be a positive whole number.");
+      setQuotaError(t("Requested value must be a positive whole number."));
       return;
     }
     const trimmedReason = quotaReason.trim();
     if (!trimmedReason) {
-      setQuotaError("A reason is required.");
+      setQuotaError(t("A reason is required."));
       return;
     }
     setQuotaError(null);
@@ -922,9 +923,9 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         reason: trimmedReason,
       });
       setQuotaDialogOpen(false);
-      setQuotaNotice(`Quota increase requested (${created.id}).`);
+      setQuotaNotice(t("Quota increase requested ({0}).", created.id));
     } catch (err: unknown) {
-      setQuotaError(getApiErrorMessage(err, "Failed to submit quota increase request"));
+      setQuotaError(getApiErrorMessage(err, t("Failed to submit quota increase request")));
     }
   };
 
@@ -975,12 +976,12 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
           status: null as string | null,
           statusLabel:
             ev.action === "workspace.deletion_scheduled"
-              ? "Deletion scheduled"
+              ? t("Deletion scheduled")
               : ev.action === "workspace.deletion_cancelled"
-                ? "Deletion cancelled"
+                ? t("Deletion cancelled")
                 : ev.action === "workspace.immediate_deletion_requested"
-                  ? "Immediate deletion requested"
-                  : "Status changed",
+                  ? t("Immediate deletion requested")
+                  : t("Status changed"),
           reason: "-",
           actor: ev.actor_label || ev.actor_id || "-",
           created_at: ev.created_at,
@@ -993,30 +994,30 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         badge={<StatusBadge status={currentStatus} />}
         meta={
           <span className="font-mono">
-            {workspace.slug} &bull; ID: {workspace.id}
+            {workspace.slug} {t("• ID:")} {workspace.id}
           </span>
         }
         backAction={{ label: backLabel, onClick: onBack }}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={handleOpenStatusDialog}>
-              Change status
+              {t("Change status")}
             </Button>
             {canEditSubscription && (
               <Button variant="outline" size="sm" onClick={handleOpenSubDialog}>
-                Edit subscription
+                {t("Edit subscription")}
               </Button>
             )}
             {canManageMembers && (
               <Button variant="outline" size="sm" onClick={handleOpenMemberDialog}>
                 <UserPlus className="size-3.5" aria-hidden="true" />
-                <span>Add member</span>
+                <span>{t("Add member")}</span>
               </Button>
             )}
             {canRequestQuota && (
               <Button variant="outline" size="sm" onClick={handleOpenQuotaDialog}>
                 <ArrowUpCircle className="size-3.5" aria-hidden="true" />
-                <span>Request quota increase</span>
+                <span>{t("Request quota increase")}</span>
               </Button>
             )}
             {canDeleteWorkspace && (
@@ -1029,7 +1030,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 }}
               >
                 <Trash2 className="size-3.5" aria-hidden="true" />
-                <span>Delete workspace</span>
+                <span>{t("Delete workspace")}</span>
               </Button>
             )}
           </>
@@ -1055,7 +1056,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
           {workspace.state?.reason && (
             <Alert role="status" className="border-surface-border bg-surface">
               <Info className="size-4 text-info" aria-hidden="true" />
-              <AlertTitle className="text-label font-semibold">State Reason</AlertTitle>
+              <AlertTitle className="text-label font-semibold">{t("State Reason")}</AlertTitle>
               <AlertDescription className="text-body text-muted-foreground">
                 {workspace.state.reason}
               </AlertDescription>
@@ -1064,7 +1065,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
           {workspace.state?.deletion_scheduled_at && (
             <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
               <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-              <AlertTitle className="text-label font-semibold">Deletion Scheduled</AlertTitle>
+              <AlertTitle className="text-label font-semibold">{t("Deletion Scheduled")}</AlertTitle>
               <AlertDescription className="text-body tabular-nums">
                 {new Date(workspace.state.deletion_scheduled_at).toLocaleString()}
               </AlertDescription>
@@ -1080,7 +1081,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         className="space-y-3"
         data-testid="workspace-quick-actions"
       >
-        <Heading level={3}>Quick Actions</Heading>
+        <Heading level={3}>{t("Quick Actions")}</Heading>
         <HStack wrap="wrap" gap={2} align="center">
           {canLockWorkspace && (
             <>
@@ -1097,7 +1098,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 onClick={() => handleOpenQuickStatus("suspended")}
               >
                 <Ban className="size-3.5" aria-hidden="true" />
-                <span>Suspend</span>
+                <span>{t("Suspend")}</span>
               </Button>
               <Button
                 type="button"
@@ -1112,7 +1113,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 onClick={() => handleOpenQuickStatus("read_only")}
               >
                 <Lock className="size-3.5" aria-hidden="true" />
-                <span>Read-only</span>
+                <span>{t("Read-only")}</span>
               </Button>
               <Button
                 type="button"
@@ -1127,7 +1128,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 onClick={() => handleOpenQuickStatus("active")}
               >
                 <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                <span>Unlock</span>
+                <span>{t("Unlock")}</span>
               </Button>
             </>
           )}
@@ -1146,7 +1147,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 onClick={() => handleOpenQuickStatus("pending_deletion")}
               >
                 <CalendarClock className="size-3.5" aria-hidden="true" />
-                <span>Schedule deletion</span>
+                <span>{t("Schedule deletion")}</span>
               </Button>
               <Button
                 type="button"
@@ -1161,7 +1162,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 onClick={() => handleOpenQuickStatus("active")}
               >
                 <RotateCcw className="size-3.5" aria-hidden="true" />
-                <span>Cancel deletion</span>
+                <span>{t("Cancel deletion")}</span>
               </Button>
             </>
           )}
@@ -1179,7 +1180,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
               ) : (
                 <Download className="size-3.5" aria-hidden="true" />
               )}
-              <span>Export data</span>
+              <span>{t("Export data")}</span>
             </Button>
           )}
           <Button
@@ -1193,7 +1194,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
             }}
           >
             <History className="size-3.5" aria-hidden="true" />
-            <span>View audit log</span>
+            <span>{t("View audit log")}</span>
           </Button>
         </HStack>
 
@@ -1214,35 +1215,35 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <Section variant="transparent" padding={0} className="space-y-4 lg:col-span-2">
-          <Heading level={2}>Workspace State</Heading>
+          <Heading level={2}>{t("Workspace State")}</Heading>
           <MetadataList columns={3}>
-            <MetadataListItem label="Status">
+            <MetadataListItem label={t("Status")}>
               <StatusBadge status={currentStatus} />
             </MetadataListItem>
             {workspace.tenant && (
-              <MetadataListItem label="Tenant">
+              <MetadataListItem label={t("Tenant")}>
                 {workspace.tenant.name || workspace.tenant.id}
               </MetadataListItem>
             )}
-            <MetadataListItem label="Members" tabular>
+            <MetadataListItem label={t("Members")} tabular>
               {workspace.member_count}
             </MetadataListItem>
-            <MetadataListItem label="Account groups" tabular>
+            <MetadataListItem label={t("Account groups")} tabular>
               {workspace.group_count}
             </MetadataListItem>
-            <MetadataListItem label="Owner">
-              {workspace.owner?.email || "Unknown"}
+            <MetadataListItem label={t("Owner")}>
+              {workspace.owner?.email || t("Unknown")}
             </MetadataListItem>
-            <MetadataListItem label="Created" tabular>
+            <MetadataListItem label={t("Created")} tabular>
               {workspace.created_at ? new Date(workspace.created_at).toLocaleString() : "-"}
             </MetadataListItem>
-            <MetadataListItem label="Last Activity" tabular>
+            <MetadataListItem label={t("Last Activity")} tabular>
               {workspace.last_activity_at
                 ? new Date(workspace.last_activity_at).toLocaleString()
                 : "-"}
             </MetadataListItem>
             {workspace.state?.changed_at && (
-              <MetadataListItem label="Status Changed At" tabular>
+              <MetadataListItem label={t("Status Changed At")} tabular>
                 {new Date(workspace.state.changed_at).toLocaleString()}
               </MetadataListItem>
             )}
@@ -1250,12 +1251,12 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         </Section>
 
         <Section variant="transparent" padding={0} className="space-y-4">
-          <Heading level={2}>Internal Notes</Heading>
+          <Heading level={2}>{t("Internal Notes")}</Heading>
           <form onSubmit={handleAddNote} className="space-y-2">
             <Textarea
               value={noteBody}
               onChange={(e) => setNoteBody(e.target.value)}
-              placeholder="Write an internal note..."
+              placeholder={t("Write an internal note...")}
               rows={3}
               disabled={addNote.isPending}
             />
@@ -1277,15 +1278,15 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
               ) : (
                 <Plus className="size-3.5" aria-hidden="true" />
               )}
-              Add note
+              {t("Add note")}
             </Button>
           </form>
 
           <div className="space-y-2">
-            {notesLoading && <LoadingState message="Loading notes..." />}
+            {notesLoading && <LoadingState message={t("Loading notes...")} />}
             {!notesLoading && notes.length === 0 && (
               <Text type="supporting" as="p" justify="center" className="py-4">
-                No internal notes yet.
+                {t("No internal notes yet.")}
               </Text>
             )}
             {!notesLoading && notes.length > 0 && (
@@ -1296,7 +1297,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                       {note.body}
                     </Text>
                     <div className="mt-2 flex items-center justify-between">
-                      <Text type="supporting">{note.author_email || "Staff"}</Text>
+                      <Text type="supporting">{note.author_email || t("Staff")}</Text>
                       <Text type="supporting" hasTabularNumbers>
                         {note.created_at ? new Date(note.created_at).toLocaleDateString() : ""}
                       </Text>
@@ -1314,28 +1315,28 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
       {/* Subscription Section */}
       <Section variant="transparent" padding={0} className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Heading level={2}>Subscription</Heading>
+          <Heading level={2}>{t("Subscription")}</Heading>
           {workspace.subscription?.status && (
             <StatusBadge status={workspace.subscription.status} />
           )}
         </div>
         <MetadataList columns={3}>
-          <MetadataListItem label="Plan" className="capitalize">
+          <MetadataListItem label={t("Plan")} className="capitalize">
             {workspace.subscription?.plan_key || "free"}
           </MetadataListItem>
-          <MetadataListItem label="Seats" tabular>
+          <MetadataListItem label={t("Seats")} tabular>
             {seatsPurchased}
           </MetadataListItem>
-          <MetadataListItem label="Seats used" tabular>
+          <MetadataListItem label={t("Seats used")} tabular>
             {seatsUsed}
           </MetadataListItem>
-          <MetadataListItem label="Seats held" tabular>
+          <MetadataListItem label={t("Seats held")} tabular>
             {seatsHeld}
           </MetadataListItem>
-          <MetadataListItem label="Interval" className="capitalize">
+          <MetadataListItem label={t("Interval")} className="capitalize">
             {workspace.subscription?.interval || "month"}
           </MetadataListItem>
-          <MetadataListItem label="Trial End" tabular>
+          <MetadataListItem label={t("Trial End")} tabular>
             {workspace.subscription?.trial_end
               ? new Date(workspace.subscription.trial_end).toLocaleDateString()
               : "-"}
@@ -1348,11 +1349,11 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
       {/* Billing Profile Section */}
       <Section variant="transparent" padding={0} className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Heading level={2}>Billing profile</Heading>
+          <Heading level={2}>{t("Billing profile")}</Heading>
           {canEditSubscription && (
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleOpenProfileDialog}>
-                Edit
+                {t("Edit")}
               </Button>
               <Button
                 variant="outline"
@@ -1362,32 +1363,32 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 aria-busy={setBillingProfileVerified.isPending}
               >
                 {setBillingProfileVerified.isPending && <Spinner className="size-3.5" />}
-                {isProfileVerified ? "Unverify" : "Verify"}
+                {isProfileVerified ? t("Unverify") : t("Verify")}
               </Button>
             </div>
           )}
         </div>
 
         <MetadataList columns={3}>
-          <MetadataListItem label="Account kind" className="capitalize">
+          <MetadataListItem label={t("Account kind")} className="capitalize">
             {accountKind}
           </MetadataListItem>
-          <MetadataListItem label="Status">
+          <MetadataListItem label={t("Status")}>
             <StatusBadge status={isProfileVerified ? "verified" : "unverified"} />
           </MetadataListItem>
-          <MetadataListItem label="Verified at" tabular>
+          <MetadataListItem label={t("Verified at")} tabular>
             {formatTimestamp(profileVerifiedAt)}
           </MetadataListItem>
-          <MetadataListItem label="Legal name">
+          <MetadataListItem label={t("Legal name")}>
             {profileLegalName || "-"}
           </MetadataListItem>
-          <MetadataListItem label="Tax code" mono>
+          <MetadataListItem label={t("Tax code")} mono>
             {profileTaxCode || "-"}
           </MetadataListItem>
-          <MetadataListItem label="Address">
+          <MetadataListItem label={t("Address")}>
             {profileAddress || "-"}
           </MetadataListItem>
-          <MetadataListItem label="Invoice email" className="sm:col-span-2">
+          <MetadataListItem label={t("Invoice email")} className="sm:col-span-2">
             {profileInvoiceEmail || "-"}
           </MetadataListItem>
         </MetadataList>
@@ -1404,21 +1405,21 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
 
       {/* Usage Section */}
       <Section variant="transparent" padding={0} className="space-y-4">
-        <Heading level={2}>Usage</Heading>
+        <Heading level={2}>{t("Usage")}</Heading>
         <MetadataList data-testid="usage-current" columns={4}>
-          <MetadataListItem label="Members now" tabular>
+          <MetadataListItem label={t("Members now")} tabular>
             {workspace.usage_current?.members ?? 0}
           </MetadataListItem>
-          <MetadataListItem label="Agents now" tabular>
+          <MetadataListItem label={t("Agents now")} tabular>
             {workspace.usage_current?.agents ?? 0}
           </MetadataListItem>
-          <MetadataListItem label="Runtimes now" tabular>
+          <MetadataListItem label={t("Runtimes now")} tabular>
             {workspace.usage_current?.runtimes ?? 0}
           </MetadataListItem>
-          <MetadataListItem label="Issues now" tabular>
+          <MetadataListItem label={t("Issues now")} tabular>
             {workspace.usage_current?.issues_total ?? 0}
           </MetadataListItem>
-          <MetadataListItem label="Storage now" tabular>
+          <MetadataListItem label={t("Storage now")} tabular>
             {formatBytes(workspace.usage_current?.storage_bytes ?? 0)}
           </MetadataListItem>
         </MetadataList>
@@ -1426,35 +1427,35 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         {workspace.usage_day ? (
           <div data-testid="usage-daily" className="space-y-3 pt-2">
             <Text type="code" color="secondary" as="div">
-              Daily snapshot for {workspace.usage_day} (UTC)
+              {t("Daily snapshot for")} {workspace.usage_day} {t("(UTC)")}
             </Text>
             <MetadataList columns={4}>
-              <MetadataListItem label="Members" tabular>
+              <MetadataListItem label={t("Members")} tabular>
                 {workspace.usage_members ?? 0}
               </MetadataListItem>
-              <MetadataListItem label="Agents" tabular>
+              <MetadataListItem label={t("Agents")} tabular>
                 {workspace.usage_agents ?? 0}
               </MetadataListItem>
-              <MetadataListItem label="Runtimes" tabular>
+              <MetadataListItem label={t("Runtimes")} tabular>
                 {workspace.usage_runtimes ?? 0}
               </MetadataListItem>
-              <MetadataListItem label="Issues" tabular>
+              <MetadataListItem label={t("Issues")} tabular>
                 {workspace.usage_issues_total ?? 0}
               </MetadataListItem>
-              <MetadataListItem label="Issues created" tabular>
+              <MetadataListItem label={t("Issues created")} tabular>
                 {workspace.usage_issues_created ?? 0}
               </MetadataListItem>
-              <MetadataListItem label="Tasks run" tabular>
+              <MetadataListItem label={t("Tasks run")} tabular>
                 {workspace.usage_tasks_run ?? 0}
               </MetadataListItem>
-              <MetadataListItem label="Storage" tabular>
+              <MetadataListItem label={t("Storage")} tabular>
                 {formatBytes(workspace.usage_storage_bytes ?? 0)}
               </MetadataListItem>
             </MetadataList>
           </div>
         ) : (
           <Text type="supporting" as="p" data-testid="usage-daily">
-            No daily snapshot yet.
+            {t("No daily snapshot yet.")}
           </Text>
         )}
       </Section>
@@ -1476,25 +1477,25 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         <>
           <Divider />
           <Section variant="transparent" padding={0} className="space-y-4">
-            <Heading level={2}>Member Requests</Heading>
+            <Heading level={2}>{t("Member Requests")}</Heading>
             {memberRequestError && (
               <Alert variant="destructive">
                 <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
                 <AlertDescription>{memberRequestError}</AlertDescription>
               </Alert>
             )}
-            {memberRequestsLoading && <LoadingState message="Loading member requests..." />}
+            {memberRequestsLoading && <LoadingState message={t("Loading member requests...")} />}
             {memberRequestsError && (
               <ErrorState
-                title="Failed to load member requests"
-                message={getApiErrorMessage(memberRequestsErrorObj, "Could not load member requests.")}
+                title={t("Failed to load member requests")}
+                message={getApiErrorMessage(memberRequestsErrorObj, t("Could not load member requests."))}
                 onRetry={refetchMemberRequests}
               />
             )}
             {!memberRequestsLoading && !memberRequestsError && memberRequests.length === 0 && (
               <EmptyState
                 icon={<UserPlus className="size-5" aria-hidden="true" />}
-                title="No member requests"
+                title={t("No member requests")}
                 isCompact
               />
             )}
@@ -1509,7 +1510,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                   columns={[
                     {
                       key: "email",
-                      header: "Email",
+                      header: t("Email"),
                       width: proportional(1.6, { minWidth: 180 }),
                       renderCell: (req: MemberRequest) => (
                         <Text type="body" weight="medium">
@@ -1519,19 +1520,19 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                     },
                     {
                       key: "role",
-                      header: "Role",
+                      header: t("Role"),
                       width: pixel(110),
                       renderCell: (req: MemberRequest) => <StatusBadge status={req.role} />,
                     },
                     {
                       key: "state",
-                      header: "State",
+                      header: t("State"),
                       width: pixel(120),
                       renderCell: (req: MemberRequest) => <StatusBadge status={req.state} />,
                     },
                     {
                       key: "error_code",
-                      header: "Error",
+                      header: t("Error"),
                       width: proportional(1.2, { minWidth: 140 }),
                       renderCell: (req: MemberRequest) =>
                         req.error_code ? (
@@ -1544,7 +1545,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                     },
                     {
                       key: "attempts",
-                      header: "Attempts",
+                      header: t("Attempts"),
                       width: pixel(90),
                       renderCell: (req: MemberRequest) => (
                         <Text type="body" hasTabularNumbers>
@@ -1554,7 +1555,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                     },
                     {
                       key: "created_at",
-                      header: "Requested",
+                      header: t("Requested"),
                       width: proportional(1.2, { minWidth: 160 }),
                       renderCell: (req: MemberRequest) => (
                         <Text type="supporting" hasTabularNumbers>
@@ -1578,7 +1579,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                             onClick={() => handleCancelMemberRequest(req.id)}
                           >
                             {rowBusy ? <Spinner /> : <Ban className="size-3" aria-hidden="true" />}
-                            Cancel
+                            {t("Cancel")}
                           </Button>
                         );
                       },
@@ -1595,11 +1596,11 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
 
       {/* Recent Orders Section */}
       <Section variant="transparent" padding={0} className="space-y-4">
-        <Heading level={2}>Recent Orders</Heading>
+        <Heading level={2}>{t("Recent Orders")}</Heading>
         {!workspace.recent_orders || workspace.recent_orders.length === 0 ? (
           <EmptyState
             icon={<CreditCard className="size-5" aria-hidden="true" />}
-            title="No recent orders"
+            title={t("No recent orders")}
             isCompact
           />
         ) : (
@@ -1613,7 +1614,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
               columns={[
                 {
                   key: "created_at",
-                  header: "Time",
+                  header: t("Time"),
                   width: proportional(1.4, { minWidth: 160 }),
                   renderCell: (order: Order) => (
                     <Text type="supporting" hasTabularNumbers>
@@ -1623,7 +1624,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 },
                 {
                   key: "transfer_code",
-                  header: "Transfer Code",
+                  header: t("Transfer Code"),
                   width: proportional(1.4, { minWidth: 150 }),
                   renderCell: (order: Order) => (
                     <Text type="code" weight="semibold">
@@ -1633,17 +1634,17 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 },
                 {
                   key: "plan_key",
-                  header: "Plan & Seats",
+                  header: t("Plan & Seats"),
                   width: proportional(2, { minWidth: 180 }),
                   renderCell: (order: Order) => (
                     <Text type="body" className="capitalize">
-                      {order.plan_key} &bull; {order.seats} seats ({order.interval})
+                      {order.plan_key} &bull; {order.seats} {t("seats (")}{order.interval})
                     </Text>
                   ),
                 },
                 {
                   key: "amount",
-                  header: "Total (incl. VAT)",
+                  header: t("Total (incl. VAT)"),
                   width: proportional(1.2, { minWidth: 150 }),
                   renderCell: (order: Order) => (
                     <Text type="body" weight="medium" hasTabularNumbers>
@@ -1653,7 +1654,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 },
                 {
                   key: "status",
-                  header: "Status",
+                  header: t("Status"),
                   width: proportional(1, { minWidth: 110 }),
                   renderCell: (order: Order) => <StatusBadge status={order.status} />,
                 },
@@ -1667,11 +1668,11 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
 
       {/* Status History Section */}
       <Section variant="transparent" padding={0} className="space-y-4">
-        <Heading level={2}>Status History</Heading>
+        <Heading level={2}>{t("Status History")}</Heading>
         {statusHistoryRows.length === 0 ? (
           <EmptyState
             icon={<History className="size-5" aria-hidden="true" />}
-            title="No status transitions recorded"
+            title={t("No status transitions recorded")}
             isCompact
           />
         ) : (
@@ -1685,7 +1686,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
               columns={[
                 {
                   key: "created_at",
-                  header: "When",
+                  header: t("When"),
                   width: proportional(1.4, { minWidth: 160 }),
                   renderCell: (row) => (
                     <Text type="supporting" hasTabularNumbers>
@@ -1697,7 +1698,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 },
                 {
                   key: "status",
-                  header: "Status",
+                  header: t("Status"),
                   width: proportional(1.2, { minWidth: 130 }),
                   renderCell: (row) =>
                     row.status ? (
@@ -1708,7 +1709,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 },
                 {
                   key: "reason",
-                  header: "Reason",
+                  header: t("Reason"),
                   width: proportional(1.6, { minWidth: 160 }),
                   renderCell: (row) => (
                     <Text type="supporting">{row.reason}</Text>
@@ -1716,7 +1717,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 },
                 {
                   key: "actor",
-                  header: "Actor",
+                  header: t("Actor"),
                   width: proportional(1.4, { minWidth: 150 }),
                   renderCell: (row) => <Text type="body">{row.actor}</Text>,
                 },
@@ -1735,13 +1736,13 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         padding={0}
         className="space-y-4"
       >
-        <Heading level={2}>Workspace Audit Log</Heading>
-        {auditLoading && <LoadingState message="Loading audit events..." />}
+        <Heading level={2}>{t("Workspace Audit Log")}</Heading>
+        {auditLoading && <LoadingState message={t("Loading audit events...")} />}
         {!auditLoading && auditEvents.length === 0 && (
           <EmptyState
             icon={<Activity className="size-5" aria-hidden="true" />}
-            title="No audit events"
-            description="No events found for this workspace."
+            title={t("No audit events")}
+            description={t("No events found for this workspace.")}
             isCompact
           />
         )}
@@ -1756,7 +1757,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
               columns={[
                 {
                   key: "created_at",
-                  header: "Time",
+                  header: t("Time"),
                   width: proportional(1.4, { minWidth: 160 }),
                   renderCell: (event: AuditEvent) => (
                     <Text type="supporting" hasTabularNumbers>
@@ -1766,19 +1767,19 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 },
                 {
                   key: "action",
-                  header: "Action",
+                  header: t("Action"),
                   width: proportional(1.4, { minWidth: 150 }),
                   renderCell: (event: AuditEvent) => <Text type="code">{event.action}</Text>,
                 },
                 {
                   key: "actor_label",
-                  header: "Actor",
+                  header: t("Actor"),
                   width: proportional(1.5, { minWidth: 160 }),
                   renderCell: (event: AuditEvent) => <Text type="body">{event.actor_label}</Text>,
                 },
                 {
                   key: "target_label",
-                  header: "Target",
+                  header: t("Target"),
                   width: proportional(1.5, { minWidth: 160 }),
                   renderCell: (event: AuditEvent) => (
                     <Text type="body">{event.target_label || event.target_id}</Text>
@@ -1793,16 +1794,16 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
       <ConfirmReasonDialog
         open={statusDialogOpen}
         onOpenChange={setStatusDialogOpen}
-        title="Change workspace status"
-        description="Select the new status and provide a justification."
-        confirmLabel="Update status"
+        title={t("Change workspace status")}
+        description={t("Select the new status and provide a justification.")}
+        confirmLabel={t("Update status")}
         isPending={changeStatus.isPending}
         error={statusError}
         onConfirm={handleConfirmStatusChange}
       >
         <Field>
           <FieldLabel htmlFor="target-status-select" className="text-label">
-            Target status
+            {t("Target status")}
           </FieldLabel>
           <Select
             items={availableStatuses}
@@ -1812,15 +1813,15 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
             }}
             disabled={changeStatus.isPending}
           >
-            <SelectTrigger id="target-status-select" aria-label="Target status" className="w-full">
+            <SelectTrigger id="target-status-select" aria-label={t("Target status")} className="w-full">
               <SelectValue>
-                {availableStatuses.find((opt) => opt.value === targetStatus)?.label ?? targetStatus}
+                {t(availableStatuses.find((opt) => opt.value === targetStatus)?.label ?? targetStatus)}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {availableStatuses.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(opt.label)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1833,22 +1834,22 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         <DialogContent>
           <form onSubmit={handleSaveSubscription} className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Edit Subscription</DialogTitle>
+              <DialogTitle>{t("Edit Subscription")}</DialogTitle>
               <DialogDescription>
-                Update subscription plan, seats, billing interval, and trial period.
+                {t("Update subscription plan, seats, billing interval, and trial period.")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="flex flex-col gap-3">
               <Field>
                 <FieldLabel htmlFor="sub-plan-key-input" className="text-label">
-                  Plan <span className="text-destructive">*</span>
+                  {t("Plan")} <span className="text-destructive">*</span>
                 </FieldLabel>
                 <Input
                   id="sub-plan-key-input"
                   value={subPlanKey}
                   onChange={(e) => setSubPlanKey(e.target.value)}
-                  placeholder="e.g. pro, business, enterprise"
+                  placeholder={t("e.g. pro, business, enterprise")}
                   required
                   disabled={updateSubscription.isPending}
                 />
@@ -1857,7 +1858,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
               <div className="grid grid-cols-2 gap-3">
                 <Field>
                   <FieldLabel htmlFor="sub-seats-input" className="text-label">
-                    Seats <span className="text-destructive">*</span>
+                    {t("Seats")} <span className="text-destructive">*</span>
                   </FieldLabel>
                   <Input
                     id="sub-seats-input"
@@ -1872,7 +1873,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
 
                 <Field>
                   <FieldLabel htmlFor="sub-interval-select" className="text-label">
-                    Billing Interval <span className="text-destructive">*</span>
+                    {t("Billing Interval")} <span className="text-destructive">*</span>
                   </FieldLabel>
                   <Select
                     items={BILLING_INTERVAL_ITEMS}
@@ -1884,18 +1885,18 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                   >
                     <SelectTrigger
                       id="sub-interval-select"
-                      aria-label="Billing Interval"
+                      aria-label={t("Billing Interval")}
                       className="w-full"
                     >
                       <SelectValue>
-                        {BILLING_INTERVAL_ITEMS.find((i) => i.value === subInterval)?.label ??
-                          subInterval}
+                        {t(BILLING_INTERVAL_ITEMS.find((i) => i.value === subInterval)?.label ??
+                          subInterval)}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {BILLING_INTERVAL_ITEMS.map((item) => (
                         <SelectItem key={item.value} value={item.value}>
-                          {item.label}
+                          {t(item.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1905,26 +1906,26 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
 
               <Field>
                 <FieldLabel htmlFor="sub-trial-end-input" className="text-label">
-                  Trial End (RFC3339 or blank)
+                  {t("Trial End (RFC3339 or blank)")}
                 </FieldLabel>
                 <Input
                   id="sub-trial-end-input"
                   value={subTrialEnd}
                   onChange={(e) => setSubTrialEnd(e.target.value)}
-                  placeholder="e.g. 2026-12-01T00:00:00Z"
+                  placeholder={t("e.g. 2026-12-01T00:00:00Z")}
                   disabled={updateSubscription.isPending}
                 />
               </Field>
 
               <Field>
                 <FieldLabel htmlFor="sub-reason-input" className="text-label">
-                  Reason <span className="text-destructive">*</span>
+                  {t("Reason")} <span className="text-destructive">*</span>
                 </FieldLabel>
                 <Textarea
                   id="sub-reason-input"
                   value={subReason}
                   onChange={(e) => setSubReason(e.target.value)}
-                  placeholder="Provide a reason for this subscription change..."
+                  placeholder={t("Provide a reason for this subscription change...")}
                   rows={3}
                   required
                   disabled={updateSubscription.isPending}
@@ -1943,7 +1944,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
               <DialogClose
                 render={<Button variant="outline" type="button" disabled={updateSubscription.isPending} />}
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -1951,7 +1952,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 aria-busy={updateSubscription.isPending}
               >
                 {updateSubscription.isPending && <Spinner className="size-3.5" />}
-                Save subscription
+                {t("Save subscription")}
               </Button>
             </DialogFooter>
           </form>
@@ -1963,16 +1964,16 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         <DialogContent>
           <form noValidate onSubmit={handleSaveBillingProfile} className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Edit Billing Profile</DialogTitle>
+              <DialogTitle>{t("Edit Billing Profile")}</DialogTitle>
               <DialogDescription>
-                Update workspace account kind and billing contact details.
+                {t("Update workspace account kind and billing contact details.")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="flex flex-col gap-3">
               <Field data-invalid={Boolean(profileFieldErrors.account_kind) || undefined}>
                 <FieldLabel htmlFor="bp-account-kind" className="text-label">
-                  Account kind
+                  {t("Account kind")}
                 </FieldLabel>
                 <Select
                   items={ACCOUNT_KIND_ITEMS}
@@ -1987,19 +1988,19 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 >
                   <SelectTrigger
                     id="bp-account-kind"
-                    aria-label="Account kind"
+                    aria-label={t("Account kind")}
                     aria-invalid={Boolean(profileFieldErrors.account_kind)}
                     className="w-full"
                   >
                     <SelectValue>
-                      {ACCOUNT_KIND_ITEMS.find((i) => i.value === profileKind)?.label ??
-                        profileKind}
+                      {t(ACCOUNT_KIND_ITEMS.find((i) => i.value === profileKind)?.label ??
+                        profileKind)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {ACCOUNT_KIND_ITEMS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                        {t(item.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -2015,7 +2016,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 {
                   field: "legal_name" as const,
                   id: "bp-legal-name",
-                  label: "Legal name",
+                  label: t("Legal name"),
                   type: "text",
                   value: profileLegalNameInput,
                   setValue: setProfileLegalNameInput,
@@ -2023,7 +2024,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 {
                   field: "tax_code" as const,
                   id: "bp-tax-code",
-                  label: "Tax code",
+                  label: t("Tax code"),
                   type: "text",
                   value: profileTaxCodeInput,
                   setValue: setProfileTaxCodeInput,
@@ -2031,7 +2032,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 {
                   field: "address" as const,
                   id: "bp-address",
-                  label: "Address",
+                  label: t("Address"),
                   type: "text",
                   value: profileAddressInput,
                   setValue: setProfileAddressInput,
@@ -2039,7 +2040,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 {
                   field: "invoice_email" as const,
                   id: "bp-invoice-email",
-                  label: "Invoice email",
+                  label: t("Invoice email"),
                   type: "email",
                   value: profileInvoiceEmailInput,
                   setValue: setProfileInvoiceEmailInput,
@@ -2085,7 +2086,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                   <Button variant="outline" type="button" disabled={updateBillingProfile.isPending} />
                 }
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -2095,7 +2096,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 {updateBillingProfile.isPending && (
                   <Spinner className="size-3.5" aria-hidden="true" />
                 )}
-                Save
+                {t("Save")}
               </Button>
             </DialogFooter>
           </form>
@@ -2110,13 +2111,13 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
             setWriteOffError(null);
           }
         }}
-        title="Write off usage order"
+        title={t("Write off usage order")}
         description={
           writeOffOrder
-            ? `Write off pending usage order ${writeOffOrder.id} (${(writeOffOrder.amount + writeOffOrder.vat_amount).toLocaleString()} total)? Its lines will stay excluded from future invoices.`
+            ? t("Write off pending usage order {0} ({1} total)? Its lines will stay excluded from future invoices.", writeOffOrder.id, (writeOffOrder.amount + writeOffOrder.vat_amount).toLocaleString())
             : ""
         }
-        confirmLabel="Write off order"
+        confirmLabel={t("Write off order")}
         confirmVariant="destructive"
         isPending={cancelOrder.isPending}
         error={writeOffError}
@@ -2130,19 +2131,19 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         <DialogContent>
           <form onSubmit={handleAddMemberSubmit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Add member</DialogTitle>
+              <DialogTitle>{t("Add member")}</DialogTitle>
             </DialogHeader>
 
             <Field>
               <FieldLabel htmlFor="add-member-email" className="text-label">
-                Email address
+                {t("Email address")}
               </FieldLabel>
               <Input
                 id="add-member-email"
                 type="email"
                 value={memberEmail}
                 onChange={(e) => setMemberEmail(e.target.value)}
-                placeholder="member@example.com"
+                placeholder={t("member@example.com")}
                 required
                 disabled={addWorkspaceMember.isPending}
               />
@@ -2150,7 +2151,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
 
             <Field>
               <FieldLabel htmlFor="add-member-role" className="text-label">
-                Member role
+                {t("Member role")}
               </FieldLabel>
               <Select
                 items={MEMBER_ROLE_ITEMS}
@@ -2160,15 +2161,15 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 }}
                 disabled={addWorkspaceMember.isPending}
               >
-                <SelectTrigger id="add-member-role" aria-label="Member role" className="w-full">
+                <SelectTrigger id="add-member-role" aria-label={t("Member role")} className="w-full">
                   <SelectValue>
-                    {MEMBER_ROLE_ITEMS.find((item) => item.value === memberRole)?.label ?? memberRole}
+                    {t(MEMBER_ROLE_ITEMS.find((item) => item.value === memberRole)?.label ?? memberRole)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {MEMBER_ROLE_ITEMS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -2192,7 +2193,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                   />
                 }
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -2200,7 +2201,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 aria-busy={addWorkspaceMember.isPending}
               >
                 {addWorkspaceMember.isPending && <Spinner className="size-3.5" />}
-                Add member
+                {t("Add member")}
               </Button>
             </DialogFooter>
           </form>
@@ -2219,9 +2220,9 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleSubmitQuotaRequest} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Request quota increase</DialogTitle>
+              <DialogTitle>{t("Request quota increase")}</DialogTitle>
               <DialogDescription>
-                Submit a limit increase request for {workspace.name || workspace.slug}. System administrators review pending requests.
+                {t("Submit a limit increase request for")} {workspace.name || workspace.slug}{t(". System administrators review pending requests.")}
               </DialogDescription>
             </DialogHeader>
 
@@ -2233,13 +2234,13 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
             )}
 
             <Field>
-              <FieldLabel htmlFor="workspace-quota-gate">Gate</FieldLabel>
+              <FieldLabel htmlFor="workspace-quota-gate">{t("Gate")}</FieldLabel>
               <Select
                 items={LIMIT_GATES.map((g) => ({ value: g, label: g }))}
                 value={quotaGate}
                 onValueChange={(val) => val && setQuotaGate(val)}
               >
-                <SelectTrigger id="workspace-quota-gate" aria-label="Gate" className="w-full">
+                <SelectTrigger id="workspace-quota-gate" aria-label={t("Gate")} className="w-full">
                   <SelectValue>{quotaGate}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -2253,7 +2254,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="workspace-quota-value">Requested value</FieldLabel>
+              <FieldLabel htmlFor="workspace-quota-value">{t("Requested value")}</FieldLabel>
               <Input
                 id="workspace-quota-value"
                 type="number"
@@ -2267,12 +2268,12 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="workspace-quota-reason">Reason</FieldLabel>
+              <FieldLabel htmlFor="workspace-quota-reason">{t("Reason")}</FieldLabel>
               <Textarea
                 id="workspace-quota-reason"
                 value={quotaReason}
                 onChange={(e) => setQuotaReason(e.target.value)}
-                placeholder="Explain why the workspace needs this quota increase..."
+                placeholder={t("Explain why the workspace needs this quota increase...")}
                 disabled={createQuotaRequest.isPending}
                 rows={3}
               />
@@ -2288,7 +2289,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                   />
                 }
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -2301,7 +2302,7 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
                 aria-busy={createQuotaRequest.isPending || undefined}
               >
                 {createQuotaRequest.isPending && <Spinner className="size-3.5" />}
-                Submit request
+                {t("Submit request")}
               </Button>
             </DialogFooter>
           </form>
@@ -2314,11 +2315,11 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = "Back to tena
           setDeleteDialogOpen(open);
           if (!open) setDeleteError(null);
         }}
-        title="Delete workspace"
-        description="Immediate deletion permanently removes this workspace and cannot be undone once started."
+        title={t("Delete workspace")}
+        description={t("Immediate deletion permanently removes this workspace and cannot be undone once started.")}
         expectedText={workspace.slug}
-        confirmInputLabel="Workspace slug"
-        confirmLabel="Delete workspace"
+        confirmInputLabel={t("Workspace slug")}
+        confirmLabel={t("Delete workspace")}
         confirmVariant="destructive"
         showExportFirst
         error={deleteError}

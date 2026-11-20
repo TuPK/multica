@@ -33,6 +33,9 @@ import { Button } from "@multica/ui/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
 import type { MeResponse } from "./types";
 import { SidebarCollapsedProvider } from "./sidebar-state";
+import { LanguageSwitch, ThemeSwitch } from "./PreferenceControls";
+import { useLanguage } from "../i18n";
+import { t } from "../i18n";
 
 interface LayoutProps {
   currentScreen: string;
@@ -63,6 +66,8 @@ export function Layout({
   children,
 }: LayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  // Re-render this shell when the language changes so its own labels follow.
+  useLanguage();
 
   const isSystemAdmin = user.role === "system_admin";
   const canSeeOverview = user.role !== "admin";
@@ -81,48 +86,48 @@ export function Layout({
   const canSeePayments = isSystemAdmin || user.role === "billing";
 
   const commercialItems: NavItem[] = [
-    ...(canSeeOrders ? [{ id: "orders", label: "Orders", icon: CreditCard }] : []),
+    ...(canSeeOrders ? [{ id: "orders", label: t("Orders"), icon: CreditCard }] : []),
     ...(canSeePayments
       ? [
-          { id: "payment-notices", label: "Payment notices", icon: Inbox },
-          { id: "einvoices", label: "E-invoices", icon: FileText },
+          { id: "payment-notices", label: t("Payment notices"), icon: Inbox },
+          { id: "einvoices", label: t("E-invoices"), icon: FileText },
         ]
       : []),
-    ...(isSystemAdmin ? [{ id: "accounts", label: "Accounts", icon: UserPlus }] : []),
-    ...(canSeePlans ? [{ id: "plans", label: "Plans", icon: Layers }] : []),
+    ...(isSystemAdmin ? [{ id: "accounts", label: t("Accounts"), icon: UserPlus }] : []),
+    ...(canSeePlans ? [{ id: "plans", label: t("Plans"), icon: Layers }] : []),
     ...(canSeeQuotaRequests
-      ? [{ id: "quota-requests", label: "Quota requests", icon: ArrowUpCircle }]
+      ? [{ id: "quota-requests", label: t("Quota requests"), icon: ArrowUpCircle }]
       : []),
   ];
 
   const navGroups: NavGroup[] = [
     {
-      label: "Operations",
+      label: t("Operations"),
       items: [
-        ...(canSeeOverview ? [{ id: "overview", label: "Overview", icon: BarChart3 }] : []),
-        { id: "tenants", label: "Tenants", icon: Building2 },
-        { id: "workspaces", label: "Workspaces", icon: LayoutGrid },
-        { id: "users", label: "Users", icon: Users },
-        ...(canSeeResources ? [{ id: "resources", label: "Resources", icon: Gauge }] : []),
-        ...(canSeeRuntimes ? [{ id: "runtimes", label: "Runtimes", icon: Server }] : []),
+        ...(canSeeOverview ? [{ id: "overview", label: t("Overview"), icon: BarChart3 }] : []),
+        { id: "tenants", label: t("Tenants"), icon: Building2 },
+        { id: "workspaces", label: t("Workspaces"), icon: LayoutGrid },
+        { id: "users", label: t("Users"), icon: Users },
+        ...(canSeeResources ? [{ id: "resources", label: t("Resources"), icon: Gauge }] : []),
+        ...(canSeeRuntimes ? [{ id: "runtimes", label: t("Runtimes"), icon: Server }] : []),
       ],
     },
     ...(commercialItems.length > 0
-      ? [{ label: "Commercial", items: commercialItems }]
+      ? [{ label: t("Commercial"), items: commercialItems }]
       : []),
     {
-      label: "Administration",
+      label: t("Administration"),
       items: [
-        ...(isSystemAdmin ? [{ id: "staff", label: "Staff", icon: Shield }] : []),
+        ...(isSystemAdmin ? [{ id: "staff", label: t("Staff"), icon: Shield }] : []),
         ...(canSeePolicy
-          ? [{ id: "tenant-policy", label: "Policy", icon: SlidersHorizontal }]
+          ? [{ id: "tenant-policy", label: t("Policy"), icon: SlidersHorizontal }]
           : []),
-        ...(canSeeApprovals ? [{ id: "approvals", label: "Approvals", icon: ShieldCheck }] : []),
-        ...(canSeeLegalHolds ? [{ id: "legal-holds", label: "Legal holds", icon: Lock }] : []),
+        ...(canSeeApprovals ? [{ id: "approvals", label: t("Approvals"), icon: ShieldCheck }] : []),
+        ...(canSeeLegalHolds ? [{ id: "legal-holds", label: t("Legal holds"), icon: Lock }] : []),
         ...(canSeeDeletionRequests
-          ? [{ id: "deletion-requests", label: "Deletion requests", icon: Trash2 }]
+          ? [{ id: "deletion-requests", label: t("Deletion requests"), icon: Trash2 }]
           : []),
-        { id: "audit", label: "Audit Log", icon: Activity },
+        { id: "audit", label: t("Audit Log"), icon: Activity },
       ],
     },
   ];
@@ -134,7 +139,7 @@ export function Layout({
       contentPadding={0}
       sideNav={
         <SideNav
-          aria-label="Main Navigation"
+          aria-label={t("Main Navigation")}
           data-state={isCollapsed ? "collapsed" : "expanded"}
           collapsible={{
             isCollapsed,
@@ -143,13 +148,13 @@ export function Layout({
           }}
           header={
             <div className="flex h-8 items-center px-1">
-              <img src="/brand/delegora-logo-on-light.svg" alt="Delegora" className="h-7 w-auto" />
+              <img src="/brand/delegora-logo-on-light.svg" alt={t("Delegora")} className="h-7 w-auto" />
             </div>
           }
           footerIcons={
             <>
               <SideNavCollapseButton
-                label={isCollapsed ? "Open navigation" : "Collapse navigation"}
+                label={isCollapsed ? t("Open navigation") : t("Collapse navigation")}
                 aria-expanded={!isCollapsed}
               >
                 {isCollapsed ? (
@@ -164,7 +169,7 @@ export function Layout({
                   variant="ghost"
                   size="icon-sm"
                   onClick={onLogout}
-                  aria-label="Sign out"
+                  aria-label={t("Sign out")}
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <LogOut className="size-4" aria-hidden="true" />
@@ -174,7 +179,7 @@ export function Layout({
           }
         >
           {navGroups.map((group) => (
-            <SideNavSection key={group.label} title={group.label}>
+            <SideNavSection key={t(group.label)} title={t(group.label)}>
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const isActive =
@@ -191,7 +196,7 @@ export function Layout({
                 return (
                   <SideNavItem
                     key={item.id}
-                    label={item.label}
+                    label={t(item.label)}
                     icon={<Icon className="size-4 shrink-0" aria-hidden="true" />}
                     isSelected={isActive}
                     onClick={() => onNavigate(item.id)}
@@ -204,7 +209,9 @@ export function Layout({
       }
     >
       <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-5 sm:p-6">
-        <div className="mb-4 flex items-center justify-end gap-2">
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+          <LanguageSwitch />
+          <ThemeSwitch />
           <span className="min-w-0 truncate text-label text-muted-foreground" title={user.email}>
             {user.email}
           </span>
@@ -214,8 +221,8 @@ export function Layout({
             variant="ghost"
             size="icon-sm"
             onClick={onLogout}
-            title="Sign out"
-            aria-label="Sign out"
+            title={t("Sign out")}
+            aria-label={t("Sign out")}
             className="shrink-0 text-muted-foreground hover:text-foreground"
           >
             <LogOut className="size-4" aria-hidden="true" />

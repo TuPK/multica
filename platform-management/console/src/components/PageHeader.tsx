@@ -3,6 +3,7 @@ import { Divider } from "@astryxdesign/core/Divider";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@multica/ui/components/ui/button";
+import { t } from "../i18n";
 import { ArrowLeft } from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
 
@@ -40,7 +41,7 @@ export function PageHeader({
             className="-ml-2.5 gap-1.5 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            <span>{backAction.label}</span>
+            <span>{t(backAction.label)}</span>
           </Button>
         </div>
       )}

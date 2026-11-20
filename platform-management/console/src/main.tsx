@@ -2,7 +2,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
+import { initTheme } from "./theme";
 import "./styles.css";
+
+initTheme();
 
 // A failed request is shown as it is; the server's 4xx answers are not
 // transient and a retry would only delay the error state.

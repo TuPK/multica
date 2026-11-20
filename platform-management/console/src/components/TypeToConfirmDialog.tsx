@@ -16,6 +16,7 @@ import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Switch } from "@multica/ui/components/ui/switch";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { getApiErrorMessage } from "../api/client";
+import { t } from "../i18n";
 
 export interface TypeToConfirmDialogProps {
   open: boolean;
@@ -51,17 +52,17 @@ export function TypeToConfirmDialog({
   title,
   description,
   expectedText,
-  confirmInputLabel = "Confirmation",
+  confirmInputLabel = t("Confirmation"),
   confirmInputPlaceholder,
-  reasonLabel = "Reason",
-  reasonPlaceholder = "Explain why this action is being taken...",
+  reasonLabel = t("Reason"),
+  reasonPlaceholder = t("Explain why this action is being taken..."),
   caseSensitive = true,
-  confirmLabel = "Confirm",
+  confirmLabel = t("Confirm"),
   confirmVariant = "destructive",
   error = null,
   isConfirmDisabled = false,
   showExportFirst = false,
-  ownersNotice = DEFAULT_OWNERS_NOTICE,
+  ownersNotice = t(DEFAULT_OWNERS_NOTICE),
   onConfirm,
   children,
 }: TypeToConfirmDialogProps) {
@@ -111,7 +112,7 @@ export function TypeToConfirmDialog({
         ...(showExportFirst ? { export_first: exportFirst } : {}),
       });
     } catch (err) {
-      setLocalError(getApiErrorMessage(err, "Request failed"));
+      setLocalError(getApiErrorMessage(err, t("Request failed")));
     } finally {
       setPending(false);
     }
@@ -147,10 +148,10 @@ export function TypeToConfirmDialog({
                     htmlFor={exportFirstId}
                     className="text-body font-medium text-foreground"
                   >
-                    Export data before deleting
+                    {t("Export data before deleting")}
                   </label>
                   <Text type="supporting" as="div">
-                    Queues a pre-deletion workspace archive before purge starts.
+                    {t("Queues a pre-deletion workspace archive before purge starts.")}
                   </Text>
                 </div>
                 <Switch
@@ -185,7 +186,7 @@ export function TypeToConfirmDialog({
           <Field
             label={confirmInputLabel}
             inputID={confirmId}
-            description={expectedText ? `Type "${expectedText}" to confirm.` : undefined}
+            description={expectedText ? t("Type \"{0}\" to confirm.", expectedText) : undefined}
             isRequired
             width="100%"
           >
@@ -206,7 +207,7 @@ export function TypeToConfirmDialog({
               onClick={() => onOpenChange(false)}
               disabled={pending}
             >
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button
               type="submit"

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Theme } from "@astryxdesign/core/theme";
 import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 import { useMe, useLogout } from "./api/hooks";
+import { useLanguage } from "./i18n";
 import { LoadingState } from "./components/LoadingState";
 import { Layout } from "./components/Layout";
 import type { StaffRole } from "./components/types";
@@ -29,6 +30,7 @@ import { TenantPolicy } from "./screens/TenantPolicy";
 import { QuotaRequests } from "./screens/QuotaRequests";
 import { Approvals } from "./screens/Approvals";
 import { LegalHolds } from "./screens/LegalHolds";
+import { t } from "./i18n";
 
 type Screen =
   | "overview"
@@ -245,6 +247,13 @@ function defaultRouteForRole(role: StaffRole): RouteState {
 }
 
 export function App() {
+  // Screens read strings with the plain t() lookup, so subscribing here
+  // re-renders the tree (and every screen under it) when the language changes.
+  const language = useLanguage();
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
   const { data: me, isLoading, refetch } = useMe();
   const logout = useLogout();
 
@@ -273,7 +282,7 @@ export function App() {
     return (
       <Theme theme={neutralTheme}>
         <div className="flex min-h-screen items-center justify-center bg-app-shell">
-          <LoadingState message="Loading platform console..." />
+          <LoadingState message={t("Loading platform console...")} />
         </div>
       </Theme>
     );
@@ -369,7 +378,7 @@ export function App() {
         return (
           <WorkspaceDetail
             workspaceId={effectiveRoute.workspaceId}
-            backLabel={fromTenant ? "Back to tenant" : "Back to workspaces"}
+            backLabel={fromTenant ? t("Back to tenant") : t("Back to workspaces")}
             onBack={() =>
               fromTenant
                 ? openTenant(fromTenant)
@@ -390,7 +399,7 @@ export function App() {
           <UserDetail
             userId={effectiveRoute.userId}
             tenantId={fromTenant ?? undefined}
-            backLabel={fromTenant ? "Back to tenant" : "Back to users"}
+            backLabel={fromTenant ? t("Back to tenant") : t("Back to users")}
             onBack={() =>
               fromTenant
                 ? openTenant(fromTenant)

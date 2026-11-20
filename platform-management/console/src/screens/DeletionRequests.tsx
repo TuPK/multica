@@ -35,6 +35,7 @@ import { PageHeader } from "../components/PageHeader";
 import { RowActions } from "../components/RowActions";
 import { StatusBadge } from "../components/StatusBadge";
 import type { StaffRole } from "../components/types";
+import { t } from "../i18n";
 
 interface DeletionRequestsProps {
   userRole?: StaffRole;
@@ -62,13 +63,13 @@ const STATE_OPTIONS = [
 function kindLabel(kind: DeletionRequest["kind"]): string {
   switch (kind) {
     case "workspace":
-      return "Workspace";
+      return t("Workspace");
     case "tenant":
-      return "Tenant";
+      return t("Tenant");
     case "account":
-      return "Account";
+      return t("Account");
     default:
-      return "Unknown";
+      return t("Unknown");
   }
 }
 
@@ -95,8 +96,8 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
 
   if (!canAccess) {
     return (
-      <section aria-label="Not found" className="py-12 text-center">
-        <Text type="supporting">Not found</Text>
+      <section aria-label={t("Not found")} className="py-12 text-center">
+        <Text type="supporting">{t("Not found")}</Text>
       </section>
     );
   }
@@ -119,7 +120,7 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
     try {
       await cancelMutation.mutateAsync({ id });
     } catch (err) {
-      setActionError(getApiErrorMessage(err, "Failed to cancel deletion request."));
+      setActionError(getApiErrorMessage(err, t("Failed to cancel deletion request.")));
     } finally {
       setBusyId(null);
     }
@@ -131,7 +132,7 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
     try {
       await retryMutation.mutateAsync({ id });
     } catch (err) {
-      setActionError(getApiErrorMessage(err, "Failed to retry deletion request."));
+      setActionError(getApiErrorMessage(err, t("Failed to retry deletion request.")));
     } finally {
       setBusyId(null);
     }
@@ -140,7 +141,7 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Deletion requests"
+        title={t("Deletion requests")}
         actions={
           <Button
             variant="outline"
@@ -150,7 +151,7 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
             aria-busy={isFetching || undefined}
           >
             {isFetching ? <Spinner /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
-            <span>Refresh</span>
+            <span>{t("Refresh")}</span>
           </Button>
         }
       />
@@ -161,13 +162,13 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
           value={kindFilter || "all"}
           onValueChange={(value) => setKindFilter(value === "all" ? "" : (value ?? ""))}
         >
-          <SelectTrigger aria-label="Filter by kind" className="w-44">
-            <SelectValue placeholder="All kinds" />
+          <SelectTrigger aria-label={t("Filter by kind")} className="w-44">
+            <SelectValue placeholder={t("All kinds")} />
           </SelectTrigger>
           <SelectContent>
             {KIND_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -178,13 +179,13 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
           value={stateFilter || "all"}
           onValueChange={(value) => setStateFilter(value === "all" ? "" : (value ?? ""))}
         >
-          <SelectTrigger aria-label="Filter by state" className="w-44">
-            <SelectValue placeholder="All states" />
+          <SelectTrigger aria-label={t("Filter by state")} className="w-44">
+            <SelectValue placeholder={t("All states")} />
           </SelectTrigger>
           <SelectContent>
             {STATE_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -198,12 +199,12 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
         </Alert>
       )}
 
-      {isLoading && <LoadingState message="Loading deletion requests..." />}
+      {isLoading && <LoadingState message={t("Loading deletion requests...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load deletion requests"
-          message={getApiErrorMessage(error, "An error occurred while loading deletion requests.")}
+          title={t("Failed to load deletion requests")}
+          message={getApiErrorMessage(error, t("An error occurred while loading deletion requests."))}
           onRetry={refetch}
         />
       )}
@@ -211,7 +212,7 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
       {!isLoading && !isError && requests.length === 0 && (
         <EmptyState
           icon={<Trash2 className="size-4" />}
-          title="No deletion requests found"
+          title={t("No deletion requests found")}
         />
       )}
 
@@ -220,15 +221,15 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
           <Table density="compact" dividers="rows" hasHover>
             <TableHeader>
               <TableRow isHeaderRow>
-                <TableHeaderCell>Target</TableHeaderCell>
-                <TableHeaderCell>Kind</TableHeaderCell>
-                <TableHeaderCell>Reason</TableHeaderCell>
-                <TableHeaderCell>State</TableHeaderCell>
-                <TableHeaderCell>Error</TableHeaderCell>
-                <TableHeaderCell className="text-right">Attempts</TableHeaderCell>
-                <TableHeaderCell>Requested by</TableHeaderCell>
-                <TableHeaderCell>Updated</TableHeaderCell>
-                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                <TableHeaderCell>{t("Target")}</TableHeaderCell>
+                <TableHeaderCell>{t("Kind")}</TableHeaderCell>
+                <TableHeaderCell>{t("Reason")}</TableHeaderCell>
+                <TableHeaderCell>{t("State")}</TableHeaderCell>
+                <TableHeaderCell>{t("Error")}</TableHeaderCell>
+                <TableHeaderCell className="text-right">{t("Attempts")}</TableHeaderCell>
+                <TableHeaderCell>{t("Requested by")}</TableHeaderCell>
+                <TableHeaderCell>{t("Updated")}</TableHeaderCell>
+                <TableHeaderCell className="text-right">{t("Actions")}</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -289,13 +290,13 @@ export function DeletionRequests({ userRole }: DeletionRequestsProps) {
                     </TableCell>
                     <TableCell className="text-right">
                       <RowActions
-                        label={`deletion request for ${req.target_label || req.target_id}`}
+                        label={t("deletion request for {0}", req.target_label || req.target_id)}
                         actions={[
                           ...(canRetry
-                            ? [{ label: "Retry", busy: rowBusy && retryMutation.isPending, disabled: rowBusy, onSelect: () => handleRetry(req.id) }]
+                            ? [{ label: t("Retry"), busy: rowBusy && retryMutation.isPending, disabled: rowBusy, onSelect: () => handleRetry(req.id) }]
                             : []),
                           ...(canCancel
-                            ? [{ label: "Cancel", destructive: true, busy: rowBusy && cancelMutation.isPending, disabled: rowBusy, onSelect: () => handleCancel(req.id) }]
+                            ? [{ label: t("Cancel"), destructive: true, busy: rowBusy && cancelMutation.isPending, disabled: rowBusy, onSelect: () => handleCancel(req.id) }]
                             : []),
                         ]}
                       />

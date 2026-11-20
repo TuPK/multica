@@ -1,6 +1,7 @@
 import { Spinner } from "@multica/ui/components/ui/spinner";
+import { t } from "../i18n";
 
-export function LoadingState({ message = "Loading..." }: { message?: string }) {
+export function LoadingState({ message = t("Loading...") }: { message?: string }) {
   return (
     <div
       role="status"

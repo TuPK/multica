@@ -26,6 +26,7 @@ import { getTenantPolicyErrorMessage } from "../api/client";
 import { useMe, useTenantPolicy, useTenants, useUpdateTenantPolicy } from "../api/hooks";
 import type { TenantPolicyResponse, TenantPolicyValues } from "../api/schemas";
 import type { StaffRole } from "../components/types";
+import { t } from "../i18n";
 
 export interface TenantPolicyProps {
   tenantId?: string;
@@ -148,10 +149,10 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
 
   if (!canAccess) {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -171,7 +172,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
 
     const parsedHours = Number(sessionMaxAgeInput.trim() || "0");
     if (!Number.isInteger(parsedHours) || parsedHours < 0) {
-      setSessionError("Session max age must be a non-negative integer in hours.");
+      setSessionError(t("Session max age must be a non-negative integer in hours."));
       return;
     }
 
@@ -187,23 +188,23 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
       });
       setSaveSuccess(true);
     } catch (err) {
-      setSaveError(getTenantPolicyErrorMessage(err, "Failed to update tenant policy"));
+      setSaveError(getTenantPolicyErrorMessage(err, t("Failed to update tenant policy")));
     }
   };
 
   const fromTenantBadge = (field: PolicyFieldKey) =>
-    data && isFieldFromTenant(data, field) ? <Badge variant="info" label="From tenant" /> : null;
+    data && isFieldFromTenant(data, field) ? <Badge variant="info" label={t("From tenant")} /> : null;
 
   const content = (
     <div className="space-y-6">
       {needsTenantSelector && (
         <Section padding={4}>
           <div className="space-y-3">
-            <Heading level={3}>Tenant</Heading>
+            <Heading level={3}>{t("Tenant")}</Heading>
             <div className="max-w-sm">
               <UiField>
                 <UiFieldLabel htmlFor="tenant-policy-tenant-select" className="text-label">
-                  Tenant
+                  {t("Tenant")}
                 </UiFieldLabel>
                 <Select
                   items={tenantOptions.map((item) => ({ value: item.id, label: item.name }))}
@@ -215,10 +216,10 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                     }
                   }}
                 >
-                  <SelectTrigger id="tenant-policy-tenant-select" aria-label="Tenant" className="w-full">
+                  <SelectTrigger id="tenant-policy-tenant-select" aria-label={t("Tenant")} className="w-full">
                     <SelectValue>
                       {tenantOptions.find((item) => item.id === activeTenantId)?.name ||
-                        "Select a tenant"}
+                        t("Select a tenant")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -235,11 +236,11 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
         </Section>
       )}
 
-      {policyQuery.isLoading && <LoadingState message="Loading tenant policy..." />}
+      {policyQuery.isLoading && <LoadingState message={t("Loading tenant policy...")} />}
 
       {policyQuery.isError && (
         <ErrorState
-          title="Failed to load tenant policy"
+          title={t("Failed to load tenant policy")}
           message={
             policyQuery.error instanceof Error ? policyQuery.error.message : undefined
           }
@@ -252,11 +253,11 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
           <Section padding={4}>
             <div className="space-y-4">
               <HStack justify="between" align="center" wrap="wrap" gap={2}>
-                <Heading level={3}>Effective policy</Heading>
-                <Badge variant="neutral" label={`Version ${data.version}`} />
+                <Heading level={3}>{t("Effective policy")}</Heading>
+                <Badge variant="neutral" label={t("Version {0}", data.version)} />
               </HStack>
               <MetadataList columns="multi" label={{ position: "start" }}>
-                <MetadataListItem label="Allowed invite domains">
+                <MetadataListItem label={t("Allowed invite domains")}>
                   <HStack
                     data-testid="effective-policy-allowed_invite_domains"
                     align="center"
@@ -266,13 +267,13 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                     <Text type="body">
                       {effectivePolicy.allowed_invite_domains.length > 0
                         ? effectivePolicy.allowed_invite_domains.join(", ")
-                        : "Any domain"}
+                        : t("Any domain")}
                     </Text>
                     {fromTenantBadge("allowed_invite_domains")}
                   </HStack>
                 </MetadataListItem>
 
-                <MetadataListItem label="Share links">
+                <MetadataListItem label={t("Share links")}>
                   <HStack
                     data-testid="effective-policy-share_links_enabled"
                     align="center"
@@ -280,37 +281,37 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                     wrap="wrap"
                   >
                     <Text type="body">
-                      {effectivePolicy.share_links_enabled ? "Enabled" : "Disabled"}
+                      {effectivePolicy.share_links_enabled ? t("Enabled") : t("Disabled")}
                     </Text>
                     {fromTenantBadge("share_links_enabled")}
                   </HStack>
                 </MetadataListItem>
 
-                <MetadataListItem label="Require SSO">
+                <MetadataListItem label={t("Require SSO")}>
                   <HStack
                     data-testid="effective-policy-require_sso"
                     align="center"
                     gap={2}
                     wrap="wrap"
                   >
-                    <Text type="body">{effectivePolicy.require_sso ? "Required" : "Optional"}</Text>
+                    <Text type="body">{effectivePolicy.require_sso ? t("Required") : t("Optional")}</Text>
                     {fromTenantBadge("require_sso")}
                   </HStack>
                 </MetadataListItem>
 
-                <MetadataListItem label="Require MFA">
+                <MetadataListItem label={t("Require MFA")}>
                   <HStack
                     data-testid="effective-policy-require_mfa"
                     align="center"
                     gap={2}
                     wrap="wrap"
                   >
-                    <Text type="body">{effectivePolicy.require_mfa ? "Required" : "Optional"}</Text>
+                    <Text type="body">{effectivePolicy.require_mfa ? t("Required") : t("Optional")}</Text>
                     {fromTenantBadge("require_mfa")}
                   </HStack>
                 </MetadataListItem>
 
-                <MetadataListItem label="Session max age">
+                <MetadataListItem label={t("Session max age")}>
                   <HStack
                     data-testid="effective-policy-session_max_age_hours"
                     align="center"
@@ -319,8 +320,8 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                   >
                     <Text type="body" hasTabularNumbers>
                       {effectivePolicy.session_max_age_hours > 0
-                        ? `${effectivePolicy.session_max_age_hours} hours`
-                        : "Unlimited"}
+                        ? t("{0} hours", effectivePolicy.session_max_age_hours)
+                        : t("Unlimited")}
                     </Text>
                     {fromTenantBadge("session_max_age_hours")}
                   </HStack>
@@ -331,7 +332,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
 
           <Section padding={4}>
             <div className="space-y-4">
-              <Heading level={3}>Tenant policy floor</Heading>
+              <Heading level={3}>{t("Tenant policy floor")}</Heading>
               <form onSubmit={handleSubmit} className="space-y-4">
               {saveError && (
                 <Alert variant="destructive">
@@ -343,15 +344,15 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
               {saveSuccess && (
                 <Alert>
                   <CheckCircle2 className="size-4" />
-                  <AlertDescription>Tenant policy updated.</AlertDescription>
+                  <AlertDescription>{t("Tenant policy updated.")}</AlertDescription>
                 </Alert>
               )}
 
               <Field
-                label="Allowed invite domains"
+                label={t("Allowed invite domains")}
                 inputID={domainsId}
                 isOptional
-                description="Comma-separated email domains enforced as the tenant intersection."
+                description={t("Comma-separated email domains enforced as the tenant intersection.")}
                 width="100%"
               >
                 <Input
@@ -361,7 +362,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                     setDomainsInput(e.target.value);
                     setSaveSuccess(false);
                   }}
-                  placeholder="acme.com, partner.org"
+                  placeholder={t("acme.com, partner.org")}
                   disabled={!canEdit || updatePolicy.isPending}
                 />
               </Field>
@@ -374,10 +375,10 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                       htmlFor={shareLinksId}
                       className="text-body font-medium text-foreground"
                     >
-                      Allow share links
+                      {t("Allow share links")}
                     </label>
                     <Text type="supporting" as="div">
-                      Workspaces can only enable public share links when the tenant allows them.
+                      {t("Workspaces can only enable public share links when the tenant allows them.")}
                     </Text>
                   </div>
                   <Switch
@@ -399,7 +400,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                       htmlFor={requireSsoId}
                       className="text-body font-medium text-foreground"
                     >
-                      Require SSO
+                      {t("Require SSO")}
                     </label>
                   </div>
                   <Switch
@@ -421,7 +422,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                       htmlFor={requireMfaId}
                       className="text-body font-medium text-foreground"
                     >
-                      Require MFA
+                      {t("Require MFA")}
                     </label>
                   </div>
                   <Switch
@@ -438,10 +439,10 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
               </div>
 
               <Field
-                label="Session max age (hours)"
+                label={t("Session max age (hours)")}
                 inputID={sessionId}
                 isOptional
-                description="Set 0 to leave session lifetime unrestricted by the tenant floor."
+                description={t("Set 0 to leave session lifetime unrestricted by the tenant floor.")}
                 status={
                   sessionError
                     ? { type: "error", message: sessionError, messageID: sessionErrorId }
@@ -475,7 +476,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
                     aria-busy={updatePolicy.isPending || undefined}
                   >
                     {updatePolicy.isPending && <Spinner />}
-                    Save policy
+                    {t("Save policy")}
                   </Button>
                 </HStack>
               )}
@@ -495,7 +496,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
     <Layout height="auto">
       <LayoutHeader hasDivider>
         <HStack justify="between" align="center" wrap="wrap" gap={3}>
-          <Heading level={1}>Tenant policy</Heading>
+          <Heading level={1}>{t("Tenant policy")}</Heading>
           <Button
             type="button"
             variant="outline"
@@ -509,7 +510,7 @@ export function TenantPolicy({ tenantId, embedded = false, userRole }: TenantPol
             ) : (
               <RefreshCw className="size-4" aria-hidden="true" />
             )}
-            Refresh
+            {t("Refresh")}
           </Button>
         </HStack>
       </LayoutHeader>

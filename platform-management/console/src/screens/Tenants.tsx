@@ -13,6 +13,7 @@ import { EmptyState } from "../components/EmptyState";
 import { RowActions, useRowActionsWidth } from "../components/RowActions";
 import { useTenants } from "../api/hooks";
 import type { Tenant } from "../api/schemas";
+import { t } from "../i18n";
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
 
@@ -29,7 +30,7 @@ export function formatBytes(bytes: number): string {
 
 /** The limit a tenant's plans allow: a number, or "Unlimited" when there is none. */
 export function maxWorkspacesLabel(max: number | null): string {
-  return max === null ? "Unlimited" : String(max);
+  return max === null ? t("Unlimited") : String(max);
 }
 
 /** "2 active, 1 suspended": the tenant's workspaces by status, largest group first. */
@@ -67,7 +68,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tenants" />
+      <PageHeader title={t("Tenants")} />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full max-w-sm">
@@ -77,10 +78,10 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
           />
           <Input
             type="search"
-            aria-label="Search tenants"
+            aria-label={t("Search tenants")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by tenant, workspace or owner email..."
+            placeholder={t("Search by tenant, workspace or owner email...")}
             className="pr-8 pl-9"
           />
           {search && (
@@ -88,7 +89,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label="Clear search"
+              aria-label={t("Clear search")}
               onClick={() => setSearch("")}
               className="absolute top-1 right-1 text-muted-foreground hover:text-foreground"
             >
@@ -98,11 +99,11 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
         </div>
       </div>
 
-      {isLoading && <LoadingState message="Loading tenants..." />}
+      {isLoading && <LoadingState message={t("Loading tenants...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load tenants"
+          title={t("Failed to load tenants")}
           message={error instanceof Error ? error.message : undefined}
           onRetry={refetch}
         />
@@ -111,16 +112,16 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
       {!isLoading && !isError && tenants.length === 0 && (
         <EmptyState
           icon={<Building2 className="size-5" aria-hidden="true" />}
-          title="No tenants found"
+          title={t("No tenants found")}
           description={
             search
-              ? "No tenants matched your search query."
-              : "There are currently no registered tenants."
+              ? t("No tenants matched your search query.")
+              : t("There are currently no registered tenants.")
           }
           actions={
             search ? (
               <Button variant="outline" size="sm" onClick={() => setSearch("")}>
-                Clear search
+                {t("Clear search")}
               </Button>
             ) : undefined
           }
@@ -139,7 +140,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
               columns={[
                 {
                   key: "name",
-                  header: "Name",
+                  header: t("Name"),
                   width: proportional(2, { minWidth: 200 }),
                   renderCell: (tenant) => (
                     <>
@@ -154,7 +155,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                 },
                 {
                   key: "workspace_count",
-                  header: "Workspaces",
+                  header: t("Workspaces"),
                   width: pixel(120),
                   align: "end",
                   renderCell: (tenant) => (
@@ -167,7 +168,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                 },
                 {
                   key: "max_workspaces",
-                  header: "Max workspaces",
+                  header: t("Max workspaces"),
                   width: proportional(1, { minWidth: 120 }),
                   align: "end",
                   renderCell: (tenant) => (
@@ -180,19 +181,19 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                 },
                 {
                   key: "best_plan_key",
-                  header: "Best plan",
+                  header: t("Best plan"),
                   width: proportional(1, { minWidth: 110 }),
                   renderCell: (tenant) => <Text type="supporting">{tenant.best_plan_key || "-"}</Text>,
                 },
                 {
                   key: "status_summary",
-                  header: "Workspace status",
+                  header: t("Workspace status"),
                   width: proportional(1.5, { minWidth: 160 }),
                   renderCell: (tenant) => <Text type="supporting">{statusSummaryText(tenant.status_summary)}</Text>,
                 },
                 {
                   key: "last_activity_at",
-                  header: "Last Activity",
+                  header: t("Last Activity"),
                   width: proportional(1.3, { minWidth: 150 }),
                   renderCell: (tenant) => (
                     <Text type="supporting" hasTabularNumbers>
@@ -202,13 +203,13 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                 },
                 {
                   key: "actions",
-                  header: "Action",
+                  header: t("Action"),
                   width: pixel(actionsWidth),
                   align: "end",
                   renderCell: (tenant) => (
                     <RowActions
-                      label={`tenant ${tenant.name}`}
-                      actions={[{ label: "View", onSelect: () => onSelectTenant(tenant.id) }]}
+                      label={t("tenant {0}", tenant.name)}
+                      actions={[{ label: t("View"), onSelect: () => onSelectTenant(tenant.id) }]}
                     />
                   ),
                 },
@@ -225,7 +226,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                 aria-busy={isFetchingNextPage}
               >
                 {isFetchingNextPage && <Spinner className="size-3.5" />}
-                Load more
+                {t("Load more")}
               </Button>
             </div>
           )}

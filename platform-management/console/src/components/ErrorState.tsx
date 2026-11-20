@@ -1,9 +1,10 @@
 import { Alert, AlertDescription, AlertTitle } from "@multica/ui/components/ui/alert";
 import { Button } from "@multica/ui/components/ui/button";
 import { AlertCircle } from "@multica/ui/icons";
+import { t } from "../i18n";
 
 export function ErrorState({
-  title = "Something went wrong",
+  title = t("Something went wrong"),
   message,
   onRetry,
 }: {
@@ -23,7 +24,7 @@ export function ErrorState({
           {onRetry && (
             <div>
               <Button variant="outline" size="sm" onClick={onRetry}>
-                Try again
+                {t("Try again")}
               </Button>
             </div>
           )}

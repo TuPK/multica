@@ -26,6 +26,7 @@ import { getApiErrorMessage } from "../api/client";
 import { useAuditEvents, useExportAudit, useMe, type AuditFilters } from "../api/hooks";
 import { CATALOG_ACTIONS } from "../components/types";
 import type { AuditEvent } from "../api/schemas";
+import { t } from "../i18n";
 
 const MAX_EXPORT_RANGE_MS = 31 * 24 * 60 * 60 * 1000;
 
@@ -77,7 +78,7 @@ export function Audit() {
 
   const actionItems = useMemo(
     () => [
-      { value: "all", label: "All actions" },
+      { value: "all", label: t("All actions") },
       ...CATALOG_ACTIONS.map((code) => ({ value: code, label: code })),
     ],
     [],
@@ -95,20 +96,20 @@ export function Audit() {
     setExportNotice(null);
 
     if (!exportFrom || !exportTo) {
-      setExportError("Select both Export from and Export to dates.");
+      setExportError(t("Select both Export from and Export to dates."));
       return;
     }
 
     const startMs = Date.parse(`${exportFrom}T00:00:00Z`);
     const endInclusiveMs = Date.parse(`${exportTo}T00:00:00Z`);
     if (!Number.isFinite(startMs) || !Number.isFinite(endInclusiveMs) || endInclusiveMs < startMs) {
-      setExportError("Export end date must be on or after the start date.");
+      setExportError(t("Export end date must be on or after the start date."));
       return;
     }
 
     const endExclusiveMs = endInclusiveMs + 24 * 60 * 60 * 1000;
     if (endExclusiveMs - startMs > MAX_EXPORT_RANGE_MS) {
-      setExportError("Export range cannot exceed 31 days.");
+      setExportError(t("Export range cannot exceed 31 days."));
       return;
     }
 
@@ -135,22 +136,22 @@ export function Audit() {
 
       setExportNotice(
         result.nextCursor
-          ? "Downloaded export page (more matching events exist; narrow the window for all rows)."
-          : "Audit log export downloaded.",
+          ? t("Downloaded export page (more matching events exist; narrow the window for all rows).")
+          : t("Audit log export downloaded."),
       );
     } catch (err) {
-      setExportError(getApiErrorMessage(err, "Failed to export audit log"));
+      setExportError(getApiErrorMessage(err, t("Failed to export audit log")));
     }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Audit Log"
+        title={t("Audit Log")}
         actions={
           hasFilters ? (
             <Button variant="outline" size="sm" onClick={clearFilters}>
-              Clear filters
+              {t("Clear filters")}
             </Button>
           ) : undefined
         }
@@ -160,23 +161,23 @@ export function Audit() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field>
             <FieldLabel htmlFor="audit-action-select" className="text-label">
-              Action
+              {t("Action")}
             </FieldLabel>
             <Select
               items={actionItems}
               value={action || "all"}
               onValueChange={(val) => setAction(!val || val === "all" ? "" : val)}
             >
-              <SelectTrigger id="audit-action-select" aria-label="Action" className="w-full">
+              <SelectTrigger id="audit-action-select" aria-label={t("Action")} className="w-full">
                 <SelectValue>
-                  {actionItems.find((item) => item.value === (action || "all"))?.label ??
-                    "All actions"}
+                  {t(actionItems.find((item) => item.value === (action || "all"))?.label ??
+                    t("All actions"))}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {actionItems.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
-                    {item.label}
+                    {t(item.label)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -185,38 +186,38 @@ export function Audit() {
 
           <Field>
             <FieldLabel htmlFor="audit-actor-input" className="text-label">
-              Actor ID
+              {t("Actor ID")}
             </FieldLabel>
             <Input
               id="audit-actor-input"
               type="text"
               value={actorId}
               onChange={(e) => setActorId(e.target.value)}
-              placeholder="Filter by actor ID..."
+              placeholder={t("Filter by actor ID...")}
             />
           </Field>
 
           <Field>
             <FieldLabel htmlFor="audit-from-input" className="text-label">
-              From Date
+              {t("From Date")}
             </FieldLabel>
             <DatePickerField
               id="audit-from-input"
               value={from}
               onChange={setFrom}
-              placeholder="Select start date"
+              placeholder={t("Select start date")}
             />
           </Field>
 
           <Field>
             <FieldLabel htmlFor="audit-to-input" className="text-label">
-              To Date
+              {t("To Date")}
             </FieldLabel>
             <DatePickerField
               id="audit-to-input"
               value={to}
               onChange={setTo}
-              placeholder="Select end date"
+              placeholder={t("Select end date")}
             />
           </Field>
         </div>
@@ -225,7 +226,7 @@ export function Audit() {
       {canExport && (
         <Section padding={4}>
           <div className="space-y-4">
-            <Heading level={3}>Export audit log</Heading>
+            <Heading level={3}>{t("Export audit log")}</Heading>
             {exportError && (
               <Alert variant="destructive">
                 <AlertCircle className="size-4" />
@@ -240,31 +241,31 @@ export function Audit() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
               <Field>
                 <FieldLabel htmlFor="audit-export-from-input" className="text-label">
-                  Export from
+                  {t("Export from")}
                 </FieldLabel>
                 <DatePickerField
                   id="audit-export-from-input"
                   value={exportFrom}
                   onChange={setExportFrom}
-                  placeholder="Select start date"
+                  placeholder={t("Select start date")}
                 />
               </Field>
 
               <Field>
                 <FieldLabel htmlFor="audit-export-to-input" className="text-label">
-                  Export to
+                  {t("Export to")}
                 </FieldLabel>
                 <DatePickerField
                   id="audit-export-to-input"
                   value={exportTo}
                   onChange={setExportTo}
-                  placeholder="Select end date"
+                  placeholder={t("Select end date")}
                 />
               </Field>
 
               <Field>
                 <FieldLabel htmlFor="audit-export-format-select" className="text-label">
-                  Format
+                  {t("Format")}
                 </FieldLabel>
                 <Select
                   items={EXPORT_FORMAT_ITEMS}
@@ -275,18 +276,18 @@ export function Audit() {
                 >
                   <SelectTrigger
                     id="audit-export-format-select"
-                    aria-label="Format"
+                    aria-label={t("Format")}
                     className="w-full"
                   >
                     <SelectValue>
-                      {EXPORT_FORMAT_ITEMS.find((item) => item.value === exportFormat)?.label ??
-                        "NDJSON (.ndjson)"}
+                      {t(EXPORT_FORMAT_ITEMS.find((item) => item.value === exportFormat)?.label ??
+                        t("NDJSON (.ndjson)"))}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {EXPORT_FORMAT_ITEMS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                        {t(item.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -306,22 +307,22 @@ export function Audit() {
                   ) : (
                     <Download className="size-4" aria-hidden="true" />
                   )}
-                  Export audit log
+                  {t("Export audit log")}
                 </Button>
               </div>
             </div>
             <Text type="supporting" color="secondary">
-              Maximum export window is 31 days. Currently applied action and actor filters apply to the export.
+              {t("Maximum export window is 31 days. Currently applied action and actor filters apply to the export.")}
             </Text>
           </div>
         </Section>
       )}
 
-      {isLoading && <LoadingState message="Loading audit log..." />}
+      {isLoading && <LoadingState message={t("Loading audit log...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load audit events"
+          title={t("Failed to load audit events")}
           message={error instanceof Error ? error.message : undefined}
           onRetry={refetch}
         />
@@ -330,12 +331,12 @@ export function Audit() {
       {!isLoading && !isError && events.length === 0 && (
         <EmptyState
           icon={<Activity className="size-5" aria-hidden="true" />}
-          title="No audit events found"
-          description="Try adjusting your filter criteria."
+          title={t("No audit events found")}
+          description={t("Try adjusting your filter criteria.")}
           actions={
             hasFilters ? (
               <Button variant="outline" size="sm" onClick={clearFilters}>
-                Clear filters
+                {t("Clear filters")}
               </Button>
             ) : undefined
           }
@@ -354,7 +355,7 @@ export function Audit() {
               columns={[
                 {
                   key: "created_at",
-                  header: "Time",
+                  header: t("Time"),
                   width: proportional(1.2, { minWidth: 170 }),
                   renderCell: (event) => (
                     <Text type="supporting" hasTabularNumbers>
@@ -364,7 +365,7 @@ export function Audit() {
                 },
                 {
                   key: "action",
-                  header: "Action",
+                  header: t("Action"),
                   width: proportional(1.5, { minWidth: 160 }),
                   renderCell: (event) => (
                     <Text type="code" weight="medium">
@@ -374,7 +375,7 @@ export function Audit() {
                 },
                 {
                   key: "actor_label",
-                  header: "Actor",
+                  header: t("Actor"),
                   width: proportional(1.5, { minWidth: 180 }),
                   renderCell: (event) => (
                     <div className="flex flex-col">
@@ -385,7 +386,7 @@ export function Audit() {
                 },
                 {
                   key: "target_label",
-                  header: "Target",
+                  header: t("Target"),
                   width: proportional(1.5, { minWidth: 180 }),
                   renderCell: (event) => (
                     <div className="flex flex-col">
@@ -396,7 +397,7 @@ export function Audit() {
                 },
                 {
                   key: "detail",
-                  header: "Details",
+                  header: t("Details"),
                   width: proportional(3, { minWidth: 220 }),
                   renderCell: (event) => (
                     <span
@@ -420,7 +421,7 @@ export function Audit() {
                 aria-busy={isFetchingNextPage}
               >
                 {isFetchingNextPage && <Spinner className="size-3.5" />}
-                Load more
+                {t("Load more")}
               </Button>
             </div>
           )}

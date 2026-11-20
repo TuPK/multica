@@ -46,6 +46,7 @@ import {
 import { PlatformApiError } from "../api/client";
 import type { StaffRole } from "../components/types";
 import type { AccountRequest, AccountRequestState, Plan } from "../api/schemas";
+import { t } from "../i18n";
 
 interface AccountsProps {
   userRole?: StaffRole;
@@ -128,8 +129,8 @@ function formatRetryAfter(retryAfter: string | null): string | null {
 function formatRateLimitMessage(prefix: string, retryAfter: string | null): string {
   const wait = formatRetryAfter(retryAfter);
   return wait
-    ? `${prefix} Try again in ${wait}.`
-    : `${prefix} Please wait before trying again.`;
+    ? t("{0} Try again in {1}.", prefix, wait)
+    : t("{0} Please wait before trying again.", prefix);
 }
 
 function extractErrorDetails(err: unknown): {
@@ -175,12 +176,12 @@ function isPaidPlan(planKey: string, selectedPlan: Plan | undefined): boolean {
 
 function formatErrorCode(code: string): string {
   if (!code) return "-";
-  return ERROR_CODE_LABELS[code] ?? code;
+  return t(ERROR_CODE_LABELS[code] ?? code);
 }
 
 function AccountStateBadge({ req }: { req: AccountRequest }) {
   if (req.state === "failed" && req.error_code === "finalize_failed") {
-    return <StatusBadge status="needs_review" label="Finalize failed" />;
+    return <StatusBadge status="needs_review" label={t("Finalize failed")} />;
   }
   return <StatusBadge status={req.state} />;
 }
@@ -231,10 +232,10 @@ export function Accounts({ userRole }: AccountsProps) {
 
   if (effectiveRole && effectiveRole !== "system_admin") {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -248,7 +249,7 @@ export function Accounts({ userRole }: AccountsProps) {
   const showMismatchLive =
     confirmEmail !== "" && email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase();
   const confirmEmailError =
-    fieldErrors.confirm_email ?? (showMismatchLive ? "Email addresses do not match." : undefined);
+    fieldErrors.confirm_email ?? (showMismatchLive ? t("Email addresses do not match.") : undefined);
 
   const clearFieldError = (name: string) => {
     setFieldErrors((prev) => {
@@ -318,37 +319,37 @@ export function Accounts({ userRole }: AccountsProps) {
     const trimmedConfirm = confirmEmail.trim();
 
     if (!trimmedEmail) {
-      errs.email = "Email is required.";
+      errs.email = t("Email is required.");
     }
     if (!trimmedConfirm) {
-      errs.confirm_email = "Please confirm the email address.";
+      errs.confirm_email = t("Please confirm the email address.");
     } else if (trimmedEmail.toLowerCase() !== trimmedConfirm.toLowerCase()) {
-      errs.confirm_email = "Email addresses do not match.";
+      errs.confirm_email = t("Email addresses do not match.");
     }
 
     const trimmedDisplay = displayName.trim();
     if (!trimmedDisplay || trimmedDisplay.length > 100) {
-      errs.display_name = "Display name must be between 1 and 100 characters.";
+      errs.display_name = t("Display name must be between 1 and 100 characters.");
     }
 
     const trimmedWorkspace = workspaceName.trim();
     if (!trimmedWorkspace || trimmedWorkspace.length > 100) {
-      errs.workspace_name = "Workspace name must be between 1 and 100 characters.";
+      errs.workspace_name = t("Workspace name must be between 1 and 100 characters.");
     }
 
     const parsedSeats = Number(seats);
     if (!Number.isInteger(parsedSeats) || parsedSeats < 1) {
-      errs.seats = "Seats must be a whole number of at least 1.";
+      errs.seats = t("Seats must be a whole number of at least 1.");
     }
 
     const paid = isPaidPlan(effectivePlanKey, selectedPlan);
     const hasReason = compReason.trim() !== "";
     if (trial && hasReason) {
-      errs.activation = "Choose either a trial or a complimentary reason, not both.";
+      errs.activation = t("Choose either a trial or a complimentary reason, not both.");
     } else if (paid && !trial && !hasReason) {
-      errs.activation = "A paid plan requires either a trial or a complimentary reason.";
+      errs.activation = t("A paid plan requires either a trial or a complimentary reason.");
     } else if (!paid && (trial || hasReason)) {
-      errs.activation = "Free plans activate without a trial or complimentary reason.";
+      errs.activation = t("Free plans activate without a trial or complimentary reason.");
     }
 
     if (kind === "business") {
@@ -400,41 +401,41 @@ export function Accounts({ userRole }: AccountsProps) {
       await createAccount.mutateAsync({ input, idempotencyKey });
       setCreateOpen(false);
       setActionError(null);
-      setActionNotice(`Account request submitted for ${input.email}.`);
+      setActionNotice(t("Account request submitted for {0}.", input.email));
     } catch (err: unknown) {
       const details = extractErrorDetails(err);
       switch (details.code) {
         case "account_request_invalid": {
           const nextFields: Record<string, string> = {};
           for (const f of details.fields) {
-            nextFields[f] = FIELD_ERROR_MESSAGES[f] ?? "Invalid value.";
+            nextFields[f] = t(FIELD_ERROR_MESSAGES[f] ?? "Invalid value.");
           }
           setFieldErrors(nextFields);
-          setFormError(details.message || "Check the highlighted fields and try again.");
+          setFormError(details.message || t("Check the highlighted fields and try again."));
           break;
         }
         case "account_activation_required":
           setFieldErrors({
-            activation: "Trial or complimentary reason required.",
+            activation: t("Trial or complimentary reason required."),
           });
-          setFormError(details.message || "A paid plan requires either a trial or a complimentary reason.");
+          setFormError(details.message || t("A paid plan requires either a trial or a complimentary reason."));
           break;
         case "account_email_exists":
-          setFieldErrors({ email: "Email already registered." });
-          setFormError(details.message || "An account with this email already exists.");
+          setFieldErrors({ email: t("Email already registered.") });
+          setFormError(details.message || t("An account with this email already exists."));
           break;
         case "plan_audience_mismatch":
-          setFieldErrors({ plan_key: "Not available for this account kind." });
-          setFormError(details.message || "This plan is not sold for this account kind.");
+          setFieldErrors({ plan_key: t("Not available for this account kind.") });
+          setFormError(details.message || t("This plan is not sold for this account kind."));
           break;
         case "account_create_rate_limited":
-          setFormError(formatRateLimitMessage("Account creation rate limit reached.", details.retryAfter));
+          setFormError(formatRateLimitMessage(t("Account creation rate limit reached."), details.retryAfter));
           break;
         default:
           if (details.status === 429) {
-            setFormError(formatRateLimitMessage("Account creation rate limit reached.", details.retryAfter));
+            setFormError(formatRateLimitMessage(t("Account creation rate limit reached."), details.retryAfter));
           } else {
-            setFormError("Unable to create account request. Please try again.");
+            setFormError(t("Unable to create account request. Please try again."));
           }
       }
     }
@@ -446,11 +447,11 @@ export function Accounts({ userRole }: AccountsProps) {
     try {
       await cancelAccount.mutateAsync({ id: cancelTarget.id });
       setActionError(null);
-      setActionNotice(`Canceled account request for ${cancelTarget.email}.`);
+      setActionNotice(t("Canceled account request for {0}.", cancelTarget.email));
       setCancelTarget(null);
     } catch (err: unknown) {
       const details = extractErrorDetails(err);
-      setCancelError(details.message || "Failed to cancel account request.");
+      setCancelError(details.message || t("Failed to cancel account request."));
     }
   };
 
@@ -461,18 +462,18 @@ export function Accounts({ userRole }: AccountsProps) {
     setActionNotice(null);
     try {
       await resendWelcome.mutateAsync({ id: req.id });
-      setActionNotice(`Welcome email resent to ${req.email}.`);
+      setActionNotice(t("Welcome email resent to {0}.", req.email));
     } catch (err: unknown) {
       const details = extractErrorDetails(err);
       if (details.status === 429) {
-        setActionError(formatRateLimitMessage("Welcome email rate limit reached.", details.retryAfter));
+        setActionError(formatRateLimitMessage(t("Welcome email rate limit reached."), details.retryAfter));
       } else if (details.status === 502) {
-        setActionError("Failed to send welcome email. Please try again later.");
+        setActionError(t("Failed to send welcome email. Please try again later."));
       } else {
         setActionError(
           details.status !== null && details.status < 500 && details.message
             ? details.message
-            : "Failed to resend welcome email.",
+            : t("Failed to resend welcome email."),
         );
       }
     } finally {
@@ -489,11 +490,11 @@ export function Accounts({ userRole }: AccountsProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Accounts"
+        title={t("Accounts")}
         actions={
           <Button size="sm" onClick={handleOpenCreate} className="gap-1.5">
             <UserPlus className="size-4" aria-hidden="true" />
-            <span>Create account</span>
+            <span>{t("Create account")}</span>
           </Button>
         }
       />
@@ -525,22 +526,22 @@ export function Accounts({ userRole }: AccountsProps) {
         }}
       >
         <div className="border-b border-surface-border">
-          <TabsList variant="line" aria-label="Account request state">
+          <TabsList variant="line" aria-label={t("Account request state")}>
             {STATE_TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>
-                {tab.label}
+                {t(tab.label)}
               </TabsTrigger>
             ))}
           </TabsList>
         </div>
       </Tabs>
 
-      {isLoading && <LoadingState message="Loading account requests..." />}
+      {isLoading && <LoadingState message={t("Loading account requests...")} />}
 
       {isError && (
         <ErrorState
-          title="Failed to load account requests"
-          message={error instanceof Error ? error.message : "An error occurred while loading account requests."}
+          title={t("Failed to load account requests")}
+          message={error instanceof Error ? error.message : t("An error occurred while loading account requests.")}
           onRetry={refetch}
         />
       )}
@@ -548,20 +549,20 @@ export function Accounts({ userRole }: AccountsProps) {
       {!isLoading && !isError && requestList.length === 0 && (
         <EmptyState
           icon={<UserPlus className="size-4" />}
-          title="No account requests"
+          title={t("No account requests")}
           description={
             stateFilter
-              ? `No account requests with state "${stateFilter}".`
-              : "Create an account request to provision a user and workspace."
+              ? t("No account requests with state \"{0}\".", stateFilter)
+              : t("Create an account request to provision a user and workspace.")
           }
           actions={
             stateFilter ? (
               <Button variant="outline" size="sm" onClick={() => setStateFilter("")}>
-                Show all
+                {t("Show all")}
               </Button>
             ) : (
               <Button size="sm" onClick={handleOpenCreate}>
-                Create account
+                {t("Create account")}
               </Button>
             )
           }
@@ -579,18 +580,18 @@ export function Accounts({ userRole }: AccountsProps) {
             columns={[
               {
                 key: "state",
-                header: "State",
+                header: t("State"),
                 width: proportional(1, { minWidth: 100 }),
                 renderCell: (req) => (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <AccountStateBadge req={req} />
-                    {req.logged_in === false && <Badge variant="neutral" label="Never logged in" />}
+                    {req.logged_in === false && <Badge variant="neutral" label={t("Never logged in")} />}
                   </div>
                 ),
               },
               {
                 key: "email",
-                header: "Email",
+                header: t("Email"),
                 width: proportional(1.4, { minWidth: 120 }),
                 renderCell: (req) => (
                   <>
@@ -607,13 +608,13 @@ export function Accounts({ userRole }: AccountsProps) {
               },
               {
                 key: "kind",
-                header: "Kind",
+                header: t("Kind"),
                 width: proportional(0.6, { minWidth: 56 }),
                 renderCell: (req) => <Text type="body" className="capitalize">{req.kind}</Text>,
               },
               {
                 key: "plan_key",
-                header: "Plan",
+                header: t("Plan"),
                 width: proportional(1, { minWidth: 90 }),
                 renderCell: (req) => (
                   <>
@@ -621,14 +622,14 @@ export function Accounts({ userRole }: AccountsProps) {
                       {req.plan_key}
                     </Text>
                     <Text type="supporting" hasTabularNumbers as="div" className="block">
-                      {req.seats} seats &bull; {req.interval}
+                      {req.seats} {t("seats •")} {req.interval}
                     </Text>
                   </>
                 ),
               },
               {
                 key: "workspace_name",
-                header: "Workspace Name",
+                header: t("Workspace Name"),
                 width: proportional(1, { minWidth: 90 }),
                 renderCell: (req) => (
                   <>
@@ -648,7 +649,7 @@ export function Accounts({ userRole }: AccountsProps) {
               },
               {
                 key: "error_code",
-                header: "Error Code",
+                header: t("Error Code"),
                 width: proportional(1, { minWidth: 84 }),
                 renderCell: (req) =>
                   req.error_code ? (
@@ -661,7 +662,7 @@ export function Accounts({ userRole }: AccountsProps) {
               },
               {
                 key: "attempts",
-                header: "Attempts",
+                header: t("Attempts"),
                 width: pixel(56),
                 align: "end",
                 renderCell: (req) => (
@@ -672,7 +673,7 @@ export function Accounts({ userRole }: AccountsProps) {
               },
               {
                 key: "created_at",
-                header: "Created",
+                header: t("Created"),
                 width: proportional(1.2, { minWidth: 116 }),
                 renderCell: (req) => (
                   <Text type="supporting" hasTabularNumbers>
@@ -682,7 +683,7 @@ export function Accounts({ userRole }: AccountsProps) {
               },
               {
                 key: "actions",
-                header: "Actions",
+                header: t("Actions"),
                 width: pixel(actionsWidth),
                 align: "end",
                 renderCell: (req) => {
@@ -694,7 +695,7 @@ export function Accounts({ userRole }: AccountsProps) {
                   const actions: RowAction[] = [];
                   if (canCancel) {
                     actions.push({
-                      label: "Cancel",
+                      label: t("Cancel"),
                       destructive: true,
                       onSelect: () => {
                         setCancelTarget(req);
@@ -704,12 +705,12 @@ export function Accounts({ userRole }: AccountsProps) {
                   }
                   if (canResend) {
                     actions.push({
-                      label: "Resend welcome",
+                      label: t("Resend welcome"),
                       busy: isResending,
                       onSelect: () => handleResendWelcome(req),
                     });
                   }
-                  return <RowActions label={`account request ${req.email}`} actions={actions} />;
+                  return <RowActions label={t("account request {0}", req.email)} actions={actions} />;
                 },
               },
             ]}
@@ -722,13 +723,13 @@ export function Accounts({ userRole }: AccountsProps) {
         <DialogContent className="sm:max-w-xl">
           <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Create account</DialogTitle>
+              <DialogTitle>{t("Create account")}</DialogTitle>
             </DialogHeader>
 
             <div className="flex flex-col gap-3">
               <Field data-invalid={Boolean(fieldErrors.kind) || undefined}>
                 <FieldLabel htmlFor="account-kind" className="text-label">
-                  Account kind
+                  {t("Account kind")}
                 </FieldLabel>
                 <Select
                   items={ACCOUNT_KIND_ITEMS}
@@ -742,18 +743,18 @@ export function Accounts({ userRole }: AccountsProps) {
                 >
                   <SelectTrigger
                     id="account-kind"
-                    aria-label="Account kind"
+                    aria-label={t("Account kind")}
                     aria-invalid={Boolean(fieldErrors.kind)}
                     className="w-full"
                   >
                     <SelectValue>
-                      {ACCOUNT_KIND_ITEMS.find((i) => i.value === kind)?.label ?? kind}
+                      {t(ACCOUNT_KIND_ITEMS.find((i) => i.value === kind)?.label ?? kind)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {ACCOUNT_KIND_ITEMS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                        {t(item.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -766,7 +767,7 @@ export function Accounts({ userRole }: AccountsProps) {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field data-invalid={Boolean(fieldErrors.email) || undefined}>
                   <FieldLabel htmlFor="account-email" className="text-label">
-                    Email
+                    {t("Email")}
                   </FieldLabel>
                   <Input
                     id="account-email"
@@ -777,7 +778,7 @@ export function Accounts({ userRole }: AccountsProps) {
                       clearFieldError("email");
                       clearFieldError("confirm_email");
                     }}
-                    placeholder="user@example.com"
+                    placeholder={t("user@example.com")}
                     aria-invalid={Boolean(fieldErrors.email)}
                     disabled={createAccount.isPending}
                   />
@@ -788,7 +789,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
                 <Field data-invalid={Boolean(confirmEmailError) || undefined}>
                   <FieldLabel htmlFor="account-confirm-email" className="text-label">
-                    Confirm email
+                    {t("Confirm email")}
                   </FieldLabel>
                   <Input
                     id="account-confirm-email"
@@ -798,7 +799,7 @@ export function Accounts({ userRole }: AccountsProps) {
                       setConfirmEmail(e.target.value);
                       clearFieldError("confirm_email");
                     }}
-                    placeholder="user@example.com"
+                    placeholder={t("user@example.com")}
                     aria-invalid={Boolean(confirmEmailError)}
                     disabled={createAccount.isPending}
                   />
@@ -811,7 +812,7 @@ export function Accounts({ userRole }: AccountsProps) {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field data-invalid={Boolean(fieldErrors.display_name) || undefined}>
                   <FieldLabel htmlFor="account-display-name" className="text-label">
-                    Display name
+                    {t("Display name")}
                   </FieldLabel>
                   <Input
                     id="account-display-name"
@@ -831,7 +832,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
                 <Field data-invalid={Boolean(fieldErrors.workspace_name) || undefined}>
                   <FieldLabel htmlFor="account-workspace-name" className="text-label">
-                    Workspace name
+                    {t("Workspace name")}
                   </FieldLabel>
                   <Input
                     id="account-workspace-name"
@@ -852,7 +853,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
               <Field data-invalid={Boolean(fieldErrors.workspace_slug) || undefined}>
                 <FieldLabel htmlFor="account-workspace-slug" className="text-label">
-                  Workspace slug (optional)
+                  {t("Workspace slug (optional)")}
                 </FieldLabel>
                 <Input
                   id="account-workspace-slug"
@@ -861,7 +862,7 @@ export function Accounts({ userRole }: AccountsProps) {
                     setWorkspaceSlug(e.target.value);
                     clearFieldError("workspace_slug");
                   }}
-                  placeholder="auto-generated if blank"
+                  placeholder={t("auto-generated if blank")}
                   aria-invalid={Boolean(fieldErrors.workspace_slug)}
                   disabled={createAccount.isPending}
                 />
@@ -873,7 +874,7 @@ export function Accounts({ userRole }: AccountsProps) {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Field data-invalid={Boolean(fieldErrors.plan_key) || undefined}>
                   <FieldLabel htmlFor="account-plan-key" className="text-label">
-                    Plan
+                    {t("Plan")}
                   </FieldLabel>
                   {activePlans.length > 0 ? (
                     <Select
@@ -886,19 +887,19 @@ export function Accounts({ userRole }: AccountsProps) {
                     >
                       <SelectTrigger
                         id="account-plan-key"
-                        aria-label="Plan"
+                        aria-label={t("Plan")}
                         aria-invalid={Boolean(fieldErrors.plan_key)}
                         className="w-full"
                       >
                         <SelectValue>
-                          {planItems.find((i) => i.value === effectivePlanKey)?.label ??
-                            effectivePlanKey}
+                          {t(planItems.find((i) => i.value === effectivePlanKey)?.label ??
+                            effectivePlanKey)}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {planItems.map((item) => (
                           <SelectItem key={item.value} value={item.value}>
-                            {item.label}
+                            {t(item.label)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -919,7 +920,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
                 <Field data-invalid={Boolean(fieldErrors.seats) || undefined}>
                   <FieldLabel htmlFor="account-seats" className="text-label">
-                    Seats
+                    {t("Seats")}
                   </FieldLabel>
                   <Input
                     id="account-seats"
@@ -940,7 +941,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
                 <Field data-invalid={Boolean(fieldErrors.interval) || undefined}>
                   <FieldLabel htmlFor="account-interval" className="text-label">
-                    Interval
+                    {t("Interval")}
                   </FieldLabel>
                   <Select
                     items={INTERVAL_ITEMS}
@@ -955,18 +956,18 @@ export function Accounts({ userRole }: AccountsProps) {
                   >
                     <SelectTrigger
                       id="account-interval"
-                      aria-label="Interval"
+                      aria-label={t("Interval")}
                       aria-invalid={Boolean(fieldErrors.interval)}
                       className="w-full"
                     >
                       <SelectValue>
-                        {INTERVAL_ITEMS.find((i) => i.value === interval)?.label ?? interval}
+                        {t(INTERVAL_ITEMS.find((i) => i.value === interval)?.label ?? interval)}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {INTERVAL_ITEMS.map((item) => (
                         <SelectItem key={item.value} value={item.value}>
-                          {item.label}
+                          {t(item.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -991,11 +992,11 @@ export function Accounts({ userRole }: AccountsProps) {
                       disabled={createAccount.isPending}
                     />
                     <FieldLabel htmlFor="account-trial" className="text-body font-medium">
-                      Trial
+                      {t("Trial")}
                     </FieldLabel>
                   </Field>
                   <p className="text-caption text-muted-foreground">
-                    A trial starts now and ends after the plan's trial days.
+                    {t("A trial starts now and ends after the plan's trial days.")}
                   </p>
                   {fieldErrors.trial && (
                     <FieldError role={undefined} className="text-caption">{fieldErrors.trial}</FieldError>
@@ -1004,7 +1005,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
                 <Field data-invalid={Boolean(fieldErrors.comp_reason) || undefined}>
                   <FieldLabel htmlFor="account-comp-reason" className="text-label">
-                    Complimentary reason
+                    {t("Complimentary reason")}
                   </FieldLabel>
                   <Input
                     id="account-comp-reason"
@@ -1019,7 +1020,7 @@ export function Accounts({ userRole }: AccountsProps) {
                     disabled={createAccount.isPending}
                   />
                   <FieldDescription className="text-caption">
-                    Grants one full billing interval at no charge.
+                    {t("Grants one full billing interval at no charge.")}
                   </FieldDescription>
                   {fieldErrors.comp_reason && (
                     <FieldError role={undefined} className="text-caption">{fieldErrors.comp_reason}</FieldError>
@@ -1034,7 +1035,7 @@ export function Accounts({ userRole }: AccountsProps) {
               {kind === "business" && (
                 <fieldset className="space-y-3 rounded-lg border border-surface-border p-3">
                   <legend className="px-1 text-caption font-semibold text-foreground">
-                    Billing profile
+                    {t("Billing profile")}
                   </legend>
                   {fieldErrors.billing_profile && (
                     <p className="text-caption text-destructive">{fieldErrors.billing_profile}</p>
@@ -1043,7 +1044,7 @@ export function Accounts({ userRole }: AccountsProps) {
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field data-invalid={Boolean(fieldErrors["billing_profile.legal_name"]) || undefined}>
                       <FieldLabel htmlFor="billing-legal-name" className="text-label">
-                        Legal name
+                        {t("Legal name")}
                       </FieldLabel>
                       <Input
                         id="billing-legal-name"
@@ -1064,7 +1065,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
                     <Field data-invalid={Boolean(fieldErrors["billing_profile.tax_code"]) || undefined}>
                       <FieldLabel htmlFor="billing-tax-code" className="text-label">
-                        Tax code
+                        {t("Tax code")}
                       </FieldLabel>
                       <Input
                         id="billing-tax-code"
@@ -1086,7 +1087,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
                   <Field data-invalid={Boolean(fieldErrors["billing_profile.address"]) || undefined}>
                     <FieldLabel htmlFor="billing-address" className="text-label">
-                      Address
+                      {t("Address")}
                     </FieldLabel>
                     <Input
                       id="billing-address"
@@ -1107,7 +1108,7 @@ export function Accounts({ userRole }: AccountsProps) {
 
                   <Field data-invalid={Boolean(fieldErrors["billing_profile.invoice_email"]) || undefined}>
                     <FieldLabel htmlFor="billing-invoice-email" className="text-label">
-                      Invoice email
+                      {t("Invoice email")}
                     </FieldLabel>
                     <Input
                       id="billing-invoice-email"
@@ -1141,7 +1142,7 @@ export function Accounts({ userRole }: AccountsProps) {
               <DialogClose
                 render={<Button variant="outline" type="button" disabled={createAccount.isPending} />}
               >
-                Cancel
+                {t("Cancel")}
               </DialogClose>
               <Button
                 type="submit"
@@ -1149,7 +1150,7 @@ export function Accounts({ userRole }: AccountsProps) {
                 aria-busy={createAccount.isPending}
               >
                 {createAccount.isPending && <Spinner className="size-3.5" />}
-                Submit request
+                {t("Submit request")}
               </Button>
             </DialogFooter>
           </form>
@@ -1169,11 +1170,10 @@ export function Accounts({ userRole }: AccountsProps) {
         <DialogContent>
           <div className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Cancel account request</DialogTitle>
+              <DialogTitle>{t("Cancel account request")}</DialogTitle>
               <DialogDescription>
-                Cancel the pending account request for{" "}
-                <strong className="text-foreground">{cancelTarget?.email}</strong>? This cannot be
-                undone.
+                {t("Cancel the pending account request for")}{" "}
+                <strong className="text-foreground">{cancelTarget?.email}</strong>{t("? This cannot be undone.")}
               </DialogDescription>
             </DialogHeader>
 
@@ -1188,7 +1188,7 @@ export function Accounts({ userRole }: AccountsProps) {
               <DialogClose
                 render={<Button variant="outline" type="button" disabled={cancelAccount.isPending} />}
               >
-                Keep request
+                {t("Keep request")}
               </DialogClose>
               <Button
                 variant="destructive"
@@ -1197,7 +1197,7 @@ export function Accounts({ userRole }: AccountsProps) {
                 aria-busy={cancelAccount.isPending}
               >
                 {cancelAccount.isPending && <Spinner className="size-3.5" />}
-                Confirm cancel
+                {t("Confirm cancel")}
               </Button>
             </DialogFooter>
           </div>

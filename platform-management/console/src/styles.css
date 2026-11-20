@@ -68,10 +68,11 @@
     --destructive: var(--color-text-error);
   }
 
-  /* Blue-and-white palette matching the Multica web app: the Astryx neutral
-     theme keeps its black accent, so the accent tokens are redirected to the
-     Multica info blue. Surfaces stay white; the page body gets a faint blue tint. */
-  [data-astryx-theme="neutral"] {
+  /* Blue-and-white palette (default) matching the Multica web app: the Astryx
+     neutral theme keeps its black accent, so the accent tokens are redirected to
+     the Multica info blue. Surfaces stay white; the page body gets a faint blue tint.
+     The :not() guards keep this palette from overriding the light and dark palettes below. */
+  [data-astryx-theme="neutral"]:not([data-theme="light"]):not([data-theme="dark"]) {
     --color-accent: #0074e2;
     --color-accent-muted: #b9d7ff;
     --color-text-accent: #0067ce;
@@ -89,6 +90,79 @@
     --sidebar-accent: #d3e6fc;
     --sidebar-accent-foreground: #0067ce;
     --sidebar-ring: #0074e2;
+  }
+
+  /* Light palette: neutral white and gray with black accent, the Astryx neutral
+     default without the blue tint. Values are explicit per theme because
+     Lightning CSS mangles the light-dark function inside custom properties. */
+  [data-astryx-theme="neutral"][data-theme="light"] {
+    --color-background-body: #f4f4f5;
+    --color-background-surface: #ffffff;
+    --color-background-card: #ffffff;
+    --color-background-popover: #ffffff;
+    --color-background-muted: #f1f1f2;
+    --color-background-gray: #e4e4e7;
+    --color-accent: #1b1b1b;
+    --color-accent-muted: #d4d4d8;
+    --color-neutral: rgb(0 0 0 / 6%);
+    --color-overlay-hover: rgb(0 0 0 / 5%);
+    --color-on-accent: #ffffff;
+    --color-text-primary: #111111;
+    --color-text-secondary: #55555c;
+    --color-text-disabled: #919191;
+    --color-text-accent: #1b1b1b;
+    --color-text-gray: #1b1b1b;
+    --color-icon-primary: #111111;
+    --color-icon-secondary: #6a6a6a;
+    --color-icon-accent: #1b1b1b;
+    --color-border: #e0e0e4;
+    --color-border-emphasized: #d4d4d8;
+    --color-info: #0074e2;
+
+    --sidebar: #f1f1f2;
+    --sidebar-foreground: #111111;
+    --sidebar-border: #e0e0e4;
+    --sidebar-primary: #1b1b1b;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #e4e4e7;
+    --sidebar-accent-foreground: #111111;
+    --sidebar-ring: #1b1b1b;
+  }
+
+  /* Dark palette: dark surfaces with light text and a light accent, so buttons
+     and selected states keep their contrast. */
+  [data-astryx-theme="neutral"][data-theme="dark"] {
+    --color-background-body: #111113;
+    --color-background-surface: #1c1c1f;
+    --color-background-card: #1c1c1f;
+    --color-background-popover: #232327;
+    --color-background-muted: #18181b;
+    --color-background-gray: #2e2e33;
+    --color-accent: #f1f1f1;
+    --color-accent-muted: #3f3f46;
+    --color-neutral: rgb(255 255 255 / 10%);
+    --color-overlay-hover: rgb(255 255 255 / 6%);
+    --color-on-accent: #111111;
+    --color-text-primary: #f4f4f5;
+    --color-text-secondary: #a1a1aa;
+    --color-text-disabled: #52525b;
+    --color-text-accent: #f1f1f1;
+    --color-text-gray: #d4d4d8;
+    --color-icon-primary: #f4f4f5;
+    --color-icon-secondary: #9e9e9e;
+    --color-icon-accent: #f1f1f1;
+    --color-border: #34343a;
+    --color-border-emphasized: #4a4a52;
+    --color-info: #6d9cfe;
+
+    --sidebar: #151518;
+    --sidebar-foreground: #f4f4f5;
+    --sidebar-border: #2a2a30;
+    --sidebar-primary: #f1f1f1;
+    --sidebar-primary-foreground: #111111;
+    --sidebar-accent: #26262b;
+    --sidebar-accent-foreground: #f4f4f5;
+    --sidebar-ring: #6d9cfe;
   }
 
   /* Keep selected rows unmistakably highlighted at rest and on hover inside

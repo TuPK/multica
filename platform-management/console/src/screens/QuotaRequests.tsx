@@ -48,6 +48,7 @@ import {
 } from "../api/hooks";
 import type { QuotaRequest } from "../api/schemas";
 import type { StaffRole } from "../components/types";
+import { t } from "../i18n";
 
 export interface QuotaRequestsProps {
   userRole?: StaffRole;
@@ -95,10 +96,10 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
 
   if (!canAccess) {
     return (
-      <div role="region" aria-label="Not found">
+      <div role="region" aria-label={t("Not found")}>
         <ErrorState
-          title="Not found"
-          message="The page you requested was not found or you do not have permission to view it."
+          title={t("Not found")}
+          message={t("The page you requested was not found or you do not have permission to view it.")}
         />
       </div>
     );
@@ -131,14 +132,14 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
       parsedValue <= currentVal
     ) {
       setValueFieldError(
-        `Approved value must be a whole number above ${currentVal}.`,
+        t("Approved value must be a whole number above {0}.", currentVal),
       );
       return;
     }
 
     const trimmedReason = approveReasonInput.trim();
     if (trimmedReason === "") {
-      setReasonFieldError("Reason is required.");
+      setReasonFieldError(t("Reason is required."));
       return;
     }
 
@@ -150,7 +151,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
       });
       setApproveTarget(null);
     } catch (err) {
-      setApproveSubmitError(getApiErrorMessage(err, "Failed to approve quota request"));
+      setApproveSubmitError(getApiErrorMessage(err, t("Failed to approve quota request")));
     }
   };
 
@@ -161,7 +162,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
       await denyMutation.mutateAsync({ id: denyTarget.id, reason });
       setDenyTarget(null);
     } catch (err) {
-      setDenySubmitError(getApiErrorMessage(err, "Failed to deny quota request"));
+      setDenySubmitError(getApiErrorMessage(err, t("Failed to deny quota request")));
     }
   };
 
@@ -169,7 +170,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
     <Layout height="auto">
       <LayoutHeader hasDivider>
         <HStack justify="between" align="center" wrap="wrap" gap={3}>
-          <Heading level={1}>Quota requests</Heading>
+          <Heading level={1}>{t("Quota requests")}</Heading>
           <Button
             type="button"
             variant="outline"
@@ -183,7 +184,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
             ) : (
               <RefreshCw className="size-4" aria-hidden="true" />
             )}
-            Refresh
+            {t("Refresh")}
           </Button>
         </HStack>
       </LayoutHeader>
@@ -192,7 +193,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
         <div className="space-y-6">
           <Section padding={4}>
             <div className="space-y-4">
-              <Heading level={3}>Requests</Heading>
+              <Heading level={3}>{t("Requests")}</Heading>
               <HStack wrap="wrap" gap={3} align="center">
                 <div className="w-56">
                   <Select
@@ -200,16 +201,16 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                     value={stateFilter || "all"}
                     onValueChange={(val) => setStateFilter(!val || val === "all" ? "" : val)}
                   >
-                    <SelectTrigger aria-label="State" className="w-full">
+                    <SelectTrigger aria-label={t("State")} className="w-full">
                       <SelectValue>
-                        {STATE_OPTIONS.find((item) => item.value === (stateFilter || "all"))
-                          ?.label ?? "All states"}
+                        {t(STATE_OPTIONS.find((item) => item.value === (stateFilter || "all"))
+                          ?.label ?? t("All states"))}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {STATE_OPTIONS.map((item) => (
                         <SelectItem key={item.value} value={item.value}>
-                          {item.label}
+                          {t(item.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -217,11 +218,11 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                 </div>
               </HStack>
 
-              {query.isLoading && <LoadingState message="Loading quota requests..." />}
+              {query.isLoading && <LoadingState message={t("Loading quota requests...")} />}
 
               {query.isError && (
                 <ErrorState
-                  title="Failed to load quota requests"
+                  title={t("Failed to load quota requests")}
                   message={query.error instanceof Error ? query.error.message : undefined}
                   onRetry={query.refetch}
                 />
@@ -230,8 +231,8 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
               {!query.isLoading && !query.isError && requests.length === 0 && (
                 <EmptyState
                   icon={<ArrowUpCircle className="size-5" aria-hidden="true" />}
-                  title="No quota requests"
-                  description="No workspace quota requests match the selected state."
+                  title={t("No quota requests")}
+                  description={t("No workspace quota requests match the selected state.")}
                 />
               )}
 
@@ -239,14 +240,14 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                 <Table density="compact" dividers="rows" hasHover>
                   <TableHeader>
                     <TableRow isHeaderRow>
-                      <TableHeaderCell>Gate</TableHeaderCell>
-                      <TableHeaderCell>Workspace</TableHeaderCell>
-                      <TableHeaderCell>Quota</TableHeaderCell>
-                      <TableHeaderCell>Reason</TableHeaderCell>
-                      <TableHeaderCell>Requested by</TableHeaderCell>
-                      <TableHeaderCell>State</TableHeaderCell>
+                      <TableHeaderCell>{t("Gate")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Workspace")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Quota")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Reason")}</TableHeaderCell>
+                      <TableHeaderCell>{t("Requested by")}</TableHeaderCell>
+                      <TableHeaderCell>{t("State")}</TableHeaderCell>
                       {canDecide && (
-                        <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                        <TableHeaderCell className="text-right">{t("Actions")}</TableHeaderCell>
                       )}
                     </TableRow>
                   </TableHeader>
@@ -271,7 +272,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                         <TableCell>
                           <Text type="body" hasTabularNumbers>
                             {req.current_value ?? "—"} {"->"} {req.requested_value ?? "—"}
-                            {req.approved_value !== null ? ` (approved ${req.approved_value})` : ""}
+                            {req.approved_value !== null ? t(" (approved {0})", req.approved_value) : ""}
                           </Text>
                         </TableCell>
                         <TableCell>
@@ -279,7 +280,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                             <Text type="supporting">{req.reason || "—"}</Text>
                             {req.decision_reason && (
                               <Text type="supporting" color="secondary" as="div">
-                                Decision: {req.decision_reason}
+                                {t("Decision:")} {req.decision_reason}
                               </Text>
                             )}
                           </div>
@@ -296,11 +297,11 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                           <TableCell className="text-right">
                             {req.state === "pending" ? (
                               <RowActions
-                                label={`quota request for ${req.workspace_id}`}
+                                label={t("quota request for {0}", req.workspace_id)}
                                 actions={[
-                                  { label: "Approve", primary: true, onSelect: () => openApproveDialog(req) },
+                                  { label: t("Approve"), primary: true, onSelect: () => openApproveDialog(req) },
                                   {
-                                    label: "Deny",
+                                    label: t("Deny"),
                                     destructive: true,
                                     onSelect: () => {
                                       setDenyTarget(req);
@@ -330,7 +331,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                     aria-busy={query.isFetchingNextPage || undefined}
                   >
                     {query.isFetchingNextPage && <Spinner />}
-                    Load more
+                    {t("Load more")}
                   </Button>
                 </div>
               )}
@@ -350,11 +351,11 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <form onSubmit={handleApproveSubmit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Approve quota request</DialogTitle>
+              <DialogTitle>{t("Approve quota request")}</DialogTitle>
               {approveTarget && (
                 <DialogDescription>
-                  Gate {approveTarget.gate}: current {approveTarget.current_value}, requested{" "}
-                  {approveTarget.requested_value}. You may approve a lower increase.
+                  {t("Gate")} {approveTarget.gate}{t(": current")} {approveTarget.current_value}{t(", requested")}{" "}
+                  {approveTarget.requested_value}{t(". You may approve a lower increase.")}
                 </DialogDescription>
               )}
             </DialogHeader>
@@ -367,7 +368,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
             )}
 
             <Field
-              label="Approved value"
+              label={t("Approved value")}
               inputID={approvedValueId}
               isRequired
               status={
@@ -394,7 +395,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
             </Field>
 
             <Field
-              label="Reason"
+              label={t("Reason")}
               inputID={approveReasonId}
               isRequired
               status={
@@ -411,7 +412,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                   setApproveReasonInput(e.target.value);
                   setReasonFieldError(null);
                 }}
-                placeholder="Explain the approved limit and duration..."
+                placeholder={t("Explain the approved limit and duration...")}
                 aria-describedby={reasonFieldError ? approveReasonErrorId : undefined}
                 aria-invalid={reasonFieldError ? true : undefined}
                 disabled={approveMutation.isPending}
@@ -426,7 +427,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                 onClick={() => setApproveTarget(null)}
                 disabled={approveMutation.isPending}
               >
-                Cancel
+                {t("Cancel")}
               </Button>
               <Button
                 type="submit"
@@ -435,7 +436,7 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
                 aria-busy={approveMutation.isPending || undefined}
               >
                 {approveMutation.isPending && <Spinner />}
-                Approve request
+                {t("Approve request")}
               </Button>
             </DialogFooter>
           </form>
@@ -450,13 +451,13 @@ export function QuotaRequests({ userRole }: QuotaRequestsProps) {
             setDenySubmitError(null);
           }
         }}
-        title="Deny quota request"
+        title={t("Deny quota request")}
         description={
           denyTarget
-            ? `Deny ${denyTarget.gate} request for ${denyTarget.requested_value} (current ${denyTarget.current_value}).`
+            ? t("Deny {0} request for {1} (current {2}).", denyTarget.gate, denyTarget.requested_value, denyTarget.current_value)
             : ""
         }
-        confirmLabel="Deny request"
+        confirmLabel={t("Deny request")}
         confirmVariant="destructive"
         error={denySubmitError}
         onConfirm={handleDenyConfirm}

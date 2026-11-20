@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@multica/ui/components/ui/dropdown-menu";
+import { t } from "../i18n";
 import { MoreHorizontal, type IconComponent } from "@multica/ui/icons";
 import { useSidebarCollapsed } from "./sidebar-state";
 
@@ -40,11 +41,11 @@ export function RowActions({ actions, label }: RowActionsProps): ReactNode {
           if (Icon) {
             return (
               <Button
-                key={action.label}
+                key={t(action.label)}
                 variant="ghost"
                 size="icon-sm"
                 title={action.title ?? action.label}
-                aria-label={`${action.label} ${label}`}
+                aria-label={`${t(action.label)} ${label}`}
                 disabled={action.disabled || action.busy}
                 aria-busy={action.busy || undefined}
                 className={action.destructive ? "text-destructive hover:text-destructive" : undefined}
@@ -56,14 +57,14 @@ export function RowActions({ actions, label }: RowActionsProps): ReactNode {
           }
           return (
             <Button
-              key={action.label}
+              key={t(action.label)}
               variant={action.destructive ? "destructive" : action.primary ? "default" : "outline"}
               size="sm"
               disabled={action.disabled || action.busy}
               aria-busy={action.busy || undefined}
               onClick={action.onSelect}
             >
-              {action.label}
+              {t(action.label)}
             </Button>
           );
         })}
@@ -76,7 +77,7 @@ export function RowActions({ actions, label }: RowActionsProps): ReactNode {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${label}`} />
+            <Button variant="ghost" size="icon-sm" aria-label={t("Actions for {0}", label)} />
           }
         >
           <MoreHorizontal className="size-4" aria-hidden="true" />
@@ -86,14 +87,14 @@ export function RowActions({ actions, label }: RowActionsProps): ReactNode {
             const Icon = action.icon;
             return (
               <DropdownMenuItem
-                key={action.label}
+                key={t(action.label)}
                 variant={action.destructive ? "destructive" : "default"}
                 disabled={action.disabled || action.busy}
                 title={action.title}
                 onClick={action.onSelect}
               >
                 {Icon ? <Icon className="size-3.5" aria-hidden="true" /> : null}
-                {action.label}
+                {t(action.label)}
               </DropdownMenuItem>
             );
           })}

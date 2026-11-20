@@ -39,6 +39,7 @@ import type {
   PriceSnapshot,
 } from "../api/schemas";
 import { formatMinorAmount } from "../money";
+import { t } from "../i18n";
 
 const LARGE_CHANGE_CONFIRM_PCT = 50;
 
@@ -102,11 +103,11 @@ function formatPriceSnapshot(snapshot: PriceSnapshot, currency: string): string 
   const parts: string[] = [];
   if ("seat_price_month" in snapshot) {
     const formatted = formatSeatValue(snapshot.seat_price_month, currency);
-    parts.push(`Mo: ${formatted ?? "-"}`);
+    parts.push(`${t("Mo")}: ${formatted ?? "-"}`);
   }
   if ("seat_price_year" in snapshot) {
     const formatted = formatSeatValue(snapshot.seat_price_year, currency);
-    parts.push(`Yr: ${formatted ?? "-"}`);
+    parts.push(`${t("Yr")}: ${formatted ?? "-"}`);
   }
   for (const key of Object.keys(snapshot)) {
     if (key === "seat_price_month" || key === "seat_price_year") continue;
@@ -187,21 +188,21 @@ export function PriceSchedule({
   const buildPayload = () => {
     const effectiveIso = localUtcInputToRfc3339(effectiveFrom);
     if (!effectiveIso) {
-      setFormError("Effective from date/time (UTC) is required.");
+      setFormError(t("Effective from date/time (UTC) is required."));
       return null;
     }
 
     const nextPrices: { seat_price_month?: number; seat_price_year?: number } = {};
     if (parsedMonth !== null) {
       if (!Number.isInteger(parsedMonth) || parsedMonth < 0) {
-        setFormError("Monthly seat price must be a whole number of 0 or more.");
+        setFormError(t("Monthly seat price must be a whole number of 0 or more."));
         return null;
       }
       nextPrices.seat_price_month = parsedMonth;
     }
     if (parsedYear !== null) {
       if (!Number.isInteger(parsedYear) || parsedYear < 0) {
-        setFormError("Yearly seat price must be a whole number of 0 or more.");
+        setFormError(t("Yearly seat price must be a whole number of 0 or more."));
         return null;
       }
       nextPrices.seat_price_year = parsedYear;
@@ -211,17 +212,17 @@ export function PriceSchedule({
       nextPrices.seat_price_month === undefined &&
       nextPrices.seat_price_year === undefined
     ) {
-      setFormError("Enter at least one seat price.");
+      setFormError(t("Enter at least one seat price."));
       return null;
     }
 
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
-      setFormError("Reason is required.");
+      setFormError(t("Reason is required."));
       return null;
     }
     if (trimmedReason.length > 500) {
-      setFormError("Reason must be at most 500 characters.");
+      setFormError(t("Reason must be at most 500 characters."));
       return null;
     }
 
@@ -245,7 +246,7 @@ export function PriceSchedule({
           if (minFrom) {
             setMinEffectiveFrom(minFrom);
             setFormError(
-              `Notice period is too short. Earliest effective date (UTC): ${minFrom}.`,
+              t("Notice period is too short. Earliest effective date (UTC): {0}.", minFrom),
             );
           } else {
             setFormError(err.message);
@@ -259,7 +260,7 @@ export function PriceSchedule({
               : clientMaxPct;
           setServerConfirmPct(pct);
           setFormError(
-            `Price change of ${pct}% requires confirmation. Tick the confirmation checkbox to proceed.`,
+            t("Price change of {0}% requires confirmation. Tick the confirmation checkbox to proceed.", pct),
           );
           return;
         }
@@ -274,7 +275,7 @@ export function PriceSchedule({
           return;
       }
     }
-    setFormError(err instanceof Error ? err.message : "Failed to schedule price change");
+    setFormError(err instanceof Error ? err.message : t("Failed to schedule price change"));
   };
 
   const handlePreview = async () => {
@@ -302,7 +303,7 @@ export function PriceSchedule({
     e.preventDefault();
     if (schedulePriceChange.isPending) return;
     if (needsConfirm && !confirmLargeChange) {
-      setFormError("Confirm the large price change before scheduling.");
+      setFormError(t("Confirm the large price change before scheduling."));
       return;
     }
 
@@ -324,8 +325,8 @@ export function PriceSchedule({
         setReason("");
         setFormNotice(
           res.applied
-            ? "Price change applied immediately."
-            : `Price change scheduled for ${res.price_change.effective_from}.`,
+            ? t("Price change applied immediately.")
+            : t("Price change scheduled for {0}.", res.price_change.effective_from),
         );
       }
     } catch (err: unknown) {
@@ -339,10 +340,10 @@ export function PriceSchedule({
     setFormNotice(null);
     try {
       await cancelScheduledPriceChange.mutateAsync({ key: resolvedPlanKey });
-      setFormNotice("Scheduled price change canceled.");
+      setFormNotice(t("Scheduled price change canceled."));
     } catch (err: unknown) {
       setCancelError(
-        err instanceof Error ? err.message : "Failed to cancel scheduled price change",
+        err instanceof Error ? err.message : t("Failed to cancel scheduled price change"),
       );
     }
   };
@@ -357,16 +358,16 @@ export function PriceSchedule({
       {!readOnly && (
         <>
           <PageHeader
-            title={`Price Schedule: ${plan?.name ?? resolvedPlanKey}`}
-            backAction={onBack ? { label: "Back to plans", onClick: onBack } : undefined}
+            title={t("Price Schedule: {0}", plan?.name ?? resolvedPlanKey)}
+            backAction={onBack ? { label: t("Back to plans"), onClick: onBack } : undefined}
             meta={
               <span className="tabular-nums">
-                Current prices — Month:{" "}
+                {t("Current prices — Month:")}{" "}
                 {plan?.seat_price_month !== null && plan?.seat_price_month !== undefined
                   ? formatMinorAmount(plan.seat_price_month, currency)
                   : "-"}
                 {" · "}
-                Year:{" "}
+                {t("Year:")}{" "}
                 {plan?.seat_price_year !== null && plan?.seat_price_year !== undefined
                   ? formatMinorAmount(plan.seat_price_year, currency)
                   : "-"}
@@ -376,9 +377,9 @@ export function PriceSchedule({
 
           <Section variant="transparent" padding={0} className="space-y-4">
             <div className="space-y-1">
-              <Heading level={2}>Schedule price change</Heading>
+              <Heading level={2}>{t("Schedule price change")}</Heading>
               <Text type="supporting" as="p">
-                Preview affected subscribers before scheduling. Price increases with paid subscribers require advance notice in UTC.
+                {t("Preview affected subscribers before scheduling. Price increases with paid subscribers require advance notice in UTC.")}
               </Text>
             </div>
 
@@ -387,7 +388,7 @@ export function PriceSchedule({
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field>
                   <FieldLabel htmlFor="price-effective-from" className="text-label">
-                    Effective from (UTC) <span className="text-destructive">*</span>
+                    {t("Effective from (UTC)")} <span className="text-destructive">*</span>
                   </FieldLabel>
                   <Input
                     id="price-effective-from"
@@ -404,14 +405,14 @@ export function PriceSchedule({
                   />
                   {minEffectiveFrom && (
                     <p className="font-mono text-caption text-muted-foreground">
-                      Minimum effective date (UTC): {minEffectiveFrom}
+                      {t("Minimum effective date (UTC):")} {minEffectiveFrom}
                     </p>
                   )}
                 </Field>
 
                 <Field>
                   <FieldLabel htmlFor="price-seat-month" className="text-label">
-                    Monthly seat price {currency ? `(${currency.toUpperCase()})` : ""}
+                    {t("Monthly seat price")} {currency ? `(${currency.toUpperCase()})` : ""}
                   </FieldLabel>
                   <Input
                     id="price-seat-month"
@@ -430,7 +431,7 @@ export function PriceSchedule({
 
                 <Field>
                   <FieldLabel htmlFor="price-seat-year" className="text-label">
-                    Yearly seat price {currency ? `(${currency.toUpperCase()})` : ""}
+                    {t("Yearly seat price")} {currency ? `(${currency.toUpperCase()})` : ""}
                   </FieldLabel>
                   <Input
                     id="price-seat-year"
@@ -450,7 +451,7 @@ export function PriceSchedule({
 
               <Field>
                 <FieldLabel htmlFor="price-reason" className="text-label">
-                  Reason <span className="text-destructive">*</span>
+                  {t("Reason")} <span className="text-destructive">*</span>
                 </FieldLabel>
                 <Textarea
                   id="price-reason"
@@ -461,7 +462,7 @@ export function PriceSchedule({
                   }}
                   maxLength={500}
                   rows={2}
-                  placeholder="Reason for this price change..."
+                  placeholder={t("Reason for this price change...")}
                   required
                   disabled={schedulePriceChange.isPending}
                 />
@@ -471,7 +472,7 @@ export function PriceSchedule({
                 <Alert role="status" className="border-warning/40 bg-warning/10 text-foreground">
                   <AlertTriangle className="size-4 text-warning" aria-hidden="true" />
                   <AlertTitle className="text-body font-medium text-foreground">
-                    Large price change ({warningPct}% exceeds {LARGE_CHANGE_CONFIRM_PCT}% threshold).
+                    {t("Large price change (")}{warningPct}{t("% exceeds")} {LARGE_CHANGE_CONFIRM_PCT}{t("% threshold).")}
                   </AlertTitle>
                   <AlertDescription className="col-start-2 pt-1.5 text-foreground">
                     <Field orientation="horizontal">
@@ -485,7 +486,7 @@ export function PriceSchedule({
                         htmlFor="confirm-large-change"
                         className="text-body font-normal text-foreground"
                       >
-                        Confirm large price change
+                        {t("Confirm large price change")}
                       </FieldLabel>
                     </Field>
                   </AlertDescription>
@@ -498,17 +499,17 @@ export function PriceSchedule({
                   data-testid="price-dry-run-preview"
                   className="space-y-1 rounded-lg border border-surface-border bg-muted/40 p-3 text-body"
                 >
-                  <div className="font-medium text-foreground">Dry-run impact preview</div>
+                  <div className="font-medium text-foreground">{t("Dry-run impact preview")}</div>
                   <div className="text-caption text-muted-foreground">
-                    Affected subscribers:{" "}
+                    {t("Affected subscribers:")}{" "}
                     <span className="font-medium text-foreground tabular-nums">
                       {preview.affected_subscribers}
                     </span>
                   </div>
                   <div className="text-caption text-muted-foreground">
-                    Notice date:{" "}
+                    {t("Notice date:")}{" "}
                     <span className="font-mono font-medium text-foreground">
-                      {preview.notice_date ?? "None (immediate effect)"}
+                      {preview.notice_date ?? t("None (immediate effect)")}
                     </span>
                   </div>
                 </div>
@@ -542,7 +543,7 @@ export function PriceSchedule({
                   aria-busy={schedulePriceChange.isPending}
                 >
                   {schedulePriceChange.isPending && <Spinner className="size-3.5" />}
-                  Preview impact
+                  {t("Preview impact")}
                 </Button>
                 <Button
                   type="submit"
@@ -552,7 +553,7 @@ export function PriceSchedule({
                   aria-busy={schedulePriceChange.isPending}
                 >
                   {schedulePriceChange.isPending && <Spinner className="size-3.5" />}
-                  Schedule
+                  {t("Schedule")}
                 </Button>
               </div>
               </form>
@@ -565,7 +566,7 @@ export function PriceSchedule({
 
       <Section variant="transparent" padding={0} className="space-y-4">
         <Heading level={2}>
-          {readOnly ? `Changes for ${resolvedPlanKey}` : "Price Change History"}
+          {readOnly ? t("Changes for {0}", resolvedPlanKey) : t("Price Change History")}
         </Heading>
 
         {cancelError && (
@@ -575,15 +576,15 @@ export function PriceSchedule({
           </Alert>
         )}
 
-        {historyLoading && <LoadingState message="Loading price change history..." />}
+        {historyLoading && <LoadingState message={t("Loading price change history...")} />}
 
         {historyError && (
           <ErrorState
-            title="Failed to load price change history"
+            title={t("Failed to load price change history")}
             message={
               historyErrObj instanceof Error
                 ? historyErrObj.message
-                : "An error occurred while loading price changes."
+                : t("An error occurred while loading price changes.")
             }
             onRetry={refetchHistory}
           />
@@ -592,8 +593,8 @@ export function PriceSchedule({
         {!historyLoading && !historyError && (!history || history.length === 0) && (
           <EmptyState
             icon={<CalendarClock className="size-5" aria-hidden="true" />}
-            title="No price changes"
-            description="No scheduled or past price changes recorded for this plan."
+            title={t("No price changes")}
+            description={t("No scheduled or past price changes recorded for this plan.")}
           />
         )}
 
@@ -602,12 +603,12 @@ export function PriceSchedule({
             <Table density="compact" dividers="rows" hasHover>
               <TableHeader>
                 <TableRow isHeaderRow>
-                  <TableHeaderCell>State</TableHeaderCell>
-                  <TableHeaderCell>Effective from (UTC)</TableHeaderCell>
-                  <TableHeaderCell>Old prices</TableHeaderCell>
-                  <TableHeaderCell>New prices</TableHeaderCell>
-                  <TableHeaderCell>Reason</TableHeaderCell>
-                  {!readOnly && <TableHeaderCell className="text-right">Actions</TableHeaderCell>}
+                  <TableHeaderCell>{t("State")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Effective from (UTC)")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Old prices")}</TableHeaderCell>
+                  <TableHeaderCell>{t("New prices")}</TableHeaderCell>
+                  <TableHeaderCell>{t("Reason")}</TableHeaderCell>
+                  {!readOnly && <TableHeaderCell className="text-right">{t("Actions")}</TableHeaderCell>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -637,12 +638,12 @@ export function PriceSchedule({
                     {!readOnly && (
                       <TableCell className="text-right">
                         <RowActions
-                          label={`price change ${item.effective_from}`}
+                          label={t("price change {0}", item.effective_from)}
                           actions={
                             item.state === "scheduled"
                               ? [
                                   {
-                                    label: "Cancel scheduled change",
+                                    label: t("Cancel scheduled change"),
                                     busy: cancelScheduledPriceChange.isPending,
                                     onSelect: () => handleCancelScheduled(),
                                   },
