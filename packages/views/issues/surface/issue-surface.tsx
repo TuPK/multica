@@ -72,6 +72,12 @@ interface IssueSurfaceComponentProps extends IssueSurfaceProps {
   contentClassName?: string;
   /** Replaces the board renderer; receives exactly what `BoardView` would. */
   renderBoard?: (props: BoardViewProps) => ReactNode;
+  /**
+   * Keeps the board mounted when the scope has no issues yet, so a view that
+   * draws its own picture of the workspace (the company floor plan) still shows.
+   * Filtered-empty surfaces keep their filtered empty state.
+   */
+  keepBoardWhenEmpty?: boolean;
   /** `false` keeps the surface out of the scope's saved views. Default `true`. */
   savedViews?: boolean;
 }
@@ -103,6 +109,7 @@ export function IssueSurface({
   batchToolbar = "always",
   contentClassName,
   renderBoard,
+  keepBoardWhenEmpty,
   savedViews = true,
 }: IssueSurfaceComponentProps) {
   const wsId = useWorkspaceId();
@@ -202,6 +209,7 @@ export function IssueSurface({
           batchToolbar={batchToolbar}
           contentClassName={contentClassName}
           renderBoard={renderBoard}
+          keepBoardWhenEmpty={keepBoardWhenEmpty}
         />
       </ViewBaselineProvider>
     </ViewStoreProvider>
@@ -225,6 +233,7 @@ function IssueSurfaceContent({
   batchToolbar,
   contentClassName,
   renderBoard,
+  keepBoardWhenEmpty,
 }: Omit<IssueSurfaceComponentProps, "surfaceKey" | "savedViews">) {
   const workspaceId = useWorkspaceId();
   // One polling owner for the whole surface; individual cards only select cache data.
@@ -322,7 +331,8 @@ function IssueSurfaceContent({
           ) : (
             <IssueSurfaceSkeleton mode={controller.viewMode} />
           )
-        ) : controller.isEmpty || shouldShowClientEmpty ? (
+        ) : (controller.isEmpty && (!keepBoardWhenEmpty || controller.hasActiveFilters)) ||
+          shouldShowClientEmpty ? (
           // A filtered-empty surface is NOT an empty surface. Claiming "no
           // issues here yet" and offering to create one is wrong when the rows
           // exist and a filter is hiding them — and it is the state the

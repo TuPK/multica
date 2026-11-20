@@ -18,6 +18,7 @@ export function CompanyFloorPlan() {
         surfaceKey="company"
         savedViews={false}
         batchToolbar="never"
+        keepBoardWhenEmpty
         renderHeader={({ controller }) => <CompanyHeader controller={controller} />}
         renderBoard={(props) => <CompanyView {...props} />}
       />

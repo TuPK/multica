@@ -850,6 +850,24 @@ describe("IssueSurface — filtered empty state", () => {
     expect(screen.queryByText("filtered_empty.title")).toBeNull();
   });
 
+  it("keeps a custom board on an empty scope that opts in, such as the company floor plan", async () => {
+    render(
+      <QueryClientProvider client={qc}>
+        <IssueSurface
+          scope={{ type: "project", projectId: "pf" }}
+          modes={["board"]}
+          renderHeader={() => null}
+          batchToolbar="never"
+          keepBoardWhenEmpty
+          renderBoard={() => <div>floor plan stub</div>}
+        />
+      </QueryClientProvider>,
+    );
+
+    await screen.findByText("floor plan stub");
+    expect(screen.queryByText("detail.empty_issues_title")).toBeNull();
+  });
+
   function unreadViewSurface() {
     useActiveIssueViewStore.getState().setActive("ws-1:workspace", UNREAD_VIEW_ID);
     return (
