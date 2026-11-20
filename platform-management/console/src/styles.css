@@ -78,6 +78,17 @@
     --color-icon-accent: light-dark(#0067ce, #a1caff);
     --color-background-body: light-dark(#f3f7fd, #1b1b1b);
     --color-background-muted: light-dark(#eaf2fc, #1b1b1b);
+
+    /* Sidebar: the Astryx SideNav reads these --sidebar* tokens, not the
+       color-* ones above, so they are set to the same blue-white palette. */
+    --sidebar: light-dark(#e8f2fd, #17202c);
+    --sidebar-foreground: light-dark(#0b2a4a, #e6eef8);
+    --sidebar-border: light-dark(#c9ddf5, #2a3a50);
+    --sidebar-primary: light-dark(#0074e2, #6d9cfe);
+    --sidebar-primary-foreground: light-dark(#ffffff, #111111);
+    --sidebar-accent: light-dark(#d3e6fc, #22344d);
+    --sidebar-accent-foreground: light-dark(#0067ce, #a1caff);
+    --sidebar-ring: light-dark(#0074e2, #6d9cfe);
   }
 
   /* Keep selected rows unmistakably highlighted at rest and on hover inside
