@@ -110,3 +110,63 @@ func TestLimitOverrideValidationAndRelease(t *testing.T) {
 		t.Fatal("a null value must release the override so the plan limit applies")
 	}
 }
+
+// Spec R6 section 3b.4 (QT4, D97): the audit row of each workspace carries the
+// gate and the old and new values of the override, with the reason.
+func TestLimitOverridesAuditRowPerWorkspaceWithOldNew(t *testing.T) {
+	svc, store, _ := newService(t)
+	store.workspaces[limWSTwo] = "Second"
+	store.subs[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "pro", Status: StatusActive, Version: 3,
+		LimitOverrides: plan.Limits{plan.GateMaxWorkspaces: ptr(3)}}
+
+	if err := svc.SetLimitOverride(context.Background(), limTenant, []string{wsID, limWSTwo},
+		LimitOverride{Gate: plan.GateMaxWorkspaces, Value: ptr(7)}, "contract raised", OverrideActor{ID: "staff-1", Label: "root@example.test"}); err != nil {
+		t.Fatalf("SetLimitOverride: %v", err)
+	}
+	want := map[string]struct{ from, to any }{
+		wsID:     {from: int64(3), to: int64(7)},
+		limWSTwo: {from: nil, to: int64(7)},
+	}
+	seen := map[string]bool{}
+	for _, a := range store.audits {
+		if a.Action != "subscription.limit_override_changed" {
+			continue
+		}
+		w, ok := want[a.WorkspaceID]
+		if !ok {
+			t.Fatalf("audit row for unexpected workspace %q", a.WorkspaceID)
+		}
+		seen[a.WorkspaceID] = true
+		if a.Detail["gate"] != plan.GateMaxWorkspaces || a.Detail["reason"] != "contract raised" {
+			t.Fatalf("audit detail = %v", a.Detail)
+		}
+		if a.Detail["from"] != w.from || a.Detail["to"] != w.to {
+			t.Fatalf("workspace %s audit from/to = %v/%v, want %v/%v", a.WorkspaceID, a.Detail["from"], a.Detail["to"], w.from, w.to)
+		}
+	}
+	if len(seen) != len(want) {
+		t.Fatalf("audit rows for workspaces %v, want one each for both", seen)
+	}
+}
+
+// Spec R6 section 3b.4 (QT4, D97): an override on a workspace with no subscription
+// row creates one on the free plan, at version 1.
+func TestLimitOverridesCreateFreeRowForUnsubscribedWorkspace(t *testing.T) {
+	svc, store, _ := newService(t)
+	store.workspaces[limWSTwo] = "Second"
+
+	if err := svc.SetLimitOverride(context.Background(), limTenant, []string{limWSTwo},
+		LimitOverride{Gate: plan.GateMaxWorkspaces, Value: ptr(7)}, "contract raised", OverrideActor{ID: "staff-1", Label: "root@example.test"}); err != nil {
+		t.Fatalf("SetLimitOverride: %v", err)
+	}
+	row, ok := store.subs[limWSTwo]
+	if !ok {
+		t.Fatal("no subscription row was created")
+	}
+	if row.PlanKey != plan.FreeKey || row.Version != 1 {
+		t.Fatalf("new row plan = %q version = %d, want %q at version 1", row.PlanKey, row.Version, plan.FreeKey)
+	}
+	if v := row.LimitOverrides[plan.GateMaxWorkspaces]; v == nil || *v != 7 {
+		t.Fatalf("override on the new row = %v, want 7", v)
+	}
+}
