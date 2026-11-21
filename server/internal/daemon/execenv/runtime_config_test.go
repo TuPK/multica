@@ -70,7 +70,7 @@ func TestSubIssueCreationSectionPresentForIssueRuns(t *testing.T) {
 				"`--status todo` starts an agent-assigned child immediately",
 				"`--status backlog` parks it",
 				"`--stage <N>` groups children into ordered stages",
-				"read `references/sub-issues.md` in the `multica-platform` skill",
+				"read the sub-issues reference in the installed `multica-platform` skill",
 			} {
 				if !strings.Contains(out, want) {
 					t.Errorf("[%s] section missing %q", tc.name, want)
@@ -2422,7 +2422,7 @@ func TestBriefIssuePointerFollowsTheInstalledSkill(t *testing.T) {
 		{
 			name:   "current backend",
 			skills: []SkillContextForEnv{skill("multica-platform")},
-			want:   "`references/sub-issues.md` in the `multica-platform` skill",
+			want:   "the sub-issues reference in the installed `multica-platform` skill",
 		},
 		{
 			name:   "retired legacy skill alone has no pointer",
@@ -2432,7 +2432,7 @@ func TestBriefIssuePointerFollowsTheInstalledSkill(t *testing.T) {
 		{
 			name:   "platform pointer ignores the retired legacy skill",
 			skills: []SkillContextForEnv{skill("multica-working-on-issues"), skill("multica-platform")},
-			want:   "`references/sub-issues.md` in the `multica-platform` skill",
+			want:   "the sub-issues reference in the installed `multica-platform` skill",
 		},
 		{
 			name:   "neither installed",
@@ -2468,6 +2468,11 @@ func TestBriefIssuePointerFollowsTheInstalledSkill(t *testing.T) {
 			}
 			if !strings.Contains(out, "Before creating sub-issues, read "+tc.want+" —") {
 				t.Errorf("sub-issue pointer does not name %q:\n%s", tc.want, out)
+			}
+			// Regression: a backticked path in AGENTS.md fails the H3 gate
+			// (runtime-owned block, regenerated on every dispatch).
+			if strings.Contains(out, "`references/") {
+				t.Errorf("sub-issue pointer is written as a code-span path, which H3 reads as a repo path:\n%s", out)
 			}
 		})
 	}

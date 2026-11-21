@@ -134,7 +134,7 @@ func assertPlatformSkillHints(t *testing.T, provider, brief, slug string) {
 	if provider == "traecli" {
 		platformHint = "read `.traecli/skills/" + slug + "/SKILL.md` and open the reference(s)"
 	}
-	for _, want := range []string{platformHint, "Before creating sub-issues, read `references/sub-issues.md` in the `" + slug + "` skill"} {
+	for _, want := range []string{platformHint, "Before creating sub-issues, read the sub-issues reference in the installed `" + slug + "` skill"} {
 		if !strings.Contains(brief, want) {
 			t.Errorf("brief missing platform hint %q", want)
 		}

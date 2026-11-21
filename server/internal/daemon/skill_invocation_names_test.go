@@ -138,7 +138,7 @@ func TestRunTaskListsAllocatedSkillInvocationName(t *testing.T) {
 	}
 	for _, want := range []string{
 		"load the `multica-platform-multica-multica` skill and open the reference(s)",
-		"Before creating sub-issues, read `references/sub-issues.md` in the `multica-platform-multica-multica` skill",
+		"Before creating sub-issues, read the sub-issues reference in the installed `multica-platform-multica-multica` skill",
 	} {
 		if !strings.Contains(string(brief), want) {
 			t.Errorf("runtime brief lost platform hint %q", want)

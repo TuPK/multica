@@ -721,7 +721,9 @@ const platformSkillName = "multica-platform"
 // skill's routing table names.
 func subIssueContractsSkill(skills []SkillContextForEnv) (string, bool) {
 	if slug, ok := builtinSlug(skills, platformSkillName); ok {
-		return "`references/sub-issues.md` in the `" + slug + "` skill", true
+		// Not a code span with a path: the sdlc-harness H3 gate reads any
+		// backticked `dir/file.ext` in AGENTS.md as a repo-relative path.
+		return "the sub-issues reference in the installed `" + slug + "` skill", true
 	}
 	return "", false
 }
