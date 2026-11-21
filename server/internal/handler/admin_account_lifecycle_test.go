@@ -83,7 +83,7 @@ func TestAdminCreatedAccountSignsInByEmailCodeWithSignupOff(t *testing.T) {
 	requirePlatformTestDatabase(t)
 	acc := provisionAdminCreatedAccount(t)
 	setLegal(t, "1", "1")
-	h := restrictSignupHandler(t)
+	h := loginHandler(t)
 
 	// The switch is really off: a stranger cannot get a code.
 	stranger := testutil.UniqueEmail("stranger")

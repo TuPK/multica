@@ -20,10 +20,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/logger"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/mfa"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
@@ -517,22 +515,18 @@ func (s *SSOHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, isNew, err := s.h.findOrCreateUser(r.Context(), identity.Email)
+	user, err := s.h.findManagedUser(r.Context(), identity.Email)
 	if err != nil {
-		var signupErr SignupError
 		switch {
-		case errors.Is(err, auth.ErrTemporarilyDisabledUser):
+		case errors.Is(err, auth.ErrTemporarilyDisabledUser), errors.Is(err, ErrAccountNotActive):
 			fail("account_unavailable")
-		case errors.As(err, &signupErr):
+		case errors.Is(err, ErrAccountNotRegistered):
 			fail("signup_not_allowed")
 		default:
-			slog.Warn("sso user lookup or creation failed", append(logger.RequestAttrs(r), "error", err)...)
+			slog.Warn("sso user lookup failed", append(logger.RequestAttrs(r), "error", err)...)
 			fail("sso_login_failed")
 		}
 		return
-	}
-	if isNew {
-		obsmetrics.RecordEvent(s.h.Analytics, s.h.Metrics, analytics.Signup(uuidToString(user.ID), user.Email, signupSourceFromRequest(r)))
 	}
 
 	if code := s.joinWorkspace(r, conn, user); code != "" {

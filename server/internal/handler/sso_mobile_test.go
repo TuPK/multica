@@ -109,6 +109,7 @@ func TestSSOMobileStartRequiresValidChallenge(t *testing.T) {
 
 func TestSSOMobileCallbackRedirectsToAppWithoutWebCookies(t *testing.T) {
 	e := newSSOEnv(t)
+	e.register()
 	cb, pending := e.startMobileLogin(ssoMobileChallenge(ssoMobileVerifier))
 	rec := e.callback(cb, pending)
 	if rec.Code != http.StatusFound {
@@ -150,6 +151,7 @@ func TestSSOMobileCallbackFailureRedirectsToAppWithError(t *testing.T) {
 
 func TestSSOMobileExchangeReturnsSessionForMatchingVerifier(t *testing.T) {
 	e := newSSOEnv(t)
+	e.register()
 	code := e.mobileCode(ssoMobileVerifier)
 	rec := e.exchange(code, ssoMobileVerifier)
 	if rec.Code != http.StatusOK {
@@ -169,6 +171,7 @@ func TestSSOMobileExchangeReturnsSessionForMatchingVerifier(t *testing.T) {
 
 func TestSSOMobileExchangeRefusesWrongVerifier(t *testing.T) {
 	e := newSSOEnv(t)
+	e.register()
 	code := e.mobileCode(ssoMobileVerifier)
 	assertExchangeInvalid(t, e.exchange(code, ssoMobileVerifier+"x"))
 }

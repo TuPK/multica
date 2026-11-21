@@ -169,20 +169,12 @@ func TestGoogleLoginActionableErrorCodes(t *testing.T) {
 		wantError  string
 	}{
 		{
-			name:       "signup prohibited",
-			cfg:        Config{AllowSignup: false},
+			name:       "account not registered",
+			cfg:        Config{AllowSignup: true},
 			userBody:   `{"email":"new@example.com"}`,
 			wantStatus: http.StatusForbidden,
-			wantCode:   "signup_prohibited",
-			wantError:  "user registration is disabled on this self-hosted instance",
-		},
-		{
-			name:       "email not allowed",
-			cfg:        Config{AllowSignup: true, AllowedEmailDomains: []string{"company.com"}},
-			userBody:   `{"email":"new@example.com"}`,
-			wantStatus: http.StatusForbidden,
-			wantCode:   "email_not_allowed",
-			wantError:  "email address or domain not allowed on this instance",
+			wantCode:   "account_not_registered",
+			wantError:  ErrAccountNotRegistered.Error(),
 		},
 	}
 
@@ -228,11 +220,9 @@ func TestGoogleLoginActionableErrorMapping(t *testing.T) {
 		wantError string
 	}{
 		{"account disabled", auth.ErrTemporarilyDisabledUser, "account_disabled", "account disabled"},
-		{"signup prohibited", ErrSignupProhibited, "signup_prohibited", ErrSignupProhibited.Error()},
-		{"email not allowed", ErrEmailNotAllowed, "email_not_allowed", ErrEmailNotAllowed.Error()},
-		{"wrapped signup restriction", fmt.Errorf("signup: %w", ErrEmailNotAllowed), "email_not_allowed", ErrEmailNotAllowed.Error()},
-		{"future signup restriction", SignupError{Message: "another signup restriction"}, "", "another signup restriction"},
-		{"wrapped future signup restriction", fmt.Errorf("signup: %w", SignupError{Message: "another signup restriction"}), "", "another signup restriction"},
+		{"account not registered", ErrAccountNotRegistered, "account_not_registered", ErrAccountNotRegistered.Error()},
+		{"wrapped account not registered", fmt.Errorf("login: %w", ErrAccountNotRegistered), "account_not_registered", ErrAccountNotRegistered.Error()},
+		{"account not active", ErrAccountNotActive, "account_not_active", ErrAccountNotActive.Error()},
 	}
 
 	for _, tt := range tests {

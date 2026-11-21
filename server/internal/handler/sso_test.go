@@ -96,6 +96,13 @@ func (e *ssoEnv) newEmail() string {
 	return email
 }
 
+// register creates the Multica user for the IdP email. Sign-in only admits
+// accounts platform management registered, so a test that expects the person
+// to join or sign in needs the account first.
+func (e *ssoEnv) register() string {
+	return dbfx.User(e.t, "SSO person", e.idp.Email)
+}
+
 func (e *ssoEnv) serve(req *http.Request) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()
 	e.router.ServeHTTP(rec, req)
@@ -199,6 +206,7 @@ func memberRole(t *testing.T, ws, email string) string {
 // issues a session whose amr names the connection.
 func TestSSOLoginIssuesASessionWithTheConnectionInAMR(t *testing.T) {
 	env := newSSOEnv(t)
+	env.register()
 	rec := env.login()
 	if rec.Code != http.StatusFound {
 		t.Fatalf("callback: %d %s", rec.Code, rec.Body.String())
@@ -256,6 +264,7 @@ func TestSSOLoginFindsAnExistingUser(t *testing.T) {
 // Contract test 3: a new user is added with the connection's default role.
 func TestSSOLoginAddsTheMemberWithTheDefaultRole(t *testing.T) {
 	env := newSSOEnv(t)
+	env.register()
 	if rec := env.putConnection(map[string]any{"issuer": env.idp.Issuer(), "client_id": env.idp.ClientID, "default_role": "admin"}); rec.Code != http.StatusOK {
 		t.Fatalf("set the role: %d %s", rec.Code, rec.Body.String())
 	}
@@ -285,6 +294,7 @@ func TestSSOLoginKeepsTheRoleOfAnExistingMember(t *testing.T) {
 // existing seat error, and no membership or session results.
 func TestSSOLoginRefusesTheJoinWhenNoSeatIsLeft(t *testing.T) {
 	env := newSSOEnv(t)
+	env.register()
 	useSeatCapacity(t, &shareJoinCapacityStub{claimDecision: &seatcapacity.Decision{Managed: true, Allowed: false}})
 	rec := env.login()
 	env.refused(rec, "seat_capacity_full", "")
@@ -413,6 +423,7 @@ func TestSSODiscover(t *testing.T) {
 
 func TestSSOConnectionRoutes(t *testing.T) {
 	env := newSSOEnv(t)
+	env.register()
 
 	t.Run("get never returns the secret and says whether one is set", func(t *testing.T) {
 		rec := env.serve(newRequest(http.MethodGet, env.connectionPath(), nil))

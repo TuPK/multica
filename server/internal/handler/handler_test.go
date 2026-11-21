@@ -2165,6 +2165,7 @@ func TestCreateWorkspaceInvalidSlugReturnsBadRequest(t *testing.T) {
 }
 
 func TestSendCode(t *testing.T) {
+	loginAccount(t, "sendcode-test@multica.ai", "")
 	w := httptest.NewRecorder()
 	body := map[string]string{"email": "sendcode-test@multica.ai"}
 	var buf bytes.Buffer
@@ -2222,6 +2223,7 @@ func TestSendCodeDbError(t *testing.T) {
 
 func TestSendCodeRateLimit(t *testing.T) {
 	const email = "ratelimit-test@multica.ai"
+	loginAccount(t, email, "")
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `DELETE FROM verification_code WHERE email = $1`, email)
 	})
@@ -2252,6 +2254,7 @@ func TestSendCodeRateLimit(t *testing.T) {
 
 func TestVerifyCode(t *testing.T) {
 	const email = "verify-test@multica.ai"
+	loginAccount(t, email, "")
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2347,6 +2350,7 @@ func TestVerifyCodeAcceptsConfiguredDevCodeOutsideProduction(t *testing.T) {
 	t.Setenv("APP_ENV", "development")
 
 	const email = "dev-code-enabled-test@multica.ai"
+	loginAccount(t, email, "")
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2425,6 +2429,7 @@ func TestVerifyCodeBruteForceProtection(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "")
 
 	const email = "bruteforce-test@multica.ai"
+	loginAccount(t, email, "")
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2473,8 +2478,11 @@ func TestVerifyCodeBruteForceProtection(t *testing.T) {
 	}
 }
 
-func TestVerifyCodeNewUserHasNoWorkspace(t *testing.T) {
+// The account is registered by platform management, then signs in for the
+// first time with no workspace yet.
+func TestVerifyCodeRegisteredUserHasNoWorkspace(t *testing.T) {
 	const email = "workspace-verify-test@multica.ai"
+	loginAccount(t, email, "")
 	ctx := context.Background()
 
 	t.Cleanup(func() {

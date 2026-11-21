@@ -199,6 +199,14 @@ export class TestApiClient {
     const client = new pg.Client(DATABASE_URL);
     await client.connect();
     try {
+      // Login only admits accounts platform management registered. Register
+      // the E2E user the way provisioning would, so the flow below still signs in.
+      await client.query(
+        `INSERT INTO "user" (name, email)
+         SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM "user" WHERE email = $2)`,
+        [name || email, email],
+      );
+
       // Keep each E2E login isolated so previous test runs do not trip the
       // per-email send-code rate limit.
       await client.query("DELETE FROM verification_code WHERE email = $1", [email]);

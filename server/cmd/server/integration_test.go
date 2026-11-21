@@ -284,6 +284,8 @@ func TestConfigRouteIsPublic(t *testing.T) {
 func TestSendCodeAndVerify(t *testing.T) {
 	const email = "integration-sendcode@multica.ai"
 	ctx := context.Background()
+	// Login admits only accounts platform management registered; register first.
+	testPool.Exec(ctx, `INSERT INTO "user" (name, email) SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM "user" WHERE email = $2)`, "Integration", email)
 
 	t.Cleanup(func() {
 		testPool.Exec(ctx, `DELETE FROM verification_code WHERE email = $1`, email)
@@ -374,6 +376,8 @@ func TestVerifyCodeNewUserHasNoWorkspace(t *testing.T) {
 	})
 
 	testPool.Exec(ctx, `DELETE FROM "user" WHERE email = $1`, email)
+	// Login admits only accounts platform management registered; register first.
+	testPool.Exec(ctx, `INSERT INTO "user" (name, email) SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM "user" WHERE email = $2)`, "Integration", email)
 
 	// Send code
 	body, _ := json.Marshal(map[string]string{"email": email})

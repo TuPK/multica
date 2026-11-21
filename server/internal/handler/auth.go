@@ -21,33 +21,26 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/platform-management/accountdeletion"
+	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/platform-management/consent"
-	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/logger"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/planlimit"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
-// SignupError represents signup restriction errors
-type SignupError struct {
-	Message string
-}
-
-func (e SignupError) Error() string {
-	return e.Message
-}
-
-var ErrSignupProhibited = SignupError{Message: "user registration is disabled on this self-hosted instance"}
-var ErrEmailNotAllowed = SignupError{Message: "email address or domain not allowed on this instance"}
+// Login never creates an account. Platform management registers the people
+// who may use the service, and only those whose account is active can sign in.
+var (
+	ErrAccountNotRegistered = errors.New("this account is not registered to use the service")
+	ErrAccountNotActive     = errors.New("this account is not active")
+)
 
 const (
-	googleLoginCodeAccountDisabled     = "account_disabled"
-	googleLoginCodeSignupProhibited    = "signup_prohibited"
-	googleLoginCodeEmailNotAllowed     = "email_not_allowed"
-	googleLoginCodeAccountWithoutEmail = "google_account_no_email"
-	googleLoginCodeInvalidOAuthCode    = "oauth_code_invalid"
+	googleLoginCodeAccountDisabled      = "account_disabled"
+	googleLoginCodeAccountNotRegistered = "account_not_registered"
+	googleLoginCodeAccountNotActive     = "account_not_active"
+	googleLoginCodeAccountWithoutEmail  = "google_account_no_email"
+	googleLoginCodeInvalidOAuthCode     = "oauth_code_invalid"
 )
 
 const devVerificationCodeEnv = "MULTICA_DEV_VERIFICATION_CODE"
@@ -214,122 +207,37 @@ func sessionAMRFromRequest(r *http.Request) []string {
 	return auth.SessionAMR(claims)
 }
 
-// findOrCreateUser returns the existing user for an email, or creates one if
-// none exists. isNew reports whether this call created the user — the signup
-// event fires on that edge, covering both the verification-code and Google
-// OAuth entry points.
-func (h *Handler) findOrCreateUser(ctx context.Context, email string) (user db.User, isNew bool, err error) {
+// findManagedUser returns the registered, active user for an email. It never
+// creates a user: an email without a Multica user row gets ErrAccountNotRegistered,
+// and a user whose platform account is not active gets ErrAccountNotActive.
+// A user with no platform_account row counts as active, as in accountguard.
+func (h *Handler) findManagedUser(ctx context.Context, email string) (db.User, error) {
 	if auth.IsTemporarilyDisabledUserEmail(email) {
-		return db.User{}, false, auth.ErrTemporarilyDisabledUser
+		return db.User{}, auth.ErrTemporarilyDisabledUser
 	}
 
-	user, err = h.Queries.GetUserByEmail(ctx, email)
-	isNew = isNotFound(err)
-	if err != nil && !isNew {
-		return db.User{}, false, err
+	user, err := h.Queries.GetUserByEmail(ctx, email)
+	if isNotFound(err) {
+		return db.User{}, ErrAccountNotRegistered
 	}
-	if !isNew && auth.IsTemporarilyDisabledUser(uuidToString(user.ID), user.Email) {
-		return db.User{}, false, auth.ErrTemporarilyDisabledUser
-	}
-
-	if err := h.checkSignupAllowed(ctx, email, isNew); err != nil {
-		return db.User{}, false, err
-	}
-
-	if !isNew {
-		return user, false, nil
-	}
-
-	name := email
-	if at := strings.Index(email, "@"); at > 0 {
-		name = email[:at]
-	}
-	created, err := h.Queries.CreateUser(ctx, db.CreateUserParams{
-		Name:  name,
-		Email: email,
-	})
 	if err != nil {
-		return db.User{}, false, err
+		return db.User{}, err
 	}
-	return created, true, nil
-}
-
-// signupSourceFromRequest reads the attribution cookie the web frontend
-// sets on the first pageview (UTM + referrer bundle). The frontend writes
-// a JSON string URL-encoded into the cookie value — Go does not
-// auto-decode Cookie.Value, so we have to unescape here before the string
-// lands in PostHog. Missing cookie / decode failures collapse to the
-// empty string; that simply omits signup_source from the event rather
-// than sending percent-encoded garbage. Never fall back to r.Referer() —
-// the frontend has already sanitised attribution and a raw referer can
-// leak OAuth code/state from the callback URL.
-//
-// The cap is the server-side defence against a client that manages to set
-// an oversize cookie; it matches SIGNUP_SOURCE_MAX_LEN on the frontend.
-const signupSourceMaxLen = 512
-
-func signupSourceFromRequest(r *http.Request) string {
-	c, err := r.Cookie("multica_signup_source")
-	if err != nil || c == nil {
-		return ""
+	if auth.IsTemporarilyDisabledUser(uuidToString(user.ID), user.Email) {
+		return db.User{}, auth.ErrTemporarilyDisabledUser
 	}
-	decoded, err := url.QueryUnescape(c.Value)
+
+	state, err := h.Queries.AccountState(ctx, user.ID)
+	if isNotFound(err) {
+		return user, nil
+	}
 	if err != nil {
-		return ""
+		return db.User{}, err
 	}
-	if len(decoded) > signupSourceMaxLen {
-		return ""
+	if state.Status != string(accountguard.Active) {
+		return db.User{}, ErrAccountNotActive
 	}
-	return decoded
-}
-
-func (h *Handler) checkSignupAllowed(ctx context.Context, email string, isNewUser bool) error {
-	if !isNewUser {
-		return nil // existing users always allowed to log in
-	}
-
-	email = strings.ToLower(email)
-	domain := ""
-	if at := strings.Index(email, "@"); at > 0 {
-		domain = email[at+1:]
-	}
-
-	// 0. A blocked domain is refused before any allowance, including an
-	// invitation: the list is an abuse control, not an access list.
-	if planlimit.EmailDomainBlocked(email, planlimit.ParseBlockedDomains(os.Getenv(planlimit.BlockedDomainsEnv))) {
-		return ErrEmailNotAllowed
-	}
-
-	// 1. explicit email allowlist always wins
-	if len(h.cfg.AllowedEmails) > 0 && contains(h.cfg.AllowedEmails, email) {
-		return nil
-	}
-
-	// 2. domain allowlist always wins
-	if len(h.cfg.AllowedEmailDomains) > 0 && contains(h.cfg.AllowedEmailDomains, domain) {
-		return nil
-	}
-
-	// 3. unrestricted signup needs no invitation lookup.
-	if h.cfg.AllowSignup && len(h.cfg.AllowedEmailDomains) == 0 && len(h.cfg.AllowedEmails) == 0 {
-		return nil
-	}
-
-	// 4. A live invitation is an implicit per-email signup allowance. This
-	// also permits invited emails outside configured allowlists, regardless
-	// of ALLOW_SIGNUP. Recheck at account creation in findOrCreateUser.
-	invited, err := h.Queries.HasPendingInvitationForEmail(ctx, email)
-	if err != nil {
-		return fmt.Errorf("check pending invitation for signup: %w", err)
-	}
-	if invited {
-		return nil
-	}
-
-	if !h.cfg.AllowSignup {
-		return ErrSignupProhibited
-	}
-	return ErrEmailNotAllowed
+	return user, nil
 }
 
 func contains(slice []string, s string) bool {
@@ -353,49 +261,18 @@ func (h *Handler) SendCode(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "email is required")
 		return
 	}
-	if auth.IsTemporarilyDisabledUserEmail(email) {
-		writeError(w, http.StatusForbidden, auth.TemporarilyDisabledUserError)
-		return
-	}
-
-	// Check signup restrictions before sending magic link
-	existingUser, err := h.Queries.GetUserByEmail(r.Context(), email)
-	if err != nil {
-		if !isNotFound(err) {
-			// Real database/query error → return 500
-			writeError(w, http.StatusInternalServerError, "failed to lookup user")
-			return
-		}
-		// User does not exist → treat as new user
-		isNewUser := true
-		if err := h.checkSignupAllowed(r.Context(), email, isNewUser); err != nil {
-			var signupErr SignupError
-			if errors.As(err, &signupErr) {
-				writeError(w, http.StatusForbidden, signupErr.Error())
-			} else {
-				slog.Warn("signup eligibility check failed", append(logger.RequestAttrs(r), "error", err, "email", email)...)
-				writeError(w, http.StatusInternalServerError, "failed to check signup eligibility")
-			}
-			return
-		}
-	} else {
-		// User already exists → always allowed to login
-		if auth.IsTemporarilyDisabledUser(uuidToString(existingUser.ID), existingUser.Email) {
+	// Only a registered, active account gets a code. Refusing here means no
+	// email is sent to an address that cannot sign in.
+	if _, err := h.findManagedUser(r.Context(), email); err != nil {
+		switch {
+		case errors.Is(err, auth.ErrTemporarilyDisabledUser):
 			writeError(w, http.StatusForbidden, auth.TemporarilyDisabledUserError)
-			return
+		case errors.Is(err, ErrAccountNotRegistered), errors.Is(err, ErrAccountNotActive):
+			writeError(w, http.StatusForbidden, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to lookup user")
 		}
-		isNewUser := false
-		if err := h.checkSignupAllowed(r.Context(), email, isNewUser); err != nil {
-			// This should rarely happen, but handle it anyway
-			var signupErr SignupError
-			if errors.As(err, &signupErr) {
-				writeError(w, http.StatusForbidden, signupErr.Error())
-			} else {
-				slog.Warn("signup eligibility check failed", append(logger.RequestAttrs(r), "error", err, "email", email)...)
-				writeError(w, http.StatusInternalServerError, "failed to check signup eligibility")
-			}
-			return
-		}
+		return
 	}
 
 	// Rate limit: max 1 code per 60 seconds per email
@@ -470,23 +347,18 @@ func (h *Handler) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, isNew, err := h.findOrCreateUser(r.Context(), email)
+	user, err := h.findManagedUser(r.Context(), email)
 	if err != nil {
-		if errors.Is(err, auth.ErrTemporarilyDisabledUser) {
+		switch {
+		case errors.Is(err, auth.ErrTemporarilyDisabledUser):
 			writeError(w, http.StatusForbidden, auth.TemporarilyDisabledUserError)
-			return
+		case errors.Is(err, ErrAccountNotRegistered), errors.Is(err, ErrAccountNotActive):
+			writeError(w, http.StatusForbidden, err.Error())
+		default:
+			slog.Warn("login user lookup failed", append(logger.RequestAttrs(r), "error", err, "email", email)...)
+			writeError(w, http.StatusInternalServerError, "failed to load user")
 		}
-		var signupErr SignupError
-		if errors.As(err, &signupErr) {
-			writeError(w, http.StatusForbidden, signupErr.Error())
-			return
-		}
-		slog.Warn("login user lookup or creation failed", append(logger.RequestAttrs(r), "error", err, "email", email)...)
-		writeError(w, http.StatusInternalServerError, "failed to create user")
 		return
-	}
-	if isNew {
-		obsmetrics.RecordEvent(h.Analytics, h.Metrics, analytics.Signup(uuidToString(user.ID), user.Email, signupSourceFromRequest(r)))
 	}
 
 	if h.challengeMFA(w, r, user, []string{auth.AMROTP}) {
@@ -593,17 +465,12 @@ func writeGoogleLoginActionableError(w http.ResponseWriter, err error) bool {
 	switch {
 	case errors.Is(err, auth.ErrTemporarilyDisabledUser):
 		writeErrorCode(w, http.StatusForbidden, googleLoginCodeAccountDisabled, auth.TemporarilyDisabledUserError)
-	case errors.Is(err, ErrSignupProhibited):
-		writeErrorCode(w, http.StatusForbidden, googleLoginCodeSignupProhibited, ErrSignupProhibited.Error())
-	case errors.Is(err, ErrEmailNotAllowed):
-		writeErrorCode(w, http.StatusForbidden, googleLoginCodeEmailNotAllowed, ErrEmailNotAllowed.Error())
+	case errors.Is(err, ErrAccountNotRegistered):
+		writeErrorCode(w, http.StatusForbidden, googleLoginCodeAccountNotRegistered, ErrAccountNotRegistered.Error())
+	case errors.Is(err, ErrAccountNotActive):
+		writeErrorCode(w, http.StatusForbidden, googleLoginCodeAccountNotActive, ErrAccountNotActive.Error())
 	default:
-		var signupErr SignupError
-		if !errors.As(err, &signupErr) {
-			return false
-		}
-		// Preserve the actionable fallback for signup restrictions without a code.
-		writeError(w, http.StatusForbidden, signupErr.Error())
+		return false
 	}
 	return true
 }
@@ -736,23 +603,18 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, isNew, err := h.findOrCreateUser(r.Context(), email)
+	user, err := h.findManagedUser(r.Context(), email)
 	if err != nil {
 		if writeGoogleLoginActionableError(w, err) {
 			return
 		}
-		slog.Warn("login user lookup or creation failed", append(logger.RequestAttrs(r), "error", err, "email", email)...)
-		writeError(w, http.StatusInternalServerError, "failed to create user")
+		slog.Warn("login user lookup failed", append(logger.RequestAttrs(r), "error", err, "email", email)...)
+		writeError(w, http.StatusInternalServerError, "failed to load user")
 		return
 	}
-	if isNew {
-		evt := analytics.Signup(uuidToString(user.ID), user.Email, signupSourceFromRequest(r))
-		evt.Properties["auth_method"] = "google"
-		obsmetrics.RecordEvent(h.Analytics, h.Metrics, evt)
-	}
 
-	// Update name and avatar from Google profile if the user was just created
-	// (default name is email prefix) or has no avatar yet.
+	// Update name and avatar from the Google profile when the name is still the
+	// email prefix or the user has no avatar yet.
 	needsUpdate := false
 	newName := user.Name
 	newAvatar := user.AvatarUrl
