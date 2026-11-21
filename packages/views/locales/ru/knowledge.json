@@ -1,0 +1,350 @@
+{
+  "title": "Knowledge",
+  "tabs": {
+    "library": "Library",
+    "drafts": "Drafts",
+    "governance": "Governance",
+    "setup": "Setup"
+  },
+  "state": {
+    "ready": "Ready",
+    "provisioning": "Setting up",
+    "offline": "Offline",
+    "failed": "Setup failed",
+    "disabled": "Not enabled",
+    "unknown": "Unknown"
+  },
+  "not_offered": {
+    "title": "Knowledge is not offered on this server"
+  },
+  "disabled": {
+    "title": "Knowledge is not enabled",
+    "description": "Ask an owner or admin to enable it."
+  },
+  "enable": "Enable knowledge",
+  "retry": "Retry setup",
+  "provisioning": {
+    "title": "Setting up knowledge"
+  },
+  "failed": {
+    "title": "Knowledge setup did not finish"
+  },
+  "offline": {
+    "title": "The knowledge service is offline",
+    "description": "Agents keep working without company knowledge until it is back."
+  },
+  "kb": {
+    "all": "All"
+  },
+  "documents": {
+    "filter": {
+      "all": "All",
+      "published": "Published",
+      "failed": "Failed",
+      "draft": "Draft"
+    },
+    "empty": "No documents"
+  },
+  "search": {
+    "label": "Search company knowledge",
+    "placeholder": "Search company knowledge",
+    "submit": "Search",
+    "results": "Results",
+    "no_results": "No matches",
+    "score": "Score {{score}}",
+    "source": "Source",
+    "error": "Search failed"
+  },
+  "drafts": {
+    "empty": "No drafts",
+    "publish": "Publish",
+    "discard": "Discard",
+    "author": {
+      "agent": "Agent",
+      "member": "Member",
+      "system": "System"
+    }
+  },
+  "discard_title": "Discard draft?",
+  "discard_description": "The draft is deleted and cannot be recovered.",
+  "cancel": "Cancel",
+  "open_in_weknora": "Open in WeKnora",
+  "toast": {
+    "enabled": "Knowledge is enabled",
+    "enable_failed": "Could not enable knowledge",
+    "published": "Draft published",
+    "publish_failed": "Could not publish the draft",
+    "discarded": "Draft discarded",
+    "discard_failed": "Could not discard the draft"
+  },
+  "load_error": {
+    "title": "Could not load knowledge",
+    "retry": "Try again"
+  },
+  "ask_secretary": {
+    "button": "Ask the Secretary",
+    "prompt": "Answer my question from these company knowledge results. Cite each document you use by its title and link, and say so if the results do not answer it.\n\nQuestion: {{question}}\n\nResults:\n{{results}}"
+  },
+  "taxonomy": {
+    "kind": {
+      "label": "Kind",
+      "all": "All kinds"
+    },
+    "policy": {
+      "title": "Publish policy",
+      "description": "How an agent's draft is published. A kind's policy overrides its knowledge base's. Without a policy, drafts wait for a person.",
+      "scope_base": "Knowledge base",
+      "scope_kind": "Kind",
+      "inherited": "using the default",
+      "reset": "Reset",
+      "load_error": "Could not load the publish policies",
+      "aria_mode": "Publish mode for {{name}}",
+      "toast_failed": "Could not change the publish policy",
+      "toast_reset": "Publish policy reset",
+      "mode": {
+        "manual": "Manual: a person publishes",
+        "auto_after_review": "After a critic's review",
+        "auto": "Automatic",
+        "unknown": "Unknown mode"
+      }
+    },
+    "add_eval": {
+      "button": "Add as eval case",
+      "title": "Add as eval case",
+      "description": "The search should return this document for the question. The next eval run checks it.",
+      "question": "Question",
+      "document": "Expected document",
+      "submit": "Add case",
+      "toast_added": "Eval case added",
+      "toast_failed": "Could not add the eval case"
+    },
+    "retrieval": {
+      "title": "Retrieval quality",
+      "run": "Run eval",
+      "last_run": "Hit rate {{rate}}% ({{hits}} of {{total}} cases)",
+      "no_runs": "No eval run yet. Add a case from a search result to start.",
+      "ran": "Eval recorded: hit rate {{rate}}%",
+      "offline": "Nothing recorded: the knowledge service is offline",
+      "run_failed": "Could not run the eval"
+    },
+    "routines": {
+      "title": "Librarian routines",
+      "empty": "No routine has run yet.",
+      "load_error": "Could not load the routines",
+      "nothing": "Nothing to report",
+      "count": "{{label}}: {{count}}",
+      "triage": "Draft triage",
+      "freshness": "Freshness review",
+      "audit": "Taxonomy audit",
+      "eval": "Retrieval eval",
+      "backfill": "Setup backfill",
+      "counts": {
+        "review_due": "due for review",
+        "duplicate": "duplicate titles",
+        "missing_sections": "missing headings",
+        "missing_kind": "no kind",
+        "orphaned": "gone from WeKnora",
+        "repaired": "repaired",
+        "new_drafts": "new drafts"
+      }
+    }
+  },
+  "upload": {
+    "title": "Add a file",
+    "drop_hint": "Drop a file here, or choose one. It is published as soon as it is added.",
+    "choose": "Choose file",
+    "base_label": "Knowledge base",
+    "kind_label": "Kind",
+    "kind_hint": "Use lowercase letters, digits and underscores, such as market_report.",
+    "submit": "Upload",
+    "toast": {
+      "uploaded": "{{name}} is in the knowledge base",
+      "failed": "Could not upload the file"
+    }
+  },
+  "import": {
+    "title": "Import a web page",
+    "url_label": "Page address",
+    "title_label": "Title (optional)",
+    "submit": "Import",
+    "toast": {
+      "imported": "The page is in the knowledge base",
+      "failed": "Could not import the page"
+    }
+  },
+  "sources": {
+    "title": "Sources",
+    "description": "Connections that WeKnora syncs into the knowledge bases. Failures are shown here; fix them in WeKnora.",
+    "load_error": "Could not load the sources",
+    "offline": "The knowledge service is offline, so the sources cannot be read.",
+    "empty": "No sources are connected.",
+    "create": "Add a source in WeKnora",
+    "never_synced": "Never synced",
+    "last_sync": "Last sync {{when}}",
+    "items": "{{count}} items",
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "error": "Failed",
+      "unknown": "Unknown"
+    }
+  },
+  "repo": {
+    "title": "Repository docs",
+    "description": "Keeps a repository's docs folder in the engineering knowledge base. Each Markdown file becomes a reference document; each file needs a Summary heading.",
+    "load_error": "Could not load the repository sync",
+    "enabled": "Sync this repository every day",
+    "repo_url": "Repository address (https)",
+    "branch": "Branch",
+    "docs_path": "Docs folder",
+    "base": "Knowledge base",
+    "save": "Save",
+    "run": "Sync now",
+    "last_sync": "Last sync {{when}}",
+    "never_synced": "Never synced",
+    "last_error": "The last sync had failures; see below",
+    "toast": {
+      "saved": "Repository sync saved",
+      "synced": "Repository synced",
+      "failed": "Could not save the repository sync"
+    }
+  },
+  "bases": {
+    "title": "Knowledge bases",
+    "description": "Restrict a base to the squads, floors or agents you name. Wiki is limited to three bases; summaries cost model calls.",
+    "restricted": "Restricted",
+    "wiki": "Wiki",
+    "summaries": "Summaries",
+    "access": "Access",
+    "toast": {
+      "failed": "The change was not saved"
+    }
+  },
+  "access": {
+    "loading": "Loading access",
+    "load_error": "Could not load the access list",
+    "empty": "Only owners and admins can see this base.",
+    "remove": "Remove access",
+    "level": {
+      "read": "Read",
+      "write": "Write"
+    },
+    "subject": {
+      "squad": "Squad",
+      "floor": "Floor",
+      "agent": "Agent",
+      "unknown": "Unknown"
+    },
+    "add": {
+      "subject_type": "Granted to",
+      "subject": "Who",
+      "subject_placeholder": "Choose",
+      "level": "Access",
+      "submit": "Grant access"
+    },
+    "toast": {
+      "failed": "The access was not changed"
+    }
+  },
+  "models": {
+    "title": "Models",
+    "description": "Runs each configured chat, rerank and vision model once and reports which failed and why.",
+    "test": "Test models",
+    "not_configured": "No model is configured on this server, so summaries and Wiki are off.",
+    "ok": "Working",
+    "failed": "Failed",
+    "role": {
+      "chat": "Chat",
+      "rerank": "Rerank",
+      "vision": "Vision",
+      "unknown": "Model"
+    }
+  },
+  "owner_login": {
+    "title": "Your WeKnora login",
+    "description": "Sign in to WeKnora's own interface for advanced settings. The password is shown once.",
+    "show": "Show my password",
+    "email": "Email: {{email}}",
+    "once": "Copy it now. It will not be shown again.",
+    "open": "Open WeKnora",
+    "failed": "Could not show the password"
+  },
+  "explorer": {
+    "tree_label": "Library structure",
+    "all_documents": "All documents",
+    "company": "Company",
+    "projects": "Projects",
+    "no_projects": "Projects appear here as they are created.",
+    "wiki_on": "Wiki on",
+    "wiki_off": "Wiki off",
+    "summaries_on": "Summaries on",
+    "open_project": "Open project",
+    "path_label": "Folder path",
+    "company_hint": "A company-wide base. Everyone in the workspace can read it unless it is restricted.",
+    "project_hint": "This project's own base. Its files are added automatically from the project folder, and you can add documents by hand.",
+    "visibility": {
+      "workspace": "Visible to the workspace",
+      "restricted": "Restricted"
+    },
+    "tabs": {
+      "documents": "Documents",
+      "wiki": "Wiki",
+      "add": "Add documents",
+      "settings": "Settings",
+      "collections": "Collections"
+    },
+    "toggle": "Show or hide {{name}}"
+  },
+  "wiki": {
+    "off_title": "Wiki is off for this base",
+    "no_documents": "Add documents first. The Wiki is written from them.",
+    "no_chat_model": "This server has no chat model, so a Wiki cannot be written.",
+    "off_hint": "Write a Wiki from this base's {{count}} documents: a summary page for each, and pages for the people, products and ideas they share. It takes a few minutes for each document.",
+    "off_member": "An owner or admin can turn the Wiki on.",
+    "generate": "Generate Wiki",
+    "rewrite": "Rewrite Wiki",
+    "pages_one": "{{count}} page",
+    "pages_other": "{{count}} pages",
+    "writing": "Pages are still being written",
+    "none_yet": "No pages yet. They appear here as they are written.",
+    "pick": "Choose a page to read it.",
+    "type": {
+      "all": "All",
+      "summary": "Summaries",
+      "entity": "Entities",
+      "concept": "Concepts",
+      "unknown": "Other"
+    },
+    "toast": {
+      "queued_one": "Writing the Wiki from {{count}} document",
+      "queued_other": "Writing the Wiki from {{count}} documents",
+      "failed": "Could not start the Wiki",
+      "queued_few": "Writing the Wiki from {{count}} documents",
+      "queued_many": "Writing the Wiki from {{count}} documents"
+    },
+    "view": {
+      "label": "View",
+      "rendered": "Rendered",
+      "source": "Markdown"
+    },
+    "pages_few": "{{count}} pages",
+    "pages_many": "{{count}} pages"
+  },
+  "collections": {
+    "no_kinds": "No kind in this base has fields yet.",
+    "browse": "Browse",
+    "views": {
+      "pipeline": "Pipeline",
+      "needs_you": "Needs you",
+      "due": "Due",
+      "lessons": "Lessons",
+      "sources": "Source health"
+    },
+    "kind_label": "Kind",
+    "empty": "No documents match this view yet.",
+    "load_error": "Could not load this collection. Try again.",
+    "title_column": "Title",
+    "save_error": "Could not save the change.",
+    "no_properties": "This document has no properties yet."
+  }
+}

@@ -175,20 +175,19 @@ func relatedDecisions(hits []KnowledgeHitView) []ProposalRelated {
 // findPriorArt returns the related proposals and decisions for a proposal that
 // has just been filed. It never fails: each lookup logs its own failure and
 // contributes nothing.
-func (s *ProposalService) findPriorArt(ctx context.Context, workspaceID, proposalID pgtype.UUID, title, summary string, scope projectaccess.Scope) []ProposalRelated {
+func (s *ProposalService) findPriorArt(ctx context.Context, workspaceID, proposalID pgtype.UUID, title, summary string, hidden projectaccess.Hidden) []ProposalRelated {
 	out := []ProposalRelated{}
-	out = append(out, s.relatedProposalsByTitle(ctx, workspaceID, proposalID, title, scope)...)
+	out = append(out, s.relatedProposalsByTitle(ctx, workspaceID, proposalID, title, hidden)...)
 	out = append(out, s.relatedDecisionsFor(ctx, workspaceID, proposalID, title, summary)...)
 	return out
 }
 
-func (s *ProposalService) relatedProposalsByTitle(ctx context.Context, workspaceID, proposalID pgtype.UUID, title string, scope projectaccess.Scope) []ProposalRelated {
+func (s *ProposalService) relatedProposalsByTitle(ctx context.Context, workspaceID, proposalID pgtype.UUID, title string, hidden projectaccess.Hidden) []ProposalRelated {
 	q := s.Issues.Queries
 	rows, err := q.ListRecentProposalsForPriorArt(ctx, db.ListRecentProposalsForPriorArtParams{
-		WorkspaceID: workspaceID,
-		CreatedAt:   pgtype.Timestamptz{Time: time.Now().Add(-priorArtWindow), Valid: true},
-		ScopeMode:   scope.Mode(),
-		ScopeUserID: scope.UserID(),
+		WorkspaceID:      workspaceID,
+		CreatedAt:        pgtype.Timestamptz{Time: time.Now().Add(-priorArtWindow), Valid: true},
+		HiddenProjectIds: hidden.Param(),
 	})
 	if err != nil {
 		slog.Warn("proposal prior art: could not list earlier proposals; filed without them",
@@ -259,7 +258,7 @@ type ProposalPriorArtSubject struct {
 // The map is keyed by proposal id. A subject with no matches has no entry. The
 // lookup is bounded by the newest 500 proposals in the window (the query's
 // limit), so a subject older than that may see fewer matches.
-func (s *ProposalService) RelatedProposalsByTitle(ctx context.Context, workspaceID pgtype.UUID, subjects []ProposalPriorArtSubject, prefix string, scope projectaccess.Scope) (map[string][]ProposalRelated, error) {
+func (s *ProposalService) RelatedProposalsByTitle(ctx context.Context, workspaceID pgtype.UUID, subjects []ProposalPriorArtSubject, prefix string, hidden projectaccess.Hidden) (map[string][]ProposalRelated, error) {
 	out := map[string][]ProposalRelated{}
 	if len(subjects) == 0 {
 		return out, nil
@@ -271,10 +270,9 @@ func (s *ProposalService) RelatedProposalsByTitle(ctx context.Context, workspace
 		}
 	}
 	rows, err := s.Issues.Queries.ListRecentProposalsForPriorArt(ctx, db.ListRecentProposalsForPriorArtParams{
-		WorkspaceID: workspaceID,
-		CreatedAt:   pgtype.Timestamptz{Time: oldest.Add(-priorArtWindow), Valid: true},
-		ScopeMode:   scope.Mode(),
-		ScopeUserID: scope.UserID(),
+		WorkspaceID:      workspaceID,
+		CreatedAt:        pgtype.Timestamptz{Time: oldest.Add(-priorArtWindow), Valid: true},
+		HiddenProjectIds: hidden.Param(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list proposals for prior art: %w", err)

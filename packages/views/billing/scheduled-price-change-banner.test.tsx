@@ -58,7 +58,8 @@ const mocks = vi.hoisted(() => ({
   } as WorkspaceSubscriptionSummary,
 }));
 
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
   useQuery: (options: unknown) => mocks.useQuery(options),
 }));
 
@@ -99,6 +100,7 @@ vi.mock("@multica/core/billing", () => ({
   usePurchaseWorkspaceSeats: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
+vi.mock("@multica/core/permissions", () => ({ useCan: () => ({ allowed: true }) }));
 vi.mock("@multica/core/autopilots", () => ({
   autopilotQuotaUsageOptions: (wsId: string) => ({
     queryKey: ["autopilots", wsId, "usage"],

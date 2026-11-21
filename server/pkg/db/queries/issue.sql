@@ -6,7 +6,7 @@
 -- because that is already the meaning of the `assignee_id` filter (tab 1
 -- "Assigned to me"), and the two filters must produce disjoint result sets.
 SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
-       i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
+       i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.requester_user_id,
        i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.last_activity_at, i.number, i.project_id, i.metadata, i.stage, i.run_queued, i.run_after_issue_ids, i.properties,
        i.revision, i.duplicate_of_issue_id
 FROM issue i
@@ -16,7 +16,10 @@ WHERE i.workspace_id = $1
   AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id'))
   AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]))
   AND (sqlc.narg('creator_id')::uuid IS NULL OR i.creator_id = sqlc.narg('creator_id'))
+  AND (sqlc.narg('created_by_user_id')::uuid IS NULL OR (i.creator_type = 'member' AND i.creator_id = sqlc.narg('created_by_user_id')) OR i.requester_user_id = sqlc.narg('created_by_user_id'))
   AND (sqlc.narg('project_id')::uuid IS NULL OR i.project_id = sqlc.narg('project_id'))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
   AND (sqlc.narg('scheduled')::bool IS NULL OR (i.start_date IS NOT NULL OR i.due_date IS NOT NULL))
   AND (sqlc.narg('metadata_filter')::jsonb IS NULL OR i.metadata @> sqlc.narg('metadata_filter')::jsonb)
   AND (
@@ -388,13 +391,8 @@ SELECT * FROM issue
 WHERE issue.workspace_id = sqlc.arg('workspace_id')
   AND issue.duplicate_of_issue_id = sqlc.arg('issue_id')::uuid
   AND issue.status = 'cancelled'
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(issue.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 ORDER BY issue.created_at ASC, issue.id ASC;
 
 -- name: GetIssueRefInWorkspace :one
@@ -404,18 +402,10 @@ WHERE id = $1 AND workspace_id = $2;
 
 -- name: ListIssueRefsInWorkspace :many
 -- GetIssueRefInWorkspace for a page: every original the page's duplicates
--- point at, in one read. project_id lets the caller drop an original the viewer
--- cannot see.
-SELECT issue.id, issue.number, issue.title, issue.status, issue.project_id FROM issue
-WHERE issue.workspace_id = sqlc.arg('workspace_id')
-  AND issue.id = ANY(sqlc.arg('ids')::uuid[])
--- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-      OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-      OR (sqlc.arg(scope_mode)::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')));
+-- point at, in one read.
+SELECT id, number, title, status, project_id FROM issue
+WHERE workspace_id = sqlc.arg('workspace_id')
+  AND id = ANY(sqlc.arg('ids')::uuid[]);
 
 -- name: ClearIssueDuplicatesOf :many
 -- Deleting an issue clears the pointers of its duplicates, the way deleting a
@@ -437,11 +427,11 @@ INSERT INTO issue (
     assignee_type, assignee_id, creator_type, creator_id,
     parent_issue_id, position, start_date, due_date, number, project_id,
     origin_type, origin_id, stage, properties, metadata, last_activity_at, id,
-    flow_step, flow_task, flow_round, flow
+    flow_step, flow_task, flow_round, flow, requester_user_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
     sqlc.narg('origin_type'), sqlc.narg('origin_id'), sqlc.narg('stage'), COALESCE(sqlc.narg('properties')::jsonb, '{}'::jsonb), COALESCE(sqlc.narg('metadata')::jsonb, '{}'::jsonb), now(), COALESCE(sqlc.narg('id')::uuid, gen_random_uuid()),
-    sqlc.narg('flow_step'), sqlc.narg('flow_task'), sqlc.narg('flow_round'), sqlc.narg('flow')::jsonb
+    sqlc.narg('flow_step'), sqlc.narg('flow_task'), sqlc.narg('flow_round'), sqlc.narg('flow')::jsonb, sqlc.narg('requester_user_id')
 ) RETURNING *;
 
 -- name: LockIssueDuplicateKey :exec
@@ -532,6 +522,20 @@ cleared_pr_exclusions AS (
 ),
 cleared_unread AS (
     DELETE FROM issue_unread WHERE issue_id IN (SELECT target.id FROM target)
+),
+cleared_environments AS (
+    DELETE FROM issue_environment WHERE issue_id IN (SELECT target.id FROM target)
+),
+cleared_environment_commands AS (
+    DELETE FROM issue_environment_command WHERE issue_id IN (SELECT target.id FROM target)
+),
+cleared_environment_configs AS (
+    DELETE FROM issue_environment_config WHERE issue_id IN (SELECT target.id FROM target)
+),
+-- task_context_receipt has no FK; the issue's tasks go by the legacy cascade,
+-- so their receipts are swept here by the issue_id copied onto each row.
+cleared_task_context_receipts AS (
+    DELETE FROM task_context_receipt WHERE issue_id IN (SELECT target.id FROM target)
 )
 DELETE FROM issue WHERE issue.id IN (SELECT target.id FROM target);
 
@@ -539,7 +543,7 @@ DELETE FROM issue WHERE issue.id IN (SELECT target.id FROM target);
 -- See ListIssues for the semantics of involves_user_id (mirrors the 4-branch
 -- filter; member-direct assignment is intentionally excluded).
 SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
-       i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
+       i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.requester_user_id,
        i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.last_activity_at, i.number, i.project_id, i.metadata, i.stage, i.run_queued, i.run_after_issue_ids, i.properties,
        i.revision, i.duplicate_of_issue_id
 FROM issue i
@@ -550,7 +554,10 @@ WHERE i.workspace_id = $1
   AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id'))
   AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]))
   AND (sqlc.narg('creator_id')::uuid IS NULL OR i.creator_id = sqlc.narg('creator_id'))
+  AND (sqlc.narg('created_by_user_id')::uuid IS NULL OR (i.creator_type = 'member' AND i.creator_id = sqlc.narg('created_by_user_id')) OR i.requester_user_id = sqlc.narg('created_by_user_id'))
   AND (sqlc.narg('project_id')::uuid IS NULL OR i.project_id = sqlc.narg('project_id'))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
   AND (sqlc.narg('metadata_filter')::jsonb IS NULL OR i.metadata @> sqlc.narg('metadata_filter')::jsonb)
   -- properties_filter is a jsonb array of groups, each group an array of
   -- patterns (built by parsePropertiesFilterParam): the issue must match at
@@ -641,13 +648,8 @@ WHERE i.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
   )
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 ORDER BY i.position ASC, i.created_at DESC;
 
 -- name: CountIssues :one
@@ -659,7 +661,10 @@ WHERE i.workspace_id = $1
   AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id'))
   AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]))
   AND (sqlc.narg('creator_id')::uuid IS NULL OR i.creator_id = sqlc.narg('creator_id'))
+  AND (sqlc.narg('created_by_user_id')::uuid IS NULL OR (i.creator_type = 'member' AND i.creator_id = sqlc.narg('created_by_user_id')) OR i.requester_user_id = sqlc.narg('created_by_user_id'))
   AND (sqlc.narg('project_id')::uuid IS NULL OR i.project_id = sqlc.narg('project_id'))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
   AND (sqlc.narg('scheduled')::bool IS NULL OR (i.start_date IS NOT NULL OR i.due_date IS NOT NULL))
   AND (sqlc.narg('metadata_filter')::jsonb IS NULL OR i.metadata @> sqlc.narg('metadata_filter')::jsonb)
   AND (
@@ -694,13 +699,8 @@ WHERE i.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
   )
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')));
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])));
 
 -- name: ListChildIssues :many
 -- Order by number ASC so sub-issues display in stable creation order
@@ -724,13 +724,8 @@ ORDER BY number ASC;
 SELECT * FROM issue
 WHERE issue.workspace_id = sqlc.arg('workspace_id')
   AND issue.parent_issue_id = ANY(sqlc.arg('parent_ids')::uuid[])
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(issue.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 ORDER BY parent_issue_id, number ASC;
 
 -- name: GetIssueByOrigin :one
@@ -757,13 +752,8 @@ WHERE issue.workspace_id = $1
   AND issue.creator_type = 'member'
   AND issue.assignee_type IS NOT NULL
   AND issue.assignee_id IS NOT NULL
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-      OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-      OR (sqlc.arg(scope_mode)::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(issue.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 GROUP BY issue.assignee_type, issue.assignee_id;
 
 -- name: ChildIssueProgress :many
@@ -771,16 +761,11 @@ SELECT issue.parent_issue_id,
        COUNT(*)::bigint AS total,
        COUNT(*) FILTER (WHERE issue.status = ANY(sqlc.arg('terminal_status_keys')::text[]))::bigint AS done
 FROM issue
-WHERE issue.workspace_id = $1
-  AND issue.parent_issue_id IS NOT NULL
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
-GROUP BY issue.parent_issue_id;
+WHERE workspace_id = $1
+  AND parent_issue_id IS NOT NULL
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
+GROUP BY parent_issue_id;
 
 -- SearchIssues: moved to handler (dynamic SQL for multi-word search support).
 
@@ -920,20 +905,10 @@ WHERE i.workspace_id = $1
   AND i.run_queued
   AND i.status = 'backlog'
   AND i.triage_state IS NULL
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (p.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = p.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(p.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
   AND (
     NOT (p.status IN ('done', 'cancelled') OR EXISTS (
       SELECT 1 FROM issue_status cs
@@ -965,7 +940,13 @@ WHERE p.workspace_id = $1
 SELECT * FROM issue
 WHERE workspace_id = $1 AND id = ANY(sqlc.arg('ids')::uuid[]);
 
--- name: GetIssueProjectID :one
--- Audience lookup for realtime events about an issue. project_id is NULL for an
--- issue with no project.
-SELECT project_id FROM issue WHERE id = $1;
+-- name: ResolveIssueRequester :one
+SELECT t.originator_user_id FROM agent_task_queue t
+JOIN agent a ON a.id = t.agent_id
+WHERE t.id = sqlc.arg(origin_id)::uuid
+  AND a.id = sqlc.arg(creator_id)::uuid
+  AND a.workspace_id = sqlc.arg(workspace_id)::uuid
+  AND t.originator_user_id IS NOT NULL
+  AND t.originator_source = 'direct_human'
+  AND (sqlc.arg(origin_type)::text = 'quick_create'
+       OR (sqlc.arg(origin_type)::text = 'agent_create' AND t.trigger_evidence_kind = 'chat'));

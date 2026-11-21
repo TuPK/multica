@@ -37,6 +37,8 @@ export type TabSubject =
   | { kind: "workflow"; id: string }
   /** A Hub item detail: a skill or a published plugin, by its Hub kind. */
   | { kind: "hub"; itemKind: "skill" | "plugin"; id: string }
+  | { kind: "doc"; id: string }
+  | { kind: "docFolder"; id: string }
   /** A runtime machine detail. */
   | { kind: "machine"; machineId: string }
   /** A runtime nested under a machine. */
@@ -139,6 +141,11 @@ export function parseTabSubject(url: string): TabSubject {
         return { kind: "runtime", machineId: id, runtimeId: segments[4] };
       }
       return { kind: "machine", machineId: id };
+    case "docs":
+      if (id === "folders") {
+        return segments[3] ? { kind: "docFolder", id: segments[3] } : { kind: "unknown" };
+      }
+      return id ? { kind: "doc", id } : { kind: "page", page: "docs" };
     case "skills":
       return id ? { kind: "skill", id } : { kind: "page", page: "skills" };
     case "workflow":
@@ -186,6 +193,10 @@ export function tabSubjectKey(subject: TabSubject): string {
       return `workflow:${subject.id}`;
     case "hub":
       return `hub:${subject.itemKind}:${subject.id}`;
+    case "doc":
+      return `doc:${subject.id}`;
+    case "docFolder":
+      return `docFolder:${subject.id}`;
     case "machine":
       return `machine:${subject.machineId}`;
     case "runtime":

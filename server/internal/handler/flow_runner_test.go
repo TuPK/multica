@@ -446,7 +446,7 @@ func TestChildEvents_FailedAdvanceLeavesSweepToRetry(t *testing.T) {
 	// The event handler fails (its context is gone): nothing is half done.
 	gone, cancel := context.WithCancel(context.Background())
 	cancel()
-	testHandler.advanceFlowRequests(gone, projectaccess.System(), request.ID)
+	testHandler.advanceFlowRequests(gone, projectaccess.Hidden{}, request.ID)
 	if got := requestStatus(t, request); got != "collect" {
 		t.Fatalf("status = %q after a failed advance, want collect", got)
 	}

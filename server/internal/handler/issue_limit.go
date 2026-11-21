@@ -26,7 +26,7 @@ func (h *Handler) GetIssueLimitUsage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	scope, ok := h.viewerScope(w, r, workspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(workspaceID))
 	if !ok {
 		return
 	}

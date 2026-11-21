@@ -11,33 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createGuestMember = `-- name: CreateGuestMember :one
-INSERT INTO member (workspace_id, user_id, role, is_guest)
-VALUES ($1, $2, $3, true)
-RETURNING id, workspace_id, user_id, role, created_at, is_guest, pinned_at
-`
-
-type CreateGuestMemberParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	UserID      pgtype.UUID `json:"user_id"`
-	Role        string      `json:"role"`
-}
-
-func (q *Queries) CreateGuestMember(ctx context.Context, arg CreateGuestMemberParams) (Member, error) {
-	row := q.db.QueryRow(ctx, createGuestMember, arg.WorkspaceID, arg.UserID, arg.Role)
-	var i Member
-	err := row.Scan(
-		&i.ID,
-		&i.WorkspaceID,
-		&i.UserID,
-		&i.Role,
-		&i.CreatedAt,
-		&i.IsGuest,
-		&i.PinnedAt,
-	)
-	return i, err
-}
-
 const createMember = `-- name: CreateMember :one
 INSERT INTO member (workspace_id, user_id, role)
 VALUES ($1, $2, $3)
@@ -107,6 +80,7 @@ func (q *Queries) GetMember(ctx context.Context, id pgtype.UUID) (Member, error)
 const getMemberByUserAndWorkspace = `-- name: GetMemberByUserAndWorkspace :one
 SELECT id, workspace_id, user_id, role, created_at, is_guest, pinned_at FROM member
 WHERE user_id = $1 AND workspace_id = $2
+  AND role IN ('owner', 'admin', 'member', 'viewer', 'guest')
 `
 
 type GetMemberByUserAndWorkspaceParams struct {
@@ -114,8 +88,33 @@ type GetMemberByUserAndWorkspaceParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 }
 
+// A role this build does not know is no membership: every access check that
+// starts from this lookup refuses it. A later release can then add a role
+// and still be rolled back to this one without the old build reading the new
+// role as a full member, the way builds before guests read 'guest'.
 func (q *Queries) GetMemberByUserAndWorkspace(ctx context.Context, arg GetMemberByUserAndWorkspaceParams) (Member, error) {
 	row := q.db.QueryRow(ctx, getMemberByUserAndWorkspace, arg.UserID, arg.WorkspaceID)
+	var i Member
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.UserID,
+		&i.Role,
+		&i.CreatedAt,
+		&i.IsGuest,
+		&i.PinnedAt,
+	)
+	return i, err
+}
+
+const getMemberForUpdate = `-- name: GetMemberForUpdate :one
+SELECT id, workspace_id, user_id, role, created_at, is_guest, pinned_at FROM member WHERE id = $1 FOR UPDATE
+`
+
+// Locks a member row for a role change, so concurrent changes to the same
+// member apply one after the other and each re-checks the role it starts from.
+func (q *Queries) GetMemberForUpdate(ctx context.Context, id pgtype.UUID) (Member, error) {
+	row := q.db.QueryRow(ctx, getMemberForUpdate, id)
 	var i Member
 	err := row.Scan(
 		&i.ID,
@@ -137,6 +136,7 @@ JOIN (
            unnest($2::uuid[]) AS workspace_id
 ) AS requested
     ON m.user_id = requested.user_id AND m.workspace_id = requested.workspace_id
+WHERE m.role IN ('owner', 'admin', 'member', 'viewer')
 `
 
 type GetRealtimeMembershipsParams struct {
@@ -149,6 +149,9 @@ type GetRealtimeMembershipsRow struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 }
 
+// Guests (MUL-9420) get no realtime stream: workspace fanout is not narrowed
+// to their projects, so a socket that becomes a guest's is closed. Neither
+// does a role this build does not know (see GetMemberByUserAndWorkspace).
 func (q *Queries) GetRealtimeMemberships(ctx context.Context, arg GetRealtimeMembershipsParams) ([]GetRealtimeMembershipsRow, error) {
 	rows, err := q.db.Query(ctx, getRealtimeMemberships, arg.UserIds, arg.WorkspaceIds)
 	if err != nil {
@@ -204,7 +207,7 @@ func (q *Queries) ListMembers(ctx context.Context, workspaceID pgtype.UUID) ([]M
 }
 
 const listMembersWithUser = `-- name: ListMembersWithUser :many
-SELECT m.id, m.workspace_id, m.user_id, m.role, m.created_at, m.is_guest,
+SELECT m.id, m.workspace_id, m.user_id, m.role, m.created_at,
        u.name as user_name, u.email as user_email, u.avatar_url as user_avatar_url
 FROM member m
 JOIN "user" u ON u.id = m.user_id
@@ -218,7 +221,6 @@ type ListMembersWithUserRow struct {
 	UserID        pgtype.UUID        `json:"user_id"`
 	Role          string             `json:"role"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	IsGuest       bool               `json:"is_guest"`
 	UserName      string             `json:"user_name"`
 	UserEmail     string             `json:"user_email"`
 	UserAvatarUrl pgtype.Text        `json:"user_avatar_url"`
@@ -239,7 +241,6 @@ func (q *Queries) ListMembersWithUser(ctx context.Context, workspaceID pgtype.UU
 			&i.UserID,
 			&i.Role,
 			&i.CreatedAt,
-			&i.IsGuest,
 			&i.UserName,
 			&i.UserEmail,
 			&i.UserAvatarUrl,
@@ -292,30 +293,6 @@ type RecordMemberRemovalParams struct {
 func (q *Queries) RecordMemberRemoval(ctx context.Context, arg RecordMemberRemovalParams) error {
 	_, err := q.db.Exec(ctx, recordMemberRemoval, arg.WorkspaceID, arg.UserID)
 	return err
-}
-
-const updateMemberGuest = `-- name: UpdateMemberGuest :one
-UPDATE member SET is_guest = $2 WHERE id = $1 RETURNING id, workspace_id, user_id, role, created_at, is_guest, pinned_at
-`
-
-type UpdateMemberGuestParams struct {
-	ID      pgtype.UUID `json:"id"`
-	IsGuest bool        `json:"is_guest"`
-}
-
-func (q *Queries) UpdateMemberGuest(ctx context.Context, arg UpdateMemberGuestParams) (Member, error) {
-	row := q.db.QueryRow(ctx, updateMemberGuest, arg.ID, arg.IsGuest)
-	var i Member
-	err := row.Scan(
-		&i.ID,
-		&i.WorkspaceID,
-		&i.UserID,
-		&i.Role,
-		&i.CreatedAt,
-		&i.IsGuest,
-		&i.PinnedAt,
-	)
-	return i, err
 }
 
 const updateMemberRole = `-- name: UpdateMemberRole :one

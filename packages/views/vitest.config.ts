@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import BalancedSequencer from "./test/balanced-sequencer";
 
 export default defineConfig({
   plugins: [react()],
@@ -14,5 +15,6 @@ export default defineConfig({
     // that; a real hang still fails, just later.
     testTimeout: 20_000,
     hookTimeout: 20_000,
+    sequence: { sequencer: BalancedSequencer },
   },
 });

@@ -15,10 +15,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -247,10 +245,11 @@ func sourceContextThreadChangeReasons(captured, current service.SourceContextSna
 	return sourceContextThreadChangeDetails(captured, current).Reasons
 }
 
-// issueSourceContextDetail builds the detail of a sub-issue's source context. A
-// source issue in a project the viewer cannot see is answered like a deleted
-// one: nothing of its live title or comments is read.
-func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue, scope projectaccess.Scope) (*sourceContextDetailResponse, error) {
+// issueSourceContextDetail renders an issue's frozen source context for one
+// reader. hidden is the reader's hidden projects: when the live source issue
+// is in one, only the frozen snapshot is returned and the live source reads as
+// unavailable, so nothing posted there after capture reaches this reader.
+func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue, hidden projectaccess.Hidden) (*sourceContextDetailResponse, error) {
 	row, err := h.Queries.GetIssueSourceContextByIssue(ctx, db.GetIssueSourceContextByIssueParams{WorkspaceID: issue.WorkspaceID, IssueID: issue.ID})
 	if err != nil {
 		return nil, err
@@ -269,7 +268,7 @@ func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue, 
 
 	sourceHidden := false
 	if source, err := h.Queries.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: row.SourceIssueID, WorkspaceID: issue.WorkspaceID}); err == nil {
-		sourceHidden = !scope.Allows(source.ProjectID)
+		sourceHidden = !hidden.CanSeeProject(source.ProjectID)
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("load source issue: %w", err)
 	}
@@ -286,6 +285,25 @@ func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue, 
 		response.CanOpenCurrentSource = true
 	} else if errors.Is(anchorErr, pgx.ErrNoRows) || anchorErr == nil {
 		response.AnchorCommentState = "deleted"
+	}
+	liveSourceID := row.SourceIssueID
+	if anchorExists {
+		liveSourceID = anchor.IssueID
+	}
+	if !hidden.Empty() {
+		projectID, err := h.Queries.GetIssueProjectID(ctx, liveSourceID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("resolve source issue project: %w", err)
+		}
+		if err == nil && !hidden.CanSeeProject(projectID) {
+			response.DisplayState = "unavailable"
+			response.SourceIssueState = "unavailable"
+			response.CommentThreadState = "unavailable"
+			response.AnchorCommentState = "unavailable"
+			response.CanOpenCurrentSource = false
+			response.CurrentSource = nil
+			return response, nil
+		}
 	}
 
 	var currentIssue service.SourceContextIssueSnapshot
@@ -452,12 +470,13 @@ func (h *Handler) PreviewCommentSubIssue(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	hidden, ok := h.sourceAnchorHidden(w, r, wsUUID, anchorCommentID)
-	if !ok {
-		return
-	}
-	if hidden {
-		h.writeSourceContextError(w, service.ErrAnchorCommentDeleted, service.SourceContextLimitUsage{})
+	// MUL-8472: a comment in a private project the caller cannot see reads as
+	// a missing one, here as on every other comment route.
+	if hiddenComment, err := h.commentInHiddenProject(r, workspaceID, anchorCommentID); err != nil || hiddenComment {
+		if err == nil {
+			err = service.ErrAnchorCommentDeleted
+		}
+		h.writeSourceContextError(w, err, service.SourceContextLimitUsage{})
 		return
 	}
 	build, err := service.BuildSourceContext(r.Context(), h.Queries, wsUUID, anchorCommentID)
@@ -489,7 +508,8 @@ func (h *Handler) CreateCommentSubIssue(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
+	member, ok := h.workspaceMember(w, r, workspaceID)
+	if !ok {
 		return
 	}
 	userID, ok := requireUserID(w, r)
@@ -509,20 +529,31 @@ func (h *Handler) CreateCommentSubIssue(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusConflict, map[string]any{"code": "source_context_changed", "error": "source context preview is invalid; refresh and try again"})
 		return
 	}
-	hidden, ok := h.sourceAnchorHidden(w, r, wsUUID, anchorCommentID)
-	if !ok {
-		return
-	}
+	// MUL-8472: a comment in a private project the caller cannot see reads as
+	// a missing one, here as on every other comment route, so it takes the
+	// deleted-anchor path below.
 	var build service.SourceContextBuild
-	var err error
-	if hidden {
-		err = service.ErrAnchorCommentDeleted
-	} else {
-		build, err = service.BuildSourceContext(r.Context(), h.Queries, wsUUID, anchorCommentID)
+	hiddenComment, err := h.commentInHiddenProject(r, workspaceID, anchorCommentID)
+	if err == nil {
+		if hiddenComment {
+			err = service.ErrAnchorCommentDeleted
+		} else {
+			build, err = service.BuildSourceContext(r.Context(), h.Queries, wsUUID, anchorCommentID)
+		}
 	}
 	if errors.Is(err, service.ErrAnchorCommentDeleted) {
-		if _, issueErr := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: tokenIssueID, WorkspaceID: wsUUID}); errors.Is(issueErr, pgx.ErrNoRows) {
+		// The token's issue id comes from the client; one in a project the
+		// caller cannot see answers like a deleted one.
+		tokenIssue, issueErr := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: tokenIssueID, WorkspaceID: wsUUID})
+		if errors.Is(issueErr, pgx.ErrNoRows) {
 			err = service.ErrSourceIssueDeleted
+		} else if issueErr == nil {
+			hidden, hiddenErr := h.hiddenProjects(r, workspaceID)
+			if hiddenErr != nil {
+				err = hiddenErr
+			} else if !hidden.CanSeeProject(tokenIssue.ProjectID) {
+				err = service.ErrSourceIssueDeleted
+			}
 		}
 	}
 	if err != nil {
@@ -540,6 +571,7 @@ func (h *Handler) CreateCommentSubIssue(w http.ResponseWriter, r *http.Request) 
 			writeError(w, http.StatusBadRequest, "issue is required for manual mode")
 			return
 		}
+		req.Issue.Title = sanitizeNullBytes(req.Issue.Title)
 		if strings.TrimSpace(req.Issue.Title) == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"code": "invalid_request", "error": "title is required"})
 			return
@@ -564,37 +596,20 @@ func (h *Handler) CreateCommentSubIssue(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "mode must be manual or agent")
 		return
 	}
-	// Reject a full workspace before cloning source attachments. This early
-	// check avoids expensive work; the TaskService enqueue preflight and final
-	// transactional issue admission remain necessary because this is not a
-	// capacity reservation.
-	if err := service.CheckIssueCreateCapacity(r.Context(), h.Queries, h.Entitlements, wsUUID); err != nil {
-		if !writeIssueLimitReached(w, err) {
-			slog.Warn("source context issue-capacity preflight failed", append(logger.RequestAttrs(r), "error", err)...)
-			writeError(w, http.StatusInternalServerError, "failed to check issue capacity")
-		}
-		return
+	// Copying the source attachments stores new bytes, so it is checked like
+	// an upload, before the sub-issue or any copy exists.
+	var copyBytes int64
+	for _, row := range build.Rows {
+		copyBytes += row.SizeBytes
 	}
-
-	// The attachments are copied in storage before the issue is made, and their
-	// sizes are known now, so a workspace without room for them is refused before
-	// anything is copied. The locked check in the persisting transaction stays
-	// the authority.
-	if len(build.Rows) > 0 {
-		var cloneBytes int64
-		for _, row := range build.Rows {
-			cloneBytes += row.SizeBytes
-		}
-		storageQuota := h.resolvePlanGate(r.Context(), wsUUID, entitlement.GateStorageBytes)
-		if err := storageQuota.Precheck(r.Context(), wsUUID, cloneBytes, planlimit.SumAttachmentBytes(h.Queries, wsUUID)); err != nil {
-			if !writePlanLimitReached(w, err) {
-				slog.Warn("source context storage precheck failed", append(logger.RequestAttrs(r), "error", err)...)
-				writeError(w, http.StatusInternalServerError, "failed to check storage capacity")
+	if copyBytes > 0 {
+		if err := h.storageQuota().Admit(r.Context(), wsUUID, copyBytes, service.StorageSourceSubIssue); err != nil {
+			if !writeStorageLimitReached(w, err, !projectaccess.IsGuestRole(member.Role)) {
+				writeError(w, http.StatusInternalServerError, "failed to check attachment storage")
 			}
 			return
 		}
 	}
-
 	contextID := dbid.NewV7()
 	capture, objectKeys, err := h.cloneSourceContext(r.Context(), wsUUID, userUUID, contextID, build)
 	if err != nil {
@@ -711,7 +726,7 @@ func (h *Handler) cloneSourceContext(ctx context.Context, workspaceID, userID, c
 }
 
 func (h *Handler) createManualCommentSubIssue(w http.ResponseWriter, r *http.Request, workspaceID, userID pgtype.UUID, input CreateIssueRequest, capture service.SourceContextCapture, limits service.SourceContextLimitUsage) error {
-	title := strings.TrimSpace(input.Title)
+	title := strings.TrimSpace(sanitizeNullBytes(input.Title))
 	if title == "" {
 		return sourceContextBadRequest("title is required")
 	}
@@ -756,15 +771,19 @@ func (h *Handler) createManualCommentSubIssue(w http.ResponseWriter, r *http.Req
 		projectID = parsed
 		// A project the member cannot see is missing (spec 7.1 rule 5); the
 		// create service reports it as it reports an id that names no project.
-		scope, ok := h.viewerScope(w, r, workspaceID)
+		scope, ok := h.requestHiddenProjects(w, r, uuidToString(workspaceID))
 		if !ok {
 			return errSourceContextResponseWritten
 		}
-		if !scope.Allows(projectID) {
+		if !scope.CanSeeProject(projectID) {
 			return service.ErrProjectNotFound
 		}
 	}
 	attachmentIDs, ok := parseUUIDSliceOrBadRequest(w, input.AttachmentIDs, "attachment_ids")
+	if !ok {
+		return errSourceContextResponseWritten
+	}
+	attachmentIDs, ok = h.visibleAttachmentIDs(w, r, workspaceID, attachmentIDs)
 	if !ok {
 		return errSourceContextResponseWritten
 	}
@@ -822,7 +841,7 @@ func (h *Handler) createManualCommentSubIssue(w http.ResponseWriter, r *http.Req
 		return err
 	}
 	response := issueToResponse(result.Issue, prefix)
-	h.fillStatusCategory(r.Context(), workspaceID, &response)
+	h.fillStatusCategory(r.Context(), workspaceID, projectaccess.Hidden{}, &response)
 	labelResponses := labelsToResponse(result.Labels)
 	response.Labels = &labelResponses
 	slog.Info("sub-issue created from captured comment", append(sourceContextAuditAttrs(r, capture.ID, capture.Snapshot.SourceIssue.ID, capture.Snapshot.AnchorCommentID, userID, "manual", limits, "success"), "target_issue_id", uuidToString(result.Issue.ID))...)
@@ -916,21 +935,28 @@ func (h *Handler) prepareAgentCommentSubIssue(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return nil, errSourceContextResponseWritten
 	}
+	attachmentIDs, ok = h.visibleAttachmentIDs(w, r, workspaceID, attachmentIDs)
+	if !ok {
+		return nil, errSourceContextResponseWritten
+	}
 	var projectID pgtype.UUID
 	if strings.TrimSpace(input.ProjectID) != "" {
 		parsed, err := util.ParseUUID(strings.TrimSpace(input.ProjectID))
 		if err != nil {
 			return nil, sourceContextBadRequest("invalid project_id")
 		}
-		scope, ok := h.viewerScope(w, r, workspaceID)
+		scope, ok := h.requestHiddenProjects(w, r, uuidToString(workspaceID))
 		if !ok {
 			return nil, errSourceContextResponseWritten
 		}
-		if !scope.Allows(parsed) {
+		if !scope.CanSeeProject(parsed) {
 			return nil, sourceContextBadRequest("project not found")
 		}
 		if _, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{ID: parsed, WorkspaceID: workspaceID}); err != nil {
 			return nil, sourceContextBadRequest("project not found")
+		}
+		if err := h.sourceContextProjectVisible(r, workspaceID, parsed); err != nil {
+			return nil, err
 		}
 		projectID = parsed
 	}
@@ -991,6 +1017,9 @@ func (h *Handler) writeSourceContextError(w http.ResponseWriter, err error, limi
 	case errors.Is(err, service.ErrParentIssueNotFound), errors.Is(err, service.ErrProjectNotFound):
 		status = http.StatusBadRequest
 		message = err.Error()
+	case errors.Is(err, service.ErrProjectArchived):
+		status, code = http.StatusConflict, projectArchivedCode
+		message = err.Error()
 	case errors.As(err, &propertyErr):
 		status, code = http.StatusBadRequest, "invalid_issue_property"
 		message = propertyErr.Message
@@ -1000,6 +1029,9 @@ func (h *Handler) writeSourceContextError(w http.ResponseWriter, err error, limi
 	case errors.Is(err, errSourceContextBadRequest):
 		status, code = http.StatusBadRequest, "invalid_request"
 		message = err.Error()
+	case errors.Is(err, service.ErrProjectAccessDenied):
+		status, code = http.StatusForbidden, string(ReasonProjectAccessBlocked)
+		message = dispatchBlockedFallbackMessage(ReasonProjectAccessBlocked)
 	case err == nil:
 		return
 	}

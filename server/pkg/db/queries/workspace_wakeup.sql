@@ -37,13 +37,8 @@ LEFT JOIN "user" actor_user ON actor_user.id=actor_member.user_id
    AND t.status IN ('queued','deferred','dispatched','running','waiting_local_directory')
  ) r ON true
  WHERE w.workspace_id= @workspace_id AND w.system_rule IS NULL
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
  UNION ALL
  -- The child-done system rule of each open parent that still waits for a
  -- sub-issue: every child when unstaged, else its lowest unfinished stage.
@@ -82,15 +77,12 @@ LEFT JOIN "user" actor_user ON actor_user.id=actor_member.user_id
    AND t.status IN ('queued','deferred','dispatched','running','waiting_local_directory')
  ) sr ON true
  WHERE w.workspace_id= @workspace_id AND w.system_rule IS NOT NULL AND agg.open_count>0
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(p.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
   AND p.status NOT IN ('done','cancelled')
   AND NOT EXISTS(SELECT 1 FROM issue_status s WHERE s.workspace_id=p.workspace_id AND s.key=p.status AND s.category IN ('done','closed'))
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (p.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = p.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(p.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 ), classified AS (
  SELECT *,CASE WHEN (enabled AND NOT issue_closed) OR active_runs>0 THEN 'active'
   WHEN NOT issue_closed AND paused_reason IS NOT NULL THEN 'paused'

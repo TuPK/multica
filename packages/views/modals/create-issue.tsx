@@ -57,6 +57,7 @@ import { useIssueCreateUploads } from "./use-issue-create-uploads";
 import { useShortcut } from "@multica/core/shortcuts";
 import { ShortcutKeycaps } from "../common/shortcut-keycaps";
 import { StatusIcon, StatusPicker, PriorityIcon, PriorityPicker, StagePicker, AssigneePicker, StartDatePicker, DueDatePicker, LabelPicker } from "../issues/components";
+import { useRecordAssigneePick } from "../issues/components/pickers/assignee-picker";
 import { maxSiblingStage } from "../issues/components/pickers/stage-picker";
 import { ProjectPicker } from "../projects/components/project-picker";
 import { useIssueTriggerPreview } from "../issues/hooks/use-issue-trigger-preview";
@@ -94,6 +95,7 @@ import { FileUploadButton } from "@multica/ui/components/common/file-upload-butt
 import { BorderBeam } from "@multica/ui/components/common/border-beam";
 import { ClearablePillButton, PillButton } from "../common/pill-button";
 import { FlowWorkflowPicker } from "./flow-workflow-picker";
+import { useComposerVoice, VoiceDialogFooter, VoiceMicButton } from "../voice";
 import { ActorAvatar } from "../common/actor-avatar";
 import { PropertyIcon } from "../common/property-icon";
 import {
@@ -102,8 +104,9 @@ import {
 } from "../issues/components/pickers/custom-property-picker";
 import { IssuePickerModal } from "./issue-picker-modal";
 import { useT } from "../i18n";
+import { useLimitRecoveryPrompt } from "./use-limit-recovery-prompt";
+import { StorageLimitNotice, storageLimitRefusal, type StorageLimitRefusal } from "../billing/storage-limit-notice";
 import { SourceContextPreviewCard, useSourceContextFailureMessage } from "./source-context-preview";
-import { useIssueLimitUpgradePrompt } from "./use-issue-limit-upgrade-prompt";
 import { CopyParentFields } from "./copy-parent-fields";
 
 // ManualCreatePanel — manual-mode body of the create-issue dialog. Renders
@@ -244,6 +247,7 @@ export function ManualCreatePanel({
 }) {
   const { t } = useT("modals");
   const { t: tIssues } = useT("issues");
+  const showIssueLimitUpgradePrompt = useLimitRecoveryPrompt();
   const { t: tEditor } = useT("editor");
   const { t: tProjects } = useT("projects");
   const router = useNavigation();
@@ -260,7 +264,6 @@ export function ManualCreatePanel({
     : undefined;
   const onSourceContextExpandedChange = data?.source_context_on_expanded_change as ((expanded: boolean) => void) | undefined;
   const sourceContextFailureMessage = useSourceContextFailureMessage();
-  const showIssueLimitUpgradePrompt = useIssueLimitUpgradePrompt();
 
   const draft = useIssueDraftStore((s) => s.draft);
   const setManual = useIssueDraftStore((s) => s.setManual);
@@ -280,6 +283,11 @@ export function ManualCreatePanel({
   const [formResetKey, setFormResetKey] = useState(0);
   const titleEditorRef = useRef<TitleEditorRef>(null);
   const descEditorRef = useRef<ContentEditorRef>(null);
+  // Dictation lands in the description. No send from the strip: creating
+  // needs a title, which voice does not fill.
+  const voice = useComposerVoice({
+    insert: (text) => descEditorRef.current?.insertText(text) ?? false,
+  });
   const { isDragOver: descDragOver, dropZoneProps: descDropZoneProps } = useFileDropZone({
     onDrop: (files) => files.forEach((f) => descEditorRef.current?.uploadFile(f)),
   });
@@ -302,6 +310,9 @@ export function ManualCreatePanel({
   // The workflow a request given to a squad runs on; undefined is the squad's active one (spec 16.5).
   const [flowWorkflowId, setFlowWorkflowId] = useState<string | undefined>(undefined);
   const [assigneeCleared, setAssigneeCleared] = useState(data?.manual_assignee_cleared === true);
+  const recordAssigneePick = useRecordAssigneePick();
+  // The draft's pending hand pick that the request in flight submits.
+  const submittedPickRef = useRef<IssueCreateDraft["manual"]["assigneePick"]>(undefined);
   const [startDate, setStartDate] = useState<string | null>(draft.manual.startDate);
   const [dueDate, setDueDate] = useState<string | null>(
     (data?.due_date as string | undefined) ?? draft.shared.dueDate,
@@ -414,7 +425,10 @@ export function ManualCreatePanel({
     attachments: draftAttachments,
     handleUpload,
     gate,
+    storageRefusal,
+    dismissStorageRefusal,
   } = useIssueCreateUploads("manual", uploadGate, descEditorRef);
+  const [storageCopyRefusal, setStorageCopyRefusal] = useState<StorageLimitRefusal | null>(null);
 
   // Sync field changes to the draft store — manual-only fields to the manual
   // slot, project / priority / due date to the shared slot.
@@ -424,9 +438,15 @@ export function ManualCreatePanel({
   const updateAssignee = (type?: IssueAssigneeType, id?: string) => {
     // A workflow chosen for one squad means nothing for another assignee.
     if (id !== assigneeId) setFlowWorkflowId(undefined);
+    // Re-picking the current assignee is not a new pick; clearing drops it.
+    const changed = type !== assigneeType || id !== assigneeId;
     setAssigneeType(type); setAssigneeId(id);
     setAssigneeCleared(!id);
-    setManual({ assigneeType: type, assigneeId: id });
+    setManual({
+      assigneeType: type,
+      assigneeId: id,
+      ...(changed ? { assigneePick: type && id ? { type, id } : undefined } : {}),
+    });
   };
   const updateProject = (id?: string) => { setProjectId(id); setShared({ projectId: id }); };
   const updateParent = (id?: string) => {
@@ -554,6 +574,13 @@ export function ManualCreatePanel({
       const pendingDesc = descEditorRef.current?.flushPendingUpdate?.();
       if (pendingDesc != null) setManual({ description: pendingDesc });
       submittedDraftRef.current = useIssueDraftStore.getState().draft;
+      // Only a hand pick of the submitted assignee feeds the picker's
+      // ranking; a prefilled or remembered assignee never matches one.
+      const pendingPick = submittedDraftRef.current.manual.assigneePick;
+      submittedPickRef.current =
+        pendingPick?.type === assigneeType && pendingPick?.id === assigneeId
+          ? pendingPick
+          : undefined;
       try {
       const description = descEditorRef.current?.getMarkdown()?.trim() || undefined;
       const activeAttachmentIds = draftAttachments
@@ -709,6 +736,13 @@ export function ManualCreatePanel({
       }
       return true;
     } catch (err) {
+      // A sub-issue copies its source attachments; a full workspace refuses
+      // that before creating anything (MUL-9489).
+      const copyRefusal = anchorCommentId ? storageLimitRefusal(err, "") : null;
+      if (copyRefusal) {
+        if (mountedRef.current) setStorageCopyRefusal({ ...copyRefusal, kind: "copy" });
+        return false;
+      }
       const sourceCode = err instanceof ApiError && err.body && typeof err.body === "object"
         ? (err.body as { code?: unknown }).code
         : undefined;
@@ -725,12 +759,12 @@ export function ManualCreatePanel({
         toast.error(tIssues(($) => $.source_context.error_server_unsupported));
         return false;
       }
-      if (anchorCommentId && sourceCode === "source_context_too_large") {
-        toast.error(sourceContextFailureMessage(err) ?? tIssues(($) => $.source_context.error_too_large));
-        return false;
-      }
       if (sourceCode === "issue_limit_reached") {
         showIssueLimitUpgradePrompt();
+        return false;
+      }
+      if (anchorCommentId && sourceCode === "source_context_too_large") {
+        toast.error(sourceContextFailureMessage(err) ?? tIssues(($) => $.source_context.error_too_large));
         return false;
       }
       if (sourceCode === "invalid_issue_property" && err instanceof ApiError) {
@@ -828,6 +862,9 @@ export function ManualCreatePanel({
     }
   },
     onAccepted: () => {
+      const pick = submittedPickRef.current;
+      if (pick) recordAssigneePick(pick.type, pick.id);
+      submittedPickRef.current = undefined;
       // Only the assignee persists across independent create sessions.
       setLastAssignee(assigneeType, assigneeId);
       setLastMode("manual");
@@ -842,6 +879,11 @@ export function ManualCreatePanel({
       const untouched =
         useIssueDraftStore.getState().draft === submittedDraftRef.current;
       if (untouched) clearDraft();
+      // A kept draft must not count the same pick again on its next create;
+      // a newer pick made during the request stays.
+      else if (pick && useIssueDraftStore.getState().draft.manual.assigneePick === pick) {
+        setManual({ assigneePick: undefined });
+      }
       if (!mountedRef.current || !untouched) return;
       if (keepOpen) {
         resetForNextIssue();
@@ -1041,7 +1083,7 @@ export function ManualCreatePanel({
             </div>
 
             {/* Title */}
-            <div className="px-5 pb-2 shrink-0">
+            <div className="px-5 pb-2 shrink-0" onFocusCapture={voice.onFocusCapture}>
               <TitleEditor
                 key={formResetKey}
                 ref={titleEditorRef}
@@ -1056,7 +1098,12 @@ export function ManualCreatePanel({
             </div>
 
             {/* Description — takes remaining space */}
-            <div {...descDropZoneProps} className="relative flex flex-1 min-h-0 overflow-y-auto px-5">
+            <div
+              {...descDropZoneProps}
+              ref={voice.rootRef}
+              onFocusCapture={voice.onFocusCapture}
+              className="relative flex flex-1 min-h-0 overflow-y-auto px-5"
+            >
               <ContentEditor
                 ref={descEditorRef}
                 defaultValue={draft.manual.description}
@@ -1070,6 +1117,21 @@ export function ManualCreatePanel({
               />
               {descDragOver && <FileDropOverlay />}
             </div>
+
+            {storageRefusal && (
+              <StorageLimitNotice
+                refusal={storageRefusal}
+                onDismiss={dismissStorageRefusal}
+                className="mx-5 mb-2"
+              />
+            )}
+            {storageCopyRefusal && (
+              <StorageLimitNotice
+                refusal={storageCopyRefusal}
+                onDismiss={() => setStorageCopyRefusal(null)}
+                className="mx-5 mb-2"
+              />
+            )}
 
             {anchorCommentId && (
               <SourceContextPreviewCard
@@ -1131,6 +1193,7 @@ export function ManualCreatePanel({
                     u.assignee_type ?? undefined,
                     u.assignee_id ?? undefined,
                   )}
+                  recordPicks={false}
                   triggerRender={<PillButton />}
                   tooltip={tIssues(($) => $.detail.prop_assignee)}
                   align="start"
@@ -1246,7 +1309,7 @@ export function ManualCreatePanel({
                       data-property-error={propertyErrorId === property.id || undefined}
                       className={cn(
                         propertyErrorId === property.id &&
-                          "rounded-full ring-2 ring-destructive",
+                          "rounded-md ring-2 ring-destructive",
                       )}
                     >
                       <CustomPropertyValueInput
@@ -1280,7 +1343,7 @@ export function ManualCreatePanel({
               {parentIssueId && parentIssueLocked ? (
                 <span
                   data-testid="manual-sub-issue-chip"
-                  className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-caption text-muted-foreground"
+                  className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-caption text-muted-foreground"
                 >
                   {t(($) => $.create_issue.subissue_of, {
                     identifier: parentIssue?.identifier
@@ -1289,11 +1352,11 @@ export function ManualCreatePanel({
                   })}
                 </span>
               ) : parentIssueId && parentIssue ? (
-                <div className="inline-flex items-center rounded-full border text-caption transition-colors hover:bg-accent/60">
+                <div className="inline-flex items-center rounded-md border text-caption transition-colors hover:bg-accent/60">
                   <button
                     type="button"
                     onClick={() => setParentPickerOpen(true)}
-                    className="flex items-center gap-1.5 py-1 pl-2.5 cursor-pointer"
+                    className="flex items-center gap-1.5 py-1 pl-2 cursor-pointer"
                   >
                     <ArrowUp className="size-3 text-muted-foreground" />
                     <span>
@@ -1318,9 +1381,9 @@ export function ManualCreatePanel({
               {childIssues.map((c) => (
                 <div
                   key={c.id}
-                  className="inline-flex items-center rounded-full border text-caption transition-colors hover:bg-accent/60"
+                  className="inline-flex items-center rounded-md border text-caption transition-colors hover:bg-accent/60"
                 >
-                  <div className="flex items-center gap-1.5 py-1 pl-2.5">
+                  <div className="flex items-center gap-1.5 py-1 pl-2">
                     <ArrowDown className="size-3 text-muted-foreground" />
                     <span>{t(($) => $.create_issue.subissue_chip, { identifier: c.identifier })}</span>
                   </div>
@@ -1525,48 +1588,50 @@ export function ManualCreatePanel({
                 for why (MUL-6236). Tooltip renders no DOM and
                 TooltipContent is portaled, so the Create button stays a direct
                 grid child in both branches below. */}
-            <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-2.5 border-t px-4 py-3 shrink-0 sm:flex sm:flex-wrap">
-              <div className="flex min-h-7 items-center gap-2 sm:mr-auto">
-                <FileUploadButton
-                  size="sm"
-                  multiple
-                  onSelect={(file) => descEditorRef.current?.uploadFile(file)}
-                />
+            <VoiceDialogFooter voice={voice}>
+              <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-2.5 border-t px-4 py-3 shrink-0 sm:flex sm:flex-wrap">
+                <div className="flex min-h-7 items-center gap-2 sm:mr-auto">
+                  <FileUploadButton
+                    multiple
+                    onSelect={(file) => descEditorRef.current?.uploadFile(file)}
+                  />
+                  <VoiceMicButton voice={voice} />
+                </div>
+                <TooltipHint label={t(($) => $.create_issue.switch_to_agent_tooltip)}>
+                  <button
+                    type="button"
+                    onClick={switchToAgent}
+                    disabled={gate.uploading}
+                    aria-disabled={gate.uploading || undefined}
+                    aria-busy={gate.uploading || undefined}
+                    className="relative group flex shrink-0 items-center gap-1.5 justify-self-end text-caption px-2 py-1 rounded-sm text-muted-foreground bg-brand/5 hover:bg-brand/10 hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ArrowLeftRight className="size-3.5 text-brand transition-transform duration-300 group-hover:rotate-180" />
+                    {t(($) => $.create_issue.switch_to_agent)}
+                    <BorderBeam />
+                  </button>
+                </TooltipHint>
+                <label className="flex shrink-0 items-center gap-1.5 text-caption text-muted-foreground cursor-pointer select-none">
+                  <Switch
+                    size="sm"
+                    checked={keepOpen}
+                    onCheckedChange={setKeepOpen}
+                  />
+                  {t(($) => $.create_issue.create_another)}
+                </label>
+                {submitState === "missing_title" ? (
+                  <Tooltip>
+                    {/* No `<span>` wrapper needed now: aria-disabled leaves the
+                        button focusable and hoverable, so it can anchor its own
+                        tooltip. */}
+                    <TooltipTrigger render={createButton} />
+                    <TooltipContent side="top">{t(($) => $.create_issue.title_required)}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  createButton
+                )}
               </div>
-              <TooltipHint label={t(($) => $.create_issue.switch_to_agent_tooltip)}>
-                <button
-                  type="button"
-                  onClick={switchToAgent}
-                  disabled={gate.uploading}
-                  aria-disabled={gate.uploading || undefined}
-                  aria-busy={gate.uploading || undefined}
-                  className="relative group flex shrink-0 items-center gap-1.5 justify-self-end text-caption px-2 py-1 rounded-sm text-muted-foreground bg-brand/5 hover:bg-brand/10 hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ArrowLeftRight className="size-3.5 text-brand transition-transform duration-300 group-hover:rotate-180" />
-                  {t(($) => $.create_issue.switch_to_agent)}
-                  <BorderBeam />
-                </button>
-              </TooltipHint>
-              <label className="flex shrink-0 items-center gap-1.5 text-caption text-muted-foreground cursor-pointer select-none">
-                <Switch
-                  size="sm"
-                  checked={keepOpen}
-                  onCheckedChange={setKeepOpen}
-                />
-                {t(($) => $.create_issue.create_another)}
-              </label>
-              {submitState === "missing_title" ? (
-                <Tooltip>
-                  {/* No `<span>` wrapper needed now: aria-disabled leaves the
-                      button focusable and hoverable, so it can anchor its own
-                      tooltip. */}
-                  <TooltipTrigger render={createButton} />
-                  <TooltipContent side="top">{t(($) => $.create_issue.title_required)}</TooltipContent>
-                </Tooltip>
-              ) : (
-                createButton
-              )}
-            </div>
+            </VoiceDialogFooter>
     </>
   );
 }
@@ -1584,7 +1649,7 @@ export function manualDialogContentClass(isExpanded: boolean) {
     // `max-w-[calc(100%-2rem)]`, leaving the card edge to edge on a phone
     // (MUL-6236). `!h-96` stays a hard height; it already fits the shortest
     // phone we support.
-    "!w-full !max-w-[calc(100vw-1.5rem)]",
+    "!w-full !max-w-[calc(100%-1.5rem)]",
     isExpanded
       ? "!h-5/6 !-translate-y-1/2 sm:!max-w-4xl"
       : "!h-96 !-translate-y-1/2 sm:!max-w-2xl",

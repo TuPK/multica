@@ -212,7 +212,7 @@ func (s *KnowledgeService) SyncRepoDocs(ctx context.Context, workspaceID pgtype.
 			}
 		}
 		view, _, err := s.CreateDocument(ctx, workspaceID, KnowledgeActor{Type: KnowledgeActorSystem}, KnowledgeDocumentInput{
-			KB: cfg.KBKey, Kind: repoSyncKind, Title: truncateRunes(d.Path, knowledgeMaxTitle), Content: d.Content,
+			KB: cfg.KBKey, Kind: repoSyncKind, Title: clipRunes(d.Path, knowledgeMaxTitle), Content: d.Content,
 			SourceType: "sync", IdempotencyKey: "repo-sync:" + d.Path + ":" + hash, Publish: true,
 		})
 		if err != nil {
@@ -263,7 +263,7 @@ func (s *KnowledgeService) removeSyncedDocument(ctx context.Context, workspaceID
 // recordRepoSyncRun stores the outcome of a run on the setting. The text is
 // bounded; an empty text means the run had no failures.
 func (s *KnowledgeService) recordRepoSyncRun(ctx context.Context, workspaceID pgtype.UUID, text string) {
-	text = truncateRunes(text, repoSyncErrorLimit)
+	text = clipRunes(text, repoSyncErrorLimit)
 	if err := s.Queries.SetKnowledgeRepoSyncRun(ctx, db.SetKnowledgeRepoSyncRunParams{WorkspaceID: workspaceID, LastError: text}); err != nil {
 		slog.Warn("knowledge: could not record the repo docs sync run", "workspace_id", util.UUIDToString(workspaceID), "error", err)
 	}
@@ -333,7 +333,7 @@ func cloneRepoDocs(ctx context.Context, repo, branch, docsPath string) ([]RepoDo
 	cmd := exec.CommandContext(ctx, "git", "clone", "--depth", "1", "--single-branch", "--branch", branch, "--", repo, dir)
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_LFS_SKIP_SMUDGE=1")
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("repo sync: git clone failed: %w: %s", err, truncateRunes(strings.TrimSpace(string(out)), 500))
+		return nil, fmt.Errorf("repo sync: git clone failed: %w: %s", err, clipRunes(strings.TrimSpace(string(out)), 500))
 	}
 	return readRepoDocs(dir, docsPath)
 }

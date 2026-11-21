@@ -15,6 +15,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -211,7 +212,7 @@ func (h *Handler) publishFlowEffects(ctx context.Context, request db.Issue, e *f
 	h.broadcastCancelledWakeups(ctx, request.WorkspaceID, e.cancelledRuns)
 	for _, move := range e.moves {
 		resp := issueToResponse(move.issue, prefix)
-		h.fillStatusCategory(ctx, move.issue.WorkspaceID, &resp)
+		h.fillStatusCategory(ctx, move.issue.WorkspaceID, projectaccess.Hidden{}, &resp)
 		h.publish(protocol.EventIssueUpdated, ws, "system", "", map[string]any{
 			"issue":              resp,
 			"assignee_changed":   false,
@@ -962,7 +963,7 @@ func (h *Handler) createFlowTask(ctx context.Context, run *flowRun, prefix strin
 	_, err := h.IssueService.Create(ctx, params, service.IssueCreateOpts{
 		BroadcastPayload: func(issue db.Issue, atts []db.Attachment, labels []db.IssueLabel) map[string]any {
 			resp := issueToResponse(issue, prefix)
-			h.fillStatusCategory(ctx, issue.WorkspaceID, &resp)
+			h.fillStatusCategory(ctx, issue.WorkspaceID, projectaccess.Hidden{}, &resp)
 			return map[string]any{"issue": resp}
 		},
 	})

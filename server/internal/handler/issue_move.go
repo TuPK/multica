@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -71,14 +70,12 @@ func (h *Handler) MoveIssue(w http.ResponseWriter, r *http.Request) {
 		if !valid {
 			return
 		}
-		var exists bool
+		var exists, archived bool
 		err := h.DB.QueryRow(r.Context(), `
-			SELECT EXISTS (
-				SELECT 1
-				FROM project
-				WHERE workspace_id = $1 AND id = $2
-			)
-		`, current.WorkspaceID, *projectID).Scan(&exists)
+			SELECT
+				EXISTS (SELECT 1 FROM project WHERE workspace_id = $1 AND id = $2),
+				EXISTS (SELECT 1 FROM project WHERE workspace_id = $1 AND id = $2 AND archived_at IS NOT NULL)
+		`, current.WorkspaceID, *projectID).Scan(&exists, &archived)
 		if err != nil {
 			writeIssueTableQueryFailure(w, r, "failed to validate move project")
 			return
@@ -87,12 +84,12 @@ func (h *Handler) MoveIssue(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "project not found in this workspace")
 			return
 		}
-		scope, ok := h.viewerScope(w, r, current.WorkspaceID)
-		if !ok {
+		if !h.requireProjectVisible(w, r, uuidToString(current.WorkspaceID), *projectID, http.StatusBadRequest, "project not found in this workspace") {
 			return
 		}
-		if !scope.Allows(*projectID) {
-			writeError(w, http.StatusNotFound, "project not found")
+		// Reordering inside an archived project is fine; moving into one is not.
+		if archived && *projectID != current.ProjectID {
+			writeProjectArchived(w)
 			return
 		}
 	}
@@ -183,28 +180,22 @@ func (h *Handler) issueMoveAnchorPosition(
 	if id == nil {
 		return nil, true
 	}
-	scope, ok := h.viewerScope(w, r, workspaceID)
-	if !ok {
-		return nil, false
-	}
-	// An anchor the caller cannot see answers like a missing one.
-	args := []any{workspaceID, *id}
-	addArg := func(v any) string {
-		args = append(args, v)
-		return "$" + strconv.Itoa(len(args))
-	}
 	var position float64
+	var projectID pgtype.UUID
 	err := h.DB.QueryRow(r.Context(), `
-		SELECT position
+		SELECT position, project_id
 		FROM issue
 		WHERE workspace_id = $1 AND id = $2
-		`+scopeCondition(scope, "issue.project_id", addArg), args...).Scan(&position)
+	`, workspaceID, *id).Scan(&position, &projectID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusBadRequest, "move anchor not found in this workspace")
 		} else {
 			writeIssueTableQueryFailure(w, r, "failed to resolve move anchor")
 		}
+		return nil, false
+	}
+	if !h.requireProjectVisible(w, r, uuidToString(workspaceID), projectID, http.StatusBadRequest, "move anchor not found in this workspace") {
 		return nil, false
 	}
 	return &position, true

@@ -30,13 +30,7 @@
     "success": "Squad archivé"
   },
   "name_editor": {
-    "title": "Renommer le squad",
-    "placeholder": "Nom du squad",
-    "required": "Le nom est obligatoire",
-    "cancel": "Annuler",
-    "save": "Enregistrer",
-    "saved": "Enregistré",
-    "save_failed": "Échec de l'enregistrement"
+    "placeholder": "Nom du squad"
   },
   "add_member_dialog": {
     "title": "Ajouter un membre",
@@ -55,13 +49,6 @@
   "role_editor": {
     "empty": "Ajouter un rôle…",
     "placeholder": "Rôle (par exemple : Relecteur)"
-  },
-  "description_dialog": {
-    "title": "Modifier la description",
-    "placeholder_empty": "Ajouter une description",
-    "cancel": "Annuler",
-    "responsibility_placeholder": "De quoi ce squad est-il responsable ?",
-    "save": "Enregistrer"
   },
   "members_tab": {
     "section_title": "Membres",
@@ -148,7 +135,8 @@
     "squad_runtime_failed": "Échec du changement de runtime",
     "squad_runtime_skipped": "{{updated}} agents déplacés, {{skipped}} ignorés : {{reason}}",
     "bulk_applied": "{{field}} appliqué à {{count}} agents",
-    "bulk_partial": "{{failed}} agents sur {{total}} n'ont pas pu être mis à jour"
+    "bulk_partial": "{{failed}} agents sur {{total}} n'ont pas pu être mis à jour",
+    "update_failed": "Échec de l'enregistrement"
   },
   "profile_card": {
     "unavailable": "Squad indisponible",
@@ -819,5 +807,9 @@
     },
     "open_squad": "Ouvrir le squad",
     "done": "Terminé"
+  },
+  "description_editor": {
+    "empty": "Ajouter une description",
+    "placeholder": "De quoi ce squad est-il responsable ?"
   }
 }

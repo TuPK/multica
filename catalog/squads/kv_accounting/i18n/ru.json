@@ -1,0 +1,4 @@
+{
+  "title": "Accounting & Tax (Kế toán, thuế)",
+  "description": "Охватывает tờ khai, hóa đơn, công nợ и khóa sổ; цифры рассчитываются скриптом. Ничего не подаёт; требует Bash и Python в среде выполнения."
+}

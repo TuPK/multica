@@ -330,20 +330,14 @@ SELECT p.id, p.workspace_id, p.squad_id, p.issue_id, p.handoff_squad_id, p.urgen
 FROM proposal p
 JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
 WHERE p.id = $1 AND p.workspace_id = $2
-  -- projectaccess:scope
-  AND ($3::text = 'all'
-      OR (i.project_id IS NULL AND $3::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
-      OR ($3::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($3::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 `
 
 type GetProposalWithIssueParams struct {
-	ID          pgtype.UUID `json:"id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	ID               pgtype.UUID   `json:"id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 type GetProposalWithIssueRow struct {
@@ -354,12 +348,7 @@ type GetProposalWithIssueRow struct {
 }
 
 func (q *Queries) GetProposalWithIssue(ctx context.Context, arg GetProposalWithIssueParams) (GetProposalWithIssueRow, error) {
-	row := q.db.QueryRow(ctx, getProposalWithIssue,
-		arg.ID,
-		arg.WorkspaceID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	row := q.db.QueryRow(ctx, getProposalWithIssue, arg.ID, arg.WorkspaceID, arg.HiddenProjectIds)
 	var i GetProposalWithIssueRow
 	err := row.Scan(
 		&i.Proposal.ID,
@@ -454,23 +443,17 @@ JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
 WHERE p.workspace_id = $1
   AND ($2::text IS NULL OR p.state = $2::text)
   AND ($3::uuid IS NULL OR p.squad_id = $3::uuid)
-  -- projectaccess:scope
-  AND ($4::text = 'all'
-      OR (i.project_id IS NULL AND $4::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $5::uuid)
-      OR ($4::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($4::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($4::uuid[])))
 ORDER BY p.created_at DESC, p.id DESC
 LIMIT 200
 `
 
 type ListProposalsParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	State       pgtype.Text `json:"state"`
-	SquadID     pgtype.UUID `json:"squad_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	State            pgtype.Text   `json:"state"`
+	SquadID          pgtype.UUID   `json:"squad_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 type ListProposalsRow struct {
@@ -486,8 +469,7 @@ func (q *Queries) ListProposals(ctx context.Context, arg ListProposalsParams) ([
 		arg.WorkspaceID,
 		arg.State,
 		arg.SquadID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -540,22 +522,16 @@ SELECT p.id, p.squad_id, p.state, p.created_at, i.title, i.number
 FROM proposal p
 JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
 WHERE p.workspace_id = $1::uuid AND p.created_at >= $2::timestamptz
-  -- projectaccess:scope
-  AND ($3::text = 'all'
-      OR (i.project_id IS NULL AND $3::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
-      OR ($3::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($3::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 ORDER BY p.created_at DESC, p.id DESC
 LIMIT 500
 `
 
 type ListRecentProposalsForPriorArtParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	ScopeMode   string             `json:"scope_mode"`
-	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type ListRecentProposalsForPriorArtRow struct {
@@ -572,12 +548,7 @@ type ListRecentProposalsForPriorArtRow struct {
 // proposals whose backing issue the viewer sees are returned: a hidden title
 // must not reach related[] (spec 7.1 rule 5).
 func (q *Queries) ListRecentProposalsForPriorArt(ctx context.Context, arg ListRecentProposalsForPriorArtParams) ([]ListRecentProposalsForPriorArtRow, error) {
-	rows, err := q.db.Query(ctx, listRecentProposalsForPriorArt,
-		arg.WorkspaceID,
-		arg.CreatedAt,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, listRecentProposalsForPriorArt, arg.WorkspaceID, arg.CreatedAt, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}

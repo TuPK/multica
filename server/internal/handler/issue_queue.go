@@ -76,7 +76,7 @@ func (h *Handler) validateStartStatus(ctx context.Context, w http.ResponseWriter
 // themselves, and must not lead back to them (a cycle would never release). A
 // wait the viewer cannot see counts as missing, and a path through such an
 // issue is not followed.
-func (h *Handler) validateRunAfter(ctx context.Context, w http.ResponseWriter, scope projectaccess.Scope, workspaceID pgtype.UUID, targets []pgtype.UUID, queued bool, raw []string) ([]pgtype.UUID, bool) {
+func (h *Handler) validateRunAfter(ctx context.Context, w http.ResponseWriter, scope projectaccess.Hidden, workspaceID pgtype.UUID, targets []pgtype.UUID, queued bool, raw []string) ([]pgtype.UUID, bool) {
 	if !queued {
 		return []pgtype.UUID{}, true
 	}
@@ -99,7 +99,7 @@ func (h *Handler) validateRunAfter(ctx context.Context, w http.ResponseWriter, s
 	}
 	visible := 0
 	for _, issue := range found {
-		if scope.Allows(issue.ProjectID) {
+		if scope.CanSeeProject(issue.ProjectID) {
 			visible++
 		}
 	}
@@ -122,7 +122,7 @@ func (h *Handler) validateRunAfter(ctx context.Context, w http.ResponseWriter, s
 // runQueueWouldCycle reports whether any target is reachable from the waits by
 // following run_after_issue_ids. Targets are about to get the same waits, so
 // their stored edges are not expanded: a path through one of them ends there.
-func (h *Handler) runQueueWouldCycle(ctx context.Context, scope projectaccess.Scope, workspaceID pgtype.UUID, targets, waits []pgtype.UUID) (bool, error) {
+func (h *Handler) runQueueWouldCycle(ctx context.Context, scope projectaccess.Hidden, workspaceID pgtype.UUID, targets, waits []pgtype.UUID) (bool, error) {
 	targetSet := make(map[string]bool, len(targets))
 	for _, t := range targets {
 		targetSet[uuidToString(t)] = true
@@ -150,7 +150,7 @@ func (h *Handler) runQueueWouldCycle(ctx context.Context, scope projectaccess.Sc
 		}
 		frontier = nil
 		for _, row := range rows {
-			if scope.Allows(row.ProjectID) {
+			if scope.CanSeeProject(row.ProjectID) {
 				frontier = append(frontier, row.RunAfterIssueIds...)
 			}
 		}
@@ -178,7 +178,7 @@ func (h *Handler) SetIssueRunQueue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(issue.WorkspaceID))
 	if !ok {
 		return
 	}
@@ -212,7 +212,7 @@ func (h *Handler) SetIssueRunQueue(w http.ResponseWriter, r *http.Request) {
 	userID := requestUserID(r)
 	actorType, actorID := h.resolveActor(r, userID, workspaceID)
 	resp := issueToResponse(updated, h.getIssuePrefix(r.Context(), updated.WorkspaceID))
-	h.fillStatusCategory(r.Context(), updated.WorkspaceID, &resp)
+	h.fillStatusCategory(r.Context(), updated.WorkspaceID, projectaccess.Hidden{}, &resp)
 	h.publish(protocol.EventIssueUpdated, workspaceID, actorType, actorID, map[string]any{"issue": resp})
 
 	if _, err := h.PromoteQueuedIssues(r.Context(), updated.WorkspaceID, false); err != nil {
@@ -221,7 +221,7 @@ func (h *Handler) SetIssueRunQueue(w http.ResponseWriter, r *http.Request) {
 	// Promotion may have moved this very issue; answer with what is stored now.
 	if current, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: updated.ID, WorkspaceID: updated.WorkspaceID}); err == nil {
 		resp = issueToResponse(current, h.getIssuePrefix(r.Context(), current.WorkspaceID))
-		h.fillStatusCategory(r.Context(), current.WorkspaceID, &resp)
+		h.fillStatusCategory(r.Context(), current.WorkspaceID, projectaccess.Hidden{}, &resp)
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -285,7 +285,7 @@ func (h *Handler) promoteQueuedIssue(ctx context.Context, prev db.Issue) bool {
 
 	workspaceID := uuidToString(issue.WorkspaceID)
 	resp := issueToResponse(issue, h.getIssuePrefix(ctx, issue.WorkspaceID))
-	h.fillStatusCategory(ctx, issue.WorkspaceID, &resp)
+	h.fillStatusCategory(ctx, issue.WorkspaceID, projectaccess.Hidden{}, &resp)
 	assigneeChanged := handoff != nil &&
 		(prev.AssigneeType.String != issue.AssigneeType.String || uuidToString(prev.AssigneeID) != uuidToString(issue.AssigneeID))
 	trigger, willRun := h.IssueService.WillEnqueueRun(ctx, service.IssueTriggerInput{
@@ -316,43 +316,43 @@ func (h *Handler) promoteQueuedIssue(ctx context.Context, prev db.Issue) bool {
 		h.dispatchIssueRun(ctx, issue, trigger, "system", "", "")
 	}
 	if issue.ParentIssueID.Valid {
-		h.processChildEvents(ctx, projectaccess.System(), issue.ParentIssueID)
+		h.processChildEvents(ctx, projectaccess.Hidden{}, issue.ParentIssueID)
 	}
 	return true
 }
 
 // decodeRunQueueBatch reads a batch body and returns the issues of it the
 // viewer sees, in the order asked. An id that is missing or hidden is left out.
-func (h *Handler) decodeRunQueueBatch(w http.ResponseWriter, r *http.Request) (runQueueRequest, []db.Issue, projectaccess.Scope, pgtype.UUID, bool) {
+func (h *Handler) decodeRunQueueBatch(w http.ResponseWriter, r *http.Request) (runQueueRequest, []db.Issue, projectaccess.Hidden, pgtype.UUID, bool) {
 	var req runQueueRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64*1024)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
-		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
+		return req, nil, projectaccess.Hidden{}, pgtype.UUID{}, false
 	}
 	if len(req.IssueIDs) == 0 || len(req.IssueIDs) > maxQueueBatch {
 		writeError(w, http.StatusBadRequest, "issue_ids must hold 1 to 200 ids")
-		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
+		return req, nil, projectaccess.Hidden{}, pgtype.UUID{}, false
 	}
 	ids, ok := parseUUIDSliceOrBadRequest(w, req.IssueIDs, "issue_ids")
 	if !ok {
-		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
+		return req, nil, projectaccess.Hidden{}, pgtype.UUID{}, false
 	}
 	workspaceID, ok := parseUUIDOrBadRequest(w, h.resolveWorkspaceID(r), "workspace_id")
 	if !ok {
-		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
+		return req, nil, projectaccess.Hidden{}, pgtype.UUID{}, false
 	}
-	scope, ok := h.viewerScope(w, r, workspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(workspaceID))
 	if !ok {
-		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
+		return req, nil, projectaccess.Hidden{}, pgtype.UUID{}, false
 	}
 	found, err := h.Queries.ListIssuesByIDsInWorkspace(r.Context(), db.ListIssuesByIDsInWorkspaceParams{WorkspaceID: workspaceID, Ids: uniqueUUIDs(ids)})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load issues")
-		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
+		return req, nil, projectaccess.Hidden{}, pgtype.UUID{}, false
 	}
 	targets := make([]db.Issue, 0, len(found))
 	for _, issue := range found {
-		if scope.Allows(issue.ProjectID) {
+		if scope.CanSeeProject(issue.ProjectID) {
 			targets = append(targets, issue)
 		}
 	}
@@ -400,7 +400,7 @@ func (h *Handler) BatchSetRunQueue(w http.ResponseWriter, r *http.Request) {
 	prefix := h.getIssuePrefix(r.Context(), workspaceID)
 	for _, issue := range updated {
 		resp := issueToResponse(issue, prefix)
-		h.fillStatusCategory(r.Context(), workspaceID, &resp)
+		h.fillStatusCategory(r.Context(), workspaceID, projectaccess.Hidden{}, &resp)
 		h.publish(protocol.EventIssueUpdated, wsString, actorType, actorID, map[string]any{"issue": resp})
 	}
 	if _, err := h.PromoteQueuedIssues(r.Context(), workspaceID, false); err != nil {
@@ -472,14 +472,13 @@ func (h *Handler) ListRunQueueWaits(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, workspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(workspaceID))
 	if !ok {
 		return
 	}
 	rows, err := h.Queries.ListRunQueueWaits(r.Context(), db.ListRunQueueWaitsParams{
-		WorkspaceID: workspaceID,
-		ScopeMode:   scope.Mode(),
-		ScopeUserID: scope.UserID(),
+		WorkspaceID:      workspaceID,
+		HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list run queue waits")

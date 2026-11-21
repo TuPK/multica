@@ -15,7 +15,6 @@ func pinRequest(workspaceID, squadID string, body map[string]any) *http.Request 
 	return req
 }
 
-func intPtr(n int) *int { return &n }
 
 func TestPinSquadAttention_OnlyOwnersAndAdmins(t *testing.T) {
 	e := newDigestEnv(t)

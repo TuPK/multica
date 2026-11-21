@@ -49,7 +49,7 @@ func (h *Handler) ListSquadWorkflows(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, squad.WorkspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(squad.WorkspaceID))
 	if !ok {
 		return
 	}
@@ -214,7 +214,7 @@ func (h *Handler) SetSquadActiveWorkflow(w http.ResponseWriter, r *http.Request)
 	}
 	wsUUID := squad.WorkspaceID
 	ctx := r.Context()
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
@@ -332,16 +332,15 @@ var errSquadIssuesHidden = errors.New("squad issues in projects the viewer canno
 // viewer who cannot manage, it fails with errSquadIssuesHidden when issues the
 // viewer cannot see sit on a status allowed rejects, because the remap would
 // skip them and leave them on a status their workflow lacks.
-func squadStatusCounts(ctx context.Context, q *db.Queries, wsUUID, squadID pgtype.UUID, scope projectaccess.Scope, allowed func(string) bool) ([]db.CountSquadIssuesByStatusRow, error) {
+func squadStatusCounts(ctx context.Context, q *db.Queries, wsUUID, squadID pgtype.UUID, scope projectaccess.Hidden, allowed func(string) bool) ([]db.CountSquadIssuesByStatusRow, error) {
 	counts, err := q.CountSquadIssuesByStatus(ctx, db.CountSquadIssuesByStatusParams{
-		WorkspaceID: wsUUID, SquadID: squadID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+		WorkspaceID: wsUUID, SquadID: squadID, HiddenProjectIds: scope.Param(),
 	})
-	if err != nil || scope.CanManage() {
+	if err != nil || scope.Empty() {
 		return counts, err
 	}
 	every, err := q.CountSquadIssuesByStatus(ctx, db.CountSquadIssuesByStatusParams{
-		WorkspaceID: wsUUID, SquadID: squadID, ScopeMode: projectaccess.ModeAll,
-	})
+		WorkspaceID: wsUUID, SquadID: squadID})
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +359,7 @@ func squadStatusCounts(ctx context.Context, q *db.Queries, wsUUID, squadID pgtyp
 // squadWorkflowPlan censors a squad's routed issues against a target workflow,
 // as a project's workflow switch censors the project's issues. It reports
 // errSquadIssuesHidden when scope hides issues the switch would move.
-func (h *Handler) squadWorkflowPlan(ctx context.Context, q *db.Queries, wsUUID, squadID pgtype.UUID, scope projectaccess.Scope, target issueworkflow.Definition) (workflowMappingPlan, error) {
+func (h *Handler) squadWorkflowPlan(ctx context.Context, q *db.Queries, wsUUID, squadID pgtype.UUID, scope projectaccess.Hidden, target issueworkflow.Definition) (workflowMappingPlan, error) {
 	// A flow runs the squad's requests and their tasks, not its other issues:
 	// those keep the project's workflow, so no issue changes status.
 	if target.HasFlow() {
@@ -417,7 +416,7 @@ func mergeStatusCounts(a, b []db.CountProjectIssuesByStatusRow) []db.CountProjec
 // remapSquadIssues applies a validated mapping to the squad's routed issues
 // that scope allows, inside the caller's transaction, with the same effects as
 // remapIssues.
-func remapSquadIssues(ctx context.Context, qtx *db.Queries, wsUUID, squadID pgtype.UUID, scope projectaccess.Scope, plan workflowMappingPlan, mapping map[string]string) ([]db.Issue, []db.AgentTaskQueue, error) {
+func remapSquadIssues(ctx context.Context, qtx *db.Queries, wsUUID, squadID pgtype.UUID, scope projectaccess.Hidden, plan workflowMappingPlan, mapping map[string]string) ([]db.Issue, []db.AgentTaskQueue, error) {
 	var changed []db.Issue
 	var cancelled []db.AgentTaskQueue
 	for _, req := range plan.Required {
@@ -426,12 +425,11 @@ func remapSquadIssues(ctx context.Context, qtx *db.Queries, wsUUID, squadID pgty
 			return nil, nil, errors.New("remap: no destination status for " + req.StatusKey)
 		}
 		rows, err := qtx.RemapSquadIssueStatus(ctx, db.RemapSquadIssueStatusParams{
-			WorkspaceID: wsUUID,
-			SquadID:     squadID,
-			FromStatus:  req.StatusKey,
-			ToStatus:    to,
-			ScopeMode:   scope.Mode(),
-			ScopeUserID: scope.UserID(),
+			WorkspaceID:      wsUUID,
+			SquadID:          squadID,
+			FromStatus:       req.StatusKey,
+			ToStatus:         to,
+			HiddenProjectIds: scope.Param(),
 		})
 		if err != nil {
 			return nil, nil, err

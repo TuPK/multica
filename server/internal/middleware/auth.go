@@ -312,7 +312,7 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 					if !ok {
 						return
 					}
-					next.ServeHTTP(w, r)
+					next.ServeHTTP(w, r.WithContext(withPersonalAccessToken(r.Context())))
 					return
 				}
 
@@ -354,7 +354,7 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 				if !ok {
 					return
 				}
-				next.ServeHTTP(w, r)
+				next.ServeHTTP(w, r.WithContext(withPersonalAccessToken(r.Context())))
 				return
 			}
 

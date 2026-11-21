@@ -28,8 +28,9 @@ func newDigestVisibilityFixture(t *testing.T) digestVisibilityFixture {
 	t.Helper()
 	e := newDigestEnv(t)
 	f := digestVisibilityFixture{digestEnv: e, squadID: e.squad(t, "Visibility squad")}
-	f.hiddenProj = dbfx.Project(t, "Hidden "+uuid.NewString()[:8], testutil.Cols{"workspace_id": e.WorkspaceID, "access": "restricted"})
-	f.openProj = dbfx.Project(t, "Open "+uuid.NewString()[:8], testutil.Cols{"workspace_id": e.WorkspaceID, "access": "workspace"})
+	f.hiddenProj = dbfx.Project(t, "Hidden "+uuid.NewString()[:8], testutil.Cols{"workspace_id": e.WorkspaceID, "visibility": "private"})
+	ownerJoinsProject(t, e.WorkspaceID, f.hiddenProj)
+	f.openProj = dbfx.Project(t, "Open "+uuid.NewString()[:8], testutil.Cols{"workspace_id": e.WorkspaceID, "visibility": "workspace"})
 	f.memberID = dbfx.User(t, "Digest member", testutil.UniqueEmail("digest-member"))
 	dbfx.Member(t, e.WorkspaceID, f.memberID, "member")
 	return f
@@ -196,7 +197,8 @@ func TestDigestVisibility_OverdueSquadRequests(t *testing.T) {
 func TestDigestVisibility_SecretaryRequestsPastDeadline(t *testing.T) {
 	f := newDigestVisibilityFixture(t)
 	// The Secretary desk is found by title; a restricted desk hides its requests.
-	desk := dbfx.Project(t, service.SecretaryDeskProjectTitle, testutil.Cols{"workspace_id": f.WorkspaceID, "access": "restricted"})
+	desk := dbfx.Project(t, service.SecretaryDeskProjectTitle, testutil.Cols{"workspace_id": f.WorkspaceID, "visibility": "private"})
+	ownerJoinsProject(t, f.WorkspaceID, desk)
 	hidden := dbfx.Issue(t, "HIDDEN-SECRETARY-TITLE", testutil.Cols{
 		"workspace_id": f.WorkspaceID, "project_id": desk, "assignee_type": "agent", "assignee_id": f.AgentID,
 		"status": "todo", "due_date": testutil.Raw("now() - interval '3 days'"),

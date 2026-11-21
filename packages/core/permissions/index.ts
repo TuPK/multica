@@ -27,4 +27,4 @@ export {
   useSkillPermissions,
 } from "./use-resource-permissions";
 export { useCan } from "./use-can";
-export { useCurrentMember } from "./use-current-member";
+export { useCurrentMember, useIsGuest } from "./use-current-member";

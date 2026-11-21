@@ -36,7 +36,8 @@ func (fx iniWorkspace) detailAs(t *testing.T, userID, id string) *testutil.Respo
 // sits in a restricted project and carries a recognizable title.
 func (fx iniWorkspace) hiddenGate(t *testing.T, initiativeID, title string) (proposalID string) {
 	t.Helper()
-	restricted := dbfx.Project(t, "Restricted gate "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "access": "restricted"})
+	restricted := dbfx.Project(t, "Restricted gate "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "visibility": "private"})
+	ownerJoinsProject(t, fx.ID, restricted)
 	issueID := dbfx.Issue(t, title, testutil.Cols{"workspace_id": fx.ID, "project_id": restricted})
 	return dbfx.Insert(t, "proposal", testutil.Cols{
 		"workspace_id":    fx.ID,
@@ -88,7 +89,8 @@ func TestInitiativeVisibility_HiddenGateIssueIsOmitted(t *testing.T) {
 func TestInitiativeVisibility_HiddenBuildProjectIsNull(t *testing.T) {
 	fx := newIniWorkspace(t)
 	ini := fx.createInitiative(t, "Build project visibility initiative")
-	restricted := dbfx.Project(t, "Restricted build "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "access": "restricted"})
+	restricted := dbfx.Project(t, "Restricted build "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "visibility": "private"})
+	ownerJoinsProject(t, fx.ID, restricted)
 	dbfx.Exec(t, `UPDATE initiative SET build_project_id = $1 WHERE id = $2`, restricted, ini.ID)
 
 	if got := fx.detail(t, ini.ID).Initiative.BuildProjectID; got == nil || *got != restricted {
@@ -123,7 +125,8 @@ func TestInitiativeVisibility_HiddenBuildProjectIsNull(t *testing.T) {
 func TestInitiativeVisibility_HiddenBackingIssueAnswersMissing(t *testing.T) {
 	fx := newIniWorkspace(t)
 	ini := fx.createInitiative(t, "HIDDEN-INITIATIVE-TITLE")
-	restricted := dbfx.Project(t, "Restricted initiative "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "access": "restricted"})
+	restricted := dbfx.Project(t, "Restricted initiative "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "visibility": "private"})
+	ownerJoinsProject(t, fx.ID, restricted)
 	dbfx.Exec(t, `UPDATE issue SET project_id = $1 WHERE id = (SELECT issue_id FROM initiative WHERE id = $2)`, restricted, ini.ID)
 
 	for _, v := range fx.listAs(t, fx.MemberID) {

@@ -196,7 +196,7 @@ func TestValidateTransitions(t *testing.T) {
 		"empty label":                       {step: with(Transition{ID: "x", Label: "", ToStatusKey: "qa"}), wantErr: "labels must be"},
 		"label too long":                    {step: with(Transition{ID: "x", Label: strings.Repeat("l", MaxTransitionLabelRunes+1), ToStatusKey: "qa"}), wantErr: "labels must be"},
 		"invalid condition":                 {step: with(Transition{ID: "x", Label: "X", When: cond(FieldOutcome, OpGt, "x"), ToStatusKey: "qa"}), wantErr: "does not apply"},
-		"handler override squad refused":    {step: with(Transition{ID: "x", Label: "X", ToStatusKey: "qa", Handler: &Handler{Type: HandlerSquad, ID: "s"}}), wantErr: "hand off to an agent"},
+		"handler override creator refused":  {step: with(Transition{ID: "x", Label: "X", ToStatusKey: "qa", Handler: &Handler{Type: HandlerCreator}}), wantErr: "hand off to an agent"},
 		"handler override agent without id": {step: with(Transition{ID: "x", Label: "X", ToStatusKey: "qa", Handler: &Handler{Type: HandlerAgent}}), wantErr: "choose a agent"},
 		"too many branches":                 {step: with(manyTransitions(MaxTransitions + 1)...), wantErr: "at most 10 branches"},
 		"ten branches allowed":              {step: with(manyTransitions(MaxTransitions)...)},

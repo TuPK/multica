@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { MulticaLanding } from "@/features/landing/components/multica-landing";
+import { pageMetadata } from "@/features/landing/utils/page-metadata";
+import { HomePage } from "@/features/landing/site/home-page";
+import { getHomeDownload } from "@/features/landing/utils/home-download";
 import { RedirectIfAuthenticated } from "@/features/landing/components/redirect-if-authenticated";
 
 export const metadata: Metadata = {
@@ -19,11 +21,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function LandingPage() {
+export default async function LandingPage() {
   return (
     <>
       <RedirectIfAuthenticated />
-      <MulticaLanding />
+      <HomePage download={await getHomeDownload()} />
     </>
   );
 }

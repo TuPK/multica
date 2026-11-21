@@ -129,30 +129,19 @@ SELECT count(*) FROM issue_wakeup w JOIN issue i ON i.id=w.issue_id AND i.worksp
 WHERE w.workspace_id= $1 AND w.system_rule= $2 AND w.customized_at IS NOT NULL
  AND i.status NOT IN ('done','cancelled')
  AND NOT EXISTS(SELECT 1 FROM issue_status s WHERE s.workspace_id=i.workspace_id AND s.key=i.status AND s.category IN ('done','closed'))
- -- projectaccess:scope
- AND ($3::text = 'all'
-    OR (i.project_id IS NULL AND $3::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
-    OR ($3::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+ -- MUL-8472: private projects the caller cannot see.
+ AND ($3::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 `
 
 type CountCustomizedSystemWakeupsParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	SystemRule  pgtype.Text `json:"system_rule"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	SystemRule       pgtype.Text   `json:"system_rule"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 // Open issues whose rule a person changed, for the workspace settings page.
 func (q *Queries) CountCustomizedSystemWakeups(ctx context.Context, arg CountCustomizedSystemWakeupsParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countCustomizedSystemWakeups,
-		arg.WorkspaceID,
-		arg.SystemRule,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	row := q.db.QueryRow(ctx, countCustomizedSystemWakeups, arg.WorkspaceID, arg.SystemRule, arg.HiddenProjectIds)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -439,7 +428,7 @@ func (q *Queries) ListChildConditionWakeups(ctx context.Context, issueID pgtype.
 }
 
 const listParentsWithoutSystemWakeup = `-- name: ListParentsWithoutSystemWakeup :many
-SELECT p.id, p.workspace_id, p.title, p.description, p.status, p.priority, p.assignee_type, p.assignee_id, p.creator_type, p.creator_id, p.parent_issue_id, p.acceptance_criteria, p.context_refs, p.position, p.due_date, p.created_at, p.updated_at, p.number, p.project_id, p.origin_type, p.origin_id, p.first_executed_at, p.start_date, p.metadata, p.stage, p.properties, p.revision, p.last_activity_at, p.triage_state, p.duplicate_of_issue_id, p.done_at, p.reopen_count, p.last_reopened_at, p.run_queued, p.run_after_issue_ids, p.run_start_status, p.outcome, p.flow, p.flow_step, p.flow_task, p.flow_round FROM (SELECT DISTINCT c.parent_issue_id AS id FROM issue c WHERE c.parent_issue_id IS NOT NULL) parents
+SELECT p.id, p.workspace_id, p.title, p.description, p.status, p.priority, p.assignee_type, p.assignee_id, p.creator_type, p.creator_id, p.parent_issue_id, p.acceptance_criteria, p.context_refs, p.position, p.due_date, p.created_at, p.updated_at, p.number, p.project_id, p.origin_type, p.origin_id, p.first_executed_at, p.start_date, p.metadata, p.stage, p.properties, p.revision, p.last_activity_at, p.triage_state, p.duplicate_of_issue_id, p.requester_user_id, p.done_at, p.reopen_count, p.last_reopened_at, p.run_queued, p.run_after_issue_ids, p.run_start_status, p.outcome, p.flow, p.flow_step, p.flow_task, p.flow_round FROM (SELECT DISTINCT c.parent_issue_id AS id FROM issue c WHERE c.parent_issue_id IS NOT NULL) parents
 JOIN issue p ON p.id=parents.id
 WHERE NOT EXISTS(SELECT 1 FROM issue_wakeup w WHERE w.issue_id=p.id AND w.system_rule= $1)
  AND p.status NOT IN ('done','cancelled')
@@ -493,6 +482,7 @@ func (q *Queries) ListParentsWithoutSystemWakeup(ctx context.Context, arg ListPa
 			&i.LastActivityAt,
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
+			&i.RequesterUserID,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,

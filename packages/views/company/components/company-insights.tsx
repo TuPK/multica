@@ -178,19 +178,19 @@ export function CompanyInsights({
   const { data: allProjects = [], isPending: projectsPending } = useQuery(projectListOptions(wsId));
   const { data: budgetList } = useQuery(budgetsOptions(wsId));
   const { data: digest } = useQuery(digestOptions(wsId, { since }));
-  const { data: byAgent = [], isPending: costPending } = useQuery(dashboardUsageByAgentOptions(wsId, days, null, tz));
-  const { data: runTime = [] } = useQuery(dashboardAgentRunTimeOptions(wsId, days, null, tz));
+  const { data: byAgent = [], isPending: costPending } = useQuery(dashboardUsageByAgentOptions(wsId, days, null, tz, null));
+  const { data: runTime = [] } = useQuery(dashboardAgentRunTimeOptions(wsId, days, null, tz, null));
   const companyWide = department === null;
   const { data: daily = [] } = useQuery({
-    ...dashboardUsageDailyOptions(wsId, days, null, tz),
+    ...dashboardUsageDailyOptions(wsId, days, null, tz, null),
     enabled: companyWide && !!wsId,
   });
   const { data: runTimeDaily = [] } = useQuery({
-    ...dashboardRunTimeDailyOptions(wsId, days, null, tz),
+    ...dashboardRunTimeDailyOptions(wsId, days, null, tz, null),
     enabled: companyWide && !!wsId,
   });
   const { data: failuresDaily = [] } = useQuery({
-    ...dashboardFailuresDailyOptions(wsId, days, null, tz),
+    ...dashboardFailuresDailyOptions(wsId, days, null, tz, null),
     enabled: companyWide && !!wsId,
   });
 
@@ -211,7 +211,7 @@ export function CompanyInsights({
     [projects],
   );
   const projectCosts = useQueries({
-    queries: costProjects.map((project) => dashboardUsageByAgentOptions(wsId, days, project.id, tz)),
+    queries: costProjects.map((project) => dashboardUsageByAgentOptions(wsId, days, project.id, tz, null)),
   });
   const projectCostLines = useMemo(
     () =>

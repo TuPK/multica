@@ -11,6 +11,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteWorkspaceMemberSearchAccess = `-- name: DeleteWorkspaceMemberSearchAccess :exec
+DELETE FROM member_search_access WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspaceMemberSearchAccess(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspaceMemberSearchAccess, workspaceID)
+	return err
+}
+
 const deleteWorkspaceSearchIndexChanges = `-- name: DeleteWorkspaceSearchIndexChanges :exec
 DELETE FROM search_index_change WHERE workspace_id = $1
 `
@@ -33,67 +42,36 @@ func (q *Queries) GetSearchIndexCurrentSnapshot(ctx context.Context) (string, er
 
 const getSearchIndexManifest = `-- name: GetSearchIndexManifest :one
 
-WITH ws AS (SELECT $3::uuid AS id)
+WITH ws AS (SELECT $1::uuid AS id, $2::uuid[] AS hidden),
+visible_issue AS (
+    SELECT i.id, i.title, i.description FROM issue i, ws
+    WHERE i.workspace_id = ws.id
+      AND (ws.hidden IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(ws.hidden)))
+),
+visible_comment AS (
+    SELECT c.content FROM comment c
+    JOIN visible_issue vi ON vi.id = c.issue_id, ws
+    WHERE c.workspace_id = ws.id AND c.deleted_at IS NULL
+),
+visible_project AS (
+    SELECT p.title, p.description FROM project p, ws
+    WHERE p.workspace_id = ws.id AND (ws.hidden IS NULL OR NOT (p.id = ANY(ws.hidden)))
+)
 SELECT
     pg_current_snapshot()::text AS snapshot,
-    (SELECT count(*) FROM issue i, ws WHERE i.workspace_id = ws.id
-        -- projectaccess:scope
-        AND ($1::text = 'all'
-            OR (i.project_id IS NULL AND $1::text <> 'guest')
-            OR EXISTS (SELECT 1 FROM project_member scope_pm
-                       WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $2::uuid)
-            OR ($1::text = 'member'
-                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'))))::bigint AS issue_count,
-    (SELECT COALESCE(sum(octet_length(i.title) + COALESCE(octet_length(i.description), 0)), 0)
-        FROM issue i, ws WHERE i.workspace_id = ws.id
-        -- projectaccess:scope
-        AND ($1::text = 'all'
-            OR (i.project_id IS NULL AND $1::text <> 'guest')
-            OR EXISTS (SELECT 1 FROM project_member scope_pm
-                       WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $2::uuid)
-            OR ($1::text = 'member'
-                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'))))::bigint AS issue_bytes,
-    (SELECT count(*) FROM comment c JOIN issue ci ON ci.id = c.issue_id, ws
-        WHERE c.workspace_id = ws.id AND c.deleted_at IS NULL
-        -- projectaccess:scope
-        AND ($1::text = 'all'
-            OR (ci.project_id IS NULL AND $1::text <> 'guest')
-            OR EXISTS (SELECT 1 FROM project_member scope_pm
-                       WHERE scope_pm.project_id = ci.project_id AND scope_pm.user_id = $2::uuid)
-            OR ($1::text = 'member'
-                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ci.project_id AND scope_p.access = 'workspace'))))::bigint AS comment_count,
-    (SELECT COALESCE(sum(octet_length(c.content)), 0) FROM comment c JOIN issue ci ON ci.id = c.issue_id, ws
-        WHERE c.workspace_id = ws.id AND c.deleted_at IS NULL
-        -- projectaccess:scope
-        AND ($1::text = 'all'
-            OR (ci.project_id IS NULL AND $1::text <> 'guest')
-            OR EXISTS (SELECT 1 FROM project_member scope_pm
-                       WHERE scope_pm.project_id = ci.project_id AND scope_pm.user_id = $2::uuid)
-            OR ($1::text = 'member'
-                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ci.project_id AND scope_p.access = 'workspace'))))::bigint AS comment_bytes,
-    (SELECT count(*) FROM project p, ws WHERE p.workspace_id = ws.id
-        -- projectaccess:scope
-        AND ($1::text = 'all'
-            OR (p.id IS NULL AND $1::text <> 'guest')
-            OR EXISTS (SELECT 1 FROM project_member scope_pm
-                       WHERE scope_pm.project_id = p.id AND scope_pm.user_id = $2::uuid)
-            OR ($1::text = 'member'
-                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.id AND scope_p.access = 'workspace'))))::bigint AS project_count,
-    (SELECT COALESCE(sum(octet_length(p.title) + COALESCE(octet_length(p.description), 0)), 0)
-        FROM project p, ws WHERE p.workspace_id = ws.id
-        -- projectaccess:scope
-        AND ($1::text = 'all'
-            OR (p.id IS NULL AND $1::text <> 'guest')
-            OR EXISTS (SELECT 1 FROM project_member scope_pm
-                       WHERE scope_pm.project_id = p.id AND scope_pm.user_id = $2::uuid)
-            OR ($1::text = 'member'
-                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.id AND scope_p.access = 'workspace'))))::bigint AS project_bytes
+    (SELECT count(*) FROM visible_issue)::bigint AS issue_count,
+    (SELECT COALESCE(sum(octet_length(title) + COALESCE(octet_length(description), 0)), 0)
+        FROM visible_issue)::bigint AS issue_bytes,
+    (SELECT count(*) FROM visible_comment)::bigint AS comment_count,
+    (SELECT COALESCE(sum(octet_length(content)), 0) FROM visible_comment)::bigint AS comment_bytes,
+    (SELECT count(*) FROM visible_project)::bigint AS project_count,
+    (SELECT COALESCE(sum(octet_length(title) + COALESCE(octet_length(description), 0)), 0)
+        FROM visible_project)::bigint AS project_bytes
 `
 
 type GetSearchIndexManifestParams struct {
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 type GetSearchIndexManifestRow struct {
@@ -113,10 +91,10 @@ type GetSearchIndexManifestRow struct {
 // than this snapshot and reaches the client through the change log. The byte
 // totals let the client reject a workspace too large for its memory budget
 // before downloading it; octet_length reads the stored length, so TOASTed
-// bodies are not decompressed. Counts and bytes cover only what the viewer
-// sees; a comment is visible with its issue.
+// bodies are not decompressed. Rows in hidden_project_ids are left out, as
+// the snapshot leaves them out.
 func (q *Queries) GetSearchIndexManifest(ctx context.Context, arg GetSearchIndexManifestParams) (GetSearchIndexManifestRow, error) {
-	row := q.db.QueryRow(ctx, getSearchIndexManifest, arg.ScopeMode, arg.ScopeUserID, arg.WorkspaceID)
+	row := q.db.QueryRow(ctx, getSearchIndexManifest, arg.WorkspaceID, arg.HiddenProjectIds)
 	var i GetSearchIndexManifestRow
 	err := row.Scan(
 		&i.Snapshot,
@@ -192,23 +170,14 @@ func (q *Queries) ListSearchIndexChanges(ctx context.Context, arg ListSearchInde
 }
 
 const listSearchIndexCommentsByIDs = `-- name: ListSearchIndexCommentsByIDs :many
-SELECT c.id, c.issue_id, c.content, c.created_at, c.deleted_at
-FROM comment c
-JOIN issue ci ON ci.id = c.issue_id
-WHERE c.workspace_id = $1 AND c.id = ANY($2::uuid[])
-AND ($3::text = 'all'
-    OR (ci.project_id IS NULL AND $3::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = ci.project_id AND scope_pm.user_id = $4::uuid)
-    OR ($3::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ci.project_id AND scope_p.access = 'workspace')))
+SELECT id, issue_id, content, created_at, deleted_at
+FROM comment
+WHERE workspace_id = $1 AND id = ANY($2::uuid[])
 `
 
 type ListSearchIndexCommentsByIDsParams struct {
 	WorkspaceID pgtype.UUID   `json:"workspace_id"`
 	Ids         []pgtype.UUID `json:"ids"`
-	ScopeMode   string        `json:"scope_mode"`
-	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
 }
 
 type ListSearchIndexCommentsByIDsRow struct {
@@ -220,15 +189,8 @@ type ListSearchIndexCommentsByIDsRow struct {
 }
 
 // Tombstoned comments are returned so the caller can report them as deleted.
-// Comments on issues the viewer cannot see are left out.
-// projectaccess:scope
 func (q *Queries) ListSearchIndexCommentsByIDs(ctx context.Context, arg ListSearchIndexCommentsByIDsParams) ([]ListSearchIndexCommentsByIDsRow, error) {
-	rows, err := q.db.Query(ctx, listSearchIndexCommentsByIDs,
-		arg.WorkspaceID,
-		arg.Ids,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, listSearchIndexCommentsByIDs, arg.WorkspaceID, arg.Ids)
 	if err != nil {
 		return nil, err
 	}
@@ -299,32 +261,17 @@ func (q *Queries) ListSearchIndexCommentsByIssues(ctx context.Context, arg ListS
 }
 
 const listSearchIndexIssuesByIDs = `-- name: ListSearchIndexIssuesByIDs :many
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
-WHERE issue.workspace_id = $1 AND issue.id = ANY($2::uuid[])
-AND ($3::text = 'all'
-    OR (issue.project_id IS NULL AND $3::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
-    OR ($3::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
+WHERE workspace_id = $1 AND id = ANY($2::uuid[])
 `
 
 type ListSearchIndexIssuesByIDsParams struct {
 	WorkspaceID pgtype.UUID   `json:"workspace_id"`
 	Ids         []pgtype.UUID `json:"ids"`
-	ScopeMode   string        `json:"scope_mode"`
-	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
 }
 
-// Rows the viewer cannot see are left out, so the caller reports them as deleted.
-// projectaccess:scope
 func (q *Queries) ListSearchIndexIssuesByIDs(ctx context.Context, arg ListSearchIndexIssuesByIDsParams) ([]Issue, error) {
-	rows, err := q.db.Query(ctx, listSearchIndexIssuesByIDs,
-		arg.WorkspaceID,
-		arg.Ids,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, listSearchIndexIssuesByIDs, arg.WorkspaceID, arg.Ids)
 	if err != nil {
 		return nil, err
 	}
@@ -363,6 +310,7 @@ func (q *Queries) ListSearchIndexIssuesByIDs(ctx context.Context, arg ListSearch
 			&i.LastActivityAt,
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
+			&i.RequesterUserID,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,
@@ -386,36 +334,21 @@ func (q *Queries) ListSearchIndexIssuesByIDs(ctx context.Context, arg ListSearch
 }
 
 const listSearchIndexIssuesPage = `-- name: ListSearchIndexIssuesPage :many
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
-WHERE issue.workspace_id = $1 AND issue.number > $2
-AND ($3::text = 'all'
-    OR (issue.project_id IS NULL AND $3::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
-    OR ($3::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
-ORDER BY issue.number
-LIMIT $5
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
+WHERE workspace_id = $1 AND number > $2
+ORDER BY number
+LIMIT $3
 `
 
 type ListSearchIndexIssuesPageParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	AfterNumber int32       `json:"after_number"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 	PageLimit   int32       `json:"page_limit"`
 }
 
 // Pages by the unique (workspace_id, number) index.
-// projectaccess:scope
 func (q *Queries) ListSearchIndexIssuesPage(ctx context.Context, arg ListSearchIndexIssuesPageParams) ([]Issue, error) {
-	rows, err := q.db.Query(ctx, listSearchIndexIssuesPage,
-		arg.WorkspaceID,
-		arg.AfterNumber,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-		arg.PageLimit,
-	)
+	rows, err := q.db.Query(ctx, listSearchIndexIssuesPage, arg.WorkspaceID, arg.AfterNumber, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -454,6 +387,7 @@ func (q *Queries) ListSearchIndexIssuesPage(ctx context.Context, arg ListSearchI
 			&i.LastActivityAt,
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
+			&i.RequesterUserID,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,
@@ -477,26 +411,13 @@ func (q *Queries) ListSearchIndexIssuesPage(ctx context.Context, arg ListSearchI
 }
 
 const listSearchIndexProjects = `-- name: ListSearchIndexProjects :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
-WHERE project.workspace_id = $1
-AND ($2::text = 'all'
-    OR (project.id IS NULL AND $2::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $3::uuid)
-    OR ($2::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
-ORDER BY project.id
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
+WHERE workspace_id = $1
+ORDER BY id
 `
 
-type ListSearchIndexProjectsParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
-}
-
-// projectaccess:scope
-func (q *Queries) ListSearchIndexProjects(ctx context.Context, arg ListSearchIndexProjectsParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listSearchIndexProjects, arg.WorkspaceID, arg.ScopeMode, arg.ScopeUserID)
+func (q *Queries) ListSearchIndexProjects(ctx context.Context, workspaceID pgtype.UUID) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listSearchIndexProjects, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -522,6 +443,11 @@ func (q *Queries) ListSearchIndexProjects(ctx context.Context, arg ListSearchInd
 			&i.WorkflowID,
 			&i.CreatorType,
 			&i.CreatorID,
+			&i.Visibility,
+			&i.ArchivedAt,
+			&i.ArchivedByType,
+			&i.ArchivedByID,
+			&i.FolderID,
 			&i.SquadIds,
 		); err != nil {
 			return nil, err
@@ -535,31 +461,17 @@ func (q *Queries) ListSearchIndexProjects(ctx context.Context, arg ListSearchInd
 }
 
 const listSearchIndexProjectsByIDs = `-- name: ListSearchIndexProjectsByIDs :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
-WHERE project.workspace_id = $1 AND project.id = ANY($2::uuid[])
-AND ($3::text = 'all'
-    OR (project.id IS NULL AND $3::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $4::uuid)
-    OR ($3::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
+WHERE workspace_id = $1 AND id = ANY($2::uuid[])
 `
 
 type ListSearchIndexProjectsByIDsParams struct {
 	WorkspaceID pgtype.UUID   `json:"workspace_id"`
 	Ids         []pgtype.UUID `json:"ids"`
-	ScopeMode   string        `json:"scope_mode"`
-	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
 }
 
-// projectaccess:scope
 func (q *Queries) ListSearchIndexProjectsByIDs(ctx context.Context, arg ListSearchIndexProjectsByIDsParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listSearchIndexProjectsByIDs,
-		arg.WorkspaceID,
-		arg.Ids,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, listSearchIndexProjectsByIDs, arg.WorkspaceID, arg.Ids)
 	if err != nil {
 		return nil, err
 	}
@@ -585,6 +497,11 @@ func (q *Queries) ListSearchIndexProjectsByIDs(ctx context.Context, arg ListSear
 			&i.WorkflowID,
 			&i.CreatorType,
 			&i.CreatorID,
+			&i.Visibility,
+			&i.ArchivedAt,
+			&i.ArchivedByType,
+			&i.ArchivedByID,
+			&i.FolderID,
 			&i.SquadIds,
 		); err != nil {
 			return nil, err
@@ -597,44 +514,25 @@ func (q *Queries) ListSearchIndexProjectsByIDs(ctx context.Context, arg ListSear
 	return items, nil
 }
 
-const listSearchIndexVisibleProjectIDs = `-- name: ListSearchIndexVisibleProjectIDs :many
-SELECT project.id FROM project
-WHERE project.workspace_id = $1
-AND ($2::text = 'all'
-    OR (project.id IS NULL AND $2::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $3::uuid)
-    OR ($2::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
-ORDER BY project.id
+const markSearchAccessChanged = `-- name: MarkSearchAccessChanged :exec
+INSERT INTO member_search_access (workspace_id, user_id, changed_xid, changed_at)
+VALUES ($1, $2, pg_current_xact_id(), now())
+ON CONFLICT (workspace_id, user_id) DO UPDATE
+    SET changed_xid = EXCLUDED.changed_xid,
+        changed_at = EXCLUDED.changed_at
 `
 
-type ListSearchIndexVisibleProjectIDsParams struct {
+type MarkSearchAccessChangedParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	UserID      pgtype.UUID `json:"user_id"`
 }
 
-// The projects the viewer sees; scope_version is a hash of this set.
-// projectaccess:scope
-func (q *Queries) ListSearchIndexVisibleProjectIDs(ctx context.Context, arg ListSearchIndexVisibleProjectIDsParams) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listSearchIndexVisibleProjectIDs, arg.WorkspaceID, arg.ScopeMode, arg.ScopeUserID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []pgtype.UUID{}
-	for rows.Next() {
-		var id pgtype.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+// Records that this transaction changed what the user can see in the
+// workspace without rewriting the content (MUL-9420), so local search copies
+// built before it are rebuilt.
+func (q *Queries) MarkSearchAccessChanged(ctx context.Context, arg MarkSearchAccessChangedParams) error {
+	_, err := q.db.Exec(ctx, markSearchAccessChanged, arg.WorkspaceID, arg.UserID)
+	return err
 }
 
 const pruneSearchIndexChanges = `-- name: PruneSearchIndexChanges :one
@@ -674,6 +572,30 @@ func (q *Queries) PruneSearchIndexChanges(ctx context.Context, arg PruneSearchIn
 	var deleted_count int64
 	err := row.Scan(&deleted_count)
 	return deleted_count, err
+}
+
+const searchAccessChangedAfter = `-- name: SearchAccessChangedAfter :one
+SELECT EXISTS (
+    SELECT 1 FROM member_search_access
+    WHERE workspace_id = $1
+      AND user_id = $2
+      AND NOT pg_visible_in_snapshot(changed_xid, ($3::text)::pg_snapshot)
+)::bool AS changed
+`
+
+type SearchAccessChangedAfterParams struct {
+	WorkspaceID   pgtype.UUID `json:"workspace_id"`
+	UserID        pgtype.UUID `json:"user_id"`
+	SinceSnapshot string      `json:"since_snapshot"`
+}
+
+// Whether the user's access in the workspace was changed by a transaction the
+// since snapshot does not include.
+func (q *Queries) SearchAccessChangedAfter(ctx context.Context, arg SearchAccessChangedAfterParams) (bool, error) {
+	row := q.db.QueryRow(ctx, searchAccessChangedAfter, arg.WorkspaceID, arg.UserID, arg.SinceSnapshot)
+	var changed bool
+	err := row.Scan(&changed)
+	return changed, err
 }
 
 const searchIndexSinceIsPruned = `-- name: SearchIndexSinceIsPruned :one

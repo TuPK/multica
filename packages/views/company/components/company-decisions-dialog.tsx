@@ -86,7 +86,7 @@ export function CompanyDecisionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="flex max-h-[min(88dvh,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="flex max-h-[min(88%,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
         <header className="shrink-0 border-b px-4 py-3 pr-12">
           <DialogTitle className="text-heading">{t(($) => $.company.decisions_title)}</DialogTitle>
         </header>

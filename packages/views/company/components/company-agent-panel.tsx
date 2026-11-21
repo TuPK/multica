@@ -55,7 +55,7 @@ export function CompanyAgentPanel({
   const agent = target ? agents.find((candidate) => candidate.id === target.agentId) : undefined;
   return (
     <Dialog open={target !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex h-[min(88dvh,54rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+      <DialogContent className="flex h-[min(88%,54rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
         {target && agent ? (
           // A new key starts the panel afresh for each agent and each way of opening it.
           <PanelBody

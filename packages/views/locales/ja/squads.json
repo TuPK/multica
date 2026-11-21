@@ -30,13 +30,7 @@
     "success": "スカッドをアーカイブしました"
   },
   "name_editor": {
-    "title": "スクワッド名を変更",
-    "placeholder": "スクワッド名",
-    "required": "名前を入力してください",
-    "cancel": "キャンセル",
-    "save": "保存",
-    "saved": "保存しました",
-    "save_failed": "保存できませんでした"
+    "placeholder": "スクワッド名"
   },
   "add_member_dialog": {
     "title": "メンバーを追加",
@@ -55,13 +49,6 @@
   "role_editor": {
     "empty": "役割を追加…",
     "placeholder": "役割（例：レビュアー）"
-  },
-  "description_dialog": {
-    "title": "説明を編集",
-    "placeholder_empty": "説明を追加",
-    "cancel": "キャンセル",
-    "responsibility_placeholder": "このスクワッドの担当は何ですか？",
-    "save": "保存"
   },
   "members_tab": {
     "section_title": "メンバー",
@@ -148,7 +135,8 @@
     "squad_runtime_failed": "ランタイムの変更に失敗しました",
     "squad_runtime_skipped": "{{updated}} 件を移動、{{skipped}} 件をスキップ: {{reason}}",
     "bulk_applied": "{{count}} 件のエージェントに {{field}} を適用しました",
-    "bulk_partial": "{{total}} 件中 {{failed}} 件のエージェントを更新できませんでした"
+    "bulk_partial": "{{total}} 件中 {{failed}} 件のエージェントを更新できませんでした",
+    "update_failed": "保存できませんでした"
   },
   "profile_card": {
     "unavailable": "スクワッドを利用できません",
@@ -805,5 +793,9 @@
     },
     "open_squad": "スクワッドを開く",
     "done": "完了"
+  },
+  "description_editor": {
+    "empty": "説明を追加",
+    "placeholder": "このスクワッドの担当は何ですか？"
   }
 }

@@ -38,13 +38,8 @@ SELECT bi.* FROM brief_inquiry bi
 LEFT JOIN issue scope_i ON scope_i.id = bi.issue_id
 WHERE bi.workspace_id = sqlc.arg('workspace_id')::uuid AND bi.asked_on >= sqlc.arg('asked_on')::date
   AND (bi.issue_id IS NULL OR scope_i.id IS NOT NULL)
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-      OR (scope_i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-      OR (sqlc.arg(scope_mode)::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(scope_i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 ORDER BY bi.asked_on DESC, bi.created_at DESC;
 
 -- name: DeleteWorkspaceBriefInquiries :exec

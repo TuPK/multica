@@ -31,7 +31,7 @@ func (h *Handler) GetCompanyOrgMap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
@@ -53,15 +53,14 @@ func (h *Handler) GetCompanyRequestUsage(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(issue.WorkspaceID))
 	if !ok {
 		return
 	}
 	row, err := h.Queries.GetRequestUsageSummary(r.Context(), db.GetRequestUsageSummaryParams{
-		WorkspaceID: issue.WorkspaceID,
-		ID:          issue.ID,
-		ScopeMode:   scope.Mode(),
-		ScopeUserID: scope.UserID(),
+		WorkspaceID:      issue.WorkspaceID,
+		ID:               issue.ID,
+		HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to read request usage")

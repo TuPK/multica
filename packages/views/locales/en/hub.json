@@ -238,7 +238,8 @@
         "missing_skill_md": "No SKILL.md found at the top level.",
         "empty": "No files to import.",
         "too_large": "This archive is too large.",
-        "too_many_files": "This import has too many files."
+        "too_many_files": "This import has too many files.",
+        "unreadable": "This archive couldn't be read."
       }
     },
     "blank": {

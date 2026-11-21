@@ -6,12 +6,15 @@ import { useRegenerateChatQuickActions } from "@multica/core/chat/mutations";
 import { ChatMessageList, ChatMessageSkeleton } from "./chat-message-list";
 import { ChatInput } from "./chat-input";
 import { ChatQueue } from "./chat-queue";
+import { ChatWakeupStrip, useChatWakeups } from "./chat-wakeups";
 import { EmptyState } from "./chat-empty-state";
 import { OfflineBanner } from "./offline-banner";
 import { NoAgentBanner } from "./no-agent-banner";
 import { ArchivedAgentBanner } from "./archived-agent-banner";
 import { AgentAccessRevokedBanner } from "./agent-access-revoked-banner";
 import { RuntimeRequiredBanner } from "./runtime-required-banner";
+import { useChatAnnotations } from "./use-chat-annotations";
+import { ChatAppRequests } from "../../common/app-requests";
 import type { useChatController } from "./use-chat-controller";
 
 export type ChatController = ReturnType<typeof useChatController>;
@@ -34,7 +37,13 @@ export function ChatConversation({
   quickActionsPending: ChatQuickActionsPendingState | null;
   onProjectChange: (projectId: string | null) => void;
 }) {
+  const wakeups = useChatWakeups(c.activeSessionId);
   const regenerateQuickActions = useRegenerateChatQuickActions();
+  const annotations = useChatAnnotations({
+    sessionId: c.activeSessionId,
+    agentName: c.activeAgent?.name,
+    enabled: !c.isSessionArchived && !c.isAgentArchived && !c.isAgentAccessRevoked && c.isAgentRuntimeBound && !c.noAgent,
+  });
   const queuedTasks = c.pendingTask?.queued_tasks ?? [];
   return (
     <div className="flex flex-1 flex-col min-h-0 @container">
@@ -69,13 +78,14 @@ export function ChatConversation({
               : undefined
           }
           quickActionsPendingMessageId={quickActionsPending?.message_id ?? null}
+          annotations={annotations}
+          wakeups={wakeups}
         />
       ) : (
         <EmptyState
           agent={c.activeAgent}
           hasSessions={c.sessions.length > 0}
           onPickPrompt={c.sendConversationStarter}
-          customizeHref={c.customizeConversationStartersHref}
         />
       )}
 
@@ -91,8 +101,15 @@ export function ChatConversation({
         <OfflineBanner agentName={c.activeAgent?.name} availability={c.availability} />
       )}
 
+      <div className="px-4">
+        <ChatAppRequests sessionId={c.activeSessionId} />
+      </div>
+
+      <ChatWakeupStrip sessionId={c.activeSessionId} wakeups={wakeups} />
+
       <ChatQueue
         tasks={queuedTasks}
+        wakeups={wakeups}
         headStatus={c.pendingTask?.status}
         onSendNow={c.handleSendQueuedTaskNow}
         sendNowDisabled={c.isAgentAccessRevoked}
@@ -111,6 +128,7 @@ export function ChatConversation({
         onStop={c.handleStop}
         isRunning={!!c.pendingTaskId}
         allowSubmitWhileRunning={c.pendingTask?.supports_queue === true}
+        canSteerWhileRunning={c.pendingTask?.can_supplement}
         disabled={
           c.isSessionArchived ||
           c.isAgentArchived ||
@@ -128,6 +146,7 @@ export function ChatConversation({
         onProjectChange={onProjectChange}
         isProjectUpdating={c.isProjectUpdating}
         focusRequest={c.focusInputRequest}
+        annotations={annotations}
       />
     </div>
   );

@@ -399,6 +399,59 @@ func (q *Queries) ListAllSquads(ctx context.Context, workspaceID pgtype.UUID) ([
 	return items, nil
 }
 
+const listInvolvedSquadIDs = `-- name: ListInvolvedSquadIDs :many
+SELECT sm.squad_id
+  FROM squad_member sm
+  JOIN squad s ON s.id = sm.squad_id
+ WHERE s.workspace_id = $1
+   AND sm.member_type = 'member'
+   AND sm.member_id   = $2
+UNION
+SELECT s.id
+  FROM squad s
+  JOIN agent a ON a.id = s.leader_id
+ WHERE s.workspace_id = $1
+   AND a.workspace_id = $1
+   AND a.owner_id     = $2
+UNION
+SELECT sm.squad_id
+  FROM squad_member sm
+  JOIN squad s ON s.id = sm.squad_id
+  JOIN agent a ON a.id = sm.member_id
+ WHERE s.workspace_id = $1
+   AND sm.member_type = 'agent'
+   AND a.workspace_id = $1
+   AND a.owner_id     = $2
+`
+
+type ListInvolvedSquadIDsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+}
+
+// Squads whose issues count as the user's agents' work: the user is a member,
+// or an agent they own leads or is a member. Must match the squad branch of
+// issueTableInvolvedPredicate.
+func (q *Queries) ListInvolvedSquadIDs(ctx context.Context, arg ListInvolvedSquadIDsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listInvolvedSquadIDs, arg.WorkspaceID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var squad_id pgtype.UUID
+		if err := rows.Scan(&squad_id); err != nil {
+			return nil, err
+		}
+		items = append(items, squad_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProjectSquadWorkflows = `-- name: ListProjectSquadWorkflows :many
 SELECT s.id, s.name, s.active_workflow_id, COALESCE(w.name, '')::text AS active_workflow_name
 FROM squad s
@@ -569,21 +622,15 @@ LEFT JOIN agent_task_queue atq
       AND atq.status IN ('dispatched', 'running', 'waiting_local_directory')
 LEFT JOIN issue i
        ON i.id = atq.issue_id
-      -- projectaccess:scope
-      AND ($1::text = 'all'
-          OR (i.project_id IS NULL AND $1::text <> 'guest')
-          OR EXISTS (SELECT 1 FROM project_member scope_pm
-                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $2::uuid)
-          OR ($1::text = 'member'
-              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
-WHERE sm.squad_id = $3
+      -- MUL-8472: private projects the caller cannot see.
+      AND ($1::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($1::uuid[])))
+WHERE sm.squad_id = $2
 ORDER BY sm.created_at ASC, atq.dispatched_at DESC NULLS LAST
 `
 
 type ListSquadMemberStatusRowsParams struct {
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
-	SquadID     pgtype.UUID `json:"squad_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
+	SquadID          pgtype.UUID   `json:"squad_id"`
 }
 
 type ListSquadMemberStatusRowsRow struct {
@@ -612,7 +659,7 @@ type ListSquadMemberStatusRowsRow struct {
 // A task whose issue the viewer cannot see keeps its row (the member still
 // shows as working) but joins no issue, so the issue link reads as absent.
 func (q *Queries) ListSquadMemberStatusRows(ctx context.Context, arg ListSquadMemberStatusRowsParams) ([]ListSquadMemberStatusRowsRow, error) {
-	rows, err := q.db.Query(ctx, listSquadMemberStatusRows, arg.ScopeMode, arg.ScopeUserID, arg.SquadID)
+	rows, err := q.db.Query(ctx, listSquadMemberStatusRows, arg.HiddenProjectIds, arg.SquadID)
 	if err != nil {
 		return nil, err
 	}

@@ -38,22 +38,16 @@ WHERE workspace_id = $1::uuid
   AND status = 'blocked'
   AND due_date IS NOT NULL
   AND due_date < $2::timestamptz
-  -- projectaccess:scope
-  AND ($3::text = 'all'
-      OR (issue.project_id IS NULL AND $3::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
-      OR ($3::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($3::uuid[] IS NULL OR NOT (COALESCE(issue.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 ORDER BY due_date ASC, id ASC
 LIMIT 50
 `
 
 type ListBlockedDirectivesPastDueParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Now         pgtype.Timestamptz `json:"now"`
-	ScopeMode   string             `json:"scope_mode"`
-	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Now              pgtype.Timestamptz `json:"now"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type ListBlockedDirectivesPastDueRow struct {
@@ -66,12 +60,7 @@ type ListBlockedDirectivesPastDueRow struct {
 // Directives the leader has marked blocked after their due date. The digest
 // reads them so the boss sees a stuck directive without opening each one.
 func (q *Queries) ListBlockedDirectivesPastDue(ctx context.Context, arg ListBlockedDirectivesPastDueParams) ([]ListBlockedDirectivesPastDueRow, error) {
-	rows, err := q.db.Query(ctx, listBlockedDirectivesPastDue,
-		arg.WorkspaceID,
-		arg.Now,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, listBlockedDirectivesPastDue, arg.WorkspaceID, arg.Now, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}

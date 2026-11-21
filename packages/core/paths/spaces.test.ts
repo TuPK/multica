@@ -15,7 +15,7 @@ describe("spaceForPath", () => {
   });
 
   it.each([
-    [ws.inbox(), "inbox"],
+    [ws.inbox(), "work"],
     [ws.company(), "company"],
     [ws.hub(), "hub"],
     [ws.hubItem("skill", "s-1"), "hub"],

@@ -94,7 +94,7 @@ func TestRuntimeClaimPathsRefuseANonActiveWorkspace(t *testing.T) {
 	if got, err := f.tasks.ClaimTaskForRuntime(ctx, util.MustParseUUID(f.rt)); err != nil || got != nil {
 		t.Fatalf("ClaimTaskForRuntime: task %v err %v; want no task", got, err)
 	}
-	if got, err := f.tasks.ClaimTasksForRuntimes(ctx, []pgtype.UUID{util.MustParseUUID(f.rt)}, 5); err != nil || len(got) != 0 {
+	if got, _, err := f.tasks.ClaimTasksForRuntimes(ctx, []pgtype.UUID{util.MustParseUUID(f.rt)}, 5); err != nil || len(got) != 0 {
 		t.Fatalf("ClaimTasksForRuntimes: %d tasks err %v; want none", len(got), err)
 	}
 	if st := f.taskStatus(t, task); st != "queued" {
@@ -102,7 +102,7 @@ func TestRuntimeClaimPathsRefuseANonActiveWorkspace(t *testing.T) {
 	}
 
 	f.setWorkspaceState(t, "active")
-	got, err := f.tasks.ClaimTasksForRuntimes(ctx, []pgtype.UUID{util.MustParseUUID(f.rt)}, 5)
+	got, _, err := f.tasks.ClaimTasksForRuntimes(ctx, []pgtype.UUID{util.MustParseUUID(f.rt)}, 5)
 	if err != nil || len(got) != 1 || util.UUIDToString(got[0].ID) != task {
 		t.Fatalf("after the workspace is active again: %d tasks err %v; want %s", len(got), err, task)
 	}

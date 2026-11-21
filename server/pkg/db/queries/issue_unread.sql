@@ -41,13 +41,12 @@ LEFT JOIN LATERAL (
 ) run_comment ON true
 WHERE u.workspace_id = sqlc.arg(workspace_id)
   AND u.user_id = sqlc.arg(user_id)
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-      OR (scope_iss.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = scope_iss.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-      OR (sqlc.arg(scope_mode)::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_iss.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT EXISTS (
+    SELECT 1 FROM issue hidden_issue
+    WHERE hidden_issue.id = u.issue_id
+      AND COALESCE(hidden_issue.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])
+  ))
   AND (
     sqlc.narg(before_created_at)::timestamptz IS NULL
     OR (u.created_at, u.issue_id) < (sqlc.narg(before_created_at)::timestamptz, sqlc.narg(before_issue_id)::uuid)

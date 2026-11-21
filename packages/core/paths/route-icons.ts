@@ -65,6 +65,7 @@ export type NavLabelKey =
   | "governance"
   | "usage"
   | "runtimes"
+  | "docs"
   | "skills"
   | "hub"
   | "workflow"
@@ -87,6 +88,7 @@ export type WorkspacePageKey =
   | "knowledge"
   | "usage"
   | "runtimes"
+  | "docs"
   | "skills"
   | "hub"
   | "workflow"
@@ -121,6 +123,7 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   knowledge: { segment: "knowledge", icon: "Database", navKey: "knowledge" },
   usage: { segment: "usage", icon: "BarChart3", navKey: "usage" },
   runtimes: { segment: "runtimes", icon: "Monitor", navKey: "runtimes" },
+  docs: { segment: "docs", icon: "FileText", navKey: "docs" },
   skills: { segment: "skills", icon: "BookOpenText", navKey: "skills" },
   workflow: { segment: "workflow", icon: "Workflow", navKey: "workflow" },
   hub: { segment: "hub", icon: "Package", navKey: "hub" },

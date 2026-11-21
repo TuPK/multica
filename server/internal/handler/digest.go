@@ -28,7 +28,7 @@ func (h *Handler) GetCompanyDigest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}

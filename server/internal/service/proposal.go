@@ -217,7 +217,7 @@ type ProposalCreateParams struct {
 	EstimatedCostMicros *int64
 	// Scope is what the filer may see; prior art names only proposals on issues
 	// within it (spec 7.1 rule 5). The zero value sees no restricted project.
-	Scope projectaccess.Scope
+	Scope projectaccess.Hidden
 }
 
 // ProposalCreateResult carries the new rows. Events are the caller's to

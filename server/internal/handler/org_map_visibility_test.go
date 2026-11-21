@@ -33,7 +33,8 @@ func newOrgMapVisibilityFixture(t *testing.T) orgMapVisibilityFixture {
 // projectOfSquad inserts a project the squad holds.
 func (f orgMapVisibilityFixture) projectOfSquad(t *testing.T, title, access string) string {
 	t.Helper()
-	id := dbfx.Project(t, title, testutil.Cols{"workspace_id": f.WorkspaceID, "access": access})
+	id := dbfx.Project(t, title, testutil.Cols{"workspace_id": f.WorkspaceID, "visibility": visibilityOf(access)})
+	ownerJoinsProject(t, f.WorkspaceID, id)
 	dbfx.Exec(t, `UPDATE project SET squad_ids = ARRAY[$2::uuid] WHERE id = $1`, id, f.squadID)
 	return id
 }
@@ -94,7 +95,8 @@ func TestOrgMapVisibility_WorkspaceProjectStaysVisible(t *testing.T) {
 // that gates a create keeps counting every issue.
 func TestIssueLimitUsageVisibility_DisplayHidesEnforcementCountsAll(t *testing.T) {
 	f := newOrgMapVisibilityFixture(t)
-	hidden := dbfx.Project(t, "Hidden usage "+uuid.NewString()[:8], testutil.Cols{"workspace_id": f.WorkspaceID, "access": "restricted"})
+	hidden := dbfx.Project(t, "Hidden usage "+uuid.NewString()[:8], testutil.Cols{"workspace_id": f.WorkspaceID, "visibility": "private"})
+	ownerJoinsProject(t, f.WorkspaceID, hidden)
 	dbfx.Issue(t, "hidden usage issue", testutil.Cols{"workspace_id": f.WorkspaceID, "project_id": hidden})
 	dbfx.Issue(t, "open usage issue", testutil.Cols{"workspace_id": f.WorkspaceID})
 	setPlanLimitGates(t, f.WorkspaceID, map[entitlement.GateName]int{entitlement.GateIssueCount: 100})

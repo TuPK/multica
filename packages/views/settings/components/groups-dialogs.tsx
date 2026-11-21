@@ -337,7 +337,7 @@ export function GroupFormDialog({
           }
         }}
       >
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[85%] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {isEditing

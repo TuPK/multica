@@ -110,7 +110,7 @@ func OrgRuntimeOnline(status string) bool {
 // floors and squads to one floor. Every query is scoped to workspaceID. scope
 // is what the reader may see: a squad's open_issues and project leave out
 // projects the reader cannot see (spec 7.1 rule 5).
-func LoadOrgMap(ctx context.Context, q *db.Queries, workspaceID, floorID pgtype.UUID, scope projectaccess.Scope) (OrgMap, error) {
+func LoadOrgMap(ctx context.Context, q *db.Queries, workspaceID, floorID pgtype.UUID, hidden projectaccess.Hidden) (OrgMap, error) {
 	floors, err := q.ListCompanyFloors(ctx, workspaceID)
 	if err != nil {
 		return OrgMap{}, fmt.Errorf("list floors: %w", err)
@@ -135,11 +135,10 @@ func LoadOrgMap(ctx context.Context, q *db.Queries, workspaceID, floorID pgtype.
 	}
 
 	squadRows, err := q.ListOrgMapSquads(ctx, db.ListOrgMapSquadsParams{
-		WorkspaceID: workspaceID,
-		FloorID:     floorID,
-		RowLimit:    int32(OrgMapMaxSquads + 1),
-		ScopeMode:   scope.Mode(),
-		ScopeUserID: scope.UserID(),
+		WorkspaceID:      workspaceID,
+		FloorID:          floorID,
+		RowLimit:         int32(OrgMapMaxSquads + 1),
+		HiddenProjectIds: hidden.Param(),
 	})
 	if err != nil {
 		return OrgMap{}, fmt.Errorf("list squads: %w", err)

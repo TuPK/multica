@@ -13,7 +13,7 @@ func TestNormalizeMemberRoleAcceptsViewer(t *testing.T) {
 		" viewer ":      {"viewer", true},
 		"member":        {"member", true},
 		"":              {"member", true},
-		"guest":         {"", false},
+		"guest":         {"guest", true},
 		"Viewer":        {"", false},
 		"read-only":     {"", false},
 		"superuser":     {"", false},

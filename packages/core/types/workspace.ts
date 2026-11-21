@@ -1,8 +1,10 @@
 /**
  * `viewer` reads what a member reads and writes nothing but personal state
  * (spec 6.6). A role the server sends that this list does not name is a viewer.
+ * A guest (MUL-9420) sees only the projects in its `project_ids`, cannot edit
+ * issue properties or run agents, and takes no seat.
  */
-export type MemberRole = "owner" | "admin" | "member" | "viewer";
+export type MemberRole = "owner" | "admin" | "member" | "viewer" | "guest";
 
 export interface WorkspaceRepo {
   url: string;
@@ -102,6 +104,13 @@ export interface User {
   consent_required?: ConsentRequirement[];
   /** RFC 3339 UTC. Set only while the account waits to be deleted. */
   deletion_scheduled_at?: string | null;
+  /**
+   * "Star us on GitHub" prompt bookkeeping. An undefined count means the
+   * server predates it, so the client must never show the prompt.
+   */
+  star_prompt_shown_count?: number;
+  star_prompt_last_shown_at?: string | null;
+  star_prompt_starred_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -121,6 +130,8 @@ export interface MemberWithUser {
   name: string;
   email: string;
   avatar_url: string | null;
+  /** The projects a guest can access. Absent for every other role. */
+  project_ids?: string[];
 }
 
 export interface Invitation {
@@ -137,6 +148,8 @@ export interface Invitation {
   inviter_name?: string;
   inviter_email?: string;
   workspace_name?: string;
+  /** The projects a guest invitation grants. */
+  project_ids?: string[];
 }
 
 export interface ShareLink {

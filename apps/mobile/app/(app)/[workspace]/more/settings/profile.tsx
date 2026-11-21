@@ -30,6 +30,7 @@ import { api } from "@/data/api";
 import type { FileAsset } from "@/data/api";
 import { useT } from "@/lib/i18n";
 import { formatPlanLimitError } from "@/lib/plan-limit-copy";
+import { isStorageLimitReached } from "@/lib/upload-error";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB — matches what's reasonable on cellular.
 
@@ -142,6 +143,13 @@ export default function ProfileSettingsScreen() {
       const updated = await api.updateMe({ avatar_url: attachment.url });
       setUser(updated);
     } catch (err) {
+      if (isStorageLimitReached(err)) {
+        Alert.alert(
+          t("editor:upload.storage_full_title"),
+          t("editor:upload.storage_full_message"),
+        );
+        return;
+      }
       Alert.alert(
         t("avatar.upload_failed"),
         formatPlanLimitError(err) ??

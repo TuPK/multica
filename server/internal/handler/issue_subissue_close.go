@@ -22,7 +22,7 @@ import (
 // sub-issue is closed. A member's close is their own decision and is not
 // checked here; callers decide that by the actor type. A sub-issue the viewer
 // cannot see is neither listed nor counted, as if it did not exist.
-func (h *Handler) openSubIssuesBlockingClose(ctx context.Context, parent db.Issue, target string, scope projectaccess.Scope) ([]string, error) {
+func (h *Handler) openSubIssuesBlockingClose(ctx context.Context, parent db.Issue, target string, scope projectaccess.Hidden) ([]string, error) {
 	if !isClosedStatus(ctx, h, parent.WorkspaceID, target) || isClosedStatus(ctx, h, parent.WorkspaceID, parent.Status) {
 		return nil, nil
 	}
@@ -32,7 +32,7 @@ func (h *Handler) openSubIssuesBlockingClose(ctx context.Context, parent db.Issu
 	}
 	var open []string
 	for _, child := range children {
-		if scope.Allows(child.ProjectID) && !isClosedStatus(ctx, h, child.WorkspaceID, child.Status) {
+		if scope.CanSeeProject(child.ProjectID) && !isClosedStatus(ctx, h, child.WorkspaceID, child.Status) {
 			open = append(open, h.issueIdentifier(ctx, child))
 		}
 	}

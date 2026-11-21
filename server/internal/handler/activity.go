@@ -412,7 +412,7 @@ func (h *Handler) GetAssigneeFrequency(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	workspaceID := h.resolveWorkspaceID(r)
-	scope, ok := h.viewerScope(w, r, parseUUID(workspaceID))
+	scope, ok := h.requestHiddenProjects(w, r, workspaceID)
 	if !ok {
 		return
 	}
@@ -422,10 +422,9 @@ func (h *Handler) GetAssigneeFrequency(w http.ResponseWriter, r *http.Request) {
 
 	// Source 1: assignee_changed activities by this user.
 	activityCounts, err := h.Queries.CountAssigneeChangesByActor(r.Context(), db.CountAssigneeChangesByActorParams{
-		WorkspaceID: parseUUID(workspaceID),
-		ActorID:     parseUUID(userID),
-		ScopeMode:   scope.Mode(),
-		ScopeUserID: scope.UserID(),
+		WorkspaceID:      parseUUID(workspaceID),
+		ActorID:          parseUUID(userID),
+		HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get assignee frequency")
@@ -441,10 +440,9 @@ func (h *Handler) GetAssigneeFrequency(w http.ResponseWriter, r *http.Request) {
 
 	// Source 2: issues created by this user with an assignee.
 	issueCounts, err := h.Queries.CountCreatedIssueAssignees(r.Context(), db.CountCreatedIssueAssigneesParams{
-		WorkspaceID: parseUUID(workspaceID),
-		CreatorID:   parseUUID(userID),
-		ScopeMode:   scope.Mode(),
-		ScopeUserID: scope.UserID(),
+		WorkspaceID:      parseUUID(workspaceID),
+		CreatorID:        parseUUID(userID),
+		HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get assignee frequency")

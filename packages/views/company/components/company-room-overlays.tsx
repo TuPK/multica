@@ -139,6 +139,7 @@ export function CompanyRoomOverlays({
                 type="button"
                 aria-label={t(($) => $.company.decision_badge, { count: pending })}
                 onClick={onOpenDecisions}
+                // eslint-disable-next-line no-restricted-syntax -- count badge
                 className="pointer-events-auto absolute -right-2 -top-2 flex min-w-5 cursor-pointer items-center justify-center rounded-full bg-[#1d5fd6] px-1.5 py-0.5 text-micro font-semibold text-white shadow hover:bg-[#174db0]"
               >
                 {pending}

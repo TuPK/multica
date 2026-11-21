@@ -3,7 +3,28 @@ SELECT * FROM project
 WHERE workspace_id = $1
   AND (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
   AND (sqlc.narg('priority')::text IS NULL OR priority = sqlc.narg('priority'))
+  AND (sqlc.arg('include_archived')::boolean OR archived_at IS NULL)
 ORDER BY created_at DESC;
+
+-- name: ArchiveProject :one
+-- Guarded on archived_at IS NULL so a repeated archive keeps the first
+-- actor and time; no row means it was already archived (or is gone).
+UPDATE project SET
+    archived_at = now(),
+    archived_by_type = sqlc.narg('archived_by_type'),
+    archived_by_id = sqlc.narg('archived_by_id'),
+    updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL
+RETURNING *;
+
+-- name: RestoreProject :one
+UPDATE project SET
+    archived_at = NULL,
+    archived_by_type = NULL,
+    archived_by_id = NULL,
+    updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND archived_at IS NOT NULL
+RETURNING *;
 
 -- name: GetProjectInWorkspace :one
 SELECT * FROM project
@@ -54,18 +75,14 @@ DELETE FROM project WHERE id = $1 AND workspace_id = $2;
 -- name: CountIssuesByProject :one
 SELECT count(*) FROM issue
 WHERE issue.project_id = sqlc.arg('project_id')
--- projectaccess:scope
-AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')));
+-- MUL-8472: private projects the caller cannot see.
+AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(issue.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])));
 
 -- name: GetProjectIssueStats :many
 SELECT project_id,
        count(*)::bigint AS total_count,
-       count(*) FILTER (WHERE status = ANY(sqlc.arg('terminal_status_keys')::text[]))::bigint AS done_count
+       count(*) FILTER (WHERE status = ANY(sqlc.arg('terminal_status_keys')::text[]))::bigint AS done_count,
+       max(GREATEST(updated_at, last_activity_at))::timestamptz AS last_issue_activity_at
 FROM issue
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND project_id = ANY(sqlc.arg('project_ids')::uuid[])
@@ -100,24 +117,16 @@ LIMIT 1;
 UPDATE project SET squad_ids = array_remove(squad_ids, sqlc.arg('squad_id')::uuid), updated_at = now()
 WHERE project.workspace_id = sqlc.arg('workspace_id')
   AND sqlc.arg('squad_id')::uuid = ANY(project.squad_ids) AND project.id <> sqlc.arg('id')
--- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-      OR (sqlc.arg(scope_mode)::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
+-- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 RETURNING *;
 
 -- name: ClearSquadProjects :many
 -- Removes the squad from every project it is assigned to that the viewer sees.
 UPDATE project SET squad_ids = array_remove(squad_ids, sqlc.arg('squad_id')::uuid), updated_at = now()
 WHERE project.workspace_id = sqlc.arg('workspace_id') AND sqlc.arg('squad_id')::uuid = ANY(project.squad_ids)
--- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-      OR (sqlc.arg(scope_mode)::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
+-- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 RETURNING *;
 
 -- name: ListProjectsForSquad :many
@@ -126,11 +135,6 @@ RETURNING *;
 SELECT * FROM project
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND sqlc.arg('squad_id')::uuid = ANY(squad_ids)
--- projectaccess:scope
-AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (project.id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
+-- MUL-8472: private projects the caller cannot see.
+AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 ORDER BY created_at, id;

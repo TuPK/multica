@@ -79,7 +79,7 @@ func (h *Handler) handoffRuleResponse(r *http.Request, ws pgtype.UUID, squad pgt
 }
 
 // handoffResponse omits target_issue_id when the target request sits in a project the viewer cannot see.
-func (h *Handler) handoffResponse(r *http.Request, ws pgtype.UUID, row *db.SquadHandoff, scope projectaccess.Scope) *HandoffResponse {
+func (h *Handler) handoffResponse(r *http.Request, ws pgtype.UUID, row *db.SquadHandoff, scope projectaccess.Hidden) *HandoffResponse {
 	if row == nil {
 		return nil
 	}
@@ -93,7 +93,7 @@ func (h *Handler) handoffResponse(r *http.Request, ws pgtype.UUID, row *db.Squad
 	}
 	if row.TargetIssueID.Valid {
 		target, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: row.TargetIssueID, WorkspaceID: ws})
-		if err == nil && scope.Allows(target.ProjectID) {
+		if err == nil && scope.CanSeeProject(target.ProjectID) {
 			id := uuidToString(row.TargetIssueID)
 			out.TargetIssueID = &id
 		}
@@ -200,7 +200,7 @@ func (h *Handler) GetIssueHandoff(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(issue.WorkspaceID))
 	if !ok {
 		return
 	}
@@ -317,7 +317,7 @@ func (h *Handler) writeHandoffResult(w http.ResponseWriter, r *http.Request, iss
 		writeError(w, http.StatusInternalServerError, "failed to hand the request off")
 		return
 	}
-	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(issue.WorkspaceID))
 	if !ok {
 		return
 	}

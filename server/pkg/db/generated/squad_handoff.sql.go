@@ -133,7 +133,7 @@ func (q *Queries) GetSquadHandoffRule(ctx context.Context, arg GetSquadHandoffRu
 }
 
 const getSquadOpenProject = `-- name: GetSquadOpenProject :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE workspace_id = $1 AND $2::uuid = ANY(squad_ids)
   AND status NOT IN ('completed', 'cancelled')
 ORDER BY created_at DESC
@@ -167,6 +167,11 @@ func (q *Queries) GetSquadOpenProject(ctx context.Context, arg GetSquadOpenProje
 		&i.WorkflowID,
 		&i.CreatorType,
 		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
 		&i.SquadIds,
 	)
 	return i, err

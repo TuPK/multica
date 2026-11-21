@@ -12,7 +12,7 @@ import (
 // system rule and people's sub-issue conditions) right after a write. The
 // write recorded its sub-issue changes in its own transaction; a failure here
 // is retried by the scheduler sweep.
-func (h *Handler) processChildEvents(ctx context.Context, scope projectaccess.Scope, parentIDs ...pgtype.UUID) {
+func (h *Handler) processChildEvents(ctx context.Context, scope projectaccess.Hidden, parentIDs ...pgtype.UUID) {
 	_ = (&service.IssueWakeupService{Tasks: h.TaskService}).ProcessChildEvents(ctx, parentIDs...)
 	// A request the flow runner moves advances here; the rule above skips such a parent.
 	h.advanceFlowRequests(ctx, scope, parentIDs...)

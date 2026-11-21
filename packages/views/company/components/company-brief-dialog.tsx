@@ -100,7 +100,7 @@ export function CompanyBriefDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="flex max-h-[min(88dvh,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="flex max-h-[min(88%,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 pr-12">
           <DialogTitle className="text-heading">{t(($) => $.company.brief_open)}</DialogTitle>
           <Button

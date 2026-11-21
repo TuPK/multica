@@ -80,6 +80,7 @@ const WORKSPACE_SECTIONS = new Set([
   "billing",
   "chat",
   "company",
+  "docs",
   "inbox",
   "issues",
   "members",

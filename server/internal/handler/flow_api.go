@@ -46,7 +46,7 @@ func (h *Handler) flowRequestFor(w http.ResponseWriter, r *http.Request, allowTa
 			return db.Issue{}, "", false
 		}
 		// The task may sit outside the project of its request.
-		if _, ok := h.issueInViewerScope(w, r, parent); !ok {
+		if !h.requireProjectVisible(w, r, uuidToString(parent.WorkspaceID), parent.ProjectID, http.StatusNotFound, "issue not found") {
 			return db.Issue{}, "", false
 		}
 		return parent, issueworkflow.RoleTask, true
@@ -197,7 +197,7 @@ func (h *Handler) AdvanceIssueFlow(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(resp.Actions) == 1 && resp.Actions[0].Kind == "noop" {
 		// The engine waits for tasks. A task whose runs all ended would be waited for for ever.
-		scope, ok := h.viewerScope(w, r, request.WorkspaceID)
+		scope, ok := h.requestHiddenProjects(w, r, uuidToString(request.WorkspaceID))
 		if !ok {
 			return
 		}

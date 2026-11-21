@@ -239,8 +239,8 @@ func (rd *initiativeReads) stagesOf(ctx context.Context, ini db.Initiative) ([]s
 
 // initiativeVisible reports whether the viewer sees the initiative's backing
 // issue. A hidden initiative is missing for the viewer (spec 7.1 rule 5).
-func (h *Handler) initiativeVisible(ctx context.Context, scope projectaccess.Scope, ini db.Initiative) (bool, error) {
-	if scope.Mode() == projectaccess.ModeAll {
+func (h *Handler) initiativeVisible(ctx context.Context, scope projectaccess.Hidden, ini db.Initiative) (bool, error) {
+	if scope.Empty() {
 		return true, nil
 	}
 	issue, err := h.Queries.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: ini.IssueID, WorkspaceID: ini.WorkspaceID})
@@ -250,13 +250,13 @@ func (h *Handler) initiativeVisible(ctx context.Context, scope projectaccess.Sco
 		}
 		return false, err
 	}
-	return scope.Allows(issue.ProjectID), nil
+	return scope.CanSeeProject(issue.ProjectID), nil
 }
 
 // view builds the response for one initiative as the scope's viewer sees it:
 // the build project is null and hidden gates are left out when the project
 // holding them is hidden.
-func (rd *initiativeReads) view(ctx context.Context, ini db.Initiative, now time.Time, scope projectaccess.Scope) (InitiativeResponse, error) {
+func (rd *initiativeReads) view(ctx context.Context, ini db.Initiative, now time.Time, scope projectaccess.Hidden) (InitiativeResponse, error) {
 	stages, err := rd.stagesOf(ctx, ini)
 	if err != nil {
 		return InitiativeResponse{}, err
@@ -284,7 +284,7 @@ func (rd *initiativeReads) view(ctx context.Context, ini db.Initiative, now time
 		ClosedReason:   ini.ClosedReason,
 		CreatedAt:      timestampToString(ini.CreatedAt),
 	}
-	if ini.BuildProjectID.Valid && scope.Allows(ini.BuildProjectID) {
+	if ini.BuildProjectID.Valid && scope.CanSeeProject(ini.BuildProjectID) {
 		resp.BuildProjectID = uuidToPtr(ini.BuildProjectID)
 	}
 	for _, st := range stages {
@@ -302,7 +302,7 @@ func (rd *initiativeReads) view(ctx context.Context, ini db.Initiative, now time
 	}
 	gates, err := rd.h.Queries.ListGateProposalsForInitiative(ctx, db.ListGateProposalsForInitiativeParams{
 		WorkspaceID: ini.WorkspaceID, InitiativeID: uuidToString(ini.ID),
-		ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+		HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		return InitiativeResponse{}, err
@@ -354,7 +354,7 @@ func (h *Handler) ListInitiatives(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list initiatives")
 		return
 	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
@@ -400,7 +400,7 @@ func (h *Handler) GetInitiative(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "initiative not found")
 		return
 	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
@@ -422,7 +422,7 @@ func (h *Handler) GetInitiative(w http.ResponseWriter, r *http.Request) {
 }
 
 // initiativeDetail builds the detail response for an initiative.
-func (h *Handler) initiativeDetail(ctx context.Context, ini db.Initiative, scope projectaccess.Scope) (InitiativeDetailResponse, int, string) {
+func (h *Handler) initiativeDetail(ctx context.Context, ini db.Initiative, scope projectaccess.Hidden) (InitiativeDetailResponse, int, string) {
 	rd := h.newInitiativeReads(ctx, ini.WorkspaceID)
 	view, err := rd.view(ctx, ini, time.Now(), scope)
 	if err != nil {
@@ -438,7 +438,7 @@ func (h *Handler) initiativeDetail(ctx context.Context, ini db.Initiative, scope
 	}
 	gates, err := h.Queries.ListGateProposalsForInitiative(ctx, db.ListGateProposalsForInitiativeParams{
 		WorkspaceID: ini.WorkspaceID, InitiativeID: uuidToString(ini.ID),
-		ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+		HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		return InitiativeDetailResponse{}, http.StatusInternalServerError, "failed to read gates"
@@ -859,11 +859,11 @@ func (h *Handler) viewerSeesInitiative(w http.ResponseWriter, r *http.Request, w
 		writeError(w, http.StatusInternalServerError, "failed to load initiative")
 		return false, false
 	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return false, false
 	}
-	return scope.Allows(issue.ProjectID), true
+	return scope.CanSeeProject(issue.ProjectID), true
 }
 
 // decodeInitiativeBody reads a JSON body. An empty body is an empty request.
@@ -895,7 +895,7 @@ func cleanInitiativeText(s string) string {
 
 // finishInitiativeWrite publishes the change and writes the initiative back.
 func (h *Handler) finishInitiativeWrite(w http.ResponseWriter, r *http.Request, wsUUID pgtype.UUID, c initiativeCaller, ini db.Initiative, status int) {
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
@@ -917,7 +917,7 @@ func (h *Handler) respondInitiative(w http.ResponseWriter, r *http.Request, wsUU
 		writeError(w, http.StatusInternalServerError, "failed to read initiative")
 		return
 	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}

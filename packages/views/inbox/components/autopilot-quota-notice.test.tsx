@@ -54,7 +54,7 @@ describe("AutopilotQuotaNotice", () => {
     );
 
     expect(screen.getByText(/limit of 100 autopilot runs/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "View upgrade options" }));
+    fireEvent.click(screen.getByRole("button", { name: "View options" }));
     expect(onOpenRecovery).toHaveBeenCalledOnce();
   });
 
@@ -74,6 +74,6 @@ describe("AutopilotQuotaNotice", () => {
 
     expect(screen.queryByText(/Daily triage/)).not.toBeInTheDocument();
     expect(screen.getByText(/limit of 100 autopilot runs/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "View upgrade options" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View options" })).toBeInTheDocument();
   });
 });

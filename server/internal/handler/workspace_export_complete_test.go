@@ -33,7 +33,7 @@ func TestWorkspaceExportIsOwnerOnlyAndComplete(t *testing.T) {
 	}
 
 	wsID := exportWorkspace(t, "owner")
-	restricted := dbfx.Project(t, "EXPORT-PROJECT-"+marker, testutil.Cols{"workspace_id": wsID, "access": "restricted"})
+	restricted := dbfx.Project(t, "EXPORT-PROJECT-"+marker, testutil.Cols{"workspace_id": wsID, "visibility": "private"})
 	issueID := dbfx.Issue(t, "EXPORT-ISSUE-"+marker, testutil.Cols{"workspace_id": wsID, "project_id": restricted})
 	dbfx.Comment(t, issueID, "EXPORT-COMMENT-"+marker, testutil.Cols{"workspace_id": wsID})
 

@@ -311,6 +311,10 @@ func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []str
 				writeError(w, http.StatusNotFound, "workspace not found")
 				return
 			}
+			if member.Role == "guest" && !GuestMayRequest(r) {
+				RefuseGuest(w, r)
+				return
+			}
 
 			// A guest reaches only the allow-list (spec 7.1 rule 9). This runs
 			// before the role check so every other route reports guest_forbidden.

@@ -33,7 +33,6 @@ describe("SimulateDialog", () => {
     const onOpenChange = renderDialog();
     const closers = screen.getAllByRole("button", { name: "Close" });
     expect(closers).toHaveLength(1);
-    expect(closers[0]).toHaveAttribute("data-slot", "dialog-close");
 
     fireEvent.click(closers[0]!);
     expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());

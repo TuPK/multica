@@ -15,7 +15,8 @@ import (
 // left out (spec 7.1 rule 5). The owner's push still names it.
 func TestBriefPushVisibility_HiddenDecisionIsNotNamed(t *testing.T) {
 	f := newBriefPushFixture(t)
-	hiddenProj := f.fx.Project(t, "Hidden brief project", testutil.Cols{"access": "restricted"})
+	hiddenProj := f.fx.Project(t, "Hidden brief project", testutil.Cols{"visibility": "private"})
+	f.fx.Exec(t, `INSERT INTO project_member (project_id, workspace_id, user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, hiddenProj, f.fx.WorkspaceID, f.owner)
 
 	proposalIn := func(title, project string) string {
 		cols := testutil.Cols{}

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/pkg/agent"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -20,10 +21,10 @@ import (
 
 // Custom Runtime Profiles (MUL-3284)
 //
-// A runtime_profile is a workspace-level, team-shared definition of a custom
-// runtime — e.g. an in-house Codex wrapper. Daemons pull the enabled profiles
-// for their workspace, resolve command_name on PATH, and register an
-// agent_runtime instance carrying the profile_id. The profile only changes how
+// A runtime_profile defines a custom runtime on one machine in a workspace.
+// Its daemon pulls the enabled profiles bound to that machine, resolves
+// command_name on PATH, and registers an agent_runtime instance carrying the
+// profile_id. The profile only changes how
 // a runtime is launched/displayed. runtime_type selects a supported compatibility
 // target, and its descriptor determines the underlying protocol_family.
 //
@@ -34,6 +35,7 @@ import (
 type RuntimeProfileResponse struct {
 	ID             string   `json:"id"`
 	WorkspaceID    string   `json:"workspace_id"`
+	DaemonID       *string  `json:"daemon_id"`
 	DisplayName    string   `json:"display_name"`
 	ProtocolFamily string   `json:"protocol_family"`
 	RuntimeType    string   `json:"runtime_type"`
@@ -58,6 +60,7 @@ func runtimeProfileToResponse(p db.RuntimeProfile) RuntimeProfileResponse {
 	return RuntimeProfileResponse{
 		ID:             uuidToString(p.ID),
 		WorkspaceID:    uuidToString(p.WorkspaceID),
+		DaemonID:       textToPtr(p.DaemonID),
 		DisplayName:    p.DisplayName,
 		ProtocolFamily: p.ProtocolFamily,
 		RuntimeType:    agent.ProfileRuntimeType(p.RuntimeType, p.ProtocolFamily),
@@ -117,6 +120,7 @@ func validateRuntimeProfileCommandName(commandName string) error {
 }
 
 type createRuntimeProfileRequest struct {
+	DaemonID       string   `json:"daemon_id"`
 	DisplayName    string   `json:"display_name"`
 	ProtocolFamily string   `json:"protocol_family"`
 	RuntimeType    string   `json:"runtime_type"`
@@ -126,7 +130,7 @@ type createRuntimeProfileRequest struct {
 	Enabled        *bool    `json:"enabled"`
 }
 
-// CreateRuntimeProfile creates a workspace runtime profile. Admin-gated by the
+// CreateRuntimeProfile creates a machine-bound runtime profile. Admin-gated by the
 // router. protocol_family is validated against the agent backend whitelist.
 func (h *Handler) CreateRuntimeProfile(w http.ResponseWriter, r *http.Request) {
 	wsID := strings.TrimSpace(chi.URLParam(r, "id"))
@@ -154,6 +158,14 @@ func (h *Handler) CreateRuntimeProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.RuntimeType = agent.ProfileRuntimeType(strings.TrimSpace(req.RuntimeType), req.ProtocolFamily)
+	// museapp is a builtin HTTP backend, not a CLI that can be wrapped
+	// in a custom profile. Reject it here with 400 instead of letting
+	// it hit the DB CHECK constraint (which doesn't list museapp) and
+	// return a confusing 500.
+	if req.RuntimeType == "museapp" {
+		writeError(w, http.StatusBadRequest, "runtime_type 'museapp' is a builtin backend and cannot be used for custom profiles; create a builtin museapp agent instead")
+		return
+	}
 	family, supported := agent.RuntimeProtocolFamily(req.RuntimeType)
 	if !supported {
 		writeError(w, http.StatusBadRequest, "unsupported runtime_type: "+req.RuntimeType)
@@ -182,11 +194,38 @@ func (h *Handler) CreateRuntimeProfile(w http.ResponseWriter, r *http.Request) {
 		enabled = *req.Enabled
 	}
 
+	// Older clients omit the machine. Prefer the caller's sole local machine;
+	// never guess between multiple machines owned by that caller.
+	req.DaemonID = strings.TrimSpace(req.DaemonID)
+	machineParams := db.ListRuntimeProfileMachinesParams{WorkspaceID: wsUUID}
+	if req.DaemonID != "" {
+		machineParams.DaemonID = strToText(req.DaemonID)
+	} else {
+		machineParams.OwnerID = member.UserID
+	}
+	machines, err := h.Queries.ListRuntimeProfileMachines(r.Context(), machineParams)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to resolve runtime profile machine")
+		return
+	}
+	if req.DaemonID == "" && len(machines) == 0 {
+		machines, err = h.Queries.ListRuntimeProfileMachines(r.Context(), db.ListRuntimeProfileMachinesParams{WorkspaceID: wsUUID})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to resolve runtime profile machine")
+			return
+		}
+	}
+	if len(machines) != 1 {
+		writeError(w, http.StatusBadRequest, "daemon_id must select a registered local machine; upgrade your client or pass daemon_id explicitly")
+		return
+	}
+
 	var profile db.RuntimeProfile
 	err = h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
 		var err error
 		profile, err = qtx.CreateRuntimeProfile(r.Context(), db.CreateRuntimeProfileParams{
 			WorkspaceID:    wsUUID,
+			DaemonID:       machines[0],
 			DisplayName:    req.DisplayName,
 			ProtocolFamily: req.ProtocolFamily,
 			RuntimeType:    req.RuntimeType,
@@ -274,6 +313,7 @@ func (h *Handler) GetRuntimeProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateRuntimeProfileRequest struct {
+	DaemonID       *string   `json:"daemon_id"`
 	RuntimeType    *string   `json:"runtime_type"`
 	ProtocolFamily *string   `json:"protocol_family"`
 	DisplayName    *string   `json:"display_name"`
@@ -361,16 +401,47 @@ func (h *Handler) UpdateRuntimeProfile(w http.ResponseWriter, r *http.Request) {
 	if params.Enabled.Valid {
 		changed = append(changed, "enabled")
 	}
+	if req.DaemonID != nil {
+		changed = append(changed, "daemon_id")
+	}
 	var profile db.RuntimeProfile
-	err := h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
-		var err error
-		profile, err = qtx.UpdateRuntimeProfile(r.Context(), params)
-		if err != nil {
-			return audit.Entry{}, err
+	var err error
+	var binding profileMachineBindingResult
+	if req.DaemonID != nil {
+		machine := strings.TrimSpace(*req.DaemonID)
+		if machine == "" {
+			writeError(w, http.StatusBadRequest, "daemon_id cannot be empty")
+			return
 		}
-		return runtimeProfileEntry(audit.ActionRuntimeProfileUpdated, wsID, profile, map[string]any{"fields": changed}), nil
-	})
+		params.DaemonID = strToText(machine)
+		// The machine binding commits in its own transaction, so its audit row
+		// is written after the commit.
+		binding, err = h.bindRuntimeProfileMachine(r.Context(), params)
+		profile = binding.profile
+		if err == nil {
+			if auditErr := h.recordAuditWith(r, h.Queries, runtimeProfileEntry(audit.ActionRuntimeProfileUpdated, wsID, profile, map[string]any{"fields": changed})); auditErr != nil {
+				slog.Warn("runtime profile update: audit entry not written", "error", auditErr, "profile_id", uuidToString(profile.ID))
+			}
+		}
+	} else {
+		err = h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+			var err error
+			profile, err = qtx.UpdateRuntimeProfile(r.Context(), params)
+			if err != nil {
+				return audit.Entry{}, err
+			}
+			return runtimeProfileEntry(audit.ActionRuntimeProfileUpdated, wsID, profile, map[string]any{"fields": changed}), nil
+		})
+	}
 	if err != nil {
+		if errors.Is(err, errProfileMachineUnavailable) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, errProfileMachineImmutable) || errors.Is(err, errProfileMachineInUse) {
+			writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "runtime_profile_machine_conflict"})
+			return
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "runtime profile not found")
 			return
@@ -385,6 +456,12 @@ func (h *Handler) UpdateRuntimeProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	profileID := uuidToString(profile.ID)
+	for _, runtime := range binding.removed {
+		h.NotifyRuntimeGone(uuidToString(runtime.ID))
+	}
+	for _, teardown := range binding.teardowns {
+		h.publishRuntimeTeardown(r.Context(), teardown, wsID, uuidToString(member.UserID))
+	}
 	h.requestDaemonRuntimeProfileRefresh(wsID, profileID)
 	h.publish(protocol.EventDaemonRegister, wsID, "member", uuidToString(member.UserID), map[string]any{
 		"runtime_profile_id": profileID,
@@ -696,7 +773,42 @@ func (h *Handler) DaemonListRuntimeProfiles(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	profiles, err := h.Queries.ListEnabledRuntimeProfilesForWorkspace(r.Context(), wsUUID)
+	daemonID := strings.TrimSpace(r.URL.Query().Get("daemon_id"))
+	if tokenDaemonID := middleware.DaemonIDFromContext(r.Context()); tokenDaemonID != "" {
+		if daemonID != "" && daemonID != tokenDaemonID {
+			writeError(w, http.StatusForbidden, "daemon identity mismatch")
+			return
+		}
+		daemonID = tokenDaemonID
+	}
+
+	if daemonID != "" {
+		owners, err := h.Queries.ListRuntimeOwnersByDaemon(r.Context(), db.ListRuntimeOwnersByDaemonParams{
+			WorkspaceID: wsUUID,
+			DaemonID:    strToText(daemonID),
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to resolve runtime profile machine")
+			return
+		}
+		for _, owner := range owners {
+			if !daemonRuntimeBindingAllowed(r, strToText(daemonID), owner.OwnerID) {
+				writeError(w, http.StatusNotFound, "machine not found")
+				return
+			}
+		}
+	}
+	var profiles []db.RuntimeProfile
+	var err error
+	if daemonID == "" && requestUserID(r) != "" {
+		userID, ok := parseUUIDOrBadRequest(w, requestUserID(r), "user id")
+		if !ok {
+			return
+		}
+		profiles, err = h.Queries.ListEnabledRuntimeProfilesForOwner(r.Context(), db.ListEnabledRuntimeProfilesForOwnerParams{WorkspaceID: wsUUID, OwnerID: userID})
+	} else {
+		profiles, err = h.Queries.ListEnabledRuntimeProfilesForDaemon(r.Context(), db.ListEnabledRuntimeProfilesForDaemonParams{WorkspaceID: wsUUID, DaemonID: strToText(daemonID)})
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list runtime profiles")
 		return

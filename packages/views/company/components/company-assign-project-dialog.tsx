@@ -52,7 +52,7 @@ export function CompanyAssignProjectDialog({
 }) {
   return (
     <Dialog open={squad !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex max-h-[min(88dvh,36rem)] flex-col gap-0 p-0 sm:max-w-md">
+      <DialogContent className="flex max-h-[min(88%,36rem)] flex-col gap-0 p-0 sm:max-w-md">
         {squad ? (
           <AssignBody key={squad.id} squad={squad} onAssigned={onAssigned} onOpenSquad={onOpenSquad} onClose={onClose} />
         ) : null}

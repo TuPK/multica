@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"github.com/multica-ai/multica/server/pkg/protocol"
 	"net/http"
 	"strings"
 	"testing"
@@ -133,12 +134,12 @@ func TestDisabledRuntimeRefusedOnWSHeartbeat(t *testing.T) {
 	}
 
 	disableRuntimeForTest(t, runtimeID)
-	if ack, err := testHandler.HandleDaemonWSHeartbeat(ctx, identity, runtimeID, false); err == nil || ack != nil {
+	if ack, err := testHandler.HandleDaemonWSHeartbeat(ctx, identity, runtimeID, protocol.DaemonHeartbeatRequestPayload{SupportsBatchImport: false}); err == nil || ack != nil {
 		t.Fatalf("disabled heartbeat: ack=%v err=%v, want no ack and an error", ack, err)
 	}
 
 	enableRuntimeForTest(t, runtimeID)
-	if ack, err := testHandler.HandleDaemonWSHeartbeat(ctx, identity, runtimeID, false); err != nil || ack == nil {
+	if ack, err := testHandler.HandleDaemonWSHeartbeat(ctx, identity, runtimeID, protocol.DaemonHeartbeatRequestPayload{SupportsBatchImport: false}); err != nil || ack == nil {
 		t.Fatalf("enabled heartbeat: ack=%v err=%v, want an ack", ack, err)
 	}
 }

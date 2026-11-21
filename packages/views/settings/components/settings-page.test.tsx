@@ -9,6 +9,7 @@ import {
   PLUGINS_V1_FLAG,
 } from "@multica/core/feature-flags";
 import { renderWithI18n } from "../../test/i18n";
+import { ScrollRestorationProvider } from "../../platform";
 
 // This file tests the settings SHELL — the chrome around the tabs — so every
 // tab panel is stubbed out. Their contents have their own test files. Profile
@@ -74,6 +75,7 @@ vi.mock("./connected-apps-tab", () => ({
 
 vi.mock("@multica/core/paths", () => ({
   useCurrentWorkspace: () => ({ id: "ws-1", name: "Acme" }),
+  useWorkspacePaths: () => ({ autopilots: () => "/acme/autopilots" }),
 }));
 vi.mock("@multica/core/workspace/avatar-url", () => ({
   resolvePublicFileUrl: (url: string | null | undefined) => url ?? null,
@@ -235,6 +237,36 @@ describe("SettingsPage header", () => {
   });
 });
 
+describe("SettingsPage scroll restoration", () => {
+  // Every settings page shares the route, so one page's offset must not land
+  // on another when the content remounts.
+  it("gives each page its own saved offset", () => {
+    const get = vi.fn((key: string) =>
+      key === "settings:members:" ? { top: 360, height: 1400 } : undefined,
+    );
+    navigationState.search = "tab=members";
+    const { rerender } = renderWithI18n(
+      <ScrollRestorationProvider adapter={{ get }}>
+        <SettingsPage />
+      </ScrollRestorationProvider>,
+    );
+
+    const members = screen.getByText("MembersTab").closest<HTMLElement>("[data-tab-scroll-root]")!;
+    expect(members.getAttribute("data-tab-scroll-root")).toBe("settings:members:");
+    expect(members.scrollTop).toBe(360);
+
+    navigationState.search = "tab=labels";
+    rerender(
+      <ScrollRestorationProvider adapter={{ get }}>
+        <SettingsPage />
+      </ScrollRestorationProvider>,
+    );
+    const labels = screen.getByText("LabelsTab").closest<HTMLElement>("[data-tab-scroll-root]")!;
+    expect(labels.getAttribute("data-tab-scroll-root")).toBe("settings:labels:");
+    expect(labels.scrollTop).toBe(0);
+  });
+});
+
 describe("SettingsPage Plugin feature flag", () => {
   it("hides Plugins and falls back from a direct tab URL when disabled", () => {
     navigationState.search = "tab=plugins";
@@ -256,6 +288,16 @@ describe("SettingsPage Plugin feature flag", () => {
 
     expect(screen.getByRole("link", { name: "Plugins" })).toBeInTheDocument();
     expect(screen.getByText("PluginsTab")).toBeInTheDocument();
+  });
+});
+
+describe("SettingsPage moved links", () => {
+  it("sends old wakeup default links to the issue wakeups list", () => {
+    navigationState.search = "tab=wakeups";
+
+    renderWithI18n(<SettingsPage />);
+
+    expect(replace).toHaveBeenCalledWith("/acme/autopilots?tab=wakeups");
   });
 });
 
@@ -313,7 +355,7 @@ describe("SettingsPage information architecture", () => {
     renderWithI18n(<SettingsPage />);
     expect(
       within(nav()).queryByRole("link", {
-        name: /^(Issue|Chat|GitHub|Labs|Integrations|Repositories)$/,
+        name: /^(Issue|Chat|GitHub|Labs|Integrations|Repositories|Wakeups)$/,
       }),
     ).not.toBeInTheDocument();
   });
@@ -338,7 +380,7 @@ describe("SettingsPage information architecture", () => {
     );
   });
 
-  it("lists Connected apps with the personal pages only when Composio is available", () => {
+  it("lists Connected apps with the workspace connections only when Composio is available", () => {
     const first = renderWithI18n(<SettingsPage />);
     expect(screen.queryByRole("link", { name: "Connected apps" })).toBeNull();
     first.unmount();
@@ -347,8 +389,9 @@ describe("SettingsPage information architecture", () => {
     navigationState.search = "tab=integrations&connected=notion";
     renderWithI18n(<SettingsPage />);
     const personal = within(nav()).getByRole("region", { name: /Personal/ });
+    expect(within(personal).queryByRole("link", { name: "Connected apps" })).toBeNull();
     expect(
-      within(personal).getByRole("link", { name: "Connected apps" }),
+      within(nav()).getByRole("link", { name: "Connected apps" }),
     ).toHaveAttribute("aria-current", "page");
     expect(screen.getByText("ConnectedAppsTab")).toBeInTheDocument();
   });

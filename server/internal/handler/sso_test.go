@@ -191,7 +191,7 @@ func (e *ssoEnv) refused(rec *httptest.ResponseRecorder, wantErr, email string) 
 	}
 }
 
-func memberRole(t *testing.T, ws, email string) string {
+func ssoMemberRole(t *testing.T, ws, email string) string {
 	t.Helper()
 	var role string
 	err := testPool.QueryRow(context.Background(),
@@ -269,7 +269,7 @@ func TestSSOLoginAddsTheMemberWithTheDefaultRole(t *testing.T) {
 		t.Fatalf("set the role: %d %s", rec.Code, rec.Body.String())
 	}
 	env.login()
-	if got := memberRole(t, env.ws, env.idp.Email); got != "admin" {
+	if got := ssoMemberRole(t, env.ws, env.idp.Email); got != "admin" {
 		t.Fatalf("role = %q, want admin", got)
 	}
 
@@ -285,7 +285,7 @@ func TestSSOLoginKeepsTheRoleOfAnExistingMember(t *testing.T) {
 	uid := dbfx.User(t, "Owner by SSO", env.idp.Email)
 	dbfx.Member(t, env.ws, uid, "owner")
 	env.login()
-	if got := memberRole(t, env.ws, env.idp.Email); got != "owner" {
+	if got := ssoMemberRole(t, env.ws, env.idp.Email); got != "owner" {
 		t.Fatalf("role = %q, want owner kept", got)
 	}
 }
@@ -298,7 +298,7 @@ func TestSSOLoginRefusesTheJoinWhenNoSeatIsLeft(t *testing.T) {
 	useSeatCapacity(t, &shareJoinCapacityStub{claimDecision: &seatcapacity.Decision{Managed: true, Allowed: false}})
 	rec := env.login()
 	env.refused(rec, "seat_capacity_full", "")
-	if got := memberRole(t, env.ws, env.idp.Email); got != "" {
+	if got := ssoMemberRole(t, env.ws, env.idp.Email); got != "" {
 		t.Fatalf("the user became a %s member with no seat", got)
 	}
 }

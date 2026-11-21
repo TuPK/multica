@@ -28,7 +28,7 @@ export function CompanyProjectBacklogDialog({
 }) {
   return (
     <Dialog open={squad !== null && project !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex max-h-[min(88dvh,36rem)] flex-col gap-0 p-0 sm:max-w-md">
+      <DialogContent className="flex max-h-[min(88%,36rem)] flex-col gap-0 p-0 sm:max-w-md">
         {squad && project ? (
           <BacklogBody key={`${squad.id}:${project.id}`} squad={squad} project={project} onClose={onClose} />
         ) : null}

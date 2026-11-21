@@ -30,13 +30,7 @@
     "success": "已歸檔小隊"
   },
   "name_editor": {
-    "title": "重新命名小隊",
-    "placeholder": "小隊名稱",
-    "required": "名稱不能為空",
-    "cancel": "取消",
-    "save": "儲存",
-    "saved": "已儲存",
-    "save_failed": "儲存失敗"
+    "placeholder": "小隊名稱"
   },
   "add_member_dialog": {
     "title": "新增成員",
@@ -55,13 +49,6 @@
   "role_editor": {
     "empty": "新增角色…",
     "placeholder": "角色（例如：審查者）"
-  },
-  "description_dialog": {
-    "title": "編輯描述",
-    "placeholder_empty": "新增描述",
-    "cancel": "取消",
-    "responsibility_placeholder": "這個小隊負責什麼？",
-    "save": "儲存"
   },
   "members_tab": {
     "section_title": "成員",
@@ -148,7 +135,8 @@
     "squad_runtime_failed": "更改執行環境失敗",
     "squad_runtime_skipped": "已移動 {{updated}} 個 Agent，略過 {{skipped}} 個：{{reason}}",
     "bulk_applied": "已為 {{count}} 個 Agent 套用{{field}}",
-    "bulk_partial": "{{total}} 個 Agent 中有 {{failed}} 個無法更新"
+    "bulk_partial": "{{total}} 個 Agent 中有 {{failed}} 個無法更新",
+    "update_failed": "儲存失敗"
   },
   "profile_card": {
     "unavailable": "小隊不可用",
@@ -805,5 +793,9 @@
     },
     "open_squad": "開啟小隊",
     "done": "完成"
+  },
+  "description_editor": {
+    "empty": "新增描述",
+    "placeholder": "這個小隊負責什麼？"
   }
 }

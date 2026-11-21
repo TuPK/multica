@@ -105,7 +105,7 @@ func TestRealtimeMemberRevocation(t *testing.T) {
 				hub := realtime.NewHub()
 				go hub.Run()
 				bus := events.New()
-				registerListeners(bus, hub, queryAudiences{q: db.New(testPool)})
+				registerListeners(bus, hub, newPrivateProjectAudience(db.New(testPool)))
 				router, h := NewRouterWithOptions(testPool, hub, bus, analytics.NoopClient{}, nil, RouterOptions{})
 				server := httptest.NewServer(router)
 				t.Cleanup(server.Close)

@@ -93,8 +93,7 @@ func TestApprovalPolicyVisibility_HistoryAndDigestFYI(t *testing.T) {
 func TestApprovalPolicyVisibility_WeeklyReviewEvent(t *testing.T) {
 	f := newPolicyVisibilityFixture(t)
 	hiddenID, _ := f.autoApproved(t, "HIDDEN-REVERSED-TITLE", f.hiddenProj, true)
-	// The review has no viewer, so it uses the zero scope: only issues without a
-	// project remain. An issue of a workspace-access project is left out too.
+	// The review has no viewer, so every private project is left out.
 	openID, _ := f.autoApproved(t, "OPEN-REVERSED-TITLE", "", true)
 	f.autoApproved(t, "OPEN-PROJECT-REVERSED-TITLE", f.openProj, true)
 
@@ -103,8 +102,8 @@ func TestApprovalPolicyVisibility_WeeklyReviewEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordWeeklyPolicyReview: %v", err)
 	}
-	if n != 1 {
-		t.Errorf("review lists %d reversals, want 1 (the hidden one is left out)", n)
+	if n != 2 {
+		t.Errorf("review lists %d reversals, want 2 (the private project one is left out)", n)
 	}
 	var summary, details string
 	dbfx.QueryRow(t, `SELECT summary, details::text FROM governance_event

@@ -352,10 +352,3 @@ func (h *Handler) cancelIssueAsSecretary(r *http.Request, workspaceID pgtype.UUI
 	ws := util.UUIDToString(workspaceID)
 	h.callAsSecretary(r, h.UpdateIssue, ws, http.MethodPut, "/api/issues/"+issueID, map[string]any{"status": "cancelled"}, map[string]string{"id": issueID})
 }
-
-func truncateRunes(s string, n int) string {
-	if utf8.RuneCountInString(s) <= n {
-		return s
-	}
-	return string([]rune(s)[:n])
-}

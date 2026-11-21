@@ -293,14 +293,11 @@ func extractIssueFields(v any) (handler.IssueResponse, bool) {
 // @all carries no UUID, and parseUUID panics on it, which would abort the
 // remaining mentions in the same event.
 func addSubscriber(bus *events.Bus, queries *db.Queries, workspaceID, issueID, userType, userID, reason string) {
-	if userType != "member" && userType != "agent" {
+	// Filter before UUID parsing: @all uses the non-UUID sentinel "all".
+	if !isAssignmentRecipientType(userType) {
 		return
 	}
-	// A member who cannot see the issue is not subscribed to it (spec 7.1 rule 4).
-	// An agent sees through the person who started its run (rule 12).
-	if userType == "member" && !newIssueAudience(context.Background(), queries, workspaceID, issueID).sees(userID) {
-		return
-	}
+
 	affected, err := queries.AddIssueSubscriber(context.Background(), db.AddIssueSubscriberParams{
 		IssueID:  parseUUID(issueID),
 		UserType: userType,

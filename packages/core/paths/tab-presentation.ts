@@ -46,6 +46,8 @@ export type TabLabelKey =
   | "agent"
   | "member"
   | "squad"
+  | "doc"
+  | "docFolder"
   | "skill"
   | "machine"
   | "runtime"
@@ -90,6 +92,8 @@ export interface TabEntityData {
   workflow?: { name: string };
   /** A Hub item's name; the pending title is the Hub page name. */
   hubItem?: { name: string };
+  doc?: {title: string};
+  docFolder?: {title: string};
   machine?: { name: string };
   runtime?: { name: string };
   /** Resolved chat session title (already includes the "New chat" fallback). */
@@ -192,6 +196,10 @@ export function resolveTabPresentation(
         visual: { kind: "actor", actorType: subject.actorType, id: subject.id },
         title: textOr(data.actorName, ACTOR_LABEL[subject.actorType]),
       };
+    case "doc":
+      return { visual: { kind: "icon", icon: "FileText" }, title: textOr(data.doc?.title, "doc") };
+    case "docFolder":
+      return { visual: { kind: "icon", icon: "FolderKanban" }, title: textOr(data.docFolder?.title, "docFolder") };
     case "skill":
       return {
         visual: { kind: "icon", icon: "BookOpenText" },

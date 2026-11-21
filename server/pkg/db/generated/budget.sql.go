@@ -686,7 +686,7 @@ func (q *Queries) ListBudgetTaskCostsSince(ctx context.Context, arg ListBudgetTa
 }
 
 const listQuietDeferredAutopilotRuns = `-- name: ListQuietDeferredAutopilotRuns :many
-SELECT id, autopilot_id, trigger_id, source, status, issue_id, task_id, triggered_at, completed_at, failure_reason, trigger_payload, result, created_at, squad_id, planned_at, webhook_delivery_id, quota_reservation_id, reason_code FROM autopilot_run
+SELECT id, autopilot_id, trigger_id, source, status, issue_id, task_id, triggered_at, completed_at, failure_reason, trigger_payload, result, created_at, squad_id, planned_at, webhook_delivery_id, quota_reservation_id, reason_code, idempotency_key FROM autopilot_run
 WHERE status = 'deferred' AND reason_code = 'quiet_hours'
 ORDER BY created_at, id
 LIMIT $1::integer
@@ -722,6 +722,7 @@ func (q *Queries) ListQuietDeferredAutopilotRuns(ctx context.Context, rowLimit i
 			&i.WebhookDeliveryID,
 			&i.QuotaReservationID,
 			&i.ReasonCode,
+			&i.IdempotencyKey,
 		); err != nil {
 			return nil, err
 		}

@@ -59,6 +59,18 @@ SELECT * FROM agent_runtime
 WHERE id = $1
 FOR UPDATE;
 
+-- name: LockAgentRuntimeForClaimDelivery :one
+-- The claim delivery gate's lock on the runtime it re-reads owner_id and
+-- visibility from. FOR NO KEY UPDATE still blocks every UPDATE and DELETE of
+-- the row, so a re-registration or visibility flip waits for the gate to
+-- commit. Unlike FOR UPDATE it does not block FOR KEY SHARE, which every task
+-- insert takes on its runtime (lock_task_owner_rows and the foreign key) while
+-- already holding the agent row. The gate takes the agent row after this one,
+-- so FOR UPDATE here deadlocked a chat send racing a delivery (MUL-9501).
+SELECT * FROM agent_runtime
+WHERE id = $1
+FOR NO KEY UPDATE;
+
 -- name: GetAgentRuntimeForWorkspace :one
 SELECT * FROM agent_runtime
 WHERE id = $1 AND workspace_id = $2;
@@ -505,8 +517,12 @@ RETURNING *;
 -- name: DeleteAgentRuntime :exec
 -- platform_runtime has no foreign key to agent_runtime, so its row is removed in
 -- this same statement, inside the caller's transaction (spec R6 section 3b.5, D98).
+-- runtime_rate_limit has no FK either; its row goes with the runtime.
 WITH removed_platform_runtime AS (
   DELETE FROM platform_runtime WHERE runtime_id = $1
+),
+deleted_rate_limit AS (
+    DELETE FROM runtime_rate_limit WHERE runtime_id = $1
 )
 DELETE FROM agent_runtime WHERE id = $1;
 
@@ -633,6 +649,12 @@ SELECT id FROM agent_runtime
 WHERE status = 'offline'
   AND last_seen_at < now() - make_interval(secs => @stale_seconds::double precision)
   AND NOT EXISTS (
+    SELECT 1 FROM runtime_profile p
+    WHERE p.id = agent_runtime.profile_id AND p.workspace_id = agent_runtime.workspace_id
+      AND p.daemon_id IS NULL
+      AND p.created_by = agent_runtime.owner_id
+  )
+  AND NOT EXISTS (
     SELECT 1
     FROM agent
     WHERE agent.runtime_id = agent_runtime.id
@@ -658,6 +680,12 @@ SELECT EXISTS (
   WHERE agent_runtime.id = @id
     AND status = 'offline'
     AND last_seen_at < now() - make_interval(secs => @stale_seconds::double precision)
+    AND NOT EXISTS (
+      SELECT 1 FROM runtime_profile p
+      WHERE p.id = agent_runtime.profile_id AND p.workspace_id = agent_runtime.workspace_id
+        AND p.daemon_id IS NULL
+        AND p.created_by = agent_runtime.owner_id
+    )
     AND NOT EXISTS (
       SELECT 1
       FROM agent

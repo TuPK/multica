@@ -238,7 +238,8 @@
         "missing_skill_md": "Aucun SKILL.md trouvé au premier niveau.",
         "empty": "Aucun fichier à importer.",
         "too_large": "Cette archive est trop volumineuse.",
-        "too_many_files": "Cet import contient trop de fichiers."
+        "too_many_files": "Cet import contient trop de fichiers.",
+        "unreadable": "This archive couldn't be read."
       }
     },
     "blank": {

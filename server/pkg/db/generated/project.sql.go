@@ -11,35 +11,84 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const archiveProject = `-- name: ArchiveProject :one
+UPDATE project SET
+    archived_at = now(),
+    archived_by_type = $3,
+    archived_by_id = $4,
+    updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+`
+
+type ArchiveProjectParams struct {
+	ID             pgtype.UUID `json:"id"`
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+	ArchivedByType pgtype.Text `json:"archived_by_type"`
+	ArchivedByID   pgtype.UUID `json:"archived_by_id"`
+}
+
+// Guarded on archived_at IS NULL so a repeated archive keeps the first
+// actor and time; no row means it was already archived (or is gone).
+func (q *Queries) ArchiveProject(ctx context.Context, arg ArchiveProjectParams) (Project, error) {
+	row := q.db.QueryRow(ctx, archiveProject,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.ArchivedByType,
+		arg.ArchivedByID,
+	)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Title,
+		&i.Description,
+		&i.Icon,
+		&i.Status,
+		&i.LeadType,
+		&i.LeadID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Priority,
+		&i.Access,
+		&i.StartDate,
+		&i.DueDate,
+		&i.WorkflowID,
+		&i.CreatorType,
+		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
+		&i.SquadIds,
+	)
+	return i, err
+}
+
 const clearSquadFromOtherProjects = `-- name: ClearSquadFromOtherProjects :many
 UPDATE project SET squad_ids = array_remove(squad_ids, $1::uuid), updated_at = now()
 WHERE project.workspace_id = $2
   AND $1::uuid = ANY(project.squad_ids) AND project.id <> $3
-  AND ($4::text = 'all'
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $5::uuid)
-      OR ($4::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+  AND ($4::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($4::uuid[])))
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type ClearSquadFromOtherProjectsParams struct {
-	SquadID     pgtype.UUID `json:"squad_id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	ID          pgtype.UUID `json:"id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	SquadID          pgtype.UUID   `json:"squad_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	ID               pgtype.UUID   `json:"id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 // Removes the squad from its other projects that the viewer sees. Only finished ones can remain once GetOpenSquadProject is clear.
-// projectaccess:scope
+// MUL-8472: private projects the caller cannot see.
 func (q *Queries) ClearSquadFromOtherProjects(ctx context.Context, arg ClearSquadFromOtherProjectsParams) ([]Project, error) {
 	rows, err := q.db.Query(ctx, clearSquadFromOtherProjects,
 		arg.SquadID,
 		arg.WorkspaceID,
 		arg.ID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -66,6 +115,11 @@ func (q *Queries) ClearSquadFromOtherProjects(ctx context.Context, arg ClearSqua
 			&i.WorkflowID,
 			&i.CreatorType,
 			&i.CreatorID,
+			&i.Visibility,
+			&i.ArchivedAt,
+			&i.ArchivedByType,
+			&i.ArchivedByID,
+			&i.FolderID,
 			&i.SquadIds,
 		); err != nil {
 			return nil, err
@@ -81,30 +135,20 @@ func (q *Queries) ClearSquadFromOtherProjects(ctx context.Context, arg ClearSqua
 const clearSquadProjects = `-- name: ClearSquadProjects :many
 UPDATE project SET squad_ids = array_remove(squad_ids, $1::uuid), updated_at = now()
 WHERE project.workspace_id = $2 AND $1::uuid = ANY(project.squad_ids)
-  AND ($3::text = 'all'
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $4::uuid)
-      OR ($3::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+  AND ($3::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type ClearSquadProjectsParams struct {
-	SquadID     pgtype.UUID `json:"squad_id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	SquadID          pgtype.UUID   `json:"squad_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 // Removes the squad from every project it is assigned to that the viewer sees.
-// projectaccess:scope
+// MUL-8472: private projects the caller cannot see.
 func (q *Queries) ClearSquadProjects(ctx context.Context, arg ClearSquadProjectsParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, clearSquadProjects,
-		arg.SquadID,
-		arg.WorkspaceID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, clearSquadProjects, arg.SquadID, arg.WorkspaceID, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +174,11 @@ func (q *Queries) ClearSquadProjects(ctx context.Context, arg ClearSquadProjects
 			&i.WorkflowID,
 			&i.CreatorType,
 			&i.CreatorID,
+			&i.Visibility,
+			&i.ArchivedAt,
+			&i.ArchivedByType,
+			&i.ArchivedByID,
+			&i.FolderID,
 			&i.SquadIds,
 		); err != nil {
 			return nil, err
@@ -145,23 +194,17 @@ func (q *Queries) ClearSquadProjects(ctx context.Context, arg ClearSquadProjects
 const countIssuesByProject = `-- name: CountIssuesByProject :one
 SELECT count(*) FROM issue
 WHERE issue.project_id = $1
-AND ($2::text = 'all'
-    OR (issue.project_id IS NULL AND $2::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $3::uuid)
-    OR ($2::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+AND ($2::uuid[] IS NULL OR NOT (COALESCE(issue.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($2::uuid[])))
 `
 
 type CountIssuesByProjectParams struct {
-	ProjectID   pgtype.UUID `json:"project_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	ProjectID        pgtype.UUID   `json:"project_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
-// projectaccess:scope
+// MUL-8472: private projects the caller cannot see.
 func (q *Queries) CountIssuesByProject(ctx context.Context, arg CountIssuesByProjectParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countIssuesByProject, arg.ProjectID, arg.ScopeMode, arg.ScopeUserID)
+	row := q.db.QueryRow(ctx, countIssuesByProject, arg.ProjectID, arg.HiddenProjectIds)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -174,7 +217,7 @@ INSERT INTO project (
     creator_type, creator_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
-) RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+) RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type CreateProjectParams struct {
@@ -228,6 +271,11 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.WorkflowID,
 		&i.CreatorType,
 		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
 		&i.SquadIds,
 	)
 	return i, err
@@ -249,7 +297,7 @@ func (q *Queries) DeleteProject(ctx context.Context, arg DeleteProjectParams) er
 }
 
 const getOpenSquadProject = `-- name: GetOpenSquadProject :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE workspace_id = $1
   AND $2::uuid = ANY(squad_ids) AND id <> $3
   AND status NOT IN ('completed', 'cancelled')
@@ -284,13 +332,18 @@ func (q *Queries) GetOpenSquadProject(ctx context.Context, arg GetOpenSquadProje
 		&i.WorkflowID,
 		&i.CreatorType,
 		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
 		&i.SquadIds,
 	)
 	return i, err
 }
 
 const getProjectInWorkspace = `-- name: GetProjectInWorkspace :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -320,6 +373,11 @@ func (q *Queries) GetProjectInWorkspace(ctx context.Context, arg GetProjectInWor
 		&i.WorkflowID,
 		&i.CreatorType,
 		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
 		&i.SquadIds,
 	)
 	return i, err
@@ -328,7 +386,8 @@ func (q *Queries) GetProjectInWorkspace(ctx context.Context, arg GetProjectInWor
 const getProjectIssueStats = `-- name: GetProjectIssueStats :many
 SELECT project_id,
        count(*)::bigint AS total_count,
-       count(*) FILTER (WHERE status = ANY($1::text[]))::bigint AS done_count
+       count(*) FILTER (WHERE status = ANY($1::text[]))::bigint AS done_count,
+       max(GREATEST(updated_at, last_activity_at))::timestamptz AS last_issue_activity_at
 FROM issue
 WHERE workspace_id = $2::uuid
   AND project_id = ANY($3::uuid[])
@@ -342,9 +401,10 @@ type GetProjectIssueStatsParams struct {
 }
 
 type GetProjectIssueStatsRow struct {
-	ProjectID  pgtype.UUID `json:"project_id"`
-	TotalCount int64       `json:"total_count"`
-	DoneCount  int64       `json:"done_count"`
+	ProjectID           pgtype.UUID        `json:"project_id"`
+	TotalCount          int64              `json:"total_count"`
+	DoneCount           int64              `json:"done_count"`
+	LastIssueActivityAt pgtype.Timestamptz `json:"last_issue_activity_at"`
 }
 
 func (q *Queries) GetProjectIssueStats(ctx context.Context, arg GetProjectIssueStatsParams) ([]GetProjectIssueStatsRow, error) {
@@ -356,7 +416,12 @@ func (q *Queries) GetProjectIssueStats(ctx context.Context, arg GetProjectIssueS
 	items := []GetProjectIssueStatsRow{}
 	for rows.Next() {
 		var i GetProjectIssueStatsRow
-		if err := rows.Scan(&i.ProjectID, &i.TotalCount, &i.DoneCount); err != nil {
+		if err := rows.Scan(
+			&i.ProjectID,
+			&i.TotalCount,
+			&i.DoneCount,
+			&i.LastIssueActivityAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -391,87 +456,27 @@ func (q *Queries) GetSquadWorkProjectID(ctx context.Context, arg GetSquadWorkPro
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE workspace_id = $1
   AND ($2::text IS NULL OR status = $2)
   AND ($3::text IS NULL OR priority = $3)
+  AND ($4::boolean OR archived_at IS NULL)
 ORDER BY created_at DESC
 `
 
 type ListProjectsParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	Status      pgtype.Text `json:"status"`
-	Priority    pgtype.Text `json:"priority"`
+	WorkspaceID     pgtype.UUID `json:"workspace_id"`
+	Status          pgtype.Text `json:"status"`
+	Priority        pgtype.Text `json:"priority"`
+	IncludeArchived bool        `json:"include_archived"`
 }
 
 func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjects, arg.WorkspaceID, arg.Status, arg.Priority)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Project{}
-	for rows.Next() {
-		var i Project
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.Title,
-			&i.Description,
-			&i.Icon,
-			&i.Status,
-			&i.LeadType,
-			&i.LeadID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Priority,
-			&i.Access,
-			&i.StartDate,
-			&i.DueDate,
-			&i.WorkflowID,
-			&i.CreatorType,
-			&i.CreatorID,
-			&i.SquadIds,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listProjectsForSquad = `-- name: ListProjectsForSquad :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
-WHERE workspace_id = $1::uuid
-  AND $2::uuid = ANY(squad_ids)
-AND ($3::text = 'all'
-    OR (project.id IS NULL AND $3::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $4::uuid)
-    OR ($3::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
-ORDER BY created_at, id
-`
-
-type ListProjectsForSquadParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	SquadID     pgtype.UUID `json:"squad_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
-}
-
-// The projects a squad is assigned to. A squad's active workflow changes what
-// its room shows for each of them, so their pages are announced.
-// projectaccess:scope
-func (q *Queries) ListProjectsForSquad(ctx context.Context, arg ListProjectsForSquadParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjectsForSquad,
+	rows, err := q.db.Query(ctx, listProjects,
 		arg.WorkspaceID,
-		arg.SquadID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.Status,
+		arg.Priority,
+		arg.IncludeArchived,
 	)
 	if err != nil {
 		return nil, err
@@ -498,6 +503,72 @@ func (q *Queries) ListProjectsForSquad(ctx context.Context, arg ListProjectsForS
 			&i.WorkflowID,
 			&i.CreatorType,
 			&i.CreatorID,
+			&i.Visibility,
+			&i.ArchivedAt,
+			&i.ArchivedByType,
+			&i.ArchivedByID,
+			&i.FolderID,
+			&i.SquadIds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectsForSquad = `-- name: ListProjectsForSquad :many
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
+WHERE workspace_id = $1::uuid
+  AND $2::uuid = ANY(squad_ids)
+AND ($3::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
+ORDER BY created_at, id
+`
+
+type ListProjectsForSquadParams struct {
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	SquadID          pgtype.UUID   `json:"squad_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
+}
+
+// The projects a squad is assigned to. A squad's active workflow changes what
+// its room shows for each of them, so their pages are announced.
+// MUL-8472: private projects the caller cannot see.
+func (q *Queries) ListProjectsForSquad(ctx context.Context, arg ListProjectsForSquadParams) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listProjectsForSquad, arg.WorkspaceID, arg.SquadID, arg.HiddenProjectIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Project{}
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Title,
+			&i.Description,
+			&i.Icon,
+			&i.Status,
+			&i.LeadType,
+			&i.LeadID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Priority,
+			&i.Access,
+			&i.StartDate,
+			&i.DueDate,
+			&i.WorkflowID,
+			&i.CreatorType,
+			&i.CreatorID,
+			&i.Visibility,
+			&i.ArchivedAt,
+			&i.ArchivedByType,
+			&i.ArchivedByID,
+			&i.FolderID,
 			&i.SquadIds,
 		); err != nil {
 			return nil, err
@@ -550,10 +621,56 @@ func (q *Queries) LockProjectForDelete(ctx context.Context, arg LockProjectForDe
 	return id, err
 }
 
+const restoreProject = `-- name: RestoreProject :one
+UPDATE project SET
+    archived_at = NULL,
+    archived_by_type = NULL,
+    archived_by_id = NULL,
+    updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND archived_at IS NOT NULL
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+`
+
+type RestoreProjectParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) RestoreProject(ctx context.Context, arg RestoreProjectParams) (Project, error) {
+	row := q.db.QueryRow(ctx, restoreProject, arg.ID, arg.WorkspaceID)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Title,
+		&i.Description,
+		&i.Icon,
+		&i.Status,
+		&i.LeadType,
+		&i.LeadID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Priority,
+		&i.Access,
+		&i.StartDate,
+		&i.DueDate,
+		&i.WorkflowID,
+		&i.CreatorType,
+		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
+		&i.SquadIds,
+	)
+	return i, err
+}
+
 const setProjectSquadIDs = `-- name: SetProjectSquadIDs :one
 UPDATE project SET squad_ids = $1::uuid[], updated_at = now()
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type SetProjectSquadIDsParams struct {
@@ -584,6 +701,11 @@ func (q *Queries) SetProjectSquadIDs(ctx context.Context, arg SetProjectSquadIDs
 		&i.WorkflowID,
 		&i.CreatorType,
 		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
 		&i.SquadIds,
 	)
 	return i, err
@@ -602,7 +724,7 @@ UPDATE project SET
     due_date = CASE WHEN $15::boolean THEN $16 ELSE due_date END,
     updated_at = now()
 WHERE id = $1
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type UpdateProjectParams struct {
@@ -662,6 +784,11 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.WorkflowID,
 		&i.CreatorType,
 		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
 		&i.SquadIds,
 	)
 	return i, err

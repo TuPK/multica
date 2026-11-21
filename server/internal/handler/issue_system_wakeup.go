@@ -60,7 +60,7 @@ type systemWakeupResponse struct {
 // childDoneSystemWakeup describes what the parent is waiting for. It returns
 // nil when there is nothing left to wait for: no sub-issues, every sub-issue
 // closed, or the parent itself closed.
-func (h *Handler) childDoneSystemWakeup(r *http.Request, parent db.Issue, scope projectaccess.Scope) (*systemWakeupResponse, error) {
+func (h *Handler) childDoneSystemWakeup(r *http.Request, parent db.Issue, scope projectaccess.Hidden) (*systemWakeupResponse, error) {
 	ctx := r.Context()
 	categories := map[string]string{}
 	closed := func(status string) (bool, error) {
@@ -84,7 +84,7 @@ func (h *Handler) childDoneSystemWakeup(r *http.Request, parent db.Issue, scope 
 	// Sub-issues the viewer cannot see are neither counted nor named.
 	children := make([]db.Issue, 0, len(allChildren))
 	for _, c := range allChildren {
-		if scope.Allows(c.ProjectID) {
+		if scope.CanSeeProject(c.ProjectID) {
 			children = append(children, c)
 		}
 	}
@@ -173,7 +173,7 @@ func (h *Handler) childDoneSystemWakeup(r *http.Request, parent db.Issue, scope 
 	return out, nil
 }
 
-func (h *Handler) listSystemWakeups(r *http.Request, issue db.Issue, scope projectaccess.Scope) ([]systemWakeupResponse, error) {
+func (h *Handler) listSystemWakeups(r *http.Request, issue db.Issue, scope projectaccess.Hidden) ([]systemWakeupResponse, error) {
 	rules := []systemWakeupResponse{}
 	childDone, err := h.childDoneSystemWakeup(r, issue, scope)
 	if err != nil {
@@ -190,7 +190,7 @@ func (h *Handler) ListIssueSystemWakeups(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(issue.WorkspaceID))
 	if !ok {
 		return
 	}
@@ -252,7 +252,7 @@ func (h *Handler) UpdateIssueSystemWakeup(w http.ResponseWriter, r *http.Request
 		writeError(w, 500, "could not save system wakeup")
 		return
 	}
-	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(issue.WorkspaceID))
 	if !ok {
 		return
 	}
@@ -275,14 +275,14 @@ type workspaceSystemWakeupResponse struct {
 	Customized int64 `json:"customized"`
 }
 
-func (h *Handler) workspaceSystemWakeups(r *http.Request, workspaceID pgtype.UUID, scope projectaccess.Scope) ([]workspaceSystemWakeupResponse, error) {
+func (h *Handler) workspaceSystemWakeups(r *http.Request, workspaceID pgtype.UUID, scope projectaccess.Hidden) ([]workspaceSystemWakeupResponse, error) {
 	ws, err := h.Queries.GetWorkspace(r.Context(), workspaceID)
 	if err != nil {
 		return nil, err
 	}
 	customized, err := h.Queries.CountCustomizedSystemWakeups(r.Context(), db.CountCustomizedSystemWakeupsParams{
 		WorkspaceID: workspaceID, SystemRule: pgtype.Text{String: service.SystemRuleChildDone, Valid: true},
-		ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+		HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		return nil, err
@@ -300,7 +300,7 @@ func (h *Handler) ListWorkspaceSystemWakeups(w http.ResponseWriter, r *http.Requ
 	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, parseUUID(workspaceID))
+	scope, ok := h.requestHiddenProjects(w, r, workspaceID)
 	if !ok {
 		return
 	}
@@ -344,7 +344,7 @@ func (h *Handler) UpdateWorkspaceSystemWakeup(w http.ResponseWriter, r *http.Req
 		writeError(w, 500, "could not save system wakeup")
 		return
 	}
-	scope, ok := h.viewerScope(w, r, parseUUID(workspaceID))
+	scope, ok := h.requestHiddenProjects(w, r, workspaceID)
 	if !ok {
 		return
 	}

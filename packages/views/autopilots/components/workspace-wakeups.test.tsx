@@ -12,6 +12,10 @@ import type {
 import { renderWithI18n } from "../../test/i18n";
 import { WorkspaceWakeupCreate, WorkspaceWakeups } from "./workspace-wakeups";
 
+vi.mock("../../billing/storage-limit-notice", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../billing/storage-limit-notice")>()),
+  useStorageLimitToast: () => vi.fn(),
+}));
 vi.mock("../../issues/components/wakeup-condition-names", () => ({
   useConditionNames: () => ({ status: (key: string) => key, label: () => undefined, property: () => undefined, actor: (_type: string, id: string) => id }),
 }));
@@ -55,6 +59,11 @@ vi.mock("../../navigation", () => ({
     onAuxClick: () => {},
     onMouseEnter: () => {},
   }),
+}));
+vi.mock("./system-wakeup-defaults", () => ({
+  SystemWakeupDefaults: ({ onShowCustomized }: { onShowCustomized: () => void }) => (
+    <button onClick={onShowCustomized}>Issues with their own setting</button>
+  ),
 }));
 vi.mock("../../common/actor-avatar", () => ({ ActorAvatar: () => null }));
 vi.mock("../../common/task-transcript", () => ({
@@ -330,6 +339,15 @@ it("filters by source from the header's filter menu and resets it", async () => 
   await user.click(screen.getByRole("button", { name: "Reset" }));
   await waitFor(() => expect(queries.at(-1)).toMatchObject({ source: "", scope: "active" }));
   expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
+});
+
+it("shows every system rule, turned-off ones included, from the default's customized count", async () => {
+  mount();
+  await screen.findByRole("row", { name: /Issue a/ });
+  fireEvent.click(screen.getByRole("button", { name: "Issues with their own setting" }));
+  await waitFor(() =>
+    expect(queries.at(-1)).toMatchObject({ scope: "all", kind: "all", source: "system", agent_id: "", offset: 0 }),
+  );
 });
 
 it("starts a new wakeup from the header", async () => {

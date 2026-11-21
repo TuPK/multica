@@ -19,7 +19,7 @@ func TestRescueSkipsTaskInProjectTheViewerCannotSee(t *testing.T) {
 	dbfx.Exec(t, `UPDATE issue SET project_id = $2 WHERE id = $1`, docs, hidden.restrictedProjectID)
 
 	ctx := context.Background()
-	scope, err := projectaccess.ForViewer(ctx, testHandler.Queries, parseUUID(testWorkspaceID), parseUUID(hidden.outsiderID))
+	scope, err := projectaccess.ForPrincipals(ctx, testHandler.Queries, parseUUID(testWorkspaceID), parseUUID(hidden.outsiderID))
 	if err != nil {
 		t.Fatalf("scope: %v", err)
 	}

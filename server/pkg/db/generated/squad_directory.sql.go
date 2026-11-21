@@ -26,22 +26,16 @@ WHERE r.workspace_id = $1::uuid
   AND r.assignee_type = 'squad'
   AND r.status NOT IN ('done', 'cancelled')
   AND r.created_at + make_interval(hours => COALESCE(c.response_hours, 48)) < $2::timestamptz
-  -- projectaccess:scope
-  AND ($3::text = 'all'
-      OR (r.project_id IS NULL AND $3::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = r.project_id AND scope_pm.user_id = $4::uuid)
-      OR ($3::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = r.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($3::uuid[] IS NULL OR NOT (COALESCE(r.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 ORDER BY r.created_at ASC, r.id ASC
 LIMIT 50
 `
 
 type ListOverdueSquadRequestsParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Now         pgtype.Timestamptz `json:"now"`
-	ScopeMode   string             `json:"scope_mode"`
-	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Now              pgtype.Timestamptz `json:"now"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type ListOverdueSquadRequestsRow struct {
@@ -56,12 +50,7 @@ type ListOverdueSquadRequestsRow struct {
 // Open squad requests whose age has passed the receiving squad's response_hours.
 // The digest reads them for the boss's brief.
 func (q *Queries) ListOverdueSquadRequests(ctx context.Context, arg ListOverdueSquadRequestsParams) ([]ListOverdueSquadRequestsRow, error) {
-	rows, err := q.db.Query(ctx, listOverdueSquadRequests,
-		arg.WorkspaceID,
-		arg.Now,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, listOverdueSquadRequests, arg.WorkspaceID, arg.Now, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}
@@ -104,25 +93,19 @@ SELECT
           AND r.assignee_type = 'squad'
           AND r.assignee_id = s.id
           AND r.status NOT IN ('done', 'cancelled')
-          -- projectaccess:scope
-          AND ($1::text = 'all'
-              OR (r.project_id IS NULL AND $1::text <> 'guest')
-              OR EXISTS (SELECT 1 FROM project_member scope_pm
-                         WHERE scope_pm.project_id = r.project_id AND scope_pm.user_id = $2::uuid)
-              OR ($1::text = 'member'
-                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = r.project_id AND scope_p.access = 'workspace')))
+          -- MUL-8472: private projects the caller cannot see.
+          AND ($1::uuid[] IS NULL OR NOT (COALESCE(r.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($1::uuid[])))
     )::bigint AS open_requests
 FROM squad s
 LEFT JOIN squad_charter c ON c.squad_id = s.id AND c.workspace_id = s.workspace_id
 LEFT JOIN company_floor f ON f.id = s.floor_id AND f.workspace_id = s.workspace_id
-WHERE s.workspace_id = $3::uuid AND s.archived_at IS NULL
+WHERE s.workspace_id = $2::uuid AND s.archived_at IS NULL
 ORDER BY s.created_at ASC, s.id ASC
 `
 
 type ListSquadDirectoryParams struct {
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
 }
 
 type ListSquadDirectoryRow struct {
@@ -141,7 +124,7 @@ type ListSquadDirectoryRow struct {
 // Live squads with their charter, floor name and open squad requests. A squad
 // without a charter reads the charter defaults.
 func (q *Queries) ListSquadDirectory(ctx context.Context, arg ListSquadDirectoryParams) ([]ListSquadDirectoryRow, error) {
-	rows, err := q.db.Query(ctx, listSquadDirectory, arg.ScopeMode, arg.ScopeUserID, arg.WorkspaceID)
+	rows, err := q.db.Query(ctx, listSquadDirectory, arg.HiddenProjectIds, arg.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

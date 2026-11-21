@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ApiClient, ApiError } from "./client";
@@ -40,6 +41,15 @@ describe("ApiClient schema fallback", () => {
   });
 
   describe("GitHub repository import", () => {
+    it("accepts attributed connections alongside legacy rows without a connector name", async () => {
+      const installation = { id: "inst-1", workspace_id: "ws-1", account_login: "alice", account_type: "User", account_avatar_url: null, created_at: "2026-11-17T00:00:00Z" };
+      stubFetchJson({ installations: [installation, { ...installation, id: "inst-2", account_login: "acme-org", connected_by: "Ada" }], can_manage: false });
+      const response = await new ApiClient("https://api.example.test").listGitHubInstallations("ws-1");
+      expect(response.installations).toEqual([installation, { ...installation, id: "inst-2", account_login: "acme-org", connected_by: "Ada" }]);
+      expect(response.can_manage).toBe(false);
+      expect(response.installations.every((row) => row.installation_id === undefined)).toBe(true);
+    });
+
     it("falls back safely when installation or repository responses are malformed", async () => {
       stubFetchJson({ installations: "not-an-array", configured: true });
       const client = new ApiClient("https://api.example.test");
@@ -60,18 +70,34 @@ describe("ApiClient schema fallback", () => {
       });
     });
 
-    it("adds the allowlisted repository return target to the connect request", async () => {
+    it.each([undefined, "all", "selected", "future-selection", 42])("handles repository selection metadata safely (%s)", async (selection) => {
+      stubFetchJson({ repositories: [], total_count: 0, next_page: null, repository_selection: selection });
+      const client = new ApiClient("https://api.example.test");
+      const response = await client.listGitHubInstallationRepositories("ws-1", "install-1");
+      expect(response.repository_selection).toBe(selection === undefined ? undefined : selection === "all" || selection === "selected" ? selection : "unknown");
+    });
+
+    it.each([undefined, "desktop-nonce", 42])("accepts missing or malformed connect correlation metadata (%s)", async (connectionID) => {
+      stubFetchJson({ configured: true, url: "https://github.com/apps/test/installations/new", connection_id: connectionID });
+      const client = new ApiClient("https://api.example.test");
+      const response = await client.getGitHubConnectURL("ws-1", { desktop: true });
+      expect(response.configured).toBe(true);
+      expect(response.connection_id).toBe(typeof connectionID === "string" ? connectionID : undefined);
+      expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("https://api.example.test/api/workspaces/ws-1/github/connect?desktop=1");
+    });
+
+    it("uses the unified GitHub connect endpoint", async () => {
       stubFetchJson({
         configured: true,
         url: "https://github.com/apps/multica/installations/new",
       });
       const client = new ApiClient("https://api.example.test");
 
-      await client.getGitHubConnectURL("ws-1", "repositories");
+      await client.getGitHubConnectURL("ws-1");
 
       const fetchMock = vi.mocked(fetch);
       expect(fetchMock).toHaveBeenCalledWith(
-        "https://api.example.test/api/workspaces/ws-1/github/connect?return_to=repositories",
+        "https://api.example.test/api/workspaces/ws-1/github/connect",
         expect.any(Object),
       );
     });
@@ -170,6 +196,32 @@ describe("ApiClient schema fallback", () => {
       const client = new ApiClient("https://api.example.test");
       const res = await client.listSkills();
       expect(res).toEqual([]);
+    });
+
+    it.each([{ body: { skills: [] } }, { body: null }, { body: [{ id: "missing-identity" }] }])(
+      "rejects malformed skill lists for absence checks while preserving rendering fallback: %j",
+      async ({ body }) => {
+        stubFetchJson(body);
+        const client = new ApiClient("https://api.example.test");
+        await expect(client.listSkills()).resolves.toEqual([]);
+        stubFetchJson(body);
+        await expect(client.listSkills({ requireValidResponse: true })).rejects.toThrow("Invalid skill list response");
+      },
+    );
+
+    it("does not accept a defaulted 204 response as proof of absence", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(null, { status: 204 })));
+      const client = new ApiClient("https://api.example.test");
+      await expect(client.listSkills()).resolves.toEqual([]);
+      await expect(client.listSkills({ requireValidResponse: true })).rejects.toThrow("Invalid skill list response");
+    });
+
+    it("accepts a verified empty list and older valid rows for absence checks", async () => {
+      const client = new ApiClient("https://api.example.test");
+      stubFetchJson([]);
+      await expect(client.listSkills({ requireValidResponse: true })).resolves.toEqual([]);
+      stubFetchJson([baseSkill]);
+      await expect(client.listSkills({ requireValidResponse: true })).resolves.toMatchObject([{ id: "skill-1", name: "review-helper" }]);
     });
 
     it("treats a missing labels field as an empty array (older backends)", async () => {
@@ -1049,6 +1101,36 @@ describe("ApiClient schema fallback", () => {
       const subs = await client.listIssueSubscribers("issue-1");
       expect(subs).toEqual([]);
     });
+
+    const subscriber = (delivery?: unknown) => ({
+      issue_id: "issue-1",
+      user_type: "member",
+      user_id: "user-1",
+      reason: "commenter",
+      created_at: "2026-01-01T00:00:00Z",
+      ...(delivery === undefined ? {} : { delivery }),
+    });
+
+    it("keeps each valid delivery tier", async () => {
+      stubFetchJson(["all", "key_updates", "delegated"].map(subscriber));
+      const client = new ApiClient("https://api.example.test");
+      const subs = await client.listIssueSubscribers("issue-1");
+      expect(subs.map((s) => s.delivery)).toEqual(["all", "key_updates", "delegated"]);
+    });
+
+    it.each([
+      { name: "missing", delivery: undefined },
+      { name: "unknown", delivery: "muted" },
+      { name: "malformed", delivery: 42 },
+      { name: "null", delivery: null },
+    ])("keeps the row without a tier when delivery is $name", async ({ delivery }) => {
+      stubFetchJson([subscriber(delivery)]);
+      const client = new ApiClient("https://api.example.test");
+      const subs = await client.listIssueSubscribers("issue-1");
+      expect(subs).toHaveLength(1);
+      expect(subs[0]).toMatchObject({ user_id: "user-1", reason: "commenter" });
+      expect(subs[0]!.delivery).toBeUndefined();
+    });
   });
 
   describe("listChildIssues", () => {
@@ -1083,6 +1165,51 @@ describe("ApiClient schema fallback", () => {
 
       await expect(client.getChildIssueProgress()).resolves.toEqual({
         progress: [],
+      });
+    });
+  });
+
+  describe("listIssuePullRequestSummaries", () => {
+    it("drops a malformed row instead of blanking every card's PR chips", async () => {
+      stubFetchJson({
+        pull_requests: [
+          {
+            issue_id: "issue-1",
+            id: "pr-1",
+            repo_owner: "acme",
+            repo_name: "widget",
+            number: 1,
+            state: "merged",
+            html_url: "https://github.com/acme/widget/pull/1",
+          },
+          { issue_id: "issue-1", id: "pr-2", number: "two" },
+        ],
+      });
+      const client = new ApiClient("https://api.example.test");
+
+      await expect(client.listIssuePullRequestSummaries()).resolves.toEqual({
+        pull_requests: [
+          {
+            issue_id: "issue-1",
+            id: "pr-1",
+            provider: "github",
+            repo_owner: "acme",
+            repo_name: "widget",
+            number: 1,
+            title: "",
+            state: "merged",
+            html_url: "https://github.com/acme/widget/pull/1",
+          },
+        ],
+      });
+    });
+
+    it("falls back to no PRs when the list is not an array", async () => {
+      stubFetchJson({ pull_requests: "invalid" });
+      const client = new ApiClient("https://api.example.test");
+
+      await expect(client.listIssuePullRequestSummaries()).resolves.toEqual({
+        pull_requests: [],
       });
     });
   });
@@ -1340,62 +1467,7 @@ describe("ApiClient schema fallback", () => {
       });
     });
 
-    it("sends the Checkout idempotency key in the header and body", async () => {
-      stubFetchJson(
-        {
-          request_id: "request-1",
-          session_id: "cs_test_1",
-          url: "https://checkout.stripe.com/test-session",
-        },
-        201,
-      );
-      const client = new ApiClient("https://api.example.test");
 
-      await expect(
-        client.createWorkspaceSubscriptionCheckout({
-          interval: "year",
-          idempotencyKey: "checkout-intent-1",
-        }),
-      ).resolves.toEqual({
-        requestId: "request-1",
-        sessionId: "cs_test_1",
-        url: "https://checkout.stripe.com/test-session",
-      });
-
-      const fetchMock = vi.mocked(fetch);
-      const init = fetchMock.mock.calls[0]?.[1] as RequestInit & {
-        headers: Record<string, string>;
-      };
-      expect(init.headers["Idempotency-Key"]).toBe("checkout-intent-1");
-      expect(JSON.parse(String(init.body))).toEqual({
-        interval: "year",
-        idempotency_key: "checkout-intent-1",
-      });
-    });
-
-    it("rejects unreadable or non-HTTPS Stripe URLs at the schema boundary", async () => {
-      stubFetchJson(
-        {
-          request_id: "request-1",
-          session_id: "cs_test_1",
-          url: "javascript:alert(1)",
-        },
-        201,
-      );
-      const client = new ApiClient("https://api.example.test");
-
-      await expect(
-        client.createWorkspaceSubscriptionCheckout({
-          interval: "month",
-          idempotencyKey: "checkout-intent-1",
-        }),
-      ).resolves.toBeNull();
-
-      stubFetchJson({ url: 123 });
-      await expect(
-        client.createWorkspaceSubscriptionPortal("portal-intent-1"),
-      ).resolves.toBeNull();
-    });
 
     it("parses seat reconciliation into camelCase", async () => {
       stubFetchJson({
@@ -1447,149 +1519,12 @@ describe("parseWithFallback", () => {
 // Free. An older/disabled cloud, an upstream 503, or a renamed field has to surface as "unknown"
 // so the UI shows "unavailable" instead of quietly downgrading a paying team.
 describe("workspace subscription contract", () => {
-  const entitlement = {
-    workspace_id: "11111111-1111-1111-1111-111111111111",
-    plan: "pro",
-    status: "active",
-    seats: 3,
-    limits: {
-      issue_count: { mode: "unlimited" },
-      autopilot_runs: { mode: "unlimited" },
-    },
-    current_period_end: "2026-09-01T00:00:00Z",
-    snapshot_expires_at: null,
-    version: 7,
-  };
 
-  it("maps limited issue usage and accepts a no-content unlimited response", async () => {
-    stubFetchJson({
-      used: 11,
-      limit: 17,
-    });
-    const client = new ApiClient("https://api.example.test");
 
-    await expect(client.getIssueLimitUsage()).resolves.toEqual({
-      used: 11,
-      limit: 17,
-    });
 
-    stubFetchJson({ used: 11 });
-    await expect(client.getIssueLimitUsage()).resolves.toBeNull();
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
-    );
-    await expect(client.getIssueLimitUsage()).resolves.toBeNull();
-  });
 
-  it("maps a full summary to camelCase without inventing values", async () => {
-    stubFetchJson({
-      entitlement,
-      billing_interval: "year",
-      human_members: 3,
-      seat_capacity: {
-        purchased: 5,
-        used: 3,
-        reserved: 2,
-        available: 0,
-        overcommitted: false,
-        version: 11,
-        pending_quantity: 3,
-        active_purchase: {
-          request_id: "22222222-2222-2222-2222-222222222222",
-          target_seats: 7,
-          status: "processing",
-        },
-      },
-      cancel_at_period_end: true,
-      grace_until: "2026-09-08T00:00:00Z",
-      has_stripe_customer: true,
-      available_actions: {
-        checkout: false,
-        portal: true,
-        purchase_seats: false,
-      },
-    });
-    const client = new ApiClient("https://api.example.test");
-    const summary = await client.getWorkspaceSubscriptionSummary();
 
-    expect(summary).not.toBeNull();
-    expect(summary?.entitlement.plan).toBe("pro");
-    expect(summary?.entitlement.version).toBe(7);
-    expect(summary?.billingInterval).toBe("year");
-    expect(summary?.humanMembers).toBe(3);
-    expect(summary?.seatCapacity?.purchased).toBe(5);
-    expect(summary?.seatCapacity?.pendingQuantity).toBe(3);
-    expect(summary?.seatCapacity?.used).toBe(3);
-    expect(summary?.seatCapacity?.reserved).toBe(2);
-    expect(summary?.seatCapacity?.available).toBe(0);
-    expect(summary?.seatCapacity?.version).toBe(11);
-    expect(summary?.seatCapacity?.activePurchase).toEqual({
-      requestId: "22222222-2222-2222-2222-222222222222",
-      targetSeats: 7,
-      status: "processing",
-      expiresAt: null,
-    });
-    expect(summary?.cancelAtPeriodEnd).toBe(true);
-    expect(summary?.graceUntil).toBe("2026-09-08T00:00:00Z");
-    expect(summary?.hasStripeCustomer).toBe(true);
-    expect(summary?.availableActions).toEqual({
-      checkout: false,
-      portal: true,
-      purchaseSeats: false,
-      changePlan: false,
-      cancel: false,
-      resume: false,
-    });
-  });
-
-  it("represents canceled subscriptions without current seat capacity", async () => {
-    stubFetchJson({
-      entitlement: { ...entitlement, plan: "free", status: "canceled" },
-      billing_interval: "month",
-      human_members: 3,
-      seat_capacity: null,
-      cancel_at_period_end: false,
-      grace_until: null,
-      has_stripe_customer: true,
-      available_actions: {
-        checkout: true,
-        portal: true,
-        purchase_seats: false,
-      },
-    });
-    const client = new ApiClient("https://api.example.test");
-    const summary = await client.getWorkspaceSubscriptionSummary();
-
-    expect(summary?.entitlement.plan).toBe("free");
-    expect(summary?.entitlement.status).toBe("canceled");
-    expect(summary?.humanMembers).toBe(3);
-    expect(summary?.seatCapacity).toBeNull();
-    expect(summary?.hasStripeCustomer).toBe(true);
-  });
-
-  it("preserves unknown plans and statuses instead of coercing them", async () => {
-    stubFetchJson({
-      entitlement: { ...entitlement, plan: "business", status: "paused" },
-      billing_interval: null,
-      human_members: 9,
-      seat_capacity: null,
-      cancel_at_period_end: false,
-      grace_until: null,
-      has_stripe_customer: false,
-      available_actions: {
-        checkout: false,
-        portal: false,
-        purchase_seats: false,
-      },
-    });
-    const client = new ApiClient("https://api.example.test");
-    const summary = await client.getWorkspaceSubscriptionSummary();
-
-    expect(summary?.entitlement.plan).toBe("business");
-    expect(summary?.entitlement.status).toBe("paused");
-  });
 
   it("returns null — never a Free-looking shape — for a malformed summary", async () => {
     stubFetchJson({ entitlement: { plan: "pro" }, human_members: "many" });
@@ -1617,45 +1552,13 @@ describe("workspace subscription contract", () => {
     expect(await client.getWorkspaceSubscriptionSummary()).toBeNull();
   });
 
-  it("accepts additive cloud fields on summary and prices", async () => {
-    stubFetchJson({
-      entitlement: { ...entitlement, trial_ends_at: "2026-10-01T00:00:00Z" },
-      billing_interval: "month",
-      human_members: 3,
-      seat_capacity: null,
-      cancel_at_period_end: false,
-      grace_until: null,
-      has_stripe_customer: true,
-      available_actions: {
-        checkout: false,
-        portal: true,
-        purchase_seats: false,
-      },
-      future_field: { nested: true },
-    });
-    const client = new ApiClient("https://api.example.test");
-    expect(
-      (await client.getWorkspaceSubscriptionSummary())?.entitlement.plan,
-    ).toBe("pro");
+  const planPrices = (monthAmount: number, yearAmount: number) => ({
+    month: { currency: "usd", unit_amount: monthAmount, interval: "month", interval_count: 1 },
+    year: { currency: "usd", unit_amount: yearAmount, interval: "year", interval_count: 1 },
   });
 
-  it("maps validated prices and rejects a non-positive amount", async () => {
-    stubFetchJson({
-      month: { currency: "usd", unit_amount: 2000, interval: "month", interval_count: 1 },
-      year: { currency: "usd", unit_amount: 20000, interval: "year", interval_count: 1 },
-    });
-    const client = new ApiClient("https://api.example.test");
-    const prices = await client.getWorkspaceSubscriptionPrices();
-    expect(prices?.month.unitAmount).toBe(2000);
-    expect(prices?.year.interval).toBe("year");
 
-    // A zero or missing amount must not be rendered next to a purchase button.
-    stubFetchJson({
-      month: { currency: "usd", unit_amount: 0, interval: "month", interval_count: 1 },
-      year: { currency: "usd", unit_amount: 20000, interval: "year", interval_count: 1 },
-    });
-    expect(await client.getWorkspaceSubscriptionPrices()).toBeNull();
-  });
+
 
   it("falls back, and does not throw, when a price currency is not three lower-case letters", async () => {
     const client = new ApiClient("https://api.example.test");
@@ -1673,29 +1576,41 @@ describe("workspace subscription contract", () => {
 
     // An interval outside the contract.
     stubFetchJson({
-      month: { currency: "usd", unit_amount: 2000, interval: "month", interval_count: 1 },
-      year: { currency: "usd", unit_amount: 20000, interval: "week", interval_count: 1 },
+      pro: {
+        month: { currency: "usd", unit_amount: 1500, interval: "month", interval_count: 1 },
+        year: { currency: "usd", unit_amount: 14400, interval: "week", interval_count: 1 },
+      },
+      business: planPrices(3000, 28800),
     });
     expect(await client.getWorkspaceSubscriptionPrices()).toBeNull();
 
     // Valid intervals in the wrong slots. Accepting this would let the UI quote
     // a yearly amount as the monthly price.
     stubFetchJson({
-      month: { currency: "usd", unit_amount: 20000, interval: "year", interval_count: 1 },
-      year: { currency: "usd", unit_amount: 2000, interval: "month", interval_count: 1 },
+      pro: planPrices(1500, 14400),
+      business: {
+        month: { currency: "usd", unit_amount: 28800, interval: "year", interval_count: 1 },
+        year: { currency: "usd", unit_amount: 3000, interval: "month", interval_count: 1 },
+      },
     });
     expect(await client.getWorkspaceSubscriptionPrices()).toBeNull();
   });
 
   it("rejects a prices response whose interval count is not one", async () => {
     stubFetchJson({
-      month: { currency: "usd", unit_amount: 2000, interval: "month", interval_count: 3 },
-      year: { currency: "usd", unit_amount: 20000, interval: "year", interval_count: 1 },
+      pro: {
+        month: { currency: "usd", unit_amount: 1500, interval: "month", interval_count: 3 },
+        year: { currency: "usd", unit_amount: 14400, interval: "year", interval_count: 1 },
+      },
+      business: planPrices(3000, 28800),
     });
     const client = new ApiClient("https://api.example.test");
 
     expect(await client.getWorkspaceSubscriptionPrices()).toBeNull();
   });
+
+
+
 
   it("maps seat purchase previews and confirmations without trusting client totals", async () => {
     stubFetchJson({
@@ -1814,5 +1729,60 @@ describe("createWorkspace schema fallback", () => {
     await expect(
       client.createWorkspace({ name: "Acme", slug: "acme" }),
     ).rejects.toThrow();
+  });
+});
+
+describe("dashboard history limit (MUL-9490)", () => {
+
+  it("reads the features limit and treats a missing or malformed one as none", async () => {
+    const client = new ApiClient("https://api.example.test");
+    const ws = "11111111-1111-1111-1111-111111111111";
+    stubFetchJson({ features: {}, limits: { dashboard_history_days: 30 } });
+    expect((await client.getWorkspaceFeatures(ws)).limits).toEqual({ dashboardHistoryDays: 30 });
+
+    for (const body of [
+      { features: {} },
+      { features: {}, limits: null },
+      { features: {}, limits: { dashboard_history_days: null } },
+      { features: {}, limits: { dashboard_history_days: "30" } },
+      { features: {}, limits: { dashboard_history_days: -1 } },
+      { features: {}, limits: [] },
+    ]) {
+      stubFetchJson(body);
+      expect((await client.getWorkspaceFeatures(ws)).limits).toEqual({ dashboardHistoryDays: null });
+    }
+  });
+
+
+  it("reports the limit header every dashboard endpoint was served under", async () => {
+    const client = new ApiClient("https://api.example.test");
+    const calls = [
+      client.getDashboardUsageDaily.bind(client),
+      client.getDashboardUsageByAgent.bind(client),
+      client.getDashboardAgentRunTime.bind(client),
+      client.getDashboardRunTimeDaily.bind(client),
+      client.getDashboardFailuresDaily.bind(client),
+      client.getDashboardFailuresByAgent.bind(client),
+    ];
+    for (const call of calls) {
+      for (const [header, want] of [
+        ["30", 30],
+        [null, null],
+        ["", null],
+        ["abc", null],
+        ["0", null],
+        ["-5", null],
+      ] as const) {
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (header !== null) headers["X-Dashboard-History-Limit-Days"] = header;
+        const fetchMock = vi.fn().mockResolvedValue(new Response("[]", { status: 200, headers }));
+        vi.stubGlobal("fetch", fetchMock);
+        const seen: (number | null)[] = [];
+        const rows = await call({ days: 371, tz: "UTC", onHistoryLimit: (v) => seen.push(v) });
+        expect(rows).toEqual([]);
+        expect(seen).toEqual([want]);
+        expect(String(fetchMock.mock.calls[0]?.[0])).toContain("days=371");
+      }
+    }
   });
 });

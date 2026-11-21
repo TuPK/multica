@@ -19,13 +19,8 @@ SELECT
           AND r.assignee_type = 'squad'
           AND r.assignee_id = s.id
           AND r.status NOT IN ('done', 'cancelled')
-          -- projectaccess:scope
-          AND (sqlc.arg(scope_mode)::text = 'all'
-              OR (r.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-              OR EXISTS (SELECT 1 FROM project_member scope_pm
-                         WHERE scope_pm.project_id = r.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-              OR (sqlc.arg(scope_mode)::text = 'member'
-                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = r.project_id AND scope_p.access = 'workspace')))
+          -- MUL-8472: private projects the caller cannot see.
+          AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(r.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
     )::bigint AS open_requests
 FROM squad s
 LEFT JOIN squad_charter c ON c.squad_id = s.id AND c.workspace_id = s.workspace_id
@@ -50,12 +45,7 @@ WHERE r.workspace_id = sqlc.arg('workspace_id')::uuid
   AND r.assignee_type = 'squad'
   AND r.status NOT IN ('done', 'cancelled')
   AND r.created_at + make_interval(hours => COALESCE(c.response_hours, 48)) < sqlc.arg('now')::timestamptz
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-      OR (r.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = r.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-      OR (sqlc.arg(scope_mode)::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = r.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(r.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 ORDER BY r.created_at ASC, r.id ASC
 LIMIT 50;

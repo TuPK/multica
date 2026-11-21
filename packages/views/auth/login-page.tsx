@@ -24,6 +24,7 @@ import { workspaceKeys } from "@multica/core/workspace/queries";
 import { api, errorCode } from "@multica/core/api";
 import type { User } from "@multica/core/types";
 import { useT } from "../i18n";
+import { openExternal } from "../platform";
 
 // Types
 
@@ -83,6 +84,7 @@ function readErrorCode(err: unknown): string | undefined {
 
 export function redirectToCliCallback(url: string, token: string, state: string) {
   const separator = url.includes("?") ? "&" : "?";
+  // eslint-disable-next-line no-restricted-syntax -- CLI login runs in the web app only; the token must reach the CLI's local listener in this tab
   window.location.href = `${url}${separator}token=${encodeURIComponent(token)}&state=${encodeURIComponent(state)}`;
 }
 
@@ -275,7 +277,7 @@ export function LoginPage({
         return;
       }
       if (ssoStartUrl) {
-        window.location.assign(ssoStartUrl);
+        openExternal(ssoStartUrl, { webTarget: "same-tab" });
         return;
       }
       setLoading(true);
@@ -447,6 +449,7 @@ export function LoginPage({
       prompt: "select_account",
     });
     if (google.state) params.set("state", google.state);
+    // eslint-disable-next-line no-restricted-syntax -- web OAuth redirect; Desktop passes onGoogleLogin and returns above
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   };
 
@@ -672,7 +675,7 @@ export function LoginPage({
                 className="w-full"
                 size="lg"
                 disabled={loading}
-                onClick={() => window.location.assign(ssoStartUrl)}
+                onClick={() => openExternal(ssoStartUrl, { webTarget: "same-tab" })}
               >
                 {t(($) => $.signin.sso_continue)}
               </Button>

@@ -81,7 +81,7 @@ func (s *KnowledgeService) WriteDecisionRecord(ctx context.Context, workspaceID 
 	}
 	s.RetryFailed(ctx, workspaceID)
 	return s.writeSystem(ctx, workspaceID, KnowledgeDocumentInput{
-		KB: DecisionsKnowledgeKey, Title: truncateRunes(rec.Title, knowledgeMaxTitle), Content: rec.Markdown(), Publish: true,
+		KB: DecisionsKnowledgeKey, Title: clipRunes(rec.Title, knowledgeMaxTitle), Content: rec.Markdown(), Publish: true,
 		SourceType: "proposal", SourceID: rec.ProposalID, IdempotencyKey: DecisionIdempotencyKey(rec.ProposalID),
 	})
 }
@@ -95,7 +95,7 @@ func (s *KnowledgeService) WriteBriefArchive(ctx context.Context, workspaceID, b
 		return nil
 	}
 	return s.writeSystem(ctx, workspaceID, KnowledgeDocumentInput{
-		KB: DecisionsKnowledgeKey, Title: truncateRunes(title, knowledgeMaxTitle), Content: body, Publish: true,
+		KB: DecisionsKnowledgeKey, Title: clipRunes(title, knowledgeMaxTitle), Content: body, Publish: true,
 		SourceType: "brief", SourceID: briefID, IdempotencyKey: BriefIdempotencyKey(briefID),
 	})
 }
@@ -107,11 +107,4 @@ func (s *KnowledgeService) writeSystem(ctx context.Context, workspaceID pgtype.U
 		return nil
 	}
 	return err
-}
-
-func truncateRunes(s string, n int) string {
-	if r := []rune(s); len(r) > n {
-		return string(r[:n])
-	}
-	return s
 }

@@ -42,7 +42,7 @@ func TestAuditCatalogHandlersRecordAuditEvents(t *testing.T) {
 				t.Errorf("%s: handler %s not found", file, name)
 				continue
 			}
-			if !strings.Contains(body, "audit.Record(") && !strings.Contains(body, "h.recordAudit(") {
+			if !strings.Contains(body, "audit.Record(") && !strings.Contains(body, "h.recordAudit(") && !strings.Contains(body, "h.recordAuditWith(") {
 				t.Errorf("%s: %s has no audit.Record call", file, name)
 			}
 		}

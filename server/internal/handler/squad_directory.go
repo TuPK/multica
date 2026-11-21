@@ -31,12 +31,12 @@ func (h *Handler) ListSquadDirectory(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
 	rows, err := h.Queries.ListSquadDirectory(r.Context(), db.ListSquadDirectoryParams{
-		WorkspaceID: wsUUID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+		WorkspaceID: wsUUID, HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list the squad directory")

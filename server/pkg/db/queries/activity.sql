@@ -58,13 +58,8 @@ WHERE activity_log.workspace_id = $1
   AND action = 'assignee_changed'
   AND details->>'to_type' IS NOT NULL
   AND details->>'to_id' IS NOT NULL
-  -- projectaccess:scope
-  AND (sqlc.arg(scope_mode)::text = 'all'
-      OR (scope_i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-      OR (sqlc.arg(scope_mode)::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(scope_i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 GROUP BY details->>'to_type', details->>'to_id';
 
 -- name: GetLastIssueStatusChange :one

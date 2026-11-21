@@ -57,6 +57,7 @@ var supportedLanguages = map[string]struct{}{
 	"ja":      {},
 	"fr":      {},
 	"es":      {},
+	"ru":      {},
 }
 
 type UserResponse struct {
@@ -73,8 +74,13 @@ type UserResponse struct {
 	// Always serialized (null when unset): clients treat a missing key as
 	// "server cannot track What's new" and suppress the auto-opening card.
 	WhatsNewSeenVersion *string `json:"whats_new_seen_version"`
-	CreatedAt           string  `json:"created_at"`
-	UpdatedAt           string  `json:"updated_at"`
+	// Star prompt bookkeeping. The count is always serialized: clients treat
+	// a missing key as "server cannot track the prompt" and never show it.
+	StarPromptShownCount  int32   `json:"star_prompt_shown_count"`
+	StarPromptLastShownAt *string `json:"star_prompt_last_shown_at"`
+	StarPromptStarredAt   *string `json:"star_prompt_starred_at"`
+	CreatedAt             string  `json:"created_at"`
+	UpdatedAt             string  `json:"updated_at"`
 	// ConsentRequired is set by GET /api/me only, and omitted when empty.
 	ConsentRequired []consent.Required `json:"consent_required,omitempty"`
 	// DeletionScheduledAt is set by GET /api/me only, and only while the
@@ -107,6 +113,9 @@ func (h *Handler) userToResponse(u db.User) UserResponse {
 		OnboardingQuestionnaire: json.RawMessage(q),
 		ProfileDescription:      u.ProfileDescription,
 		WhatsNewSeenVersion:     textToPtr(u.WhatsNewSeenVersion),
+		StarPromptShownCount:    u.StarPromptShownCount,
+		StarPromptLastShownAt:   timestampToPtr(u.StarPromptLastShownAt),
+		StarPromptStarredAt:     timestampToPtr(u.StarPromptStarredAt),
 		CreatedAt:               timestampToString(u.CreatedAt),
 		UpdatedAt:               timestampToString(u.UpdatedAt),
 	}

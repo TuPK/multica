@@ -136,14 +136,13 @@ func CountIssueUsage(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID
 // viewer sees, capped at the limit like CountIssueUsage (spec 7.1 rule 5). It
 // can be lower than the enforcement count, which includes issues of projects the
 // viewer cannot see. Never use it to decide whether a create is allowed.
-func CountVisibleIssueUsage(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID, policy IssueCountPolicy, scope projectaccess.Scope) (int64, error) {
+func CountVisibleIssueUsage(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID, policy IssueCountPolicy, hidden projectaccess.Hidden) (int64, error) {
 	if policy.Action != entitlement.ActionEnforce {
 		return 0, nil
 	}
 	visible, err := q.CountIssues(ctx, db.CountIssuesParams{
-		WorkspaceID: workspaceID,
-		ScopeMode:   scope.Mode(),
-		ScopeUserID: scope.UserID(),
+		WorkspaceID:      workspaceID,
+		HiddenProjectIds: hidden.Param(),
 	})
 	if err != nil {
 		return 0, err

@@ -14,7 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/planlimit"
+	"github.com/multica-ai/multica/server/internal/thumbnail"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -611,19 +611,6 @@ func SourceContextCloneBytes(clones []SourceContextClone) int64 {
 	return total
 }
 
-// AdmitSourceContextStorage takes the capture's clones into the `storage_bytes`
-// quota, under the advisory lock, on the transaction that persists them. It is
-// called right before PersistSourceContext. The clones are already stored when
-// this runs, so a refusal here rolls the transaction back and the caller's
-// compensation removes the objects.
-func AdmitSourceContextStorage(ctx context.Context, q *db.Queries, quota planlimit.Policy, capture SourceContextCapture) error {
-	if len(capture.Clones) == 0 {
-		return nil
-	}
-	return quota.Admit(ctx, q, capture.WorkspaceID, SourceContextCloneBytes(capture.Clones),
-		planlimit.SumAttachmentBytes(q, capture.WorkspaceID))
-}
-
 func PersistSourceContext(ctx context.Context, q *db.Queries, capture SourceContextCapture, issueID, taskID pgtype.UUID) (db.IssueSourceContext, error) {
 	state := "pending"
 	var attachedAt pgtype.Timestamptz
@@ -801,6 +788,9 @@ func (s *TaskService) CleanupAbandonedSourceContexts(ctx context.Context, limit 
 			key := s.SourceContextStorage.KeyFromURL(attachment.Url)
 			deleteCtx, cancel := context.WithTimeout(ctx, sourceContextObjectDeleteTimeout)
 			err := s.SourceContextStorage.DeleteObject(deleteCtx, key)
+			if thumbKey, ok := thumbnail.StorageKey(key); ok && err == nil {
+				err = s.SourceContextStorage.DeleteObject(deleteCtx, thumbKey)
+			}
 			cancel()
 			if err != nil {
 				deleteFailed = true

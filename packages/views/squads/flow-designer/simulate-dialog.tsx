@@ -97,7 +97,7 @@ export function SimulateDialog({ open, onOpenChange, squadId, draftId, doc }: Si
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] max-w-xl flex-col p-6">
+      <DialogContent className="flex max-h-[85%] max-w-xl flex-col p-6">
         <DialogHeader className="space-y-1">
           <DialogTitle className="flex items-center gap-2">
             <Play className="size-4 text-emerald-500" aria-hidden />

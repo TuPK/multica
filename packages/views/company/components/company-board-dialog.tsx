@@ -48,7 +48,7 @@ export function CompanyBoardDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="flex h-[92dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(96vw,120rem)]">
+      <DialogContent className="flex h-[92%] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100%,120rem)]">
         <header className="flex shrink-0 items-center gap-3 border-b px-4 py-3 pr-12">
           <DialogTitle className="text-heading">{t(($) => $.company.board_title)}</DialogTitle>
           <DropdownMenu>

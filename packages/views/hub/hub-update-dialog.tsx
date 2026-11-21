@@ -59,7 +59,7 @@ export function HubUpdateDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-3xl">
+      <DialogContent className="flex max-h-[85%] flex-col sm:max-w-3xl">
         {open ? (
           <UpdateBody wsId={wsId} kind={kind} refId={refId} name={name} onClose={onClose} />
         ) : null}

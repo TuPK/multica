@@ -80,7 +80,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   authState.user = { id: "user-1" };
   mockListMembers.mockResolvedValue([]);
-  mockGetMyPermissions.mockResolvedValue({ role: "member", permissions: [] });
+  mockGetMyPermissions.mockResolvedValue({ role: "guest", permissions: [] });
 });
 
 afterEach(() => {
@@ -88,18 +88,17 @@ afterEach(() => {
 });
 
 describe("useCurrentMember", () => {
-  it("returns isGuest true when the current member has is_guest true", async () => {
+  it("returns isGuest true when the current member has the guest role", async () => {
     mockListMembers.mockResolvedValue([
       {
         id: "m-1",
         workspace_id: "ws-1",
         user_id: "user-1",
-        role: "member",
+        role: "guest",
         name: "Guest User",
         email: "guest@acme.dev",
         avatar_url: null,
         created_at: "2026-01-01T00:00:00Z",
-        is_guest: true,
       },
     ]);
 
@@ -109,11 +108,11 @@ describe("useCurrentMember", () => {
 
     await waitFor(() => expect(result.current.member).not.toBeNull());
     expect(result.current.userId).toBe("user-1");
-    expect(result.current.role).toBe("member");
+    expect(result.current.role).toBe("guest");
     expect(result.current.isGuest).toBe(true);
   });
 
-  it("returns isGuest false when is_guest is absent from an older response", async () => {
+  it("returns isGuest false for a member role", async () => {
     mockListMembers.mockResolvedValue([
       {
         id: "m-1",
@@ -142,12 +141,11 @@ describe("useCurrentMember", () => {
         id: "m-2",
         workspace_id: "ws-1",
         user_id: "user-2",
-        role: "member",
+        role: "guest",
         name: "Other User",
         email: "other@acme.dev",
         avatar_url: null,
         created_at: "2026-01-01T00:00:00Z",
-        is_guest: true,
       },
     ]);
 
@@ -169,12 +167,11 @@ describe("permission hooks guest write denial", () => {
         id: "m-1",
         workspace_id: "ws-1",
         user_id: "user-1",
-        role: "member",
+        role: "guest",
         name: "Guest Member",
         email: "guest@acme.dev",
         avatar_url: null,
         created_at: "2026-01-01T00:00:00Z",
-        is_guest: true,
       },
     ]);
     mockGetMyPermissions.mockResolvedValue({

@@ -26,29 +26,27 @@ LEFT JOIN LATERAL (
 ) run_comment ON true
 WHERE u.workspace_id = $1
   AND u.user_id = $2
-  -- projectaccess:scope
-  AND ($3::text = 'all'
-      OR (scope_iss.project_id IS NULL AND $3::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = scope_iss.project_id AND scope_pm.user_id = $4::uuid)
-      OR ($3::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_iss.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($3::uuid[] IS NULL OR NOT EXISTS (
+    SELECT 1 FROM issue hidden_issue
+    WHERE hidden_issue.id = u.issue_id
+      AND COALESCE(hidden_issue.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])
+  ))
   AND (
-    $5::timestamptz IS NULL
-    OR (u.created_at, u.issue_id) < ($5::timestamptz, $6::uuid)
+    $4::timestamptz IS NULL
+    OR (u.created_at, u.issue_id) < ($4::timestamptz, $5::uuid)
   )
 ORDER BY u.created_at DESC, u.issue_id DESC
-LIMIT $7
+LIMIT $6
 `
 
 type ListIssueUnreadParams struct {
-	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
-	UserID          pgtype.UUID        `json:"user_id"`
-	ScopeMode       string             `json:"scope_mode"`
-	ScopeUserID     pgtype.UUID        `json:"scope_user_id"`
-	BeforeCreatedAt pgtype.Timestamptz `json:"before_created_at"`
-	BeforeIssueID   pgtype.UUID        `json:"before_issue_id"`
-	PageLimit       int32              `json:"page_limit"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
+	BeforeCreatedAt  pgtype.Timestamptz `json:"before_created_at"`
+	BeforeIssueID    pgtype.UUID        `json:"before_issue_id"`
+	PageLimit        int32              `json:"page_limit"`
 }
 
 type ListIssueUnreadRow struct {
@@ -70,8 +68,7 @@ func (q *Queries) ListIssueUnread(ctx context.Context, arg ListIssueUnreadParams
 	rows, err := q.db.Query(ctx, listIssueUnread,
 		arg.WorkspaceID,
 		arg.UserID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 		arg.BeforeCreatedAt,
 		arg.BeforeIssueID,
 		arg.PageLimit,

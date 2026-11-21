@@ -37,7 +37,7 @@ func newSquadHiddenFixture(t *testing.T) squadHiddenFixture {
 
 	openProject := dbfxProject(t, fx, "Open")
 	f.hiddenProject = dbfxProject(t, fx, "Hidden")
-	dbfx.Exec(t, `UPDATE project SET access = 'restricted' WHERE id = $1`, f.hiddenProject)
+	makeProjectPrivate(t, f.hiddenProject)
 	routed := func(title, projectID string) string {
 		return dbfx.Issue(t, title, testutil.Cols{
 			"workspace_id": fx.ID, "project_id": projectID, "status": "in_review",
@@ -170,7 +170,7 @@ func TestRestrictedAssignSquadProjectRemapNeedsManage(t *testing.T) {
 	target := dbfxProject(t, fx, "Target")
 	openProject := dbfxProject(t, fx, "Open")
 	hiddenProject := dbfxProject(t, fx, "Hidden")
-	dbfx.Exec(t, `UPDATE project SET access = 'restricted' WHERE id = $1`, hiddenProject)
+	makeProjectPrivate(t, hiddenProject)
 	routed := func(title, projectID string) string {
 		return dbfx.Issue(t, title, testutil.Cols{
 			"workspace_id": fx.ID, "project_id": projectID, "status": "legacy_stage",
@@ -216,7 +216,7 @@ func TestRestrictedAssignSquadProjectLeavesHiddenFinishedProjects(t *testing.T) 
 	target := dbfxProject(t, fx, "Target")
 	visibleFinished := dbfxProject(t, fx, "Visible finished")
 	hiddenFinished := dbfxProject(t, fx, "Hidden finished")
-	dbfx.Exec(t, `UPDATE project SET access = 'restricted' WHERE id = $1`, hiddenFinished)
+	makeProjectPrivate(t, hiddenFinished)
 	for _, id := range []string{visibleFinished, hiddenFinished} {
 		dbfx.Exec(t, `UPDATE project SET status = 'completed', squad_ids = ARRAY[$2::uuid] WHERE id = $1`, id, squadID)
 	}

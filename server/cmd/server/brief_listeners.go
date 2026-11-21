@@ -13,7 +13,6 @@ import (
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
-	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
 // notifyBriefReady raises a brief_ready inbox item (severity attention) for
@@ -38,14 +37,11 @@ func notifyBriefReady(ctx context.Context, queries *db.Queries, bus *events.Bus,
 	for i, id := range owners {
 		ownerIDs[i] = util.UUIDToString(id)
 	}
-	prefs := loadUserPrefs(ctx, queries, e.WorkspaceID, ownerIDs)
 	details, _ := json.Marshal(map[string]string{"brief_id": brief.ID, "kind": brief.Kind})
 
 	for _, ownerID := range ownerIDs {
-		if p, ok := prefs[ownerID]; ok && isNotifMuted(p, "brief_ready") {
-			continue
-		}
-		item, inserted, err := inbox.CreateIfEligible(ctx, queries, db.CreateInboxItemParams{
+		// Deliver drops the item when the owner muted agent activity.
+		if _, _, err := inbox.Deliver(ctx, queries, bus, inbox.Notification{Params: db.CreateInboxItemParams{
 			ID:            dbid.NewV7(),
 			WorkspaceID:   parseUUID(e.WorkspaceID),
 			RecipientType: "member",
@@ -58,20 +54,8 @@ func notifyBriefReady(ctx context.Context, queries *db.Queries, bus *events.Bus,
 			ActorType:     util.StrToText(e.ActorType),
 			ActorID:       optionalUUID(e.ActorID),
 			Details:       details,
-		})
-		if err != nil {
+		}}); err != nil {
 			slog.Error("brief:created notification: inbox item failed", "brief_id", brief.ID, "recipient_id", ownerID, "error", err)
-			continue
 		}
-		if !inserted {
-			continue
-		}
-		bus.Publish(events.Event{
-			Type:        protocol.EventInboxNew,
-			WorkspaceID: e.WorkspaceID,
-			ActorType:   e.ActorType,
-			ActorID:     e.ActorID,
-			Payload:     map[string]any{"item": inboxItemToResponse(item)},
-		})
 	}
 }

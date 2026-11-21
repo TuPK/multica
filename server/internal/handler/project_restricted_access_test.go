@@ -125,7 +125,7 @@ func TestRestrictedAssignSquadProjectAnswersMissing(t *testing.T) {
 	squadID := fx.Build
 	dbfx.Exec(t, `UPDATE squad SET creator_id = $2 WHERE id = $1`, squadID, fx.MemberID)
 	hiddenID := dbfxProject(t, fx, "Hidden")
-	dbfx.Exec(t, `UPDATE project SET access = 'restricted' WHERE id = $1`, hiddenID)
+	makeProjectPrivate(t, hiddenID)
 
 	assign := func(projectID string) *httptest.ResponseRecorder {
 		req := newRequestAs(fx.MemberID, "POST", "/api/squads/"+squadID+"/project", map[string]any{"project_id": projectID})
@@ -200,12 +200,12 @@ func TestRestrictedProjectCountsOmitHiddenIssues(t *testing.T) {
 		userID string
 		want   int64
 	}{"owner": {testUserID, 1}, "grantee": {f.granteeID, 1}, "outsider": {f.outsiderID, 0}} {
-		scope, err := projectaccess.ForViewer(ctx, testHandler.Queries, parseUUID(testWorkspaceID), parseUUID(c.userID))
+		scope, err := projectaccess.ForPrincipals(ctx, testHandler.Queries, parseUUID(testWorkspaceID), parseUUID(c.userID))
 		if err != nil {
 			t.Fatalf("scope for %s: %v", name, err)
 		}
 		n, err := testHandler.Queries.CountIssuesByProject(ctx, db.CountIssuesByProjectParams{
-			ProjectID: parseUUID(f.restrictedProjectID), ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+			ProjectID: parseUUID(f.restrictedProjectID), HiddenProjectIds: scope.Param(),
 		})
 		if err != nil || n != c.want {
 			t.Errorf("CountIssuesByProject as %s = %d, %v; want %d", name, n, err, c.want)
@@ -219,13 +219,13 @@ func TestRestrictedProjectCountsOmitHiddenIssues(t *testing.T) {
 		userID string
 		want   int
 	}{"owner": {testUserID, 2}, "grantee": {f.granteeID, 2}, "outsider": {f.outsiderID, 1}} {
-		scope, err := projectaccess.ForViewer(ctx, testHandler.Queries, parseUUID(testWorkspaceID), parseUUID(c.userID))
+		scope, err := projectaccess.ForPrincipals(ctx, testHandler.Queries, parseUUID(testWorkspaceID), parseUUID(c.userID))
 		if err != nil {
 			t.Fatalf("scope for %s: %v", name, err)
 		}
 		rows, err := testHandler.Queries.ListProjectsForSquad(ctx, db.ListProjectsForSquadParams{
 			WorkspaceID: parseUUID(testWorkspaceID), SquadID: parseUUID(squadID),
-			ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+			HiddenProjectIds: scope.Param(),
 		})
 		if err != nil || len(rows) != c.want {
 			t.Errorf("ListProjectsForSquad as %s = %d rows, %v; want %d", name, len(rows), err, c.want)

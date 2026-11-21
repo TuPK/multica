@@ -131,7 +131,7 @@ func (h *Handler) SetSquadRuntime(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list squad members")
 		return
 	}
-	decision := h.acpThinkingDecision(r.Context(), runtime.Provider, runtime.ID)
+	decision := h.acpThinkingDecision(r.Context(), runtime.Provider, runtime.ID, "", "")
 
 	resp := SetSquadRuntimeResponse{
 		RuntimeID: uuidToString(runtime.ID),

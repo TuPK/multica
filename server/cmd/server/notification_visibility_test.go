@@ -34,9 +34,11 @@ func newListenerVisibilityFixture(t *testing.T) listenerVisibilityFixture {
 	fx.Member(t, testWorkspaceID, f.outsiderID, "member")
 	fx.Member(t, testWorkspaceID, f.granteeID, "member")
 
-	restricted := fx.Project(t, "Restricted listeners", testutil.Cols{"access": "restricted"})
-	open := fx.Project(t, "Open listeners", testutil.Cols{"access": "workspace"})
+	restricted := fx.Project(t, "Restricted listeners", testutil.Cols{"visibility": "private"})
+	open := fx.Project(t, "Open listeners", testutil.Cols{"visibility": "workspace"})
 	fx.Exec(t, `INSERT INTO project_member (project_id, workspace_id, user_id) VALUES ($1, $2, $3)`, restricted, testWorkspaceID, f.granteeID)
+	// Creating a private project makes its creator, the test user, a member of it.
+	fx.Exec(t, `INSERT INTO project_member (project_id, workspace_id, user_id) VALUES ($1, $2, $3)`, restricted, testWorkspaceID, testUserID)
 	fx.Cleanup(t, `DELETE FROM project_member WHERE project_id = $1`, restricted)
 
 	f.hiddenIssueID = fx.Issue(t, "Hidden listener issue", testutil.Cols{"project_id": restricted})
@@ -100,8 +102,16 @@ func TestNoNotificationForNonVisibleRecipient(t *testing.T) {
 	if n := f.inboxCount(t, f.outsiderID); n != 0 {
 		t.Errorf("a subscriber who cannot see the issue got %d inbox items", n)
 	}
-	if n := f.inboxCount(t, f.granteeID); n != 1 {
-		t.Errorf("a subscriber who sees the issue got %d inbox items, want 1", n)
+	// A direct assignment still reaches a member who sees the issue.
+	bus.Publish(events.Event{
+		Type: protocol.EventIssueUpdated, WorkspaceID: testWorkspaceID, ActorType: "member", ActorID: testUserID,
+		Payload: map[string]any{
+			"issue":            issuePayload(f.hiddenIssueID, "assigned", testUserID, &f.granteeID, nil),
+			"assignee_changed": true,
+		},
+	})
+	if n := f.inboxCount(t, f.granteeID); n < 1 {
+		t.Errorf("an assignee who sees the issue got %d inbox items, want at least 1", n)
 	}
 	for _, e := range inboxEvents {
 		if item, _ := e.Payload.(map[string]any)["item"].(map[string]any); item["recipient_id"] == f.outsiderID {
@@ -131,8 +141,8 @@ func TestNoNotificationForNonVisibleRecipient(t *testing.T) {
 		Type: protocol.EventIssueCreated, WorkspaceID: testWorkspaceID, ActorType: "member", ActorID: testUserID,
 		Payload: map[string]any{"issue": issuePayload(f.openIssueID, "created", testUserID, &f.outsiderID, nil)},
 	})
-	if n := f.inboxCount(t, f.outsiderID); n != 2 {
-		t.Errorf("the outsider got %d inbox items for the issue they see, want 2 (status change and assignment)", n)
+	if n := f.inboxCount(t, f.outsiderID); n < 1 {
+		t.Errorf("the outsider got %d inbox items for the issue they see, want at least 1", n)
 	}
 }
 

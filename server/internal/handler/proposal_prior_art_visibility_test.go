@@ -13,7 +13,8 @@ import (
 
 func TestProposalPriorArtVisibility_RelatedOmitsHiddenProposals(t *testing.T) {
 	fx := newProposalTestFixture(t)
-	projectID := dbfx.Project(t, fx.title("restricted project"), testutil.Cols{"workspace_id": testWorkspaceID, "access": "restricted"})
+	projectID := dbfx.Project(t, fx.title("restricted project"), testutil.Cols{"workspace_id": testWorkspaceID, "visibility": "private"})
+	ownerJoinsProject(t, testWorkspaceID, projectID)
 	memberID := dbfx.User(t, "Prior art member", testutil.UniqueEmail("prior-art-member"))
 	dbfx.Member(t, testWorkspaceID, memberID, "member")
 

@@ -3,20 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/handler"
-	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/realtime"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
@@ -43,14 +36,7 @@ import (
 // inherits the same cost silently. Keeping the list declarative puts the
 // internal/external payload boundary in one reviewable place.
 var internalOnlyPayloadKeys = map[string][]string{
-	// prev_project_id routes a move between projects (routeIssueMove).
-	protocol.EventIssueUpdated: {"prev_description", "prev_title", "prev_project_id"},
-	// recipient_user_ids is who could see the project before the change; the
-	// client gets only project_id and access.
-	protocol.EventProjectAccessChanged: {"recipient_user_ids"},
-	// project:deleted has no grants left to read; the handler carries the
-	// audience computed before the delete.
-	protocol.EventProjectDeleted: {"recipient_workspace", "recipient_user_ids"},
+	protocol.EventIssueUpdated: {"prev_description", "prev_title"},
 	// task:failed error text is consumed synchronously by channel outbounds.
 	// It may contain provider/runtime detail that belongs in the originating
 	// chat transcript, not in the workspace-wide realtime fanout.
@@ -100,431 +86,9 @@ func isChatPrivateEvent(e events.Event) bool {
 // MemberPrivateUserID is dropped instead of reaching the workspace.
 var memberPrivateEvents = map[string]bool{
 	protocol.EventIssueViewPreferenceChanged: true,
-}
-
-// projectScopedEvents carry an issue or a project, so their recipients depend
-// on the project's audience (spec 7.1 rule 13). Other events keep workspace
-// fanout.
-var projectScopedEvents = map[string]bool{
-	protocol.EventIssueCreated:           true,
-	protocol.EventIssueUpdated:           true,
-	protocol.EventIssueDeleted:           true,
-	protocol.EventProjectCreated:         true,
-	protocol.EventProjectUpdated:         true,
-	protocol.EventProjectDeleted:         true,
-	protocol.EventProjectResourceCreated: true,
-	protocol.EventProjectResourceUpdated: true,
-	protocol.EventProjectResourceDeleted: true,
-}
-
-// eventAudiences answers who receives the events of a project.
-type eventAudiences interface {
-	Audience(ctx context.Context, workspaceID, projectID pgtype.UUID) (projectaccess.Recipients, error)
-	// Users lists every person who sees the project.
-	Users(ctx context.Context, workspaceID, projectID pgtype.UUID) ([]string, error)
-	// IssueProject is the project of an issue; invalid when it has none.
-	IssueProject(ctx context.Context, issueID pgtype.UUID) (pgtype.UUID, error)
-}
-
-type queryAudiences struct{ q *db.Queries }
-
-func (a queryAudiences) Audience(ctx context.Context, ws, project pgtype.UUID) (projectaccess.Recipients, error) {
-	return projectaccess.Audience(ctx, a.q, ws, project)
-}
-
-func (a queryAudiences) Users(ctx context.Context, ws, project pgtype.UUID) ([]string, error) {
-	return projectaccess.AudienceUsers(ctx, a.q, ws, project)
-}
-
-func (a queryAudiences) IssueProject(ctx context.Context, issueID pgtype.UUID) (pgtype.UUID, error) {
-	return a.q.GetIssueProjectID(ctx, issueID)
-}
-
-const audienceLookupTimeout = 5 * time.Second
-
-// projectRef is what an event says about the project it belongs to.
-type projectRef struct {
-	project pgtype.UUID // invalid: no project
-	issueID string
-	issue   json.RawMessage
-	// prev is the project an issue moved out of. hasPrev is false when the
-	// event says nothing about a move.
-	prev    pgtype.UUID
-	hasPrev bool
-}
-
-func parseProjectRef(e events.Event) (projectRef, error) {
-	raw, err := json.Marshal(e.Payload)
-	if err != nil {
-		return projectRef{}, err
-	}
-	var p struct {
-		Issue   json.RawMessage `json:"issue"`
-		IssueID string          `json:"issue_id"`
-		Project *struct {
-			ID string `json:"id"`
-		} `json:"project"`
-		ProjectID     *string         `json:"project_id"`
-		PrevProjectID json.RawMessage `json:"prev_project_id"`
-	}
-	if err := json.Unmarshal(raw, &p); err != nil {
-		return projectRef{}, err
-	}
-	ref := projectRef{issueID: p.IssueID, issue: p.Issue}
-	project := p.ProjectID
-	if len(p.Issue) > 0 {
-		var issue struct {
-			ID        string  `json:"id"`
-			ProjectID *string `json:"project_id"`
-		}
-		if err := json.Unmarshal(p.Issue, &issue); err != nil {
-			return projectRef{}, err
-		}
-		ref.issueID, project = issue.ID, issue.ProjectID
-	} else if p.Project != nil {
-		project = &p.Project.ID
-	}
-	if project != nil && *project != "" {
-		if ref.project, err = util.ParseUUID(*project); err != nil {
-			return projectRef{}, err
-		}
-	}
-	if len(p.PrevProjectID) > 0 {
-		ref.hasPrev = true
-		var prev *string
-		if err := json.Unmarshal(p.PrevProjectID, &prev); err != nil {
-			return projectRef{}, err
-		}
-		if prev != nil && *prev != "" {
-			if ref.prev, err = util.ParseUUID(*prev); err != nil {
-				return projectRef{}, err
-			}
-		}
-	}
-	return ref, nil
-}
-
-// routeProjectEvent delivers an issue or project event to the project's
-// audience. It never widens: an audience that cannot be computed drops the
-// event.
-func routeProjectEvent(b realtime.Broadcaster, aud eventAudiences, e events.Event, data []byte) {
-	ctx, cancel := context.WithTimeout(context.Background(), audienceLookupTimeout)
-	defer cancel()
-	drop := func(err error) {
-		slog.Warn("realtime: dropping project event, audience unknown", "event_type", e.Type, "error", err)
-	}
-	ws, err := util.ParseUUID(e.WorkspaceID)
-	if err != nil {
-		drop(err)
-		return
-	}
-	ref, err := parseProjectRef(e)
-	if err != nil {
-		drop(err)
-		return
-	}
-	// An issue event that names the issue but not its project asks the
-	// database, so a slim payload is not treated as "no project".
-	if len(ref.issue) == 0 && !ref.project.Valid && ref.issueID != "" && strings.HasPrefix(e.Type, "issue:") && e.Type != protocol.EventIssueDeleted {
-		id, err := util.ParseUUID(ref.issueID)
-		if err == nil {
-			ref.project, err = aud.IssueProject(ctx, id)
-		}
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			drop(err)
-			return
-		}
-	}
-	if e.Type == protocol.EventIssueUpdated && ref.hasPrev && ref.prev != ref.project {
-		if err := routeIssueMove(ctx, b, aud, e, ws, ref, data); err != nil {
-			drop(err)
-		}
-		return
-	}
-	var r projectaccess.Recipients
-	if e.Type == protocol.EventProjectDeleted {
-		// The row is gone, and with it the project's grants: use the audience
-		// the handler read before deleting.
-		var ok bool
-		if r, ok = deletedProjectRecipients(e.Payload); !ok {
-			drop(errors.New("project:deleted without recipients"))
-			return
-		}
-	} else if r, err = aud.Audience(ctx, ws, ref.project); err != nil {
-		drop(err)
-		return
-	}
-	realtime.M.RecordEvent(e.Type)
-	if origID := duplicateOriginalID(e.Type, ref); origID != "" {
-		if err := sendWithDuplicateOf(ctx, b, aud, e.WorkspaceID, ws, ref, r, origID, data); err != nil {
-			drop(err)
-		}
-		return
-	}
-	sendToRecipients(b, e.WorkspaceID, r, data)
-}
-
-// duplicateOriginalID returns the original named by the issue's duplicate_of
-// mark, or "" when the event carries none.
-func duplicateOriginalID(eventType string, ref projectRef) string {
-	if eventType != protocol.EventIssueCreated && eventType != protocol.EventIssueUpdated || len(ref.issue) == 0 {
-		return ""
-	}
-	var p struct {
-		DuplicateOf *struct {
-			ID string `json:"id"`
-		} `json:"duplicate_of"`
-	}
-	if json.Unmarshal(ref.issue, &p) != nil || p.DuplicateOf == nil {
-		return ""
-	}
-	return p.DuplicateOf.ID
-}
-
-// withoutDuplicateOf returns the event frame with the issue's duplicate_of
-// removed: the payload a viewer of a missing original gets (spec 7.1 rule 5).
-func withoutDuplicateOf(data []byte) ([]byte, error) {
-	var frame map[string]json.RawMessage
-	if err := json.Unmarshal(data, &frame); err != nil {
-		return nil, err
-	}
-	var payload map[string]json.RawMessage
-	if err := json.Unmarshal(frame["payload"], &payload); err != nil {
-		return nil, err
-	}
-	var issue map[string]json.RawMessage
-	if err := json.Unmarshal(payload["issue"], &issue); err != nil {
-		return nil, err
-	}
-	delete(issue, "duplicate_of")
-	var err error
-	if payload["issue"], err = json.Marshal(issue); err != nil {
-		return nil, err
-	}
-	if frame["payload"], err = json.Marshal(payload); err != nil {
-		return nil, err
-	}
-	return json.Marshal(frame)
-}
-
-// sendWithDuplicateOf delivers a duplicate's event. The duplicate_of mark
-// carries the original's title and status, so only people who see the
-// original's project get it; everyone else gets the issue without the mark,
-// as if the original were missing. r is the duplicate's own audience.
-func sendWithDuplicateOf(ctx context.Context, b realtime.Broadcaster, aud eventAudiences, workspaceID string, ws pgtype.UUID, ref projectRef, r projectaccess.Recipients, originalID string, full []byte) error {
-	stripped, err := withoutDuplicateOf(full)
-	if err != nil {
-		return err
-	}
-	var origProject pgtype.UUID
-	origGone := false
-	id, err := util.ParseUUID(originalID)
-	if err == nil {
-		origProject, err = aud.IssueProject(ctx, id)
-	}
-	if errors.Is(err, pgx.ErrNoRows) {
-		origGone = true
-	} else if err != nil {
-		return err
-	}
-	if origGone {
-		sendToRecipients(b, workspaceID, r, stripped)
-		return nil
-	}
-	seers, err := aud.Users(ctx, ws, origProject)
-	if err != nil {
-		return err
-	}
-	canSee := make(map[string]bool, len(seers))
-	for _, u := range seers {
-		canSee[u] = true
-	}
-	recipients := r.UserIDs
-	if r.Workspace {
-		// The workspace room only holds non-guests. When all of them see the
-		// original, the room keeps the shared frame; otherwise the duplicate's
-		// audience is delivered to one person at a time.
-		wsWide, err := aud.Audience(ctx, ws, origProject)
-		if err != nil {
-			return err
-		}
-		if wsWide.Workspace {
-			b.BroadcastToWorkspace(workspaceID, full)
-		} else if recipients, err = aud.Users(ctx, ws, ref.project); err != nil {
-			return err
-		}
-	}
-	for _, u := range recipients {
-		data := stripped
-		if canSee[u] {
-			data = full
-		}
-		b.BroadcastToScope(realtime.ScopeWorkspaceMember, realtime.WorkspaceMemberScopeID(workspaceID, u), data)
-	}
-	return nil
-}
-
-// derivedIssueID returns the issue a derived event (comment, reaction,
-// activity, subscriber, label, task, ...) is about, read from the payload's
-// issue_id or, for comment events, the comment's issue_id. ok is false when
-// the payload names no issue.
-func derivedIssueID(payload any) (id string, ok bool, err error) {
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return "", false, err
-	}
-	var p struct {
-		IssueID string `json:"issue_id"`
-		Comment *struct {
-			IssueID string `json:"issue_id"`
-		} `json:"comment"`
-	}
-	if err := json.Unmarshal(raw, &p); err != nil {
-		// A payload that is not an object names no issue.
-		return "", false, nil
-	}
-	if p.IssueID == "" && p.Comment != nil {
-		p.IssueID = p.Comment.IssueID
-	}
-	return p.IssueID, p.IssueID != "", nil
-}
-
-// routeDerivedEvent delivers an event about an issue to the audience of the
-// issue's project. An issue with no project keeps workspace routing. An issue
-// whose project cannot be determined drops the event.
-func routeDerivedEvent(b realtime.Broadcaster, aud eventAudiences, e events.Event, issueID string, data []byte) {
-	ctx, cancel := context.WithTimeout(context.Background(), audienceLookupTimeout)
-	defer cancel()
-	drop := func(err error) {
-		slog.Warn("realtime: dropping issue event, audience unknown", "event_type", e.Type, "issue_id", issueID, "error", err)
-	}
-	ws, err := util.ParseUUID(e.WorkspaceID)
-	if err != nil {
-		drop(err)
-		return
-	}
-	id, err := util.ParseUUID(issueID)
-	if err != nil {
-		drop(err)
-		return
-	}
-	project, err := aud.IssueProject(ctx, id)
-	if err != nil {
-		drop(err)
-		return
-	}
-	r, err := aud.Audience(ctx, ws, project)
-	if err != nil {
-		drop(err)
-		return
-	}
-	realtime.M.RecordEvent(e.Type)
-	sendToRecipients(b, e.WorkspaceID, r, data)
-}
-
-// deletedProjectRecipients reads the pre-delete audience from a project:deleted
-// payload. ok is false when the payload carries none.
-func deletedProjectRecipients(payload any) (r projectaccess.Recipients, ok bool) {
-	m, isMap := payload.(map[string]any)
-	if !isMap {
-		return r, false
-	}
-	workspace, hasWorkspace := m["recipient_workspace"].(bool)
-	users, hasUsers := m["recipient_user_ids"].([]string)
-	if !hasWorkspace || !hasUsers {
-		return r, false
-	}
-	return projectaccess.Recipients{Workspace: workspace, UserIDs: users}, true
-}
-
-// sendToRecipients sends data to the workspace room when r says so, and to
-// each listed person's member room.
-func sendToRecipients(b realtime.Broadcaster, workspaceID string, r projectaccess.Recipients, data []byte) {
-	if r.Workspace {
-		b.BroadcastToWorkspace(workspaceID, data)
-	}
-	for _, uid := range r.UserIDs {
-		b.BroadcastToScope(realtime.ScopeWorkspaceMember, realtime.WorkspaceMemberScopeID(workspaceID, uid), data)
-	}
-}
-
-// routeIssueMove sends an issue that changed project to both audiences. A
-// person in both gets the update, a person only in the new audience gets the
-// issue as created, and a person only in the old one gets it as deleted.
-func routeIssueMove(ctx context.Context, b realtime.Broadcaster, aud eventAudiences, e events.Event, ws pgtype.UUID, ref projectRef, updated []byte) error {
-	oldR, err := aud.Audience(ctx, ws, ref.prev)
-	if err != nil {
-		return err
-	}
-	newR, err := aud.Audience(ctx, ws, ref.project)
-	if err != nil {
-		return err
-	}
-	oldUsers, newUsers := oldR.UserIDs, newR.UserIDs
-	sharedRoom := oldR.Workspace && newR.Workspace
-	if !sharedRoom {
-		// A workspace room cannot be split, so compare person by person.
-		if oldUsers, err = aud.Users(ctx, ws, ref.prev); err != nil {
-			return err
-		}
-		if newUsers, err = aud.Users(ctx, ws, ref.project); err != nil {
-			return err
-		}
-	}
-	createdPayload := map[string]any{"issue_id": ref.issueID}
-	if len(ref.issue) > 0 {
-		createdPayload = map[string]any{"issue": ref.issue}
-	}
-	frame := func(typ string, payload any) []byte {
-		out, err := json.Marshal(map[string]any{"type": typ, "payload": payload, "actor_id": e.ActorID, "actor_type": e.ActorType})
-		if err != nil {
-			return nil
-		}
-		return out
-	}
-	created := frame(protocol.EventIssueCreated, createdPayload)
-	deleted := frame(protocol.EventIssueDeleted, map[string]any{"issue_id": ref.issueID})
-	if created == nil || deleted == nil {
-		return errors.New("marshal move frames")
-	}
-
-	realtime.M.RecordEvent(e.Type)
-	if sharedRoom {
-		b.BroadcastToWorkspace(e.WorkspaceID, updated)
-	}
-	inOld := make(map[string]bool, len(oldUsers))
-	for _, u := range oldUsers {
-		inOld[u] = true
-	}
-	inNew := make(map[string]bool, len(newUsers))
-	for _, u := range newUsers {
-		inNew[u] = true
-		data := created
-		if inOld[u] {
-			data = updated
-		}
-		b.BroadcastToScope(realtime.ScopeWorkspaceMember, realtime.WorkspaceMemberScopeID(e.WorkspaceID, u), data)
-	}
-	for _, u := range oldUsers {
-		if !inNew[u] {
-			b.BroadcastToScope(realtime.ScopeWorkspaceMember, realtime.WorkspaceMemberScopeID(e.WorkspaceID, u), deleted)
-		}
-	}
-	return nil
-}
-
-// routeAccessChanged sends project:access_changed to the people who could see
-// the project before the change. Without a recipient list the event is
-// dropped.
-func routeAccessChanged(b realtime.Broadcaster, e events.Event, data []byte) {
-	payload, _ := e.Payload.(map[string]any)
-	recipients, _ := payload["recipient_user_ids"].([]string)
-	if len(recipients) == 0 || e.WorkspaceID == "" {
-		slog.Warn("realtime: dropping project:access_changed without recipients")
-		return
-	}
-	realtime.M.RecordEvent(e.Type)
-	sendToRecipients(b, e.WorkspaceID, projectaccess.Recipients{UserIDs: recipients}, data)
+	protocol.EventPinCreated:                 true,
+	protocol.EventPinDeleted:                 true,
+	protocol.EventPinReordered:               true,
 }
 
 // registerListeners wires up event bus listeners for WS broadcasting.
@@ -538,15 +102,26 @@ func routeAccessChanged(b realtime.Broadcaster, e events.Event, data []byte) {
 // for a Redis-backed relay or a feature-flagged dual-write implementation
 // without touching any of the event listeners below. This is Phase 0 of the
 // horizontal-scaling plan tracked in MUL-1138.
-func registerListeners(bus *events.Bus, b realtime.Broadcaster, audiences eventAudiences) {
+//
+// audience, when given, narrows events about private projects (MUL-8472) to
+// their members; see privateProjectAudience.
+func registerListeners(bus *events.Bus, b realtime.Broadcaster, audience ...privateProjectAudience) {
+	var projectAudience privateProjectAudience
+	if len(audience) > 0 {
+		projectAudience = audience[0]
+	}
+
 	// Personal events should NOT be broadcast to the whole workspace.
 	personalEvents := map[string]bool{
 		protocol.EventInboxNew:           true,
 		protocol.EventInboxRead:          true,
 		protocol.EventInboxArchived:      true,
 		protocol.EventInboxUnarchived:    true,
+		protocol.EventInboxDeleted:       true,
 		protocol.EventInboxBatchRead:     true,
 		protocol.EventInboxBatchArchived: true,
+		protocol.EventInboxSnoozed:       true,
+		protocol.EventInboxUnsnoozed:     true,
 		protocol.EventInvitationCreated:  true,
 		protocol.EventInvitationRevoked:  true,
 		protocol.EventIssueUnreadChanged: true,
@@ -579,12 +154,28 @@ func registerListeners(bus *events.Bus, b realtime.Broadcaster, audiences eventA
 		sendToRecipient(b, e, recipientID)
 	})
 
+	// inbox:snoozed — a snooze names its recipient at the top level; a row
+	// written into a snooze carries it on the nested item, like inbox:new.
+	bus.Subscribe(protocol.EventInboxSnoozed, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		recipientID, _ := payload["recipient_id"].(string)
+		if item, ok := payload["item"].(map[string]any); ok && recipientID == "" {
+			recipientID, _ = item["recipient_id"].(string)
+		}
+		sendToRecipient(b, e, recipientID)
+	})
+
 	// inbox:read, inbox:archived, inbox:unarchived, inbox:batch-read,
 	// inbox:batch-archived, issue_unread:changed — extract recipient from
 	// top-level payload
 	for _, eventType := range []string{
 		protocol.EventInboxRead, protocol.EventInboxArchived, protocol.EventInboxUnarchived,
+		protocol.EventInboxDeleted,
 		protocol.EventInboxBatchRead, protocol.EventInboxBatchArchived,
+		protocol.EventInboxUnsnoozed,
 		protocol.EventIssueUnreadChanged,
 	} {
 		bus.Subscribe(eventType, func(e events.Event) {
@@ -745,28 +336,19 @@ func registerListeners(bus *events.Bus, b realtime.Broadcaster, audiences eventA
 			return
 		}
 
-		// Issue and project events go to the project's audience: the workspace
-		// room for a project everyone sees, each person's member room for a
-		// restricted one. Guests are not in the workspace room.
-		if e.Type == protocol.EventProjectAccessChanged {
-			routeAccessChanged(b, e, data)
-			return
-		}
-		if projectScopedEvents[e.Type] && e.WorkspaceID != "" {
-			routeProjectEvent(b, audiences, e, data)
-			return
-		}
-
-		// Events about an issue (comments, reactions, activity, subscribers,
-		// labels) follow the issue's project.
-		if e.WorkspaceID != "" {
-			issueID, ok, err := derivedIssueID(e.Payload)
+		if projectAudience != nil && e.WorkspaceID != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), audienceResolveTimeout)
+			recipients, private, err := projectAudience.Audience(ctx, e)
+			cancel()
 			if err != nil {
-				slog.Warn("realtime: dropping event with unreadable payload", "event_type", e.Type, "error", err)
+				logAudienceFailure(e, err)
 				return
 			}
-			if ok {
-				routeDerivedEvent(b, audiences, e, issueID, data)
+			if private {
+				realtime.M.RecordEvent(e.Type)
+				for _, userID := range recipients {
+					b.BroadcastToScope(realtime.ScopeWorkspaceMember, realtime.WorkspaceMemberScopeID(e.WorkspaceID, userID), data)
+				}
 				return
 			}
 		}

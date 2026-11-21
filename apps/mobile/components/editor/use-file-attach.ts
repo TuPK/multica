@@ -18,6 +18,7 @@
  */
 import { useCallback, useState } from "react";
 import { Alert } from "react-native";
+import { isStorageLimitReached } from "@/lib/upload-error";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { api, MAX_FILE_SIZE, type FileAsset } from "@/data/api";
@@ -69,6 +70,10 @@ export function useFileAttach() {
           filename: attachment.filename,
         };
       } catch (err) {
+        if (isStorageLimitReached(err)) {
+          Alert.alert(t("upload.storage_full_title"), t("upload.storage_full_message"));
+          return null;
+        }
         Alert.alert(
           t("upload.failed"),
           formatWorkspaceWriteError(err, t("upload.error")),

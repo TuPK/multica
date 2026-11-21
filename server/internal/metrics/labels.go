@@ -114,6 +114,9 @@ var businessMetricLabels = map[string][]string{
 	"multica_hub_import_commits_total":                 {labelKind, labelResult},
 	"multica_hub_bundle_builds_total":                  {labelResult},
 	"multica_hub_storage_errors_total":                 {labelOperation},
+	"multica_storage_quota_sum_total":                  {labelSource, labelResult},
+	"multica_storage_quota_sum_duration_seconds":       {labelSource},
+	"multica_storage_quota_decision_total":             {labelAction, labelSource, labelResult},
 }
 
 var forbiddenMetricLabels = map[string]struct{}{
@@ -169,6 +172,7 @@ var (
 		"mcode":         "mcode",
 		"muse":          "muse",
 		"zeroclaw":      "zeroclaw",
+		"museapp":       "museapp",
 		"zcode":         "zcode",
 		"multica_agent": "multica_agent",
 		"openclaw":      "openclaw",
@@ -178,6 +182,8 @@ var (
 		"qoder":         "qoder",
 		"qoderclicn":    "qoderclicn",
 		"qwen":          "qwen",
+		"droid":         "droid",
+		"amp":           "amp",
 		"traecli":       "traecli",
 		"other":         "other",
 	}

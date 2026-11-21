@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { MulticaLanding } from "@/features/landing/components/multica-landing";
+import { pageMetadata } from "@/features/landing/utils/page-metadata";
+import { HomePage } from "@/features/landing/site/home-page";
+import { getHomeDownload } from "@/features/landing/utils/home-download";
 
 export const metadata: Metadata = {
   title: "Homepage",
@@ -16,6 +18,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomepagePage() {
-  return <MulticaLanding />;
+export default async function HomepagePage() {
+  return <HomePage download={await getHomeDownload()} />;
 }

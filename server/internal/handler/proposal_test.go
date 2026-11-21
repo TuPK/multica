@@ -73,7 +73,7 @@ func asAgent(req *http.Request, agentID, taskID string) *http.Request {
 	return testutil.WithHeaders(req, "X-Agent-ID", agentID, "X-Task-ID", taskID)
 }
 
-func asUser(req *http.Request, userID string) *http.Request {
+func asProposalUser(req *http.Request, userID string) *http.Request {
 	return testutil.WithHeaders(req, "X-User-ID", userID)
 }
 
@@ -413,11 +413,11 @@ func TestCreateProposal_Membership(t *testing.T) {
 		testutil.Call(t, testHandler.CreateProposal, req).Want(http.StatusCreated)
 	})
 	t.Run("workspace member outside the squad is refused", func(t *testing.T) {
-		req := asUser(newRequest("POST", "/api/proposals", body("member out")), memberOutside)
+		req := asProposalUser(newRequest("POST", "/api/proposals", body("member out")), memberOutside)
 		testutil.Call(t, testHandler.CreateProposal, req).Want(http.StatusForbidden)
 	})
 	t.Run("squad member is allowed and recorded as a member", func(t *testing.T) {
-		req := asUser(newRequest("POST", "/api/proposals", body("member in")), memberInside)
+		req := asProposalUser(newRequest("POST", "/api/proposals", body("member in")), memberInside)
 		var out ProposalResponse
 		testutil.Call(t, testHandler.CreateProposal, req).Want(http.StatusCreated).JSON(&out)
 		if out.CreatedByType != "member" || out.CreatedByID != memberInside {
@@ -425,7 +425,7 @@ func TestCreateProposal_Membership(t *testing.T) {
 		}
 	})
 	t.Run("admin outside the squad is allowed", func(t *testing.T) {
-		req := asUser(newRequest("POST", "/api/proposals", body("admin")), admin)
+		req := asProposalUser(newRequest("POST", "/api/proposals", body("admin")), admin)
 		testutil.Call(t, testHandler.CreateProposal, req).Want(http.StatusCreated)
 	})
 	t.Run("unknown handoff squad is refused", func(t *testing.T) {
@@ -463,7 +463,7 @@ func TestProposals_WorkspaceIsolation(t *testing.T) {
 		}
 	})
 	t.Run("filing for another workspace's squad is 404", func(t *testing.T) {
-		req := inOther(asUser(newRequest("POST", "/api/proposals", proposalBody(fx.SquadID, fx.title("cross"), nil)), testUserID))
+		req := inOther(asProposalUser(newRequest("POST", "/api/proposals", proposalBody(fx.SquadID, fx.title("cross"), nil)), testUserID))
 		testutil.Call(t, testHandler.CreateProposal, req).Want(http.StatusNotFound)
 	})
 }
@@ -660,7 +660,7 @@ func TestDecideProposal_Authorization(t *testing.T) {
 	}
 
 	t.Run("plain member is refused", func(t *testing.T) {
-		testutil.Call(t, testHandler.DecideProposal, asUser(decideRequest(p.ID, body), plainMember)).Want(http.StatusForbidden)
+		testutil.Call(t, testHandler.DecideProposal, asProposalUser(decideRequest(p.ID, body), plainMember)).Want(http.StatusForbidden)
 		stillPending(t)
 	})
 	t.Run("agent actor is refused", func(t *testing.T) {
@@ -683,7 +683,7 @@ func TestDecideProposal_Authorization(t *testing.T) {
 		stillPending(t)
 	})
 	t.Run("admin member may decide", func(t *testing.T) {
-		testutil.Call(t, testHandler.DecideProposal, asUser(decideRequest(p.ID, body), admin)).Want(http.StatusOK)
+		testutil.Call(t, testHandler.DecideProposal, asProposalUser(decideRequest(p.ID, body), admin)).Want(http.StatusOK)
 	})
 }
 

@@ -238,7 +238,8 @@
         "missing_skill_md": "No se encontró SKILL.md en el nivel superior.",
         "empty": "No hay archivos que importar.",
         "too_large": "Este archivo es demasiado grande.",
-        "too_many_files": "Esta importación tiene demasiados archivos."
+        "too_many_files": "Esta importación tiene demasiados archivos.",
+        "unreadable": "This archive couldn't be read."
       }
     },
     "blank": {

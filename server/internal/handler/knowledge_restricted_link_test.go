@@ -21,7 +21,8 @@ import (
 // initiative is unchanged. An admin's publish still files the document.
 func TestRestrictedKnowledgeLinkAnswersMissing(t *testing.T) {
 	fx := newIniWorkspace(t)
-	restricted := dbfx.Project(t, "Restricted knowledge "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "access": "restricted"})
+	restricted := dbfx.Project(t, "Restricted knowledge "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "visibility": "private"})
+	ownerJoinsProject(t, fx.ID, restricted)
 	created := fx.createInitiative(t, "Hidden documented initiative")
 	var issueID string
 	dbfx.QueryRow(t, `SELECT issue_id FROM initiative WHERE id = $1`, created.ID).Scan(&issueID)

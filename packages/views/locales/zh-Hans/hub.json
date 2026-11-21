@@ -236,7 +236,8 @@
         "missing_skill_md": "顶层没有找到 SKILL.md。",
         "empty": "没有可导入的文件。",
         "too_large": "压缩包太大。",
-        "too_many_files": "此导入的文件太多。"
+        "too_many_files": "此导入的文件太多。",
+        "unreadable": "This archive couldn't be read."
       }
     },
     "blank": {

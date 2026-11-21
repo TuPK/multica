@@ -56,9 +56,8 @@ func createRestrictedFixtureProject(t *testing.T, title, access string) string {
 	if err := json.NewDecoder(w.Body).Decode(&p); err != nil {
 		t.Fatalf("decode CreateProject: %v", err)
 	}
-	if _, err := testPool.Exec(context.Background(),
-		`UPDATE project SET access = $1 WHERE id = $2`, access, p.ID); err != nil {
-		t.Fatalf("set access %s: %v", access, err)
+	if access == "restricted" {
+		makeProjectPrivate(t, p.ID)
 	}
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `DELETE FROM project_member WHERE project_id = $1`, p.ID)
@@ -245,7 +244,37 @@ func TestMoveIssueNeedsBothProjects(t *testing.T) {
 	req := withURLParam(requestAs(f.outsiderID, "POST", "/api/issues/"+issueID+"/move",
 		map[string]any{"project_id": f.restrictedProjectID, "before_id": nil, "after_id": nil}), "id", issueID)
 	testHandler.MoveIssue(w, req)
-	if w.Code != http.StatusNotFound {
-		t.Errorf("MoveIssue into restricted project as outsider: want 404, got %d %s", w.Code, w.Body.String())
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("MoveIssue into restricted project as outsider: want 400, got %d %s", w.Code, w.Body.String())
 	}
+}
+
+// makeProjectPrivate marks a project private and, as creating one does, adds
+// the test owner to it: a workspace role grants no visibility, so without a
+// membership even the owner would not see it.
+func makeProjectPrivate(t *testing.T, projectID string) {
+	t.Helper()
+	dbfx.Exec(t, `UPDATE project SET visibility = 'private' WHERE id = $1`, projectID)
+	var workspaceID string
+	dbfx.QueryRow(t, `SELECT workspace_id::text FROM project WHERE id = $1`, projectID).Scan(&workspaceID)
+	ownerJoinsProject(t, workspaceID, projectID)
+}
+
+// visibilityOf maps the fixtures' access vocabulary to a project visibility.
+func visibilityOf(access string) string {
+	if access == "restricted" {
+		return "private"
+	}
+	return "workspace"
+}
+
+// ownerJoinsProject adds the workspace's owners and admins, and the test
+// owner, to a private project's members, as creating the project would: a
+// role grants no visibility, so without a row the owner side sees nothing.
+func ownerJoinsProject(t *testing.T, workspaceID, projectID string) {
+	t.Helper()
+	dbfx.Exec(t, `INSERT INTO project_member (project_id, workspace_id, user_id)
+		SELECT $1::uuid, $2::uuid, user_id FROM member WHERE workspace_id = $2::uuid AND role IN ('owner', 'admin')
+		ON CONFLICT DO NOTHING`, projectID, workspaceID)
+	dbfx.Exec(t, `INSERT INTO project_member (project_id, workspace_id, user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, projectID, workspaceID, testUserID)
 }

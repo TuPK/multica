@@ -21,16 +21,21 @@ type runVisibilityFixture struct {
 	issueID   string
 	agentID   string
 	runtimeID string
+	ownerID   string
 }
 
 func newRunVisibilityFixture(t *testing.T) runVisibilityFixture {
 	t.Helper()
 	f, owner := newPrincipalFixture(t)
-	projectID := f.Project(t, "restricted run project", testutil.Cols{"access": "restricted"})
+	projectID := f.Project(t, "restricted run project", testutil.Cols{"visibility": "private"})
 	issueID := f.Issue(t, "restricted run issue", testutil.Cols{"project_id": projectID})
 	runtimeID := f.Runtime(t, "run-visibility-runtime", testutil.Cols{"owner_id": owner})
 	agentID := f.Agent(t, "run-visibility-agent", runtimeID, testutil.Cols{"owner_id": owner})
-	return runVisibilityFixture{principalFixture: f, projectID: projectID, issueID: issueID, agentID: agentID, runtimeID: runtimeID}
+	fixture := runVisibilityFixture{principalFixture: f, projectID: projectID, issueID: issueID, agentID: agentID, runtimeID: runtimeID, ownerID: owner}
+	// A run reads a private project only when both its member and its agent's
+	// owner can see it, so the owner is a member of the project.
+	fixture.grant(t, owner)
+	return fixture
 }
 
 // grant gives userID access to the restricted project.
@@ -39,6 +44,12 @@ func (f runVisibilityFixture) grant(t *testing.T, userID string) {
 	f.InsertNoID(t, "project_member", testutil.Cols{
 		"project_id": f.projectID, "workspace_id": f.WorkspaceID, "user_id": userID,
 	}, "project_id = $1 AND user_id = $2", f.projectID, userID)
+}
+
+// revoke removes userID from the restricted project's members.
+func (f runVisibilityFixture) revoke(t *testing.T, userID string) {
+	t.Helper()
+	f.Exec(t, `DELETE FROM project_member WHERE project_id = $1 AND user_id = $2`, f.projectID, userID)
 }
 
 // queuedTask queues a task on the restricted issue. originator "" leaves
@@ -149,8 +160,11 @@ func TestClaimRefusedWhenOriginatorLeftWorkspace(t *testing.T) {
 	}
 }
 
+// With no originator the run is bounded by its agent's owner alone, so it
+// reads the project only while that owner is a member.
 func TestNullOriginatorUserID(t *testing.T) {
 	f := newRunVisibilityFixture(t)
+	f.revoke(t, f.ownerID)
 	if r := f.refusal(t, f.queuedTask(t, "", testutil.Cols{"originator_source": nil})); r == nil || r.Reason != VerdictReasonProjectNotVisible {
 		t.Errorf("NULL originator on a restricted project: refusal = %+v, want %q", r, VerdictReasonProjectNotVisible)
 	}
@@ -205,6 +219,7 @@ func TestAutopilotRunUsesCreator(t *testing.T) {
 // A creator that is an agent is no person: the run sees no restricted project.
 func TestAutopilotRunWithAgentCreatorSeesNoRestrictedProject(t *testing.T) {
 	f := newRunVisibilityFixture(t)
+	f.revoke(t, f.ownerID)
 	taskID := f.autopilotTask(t, "agent", f.agentID)
 	if r := f.refusal(t, taskID); r == nil || r.Reason != VerdictReasonProjectNotVisible {
 		t.Errorf("agent-created autopilot: refusal = %+v, want %q", r, VerdictReasonProjectNotVisible)
@@ -244,36 +259,10 @@ func TestOriginatorUserIDNotOverwritten(t *testing.T) {
 		}
 	}
 
-	if _, err := RunScope(context.Background(), f.q, util.MustParseUUID(f.WorkspaceID), f.taskRow(t, taskID)); err != nil {
-		t.Fatalf("RunScope: %v", err)
+	if _, err := runRefusedForVisibility(context.Background(), f.q, util.MustParseUUID(f.WorkspaceID), f.taskRow(t, taskID)); err != nil {
+		t.Fatalf("runRefusedForVisibility: %v", err)
 	}
 	if got := f.taskRow(t, taskID); got.OriginatorUserID.Valid || got.AccountableUserID.Valid {
-		t.Errorf("RunScope wrote a person into the task: %+v", got)
-	}
-}
-
-// RunScope is what the request path uses too: a run that cannot see the project
-// gets a Scope that does not allow it, and a member who left gets ErrNotMember.
-func TestRunScope(t *testing.T) {
-	f := newRunVisibilityFixture(t)
-	ws := util.MustParseUUID(f.WorkspaceID)
-	user := f.member(t, "scope-user")
-	taskID := f.queuedTask(t, user)
-	project := util.MustParseUUID(f.projectID)
-
-	scopeOf := func() (bool, error) {
-		s, err := RunScope(context.Background(), f.q, ws, f.taskRow(t, taskID))
-		return s.Allows(project), err
-	}
-	if allowed, err := scopeOf(); err != nil || allowed {
-		t.Fatalf("before the grant: allowed=%v err=%v", allowed, err)
-	}
-	f.grant(t, user)
-	if allowed, err := scopeOf(); err != nil || !allowed {
-		t.Fatalf("after the grant: allowed=%v err=%v", allowed, err)
-	}
-	f.Exec(t, `DELETE FROM project_member WHERE project_id = $1 AND user_id = $2`, f.projectID, user)
-	if allowed, err := scopeOf(); err != nil || allowed {
-		t.Fatalf("after the revoke: allowed=%v err=%v", allowed, err)
+		t.Errorf("the visibility check wrote a person into the task: %+v", got)
 	}
 }

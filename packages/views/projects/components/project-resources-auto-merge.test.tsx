@@ -72,12 +72,11 @@ describe("ProjectResourcesSection — auto-merge save", () => {
 
   // Turning the switch on for an existing worktree resource must reach the
   // update request as auto_merge: true, or the saved setting silently reverts.
-  it("sends auto_merge: true when the switch is turned on and saved", async () => {
+  it("sends auto_merge: true as soon as the switch is turned on", async () => {
     renderWithI18n(<ProjectResourcesSection projectId="p1" />);
 
-    fireEvent.click(screen.getByLabelText("Change how runs use this folder"));
+    fireEvent.click(screen.getByRole("button", { name: "Parallel" }));
     fireEvent.click(screen.getByRole("switch"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
     expect(mutateAsync.mock.calls[0]?.[0]).toMatchObject({

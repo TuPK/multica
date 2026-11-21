@@ -491,3 +491,62 @@ export interface UpdateWorkspaceBillingProfileRequest {
   address?: string | null;
   invoiceEmail?: string | null;
 }
+
+/**
+ * Paid features (MUL-9482). The server evaluates each feature for the
+ * workspace: `available` means it can be used and extended, `locked` means
+ * the plan does not include it, so existing configuration keeps working and
+ * can be reduced, but nothing can be added. The server enforces on every
+ * write; this is only for rendering.
+ */
+export type PaidFeature =
+  | "private_projects"
+  | "guests"
+  | "agent_invocation_members"
+  | "runtime_member_sharing"
+  | "team_app_accounts";
+
+export type WorkspaceFeatureState = "available" | "locked";
+
+export interface WorkspaceFeatures {
+  features: Partial<Record<PaidFeature, WorkspaceFeatureState>>;
+  /**
+   * Numeric plan limits the server applies. The API client always fills it;
+   * optional so hand-built values (tests, older caches) need not.
+   */
+  limits?: WorkspaceFeatureLimits;
+}
+
+export interface WorkspaceFeatureLimits {
+  /**
+   * How many calendar days back the dashboard can read (MUL-9490). Null when
+   * nothing is enforced: off, observed, or self-hosted.
+   */
+  dashboardHistoryDays: number | null;
+}
+
+/**
+ * The plan's member limit (MUL-9488). `off` means no limit applies, which is
+ * also every self-hosted workspace; the counts are null then. Members and
+ * pending invitations both take a slot; guests take none.
+ */
+/**
+ * The plan's attachment storage limit (MUL-9489). `off` means no limit
+ * applies, which is also every self-hosted workspace; the figures are null
+ * then. Bytes are counted across every attachment in the workspace.
+ */
+export interface StorageUsage {
+  action: "off" | "observe" | "enforce";
+  /** Null also while a limit applies, when the server could not read usage in time. */
+  usedBytes: number | null;
+  limitBytes: number | null;
+  /** Set only under enforce: observe never refuses an upload. */
+  reached: boolean | null;
+}
+
+export interface MemberLimit {
+  action: "off" | "observe" | "enforce";
+  limit: number | null;
+  members: number | null;
+  pendingInvitations: number | null;
+}

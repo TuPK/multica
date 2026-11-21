@@ -123,17 +123,14 @@ func (a *ChannelActions) apply(ctx context.Context, binding db.ChannelUserBindin
 	if signed.Action == service.ProposalDecisionSnooze {
 		// The bound member sees what the app shows that member: a proposal of a
 		// project they cannot see answers like a missing one.
-		scope, err := projectaccess.ForViewer(ctx, a.h.Queries, binding.WorkspaceID, binding.MulticaUserID)
-		if errors.Is(err, projectaccess.ErrNotMember) {
-			return a.refuse(chatToastNotFound, chatMsgNotFound, "")
-		}
+		scope, err := projectaccess.ForPrincipals(ctx, a.h.Queries, binding.WorkspaceID, binding.MulticaUserID)
 		if err != nil {
 			slog.Warn("chat snooze: could not compute project scope", "error", err)
 			return a.refuse(chatToastFailed, chatMsgFailed, link)
 		}
 		row, err := a.h.Queries.GetProposalWithIssue(ctx, db.GetProposalWithIssueParams{
 			ID: signed.ProposalID, WorkspaceID: binding.WorkspaceID,
-			ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+			HiddenProjectIds: scope.Param(),
 		})
 		if err != nil {
 			if isNotFound(err) {

@@ -30,21 +30,15 @@ WHERE i.workspace_id = $1::uuid
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
         END
   )
-AND ($3::text = 'all'
-    OR (i.project_id IS NULL AND $3::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
-    OR ($3::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+AND ($3::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 GROUP BY i.status
 ORDER BY i.status
 `
 
 type CountProjectIssuesByStatusParams struct {
-	WorkspaceID pgtype.UUID   `json:"workspace_id"`
-	ProjectIds  []pgtype.UUID `json:"project_ids"`
-	ScopeMode   string        `json:"scope_mode"`
-	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	ProjectIds       []pgtype.UUID `json:"project_ids"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 type CountProjectIssuesByStatusRow struct {
@@ -56,14 +50,9 @@ type CountProjectIssuesByStatusRow struct {
 // terminal issues: every issue of the project that the project's workflow
 // governs must end on a status it lists. Issues a squad routes through its own
 // active workflow are left out (see the NOT EXISTS below).
-// projectaccess:scope
+// MUL-8472: private projects the caller cannot see.
 func (q *Queries) CountProjectIssuesByStatus(ctx context.Context, arg CountProjectIssuesByStatusParams) ([]CountProjectIssuesByStatusRow, error) {
-	rows, err := q.db.Query(ctx, countProjectIssuesByStatus,
-		arg.WorkspaceID,
-		arg.ProjectIds,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, countProjectIssuesByStatus, arg.WorkspaceID, arg.ProjectIds, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}
@@ -98,21 +87,15 @@ WHERE i.workspace_id = $1::uuid
             AND a.home_squad_id = $2::uuid
       ))
   )
-AND ($3::text = 'all'
-    OR (i.project_id IS NULL AND $3::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
-    OR ($3::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+AND ($3::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 GROUP BY i.status
 ORDER BY i.status
 `
 
 type CountSquadIssuesByStatusParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	SquadID     pgtype.UUID `json:"squad_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	SquadID          pgtype.UUID   `json:"squad_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 type CountSquadIssuesByStatusRow struct {
@@ -123,14 +106,9 @@ type CountSquadIssuesByStatusRow struct {
 // Status census for a squad's active-workflow switch or an edit of that workflow:
 // the project issues routed to the squad, either assigned to it or to an agent
 // whose home squad it is. Issues outside any project take no workflow.
-// projectaccess:scope
+// MUL-8472: private projects the caller cannot see.
 func (q *Queries) CountSquadIssuesByStatus(ctx context.Context, arg CountSquadIssuesByStatusParams) ([]CountSquadIssuesByStatusRow, error) {
-	rows, err := q.db.Query(ctx, countSquadIssuesByStatus,
-		arg.WorkspaceID,
-		arg.SquadID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, countSquadIssuesByStatus, arg.WorkspaceID, arg.SquadID, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}
@@ -561,27 +539,21 @@ func (q *Queries) ListNamedIssueWorkflowSteps(ctx context.Context, workspaceID p
 }
 
 const listProjectsUsingDefaultIssueWorkflow = `-- name: ListProjectsUsingDefaultIssueWorkflow :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE workspace_id = $1::uuid
   AND workflow_id IS NULL
-AND ($2::text = 'all'
-    OR (project.id IS NULL AND $2::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $3::uuid)
-    OR ($2::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
+AND ($2::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($2::uuid[])))
 ORDER BY created_at, id
 `
 
 type ListProjectsUsingDefaultIssueWorkflowParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
-// projectaccess:scope
+// MUL-8472: private projects the caller cannot see.
 func (q *Queries) ListProjectsUsingDefaultIssueWorkflow(ctx context.Context, arg ListProjectsUsingDefaultIssueWorkflowParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjectsUsingDefaultIssueWorkflow, arg.WorkspaceID, arg.ScopeMode, arg.ScopeUserID)
+	rows, err := q.db.Query(ctx, listProjectsUsingDefaultIssueWorkflow, arg.WorkspaceID, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}
@@ -607,6 +579,11 @@ func (q *Queries) ListProjectsUsingDefaultIssueWorkflow(ctx context.Context, arg
 			&i.WorkflowID,
 			&i.CreatorType,
 			&i.CreatorID,
+			&i.Visibility,
+			&i.ArchivedAt,
+			&i.ArchivedByType,
+			&i.ArchivedByID,
+			&i.FolderID,
 			&i.SquadIds,
 		); err != nil {
 			return nil, err
@@ -620,33 +597,22 @@ func (q *Queries) ListProjectsUsingDefaultIssueWorkflow(ctx context.Context, arg
 }
 
 const listProjectsUsingIssueWorkflow = `-- name: ListProjectsUsingIssueWorkflow :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE workspace_id = $1::uuid
   AND workflow_id = $2::uuid
-AND ($3::text = 'all'
-    OR (project.id IS NULL AND $3::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $4::uuid)
-    OR ($3::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
+AND ($3::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 ORDER BY created_at, id
 `
 
 type ListProjectsUsingIssueWorkflowParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	WorkflowID  pgtype.UUID `json:"workflow_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	WorkflowID       pgtype.UUID   `json:"workflow_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
-// projectaccess:scope
+// MUL-8472: private projects the caller cannot see.
 func (q *Queries) ListProjectsUsingIssueWorkflow(ctx context.Context, arg ListProjectsUsingIssueWorkflowParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjectsUsingIssueWorkflow,
-		arg.WorkspaceID,
-		arg.WorkflowID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, listProjectsUsingIssueWorkflow, arg.WorkspaceID, arg.WorkflowID, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}
@@ -672,6 +638,11 @@ func (q *Queries) ListProjectsUsingIssueWorkflow(ctx context.Context, arg ListPr
 			&i.WorkflowID,
 			&i.CreatorType,
 			&i.CreatorID,
+			&i.Visibility,
+			&i.ArchivedAt,
+			&i.ArchivedByType,
+			&i.ArchivedByID,
+			&i.FolderID,
 			&i.SquadIds,
 		); err != nil {
 			return nil, err
@@ -737,7 +708,7 @@ func (q *Queries) ListSquadIssueWorkflows(ctx context.Context, arg ListSquadIssu
 }
 
 const lockProjectForWorkflowChange = `-- name: LockProjectForWorkflowChange :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE id = $1::uuid
   AND workspace_id = $2::uuid
 FOR UPDATE
@@ -770,6 +741,11 @@ func (q *Queries) LockProjectForWorkflowChange(ctx context.Context, arg LockProj
 		&i.WorkflowID,
 		&i.CreatorType,
 		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
 		&i.SquadIds,
 	)
 	return i, err
@@ -806,22 +782,16 @@ WHERE i.workspace_id = $2::uuid
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
         END
   )
-AND ($5::text = 'all'
-    OR (i.project_id IS NULL AND $5::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $6::uuid)
-    OR ($5::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
-RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
+AND ($5::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($5::uuid[])))
+RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.requester_user_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
 `
 
 type RemapProjectIssueStatusParams struct {
-	ToStatus    string        `json:"to_status"`
-	WorkspaceID pgtype.UUID   `json:"workspace_id"`
-	ProjectIds  []pgtype.UUID `json:"project_ids"`
-	FromStatus  string        `json:"from_status"`
-	ScopeMode   string        `json:"scope_mode"`
-	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
+	ToStatus         string        `json:"to_status"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	ProjectIds       []pgtype.UUID `json:"project_ids"`
+	FromStatus       string        `json:"from_status"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 // Moves every issue of the given projects that the project's workflow governs
@@ -832,15 +802,14 @@ type RemapProjectIssueStatusParams struct {
 // deliberately touches nothing else, so it never hands an issue off or starts a
 // run. The squad-routed issues CountProjectIssuesByStatus leaves out are left
 // out here too.
-// projectaccess:scope
+// MUL-8472: private projects the caller cannot see.
 func (q *Queries) RemapProjectIssueStatus(ctx context.Context, arg RemapProjectIssueStatusParams) ([]Issue, error) {
 	rows, err := q.db.Query(ctx, remapProjectIssueStatus,
 		arg.ToStatus,
 		arg.WorkspaceID,
 		arg.ProjectIds,
 		arg.FromStatus,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -880,6 +849,7 @@ func (q *Queries) RemapProjectIssueStatus(ctx context.Context, arg RemapProjectI
 			&i.LastActivityAt,
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
+			&i.RequesterUserID,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,
@@ -930,35 +900,28 @@ WHERE i.workspace_id = $2::uuid
   )
   AND i.status = $4::text
   AND i.status <> $1::text
-AND ($5::text = 'all'
-    OR (i.project_id IS NULL AND $5::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $6::uuid)
-    OR ($5::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
-RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
+AND ($5::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($5::uuid[])))
+RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.requester_user_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
 `
 
 type RemapSquadIssueStatusParams struct {
-	ToStatus    string      `json:"to_status"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	SquadID     pgtype.UUID `json:"squad_id"`
-	FromStatus  string      `json:"from_status"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	ToStatus         string        `json:"to_status"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	SquadID          pgtype.UUID   `json:"squad_id"`
+	FromStatus       string        `json:"from_status"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 // Moves a squad's routed project issues (the same set CountSquadIssuesByStatus
 // counts) from one status to another, with RemapProjectIssueStatus's effects.
-// projectaccess:scope
+// MUL-8472: private projects the caller cannot see.
 func (q *Queries) RemapSquadIssueStatus(ctx context.Context, arg RemapSquadIssueStatusParams) ([]Issue, error) {
 	rows, err := q.db.Query(ctx, remapSquadIssueStatus,
 		arg.ToStatus,
 		arg.WorkspaceID,
 		arg.SquadID,
 		arg.FromStatus,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -998,6 +961,7 @@ func (q *Queries) RemapSquadIssueStatus(ctx context.Context, arg RemapSquadIssue
 			&i.LastActivityAt,
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
+			&i.RequesterUserID,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,
@@ -1092,7 +1056,7 @@ UPDATE project SET
     updated_at = now()
 WHERE id = $2::uuid
   AND workspace_id = $3::uuid
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type SetProjectWorkflowParams struct {
@@ -1122,6 +1086,11 @@ func (q *Queries) SetProjectWorkflow(ctx context.Context, arg SetProjectWorkflow
 		&i.WorkflowID,
 		&i.CreatorType,
 		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
 		&i.SquadIds,
 	)
 	return i, err

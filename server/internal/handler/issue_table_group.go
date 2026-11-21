@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/logger"
-	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -274,6 +273,8 @@ END, ''))`,
 )) END`,
 		}, true
 	case "parent":
+		// The sort key reads the parent's title, so it is built per request in
+		// sortExpression, where the viewer's hidden projects are known.
 		return resolvedIssueTableGroup{
 			kind:      "parent",
 			groupExpr: "COALESCE(i.parent_issue_id::text, '__no_parent__')",
@@ -437,17 +438,18 @@ func (group resolvedIssueTableGroup) expression(addArg func(any) string) string 
 	return group.groupExpr
 }
 
-func (group resolvedIssueTableGroup) sortExpression(addArg func(any) string, scope projectaccess.Scope) string {
+// sortExpression orders groups. parentVisible is a predicate on the parent
+// row aliased p: a parent in a project the viewer cannot see sorts and renders
+// like a missing one.
+func (group resolvedIssueTableGroup) sortExpression(parentVisible string) string {
 	if group.kind == "compound" && group.primary != nil {
-		return group.primary.sortExpression(addArg, scope)
+		return group.primary.sortExpression(parentVisible)
 	}
 	if group.kind == "parent" {
-		// A parent the viewer cannot see has no title to sort by, like a missing one.
 		return fmt.Sprintf(`CASE WHEN group_value = '__no_parent__' THEN '' ELSE LOWER(COALESCE(
-  (SELECT p.title FROM issue p WHERE p.workspace_id = $1 AND p.id = group_value::uuid
-   %s),
+  (SELECT p.title FROM issue p WHERE p.workspace_id = $1 AND p.id = group_value::uuid AND %s),
   ''
-)) END`, scopeCondition(scope, "p.project_id", addArg))
+)) END`, parentVisible)
 	}
 	if group.groupSortExpr != "" {
 		return group.groupSortExpr
@@ -527,9 +529,9 @@ func (group resolvedIssueTableGroup) orderExpression(addArg func(any) string) st
 	}
 }
 
-func (group resolvedIssueTableGroup) contextExpression(addArg func(any) string, issuePrefix string, scope projectaccess.Scope) string {
+func (group resolvedIssueTableGroup) contextExpression(addArg func(any) string, issuePrefix, parentVisible string) string {
 	if group.kind == "compound" && group.primary != nil {
-		return group.primary.contextExpression(addArg, issuePrefix, scope)
+		return group.primary.contextExpression(addArg, issuePrefix, parentVisible)
 	}
 	if group.kind != "parent" {
 		return "'{}'::jsonb"
@@ -544,9 +546,8 @@ func (group resolvedIssueTableGroup) contextExpression(addArg func(any) string, 
     'status', p.status
   ))
   FROM issue p
-  WHERE p.workspace_id = $1 AND p.id = group_value::uuid
-  %s
-), '{}'::jsonb) END`, prefixRef, scopeCondition(scope, "p.project_id", addArg))
+  WHERE p.workspace_id = $1 AND p.id = group_value::uuid AND %s
+), '{}'::jsonb) END`, prefixRef, parentVisible)
 }
 
 const statusCategoryGroupKeyPrefix = "status_category:"
@@ -942,9 +943,9 @@ func (h *Handler) ListIssueTableGroups(w http.ResponseWriter, r *http.Request) {
 		return "$" + strconv.Itoa(len(args))
 	}
 	groupExpr := group.expression(addArg)
-	groupSortExpr := group.sortExpression(addArg, compiled.scope)
+	groupSortExpr := group.sortExpression(compiled.parentVisible())
 	orderExpr := group.orderExpression(addArg)
-	contextExpr := group.contextExpression(addArg, h.getIssuePrefix(r.Context(), compiled.workspaceID), compiled.scope)
+	contextExpr := group.contextExpression(addArg, h.getIssuePrefix(r.Context(), compiled.workspaceID), compiled.parentVisible())
 	cursorPredicate := "TRUE"
 	if cursor != nil {
 		if cursor.GroupOrder == nil || cursor.GroupSortKey == nil || cursor.GroupCursorKey == nil {

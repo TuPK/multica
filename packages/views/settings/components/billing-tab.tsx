@@ -1620,7 +1620,7 @@ function BillingTabContent() {
           )}
           <AlertTitle>
             {isCheckoutConfirmed
-              ? t(($) => $.workspace.return.active_title)
+              ? t(($) => $.workspace.return.active_title, { plan: planLabel(entitlements.plan) })
               : t(($) => $.workspace.return.syncing_title)}
           </AlertTitle>
           <AlertDescription>

@@ -219,23 +219,17 @@ WHERE a.workspace_id = $1
   AND atq.completed_at IS NOT NULL
   AND atq.completed_at >= $2::timestamptz
   AND ($3::uuid IS NULL OR i.project_id = $3)
-  -- projectaccess:scope
-  AND ($4::text = 'all'
-      OR (i.project_id IS NULL AND $4::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $5::uuid)
-      OR ($4::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($4::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($4::uuid[])))
 GROUP BY atq.agent_id
 ORDER BY total_seconds DESC
 `
 
 type ListDashboardAgentRunTimeParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Since       pgtype.Timestamptz `json:"since"`
-	ProjectID   pgtype.UUID        `json:"project_id"`
-	ScopeMode   string             `json:"scope_mode"`
-	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Since            pgtype.Timestamptz `json:"since"`
+	ProjectID        pgtype.UUID        `json:"project_id"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type ListDashboardAgentRunTimeRow struct {
@@ -268,8 +262,7 @@ func (q *Queries) ListDashboardAgentRunTime(ctx context.Context, arg ListDashboa
 		arg.WorkspaceID,
 		arg.Since,
 		arg.ProjectID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -313,23 +306,17 @@ WHERE a.workspace_id = $1
   AND atq.completed_at IS NOT NULL
   AND atq.completed_at >= $2::timestamptz
   AND ($3::uuid IS NULL OR i.project_id = $3)
-  -- projectaccess:scope
-  AND ($4::text = 'all'
-      OR (i.project_id IS NULL AND $4::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $5::uuid)
-      OR ($4::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($4::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($4::uuid[])))
 GROUP BY atq.agent_id, 2
 ORDER BY atq.agent_id, 2
 `
 
 type ListDashboardFailuresByAgentParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Since       pgtype.Timestamptz `json:"since"`
-	ProjectID   pgtype.UUID        `json:"project_id"`
-	ScopeMode   string             `json:"scope_mode"`
-	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Since            pgtype.Timestamptz `json:"since"`
+	ProjectID        pgtype.UUID        `json:"project_id"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type ListDashboardFailuresByAgentRow struct {
@@ -350,8 +337,7 @@ func (q *Queries) ListDashboardFailuresByAgent(ctx context.Context, arg ListDash
 		arg.WorkspaceID,
 		arg.Since,
 		arg.ProjectID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -388,24 +374,18 @@ WHERE a.workspace_id = $1
   AND atq.completed_at IS NOT NULL
   AND atq.completed_at >= $3::timestamptz
   AND ($4::uuid IS NULL OR i.project_id = $4)
-  -- projectaccess:scope
-  AND ($5::text = 'all'
-      OR (i.project_id IS NULL AND $5::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $6::uuid)
-      OR ($5::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($5::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($5::uuid[])))
 GROUP BY 1, 2
 ORDER BY 1 DESC, 2
 `
 
 type ListDashboardFailuresDailyParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Tz          string             `json:"tz"`
-	Since       pgtype.Timestamptz `json:"since"`
-	ProjectID   pgtype.UUID        `json:"project_id"`
-	ScopeMode   string             `json:"scope_mode"`
-	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Tz               string             `json:"tz"`
+	Since            pgtype.Timestamptz `json:"since"`
+	ProjectID        pgtype.UUID        `json:"project_id"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type ListDashboardFailuresDailyRow struct {
@@ -441,8 +421,7 @@ func (q *Queries) ListDashboardFailuresDaily(ctx context.Context, arg ListDashbo
 		arg.Tz,
 		arg.Since,
 		arg.ProjectID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -481,24 +460,18 @@ WHERE a.workspace_id = $1
   AND atq.completed_at IS NOT NULL
   AND atq.completed_at >= $3::timestamptz
   AND ($4::uuid IS NULL OR i.project_id = $4)
-  -- projectaccess:scope
-  AND ($5::text = 'all'
-      OR (i.project_id IS NULL AND $5::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $6::uuid)
-      OR ($5::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($5::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($5::uuid[])))
 GROUP BY DATE(atq.completed_at AT TIME ZONE $2::text)
 ORDER BY DATE(atq.completed_at AT TIME ZONE $2::text) DESC
 `
 
 type ListDashboardRunTimeDailyParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Tz          string             `json:"tz"`
-	Since       pgtype.Timestamptz `json:"since"`
-	ProjectID   pgtype.UUID        `json:"project_id"`
-	ScopeMode   string             `json:"scope_mode"`
-	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Tz               string             `json:"tz"`
+	Since            pgtype.Timestamptz `json:"since"`
+	ProjectID        pgtype.UUID        `json:"project_id"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type ListDashboardRunTimeDailyRow struct {
@@ -535,8 +508,7 @@ func (q *Queries) ListDashboardRunTimeDaily(ctx context.Context, arg ListDashboa
 		arg.Tz,
 		arg.Since,
 		arg.ProjectID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -581,23 +553,17 @@ FROM task_usage_hourly h
 WHERE h.workspace_id = $1
   AND h.bucket_hour >= $2::timestamptz
   AND ($3::uuid IS NULL OR h.project_id = $3)
-  -- projectaccess:scope
-  AND ($4::text = 'all'
-      OR (h.project_id IS NULL AND $4::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = h.project_id AND scope_pm.user_id = $5::uuid)
-      OR ($4::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = h.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($4::uuid[] IS NULL OR NOT (COALESCE(h.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($4::uuid[])))
 GROUP BY agent_id, LOWER(provider), model
 ORDER BY agent_id, LOWER(provider), model
 `
 
 type ListDashboardUsageByAgentParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Since       pgtype.Timestamptz `json:"since"`
-	ProjectID   pgtype.UUID        `json:"project_id"`
-	ScopeMode   string             `json:"scope_mode"`
-	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Since            pgtype.Timestamptz `json:"since"`
+	ProjectID        pgtype.UUID        `json:"project_id"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type ListDashboardUsageByAgentRow struct {
@@ -635,8 +601,7 @@ func (q *Queries) ListDashboardUsageByAgent(ctx context.Context, arg ListDashboa
 		arg.WorkspaceID,
 		arg.Since,
 		arg.ProjectID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -689,24 +654,18 @@ FROM task_usage_hourly h
 WHERE h.workspace_id = $1
   AND h.bucket_hour >= $3::timestamptz
   AND ($4::uuid IS NULL OR h.project_id = $4)
-  -- projectaccess:scope
-  AND ($5::text = 'all'
-      OR (h.project_id IS NULL AND $5::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = h.project_id AND scope_pm.user_id = $6::uuid)
-      OR ($5::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = h.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($5::uuid[] IS NULL OR NOT (COALESCE(h.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($5::uuid[])))
 GROUP BY DATE(bucket_hour AT TIME ZONE $2::text), LOWER(provider), model
 ORDER BY DATE(bucket_hour AT TIME ZONE $2::text) DESC, LOWER(provider), model
 `
 
 type ListDashboardUsageDailyParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Tz          string             `json:"tz"`
-	Since       pgtype.Timestamptz `json:"since"`
-	ProjectID   pgtype.UUID        `json:"project_id"`
-	ScopeMode   string             `json:"scope_mode"`
-	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Tz               string             `json:"tz"`
+	Since            pgtype.Timestamptz `json:"since"`
+	ProjectID        pgtype.UUID        `json:"project_id"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type ListDashboardUsageDailyRow struct {
@@ -748,8 +707,7 @@ func (q *Queries) ListDashboardUsageDaily(ctx context.Context, arg ListDashboard
 		arg.Tz,
 		arg.Since,
 		arg.ProjectID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
+		arg.HiddenProjectIds,
 	)
 	if err != nil {
 		return nil, err
@@ -833,6 +791,57 @@ func (q *Queries) ListIssueTaskUsage(ctx context.Context, issueID pgtype.UUID) (
 	items := []ListIssueTaskUsageRow{}
 	for rows.Next() {
 		var i ListIssueTaskUsageRow
+		if err := rows.Scan(
+			&i.TaskID,
+			&i.Provider,
+			&i.Model,
+			&i.InputTokens,
+			&i.OutputTokens,
+			&i.CacheReadTokens,
+			&i.CacheWriteTokens,
+			&i.CostUsdTicks,
+			&i.CreditsMicros,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskUsageByIDs = `-- name: ListTaskUsageByIDs :many
+SELECT task_id, provider, model, input_tokens, output_tokens,
+       cache_read_tokens, cache_write_tokens, cost_usd_ticks, credits_micros
+FROM task_usage
+WHERE task_id = ANY($1::uuid[])
+ORDER BY task_id, model
+`
+
+type ListTaskUsageByIDsRow struct {
+	TaskID           pgtype.UUID `json:"task_id"`
+	Provider         string      `json:"provider"`
+	Model            string      `json:"model"`
+	InputTokens      int64       `json:"input_tokens"`
+	OutputTokens     int64       `json:"output_tokens"`
+	CacheReadTokens  int64       `json:"cache_read_tokens"`
+	CacheWriteTokens int64       `json:"cache_write_tokens"`
+	CostUsdTicks     pgtype.Int8 `json:"cost_usd_ticks"`
+	CreditsMicros    pgtype.Int8 `json:"credits_micros"`
+}
+
+// Only called with task IDs selected through an authorized issue scope.
+func (q *Queries) ListTaskUsageByIDs(ctx context.Context, taskIds []pgtype.UUID) ([]ListTaskUsageByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listTaskUsageByIDs, taskIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTaskUsageByIDsRow{}
+	for rows.Next() {
+		var i ListTaskUsageByIDsRow
 		if err := rows.Scan(
 			&i.TaskID,
 			&i.Provider,

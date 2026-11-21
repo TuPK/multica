@@ -19,7 +19,7 @@ func TestOpenSquadProjectConflictHidesProjectDetails(t *testing.T) {
 	dbfx.Exec(t, `UPDATE squad SET creator_id = $2 WHERE id = $1`, squadID, fx.MemberID)
 	target := dbfxProject(t, fx, "Target")
 	hiddenProject := dbfxProject(t, fx, "Hidden open")
-	dbfx.Exec(t, `UPDATE project SET access = 'restricted', squad_ids = ARRAY[$2::uuid] WHERE id = $1`, hiddenProject, squadID)
+	dbfx.Exec(t, `UPDATE project SET visibility = 'private', squad_ids = ARRAY[$2::uuid] WHERE id = $1`, hiddenProject, squadID)
 
 	assign := func(userID string) *testutil.Response {
 		req := newRequestAs(userID, "POST", "/api/squads/"+squadID+"/project", map[string]any{"project_id": target})

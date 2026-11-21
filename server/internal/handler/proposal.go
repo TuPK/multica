@@ -150,7 +150,7 @@ func proposalPriorArtSubject(p db.Proposal, title string) service.ProposalPriorA
 // relatedProposalsForRead looks up the title-related proposals for the given
 // subjects. A failed lookup is logged and reads go out with empty lists, so a
 // read never fails on it.
-func (h *Handler) relatedProposalsForRead(ctx context.Context, wsUUID pgtype.UUID, subjects []service.ProposalPriorArtSubject, prefix string, scope projectaccess.Scope) map[string][]service.ProposalRelated {
+func (h *Handler) relatedProposalsForRead(ctx context.Context, wsUUID pgtype.UUID, subjects []service.ProposalPriorArtSubject, prefix string, scope projectaccess.Hidden) map[string][]service.ProposalRelated {
 	related, err := h.proposalService().RelatedProposalsByTitle(ctx, wsUUID, subjects, prefix, scope)
 	if err != nil {
 		slog.Warn("proposal read: related lookup failed; reported without it",
@@ -380,7 +380,7 @@ func (h *Handler) CreateProposal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
@@ -436,7 +436,7 @@ func (h *Handler) CreateProposal(w http.ResponseWriter, r *http.Request) {
 
 	prefix := h.getIssuePrefix(r.Context(), wsUUID)
 	issueResp := issueToResponse(res.Issue, prefix)
-	h.fillStatusCategory(r.Context(), wsUUID, &issueResp)
+	h.fillStatusCategory(r.Context(), wsUUID, projectaccess.Hidden{}, &issueResp)
 	resp := proposalToResponse(res.Proposal, res.Issue.Title, res.Issue.Status, prefix, res.Issue.Number)
 	resp.Related = relatedToResponse(res.Related)
 	if res.AutoDecision != nil && res.AutoDecision.Project != nil && res.AutoDecision.Kickoff != nil {
@@ -470,11 +470,11 @@ func (h *Handler) ListProposals(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
-	params := db.ListProposalsParams{WorkspaceID: wsUUID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID()}
+	params := db.ListProposalsParams{WorkspaceID: wsUUID, HiddenProjectIds: scope.Param()}
 	if state := r.URL.Query().Get("state"); state != "" {
 		switch state {
 		case service.ProposalStatePending, service.ProposalStateApproved, service.ProposalStateRejected,
@@ -523,12 +523,12 @@ func (h *Handler) GetProposal(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
 	row, err := h.Queries.GetProposalWithIssue(r.Context(), db.GetProposalWithIssueParams{
-		ID: id, WorkspaceID: wsUUID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+		ID: id, WorkspaceID: wsUUID, HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		if isNotFound(err) {
@@ -766,7 +766,7 @@ type proposalDecision struct {
 // service's, unwrapped, for the caller to map.
 func (h *Handler) settleProposalDecision(ctx context.Context, actorUserID string, in proposalDecision) (ProposalResponse, error) {
 	prefix := h.getIssuePrefix(ctx, in.WorkspaceID)
-	fillKickoff := h.newStatusCategoryFiller(ctx, in.WorkspaceID)
+	fillKickoff := h.newStatusCategoryFiller(ctx, in.WorkspaceID, projectaccess.Hidden{})
 	res, err := h.proposalService().Decide(ctx, service.ProposalDecideParams{
 		WorkspaceID: in.WorkspaceID,
 		ProposalID:  in.ProposalID,
@@ -962,7 +962,7 @@ func (h *Handler) ExpireDueProposals(ctx context.Context) (int, error) {
 // payload matches the issue:updated events the issue handlers send.
 func (h *Handler) publishProposalIssueUpdated(ctx context.Context, wsUUID pgtype.UUID, prefix, actorType, actorID string, issue db.Issue, prevStatus string) {
 	issueResp := issueToResponse(issue, prefix)
-	h.fillStatusCategory(ctx, wsUUID, &issueResp)
+	h.fillStatusCategory(ctx, wsUUID, projectaccess.Hidden{}, &issueResp)
 	h.publish(protocol.EventIssueUpdated, uuidToString(wsUUID), actorType, actorID, map[string]any{
 		"issue":          issueResp,
 		"status_changed": prevStatus != issue.Status,

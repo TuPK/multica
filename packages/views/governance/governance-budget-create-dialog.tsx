@@ -56,7 +56,7 @@ export function GovernanceBudgetCreateDialog({
   const { t } = useT("governance");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(88dvh,48rem)] flex-col sm:max-w-md">
+      <DialogContent className="flex max-h-[min(88%,48rem)] flex-col sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t(($) => $.budgets.create.title)}</DialogTitle>
         </DialogHeader>

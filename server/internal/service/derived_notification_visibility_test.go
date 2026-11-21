@@ -28,7 +28,7 @@ func newHiddenIssueFixture(t *testing.T) hiddenIssueFixture {
 	t.Helper()
 	f, _ := newPrincipalFixture(t)
 	h := hiddenIssueFixture{principalFixture: f, outsider: f.member(t, "outsider"), grantee: f.member(t, "grantee")}
-	restricted := f.Project(t, "Restricted notifications", testutil.Cols{"access": "restricted"})
+	restricted := f.Project(t, "Restricted notifications", testutil.Cols{"visibility": "private"})
 	h.restricted = restricted
 	f.Exec(t, `INSERT INTO project_member (project_id, workspace_id, user_id) VALUES ($1, $2, $3)`, restricted, f.WorkspaceID, h.grantee)
 	f.Cleanup(t, `DELETE FROM project_member WHERE project_id = $1`, restricted)
@@ -122,7 +122,7 @@ func TestWakeupNotificationSkipsHiddenRecipient(t *testing.T) {
 	run := func(t *testing.T, restricted bool) (string, int, int) {
 		f, s, issue, _ := wakeFixture(t)
 		assignee := f.member(t, "assignee")
-		project := f.Project(t, "Wakeup project", testutil.Cols{"access": map[bool]string{true: "restricted", false: "workspace"}[restricted]})
+		project := f.Project(t, "Wakeup project", testutil.Cols{"visibility": map[bool]string{true: "private", false: "workspace"}[restricted]})
 		f.Cleanup(t, `DELETE FROM project_member WHERE project_id = $1`, project)
 		f.Exec(t, `UPDATE issue SET project_id = $1, assignee_type = 'member', assignee_id = $2 WHERE id = $3`, project, assignee, issue)
 		f.Cleanup(t, `DELETE FROM inbox_item WHERE issue_id = $1`, issue)

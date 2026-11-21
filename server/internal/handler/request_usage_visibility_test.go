@@ -15,7 +15,8 @@ func TestRequestUsageVisibility_HiddenChildNotSummed(t *testing.T) {
 	e := newInquiryEnv(t)
 	memberID := dbfx.User(t, "Usage member", testutil.UniqueEmail("usage-member"))
 	dbfx.Member(t, e.WorkspaceID, memberID, "member")
-	hidden := dbfx.Project(t, "Hidden usage project", testutil.Cols{"workspace_id": e.WorkspaceID, "access": "restricted"})
+	hidden := dbfx.Project(t, "Hidden usage project", testutil.Cols{"workspace_id": e.WorkspaceID, "visibility": "private"})
+	ownerJoinsProject(t, e.WorkspaceID, hidden)
 
 	parent := e.issue(t, e.SquadID, "Usage request", "todo")
 	open := e.issue(t, e.SquadID, "Open child", "in_progress")

@@ -7,6 +7,7 @@ import {
   FlowCapabilitiesResponseSchema,
   IssueWorkflowSchema,
   IssueFlowStopSchema,
+  IssueSchema,
   AppConfigSchema,
   WecomInstallationSchema,
   ListWecomInstallationsResponseSchema,
@@ -87,19 +88,6 @@ import {
 import { IssueUnreadPageSchema, EMPTY_ISSUE_UNREAD_PAGE } from "./schemas";
 import { ScheduledPriceChangeSchema, WorkspaceOrderEinvoiceSchema } from "./schemas";
 import {
-  ProjectSchema,
-  EMPTY_PROJECT,
-  ListProjectsResponseSchema,
-  EMPTY_LIST_PROJECTS_RESPONSE,
-  SetProjectAccessResponseSchema,
-  EMPTY_SET_PROJECT_ACCESS_RESPONSE,
-  ListProjectMembersResponseSchema,
-  EMPTY_LIST_PROJECT_MEMBERS_RESPONSE,
-  AddProjectMembersResponseSchema,
-  MemberWithUserSchema,
-  MemberWithUserListSchema,
-  InvitationSchema,
-  EMPTY_INVITATION,
   WorkspaceSchema,
   EMPTY_WORKSPACE,
   WorkspaceListItemSchema,
@@ -109,7 +97,6 @@ import {
   EMPTY_QUOTA_REQUEST,
   EMPTY_QUOTA_REQUEST_LIST,
   DEFAULT_POLICY_FLOOR,
-  type MemberWithGuest,
 } from "./schemas";
 import { WorkspacePolicySchema, DEFAULT_WORKSPACE_POLICY } from "./security-schemas";
 import type { Workspace } from "../types";
@@ -925,6 +912,13 @@ describe("ChatPendingTaskSchema", () => {
       status: "running",
     });
     expect(parsed.queued_tasks).toBeUndefined();
+    expect(parsed.can_supplement).toBeUndefined();
+  });
+
+  it("accepts explicit steering capability and ignores malformed values", () => {
+    expect(ChatPendingTaskSchema.parse({ can_supplement: true }).can_supplement).toBe(true);
+    expect(ChatPendingTaskSchema.parse({ can_supplement: false }).can_supplement).toBe(false);
+    expect(ChatPendingTaskSchema.parse({ can_supplement: "yes" }).can_supplement).toBeUndefined();
   });
 
   it("parses queued task summaries", () => {
@@ -980,6 +974,14 @@ describe("SendChatMessageResponseSchema", () => {
 
   it("ignores a malformed additive queue position without losing the accepted send", () => {
     expect(SendChatMessageResponseSchema.parse({ ...base, queued: "no" }).queued).toBeUndefined();
+  });
+
+  it("preserves steering acceptance and tolerates older or malformed metadata", () => {
+    expect(SendChatMessageResponseSchema.parse({ ...base, steered: true }).steered).toBe(true);
+    expect(SendChatMessageResponseSchema.parse({ ...base, steered: true, message_task_id: "root-task" }).message_task_id).toBe("root-task");
+    expect(SendChatMessageResponseSchema.parse(base).steered).toBeUndefined();
+    expect(SendChatMessageResponseSchema.parse({ ...base, steered: "yes", message_created_at: 42, message_task_id: 42 }))
+      .toMatchObject({ ...base, steered: undefined, message_created_at: undefined, message_task_id: undefined });
   });
 });
 
@@ -1162,6 +1164,30 @@ describe("UserSchema whats_new_seen_version drift", () => {
     );
     expect(parsed.email).toBe("ada@example.com");
     expect(parsed.whats_new_seen_version).toBeUndefined();
+  });
+});
+
+describe("UserSchema star prompt drift", () => {
+  const base = {
+    id: "11111111-1111-1111-1111-111111111111",
+    name: "Ada",
+    email: "ada@example.com",
+  };
+
+  it("leaves the showing count undefined when an older server omits it", () => {
+    expect(UserSchema.parse(base).star_prompt_shown_count).toBeUndefined();
+  });
+
+  it("degrades wrong-type values to undefined without discarding the user", () => {
+    const parsed = parseWithFallback(
+      { ...base, star_prompt_shown_count: "2", star_prompt_starred_at: 1 },
+      UserSchema,
+      EMPTY_USER,
+      { endpoint: "GET /api/me" },
+    );
+    expect(parsed.email).toBe("ada@example.com");
+    expect(parsed.star_prompt_shown_count).toBeUndefined();
+    expect(parsed.star_prompt_starred_at).toBeUndefined();
   });
 });
 
@@ -1595,6 +1621,16 @@ describe("InboxItemListSchema", () => {
     expect(
       parseWithFallback([withoutOptionals], InboxItemListSchema, EMPTY_INBOX_ITEMS, ENDPOINT),
     ).toHaveLength(1);
+  });
+
+  it("keeps the row when the issue identifier is unusable", () => {
+    const parsed = parseWithFallback(
+      [row({ issue_identifier: 7 }), row({ id: "inbox-2", issue_identifier: "MUL-7" })],
+      InboxItemListSchema,
+      EMPTY_INBOX_ITEMS,
+      ENDPOINT,
+    );
+    expect(parsed.map((item) => item.issue_identifier)).toEqual([null, "MUL-7"]);
   });
 
   it("returns the empty fallback when an issue projection is wrong-typed", () => {
@@ -2124,6 +2160,11 @@ describe("SidebarProjectPrefsDocSchema", () => {
 // dialog, the "ask your operator" state, the revoked-vs-active badge), so a
 // malformed response must degrade to the safe state rather than a broken one.
 describe("WeCom installation schemas", () => {
+  it("accepts the bot display name while remaining compatible with older servers", () => {
+    expect(WecomInstallationSchema.parse({ id: "i1", bot_name: "Support Bot" }).bot_name).toBe("Support Bot");
+    expect(WecomInstallationSchema.parse({ id: "i1" }).bot_name).toBeUndefined();
+    expect(WecomInstallationSchema.safeParse({ id: "i1", bot_name: 42 }).success).toBe(false);
+  });
   it("parses a well-formed installation", () => {
     const parsed = WecomInstallationSchema.parse({
       id: "i1",
@@ -2909,201 +2950,6 @@ describe("WorkspaceOrderEinvoiceSchema", () => {
   });
 });
 
-describe("Restricted project and guest schemas (P41.9)", () => {
-  const baseProject = {
-    id: "proj-1",
-    workspace_id: "ws-1",
-    title: "Secret Project",
-    description: null,
-    icon: null,
-    status: "planned",
-    priority: "none",
-    lead_type: null,
-    lead_id: null,
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-01T00:00:00Z",
-  };
-
-  it("defaults absent access to workspace and absent can_manage_access to false", () => {
-    const parsed = parseWithFallback(baseProject, ProjectSchema, EMPTY_PROJECT, {
-      endpoint: "GET /api/projects/:id",
-    });
-    expect(parsed.access).toBe("workspace");
-    expect(parsed.can_manage_access).toBe(false);
-  });
-
-  it("preserves known access values and maps unknown access strings to restricted (fail closed)", () => {
-    expect(
-      ProjectSchema.parse({ ...baseProject, access: "workspace", can_manage_access: true }),
-    ).toMatchObject({ access: "workspace", can_manage_access: true });
-    expect(
-      ProjectSchema.parse({ ...baseProject, access: "restricted", can_manage_access: false }),
-    ).toMatchObject({ access: "restricted", can_manage_access: false });
-    for (const unknownAccess of ["private", "team", "future_mode", ""]) {
-      expect(ProjectSchema.parse({ ...baseProject, access: unknownAccess }).access).toBe(
-        "restricted",
-      );
-    }
-  });
-
-  it("falls back via parseWithFallback without throwing on malformed project responses", () => {
-    for (const bad of [
-      { ...baseProject, access: 123 },
-      { ...baseProject, can_manage_access: "yes" },
-      { id: 42 },
-      null,
-      "invalid",
-    ]) {
-      expect(() =>
-        parseWithFallback(bad, ProjectSchema, EMPTY_PROJECT, {
-          endpoint: "GET /api/projects/:id",
-        }),
-      ).not.toThrow();
-      expect(
-        parseWithFallback(bad, ProjectSchema, EMPTY_PROJECT, {
-          endpoint: "GET /api/projects/:id",
-        }),
-      ).toEqual(EMPTY_PROJECT);
-    }
-    expect(
-      parseWithFallback(
-        { projects: "bad" },
-        ListProjectsResponseSchema,
-        EMPTY_LIST_PROJECTS_RESPONSE,
-        { endpoint: "GET /api/projects" },
-      ),
-    ).toEqual(EMPTY_LIST_PROJECTS_RESPONSE);
-  });
-
-  it("parses project access PUT, members list, and add members responses with fallbacks", () => {
-    expect(
-      SetProjectAccessResponseSchema.parse({
-        project_id: "proj-1",
-        access: "restricted",
-        auto_added: 2,
-      }),
-    ).toEqual({ project_id: "proj-1", access: "restricted", auto_added: 2 });
-    expect(
-      SetProjectAccessResponseSchema.parse({
-        project_id: "proj-1",
-        access: "unknown_future",
-      }),
-    ).toEqual({ project_id: "proj-1", access: "restricted", auto_added: 0 });
-    expect(
-      parseWithFallback(
-        { project_id: 123 },
-        SetProjectAccessResponseSchema,
-        EMPTY_SET_PROJECT_ACCESS_RESPONSE,
-        { endpoint: "PUT /api/projects/:id/access" },
-      ),
-    ).toEqual(EMPTY_SET_PROJECT_ACCESS_RESPONSE);
-
-    expect(
-      ListProjectMembersResponseSchema.parse({
-        members: [
-          {
-            user_id: "u-1",
-            name: "Ada",
-            added_by: "u-owner",
-            created_at: "2026-01-01T00:00:00Z",
-          },
-          { user_id: "u-2", name: "Grace" },
-        ],
-      }),
-    ).toEqual({
-      members: [
-        {
-          user_id: "u-1",
-          name: "Ada",
-          added_by: "u-owner",
-          created_at: "2026-01-01T00:00:00Z",
-        },
-        { user_id: "u-2", name: "Grace", added_by: null, created_at: "" },
-      ],
-    });
-    expect(
-      parseWithFallback(
-        { members: "nope" },
-        ListProjectMembersResponseSchema,
-        EMPTY_LIST_PROJECT_MEMBERS_RESPONSE,
-        { endpoint: "GET /api/projects/:id/members" },
-      ),
-    ).toEqual(EMPTY_LIST_PROJECT_MEMBERS_RESPONSE);
-
-    expect(AddProjectMembersResponseSchema.parse({ added: 3 })).toEqual({ added: 3 });
-    expect(
-      parseWithFallback({ added: "bad" }, AddProjectMembersResponseSchema, { added: 0 }, {
-        endpoint: "POST /api/projects/:id/members",
-      }),
-    ).toEqual({ added: 0 });
-  });
-
-  it("defaults absent is_guest to false on workspace member lists and handles malformed payloads", () => {
-    const baseMember = {
-      id: "m-1",
-      workspace_id: "ws-1",
-      user_id: "u-1",
-      role: "member",
-      name: "Ada",
-      email: "ada@example.com",
-    };
-    const fallbackMembers: MemberWithGuest[] = [];
-    const parsed = parseWithFallback(
-      [baseMember, { ...baseMember, id: "m-2", user_id: "u-2", is_guest: true }],
-      MemberWithUserListSchema,
-      fallbackMembers,
-      { endpoint: "GET /api/workspaces/:id/members" },
-    );
-    expect(parsed[0]?.is_guest).toBe(false);
-    expect(parsed[1]?.is_guest).toBe(true);
-    expect(MemberWithUserSchema.parse(baseMember).is_guest).toBe(false);
-    expect(
-      parseWithFallback(
-        [{ ...baseMember, is_guest: "yes" }],
-        MemberWithUserListSchema,
-        fallbackMembers,
-        { endpoint: "GET /api/workspaces/:id/members" },
-      ),
-    ).toEqual([]);
-  });
-
-  it("parses guest invitation fields and falls back on malformed payloads", () => {
-    const baseInvitation = {
-      id: "inv-1",
-      workspace_id: "ws-1",
-      inviter_id: "u-1",
-      invitee_email: "guest@example.com",
-      invitee_user_id: null,
-      role: "viewer",
-      status: "pending",
-      created_at: "2026-01-01T00:00:00Z",
-      updated_at: "2026-01-01T00:00:00Z",
-      expires_at: "2026-01-08T00:00:00Z",
-    };
-    expect(InvitationSchema.parse(baseInvitation)).toMatchObject({
-      is_guest: false,
-      guest_project_ids: [],
-    });
-    expect(
-      InvitationSchema.parse({
-        ...baseInvitation,
-        is_guest: true,
-        guest_project_ids: ["proj-1", "proj-2"],
-      }),
-    ).toMatchObject({
-      is_guest: true,
-      guest_project_ids: ["proj-1", "proj-2"],
-    });
-    expect(
-      parseWithFallback(
-        { ...baseInvitation, is_guest: "yes", guest_project_ids: "proj-1" },
-        InvitationSchema,
-        EMPTY_INVITATION,
-        { endpoint: "POST /api/workspaces/:id/members" },
-      ),
-    ).toEqual(EMPTY_INVITATION);
-  });
-});
 
 describe("WorkspaceSchema", () => {
   const baseWorkspace = {
@@ -3311,5 +3157,15 @@ describe("QuotaRequest and PolicyFloor schemas", () => {
     );
     expect(policyWithMalformedFloor.require_sso).toBe(true);
     expect(policyWithMalformedFloor.floor).toBeNull();
+  });
+});
+
+
+describe("Issue requester compatibility", () => {
+  it("preserves known null versus unknown legacy or malformed values", () => {
+    expect(IssueSchema.parse(baseIssue).requester_id).toBeUndefined();
+    expect(IssueSchema.parse({ ...baseIssue, requester_id: null }).requester_id).toBeNull();
+    expect(IssueSchema.parse({ ...baseIssue, requester_id: "member" }).requester_id).toBe("member");
+    expect(IssueSchema.parse({ ...baseIssue, requester_id: 42 }).requester_id).toBeUndefined();
   });
 });

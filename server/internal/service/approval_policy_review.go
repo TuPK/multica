@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -24,8 +25,7 @@ const policyReviewDetailKey = "policy_reversals"
 // the policy that approved it, as one review_published governance event. A week
 // with no reversal writes nothing, and a week already recorded is not recorded
 // again. It returns how many reversals the section lists. The event is workspace-wide,
-// so it is written with the service's Scope, which is the restrictive zero scope when
-// the caller sets none: reversals of issues in projects are left out.
+// so it is written without a viewer: reversals of issues in private projects are left out.
 func (s *ApprovalPolicyService) RecordWeeklyPolicyReview(ctx context.Context, ws pgtype.UUID, now time.Time) (int, error) {
 	periodEnd := now.UTC().Truncate(24 * time.Hour).Format("2006-01-02")
 	recorded, err := s.Queries.CountPolicyReviewEvents(ctx, db.CountPolicyReviewEventsParams{WorkspaceID: ws, PeriodEnd: periodEnd})
@@ -35,7 +35,14 @@ func (s *ApprovalPolicyService) RecordWeeklyPolicyReview(ctx context.Context, ws
 	if recorded > 0 {
 		return 0, nil
 	}
-	reversed, err := s.ListReversedAutoApprovals(ctx, ws, now.Add(-PolicyReviewPeriod))
+	// The event is workspace-wide and has no viewer, so it hides every private project.
+	scope, err := projectaccess.ForPrincipals(ctx, s.Queries, ws)
+	if err != nil {
+		return 0, fmt.Errorf("resolve project access: %w", err)
+	}
+	review := *s
+	review.Scope = scope
+	reversed, err := review.ListReversedAutoApprovals(ctx, ws, now.Add(-PolicyReviewPeriod))
 	if err != nil {
 		return 0, fmt.Errorf("list reversed auto-approvals: %w", err)
 	}

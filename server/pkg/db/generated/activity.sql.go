@@ -24,21 +24,15 @@ WHERE activity_log.workspace_id = $1
   AND action = 'assignee_changed'
   AND details->>'to_type' IS NOT NULL
   AND details->>'to_id' IS NOT NULL
-  -- projectaccess:scope
-  AND ($3::text = 'all'
-      OR (scope_i.project_id IS NULL AND $3::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = $4::uuid)
-      OR ($3::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($3::uuid[] IS NULL OR NOT (COALESCE(scope_i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 GROUP BY details->>'to_type', details->>'to_id'
 `
 
 type CountAssigneeChangesByActorParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	ActorID     pgtype.UUID `json:"actor_id"`
-	ScopeMode   string      `json:"scope_mode"`
-	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	ActorID          pgtype.UUID   `json:"actor_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 type CountAssigneeChangesByActorRow struct {
@@ -49,12 +43,7 @@ type CountAssigneeChangesByActorRow struct {
 
 // Count how many times a user assigned each target via assignee_changed activities.
 func (q *Queries) CountAssigneeChangesByActor(ctx context.Context, arg CountAssigneeChangesByActorParams) ([]CountAssigneeChangesByActorRow, error) {
-	rows, err := q.db.Query(ctx, countAssigneeChangesByActor,
-		arg.WorkspaceID,
-		arg.ActorID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, countAssigneeChangesByActor, arg.WorkspaceID, arg.ActorID, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}

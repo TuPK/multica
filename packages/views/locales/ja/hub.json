@@ -236,7 +236,8 @@
         "missing_skill_md": "最上位にSKILL.mdが見つかりません。",
         "empty": "インポートするファイルがありません。",
         "too_large": "このアーカイブは大きすぎます。",
-        "too_many_files": "このインポートはファイル数が多すぎます。"
+        "too_many_files": "このインポートはファイル数が多すぎます。",
+        "unreadable": "This archive couldn't be read."
       }
     },
     "blank": {

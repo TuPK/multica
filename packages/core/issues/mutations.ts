@@ -1,4 +1,4 @@
-import { normalizeStatusPatch } from "./status-category";
+import { issueBehavesAs, normalizeStatusPatch } from "./status-category";
 import {
   hashKey,
   useMutation,
@@ -14,6 +14,8 @@ import {
   cancelInboxLists,
   isInboxListRequestInFlight,
   onInboxInvalidate,
+  onInboxIssuesDeleted,
+  onInboxSummaryInvalidate,
 } from "../inbox/ws-updaters";
 import {
   applyIssueChange,
@@ -40,6 +42,7 @@ import { refreshSubscribedIssues } from "./subscribed";
 import { getCurrentWsId } from "../platform/workspace-storage";
 import { useRecentContextStore } from "../chat/recent-context-store";
 import { useRecentIssuesStore } from "./stores";
+import { useStarPromptStore } from "../star-prompt";
 import type { InboxItem, Issue, IssueReaction, RunQueueSetting } from "../types";
 import type {
   CreateCommentSubIssueManualRequest,
@@ -48,6 +51,8 @@ import type {
   ListIssuesResponse,
   MoveIssueRequest,
   UpdateIssueRequest,
+  BatchIssueLabelOps,
+  BatchIssuePropertyOps,
 } from "../types";
 import type { TimelineEntry, IssueSubscriber, Reaction } from "../types";
 import { sortTimelineEntriesAsc } from "./timeline-sort";
@@ -354,6 +359,18 @@ export function useUpdateIssue() {
       );
       // The server has committed — safe to flush any drift it reported now.
       invalidateStaleListKeys(qc, reconcile.staleKeys);
+      if (
+        vars.status !== undefined &&
+        serverIssue.assignee_type === "agent" &&
+        serverIssue.assignee_id &&
+        issueBehavesAs(serverIssue, "done")
+      ) {
+        useStarPromptStore.getState().reportAgentIssueDone({
+          wsId,
+          agentId: serverIssue.assignee_id,
+          issueId: serverIssue.id,
+        });
+      }
     },
     onSettled: (_data, err, vars, ctx) => {
       settleInboxAfterIssueWrite(qc, wsId, ctx?.inboxWrite, err !== null);
@@ -536,6 +553,10 @@ export function useDeleteIssue() {
     onSuccess: (_data, id, ctx) => {
       useRecentContextStore.getState().forgetContext(wsId, { type: "issue", id });
       cleanupDeletedIssueCaches(qc, wsId, id, ctx?.metadata);
+      // The deleting client's own inbox rows go with the issue; the WS echo
+      // (`issue:deleted` → `onInboxIssueDeleted`) is the backstop, not the
+      // plan — a dropped socket would leave ghost rows that 404 on click.
+      void onInboxIssuesDeleted(qc, wsId, [id]);
     },
     onSettled: (_data, _err, _id, ctx) => {
       qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
@@ -582,10 +603,17 @@ export function useBatchUpdateIssues() {
     mutationFn: ({
       ids,
       updates,
+      labels,
+      properties,
     }: {
       ids: string[];
       updates: UpdateIssueRequest;
-    }) => api.batchUpdateIssues(ids, updates),
+      labels?: BatchIssueLabelOps;
+      properties?: BatchIssuePropertyOps;
+    }) =>
+      labels || properties
+        ? api.batchUpdateIssues(ids, updates, { labels, properties })
+        : api.batchUpdateIssues(ids, updates),
     onMutate: async ({ ids, updates }) => {
       // Control and description-merge fields are not safe optimistic cache
       // patches. The server resolves description against description_base, so
@@ -722,6 +750,14 @@ export function useBatchUpdateIssues() {
       // refreshed below, plus the specific keys the coordinator flagged as
       // drifted — the surgical replacement for the old blanket "invalidate
       // myAll on project move" safety net (MUL-3669 / #4548).
+      // Label and property writes are not patched optimistically; the
+      // realtime events usually land first, and this catches a dropped socket.
+      if (_vars.labels || _vars.properties) {
+        qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
+        qc.invalidateQueries({ queryKey: issueKeys.myAll(wsId) });
+        qc.invalidateQueries({ queryKey: issueKeys.flatAll(wsId) });
+        for (const id of _vars.ids) qc.invalidateQueries({ queryKey: issueKeys.detail(wsId, id) });
+      }
       invalidateIssueDerivatives(qc, wsId, {
         statusOrProjectChanged:
           _vars.updates.status !== undefined ||
@@ -831,6 +867,9 @@ export function useBatchDeleteIssues() {
           forgetContext(wsId, { type: "issue", id });
           cleanupDeletedIssueCaches(qc, wsId, id, ctx?.metadataById.get(id));
         }
+        // Same inbox ownership as the single delete: prune this client's rows
+        // now instead of waiting for the `issue:deleted` echoes.
+        void onInboxIssuesDeleted(qc, wsId, ids);
         return;
       }
 
@@ -859,6 +898,11 @@ export function useBatchDeleteIssues() {
       }
       qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
       invalidateDeletedIssueDependentCaches(qc, wsId);
+      // The server skipped some of the batch and only reports the count, so
+      // which inbox rows survived is unknowable client-side — re-read the
+      // inbox instead of pruning by id.
+      void onInboxInvalidate(qc, wsId);
+      void onInboxSummaryInvalidate(qc);
     },
     onSettled: (_data, _err, _ids, ctx) => {
       qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
@@ -1222,12 +1266,19 @@ export function useToggleIssueSubscriber(issueId: string) {
         qc.setQueryData<IssueSubscriber[]>(
           issueKeys.subscribers(issueId),
           (old) => {
+            // An explicit subscribe rewrites an existing row's reason to
+            // manual. The delivery tier is the server's to report, so it is
+            // dropped until onSettled refetches it.
             if (
               old?.some(
                 (s) => s.user_id === userId && s.user_type === userType,
               )
             )
-              return old;
+              return old.map((s) =>
+                s.user_id === userId && s.user_type === userType
+                  ? { ...s, reason: "manual" as const, delivery: undefined }
+                  : s,
+              );
             return [...(old ?? []), temp];
           },
         );

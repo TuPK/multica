@@ -1,18 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@multica/core/api";
-import { useAuthStore } from "@multica/core/auth";
 import { useSetCompanySeats, type CompanyFloor } from "@multica/core/company";
-import { runtimeListOptions } from "@multica/core/runtimes";
-import { memberListOptions, workspaceKeys } from "@multica/core/workspace/queries";
+import { useWorkspacePaths } from "@multica/core/paths";
 import type { Squad } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@multica/ui/components/ui/dropdown-menu";
 import { ChevronDown } from "@multica/ui/icons";
-import { CreateAgentDialog } from "../../agents/components/create-agent-dialog";
+import { useNavigation } from "../../navigation";
 import { SquadDetailView } from "../../squads/components/squad-detail-page";
 import { useT } from "../../i18n";
 import { firstFreeSlot } from "../lib/company-seats";
@@ -50,12 +45,9 @@ export function CompanySquadDetail({
   onMoved: (departmentId: string) => void;
 }) {
   const { t } = useT("company");
-  const queryClient = useQueryClient();
-  const userId = useAuthStore((s) => s.user?.id) ?? null;
-  const { data: runtimes = [], isPending: runtimesLoading } = useQuery(runtimeListOptions(wsId));
-  const { data: members = [] } = useQuery(memberListOptions(wsId));
+  const paths = useWorkspacePaths();
+  const navigation = useNavigation();
   const setSeats = useSetCompanySeats();
-  const [creatingAgent, setCreatingAgent] = useState(false);
 
   const departmentName =
     floors.find((floor) => floor.id === departmentId)?.name ?? t(($) => $.unseated);
@@ -106,26 +98,10 @@ export function CompanySquadDetail({
         ) : (
           <span className="text-sm text-muted-foreground">{departmentName}</span>
         )}
-        <Button variant="outline" size="sm" onClick={() => setCreatingAgent(true)}>
+        <Button variant="outline" size="sm" onClick={() => navigation.push(paths.newAgent())}>
           {t(($) => $.agent_add)}
         </Button>
       </div>
-
-      {creatingAgent ? (
-        <CreateAgentDialog
-          runtimes={runtimes}
-          runtimesLoading={runtimesLoading}
-          members={members}
-          currentUserId={userId}
-          squadId={squad.id}
-          onClose={() => setCreatingAgent(false)}
-          onCreate={async (data) => {
-            const agent = await api.createAgent(data);
-            queryClient.invalidateQueries({ queryKey: workspaceKeys.agents(wsId) });
-            return agent;
-          }}
-        />
-      ) : null}
 
       <SquadDetailView
         squadId={squad.id}

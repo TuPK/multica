@@ -2,7 +2,6 @@ package inbox
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -50,12 +49,10 @@ func (a *IssueAudience) Sees(userID pgtype.UUID) bool {
 		return seen
 	}
 	seen := false
-	scope, err := projectaccess.ForViewer(a.ctx, a.queries, a.workspaceID, userID)
-	switch {
-	case err == nil:
-		seen = scope.Allows(a.projectID)
-	case errors.Is(err, projectaccess.ErrNotMember):
-	default:
+	hidden, err := projectaccess.ForPrincipals(a.ctx, a.queries, a.workspaceID, userID)
+	if err == nil {
+		seen = hidden.CanSeeProject(a.projectID)
+	} else {
 		slog.Warn("audience: compute recipient scope failed; recipient treated as not seeing the issue",
 			"issue_id", a.issueID, "user_id", userID, "error", err)
 	}

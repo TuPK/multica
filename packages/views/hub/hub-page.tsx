@@ -290,7 +290,7 @@ export function HubPage() {
       {content}
       {blankOpen ? (
         <CreateSkillDialog
-          initialMethod="manual"
+          method="manual"
           onClose={() => setBlankOpen(false)}
           onCreated={(skill) => navigation.push(p.hubItem("skill", skill.id))}
         />

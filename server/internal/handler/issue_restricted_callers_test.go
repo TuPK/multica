@@ -151,13 +151,14 @@ func TestRestrictedIssueCallersAnswerMissing(t *testing.T) {
 		e := newInquiryEnv(t)
 		outsider := dbfx.User(t, "Inquiry outsider", "inquiry-outsider-"+uuid.NewString()[:8]+"@multica.test")
 		dbfx.Member(t, e.WorkspaceID, outsider, "member")
-		restricted := dbfx.Project(t, "Restricted inquiry "+uuid.NewString()[:8], testutil.Cols{"workspace_id": e.WorkspaceID, "access": "restricted"})
+		restricted := dbfx.Project(t, "Restricted inquiry "+uuid.NewString()[:8], testutil.Cols{"workspace_id": e.WorkspaceID, "visibility": "private"})
+		ownerJoinsProject(t, e.WorkspaceID, restricted)
 		dbfx.Exec(t, `UPDATE issue SET project_id = $1 WHERE id = $2`, restricted, e.IssueID)
 
 		ask := func(issueID string) *httptest.ResponseRecorder {
 			taskID := dbfx.Task(t, e.Secretary, testutil.Cols{
 				"status": "running", "runtime_id": e.RuntimeID,
-				"originator_source": "direct_human", "originator_user_id": testUserID, "accountable_user_id": testUserID,
+				"originator_source": "direct_human", "originator_user_id": outsider, "accountable_user_id": outsider,
 			})
 			req := newRequest("POST", "/api/briefs/inquiries", map[string]any{"squad_id": e.SquadID, "issue_id": issueID, "question": "Is it on track?"})
 			req.Header.Set("X-Workspace-ID", e.WorkspaceID)

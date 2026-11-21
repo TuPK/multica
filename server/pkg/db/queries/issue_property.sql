@@ -1,24 +1,13 @@
 -- name: ListIssueProperties :many
--- usage_count = number of issues in the workspace that currently carry a
--- value for this property. `properties ? id` is a seq scan today; fine at
--- the 20-definition / small-workspace scale this feature targets.
-SELECT p.*,
-    (
-        SELECT COUNT(*) FROM issue i
-        WHERE i.workspace_id = p.workspace_id
-          AND i.properties ? p.id::text
-          -- projectaccess:scope
-          AND (sqlc.arg(scope_mode)::text = 'all'
-            OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-            OR EXISTS (SELECT 1 FROM project_member scope_pm
-                       WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-            OR (sqlc.arg(scope_mode)::text = 'member'
-                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
-    )::bigint AS usage_count
-FROM issue_property p
-WHERE p.workspace_id = sqlc.arg('workspace_id')::uuid
-  AND (sqlc.arg('include_archived')::bool OR p.archived_at IS NULL)
-ORDER BY p.position ASC, LOWER(p.name) ASC;
+-- Definition catalog without usage counts — the hot path every issue surface,
+-- the CLI's name resolution, and every realtime refetch hit.
+SELECT * FROM issue_property
+WHERE workspace_id = sqlc.arg('workspace_id')::uuid
+  AND (sqlc.arg('include_archived')::bool OR archived_at IS NULL)
+ORDER BY position ASC, LOWER(name) ASC;
+
+-- usage_count is computed in Go (propertyUsageQuery in
+-- internal/handler/property.go): it needs one output column per definition.
 
 -- name: GetIssueProperty :one
 SELECT * FROM issue_property

@@ -1,9 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { MemberWithGuest } from "../api/schemas";
 import { useAuthStore } from "../auth";
-import type { MemberRole } from "../types";
+import type { MemberRole, MemberWithUser } from "../types";
 import { memberListOptions } from "../workspace/queries";
 
 /**
@@ -18,7 +17,7 @@ import { memberListOptions } from "../workspace/queries";
 export function useCurrentMember(wsId: string): {
   userId: string | null;
   role: MemberRole | null;
-  member: MemberWithGuest | null;
+  member: MemberWithUser | null;
   isGuest: boolean;
   isLoading: boolean;
 } {
@@ -29,7 +28,22 @@ export function useCurrentMember(wsId: string): {
     userId,
     role: member?.role ?? null,
     member,
-    isGuest: member?.is_guest === true,
+    isGuest: member?.role === "guest",
     isLoading,
   };
+}
+
+/**
+ * Whether the current user is a guest of the workspace (MUL-9420). A guest
+ * reaches only its shared projects, so the shell hides everything else and
+ * skips the queries the server would refuse. False while the member list
+ * loads.
+ */
+export function useIsGuest(wsId: string | null | undefined): boolean {
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const { data: members } = useQuery({
+    ...memberListOptions(wsId ?? ""),
+    enabled: !!wsId && !!userId,
+  });
+  return !!members?.some((m) => m.user_id === userId && m.role === "guest");
 }

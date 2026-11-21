@@ -106,7 +106,8 @@ func TestMatTokenReadsWithOriginatorScope(t *testing.T) {
 		{"originator outside the project", f.outsiderID, false},
 		{"originator granted", f.granteeID, true},
 		{"originator is the owner", testUserID, true},
-		{"NULL originator", "", false},
+		// With no originator the run is bounded by the agent owner alone.
+		{"NULL originator", "", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

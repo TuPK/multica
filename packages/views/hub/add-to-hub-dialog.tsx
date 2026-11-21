@@ -95,7 +95,7 @@ export function AddToHubDialog({ onBlank }: { onBlank: () => void }) {
         <Plus aria-hidden="true" />
         {t(($) => $.add.button)}
       </DialogTrigger>
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
+      <DialogContent className="flex max-h-[85%] flex-col sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{state ? t(($) => $.add.review_title) : t(($) => $.add.title)}</DialogTitle>
         </DialogHeader>

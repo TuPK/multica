@@ -92,6 +92,33 @@ ORDER BY
     (sm.member_type = 'agent' AND sm.member_id = s.leader_id) DESC,
     sm.created_at ASC;
 
+-- name: ListInvolvedSquadIDs :many
+-- Squads whose issues count as the user's agents' work: the user is a member,
+-- or an agent they own leads or is a member. Must match the squad branch of
+-- issueTableInvolvedPredicate.
+SELECT sm.squad_id
+  FROM squad_member sm
+  JOIN squad s ON s.id = sm.squad_id
+ WHERE s.workspace_id = sqlc.arg(workspace_id)
+   AND sm.member_type = 'member'
+   AND sm.member_id   = sqlc.arg(user_id)
+UNION
+SELECT s.id
+  FROM squad s
+  JOIN agent a ON a.id = s.leader_id
+ WHERE s.workspace_id = sqlc.arg(workspace_id)
+   AND a.workspace_id = sqlc.arg(workspace_id)
+   AND a.owner_id     = sqlc.arg(user_id)
+UNION
+SELECT sm.squad_id
+  FROM squad_member sm
+  JOIN squad s ON s.id = sm.squad_id
+  JOIN agent a ON a.id = sm.member_id
+ WHERE s.workspace_id = sqlc.arg(workspace_id)
+   AND sm.member_type = 'agent'
+   AND a.workspace_id = sqlc.arg(workspace_id)
+   AND a.owner_id     = sqlc.arg(user_id);
+
 -- name: ListAllSquads :many
 SELECT * FROM squad WHERE workspace_id = $1 ORDER BY created_at ASC;
 
@@ -218,13 +245,8 @@ LEFT JOIN agent_task_queue atq
 -- shows as working) but joins no issue, so the issue link reads as absent.
 LEFT JOIN issue i
        ON i.id = atq.issue_id
-      -- projectaccess:scope
-      AND (sqlc.arg(scope_mode)::text = 'all'
-          OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-          OR EXISTS (SELECT 1 FROM project_member scope_pm
-                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-          OR (sqlc.arg(scope_mode)::text = 'member'
-              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+      -- MUL-8472: private projects the caller cannot see.
+      AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 WHERE sm.squad_id = sqlc.arg('squad_id')
 ORDER BY sm.created_at ASC, atq.dispatched_at DESC NULLS LAST;
 

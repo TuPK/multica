@@ -13,6 +13,8 @@ export const workspaceKeys = {
   agent: (wsId: string, agentId: string) =>
     ["workspaces", wsId, "agents", "detail", agentId] as const,
   squads: (wsId: string) => ["workspaces", wsId, "squads"] as const,
+  /** Under `squads` so membership changes refetch it. */
+  involvedSquads: (wsId: string) => ["workspaces", wsId, "squads", "involved"] as const,
   // Per-squad member status. Lives under the workspace key tree so
   // workspace switches naturally drop the cache, and so a broad
   // `["workspaces", wsId, "squads"]` invalidation covers it.
@@ -24,7 +26,6 @@ export const workspaceKeys = {
     ["workspaces", wsId, "squads", squadId, "plugins"] as const,
   squadPluginCatalog: (wsId: string) => ["workspaces", wsId, "squads", "plugin-catalog"] as const,
   skills: (wsId: string) => ["workspaces", wsId, "skills"] as const,
-  assigneeFrequency: (wsId: string) => ["workspaces", wsId, "assignee-frequency"] as const,
   mcpServers: (wsId: string) => ["workspaces", wsId, "mcp-servers"] as const,
 };
 
@@ -134,6 +135,18 @@ export function squadPluginCatalogOptions(wsId: string) {
   });
 }
 
+/**
+ * The squads behind the viewer's "my agents" relation, for evaluating it on
+ * rows the client filters itself.
+ */
+export function involvedSquadIdsOptions(wsId: string) {
+  return queryOptions({
+    queryKey: workspaceKeys.involvedSquads(wsId),
+    queryFn: () => api.listInvolvedSquadIds(),
+    enabled: !!wsId,
+  });
+}
+
 // Per-squad members status snapshot. The freshness signal is the WS task /
 // agent / runtime invalidation wired in use-realtime-sync (which broadly
 // invalidates `["workspaces", wsId, "squads"]`); the staleTime is a
@@ -235,13 +248,9 @@ export function myInvitationListOptions() {
   return queryOptions({
     queryKey: workspaceKeys.myInvitations(),
     queryFn: () => api.listMyInvitations(),
-  });
-}
-
-export function assigneeFrequencyOptions(wsId: string) {
-  return queryOptions({
-    queryKey: workspaceKeys.assigneeFrequency(wsId),
-    queryFn: () => api.getAssigneeFrequency(),
+    // Recover missed realtime events without refetching on every tab switch.
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 

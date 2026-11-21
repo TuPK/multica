@@ -13,7 +13,7 @@ COPY packages/core/i18n/types.ts packages/core/i18n/types.ts
 RUN node scripts/catalog/cli.mjs build --target go
 
 # --- Build stage ---
-FROM golang:1.27.3-alpine AS builder
+FROM golang:1.27.4-alpine AS builder
 
 RUN apk add --no-cache git
 

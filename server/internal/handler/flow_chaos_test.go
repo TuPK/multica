@@ -89,7 +89,7 @@ func TestChaos_SweepAndEventConcurrent(t *testing.T) {
 		wg.Add(3)
 		go func() {
 			defer wg.Done()
-			testHandler.advanceFlowRequests(context.Background(), projectaccess.System(), request.ID)
+			testHandler.advanceFlowRequests(context.Background(), projectaccess.Hidden{}, request.ID)
 		}()
 		go func() { defer wg.Done(); _, _ = testHandler.SweepFlowRequests(context.Background()) }()
 		go func() {

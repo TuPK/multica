@@ -28,6 +28,10 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
         ],
   }),
 }));
+vi.mock("../../billing/storage-limit-notice", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../billing/storage-limit-notice")>()),
+  useStorageLimitToast: () => vi.fn(),
+}));
 vi.mock("@multica/core/agents", () => ({ isAgentRuntimeBound: () => true }));
 vi.mock("../../common/actor-avatar", () => ({ ActorAvatar: () => <span /> }));
 vi.mock("../../common/use-viewing-timezone", () => ({ useViewingTimezone: () => "Asia/Shanghai" }));

@@ -89,13 +89,8 @@ WHERE p.workspace_id = @workspace_id
   AND p.id = ANY(@proposal_ids::uuid[])
   AND p.state = 'pending'
   AND (p.snoozed_until IS NULL OR p.snoozed_until <= @now)
-  -- projectaccess:scope
-  AND (@scope_mode::text = 'all'
-      OR (i.project_id IS NULL AND @scope_mode::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = @scope_user_id::uuid)
-      OR (@scope_mode::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')));
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])));
 
 -- name: GetChannelUserBindingInWorkspace :one
 SELECT * FROM channel_user_binding

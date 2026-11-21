@@ -5,6 +5,7 @@ import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react
 import { setApiInstance } from "@multica/core/api";
 import type { ApiClient } from "@multica/core/api/client";
 import { projectKeys } from "@multica/core/projects/queries";
+import { useModalStore } from "@multica/core/modals";
 import userEvent from "@testing-library/user-event";
 import type { Project } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
@@ -14,12 +15,15 @@ import { ProjectDetail } from "./project-detail";
 const mocks = vi.hoisted(() => ({
   role: "admin",
   copyText: vi.fn(),
+  copyTextAndHtml: vi.fn(),
   deleteProject: vi.fn(),
   getProject: vi.fn(),
   setProjectAccess: vi.fn(),
   listProjectMembers: vi.fn(),
   addProjectMembers: vi.fn(),
   removeProjectMember: vi.fn(),
+  getProjectSubscription: vi.fn(),
+  setProjectSubscription: vi.fn(),
   getShareableUrl: vi.fn((path: string) => `https://app.example${path}`),
   push: vi.fn(),
   recordVisit: vi.fn(),
@@ -29,10 +33,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@multica/ui/lib/clipboard", () => ({
   copyText: mocks.copyText,
+  copyTextAndHtml: mocks.copyTextAndHtml,
 }));
 
-vi.mock("../../workflow/project-workflow-menu", () => ({
-  ProjectWorkflowMenuHost: ({ children }: { children: (submenu: null) => React.ReactNode }) => children(null),
+vi.mock("../../workflow/project-workflow-sheet", () => ({
+  ProjectWorkflowMenuItem: () => null,
+  ProjectWorkflowSheet: () => null,
 }));
 vi.mock("../../workflow/project-workflow-row", () => ({ ProjectWorkflowControl: () => null }));
 
@@ -134,14 +140,6 @@ vi.mock("@multica/ui/components/ui/dropdown-menu", () => ({
     </button>
   ),
   DropdownMenuSeparator: () => <hr />,
-}));
-
-vi.mock("@multica/ui/components/ui/popover", () => ({
-  Popover: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  PopoverTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
-  PopoverContent: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
 }));
 
 vi.mock("@multica/ui/components/ui/tooltip", () => ({
@@ -286,23 +284,16 @@ beforeEach(() => {
   qc.setQueryData(["pins"], []);
   pending = deferred();
   mocks.copyText.mockReset().mockResolvedValue(true);
+  mocks.copyTextAndHtml.mockReset().mockResolvedValue(true);
   mocks.deleteProject.mockReset().mockReturnValue(pending.promise);
   mocks.getProject.mockReset().mockResolvedValue(PROJECT);
-  mocks.setProjectAccess.mockReset().mockResolvedValue({
-    project_id: PROJECT.id,
-    access: "restricted",
-    auto_added: 0,
-  });
-  mocks.listProjectMembers.mockReset().mockResolvedValue({ members: [] });
-  mocks.addProjectMembers.mockReset().mockResolvedValue({ added: 1 });
-  mocks.removeProjectMember.mockReset().mockResolvedValue(undefined);
+  mocks.getProjectSubscription.mockReset().mockResolvedValue(false);
+  mocks.setProjectSubscription.mockReset().mockImplementation(async (_id: string, subscribed: boolean) => subscribed);
   setApiInstance({
     deleteProject: mocks.deleteProject,
     getProject: mocks.getProject,
-    setProjectAccess: mocks.setProjectAccess,
-    listProjectMembers: mocks.listProjectMembers,
-    addProjectMembers: mocks.addProjectMembers,
-    removeProjectMember: mocks.removeProjectMember,
+    getProjectSubscription: mocks.getProjectSubscription,
+    setProjectSubscription: mocks.setProjectSubscription,
   } as unknown as ApiClient);
   mocks.getShareableUrl.mockClear();
   mocks.push.mockReset();
@@ -314,6 +305,40 @@ beforeEach(() => {
 afterEach(() => {
   onlineManager.setOnline(true);
   qc.clear();
+  useModalStore.getState().close();
+});
+
+describe("ProjectDetail rename", () => {
+  it("opens the rename dialog with the current name from the header menu", async () => {
+    const user = userEvent.setup();
+    renderProjectDetail();
+
+    await user.click(screen.getByRole("button", { name: "Rename project" }));
+
+    expect(useModalStore.getState()).toMatchObject({
+      modal: "project-rename",
+      data: { projectId: "project-1", title: "Launch Plan" },
+    });
+  });
+});
+
+describe("ProjectDetail lead permissions", () => {
+  it("does not let ordinary members change the lead of a private project", async () => {
+    mocks.role = "member";
+    qc.setQueryData(projectKeys.detail("workspace-1", PROJECT.id), { ...PROJECT, visibility: "private" });
+    renderProjectDetail();
+    expect(screen.getByRole("button", { name: "No lead" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "No lead" }));
+    expect(screen.queryByPlaceholderText("Assign lead...")).not.toBeInTheDocument();
+  });
+
+  it("keeps the lead of a workspace project editable for ordinary members", async () => {
+    mocks.role = "member";
+    renderProjectDetail();
+    expect(screen.getByRole("button", { name: "No lead" })).toBeEnabled();
+    await userEvent.click(screen.getByRole("button", { name: "No lead" }));
+    expect(screen.getByPlaceholderText("Assign lead...")).toBeInTheDocument();
+  });
 });
 
 describe("ProjectDetail sharing", () => {
@@ -329,6 +354,57 @@ describe("ProjectDetail sharing", () => {
     expect(mocks.copyText).toHaveBeenCalledWith(
       "https://app.example/test-workspace/projects/project-1",
     );
+  });
+});
+
+describe("ProjectDetail subscription", () => {
+  it("subscribes to every issue in the project and can unsubscribe again", async () => {
+    const user = userEvent.setup();
+    renderProjectDetail();
+
+    await user.click(await screen.findByRole("button", { name: "Subscribe to all issues" }));
+    expect(mocks.setProjectSubscription).toHaveBeenCalledWith("project-1", true);
+    expect(mocks.toastSuccess).toHaveBeenCalled();
+
+    await user.click(await screen.findByRole("button", { name: "Unsubscribe from project" }));
+    expect(mocks.setProjectSubscription).toHaveBeenLastCalledWith("project-1", false);
+    expect(await screen.findByRole("button", { name: "Subscribe to all issues" })).toBeInTheDocument();
+  });
+
+  it("keeps the current state and reports a failed update", async () => {
+    mocks.setProjectSubscription.mockRejectedValueOnce(new Error("boom"));
+    const user = userEvent.setup();
+    renderProjectDetail();
+
+    await user.click(await screen.findByRole("button", { name: "Subscribe to all issues" }));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Subscribe to all issues" })).toBeInTheDocument();
+  });
+});
+
+describe("ProjectDetail copy link with title", () => {
+  it("copies the project title as a Markdown link and an HTML anchor", async () => {
+    const user = userEvent.setup();
+    renderProjectDetail();
+
+    await user.click(screen.getByRole("button", { name: "Copy link with title" }));
+
+    expect(mocks.copyTextAndHtml).toHaveBeenCalledWith(
+      "[Launch Plan](https://app.example/test-workspace/projects/project-1)",
+      '<a href="https://app.example/test-workspace/projects/project-1">Launch Plan</a>',
+    );
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Link copied with title");
+  });
+
+  it("reports a failed copy without a success toast", async () => {
+    mocks.copyTextAndHtml.mockResolvedValueOnce(false);
+    const user = userEvent.setup();
+    renderProjectDetail();
+
+    await user.click(screen.getByRole("button", { name: "Copy link with title" }));
+
+    expect(mocks.toastError).toHaveBeenCalledWith("Failed to copy link");
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 });
 
@@ -435,103 +511,3 @@ describe("ProjectDetail project deletion", () => {
   });
 });
 
-describe("ProjectDetail access", () => {
-  it("renders both access options and switches between workspace and restricted", async () => {
-    const user = userEvent.setup();
-    qc.setQueryData(projectKeys.detail("workspace-1", PROJECT.id), {
-      ...PROJECT,
-      access: "workspace",
-      can_manage_access: true,
-    });
-    renderProjectDetail();
-
-    expect(screen.queryByRole("img", { name: "Restricted project" })).toBeNull();
-
-    const accessSection = screen.getByRole("region", { name: "Access" });
-    const workspaceOption = within(accessSection).getByRole("radio", {
-      name: /Everyone in the workspace/i,
-    });
-    const restrictedOption = within(accessSection).getByRole("radio", {
-      name: /Only people added/i,
-    });
-    expect(workspaceOption).toHaveAttribute("aria-checked", "true");
-    expect(restrictedOption).toHaveAttribute("aria-checked", "false");
-
-    await user.click(restrictedOption);
-    await waitFor(() =>
-      expect(mocks.setProjectAccess).toHaveBeenCalledWith(PROJECT.id, {
-        access: "restricted",
-        member_ids: [],
-      }),
-    );
-  });
-
-  it("shows lock icon, lists granted members, and sends add/remove grant calls", async () => {
-    const user = userEvent.setup();
-    qc.setQueryData(projectKeys.detail("workspace-1", PROJECT.id), {
-      ...PROJECT,
-      access: "restricted",
-      can_manage_access: true,
-    });
-    mocks.listProjectMembers.mockResolvedValue({
-      members: [
-        {
-          user_id: "user-1",
-          name: "User One",
-          added_by: null,
-          created_at: "2026-06-01T00:00:00Z",
-        },
-      ],
-    });
-    renderProjectDetail();
-
-    expect(screen.getByRole("img", { name: "Restricted project" })).toBeInTheDocument();
-
-    const accessSection = screen.getByRole("region", { name: "Access" });
-    expect(await within(accessSection).findByText("User One")).toBeInTheDocument();
-
-    await user.click(within(accessSection).getByRole("button", { name: "Alice Member" }));
-    await waitFor(() =>
-      expect(mocks.addProjectMembers).toHaveBeenCalledWith(PROJECT.id, ["user-2"]),
-    );
-
-    await user.click(
-      within(accessSection).getByRole("button", { name: "Remove User One from project" }),
-    );
-    await waitFor(() =>
-      expect(mocks.removeProjectMember).toHaveBeenCalledWith(PROJECT.id, "user-1"),
-    );
-  });
-
-  it("keeps access controls read-only when can_manage_access is false", async () => {
-    qc.setQueryData(projectKeys.detail("workspace-1", PROJECT.id), {
-      ...PROJECT,
-      access: "restricted",
-      can_manage_access: false,
-    });
-    mocks.listProjectMembers.mockResolvedValue({
-      members: [
-        {
-          user_id: "user-1",
-          name: "User One",
-          added_by: null,
-          created_at: "2026-06-01T00:00:00Z",
-        },
-      ],
-    });
-    renderProjectDetail();
-
-    const accessSection = screen.getByRole("region", { name: "Access" });
-    expect(await within(accessSection).findByText("User One")).toBeInTheDocument();
-    expect(
-      within(accessSection).getByRole("radio", { name: /Everyone in the workspace/i }),
-    ).toBeDisabled();
-    expect(
-      within(accessSection).getByRole("radio", { name: /Only people added/i }),
-    ).toBeDisabled();
-    expect(within(accessSection).queryByRole("button", { name: /Add member/i })).toBeNull();
-    expect(
-      within(accessSection).queryByRole("button", { name: /Remove User One from project/i }),
-    ).toBeNull();
-  });
-});

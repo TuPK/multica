@@ -9,7 +9,6 @@ import type { ApiClient } from "../api/client";
 import { chatKeys } from "../chat/queries";
 import { inboxKeys } from "../inbox/queries";
 import { issueKeys } from "../issues/queries";
-import { projectKeys } from "../projects/queries";
 import { notificationPreferenceKeys } from "../notification-preferences/queries";
 import { workspaceKeys } from "../workspace/queries";
 import type {
@@ -28,7 +27,6 @@ import {
   applyChatMessageToCache,
   applyChatQuickActionsToCache,
   applyChatSessionUpdatedToCache,
-  applyProjectAccessChangedToCache,
   applyWorkspaceUpdatedToCache,
   handleInboxNew,
   invalidateChatMessageQueries,
@@ -856,6 +854,33 @@ describe("handleInboxNew", () => {
     expect(showNotification).not.toHaveBeenCalled();
   });
 
+  it("skips the banner for a move to in_progress but still refreshes the inbox", async () => {
+    const qc = createQueryClient();
+    qc.setQueryData<Workspace[]>(workspaceKeys.list(), [workspace()]);
+    qc.setQueryData(notificationPreferenceKeys.all("ws-a"), {
+      preferences: { system_notifications: "all" },
+    });
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    const showNotification = stubDesktopAPI();
+
+    await handleInboxNew(
+      qc,
+      inboxItem({ type: "status_changed", details: { from: "todo", to: "in_progress" } }),
+    );
+    expect(showNotification).not.toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith(
+        expect.objectContaining({ queryKey: inboxKeys.all("ws-a") }),
+      ),
+    );
+
+    await handleInboxNew(
+      qc,
+      inboxItem({ type: "status_changed", details: { from: "in_progress", to: "in_review" } }),
+    );
+    expect(showNotification).toHaveBeenCalledTimes(1);
+  });
+
   // The tests below exercise the COLD-cache mute path (source preference not
   // yet cached), where the request — not just the query key — must be scoped
   // to the source workspace (#3766 follow-up). They install a fake API so the
@@ -1300,24 +1325,3 @@ describe("applyChatMessageToCache", () => {
   });
 });
 
-describe("applyProjectAccessChangedToCache", () => {
-  it("invalidates project and issue queries of the event's workspace only", () => {
-    const qc = createQueryClient();
-    const keys = [
-      projectKeys.all("ws-1"),
-      issueKeys.all("ws-1"),
-      issueKeys.tableAll("ws-1"),
-      projectKeys.all("ws-2"),
-      issueKeys.all("ws-2"),
-    ];
-    for (const key of keys) qc.setQueryData(key, []);
-
-    applyProjectAccessChangedToCache(qc, "ws-1");
-
-    expect(qc.getQueryState(projectKeys.all("ws-1"))?.isInvalidated).toBe(true);
-    expect(qc.getQueryState(issueKeys.all("ws-1"))?.isInvalidated).toBe(true);
-    expect(qc.getQueryState(issueKeys.tableAll("ws-1"))?.isInvalidated).toBe(true);
-    expect(qc.getQueryState(projectKeys.all("ws-2"))?.isInvalidated).toBe(false);
-    expect(qc.getQueryState(issueKeys.all("ws-2"))?.isInvalidated).toBe(false);
-  });
-});

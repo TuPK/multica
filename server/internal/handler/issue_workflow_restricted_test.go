@@ -309,15 +309,15 @@ func TestRestrictedWorkflowQueriesApplyScope(t *testing.T) {
 	ctx := context.Background()
 	ws := parseUUID(testWorkspaceID)
 
-	scopeOf := func(userID string) projectaccess.Scope {
+	scopeOf := func(userID string) projectaccess.Hidden {
 		t.Helper()
-		scope, err := projectaccess.ForViewer(ctx, testHandler.Queries, ws, parseUUID(userID))
+		scope, err := projectaccess.ForPrincipals(ctx, testHandler.Queries, ws, parseUUID(userID))
 		if err != nil {
 			t.Fatalf("scope for %s: %v", userID, err)
 		}
 		return scope
 	}
-	viewers := map[string]projectaccess.Scope{"owner": scopeOf(testUserID), "grantee": scopeOf(f.granteeID), "outsider": scopeOf(f.outsiderID)}
+	viewers := map[string]projectaccess.Hidden{"owner": scopeOf(testUserID), "grantee": scopeOf(f.granteeID), "outsider": scopeOf(f.outsiderID)}
 	wantRestricted := map[string]bool{"owner": true, "grantee": true, "outsider": false}
 	hasProject := func(projects []db.Project, id string) bool {
 		for _, p := range projects {
@@ -329,7 +329,7 @@ func TestRestrictedWorkflowQueriesApplyScope(t *testing.T) {
 	}
 	for name, scope := range viewers {
 		onWorkflow, err := testHandler.Queries.ListProjectsUsingIssueWorkflow(ctx, db.ListProjectsUsingIssueWorkflowParams{
-			WorkspaceID: ws, WorkflowID: parseUUID(wf.ID), ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+			WorkspaceID: ws, WorkflowID: parseUUID(wf.ID), HiddenProjectIds: scope.Param(),
 		})
 		if err != nil {
 			t.Fatalf("ListProjectsUsingIssueWorkflow as %s: %v", name, err)
@@ -343,7 +343,7 @@ func TestRestrictedWorkflowQueriesApplyScope(t *testing.T) {
 
 		counts, err := testHandler.Queries.CountProjectIssuesByStatus(ctx, db.CountProjectIssuesByStatusParams{
 			WorkspaceID: ws, ProjectIds: []pgtype.UUID{parseUUID(f.restrictedProjectID), parseUUID(f.workspaceProjectID)},
-			ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+			HiddenProjectIds: scope.Param(),
 		})
 		if err != nil {
 			t.Fatalf("CountProjectIssuesByStatus as %s: %v", name, err)
@@ -367,7 +367,7 @@ func TestRestrictedWorkflowQueriesApplyScope(t *testing.T) {
 	dbfx.Exec(t, `UPDATE project SET workflow_id = NULL WHERE id = $1`, f.restrictedProjectID)
 	for name, scope := range viewers {
 		onDefault, err := testHandler.Queries.ListProjectsUsingDefaultIssueWorkflow(ctx, db.ListProjectsUsingDefaultIssueWorkflowParams{
-			WorkspaceID: ws, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+			WorkspaceID: ws, HiddenProjectIds: scope.Param(),
 		})
 		if err != nil {
 			t.Fatalf("ListProjectsUsingDefaultIssueWorkflow as %s: %v", name, err)

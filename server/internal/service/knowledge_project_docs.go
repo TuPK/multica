@@ -249,9 +249,9 @@ func projectDocTitle(p, content string) string {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "# ") {
 			if h := strings.TrimSpace(strings.TrimPrefix(line, "# ")); h != "" {
-				return truncateRunes(h+" ("+p+")", knowledgeMaxTitle)
+				return clipRunes(h+" ("+p+")", knowledgeMaxTitle)
 			}
 		}
 	}
-	return truncateRunes(p, knowledgeMaxTitle)
+	return clipRunes(p, knowledgeMaxTitle)
 }

@@ -64,7 +64,7 @@ func (h *Handler) validateBatchTriageLocks(w http.ResponseWriter, r *http.Reques
 	if len(ids) == 0 {
 		return true
 	}
-	scope, ok := h.viewerScope(w, r, workspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(workspaceID))
 	if !ok {
 		return false
 	}
@@ -80,7 +80,7 @@ func (h *Handler) validateBatchTriageLocks(w http.ResponseWriter, r *http.Reques
 		return false
 	}
 	for _, issue := range issues {
-		if issue.TriageState.Valid && scope.Allows(issue.ProjectID) {
+		if issue.TriageState.Valid && scope.CanSeeProject(issue.ProjectID) {
 			writeIssueInTriage(w, field)
 			return false
 		}

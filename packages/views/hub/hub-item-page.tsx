@@ -95,6 +95,7 @@ function HubItemFrame({ leaf, children }: { leaf: ReactNode; children: ReactNode
   const paths = useWorkspacePaths();
   return (
     <ObjectPage
+      type="skill"
       layoutId={HUB_ITEM_LAYOUT_ID}
       segments={[{ href: paths.hub(), label: t(($) => $.title) }]}
       leaf={leaf ?? <span className="truncate text-muted-foreground">{t(($) => $.title)}</span>}
@@ -296,6 +297,7 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
 
   return (
     <ObjectPage
+      type="skill"
       layoutId={HUB_ITEM_LAYOUT_ID}
       segments={[{ href: paths.hub(), label: t(($) => $.title) }]}
       leaf={<span className="min-w-0 truncate text-foreground">{item.name}</span>}

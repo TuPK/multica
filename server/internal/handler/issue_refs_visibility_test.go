@@ -27,7 +27,8 @@ func TestSearchIndexDuplicateOfHidesRestrictedOriginal(t *testing.T) {
 	wsID := searchIndexWorkspace(t, "REF")
 	memberID := dbfx.User(t, "Refs member", testutil.UniqueEmail("refs-member"))
 	dbfx.Member(t, wsID, memberID, "member")
-	restricted := dbfx.Project(t, "Refs restricted "+uuid.NewString()[:8], testutil.Cols{"workspace_id": wsID, "access": "restricted"})
+	restricted := dbfx.Project(t, "Refs restricted "+uuid.NewString()[:8], testutil.Cols{"workspace_id": wsID, "visibility": "private"})
+	ownerJoinsProject(t, wsID, restricted)
 	original := dbfx.Issue(t, "HIDDEN-ORIGINAL-TITLE", testutil.Cols{"workspace_id": wsID, "project_id": restricted})
 	duplicate := dbfx.Issue(t, "visible duplicate", testutil.Cols{
 		"workspace_id": wsID, "status": "cancelled", "duplicate_of_issue_id": original,

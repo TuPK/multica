@@ -73,7 +73,7 @@ type ApprovalPolicyService struct {
 	// project, so a caller with no viewer (the weekly review writes a
 	// workspace-wide event) gets the restrictive result; a request handler sets
 	// the viewer's scope.
-	Scope projectaccess.Scope
+	Scope projectaccess.Hidden
 }
 
 func (s *ApprovalPolicyService) now() time.Time {
@@ -629,7 +629,6 @@ func (s *ApprovalPolicyService) List(ctx context.Context, ws pgtype.UUID) ([]Pol
 	reversals, err := s.Queries.ListPolicyReversals(ctx, db.ListPolicyReversalsParams{
 		WorkspaceID: ws, Since: pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true},
 		// Only the policy ids are read, never a title or number.
-		ScopeMode: projectaccess.System().Mode(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list policy reversals: %w", err)
@@ -670,7 +669,7 @@ func (s *ApprovalPolicyService) AutoApprovals(ctx context.Context, ws, policyID 
 	}
 	rows, err := s.Queries.ListPolicyAutoApprovals(ctx, db.ListPolicyAutoApprovalsParams{
 		WorkspaceID: ws, PolicyID: policyID, RowLimit: limit,
-		ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
+		HiddenProjectIds: s.Scope.Param(),
 	})
 	if err != nil {
 		return nil, false, fmt.Errorf("list auto-approvals: %w", err)
@@ -709,7 +708,7 @@ type ReversedAutoApproval struct {
 func (s *ApprovalPolicyService) ListReversedAutoApprovals(ctx context.Context, ws pgtype.UUID, since time.Time) ([]ReversedAutoApproval, error) {
 	rows, err := s.Queries.ListPolicyReversals(ctx, db.ListPolicyReversalsParams{
 		WorkspaceID: ws, Since: pgtype.Timestamptz{Time: since, Valid: true},
-		ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
+		HiddenProjectIds: s.Scope.Param(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list reversed auto-approvals: %w", err)
@@ -758,7 +757,7 @@ type RecentAutoApproval struct {
 func (s *ApprovalPolicyService) ListRecentAutoApprovals(ctx context.Context, ws pgtype.UUID, since time.Time, limit int32, squadIDs []pgtype.UUID) ([]RecentAutoApproval, error) {
 	rows, err := s.Queries.ListRecentPolicyApprovals(ctx, db.ListRecentPolicyApprovalsParams{
 		WorkspaceID: ws, Since: pgtype.Timestamptz{Time: since, Valid: true}, RowLimit: limit, SquadIds: squadIDs,
-		ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
+		HiddenProjectIds: s.Scope.Param(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list recent auto-approvals: %w", err)

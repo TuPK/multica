@@ -229,7 +229,7 @@ func (h *Handler) ListPolicyAutoApprovals(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}

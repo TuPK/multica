@@ -303,12 +303,12 @@ func (h *Handler) maybeAutoCompleteIssue(ctx context.Context, workspaceID, issue
 	// A merged PR is the most common way a sub-issue reaches done; the parent
 	// hears about it on the same path as a manual status change.
 	if updated.ParentIssueID.Valid {
-		h.processChildEvents(ctx, projectaccess.System(), updated.ParentIssueID)
+		h.processChildEvents(ctx, projectaccess.Hidden{}, updated.ParentIssueID)
 	}
 
 	prefix := h.getIssuePrefix(ctx, issue.WorkspaceID)
 	resp := issueToResponse(updated, prefix)
-	h.fillStatusCategory(ctx, updated.WorkspaceID, &resp)
+	h.fillStatusCategory(ctx, updated.WorkspaceID, projectaccess.Hidden{}, &resp)
 	h.publish(protocol.EventIssueUpdated, uuidToString(workspaceID), "system", "", map[string]any{
 		"issue":          resp,
 		"status_changed": true,

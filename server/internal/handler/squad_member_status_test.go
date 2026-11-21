@@ -88,7 +88,7 @@ func TestListSquadMemberStatusRetainsWaiterIssueWithoutWorkingStatus(t *testing.
 		testPool.Exec(context.Background(), `DELETE FROM agent_task_queue WHERE id = $1`, taskID)
 	})
 
-	rows, err := testHandler.Queries.ListSquadMemberStatusRows(ctx, db.ListSquadMemberStatusRowsParams{SquadID: parseUUID(squadID), ScopeMode: "all"})
+	rows, err := testHandler.Queries.ListSquadMemberStatusRows(ctx, db.ListSquadMemberStatusRowsParams{SquadID: parseUUID(squadID), })
 	if err != nil {
 		t.Fatalf("ListSquadMemberStatusRows with waiter: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestListSquadMemberStatusRetainsWaiterIssueWithoutWorkingStatus(t *testing.
 	`, taskID); err != nil {
 		t.Fatalf("promote waiter to dispatched: %v", err)
 	}
-	rows, err = testHandler.Queries.ListSquadMemberStatusRows(ctx, db.ListSquadMemberStatusRowsParams{SquadID: parseUUID(squadID), ScopeMode: "all"})
+	rows, err = testHandler.Queries.ListSquadMemberStatusRows(ctx, db.ListSquadMemberStatusRowsParams{SquadID: parseUUID(squadID), })
 	if err != nil {
 		t.Fatalf("ListSquadMemberStatusRows with dispatched task: %v", err)
 	}

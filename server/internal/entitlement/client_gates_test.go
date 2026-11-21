@@ -119,7 +119,7 @@ func TestAddedGatesAreOffInAPolicyThatLacksThem(t *testing.T) {
 		if d.Gate.Action != ActionOff || d.Gate.Limit != nil || d.Gate.PeriodStart != nil {
 			t.Errorf("%s = %+v, want off with no limit", gate, d.Gate)
 		}
-		if d.Reason != ReasonRefreshed && d.Reason != ReasonCacheFresh {
+		if d.Reason != ReasonRefreshed && d.Reason != ReasonCacheFresh && d.Reason != ReasonGateMissing {
 			t.Errorf("%s reason = %s, want the policy's own (not unknown_gate or invalid_policy)", gate, d.Reason)
 		}
 		if d.PolicyRevision != 1 {
@@ -189,10 +189,11 @@ func TestMalformedAddedGateInvalidatesThePolicy(t *testing.T) {
 	}
 }
 
-// The original gates stay required: a policy with only added gates is invalid.
-func TestOriginalGatesRemainRequired(t *testing.T) {
+// autopilot_runs stays required; issue_count is optional because upstream
+// removed it, so a policy without it is valid and the gate is off.
+func TestAutopilotGateRemainsRequired(t *testing.T) {
 	policy := policyWithAddedGates()
-	delete(policy.Gates, "issue_count")
+	delete(policy.Gates, "autopilot_runs")
 	var wire wirePolicy
 	body, _ := json.Marshal(policy)
 	if err := json.Unmarshal(body, &wire); err != nil {
@@ -200,6 +201,23 @@ func TestOriginalGatesRemainRequired(t *testing.T) {
 	}
 	if _, err := normalizePolicy(wire); !errors.Is(err, ErrInvalidPolicy) {
 		t.Fatalf("normalizePolicy = %v, want ErrInvalidPolicy", err)
+	}
+}
+
+func TestPolicyWithoutIssueCountIsValid(t *testing.T) {
+	policy := policyWithAddedGates()
+	delete(policy.Gates, "issue_count")
+	var wire wirePolicy
+	body, _ := json.Marshal(policy)
+	if err := json.Unmarshal(body, &wire); err != nil {
+		t.Fatal(err)
+	}
+	fetched, err := normalizePolicy(wire)
+	if err != nil {
+		t.Fatalf("normalizePolicy = %v, want a valid policy", err)
+	}
+	if fetched.snapshot.gates[GateIssueCount].Action != ActionOff {
+		t.Fatalf("issue_count = %+v, want off", fetched.snapshot.gates[GateIssueCount])
 	}
 }
 
@@ -271,7 +289,7 @@ func TestMemberGroupsGateIsParsedFromThePolicy(t *testing.T) {
 			if d.Gate.Action != ActionEnforce || d.Gate.Limit == nil || *d.Gate.Limit != *tc.limit {
 				t.Fatalf("member_groups = %+v, want enforce %d", d, *tc.limit)
 			}
-			if d.Reason != ReasonRefreshed && d.Reason != ReasonCacheFresh {
+			if d.Reason != ReasonRefreshed && d.Reason != ReasonCacheFresh && d.Reason != ReasonGateMissing {
 				t.Errorf("reason = %s", d.Reason)
 			}
 		})

@@ -281,10 +281,10 @@ WHERE i.workspace_id = $1
   AND (i.status = 'done' OR st.category = 'done')
   AND COALESCE(i.done_at, i.updated_at) >= $2::timestamptz
   AND COALESCE(i.done_at, i.updated_at) < $3::timestamptz
-  -- projectaccess:scope
+  -- MUL-8472: stored aggregate
   -- Stored aggregate: any member reads it, so issues of restricted projects are left out.
   AND (i.project_id IS NULL
-       OR EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'))
+       OR EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.visibility = 'workspace'))
   AND ($4::uuid IS NULL OR (i.assignee_type = 'agent' AND i.assignee_id = $4::uuid))
   AND ($5::uuid IS NULL OR (
         (i.assignee_type = 'squad' AND i.assignee_id = $5::uuid)

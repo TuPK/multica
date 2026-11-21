@@ -21,10 +21,13 @@ import (
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/cloudruntime"
+	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/daemonws"
 	"github.com/multica-ai/multica/server/internal/dbreader"
 	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/events"
+	"github.com/multica-ai/multica/server/internal/inbox"
+	"github.com/multica-ai/multica/server/internal/inboxread"
 	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
 	composio "github.com/multica-ai/multica/server/internal/integrations/composio"
 	"github.com/multica-ai/multica/server/internal/integrations/dingtalk"
@@ -33,6 +36,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/integrations/slack"
 	"github.com/multica-ai/multica/server/internal/integrations/telegram"
 	"github.com/multica-ai/multica/server/internal/integrations/wecom"
+	"github.com/multica-ai/multica/server/internal/integrations/weixin"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
@@ -45,6 +49,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/storage"
+	"github.com/multica-ai/multica/server/internal/themestore"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/util/secretbox"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
@@ -227,6 +232,8 @@ type Handler struct {
 	// PLATFORM_WORKSPACE_DELETION_DAYS, which it validates before the server starts.
 	WorkspaceDeletionDays int
 
+	InboxReads             *inboxread.Guard
+	InboxTrimmer           *inbox.Trimmer // nil leaves inboxes untrimmed
 	Queries                *db.Queries
 	ReadSelector           *dbreader.Selector
 	DB                     dbExecutor
@@ -244,6 +251,9 @@ type Handler struct {
 	// Entitlements supplies workspace-scoped commercial gates. A nil provider
 	// preserves self-hosted behavior without extra reads.
 	Entitlements entitlement.Provider
+	// Features restricts paid features (paid_feature.go). Nil leaves every
+	// feature usable, which is the self-hosted behavior.
+	Features entitlement.FeatureProvider
 	// SeatCapacity executes Cloud's pre-purchased human-seat protocol. Nil or
 	// disabled preserves self-hosted behavior.
 	SeatCapacity          seatcapacity.Executor
@@ -255,6 +265,10 @@ type Handler struct {
 	LocalSkillListStore   LocalSkillListStore
 	LocalSkillImportStore LocalSkillImportStore
 	FeatureFlags          *featureflag.Service
+	// ThemeStore serves the community theme registry. Nil only when
+	// MULTICA_THEME_REGISTRY_URL is invalid: its routes return 404 and
+	// /api/config omits it.
+	ThemeStore *themestore.Store
 	// IssueStatusCatalog reads the workspace status catalog. Defaults to
 	// Queries; a test can substitute a counting wrapper to assert HOW MANY
 	// catalog reads a request performs, which is the only property that
@@ -341,6 +355,9 @@ type Handler struct {
 	Publish *publish.Service
 	// Research stores the Research Lab's source settings (API keys sealed at rest).
 	Research *research.Service
+	// ConnectedApps serves agents' app calls through the MCP gateway (MUL-8516).
+	// Wired together with Composio; nil when Composio is.
+	ConnectedApps *connectedapps.Service
 	// ChannelSupervisor owns the per-installation supervisor goroutines
 	// that hold the §4.4 WS lease and drive each channel.Channel
 	// (MUL-3620 generalized the Feishu-only Hub into this channel-agnostic
@@ -428,7 +445,9 @@ type Handler struct {
 
 	// BriefPush queues and sends brief pushes to members' chat apps (plan 9.10).
 	// Always set by the router; it has no notifier until a chat app registers one.
-	BriefPush *service.BriefPushService
+	BriefPush      *service.BriefPushService
+	WeixinInstall  *weixin.InstallService
+	WeixinOutbound *weixin.Outbound
 
 	// channelFileDelivery names the channel types that can, IN THIS
 	// DEPLOYMENT, carry a file the agent produced the last hop into the
@@ -552,6 +571,7 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 		ReadSelector:                 dbreader.NewPrimaryOnly(queries),
 		DB:                           executor,
 		TxStarter:                    txStarter,
+		InboxReads:                   inboxread.New(inboxread.ConfigFromEnv()),
 		Hub:                          hub,
 		DaemonHub:                    daemonHub,
 		DaemonProfileRefresh:         daemonProfileRefresh,
@@ -860,19 +880,6 @@ func (h *Handler) NotifyRuntimeRecovered(_ context.Context, workspaceID string) 
 	h.PublishRuntimeRefresh(workspaceID, "system", "", "heartbeat_recovery")
 }
 
-// publishTask is publish() plus a TaskID hint so the realtime layer can route
-// the event to the per-task scope rather than the whole workspace.
-func (h *Handler) publishTask(eventType, workspaceID, actorType, actorID, taskID string, payload any) {
-	h.Bus.Publish(events.Event{
-		Type:        eventType,
-		WorkspaceID: workspaceID,
-		ActorType:   actorType,
-		ActorID:     actorID,
-		TaskID:      taskID,
-		Payload:     payload,
-	})
-}
-
 // publishChat is publish() plus the chat session routing hints. actorID must
 // be the session's creator: every chat endpoint gates on creator ownership
 // before publishing, and the realtime layer delivers the event to that user
@@ -1023,6 +1030,17 @@ func (h *Handler) workspaceMember(w http.ResponseWriter, r *http.Request, worksp
 	return h.requireWorkspaceMember(w, r, workspaceID, "workspace not found")
 }
 
+// cacheMembership records member in the membership cache, which callers
+// read as "a member who is not a guest": the cache holds no role, and a hit
+// skips the guest allowlist (MUL-9420). A guest is therefore never cached and
+// is looked up on every request.
+func (h *Handler) cacheMembership(ctx context.Context, member db.Member) {
+	if projectaccess.IsGuestRole(member.Role) {
+		return
+	}
+	h.MembershipCache.Set(ctx, uuidToString(member.UserID), uuidToString(member.WorkspaceID))
+}
+
 func roleAllowed(role string, roles ...string) bool {
 	for _, candidate := range roles {
 		if role == candidate {
@@ -1070,7 +1088,14 @@ func (h *Handler) requireWorkspaceMember(w http.ResponseWriter, r *http.Request,
 
 	member, err := h.getWorkspaceMember(r.Context(), userID, workspaceID)
 	if err != nil {
+		if writeQueryCancellation(w, r, err) {
+			return db.Member{}, false
+		}
 		writeError(w, http.StatusNotFound, notFoundMsg)
+		return db.Member{}, false
+	}
+	if projectaccess.IsGuestRole(member.Role) && !middleware.GuestMayRequest(r) {
+		middleware.RefuseGuest(w, r)
 		return db.Member{}, false
 	}
 
@@ -1185,8 +1210,15 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 	// Try identifier format first (e.g., "JIA-42"). resolveIssueByIdentifier
 	// silently returns false for non-identifier strings, falling through to
 	// the UUID path below.
-	if issue, ok := h.resolveIssueByIdentifier(r.Context(), issueID, workspaceID); ok {
-		return h.issueInViewerScope(w, r, issue)
+	issue, found, err := h.resolveIssueByIdentifier(r.Context(), issueID, workspaceID)
+	if writeQueryCancellation(w, r, err) {
+		return db.Issue{}, false
+	}
+	if found {
+		if !h.requireProjectVisible(w, r, workspaceID, issue.ProjectID, http.StatusNotFound, "issue not found") {
+			return db.Issue{}, false
+		}
+		return issue, true
 	}
 
 	issueUUID, err := util.ParseUUID(issueID)
@@ -1201,116 +1233,20 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 		writeError(w, http.StatusBadRequest, "invalid workspace_id")
 		return db.Issue{}, false
 	}
-	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+	issue, err = h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
 		ID:          issueUUID,
 		WorkspaceID: wsUUID,
 	})
 	if err != nil {
+		if writeQueryCancellation(w, r, err) {
+			return db.Issue{}, false
+		}
 		writeError(w, http.StatusNotFound, "issue not found")
 		return db.Issue{}, false
 	}
-	return h.issueInViewerScope(w, r, issue)
-}
-
-// viewerScope computes what the caller may see in the workspace (spec 7.1). A
-// failure ends the request: a read must never continue without a Scope.
-func (h *Handler) viewerScope(w http.ResponseWriter, r *http.Request, workspaceID pgtype.UUID) (projectaccess.Scope, bool) {
-	if errors.Is(r.Context().Err(), context.Canceled) {
-		// The client is gone; keep the status for logs and send no body.
-		w.WriteHeader(middleware.StatusClientClosedRequest)
-		return projectaccess.Scope{}, false
-	}
-	var scope projectaccess.Scope
-	var err error
-	if r.Header.Get("X-Actor-Source") == "task_token" {
-		// A run reads as the person who started it, not as the runtime owner the
-		// token carries (spec 7.1 rule 12). The middleware set X-Task-ID from the
-		// token row, and the scope is computed on every request, so access lost
-		// mid-run ends the next read.
-		scope, err = h.runViewerScope(r, workspaceID)
-	} else {
-		userID, ok := parseUUIDOrBadRequest(w, requestUserID(r), "user id")
-		if !ok {
-			return projectaccess.Scope{}, false
-		}
-		scope, err = projectaccess.ForViewer(r.Context(), h.Queries, workspaceID, userID)
-	}
-	if errors.Is(err, projectaccess.ErrNotMember) {
-		writeError(w, http.StatusNotFound, "workspace not found")
-		return projectaccess.Scope{}, false
-	}
-	if err != nil {
-		slog.Error("compute project scope", append(logger.RequestAttrs(r), "error", err)...)
-		writeErrorCode(w, http.StatusServiceUnavailable, "scope_unavailable", "visibility could not be determined")
-		return projectaccess.Scope{}, false
-	}
-	return scope, true
-}
-
-// runViewerScope is the Scope of the run that made a mat_ token request. A task
-// that cannot be found has no acting person and sees no restricted project.
-func (h *Handler) runViewerScope(r *http.Request, workspaceID pgtype.UUID) (projectaccess.Scope, error) {
-	var task db.AgentTaskQueue
-	if taskID, err := util.ParseUUID(r.Header.Get("X-Task-ID")); err == nil {
-		task, err = h.Queries.GetAgentTask(r.Context(), taskID)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return projectaccess.Scope{}, err
-		}
-	}
-	return service.RunScope(r.Context(), h.Queries, workspaceID, task)
-}
-
-// scopeCondition is projectaccess.Fragment for hand-built SQL: it binds the
-// scope parameters through addArg and returns text that continues a WHERE
-// clause that already has a condition.
-func scopeCondition(scope projectaccess.Scope, column string, addArg func(any) string) string {
-	return strings.NewReplacer(
-		"sqlc.arg(scope_mode)", addArg(scope.Mode()),
-		"sqlc.arg(scope_user_id)", addArg(scope.UserID()),
-	).Replace(projectaccess.Fragment(column))
-}
-
-// memberSeesProject reports whether userID sees projectID. A user who is not a
-// member of the workspace sees nothing.
-func memberSeesProject(ctx context.Context, q projectaccess.Querier, workspaceID, userID, projectID pgtype.UUID) (bool, error) {
-	scope, err := projectaccess.ForViewer(ctx, q, workspaceID, userID)
-	if errors.Is(err, projectaccess.ErrNotMember) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return scope.Allows(projectID), nil
-}
-
-// assigneeSeesProject enforces spec 7.1 rule 6: a member assigned to an issue
-// of a project must see that project. It writes the 400 or 503 and returns
-// false when the assignment must not go on.
-func (h *Handler) assigneeSeesProject(w http.ResponseWriter, r *http.Request, workspaceID pgtype.UUID, assigneeType pgtype.Text, assigneeID, projectID pgtype.UUID) bool {
-	if assigneeType.String != "member" || !assigneeID.Valid || !projectID.Valid {
-		return true
-	}
-	sees, err := memberSeesProject(r.Context(), h.Queries, workspaceID, assigneeID, projectID)
-	if err != nil {
-		slog.Error("compute assignee project scope", append(logger.RequestAttrs(r), "error", err)...)
-		writeErrorCode(w, http.StatusServiceUnavailable, "scope_unavailable", "visibility could not be determined")
-		return false
-	}
-	if !sees {
-		writeErrorCode(w, http.StatusBadRequest, "project_member_invalid", "project_member_invalid")
-		return false
-	}
-	return true
-}
-
-// issueInViewerScope answers a hidden issue exactly like a missing one.
-func (h *Handler) issueInViewerScope(w http.ResponseWriter, r *http.Request, issue db.Issue) (db.Issue, bool) {
-	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
-	if !ok {
-		return db.Issue{}, false
-	}
-	if !scope.Allows(issue.ProjectID) {
-		writeError(w, http.StatusNotFound, "issue not found")
+	// MUL-8472: an issue in a private project the caller cannot see does not
+	// exist for them, on every route that loads it through here.
+	if !h.requireProjectVisible(w, r, workspaceID, issue.ProjectID, http.StatusNotFound, "issue not found") {
 		return db.Issue{}, false
 	}
 	return issue, true
@@ -1328,11 +1264,11 @@ func (h *Handler) viewerSeesIssue(w http.ResponseWriter, r *http.Request, worksp
 		writeError(w, http.StatusInternalServerError, "failed to load issue")
 		return false, false
 	}
-	scope, ok := h.viewerScope(w, r, workspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(workspaceID))
 	if !ok {
 		return false, false
 	}
-	return scope.Allows(issue.ProjectID), true
+	return scope.CanSeeProject(issue.ProjectID), true
 }
 
 // resolveIssueByIdentifier tries to look up an issue by "PREFIX-NUMBER" format.
@@ -1342,31 +1278,35 @@ func (h *Handler) viewerSeesIssue(w http.ResponseWriter, r *http.Request, worksp
 // resolved to the same issue number, so `FOO-134` and `TRS-134` were
 // interchangeable — which makes the identifier URL `/{ws}/issues/{key}`
 // unusable as a canonical link.
-func (h *Handler) resolveIssueByIdentifier(ctx context.Context, id, workspaceID string) (db.Issue, bool) {
+func (h *Handler) resolveIssueByIdentifier(ctx context.Context, id, workspaceID string) (db.Issue, bool, error) {
 	parts := splitIdentifier(id)
 	if parts == nil {
-		return db.Issue{}, false
+		return db.Issue{}, false, nil
 	}
 	if workspaceID == "" {
-		return db.Issue{}, false
+		return db.Issue{}, false, nil
 	}
 	wsUUID, err := util.ParseUUID(workspaceID)
 	if err != nil {
-		return db.Issue{}, false
+		return db.Issue{}, false, nil
 	}
 	// Case-insensitive: a hand-typed `trs-134` should open `TRS-134`.
-	prefix := h.getIssuePrefix(ctx, wsUUID)
+	workspace, err := h.Queries.GetWorkspace(ctx, wsUUID)
+	if err != nil {
+		return db.Issue{}, false, err
+	}
+	prefix := issuePrefixForWorkspace(workspace)
 	if prefix == "" || !strings.EqualFold(parts.prefix, prefix) {
-		return db.Issue{}, false
+		return db.Issue{}, false, nil
 	}
 	issue, err := h.Queries.GetIssueByNumber(ctx, db.GetIssueByNumberParams{
 		WorkspaceID: wsUUID,
 		Number:      parts.number,
 	})
 	if err != nil {
-		return db.Issue{}, false
+		return db.Issue{}, false, err
 	}
-	return issue, true
+	return issue, true, nil
 }
 
 type identifierParts struct {
@@ -1459,6 +1399,9 @@ func (h *Handler) loadAgentForUser(w http.ResponseWriter, r *http.Request, agent
 		WorkspaceID: wsUUID,
 	})
 	if err != nil {
+		if writeQueryCancellation(w, r, err) {
+			return db.Agent{}, false
+		}
 		writeError(w, http.StatusNotFound, "agent not found")
 		return db.Agent{}, false
 	}
@@ -1489,6 +1432,9 @@ func (h *Handler) loadInboxItemForUser(w http.ResponseWriter, r *http.Request, i
 	if !ok {
 		return db.InboxItem{}, false
 	}
+	if !h.requireInboxOwnerAccess(w, r, userID, wsUUID) {
+		return db.InboxItem{}, false
+	}
 
 	item, err := h.Queries.GetInboxItemInWorkspace(r.Context(), db.GetInboxItemInWorkspaceParams{
 		ID:          itemUUID,
@@ -1501,6 +1447,16 @@ func (h *Handler) loadInboxItemForUser(w http.ResponseWriter, r *http.Request, i
 
 	if item.RecipientType != "member" || uuidToString(item.RecipientID) != userID {
 		writeError(w, http.StatusNotFound, "inbox item not found")
+		return db.InboxItem{}, false
+	}
+	// An item on an issue in a private project the caller cannot see (never
+	// granted, or revoked since it was delivered) answers like a missing one.
+	if !h.requireIssueIDVisible(w, r, workspaceID, item.IssueID, http.StatusNotFound, "inbox item not found") {
+		return db.InboxItem{}, false
+	}
+	// An item without an issue (a doc comment) is outside any project, which
+	// a guest cannot see even when it was delivered before the demotion.
+	if !item.IssueID.Valid && !h.requireProjectVisible(w, r, workspaceID, pgtype.UUID{}, http.StatusNotFound, "inbox item not found") {
 		return db.InboxItem{}, false
 	}
 	return item, true

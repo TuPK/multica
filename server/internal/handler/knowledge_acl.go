@@ -88,13 +88,13 @@ func (h *Handler) withKnowledgeProjectScope(r *http.Request, workspaceID string,
 		actor.HideProjectBases = true
 		return actor
 	}
-	scope, err := projectaccess.ForViewer(r.Context(), h.Queries, wsUUID, userUUID)
+	scope, err := projectaccess.ForPrincipals(r.Context(), h.Queries, wsUUID, userUUID)
 	if err != nil {
 		slog.Warn("knowledge: project scope failed; project bases hidden", append(logger.RequestAttrs(r), "error", err)...)
 		actor.HideProjectBases = true
 		return actor
 	}
-	if scope.CanManage() {
+	if scope.Empty() {
 		return actor
 	}
 	projects, err := h.Queries.ListProjects(r.Context(), db.ListProjectsParams{WorkspaceID: wsUUID})
@@ -104,7 +104,7 @@ func (h *Handler) withKnowledgeProjectScope(r *http.Request, workspaceID string,
 		return actor
 	}
 	for _, p := range projects {
-		if !scope.Allows(p.ID) {
+		if !scope.CanSeeProject(p.ID) {
 			if actor.HiddenBases == nil {
 				actor.HiddenBases = map[string]bool{}
 			}

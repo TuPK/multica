@@ -275,7 +275,7 @@ func stepEnteredAt(run *flowRun) time.Time {
 // request with flow_task_stuck, so the answer carries a stop instead of a noop. A task with a live run is
 // left alone: the sweep owns the hard cap. The advance is the person's or the lead's ask to move on, so
 // the idle wait of the sweep does not apply.
-func (h *Handler) rescueFlowTasks(ctx context.Context, request db.Issue, scope projectaccess.Scope) ([]FlowAction, error) {
+func (h *Handler) rescueFlowTasks(ctx context.Context, request db.Issue, scope projectaccess.Hidden) ([]FlowAction, error) {
 	current, err := h.Queries.GetIssue(ctx, request.ID)
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func (h *Handler) rescueFlowTasks(ctx context.Context, request db.Issue, scope p
 			continue
 		}
 		// A task in a project the viewer cannot see is neither given a run nor named in the answer.
-		if !scope.Allows(r.issue.ProjectID) {
+		if !scope.CanSeeProject(r.issue.ProjectID) {
 			continue
 		}
 		stats, err := h.flowRunStats(ctx, r.issue.ID, since, now)

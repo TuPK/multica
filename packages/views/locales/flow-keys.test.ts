@@ -39,8 +39,8 @@ const locales = Object.keys(RESOURCES);
 const squadsOf = (locale: string) => (RESOURCES as unknown as Record<string, Record<string, unknown>>)[locale]!.squads;
 
 describe("spec 11.9 locale keys", () => {
-  it("covers the seven locales", () => {
-    expect(locales.sort()).toEqual(["en", "es", "fr", "ja", "ko", "zh-Hans", "zh-Hant"]);
+  it("covers the eight locales", () => {
+    expect(locales.sort()).toEqual(["en", "es", "fr", "ja", "ko", "ru", "zh-Hans", "zh-Hant"]);
   });
 
   for (const [key, en] of Object.entries(SPEC_11_9_EN)) {

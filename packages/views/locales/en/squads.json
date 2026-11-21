@@ -30,13 +30,7 @@
     "success": "Squad archived"
   },
   "name_editor": {
-    "title": "Rename squad",
-    "placeholder": "Squad name",
-    "required": "Name is required",
-    "cancel": "Cancel",
-    "save": "Save",
-    "saved": "Saved",
-    "save_failed": "Failed to save"
+    "placeholder": "Squad name"
   },
   "add_member_dialog": {
     "title": "Add Member",
@@ -55,13 +49,6 @@
   "role_editor": {
     "empty": "Add role…",
     "placeholder": "Role (e.g. Reviewer)"
-  },
-  "description_dialog": {
-    "title": "Edit description",
-    "placeholder_empty": "Add a description",
-    "cancel": "Cancel",
-    "responsibility_placeholder": "What is this squad responsible for?",
-    "save": "Save"
   },
   "members_tab": {
     "section_title": "Members",
@@ -148,7 +135,8 @@
     "squad_runtime_failed": "Failed to change runtime",
     "squad_runtime_skipped": "{{updated}} agents moved, {{skipped}} skipped: {{reason}}",
     "bulk_applied": "{{field}} applied to {{count}} agents",
-    "bulk_partial": "{{failed}} of {{total}} agents could not be updated"
+    "bulk_partial": "{{failed}} of {{total}} agents could not be updated",
+    "update_failed": "Failed to save"
   },
   "profile_card": {
     "unavailable": "Squad unavailable",
@@ -819,5 +807,9 @@
     },
     "open_squad": "Open the squad",
     "done": "Done"
+  },
+  "description_editor": {
+    "empty": "Add a description",
+    "placeholder": "What is this squad responsible for?"
   }
 }

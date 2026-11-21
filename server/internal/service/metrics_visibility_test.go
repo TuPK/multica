@@ -21,8 +21,8 @@ func (f govFixture) visibilityDoneIssues(t *testing.T) (yesterday time.Time) {
 	t.Helper()
 	yesterday = f.now.AddDate(0, 0, -1)
 	at := yesterday.Add(15 * time.Hour)
-	openProj := f.Project(t, "Open metrics project", testutil.Cols{"access": "workspace"})
-	hiddenProj := f.Project(t, "Hidden metrics project", testutil.Cols{"access": "restricted"})
+	openProj := f.Project(t, "Open metrics project", testutil.Cols{"visibility": "workspace"})
+	hiddenProj := f.Project(t, "Hidden metrics project", testutil.Cols{"visibility": "private"})
 	for _, p := range []struct{ title, project string }{
 		{"visible done", openProj},
 		{"hidden done", hiddenProj},

@@ -444,21 +444,15 @@ JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
 WHERE p.workspace_id = $1::uuid
   AND p.kind = 'stage_gate'
   AND p.payload->>'initiative_id' = $2::text
-  -- projectaccess:scope
-  AND ($3::text = 'all'
-      OR (i.project_id IS NULL AND $3::text <> 'guest')
-      OR EXISTS (SELECT 1 FROM project_member scope_pm
-                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
-      OR ($3::text = 'member'
-          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($3::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
 ORDER BY p.created_at, p.id
 `
 
 type ListGateProposalsForInitiativeParams struct {
-	WorkspaceID  pgtype.UUID `json:"workspace_id"`
-	InitiativeID string      `json:"initiative_id"`
-	ScopeMode    string      `json:"scope_mode"`
-	ScopeUserID  pgtype.UUID `json:"scope_user_id"`
+	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
+	InitiativeID     string        `json:"initiative_id"`
+	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
 type ListGateProposalsForInitiativeRow struct {
@@ -472,12 +466,7 @@ type ListGateProposalsForInitiativeRow struct {
 // issue's title and number. A gate whose backing issue sits in a project the
 // viewer cannot see is left out.
 func (q *Queries) ListGateProposalsForInitiative(ctx context.Context, arg ListGateProposalsForInitiativeParams) ([]ListGateProposalsForInitiativeRow, error) {
-	rows, err := q.db.Query(ctx, listGateProposalsForInitiative,
-		arg.WorkspaceID,
-		arg.InitiativeID,
-		arg.ScopeMode,
-		arg.ScopeUserID,
-	)
+	rows, err := q.db.Query(ctx, listGateProposalsForInitiative, arg.WorkspaceID, arg.InitiativeID, arg.HiddenProjectIds)
 	if err != nil {
 		return nil, err
 	}

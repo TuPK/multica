@@ -83,7 +83,7 @@ export function TransitionEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-xl max-h-[85%] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t(($) => $.designer.edge.edit_transition)}</DialogTitle>
           <DialogDescription className="text-body-sm text-muted-foreground">

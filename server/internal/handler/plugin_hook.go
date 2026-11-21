@@ -76,7 +76,7 @@ func (h *Handler) InvokePluginHook(w http.ResponseWriter, r *http.Request) {
 		Input: rawOrNil(req.Input),
 	}
 	if req.IssueID != "" {
-		issue, ok := h.pluginIssueForUser(w, r, caller, req.IssueID)
+		issue, ok := h.pluginIssueForUser(w, r, caller, actor, req.IssueID)
 		if !ok {
 			return
 		}
@@ -180,6 +180,10 @@ type pluginTokenResponse struct {
 
 // RotatePluginToken — POST /api/workspaces/{id}/plugins/{installationId}/token
 func (h *Handler) RotatePluginToken(w http.ResponseWriter, r *http.Request) {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return
+	}
 	installation, ok := h.pluginInstallationFromURL(w, r)
 	if !ok {
 		return

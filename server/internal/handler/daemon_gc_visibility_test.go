@@ -20,8 +20,9 @@ type gcVisibilityFixture struct {
 
 func newGCVisibilityFixture(t *testing.T) gcVisibilityFixture {
 	t.Helper()
-	hiddenProj := dbfx.Project(t, "Hidden "+uuid.NewString()[:8], testutil.Cols{"workspace_id": testWorkspaceID, "access": "restricted"})
-	openProj := dbfx.Project(t, "Open "+uuid.NewString()[:8], testutil.Cols{"workspace_id": testWorkspaceID, "access": "workspace"})
+	hiddenProj := dbfx.Project(t, "Hidden "+uuid.NewString()[:8], testutil.Cols{"workspace_id": testWorkspaceID, "visibility": "private"})
+	ownerJoinsProject(t, testWorkspaceID, hiddenProj)
+	openProj := dbfx.Project(t, "Open "+uuid.NewString()[:8], testutil.Cols{"workspace_id": testWorkspaceID, "visibility": "workspace"})
 	f := gcVisibilityFixture{
 		hiddenIssue: dbfx.Issue(t, "gc hidden", testutil.Cols{"workspace_id": testWorkspaceID, "project_id": hiddenProj, "status": "done"}),
 		openIssue:   dbfx.Issue(t, "gc open", testutil.Cols{"workspace_id": testWorkspaceID, "project_id": openProj, "status": "done"}),

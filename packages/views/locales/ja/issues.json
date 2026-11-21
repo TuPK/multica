@@ -48,7 +48,7 @@
   },
   "relation_filter_error": {
     "title": "「自分との関係」フィルターを読み込めませんでした",
-    "hint": "「自分が購読中」または「自分のエージェントが担当」で絞り込んだタスクは、購読とエージェントを読み込むまで表示できません。"
+    "hint": "「自分が購読中」または「マイエージェントの作業」で絞り込んだタスクは、購読とエージェントを読み込むまで表示できません。"
   },
   "source_context": {
     "create_action": "このコメントからサブタスクを作成",
@@ -185,7 +185,7 @@
     "section_relation": "自分との関係",
     "relation_assigned": "自分が担当",
     "relation_created": "自分が作成",
-    "relation_my_agents": "自分のエージェントが担当",
+    "relation_my_agents": "マイエージェントの作業",
     "relation_subscribed": "自分が購読中",
     "section_agent_status": "エージェントの状態",
     "agent_status_running": "実行中",
@@ -265,7 +265,8 @@
     "advanced_group_match_trailing": "に一致",
     "advanced_group_hint": "このグループの条件は「{{word}}」でつながります",
     "advanced_add_to_group": "グループに追加",
-    "advanced_turn_into_group": "グループに変換"
+    "advanced_turn_into_group": "グループに変換",
+    "agent_status_idle": "待機中"
   },
   "display": {
     "tooltip": "表示設定",
@@ -309,7 +310,8 @@
     "card_labels": "ラベル",
     "card_child_progress": "サブタスクの進捗",
     "show_sub_issues": "サブタスクを表示",
-    "layout_options": "{{layout}}のオプション"
+    "layout_options": "{{layout}}のオプション",
+    "card_pull_requests": "Pull requests"
   },
   "view": {
     "tooltip_board": "ボード表示",
@@ -380,7 +382,8 @@
       "updated_at": "更新日",
       "child_progress": "サブタスクの進捗",
       "run_queue": "実行キュー",
-      "creator": "作成者"
+      "creator": "作成者",
+      "pull_requests": "Pull requests"
     },
     "calculation": {
       "label": "計算",
@@ -529,7 +532,7 @@
     "subscribe": "購読",
     "unsubscribe": "購読解除",
     "delegated_subscription_badge": "エージェント経由で購読中",
-    "delegated_subscription_hint": "エージェントがあなたに代わってこのタスクを作成したため、購読しています。レビュー待ち・完了・ブロック時に通知されます。",
+    "delegated_subscription_hint": "エージェントがあなたに代わってこのタスクを作成したため、購読しています。ステータス変更がオンなら、レビュー待ち・完了・ブロック時に通知されます。",
     "unsubscribe_this": "このタスクの購読を解除",
     "unsubscribe_subtree": "このタスクとサブタスクの購読を解除",
     "unsubscribe_subtree_failed": "サブタスクの購読解除に失敗しました。もう一度お試しください。",
@@ -569,11 +572,35 @@
     "project_directory_path_copied_with_branch": "プロジェクトディレクトリのパスをコピーしました — 作業は {{branch}} ブランチにあります",
     "workdir_path_copy_failed": "作業ディレクトリのパスをコピーできませんでした",
     "workdir_path_unavailable": "まだローカルの作業ディレクトリがありません。ローカルエージェントがこのタスクを実行していません",
-    "pull_requests_empty_title": "関連する PR はありません。"
+    "pull_requests_empty_title": "関連する PR はありません。",
+    "sidebar_settings": {
+      "open": "サイドバーをカスタマイズ",
+      "title": "サイドバー",
+      "reset": "リセット",
+      "footer": "ドラッグで並べ替え。すべてのタスクに適用されます。",
+      "always_shown": "常に表示",
+      "empty": "このタスクにはありません",
+      "customize": "カスタマイズ",
+      "drag_handle": "{{section}}を並べ替え",
+      "hidden_count_other": "{{count}} 個のセクションを非表示"
+    },
+    "pull_request_state_open": "オープン",
+    "key_updates_subscription_badge": "重要な更新のみ",
+    "key_updates_subscription_hint": "他の人が担当するタスクで、作成・コメント・メンションによって購読しています。あなたへの @メンション、参加したスレッドへの返信、そしてステータス変更がオンならレビュー待ち・ブロック・完了のときだけ通知されます。",
+    "key_updates_follow_all": "すべてのアクティビティを受け取る",
+    "key_updates_follow_all_done": "このタスクのすべてのアクティビティを受け取ります",
+    "key_updates_settings": "デフォルトを変更",
+    "project_subscription_badge": "プロジェクト経由で購読中",
+    "project_subscription_hint": "このプロジェクトのすべてのタスクを購読しています。ここで購読解除すると、このタスクの通知だけが止まります。",
+    "sub_issues_show_more_other": "さらに {{count}} 件表示",
+    "sub_issues_show_less": "折りたたむ",
+    "title_link_copied": "タイトル付きリンクをコピーしました",
+    "guest_readonly_note": "ゲストは閲覧とコメントのみ可能で、タスクのプロパティは変更できません。"
   },
   "timeline": {
     "loading": "読み込み中...",
-    "jump_to_latest": "最新に移動"
+    "jump_to_latest": "最新に移動",
+    "new_comments_other": "新しいコメント {{count}} 件"
   },
   "activity": {
     "created": "このタスクを作成しました",
@@ -634,7 +661,11 @@
     "flow_human_reminded": "承認担当者にリマインドしました",
     "flow_task_reopened": "タスク {{task}} を再オープンしました",
     "flow_task_skipped": "タスク {{task}} をスキップしました",
-    "flow_manual_close": "担当者の代わりにタスク {{task}} をクローズしました"
+    "flow_manual_close": "担当者の代わりにタスク {{task}} をクローズしました",
+    "created_on_behalf_of": "{{name}} の代理としてこのタスクを作成しました",
+    "environment_stopped": "環境 {{name}} を停止しました",
+    "environment_restarted": "環境 {{name}} を再起動しました",
+    "environment_started": "環境 {{name}} を起動しました"
   },
   "comment": {
     "add_reaction": "リアクションを追加",
@@ -731,7 +762,12 @@
     "recipient_count_other": "{{count}} 個のエージェントが受け取ります",
     "steer_attachment_notice": "実行中に追加できるのはテキストのみのため、ファイル付きのメッセージはこの実行の後に処理されます。",
     "restart_send": "停止して送信",
-    "restart_failed": "現在の実行を停止できませんでした。メッセージは送信されていません。"
+    "restart_failed": "現在の実行を停止できませんでした。メッセージは送信されていません。",
+    "reply_action": "返信",
+    "actions_label": "コメントの操作",
+    "create_issue_from_selection": "選択内容からサブタスクを作成",
+    "guest_placeholder": "返信… メンバーを @ できます",
+    "guest_hint": "ゲストはエージェントを @ したり、タスクを割り当てたりできません"
   },
   "reply": {
     "placeholder": "返信を残す...",
@@ -751,8 +787,15 @@
       "selection_failed": "選択範囲を取得できませんでした。同じコメントまたは説明の中で文字を選び直してください。",
       "source_label": "{{name}} のコメント",
       "edit": "注釈 {{number}} を編集",
-      "note_placeholder": "コメントを追加…"
-    }
+      "note_placeholder": "コメントを追加…",
+      "send_all": "すべて送信",
+      "send_with_annotations_and_body": "保存済みの注釈 {{count}} 件と下書きの本文もまとめて送信します。",
+      "send_with_annotations": "保存済みの注釈 {{count}} 件もまとめて送信します。",
+      "send_with_body": "下書きの本文もまとめて送信します。",
+      "confirm_add_short": "追加",
+      "save_short": "保存"
+    },
+    "recipients_changed": "返信先が変更されました。送信先を確認してから、もう一度送信してください。"
   },
   "agent_activity": {
     "hover_header_other": "作業中のエージェント {{count}} 件",
@@ -834,7 +877,12 @@
     "more_runs_other": "残り {{count}} 件を表示",
     "strip_aria": "実行ごとの費用 — 実行タイムラインを開く",
     "strip_no_usage": "使用量の記録なし",
-    "queued_count_other": "{{count}} 件待機中"
+    "queued_count_other": "{{count}} 件待機中",
+    "latest": "最新",
+    "include_children": "サブタスクを含める",
+    "loading": "実行履歴を読み込み中...",
+    "load_failed_retry": "実行履歴を読み込めませんでした。再試行",
+    "empty": "この範囲には実行履歴がありません。"
   },
   "runs_timeline": {
     "title": "実行履歴",
@@ -924,7 +972,40 @@
     "delete_failed": "タスクを削除できませんでした",
     "delete_dialog_title_other": "タスク {{count}} 件を削除しますか？",
     "delete_dialog_desc_other": "この操作は元に戻せません。選択したタスクと関連データがすべて完全に削除されます。",
-    "cancel": "キャンセル"
+    "cancel": "キャンセル",
+    "copy_links": "リンクをコピー",
+    "links_copied_other": "{{count}} 件のリンクをコピーしました",
+    "delete_count_other": "タスク {{count}} 件を削除",
+    "labels": "ラベル",
+    "project": "プロジェクト",
+    "due_date": "期限",
+    "more": "その他の操作",
+    "stage": "ステージ",
+    "custom_properties": "カスタムプロパティ",
+    "pick_date": "日付を選択…",
+    "property_edit": "値を設定…",
+    "result_unknown": "どの課題が変更されたか確認できませんでした。再試行する前に一覧を確認してください。",
+    "property_clear": "クリア（{{count}} 件設定済み）",
+    "labels_search": "ラベルを追加または削除…",
+    "clear_labels_other": "タスク {{count}} 件のラベルをすべて削除",
+    "set_parent_title_other": "タスク {{count}} 件の親タスクを設定",
+    "set_parent_description_other": "選択したタスク {{count}} 件の親にするタスクを検索します。",
+    "skipped_title_other": "{{updated}} 件を更新、{{count}} 件は更新されませんでした",
+    "skipped_more": "ほか {{count}} 件",
+    "select_skipped_other": "この {{count}} 件だけを選択",
+    "server_outdated": "このサーバーはラベルやカスタムプロパティの一括変更にまだ対応していません。サーバーを更新してから再試行してください。",
+    "skip_reason": {
+      "invalid_id": "有効なタスクではありません",
+      "not_found": "見つからないか、閲覧権限がありません",
+      "invalid_value": "この値はこのタスクに使えません",
+      "parent_self": "タスクを自分自身の親にはできません",
+      "parent_not_found": "親タスクが見つかりません",
+      "parent_cycle": "親タスクがこのタスクのサブタスクです",
+      "workflow_rejected": "プロジェクトのワークフローがこの変更を許可していません",
+      "assignee_not_allowed": "この担当者には割り当てられません",
+      "properties_too_large": "カスタムプロパティがサイズ上限を超えます",
+      "write_failed": "保存できませんでした"
+    }
   },
   "card": {
     "update_failed": "タスクを更新できませんでした",
@@ -966,7 +1047,11 @@
     "add_sub_issue": "サブタスクを追加...",
     "delete_issue": "タスクを削除",
     "mark_duplicate": "重複としてマーク...",
-    "save_to_knowledge": "ナレッジに保存"
+    "save_to_knowledge": "ナレッジに保存",
+    "locate_in_sidebar": "サイドバーで表示",
+    "copy_title_as_link": "タイトル付きリンクをコピー",
+    "quick_actions": "クイックアクション",
+    "open_in_new_window": "新しいウィンドウで開く"
   },
   "pickers": {
     "custom_property": {
@@ -998,8 +1083,7 @@
       "members_group": "メンバー",
       "agents_group": "エージェント",
       "squads_group": "スクワッド",
-      "agent_runtime_required": "作業を割り当てる前に、このエージェントにランタイムをバインドしてください",
-      "squad_runtime_required": "作業を割り当てる前に、このスクワッドのリーダーにランタイムをバインドしてください"
+      "recent_group": "最近"
     },
     "start_date": {
       "trigger_label": "開始日",
@@ -1079,7 +1163,7 @@
     "variant_my_any": "何らかの関わり",
     "variant_my_assigned": "自分に割り当て",
     "variant_my_created": "自分が作成",
-    "variant_my_involved": "関与中"
+    "variant_my_involved": "マイエージェントの作業"
   },
   "plugins": {
     "panels": "Plugins",
@@ -1356,15 +1440,16 @@
       "enable": "このタスクで有効",
       "toggle": "サブタスク完了時に担当者を起こす",
       "save_error": "システムルールを保存できませんでした。",
-      "default_on": "ワークスペースでは既定でオン。既定値は「設定 → ウェイクアップ」で変更できます。",
-      "default_off": "ワークスペースでは既定でオフ。既定値は「設定 → ウェイクアップ」で変更できます。",
+      "default_on": "ワークスペースでは既定でオン。",
+      "default_off": "ワークスペースでは既定でオフ。",
       "notify_member": "{{name}} に受信トレイで通知",
       "instruction": "起きたあとにすること",
       "instruction_edit": "指示を編集",
       "instruction_default": "このタスクでは未設定のため、既定の指示を使います：",
       "instruction_placeholder": "空欄のままなら既定の指示を使います",
       "instruction_invalid": "指示は 4,000 バイト以内にしてください。",
-      "paused": "一時停止中：{{reason}}"
+      "paused": "一時停止中：{{reason}}",
+      "default_change": "既定値を変更"
     },
     "cond": {
       "status": "ステータスが{{status}}になったとき",
@@ -1526,7 +1611,10 @@
     "overview_summary_with_size_other": "成果物 {{count}} 件 · 合計 {{size}}",
     "overview_close": "閉じる",
     "overview_empty": "この種類の成果物はありません。",
-    "group_comment_by": "{{name}} のコメント"
+    "group_comment_by": "{{name}} のコメント",
+    "copy_link": "最新版へのリンクをコピー",
+    "not_found": "この課題に「{{name}}」という成果物はありません",
+    "link_load_failed": "「{{name}}」を開くための成果物を読み込めませんでした。再読み込みしてもう一度お試しください。"
   },
   "workflows": {
     "default_name": "Default",
@@ -1703,7 +1791,6 @@
       "brief_header": "この実行が受け取ったワークフローの説明"
     },
     "detail": {
-      "follows_project": "（プロジェクトに従う）",
       "card_title": "「{{workflow}}」· プロジェクト「{{project}}」に従う"
     },
     "list_separator": "、",
@@ -1743,15 +1830,12 @@
       "name_placeholder": "ステータス名",
       "add": "追加"
     },
-    "menu": {
-      "view_flow": "フロー全体を見る",
-      "switch": "ワークフローを切り替え"
-    },
     "flow": {
       "title": "ワークフロー「{{workflow}}」",
       "scope_own": "このワークフローを使用しているのはこのプロジェクトだけです。",
       "no_handoff_here": "引き継ぎなし",
-      "scope_shared_other": "{{count}} 件のプロジェクトがこのワークフローを使用しています。引き継ぎはそのすべてに適用されます。"
+      "scope_shared_other": "{{count}} 件のプロジェクトがこのワークフローを使用しています。引き継ぎはそのすべてに適用されます。",
+      "switch": "ワークフローを切り替え"
     },
     "templates": {
       "delivery": {
@@ -2269,7 +2353,10 @@
       "my_issues": "マイタスク",
       "my_agents": "マイエージェントの作業",
       "all_issues": "すべてのタスク",
-      "unread": "未読"
+      "my_work": "自分の作業",
+      "working": "実行中",
+      "subscribed": "購読中",
+      "snoozed": "スヌーズ中"
     },
     "untitled": "無題のビュー",
     "copy_name": "{{name}}（コピー）",
@@ -2382,5 +2469,139 @@
     "skip_checkpoint_title": "このワークを確認した人はいません",
     "skip_checkpoint_ack": "エージェントの作業を誰も確認していないことを理解したうえで、リクエストを再開します",
     "closed": "終了"
+  },
+  "web": {
+    "open_in_desktop": "デスクトップで開く"
+  },
+  "desktop": {
+    "link_other_instance": "デスクトップアプリは別の Multica インスタンスに接続されています。",
+    "link_workspace_unavailable": "このワークスペースはデスクトップアプリでは利用できません。"
+  },
+  "app_calls": {
+    "section_title": "アプリ",
+    "chips_label": "この実行で使ったアプリ",
+    "calls_count_other": "{{count}} 回",
+    "more": "ほか {{count}} 件",
+    "scope": {
+      "team": "チームアカウント",
+      "personal": "個人アカウント"
+    },
+    "outcome": {
+      "ok": "実行済み",
+      "error": "失敗",
+      "blocked": "ブロック",
+      "pending": "確認待ち",
+      "approved": "承認済み",
+      "rejected": "却下",
+      "rate_limited": "レート制限"
+    }
+  },
+  "environments": {
+    "section_title": "環境",
+    "running_count_other": "{{count}} 件実行中",
+    "this_machine": "このマシン",
+    "unknown_machine": "不明なマシン",
+    "state": {
+      "starting": "起動中",
+      "running": "実行中",
+      "exited": "終了",
+      "stopped": "停止",
+      "unreachable": "応答なし",
+      "stopping": "停止中",
+      "preparing": "準備中"
+    },
+    "expires_in_minutes_other": "{{count}}分後に期限切れ",
+    "expires_in_hours_other": "{{count}}時間後に期限切れ",
+    "expires_in_days_other": "{{count}}日後に期限切れ",
+    "started_ago": "起動: {{time}}",
+    "ended_ago": "終了: {{time}}",
+    "last_seen": "最終応答: {{time}}",
+    "ended_count_other": "終了済み {{count}} 件",
+    "detected_hint": "このタスクの実行ディレクトリで待ち受けていたサーバー",
+    "remote_hint": "{{machine}} で実行中です。localhost の URL はそのマシンでのみ開けます。",
+    "localhost_hint": "localhost の URL は、それを実行しているマシンでのみ開けます。",
+    "open": "開く",
+    "copy_url": "URL をコピー",
+    "copied": "URL をコピーしました",
+    "copy_failed": "URL をコピーできませんでした",
+    "offline": "オフライン",
+    "machine_offline": "{{machine}} はオフラインです",
+    "more_actions": "その他の操作",
+    "view_logs": "ログを表示",
+    "restart": "再起動",
+    "stop": "停止",
+    "stop_confirm_item": "停止…",
+    "run_first": "初回の実行",
+    "run_nth_other": "{{count}} 回目の実行",
+    "someone": "誰か",
+    "started_by": "{{name}} が起動",
+    "restarted_by": "{{name}} が再起動",
+    "started_by_agent_in_run": "{{name}} が「{{run}}」で起動",
+    "stopped_by": "{{name}} が停止",
+    "stopped_on_expiry": "期限切れで自動停止",
+    "exited_ago": "{{time}}に終了",
+    "exit_code": "終了コード {{code}}",
+    "detected_label": "自動検出したサービス · {{name}}",
+    "detected_no_logs": "このサービスは環境設定から起動されていないため、ログを見ることも再起動することもできません。",
+    "offline_hint": "このマシンがオンラインに戻ると操作できます。",
+    "outdated_hint": "このマシンの Multica を更新すると、ここから操作できます。",
+    "no_permission_hint": "このマシンを使えるメンバーだけが停止・再起動できます。",
+    "waiting_machine": "マシンの応答を待っています",
+    "waiting_ready": "サービスの準備を待っています",
+    "no_response": "応答なし",
+    "action_failed": {
+      "stop": "停止できませんでした",
+      "restart": "再起動できませんでした",
+      "start": "起動できませんでした"
+    },
+    "stop_confirm_title": "{{name}} を停止しますか？",
+    "stop_confirm_body": "このサービス（{{process}}）は自動検出されたもので、環境設定から起動されたものではありません。停止するとここからは再起動できず、エージェントに起動し直してもらう必要があります。",
+    "cancel": "キャンセル",
+    "preparing_title": "{{name}} が環境を準備しています",
+    "preparing_hint": "起動するとここに表示されます",
+    "start_menu": {
+      "trigger": "環境を起動",
+      "note": "プロジェクトの環境設定に従い、このマシンでの最新の実行のコードで起動します。",
+      "no_permission": "マシンを使えるメンバーだけが、そのマシンで環境を起動できます。",
+      "nothing_to_start": "このタスクはまだ実行されていないか、以前の実行のコードが削除されているため、直接起動できる環境はありません。",
+      "ask_agent": "{{name}} に起動を依頼",
+      "ask_any_agent": "エージェントに起動を依頼",
+      "new_run": "新しい実行",
+      "preparing": "準備中",
+      "ask_agent_hint": "{{name}} がこのタスクのコードを用意してから環境を起動します。プロジェクトに環境設定がない場合は、起動方法を自分で判断します。",
+      "ask_any_agent_hint": "エージェントがこのタスクのコードを用意してから環境を起動します。プロジェクトに環境設定がない場合は、起動方法を自分で判断します。",
+      "ask_failed": "エージェントに依頼できませんでした",
+      "agent_instruction": "環境を起動してください：このタスクのコードを用意し、`multica env start` でプロジェクトに設定された環境を起動します。環境設定がない場合は、起動方法を自分で判断してください。サービスは動かしたままにして、アクセス先の URL を返信してください。"
+    },
+    "log": {
+      "title": "{{name}} · ログ",
+      "filter": "ログを絞り込む",
+      "wrap": "折り返し",
+      "follow": "最新を追う",
+      "copy": "コピー",
+      "copied": "ログをコピーしました",
+      "copy_failed": "ログをコピーできませんでした",
+      "refresh": "更新",
+      "footer_other": "直近 {{count}} 行を表示 · {{time}} に更新",
+      "loading": "ログを読み込んでいます…",
+      "empty": "まだ出力がありません",
+      "no_match": "一致する行はありません",
+      "no_response": "マシンが応答しませんでした",
+      "failed": "ログを読み込めませんでした：{{error}}",
+      "offline_excerpt": "このマシンはオフラインです。終了前に最後に出力された内容を表示しています。",
+      "offline_empty": "このマシンがオンラインに戻るとログを表示できます。",
+      "exit_divider": "{{time}} に終了",
+      "exit_divider_code": "{{time}} に終了 · 終了コード {{code}}",
+      "stopped_divider": "{{time}} に停止"
+    },
+    "app_desktop_hint": "デスクトップアプリです。実行中のマシンの Multica Desktop からウィンドウに切り替えられます。",
+    "app_remote_hint": "{{machine}} で実行中です。そのマシンの Multica Desktop からウィンドウに切り替えられます。",
+    "focus": "ウィンドウに切り替え",
+    "focus_gone": "{{name}} はもう実行されていません",
+    "focus_unsupported": "このマシンのデーモンはまだアプリのウィンドウに切り替えられません。Multica を更新してもう一度お試しください。",
+    "focus_unavailable": "ローカルのデーモンが実行されていません",
+    "focus_failed": "{{name}} に切り替えられませんでした",
+    "retry": "再試行",
+    "dismiss": "閉じる"
   }
 }

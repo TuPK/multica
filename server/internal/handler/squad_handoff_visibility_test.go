@@ -22,13 +22,19 @@ type handoffNotes struct {
 // set to access, and returns the target and the note it left on the source.
 func (fx handoffFx) handOff(t *testing.T, access string) handoffNotes {
 	t.Helper()
-	dbfx.Exec(t, `UPDATE project SET access = $1 WHERE id = $2`, access, fx.Project)
+	dbfx.Exec(t, `UPDATE project SET visibility = $1 WHERE id = $2`, visibilityOf(access), fx.Project)
+	if access == "restricted" {
+		// The owner-side reader is a member of the private project; a role grants nothing.
+		dbfx.Exec(t, `INSERT INTO project_member (project_id, workspace_id, user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, fx.Project, testWorkspaceID, fx.AdminID)
+	}
 	fx.setRule(t, "auto").Want(http.StatusOK)
 	source := fx.request(t, "Add feature X")
 	fx.packet(t, source)
 	var out handoffOut
 	fx.leadAsks(t, source).Want(http.StatusOK).JSON(&out)
-	n := handoffNotes{source: source, target: *out.Handoff.TargetIssueID}
+	// The response omits a target the caller cannot see, so read it back.
+	n := handoffNotes{source: source}
+	dbfx.QueryRow(t, `SELECT target_issue_id::text FROM squad_handoff WHERE source_issue_id = $1`, source).Scan(&n.target)
 	dbfx.QueryRow(t, `SELECT title FROM issue WHERE id = $1`, n.target).Scan(&n.targetTitle)
 	dbfx.QueryRow(t, `SELECT content FROM comment WHERE issue_id = $1 AND content LIKE 'Handed off to %'`, source).Scan(&n.handoffNote)
 	return n

@@ -236,7 +236,8 @@
         "missing_skill_md": "最上層找不到 SKILL.md。",
         "empty": "沒有可匯入的檔案。",
         "too_large": "封存檔太大。",
-        "too_many_files": "此匯入的檔案太多。"
+        "too_many_files": "此匯入的檔案太多。",
+        "unreadable": "This archive couldn't be read."
       }
     },
     "blank": {

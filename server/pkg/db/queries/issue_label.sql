@@ -1,15 +1,13 @@
 -- name: ListLabels :many
 SELECT l.*,
     CASE l.resource_type
-        WHEN 'issue' THEN (SELECT COUNT(*) FROM issue_to_label x JOIN issue li ON li.id = x.issue_id
-            WHERE x.label_id = l.id
-            -- projectaccess:scope
-            AND (sqlc.arg(scope_mode)::text = 'all'
-                OR (li.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-                OR EXISTS (SELECT 1 FROM project_member scope_pm
-                           WHERE scope_pm.project_id = li.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-                OR (sqlc.arg(scope_mode)::text = 'member'
-                    AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = li.project_id AND scope_p.access = 'workspace'))))
+        -- MUL-8472: issues in private projects the caller cannot see are not counted.
+        WHEN 'issue' THEN (SELECT COUNT(*) FROM issue_to_label x WHERE x.label_id = l.id
+            AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT EXISTS (
+                SELECT 1 FROM issue hidden_issue
+                WHERE hidden_issue.id = x.issue_id
+                  AND COALESCE(hidden_issue.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])
+            )))
         WHEN 'agent' THEN (SELECT COUNT(*) FROM agent_to_label x WHERE x.label_id = l.id)
         WHEN 'skill' THEN (SELECT COUNT(*) FROM skill_to_label x WHERE x.label_id = l.id)
         ELSE 0

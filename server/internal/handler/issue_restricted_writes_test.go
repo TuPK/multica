@@ -197,13 +197,13 @@ func TestRestrictedIssueWritesAnswerMissing(t *testing.T) {
 		snapshot := issueRowSnapshot(t, openID)
 		update := serveAs(testHandler.UpdateIssue, withURLParam(requestAs(f.outsiderID, "PUT", "/api/issues/"+openID,
 			map[string]any{"project_id": f.restrictedProjectID}), "id", openID))
-		if update.Code != http.StatusNotFound || !strings.Contains(update.Body.String(), "project not found") {
-			t.Errorf("UpdateIssue into a hidden project: want 404 project not found, got %d %s", update.Code, update.Body.String())
+		if update.Code != http.StatusBadRequest || !strings.Contains(update.Body.String(), "project not found") {
+			t.Errorf("UpdateIssue into a hidden project: want 400 project not found, got %d %s", update.Code, update.Body.String())
 		}
 		batchMove := serveAs(testHandler.BatchUpdateIssues, requestAs(f.outsiderID, "POST", "/api/issues/batch-update?workspace_id="+testWorkspaceID,
 			map[string]any{"issue_ids": []string{openID}, "updates": map[string]any{"project_id": f.restrictedProjectID}}))
-		if batchMove.Code != http.StatusNotFound || !strings.Contains(batchMove.Body.String(), "project not found") {
-			t.Errorf("BatchUpdateIssues into a hidden project: want 404 project not found, got %d %s", batchMove.Code, batchMove.Body.String())
+		if batchMove.Code != http.StatusBadRequest || !strings.Contains(batchMove.Body.String(), "project not found") {
+			t.Errorf("BatchUpdateIssues into a hidden project: want 400 project not found, got %d %s", batchMove.Code, batchMove.Body.String())
 		}
 		if got := issueRowSnapshot(t, openID); got != snapshot {
 			t.Errorf("the open issue moved: %s", got)
@@ -281,7 +281,7 @@ func TestRestrictedIssueWritesDoNotNameHiddenProject(t *testing.T) {
 		var runtimeID string
 		dbfx.QueryRow(t, `SELECT runtime_id::text FROM agent WHERE id = $1`, agentID).Scan(&runtimeID)
 		taskID := dbfx.Task(t, agentID, testutil.Cols{
-			"issue_id": parentID, "runtime_id": runtimeID, "status": "running", "started_at": time.Now(),
+			"issue_id": parentID, "runtime_id": runtimeID, "status": "running", "started_at": time.Now(), "originator_user_id": f.outsiderID, "accountable_user_id": f.outsiderID,
 		})
 		req := withURLParam(requestAs(f.outsiderID, "PUT", "/api/issues/"+parentID, map[string]any{"status": "done"}), "id", parentID)
 		req.Header.Set("X-Actor-Source", "task_token")
@@ -326,8 +326,8 @@ func TestCreateIssueChecksCreatorAndProject(t *testing.T) {
 
 	title := "outsider create " + uuid.NewString()[:8]
 	w := create(f.outsiderID, map[string]any{"title": title, "project_id": f.restrictedProjectID})
-	if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), "project not found") {
-		t.Errorf("create in a hidden project as outsider: want 404 project not found, got %d %s", w.Code, w.Body.String())
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "project not found") {
+		t.Errorf("create in a hidden project as outsider: want 400 project not found, got %d %s", w.Code, w.Body.String())
 	}
 	if n := countTitled(title); n != 0 {
 		t.Errorf("the refused create left %d issue(s)", n)
@@ -409,8 +409,8 @@ func TestQuickCreateIssueRespectsProject(t *testing.T) {
 
 	before := countTasks()
 	w := quick(f.outsiderID, map[string]any{"project_id": f.restrictedProjectID})
-	if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), "project not found") {
-		t.Errorf("quick-create into a hidden project as outsider: want 404 project not found, got %d %s", w.Code, w.Body.String())
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "project not found") {
+		t.Errorf("quick-create into a hidden project as outsider: want 400 project not found, got %d %s", w.Code, w.Body.String())
 	}
 	missingParentID := uuid.NewString()
 	missing := quick(f.outsiderID, map[string]any{"parent_issue_id": missingParentID})
@@ -692,7 +692,7 @@ func TestBatchUpdateAssigneeMustSeeProject(t *testing.T) {
 			map[string]any{"issue_ids": []string{issueID}, "updates": map[string]any{"assignee_type": "member", "assignee_id": userID}}))
 		return w.Body.String()
 	}
-	if got := assign(f.outsiderID); got != `{"updated":0}`+"\n" && got != `{"updated":0}` {
+	if got := assign(f.outsiderID); !strings.Contains(got, `"updated":0`) {
 		t.Errorf("assign the outsider: want updated 0, got %s", got)
 	}
 	var assignee *string

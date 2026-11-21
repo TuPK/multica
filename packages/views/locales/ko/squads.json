@@ -30,13 +30,7 @@
     "success": "스쿼드를 보관했습니다"
   },
   "name_editor": {
-    "title": "스쿼드 이름 변경",
-    "placeholder": "스쿼드 이름",
-    "required": "이름을 입력하세요",
-    "cancel": "취소",
-    "save": "저장",
-    "saved": "저장했습니다",
-    "save_failed": "저장하지 못했습니다"
+    "placeholder": "스쿼드 이름"
   },
   "add_member_dialog": {
     "title": "멤버 추가",
@@ -55,13 +49,6 @@
   "role_editor": {
     "empty": "역할 추가...",
     "placeholder": "역할(예: 리뷰어)"
-  },
-  "description_dialog": {
-    "title": "설명 수정",
-    "placeholder_empty": "설명 추가",
-    "cancel": "취소",
-    "responsibility_placeholder": "이 스쿼드는 무엇을 담당하나요?",
-    "save": "저장"
   },
   "members_tab": {
     "section_title": "멤버",
@@ -148,7 +135,8 @@
     "squad_runtime_failed": "런타임 변경에 실패했습니다",
     "squad_runtime_skipped": "에이전트 {{updated}}개 이동, {{skipped}}개 건너뜀: {{reason}}",
     "bulk_applied": "{{count}}개 에이전트에 {{field}} 적용됨",
-    "bulk_partial": "{{total}}개 중 {{failed}}개 에이전트를 업데이트하지 못했습니다"
+    "bulk_partial": "{{total}}개 중 {{failed}}개 에이전트를 업데이트하지 못했습니다",
+    "update_failed": "저장하지 못했습니다"
   },
   "profile_card": {
     "unavailable": "스쿼드를 사용할 수 없습니다",
@@ -805,5 +793,9 @@
     },
     "open_squad": "스쿼드 열기",
     "done": "완료"
+  },
+  "description_editor": {
+    "empty": "설명 추가",
+    "placeholder": "이 스쿼드는 무엇을 담당하나요?"
   }
 }

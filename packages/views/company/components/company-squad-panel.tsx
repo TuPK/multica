@@ -66,7 +66,7 @@ export function CompanySquadPanel({
 }) {
   return (
     <Dialog open={squadId !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex max-h-[min(88dvh,40rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <DialogContent className="flex max-h-[min(88%,40rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
         {squadId ? (
           <PanelBody
             key={squadId}

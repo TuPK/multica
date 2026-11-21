@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -86,18 +85,14 @@ func (a *ChannelActions) latestBrief(ctx context.Context, workspaceID pgtype.UUI
 // snooze ends, as the brief push leaves it out. A proposal whose issue sits in a
 // project the bound member cannot see is left out, as the app leaves it out.
 func (a *ChannelActions) pendingDecisions(ctx context.Context, workspaceID, userID pgtype.UUID) (channel.Message, error) {
-	scope, err := projectaccess.ForViewer(ctx, a.h.Queries, workspaceID, userID)
-	if errors.Is(err, projectaccess.ErrNotMember) {
-		return channel.Message{Text: chatMsgNoDecisions}, nil
-	}
+	scope, err := projectaccess.ForPrincipals(ctx, a.h.Queries, workspaceID, userID)
 	if err != nil {
 		return channel.Message{}, fmt.Errorf("compute project scope: %w", err)
 	}
 	rows, err := a.h.Queries.ListProposals(ctx, db.ListProposalsParams{
-		WorkspaceID: workspaceID,
-		State:       pgtype.Text{String: service.ProposalStatePending, Valid: true},
-		ScopeMode:   scope.Mode(),
-		ScopeUserID: scope.UserID(),
+		WorkspaceID:      workspaceID,
+		State:            pgtype.Text{String: service.ProposalStatePending, Valid: true},
+		HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		return channel.Message{}, fmt.Errorf("list proposals: %w", err)

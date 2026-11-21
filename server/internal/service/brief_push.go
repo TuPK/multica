@@ -371,13 +371,13 @@ func (s *BriefPushService) composeMessage(ctx context.Context, ws, memberID pgty
 	}
 	var decisions []briefPushDecision
 	if len(ordered) > 0 {
-		scope, err := projectaccess.ForViewer(ctx, s.Queries, ws, memberID)
+		hidden, err := projectaccess.ForPrincipals(ctx, s.Queries, ws, memberID)
 		if err != nil {
 			return channel.Message{}, fmt.Errorf("compute recipient scope: %w", err)
 		}
 		rows, err := s.Queries.ListBriefPendingDecisions(ctx, db.ListBriefPendingDecisionsParams{
 			WorkspaceID: ws, ProposalIds: ordered, Now: briefPushTimestamp(s.clock()),
-			ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+			HiddenProjectIds: hidden.Param(),
 		})
 		if err != nil {
 			return channel.Message{}, fmt.Errorf("load pending decisions: %w", err)

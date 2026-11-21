@@ -26,8 +26,8 @@ func newWakeupVisibility(t *testing.T) wakeupVisibility {
 	t.Helper()
 	f, s, issue, _ := conditionFixture(t)
 	creator := f.member(t, "wake-creator")
-	restricted := f.Project(t, "Restricted wake project", testutil.Cols{"access": "restricted"})
-	workspaceProject := f.Project(t, "Open wake project", testutil.Cols{"access": "workspace"})
+	restricted := f.Project(t, "Restricted wake project", testutil.Cols{"visibility": "private"})
+	workspaceProject := f.Project(t, "Open wake project", testutil.Cols{"visibility": "workspace"})
 	hidden := f.Issue(t, "Hidden watched", testutil.Cols{"status": "in_review", "project_id": restricted})
 	open := f.Issue(t, "Open watched", testutil.Cols{"status": "in_review", "project_id": workspaceProject})
 	return wakeupVisibility{f: f, s: s, issue: issue, agent: f.privateAgentOwnedBy(t, creator, "wake-vis"),
@@ -69,7 +69,7 @@ func TestWakeupVisibility_EvaluateConditionTreatsHiddenIssueAsUnknown(t *testing
 		t.Fatal(err)
 	}
 	// The watched issue moves into a restricted project after the rule exists.
-	restricted := v.f.Project(t, "Late restricted project", testutil.Cols{"access": "restricted"})
+	restricted := v.f.Project(t, "Late restricted project", testutil.Cols{"visibility": "private"})
 	v.f.Exec(t, "UPDATE issue SET project_id=$1 WHERE id=$2", restricted, v.open)
 	w, err := v.f.q.LocklessWakeup(context.Background(), id)
 	if err != nil {

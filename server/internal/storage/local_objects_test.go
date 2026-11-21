@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -165,4 +166,18 @@ func TestLocalStoragePresignPutIsUnsupported(t *testing.T) {
 	if !errors.Is(err, ErrPresignUnsupported) {
 		t.Fatalf("PresignPut err = %v, want ErrPresignUnsupported", err)
 	}
+}
+
+// readLocalMeta reads the sidecar metadata a local upload keeps next to its
+// file. Production code no longer reads it; the object copy still writes it.
+func readLocalMeta(filePath string) (localMeta, bool) {
+	body, err := os.ReadFile(filePath + metaSuffix)
+	if err != nil {
+		return localMeta{}, false
+	}
+	var meta localMeta
+	if err := json.Unmarshal(body, &meta); err != nil {
+		return localMeta{}, false
+	}
+	return meta, true
 }

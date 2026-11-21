@@ -286,8 +286,9 @@ func TestDerivedRowsFollowIssueVisibility(t *testing.T) {
 			}
 			return w.Body.String()
 		}
-		if body := history(f.outsiderID); strings.Contains(body, hiddenTask) || !strings.Contains(body, openTask) {
-			t.Errorf("agent history as outsider = %s, want the open task only", body)
+		// The run stays in the history, redacted: its issue is not named.
+		if body := history(f.outsiderID); strings.Contains(body, hiddenID) || !strings.Contains(body, hiddenTask) || !strings.Contains(body, openTask) {
+			t.Errorf("agent history as outsider = %s, want the hidden run without its issue", body)
 		}
 		if body := history(testUserID); !strings.Contains(body, hiddenTask) {
 			t.Errorf("agent history as owner lacks the hidden issue's task: %s", body)
@@ -511,8 +512,9 @@ func TestAggregateCountsExcludeHidden(t *testing.T) {
 	if got := taskTotal(testUserID); got != 4 {
 		t.Fatalf("owner sees %d runs, want 4", got)
 	}
-	if got := taskTotal(f.outsiderID); got != 1 {
-		t.Errorf("outsider sees %d runs, want 1 (the open issue's)", got)
+	// Workspace rollups count a private project's runs for everyone.
+	if got := taskTotal(f.outsiderID); got != 4 {
+		t.Errorf("outsider sees %d runs, want 4", got)
 	}
 	if got := taskTotal(f.granteeID); got != 4 {
 		t.Errorf("grantee sees %d runs, want 4", got)
@@ -539,15 +541,15 @@ func TestAggregateCountsExcludeHidden(t *testing.T) {
 	}
 	ownerTasks, ownerFailed := daily(testUserID)
 	outTasks, outFailed := daily(f.outsiderID)
-	if ownerTasks-outTasks != 3 || ownerFailed-outFailed != 1 {
-		t.Errorf("runtime/daily: owner (%d tasks, %d failed), outsider (%d, %d); the outsider must miss exactly the hidden issue's 3 runs and 1 failure",
+	if ownerTasks != outTasks || ownerFailed != outFailed {
+		t.Errorf("runtime/daily: owner (%d tasks, %d failed), outsider (%d, %d); workspace totals must match",
 			ownerTasks, ownerFailed, outTasks, outFailed)
 	}
 	failures := func(userID string) int {
 		return sum(get(testHandler.GetDashboardFailuresDaily, userID, "/api/dashboard/failures/daily?days=7"), "task_count")
 	}
-	if d := failures(testUserID) - failures(f.outsiderID); d != 3 {
-		t.Errorf("failures/daily: the outsider misses %d terminal runs, want 3", d)
+	if d := failures(testUserID) - failures(f.outsiderID); d != 0 {
+		t.Errorf("failures/daily: the outsider misses %d terminal runs, want 0", d)
 	}
 
 	// Usage rows keyed by project: the outsider's totals leave out the hidden
@@ -568,8 +570,8 @@ func TestAggregateCountsExcludeHidden(t *testing.T) {
 	if got := modelTokens(testUserID, "/api/dashboard/usage/daily?days=7"); got != 730 {
 		t.Fatalf("owner usage = %d tokens, want 730", got)
 	}
-	if got := modelTokens(f.outsiderID, "/api/dashboard/usage/daily?days=7"); got != 30 {
-		t.Errorf("outsider usage = %d tokens, want 30", got)
+	if got := modelTokens(f.outsiderID, "/api/dashboard/usage/daily?days=7"); got != 730 {
+		t.Errorf("outsider usage = %d tokens, want the workspace total 730", got)
 	}
 	if got := modelTokens(f.outsiderID, "/api/dashboard/usage/daily?days=7&project_id="+f.restrictedProjectID); got != 0 {
 		t.Errorf("outsider usage filtered to the hidden project = %d tokens, want 0", got)

@@ -67,7 +67,7 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 	}
 	wsUUID := squad.WorkspaceID
 	ctx := r.Context()
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
 	}
@@ -92,7 +92,7 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to assign project")
 		return
 	}
-	if !scope.Allows(project.ID) {
+	if !scope.CanSeeProject(project.ID) {
 		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}
@@ -160,7 +160,7 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	unassigned, err := qtx.ClearSquadFromOtherProjects(ctx, db.ClearSquadFromOtherProjectsParams{
-		WorkspaceID: wsUUID, SquadID: squad.ID, ID: project.ID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+		WorkspaceID: wsUUID, SquadID: squad.ID, ID: project.ID, HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to assign project")
@@ -210,12 +210,12 @@ func (h *Handler) UnassignSquadProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Projects the caller cannot see are left alone and not counted.
-	scope, ok := h.viewerScope(w, r, squad.WorkspaceID)
+	scope, ok := h.requestHiddenProjects(w, r, uuidToString(squad.WorkspaceID))
 	if !ok {
 		return
 	}
 	unassigned, err := h.Queries.ClearSquadProjects(r.Context(), db.ClearSquadProjectsParams{
-		WorkspaceID: squad.WorkspaceID, SquadID: squad.ID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+		WorkspaceID: squad.WorkspaceID, SquadID: squad.ID, HiddenProjectIds: scope.Param(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to unassign project")

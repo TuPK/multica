@@ -32,13 +32,8 @@ SELECT count(*) FROM issue_wakeup w JOIN issue i ON i.id=w.issue_id AND i.worksp
 WHERE w.workspace_id= @workspace_id AND w.system_rule= @system_rule AND w.customized_at IS NOT NULL
  AND i.status NOT IN ('done','cancelled')
  AND NOT EXISTS(SELECT 1 FROM issue_status s WHERE s.workspace_id=i.workspace_id AND s.key=i.status AND s.category IN ('done','closed'))
- -- projectaccess:scope
- AND (sqlc.arg(scope_mode)::text = 'all'
-    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
-    OR EXISTS (SELECT 1 FROM project_member scope_pm
-               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
-    OR (sqlc.arg(scope_mode)::text = 'member'
-        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')));
+ -- MUL-8472: private projects the caller cannot see.
+ AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])));
 
 -- name: MergeWorkspaceSettings :exec
 UPDATE workspace SET settings=COALESCE(settings,'{}'::jsonb) || @patch::jsonb,updated_at=now() WHERE id= @id;

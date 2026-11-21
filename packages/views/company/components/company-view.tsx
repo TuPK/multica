@@ -308,6 +308,7 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
         <button
           type="button"
           onClick={() => setDecisionsOpen(true)}
+          // eslint-disable-next-line no-restricted-syntax -- count chip
           className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 px-2.5 py-0.5 text-micro font-semibold text-warning hover:bg-warning/10"
         >
           <span aria-hidden="true" className="size-1.5 rounded-full bg-warning" />
