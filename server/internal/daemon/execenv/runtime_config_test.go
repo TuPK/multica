@@ -1,6 +1,7 @@
 package execenv
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -2605,5 +2606,28 @@ func TestEveryBriefThatTeachesJSONOutputAlsoWarnsAgainstMergingStderr(t *testing
 		if !strings.Contains(brief, wantWhy) {
 			t.Errorf("%s brief states %q without %q; a rule with no reason is the first one dropped under pressure", name, wantRule, wantWhy)
 		}
+	}
+}
+
+// TestBriefProjectResourcesNamesNoRepoPath keeps the project resources line
+// free of a `.multica/...` code span. The sdlc-harness H3 gate reads that span
+// as a repository path and fails wherever .multica/ is not git-ignored.
+func TestBriefProjectResourcesNamesNoRepoPath(t *testing.T) {
+	t.Parallel()
+
+	out := buildMetaSkillContent("claude", TaskContextForEnv{
+		IssueID:   "issue-1",
+		ProjectID: "project-1",
+		ProjectResources: []ProjectResourceForEnv{{
+			ID:           "res-1",
+			ResourceType: "github_repo",
+			ResourceRef:  json.RawMessage(`{"url":"https://github.com/acme/app"}`),
+		}},
+	})
+	if !strings.Contains(out, "Project resources (also listed by `multica project resource list`)") {
+		t.Errorf("project resources line missing the CLI pointer:\n%s", out)
+	}
+	if strings.Contains(out, "`.multica/") {
+		t.Errorf("project resources line names a .multica path in a code span:\n%s", out)
 	}
 }

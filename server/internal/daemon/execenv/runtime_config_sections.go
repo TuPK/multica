@@ -496,7 +496,9 @@ func writeProjectContext(b *strings.Builder, ctx TaskContextForEnv) {
 		b.WriteString("\n\n")
 	}
 	if len(ctx.ProjectResources) > 0 {
-		b.WriteString("Project resources (also written to `.multica/project/resources.json`):\n\n")
+		// No path in a code span: H3 reads `.multica/...` as a repo path in any
+		// repository that does not git-ignore .multica/. The CLI lists the same data.
+		b.WriteString("Project resources (also listed by `multica project resource list`):\n\n")
 		for _, r := range ctx.ProjectResources {
 			fmt.Fprintf(b, "- %s\n", formatProjectResource(r))
 		}
