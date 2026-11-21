@@ -26,7 +26,7 @@ describe("AppearanceSync", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
-    useAppearanceStore.setState(DEFAULT_APPEARANCE);
+    useAppearanceStore.setState({ ...DEFAULT_APPEARANCE, theme: "default" });
     useInstalledThemesStore.setState({ themes: [] });
     useThemeSafeMode.setState({ active: false });
   });
@@ -98,6 +98,7 @@ describe("AppearanceSync", () => {
     expect(themeCss()!.compareDocumentPosition(sheet()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     act(() => useAppearanceStore.getState().reset());
+    act(() => useAppearanceStore.getState().set({ theme: "default" }));
     expect(html().hasAttribute("data-theme")).toBe(false);
     expect(html().style.getPropertyValue("--font-ui")).toBe("");
     expect(sheet()).toBeNull();

@@ -386,7 +386,7 @@ describe("SearchCommand", () => {
     mockToast.warning.mockReset();
     mockSetTheme.mockReset();
     mockTheme.current = "system";
-    useAppearanceStore.setState(DEFAULT_APPEARANCE);
+    useAppearanceStore.setState({ ...DEFAULT_APPEARANCE, theme: "default" });
     useInstalledThemesStore.setState({ themes: [], folders: {}, fromStore: {} });
     mockCommentCollapseAll.mockReset();
     mockCommentExpandAll.mockReset();

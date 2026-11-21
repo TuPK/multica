@@ -85,7 +85,7 @@ export interface AppearancePreferences {
 }
 
 export const DEFAULT_APPEARANCE: AppearancePreferences = {
-  theme: DEFAULT_THEME_ID,
+  theme: "blue-white",
   themeOptions: {},
   uiFont: "inter",
   uiCjkFont: "sans",

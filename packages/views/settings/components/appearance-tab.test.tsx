@@ -376,6 +376,7 @@ describe("AppearanceTab", () => {
     it("duplicates into the themes folder, applies the copy and opens its folder", async () => {
       const user = userEvent.setup();
       desktop.writeThemeFolder.mockResolvedValueOnce({ ok: false, reason: "exists" } as never);
+      useAppearanceStore.setState({ theme: "default" });
       render(<AppearanceTab />, { wrapper: Wrapper });
 
       await user.click(screen.getByRole("button", { name: "Import theme" }));
