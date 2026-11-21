@@ -966,13 +966,76 @@ const NOTION = builtInTheme({
   options: [NOTION_PAGE_FONT],
 });
 
+/**
+ * Blue-white: a sea-blue frame (rail, toolbar, tab bar) with white text on it,
+ * and a white page with black text. Dark mode keeps the default palette.
+ */
+const BLUE_WHITE = builtInTheme({
+  id: "blue-white",
+  name: "Blue White",
+  tokens: {
+    light: {
+      "app-shell": "oklch(0.453 0.149 255.0)",
+      "page-canvas": "oklch(1.000 0.000 89.9)",
+      surface: "oklch(1.000 0.000 89.9)",
+      "surface-raised": "oklch(1.000 0.000 89.9)",
+      "surface-hover": "oklch(0.966 0.005 258.3)",
+      "surface-selected": "oklch(0.960 0.021 241.3)",
+      "surface-border": "oklch(0.922 0.000 89.9)",
+      foreground: "oklch(0.178 0.000 89.9)",
+      "surface-foreground": "oklch(0.178 0.000 89.9)",
+      "surface-selected-foreground": "oklch(0.150 0.002 286.1)",
+      "card-foreground": "oklch(0.178 0.000 89.9)",
+      "popover-foreground": "oklch(0.178 0.000 89.9)",
+      primary: "oklch(0.530 0.190 257.2)",
+      "primary-foreground": "oklch(1.000 0.000 89.9)",
+      secondary: "oklch(0.966 0.005 258.3)",
+      "sidebar-accent": "oklch(0.966 0.005 258.3)",
+      muted: "oklch(0.966 0.005 258.3)",
+      accent: "oklch(0.966 0.005 258.3)",
+      "muted-foreground": "oklch(0.475 0.000 89.9)",
+      "faint-foreground": "oklch(0.633 0.000 89.9)",
+      border: "oklch(0.922 0.000 89.9)",
+      input: "oklch(0.885 0.000 89.9)",
+      ring: "oklch(0.530 0.190 257.2)",
+      brand: "oklch(0.530 0.190 257.2)",
+      "brand-foreground": "oklch(1.000 0.000 89.9)",
+      tooltip: "oklch(0.453 0.149 255.0)",
+    },
+    dark: {},
+  },
+  frame: {
+    light: {
+      foreground: "oklch(1.000 0.000 89.9)",
+      "surface-foreground": "oklch(1.000 0.000 89.9)",
+      "muted-foreground": "oklch(0.945 0.014 248.0)",
+      "faint-foreground": "oklch(0.877 0.032 248.2)",
+      accent: "oklch(0.503 0.137 252.5)",
+      "accent-foreground": "oklch(1.000 0.000 89.9)",
+      "surface-hover": "oklch(0.493 0.139 252.6)",
+      "surface-selected": "oklch(0.523 0.131 251.4)",
+      "surface-selected-foreground": "oklch(1.000 0.000 89.9)",
+      "surface-border": "oklch(0.533 0.129 251.4)",
+      border: "oklch(0.533 0.129 251.4)",
+      input: "oklch(0.609 0.108 249.7)",
+      "page-canvas": "oklch(0.453 0.149 255.0)",
+      surface: "oklch(0.453 0.149 255.0)",
+      "surface-raised": "oklch(0.453 0.149 255.0)",
+      muted: "oklch(0.503 0.137 252.5)",
+      background: "oklch(0.453 0.149 255.0)",
+      "sidebar-accent": "oklch(0.503 0.137 252.5)",
+      "sidebar-accent-foreground": "oklch(1.000 0.000 89.9)",
+    },
+  },
+});
+
 const DEFAULT = builtInTheme({
   id: DEFAULT_THEME_ID,
   name: "Default",
   tokens: { light: {}, dark: {} },
 });
 
-export const BUILT_IN_THEMES: readonly BuiltInTheme[] = [DEFAULT, POP, GITHUB, BLUEPRINT, NOTION];
+export const BUILT_IN_THEMES: readonly BuiltInTheme[] = [DEFAULT, POP, GITHUB, BLUEPRINT, NOTION, BLUE_WHITE];
 
 export function findBuiltInTheme(id: string): BuiltInTheme | undefined {
   return BUILT_IN_THEMES.find((theme) => theme.id === id);

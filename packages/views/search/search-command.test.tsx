@@ -575,6 +575,7 @@ describe("SearchCommand", () => {
         "color-theme:github",
         "color-theme:blueprint",
         "color-theme:notion",
+        "color-theme:blue-white",
       ]);
       expect(screen.getByLabelText("Current mode").closest("[cmdk-item]")).toHaveAttribute("data-value", "theme:dark");
       expect(screen.getByLabelText("Current theme").closest("[cmdk-item]")).toHaveAttribute(
