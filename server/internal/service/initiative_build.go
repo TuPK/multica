@@ -110,6 +110,16 @@ func (s *InitiativeService) startBuild(ctx context.Context, q *db.Queries, ini d
 		return pgtype.UUID{}, err
 	}
 	developer := agents["developer"]
+	if err := issueworkflow.CheckRoomPlacement(ctx, q, issueworkflow.RoomIssue{
+		WorkspaceID:  ini.WorkspaceID,
+		ProjectID:    project.ID,
+		AssigneeType: pgtype.Text{String: "agent", Valid: true},
+		AssigneeID:   developer,
+		CreatorType:  actor.Type,
+		CreatorID:    actor.ID,
+	}); err != nil {
+		return pgtype.UUID{}, err
+	}
 	kickoff, err := q.CreateIssueWithOrigin(ctx, db.CreateIssueWithOriginParams{
 		ID:           dbid.NewV7(),
 		WorkspaceID:  ini.WorkspaceID,

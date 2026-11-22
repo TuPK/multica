@@ -262,6 +262,16 @@ func (s *InitiativeService) openInTx(ctx context.Context, tx pgx.Tx, q *db.Queri
 	if err != nil {
 		return db.Initiative{}, fmt.Errorf("next top position: %w", err)
 	}
+	if err := issueworkflow.CheckRoomPlacement(ctx, q, issueworkflow.RoomIssue{
+		WorkspaceID:  p.WorkspaceID,
+		ProjectID:    pipe.ProjectID,
+		AssigneeType: assigneeType,
+		AssigneeID:   assigneeID,
+		CreatorType:  p.Actor.Type,
+		CreatorID:    p.Actor.ID,
+	}); err != nil {
+		return db.Initiative{}, err
+	}
 	issueID := dbid.NewV7()
 	issue, err := q.CreateIssueWithOrigin(ctx, db.CreateIssueWithOriginParams{
 		ID:           issueID,
@@ -499,6 +509,15 @@ func (s *InitiativeService) moveTo(ctx context.Context, q *db.Queries, ini db.In
 		return db.Initiative{}, fmt.Errorf("move initiative issue: %w", err)
 	}
 	if hasOwner {
+		// The build stage gives a build squad with no workflow the SDLC one
+		// (startBuild below), so its hand-off is not refused here.
+		if toKey != StageBuild {
+			in := issueworkflow.RoomIssueOf(issue)
+			in.AssigneeType, in.AssigneeID = assigneeType, assigneeID
+			if err := issueworkflow.CheckRoomPlacement(ctx, q, in); err != nil {
+				return db.Initiative{}, err
+			}
+		}
 		if _, err := q.UpdateIssue(ctx, reassignIssueParams(issue, assigneeID)); err != nil {
 			return db.Initiative{}, fmt.Errorf("hand initiative issue to owner: %w", err)
 		}

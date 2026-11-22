@@ -54,7 +54,16 @@ UPDATE workspace SET
     name = COALESCE(sqlc.narg('name'), name),
     description = COALESCE(sqlc.narg('description'), description),
     context = COALESCE(sqlc.narg('context'), context),
-    settings = COALESCE(sqlc.narg('settings'), settings),
+    -- Replaces the settings JSON but keeps the room workflow policy as stored
+    -- (non_request_workflow, written only by its own endpoint). The policy is read
+    -- from the row this UPDATE locks, so a settings form that was loaded earlier
+    -- cannot reset it, and a client cannot write it through here either.
+    settings = CASE
+        WHEN sqlc.narg('settings')::jsonb IS NULL THEN settings
+        ELSE (sqlc.narg('settings')::jsonb - 'non_request_workflow')
+            || CASE WHEN settings -> 'non_request_workflow' IS NULL THEN '{}'::jsonb
+                    ELSE jsonb_build_object('non_request_workflow', settings -> 'non_request_workflow') END
+    END,
     repos = COALESCE(sqlc.narg('repos'), repos),
     issue_prefix = COALESCE(sqlc.narg('issue_prefix'), issue_prefix),
     avatar_url = COALESCE(sqlc.narg('avatar_url'), avatar_url),

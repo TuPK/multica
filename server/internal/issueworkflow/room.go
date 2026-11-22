@@ -317,6 +317,19 @@ func CheckRoomWrite(ctx context.Context, q Querier, in RoomIssue, policy NonRequ
 	return nil
 }
 
+// CheckRoomPlacement applies CheckRoomWrite with the workspace's stored policy.
+// Automations, initiatives, builds, and proposals write issues without going
+// through the issue handlers; they call this before the write, so they refuse
+// the same way and never fall back to Default (spec section 13). The caller
+// returns the error; a refusal is never dropped silently.
+func CheckRoomPlacement(ctx context.Context, q Querier, in RoomIssue) error {
+	policy, err := LoadNonRequestPolicy(ctx, q, in.WorkspaceID)
+	if err != nil {
+		return err
+	}
+	return CheckRoomWrite(ctx, q, in, policy)
+}
+
 // RoomIssueOf reads the room rules' inputs from an issue row.
 func RoomIssueOf(issue db.Issue) RoomIssue {
 	return RoomIssue{

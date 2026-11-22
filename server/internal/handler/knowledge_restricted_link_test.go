@@ -20,7 +20,7 @@ import (
 // not see answers like one naming an initiative that does not exist, and the
 // initiative is unchanged. An admin's publish still files the document.
 func TestRestrictedKnowledgeLinkAnswersMissing(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	restricted := dbfx.Project(t, "Restricted knowledge "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "visibility": "private"})
 	ownerJoinsProject(t, fx.ID, restricted)
 	created := fx.createInitiative(t, "Hidden documented initiative")

@@ -177,6 +177,30 @@ func giveSquadDefaultWorkflow(t *testing.T, ws, squadID string) string {
 	return uuidToString(row.ID)
 }
 
+// giveAllSquadsDefaultWorkflow gives every squad in workspace ws a workflow, for
+// fixtures whose squads receive system-placed work (initiatives, proposals,
+// company days): a room without one refuses that work (spec section 13).
+func giveAllSquadsDefaultWorkflow(t *testing.T, ws string) {
+	t.Helper()
+	rows, err := testPool.Query(context.Background(), `SELECT id::text FROM squad WHERE workspace_id = $1`, ws)
+	if err != nil {
+		t.Fatalf("list squads: %v", err)
+	}
+	var squads []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			t.Fatalf("scan squad: %v", err)
+		}
+		squads = append(squads, id)
+	}
+	rows.Close()
+	for _, id := range squads {
+		giveSquadDefaultWorkflow(t, ws, id)
+	}
+}
+
 // useAsWorkspaceDefault makes workflowID the workspace's Default workflow, the one
 // an issue outside any room follows (spec section 3). An empty id clears the
 // choice, so the built-in Default applies. The previous Default row is parked
@@ -240,4 +264,46 @@ func roomPiece(t *testing.T, projectID, squadID, title string, cols testutil.Col
 		merged[k] = v
 	}
 	return dbfx.Issue(t, title, merged)
+}
+
+// A settings form sends its whole settings object, which can still carry the
+// policy it loaded before the choice changed. Only the policy endpoint writes it.
+func TestRoomWorkflowPolicy_SettingsWriteCannotSetTheChoice(t *testing.T) {
+	resetRoomWorkflowPolicy(t)
+	wf := createTestWorkflow(t, "Stale form choice "+workflowTestSuffix())
+	testutil.Call(t, testHandler.PutRoomWorkflowPolicy,
+		withURLParam(newRequest("PUT", roomWorkflowPolicyPath(), map[string]any{
+			"non_request_workflow": map[string]any{"kind": "workflow", "workflow_id": wf.ID},
+		}), "id", testWorkspaceID)).Want(http.StatusOK)
+
+	testutil.Call(t, testHandler.UpdateWorkspace,
+		withURLParam(newRequest("PATCH", "/api/workspaces/"+testWorkspaceID, map[string]any{
+			"settings": map[string]any{
+				"unrelated":            true,
+				"non_request_workflow": map[string]any{"kind": "no_action"},
+			},
+		}), "id", testWorkspaceID)).Want(http.StatusOK)
+
+	var got roomWorkflowPolicyEnvelope
+	testutil.Call(t, testHandler.GetRoomWorkflowPolicy,
+		withURLParam(newRequest("GET", roomWorkflowPolicyPath(), nil), "id", testWorkspaceID)).
+		Want(http.StatusOK).JSON(&got)
+	if got.NonRequestWorkflow.Kind != "workflow" || got.NonRequestWorkflow.WorkflowID != wf.ID {
+		t.Fatalf("policy after a stale settings write = %+v, want workflow %s", got.NonRequestWorkflow, wf.ID)
+	}
+}
+
+// The workspace's choice for non-request issues cannot be deleted out from under
+// it: those issues would silently fall back to Default.
+func TestRoomWorkflowPolicy_BlocksDeletingTheChosenWorkflow(t *testing.T) {
+	resetRoomWorkflowPolicy(t)
+	wf := createTestWorkflow(t, "Chosen for non-requests "+workflowTestSuffix())
+	testutil.Call(t, testHandler.PutRoomWorkflowPolicy,
+		withURLParam(newRequest("PUT", roomWorkflowPolicyPath(), map[string]any{
+			"non_request_workflow": map[string]any{"kind": "workflow", "workflow_id": wf.ID},
+		}), "id", testWorkspaceID)).Want(http.StatusOK)
+
+	testutil.Call(t, testHandler.DeleteIssueWorkflow,
+		withURLParam(workflowRequest("DELETE", "/api/issue-workflows/"+wf.ID, nil), "id", wf.ID)).
+		Want(http.StatusConflict)
 }

@@ -1,6 +1,6 @@
 ---
 name: directive-execution
-description: "Use when a squad leader or floor chief receives a directive from the Secretary, carrying the boss's decision: acknowledge it, plan it, break it into issues, run it through the project workflow, report milestones, escalate blockers, and close it."
+description: "Use when a squad leader or floor chief receives a directive from the Secretary, carrying the boss's decision: acknowledge it, plan it, break it into issues, run it through the squad's workflow, report milestones, escalate blockers, and close it."
 ---
 
 # Directive execution
@@ -32,7 +32,7 @@ Secretary's paraphrase.
 
 ## 4. Run it through the workflow
 
-- Let the project's workflow carry each issue through its steps. Follow the workflow
+- Let each issue's squad workflow carry it through its steps. Follow the workflow
   brief for status moves and handoffs.
 - Do not skip a review or a test the workflow requires because the directive is
   urgent. If the workflow would make the date impossible, say so in a comment and

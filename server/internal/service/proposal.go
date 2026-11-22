@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issueposition"
+	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/projectaccess"
 	proposalkinds "github.com/multica-ai/multica/server/internal/service/proposal_kinds"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -764,6 +765,11 @@ func (s *ProposalService) askForChanges(ctx context.Context, p ProposalDecidePar
 		return ProposalDecideResult{}, fmt.Errorf("request revision: %w", err)
 	}
 
+	in := issueworkflow.RoomIssueOf(issue)
+	in.AssigneeType, in.AssigneeID = pgtype.Text{String: "squad", Valid: true}, squad.ID
+	if err := issueworkflow.CheckRoomPlacement(ctx, qtx, in); err != nil {
+		return ProposalDecideResult{}, err
+	}
 	updated, err := qtx.UpdateIssue(ctx, reassignIssueParams(issue, squad.ID))
 	if err != nil {
 		return ProposalDecideResult{}, fmt.Errorf("assign proposal issue to squad: %w", err)

@@ -334,7 +334,7 @@ archived statuses remain readable via an explicit status filter.
 - **Failed issue-triggered tasks** may roll an issue from `in_progress` back to
   `todo` when no active task / retry remains — that is the main server-owned
   status write on the agent-run path.
-- **Project workflows** can limit which statuses an issue takes and turn a
+- **Workflows of rooms** can limit which statuses an issue takes and turn a
   status change into a handoff to another agent. When the per-turn prompt
   carries a `[Project workflow]` block, read `references/projects.md`.
 

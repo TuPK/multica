@@ -85,7 +85,7 @@ func TestRestrictedUpdateCallersAnswerMissing(t *testing.T) {
 
 	// An initiative transition moves the backing issue and hands it to the stage owner.
 	t.Run("initiative transition", func(t *testing.T) {
-		fx := newIniWorkspace(t)
+		fx := newRoomedIniWorkspace(t)
 		restricted := dbfx.Project(t, "Restricted initiative "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "visibility": "private"})
 		dbfx.SquadMember(t, fx.Product, "member", fx.MemberID, testutil.Cols{"role": "member"})
 		created := fx.createInitiative(t, "Hidden update initiative")

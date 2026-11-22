@@ -126,7 +126,7 @@ func TestRestrictedFlowAndProposalWritesAnswerMissing(t *testing.T) {
 	// A plain member of the owning squad takes initiative transitions; the
 	// backing issue sits in a restricted project the member does not see.
 	t.Run("initiative transitions", func(t *testing.T) {
-		fx := newIniWorkspace(t)
+		fx := newRoomedIniWorkspace(t)
 		restricted := dbfx.Project(t, "Restricted initiative "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "visibility": "private"})
 		dbfx.SquadMember(t, fx.Product, "member", fx.MemberID, testutil.Cols{"role": "member"})
 		created := fx.createInitiative(t, "Hidden initiative")

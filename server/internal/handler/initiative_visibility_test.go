@@ -52,7 +52,7 @@ func (fx iniWorkspace) hiddenGate(t *testing.T, initiativeID, title string) (pro
 }
 
 func TestInitiativeVisibility_HiddenGateIssueIsOmitted(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	ini := fx.createInitiative(t, "Gate visibility initiative")
 	const hiddenTitle = "HIDDEN-GATE-ISSUE-TITLE"
 	gateID := fx.hiddenGate(t, ini.ID, hiddenTitle)
@@ -87,7 +87,7 @@ func TestInitiativeVisibility_HiddenGateIssueIsOmitted(t *testing.T) {
 }
 
 func TestInitiativeVisibility_HiddenBuildProjectIsNull(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	ini := fx.createInitiative(t, "Build project visibility initiative")
 	restricted := dbfx.Project(t, "Restricted build "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "visibility": "private"})
 	ownerJoinsProject(t, fx.ID, restricted)
@@ -123,7 +123,7 @@ func TestInitiativeVisibility_HiddenBuildProjectIsNull(t *testing.T) {
 }
 
 func TestInitiativeVisibility_HiddenBackingIssueAnswersMissing(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	ini := fx.createInitiative(t, "HIDDEN-INITIATIVE-TITLE")
 	restricted := dbfx.Project(t, "Restricted initiative "+uuid.NewString()[:8], testutil.Cols{"workspace_id": fx.ID, "visibility": "private"})
 	ownerJoinsProject(t, fx.ID, restricted)

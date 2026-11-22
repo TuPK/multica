@@ -92,6 +92,16 @@ func newIniWorkspace(t *testing.T) iniWorkspace {
 	return fx
 }
 
+// newRoomedIniWorkspace is newIniWorkspace with every squad given a workflow, for
+// tests whose initiative stages hand work to those squads: a room without a
+// workflow refuses system-placed work (spec section 13).
+func newRoomedIniWorkspace(t *testing.T) iniWorkspace {
+	t.Helper()
+	fx := newIniWorkspace(t)
+	giveAllSquadsDefaultWorkflow(t, fx.ID)
+	return fx
+}
+
 // iniAgent makes a workspace-invocable agent, so a squad may be assigned to it.
 func iniAgent(t *testing.T, ws, name string) string {
 	t.Helper()
@@ -280,7 +290,7 @@ func knowledgeFor(t *testing.T, ws, userID string) *service.KnowledgeService {
 }
 
 func TestInitiative_CreateNeedsAnAdminAndAValidBody(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 
 	// A plain member and an agent may not start one directly.
 	testutil.Call(t, testHandler.CreateInitiative,
@@ -311,7 +321,7 @@ func TestInitiative_CreateNeedsAnAdminAndAValidBody(t *testing.T) {
 }
 
 func TestInitiative_AdminStartsAtValidateWithChecklistAndHandoff(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Invoicing for freelancers")
 
 	var detail InitiativeDetailResponse
@@ -347,7 +357,7 @@ func TestInitiative_AdminStartsAtValidateWithChecklistAndHandoff(t *testing.T) {
 }
 
 func TestInitiative_TransitionsAreGatedByArtifactsAndExit(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Gated")
 
 	// Required artifacts missing: the list says what is missing.
@@ -380,7 +390,7 @@ func TestInitiative_TransitionsAreGatedByArtifactsAndExit(t *testing.T) {
 }
 
 func TestInitiative_ShelveAndResumeAreForAdminsOnly(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Paused")
 
 	fx.transition(t, testHandler.ShelveInitiative, fx.MemberID, created.ID, map[string]any{"note": "not mine"}).
@@ -409,7 +419,7 @@ func TestInitiative_ShelveAndResumeAreForAdminsOnly(t *testing.T) {
 }
 
 func TestInitiative_GateApprovalAdvancesAndRejectionStays(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	approved := fx.createInitiative(t, "Approved gate")
 	rejected := fx.createInitiative(t, "Rejected gate")
 	for _, id := range []string{approved.ID, rejected.ID} {
@@ -454,7 +464,7 @@ func TestInitiative_GateApprovalAdvancesAndRejectionStays(t *testing.T) {
 }
 
 func TestInitiative_OpportunityProposalCreatesTheInitiative(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	fx.putSquadOnFloor(t, fx.Product, "Product")
 
 	// Filing refusals: an unknown kind, a stage gate filed by a squad, and an
@@ -491,8 +501,8 @@ func TestInitiative_OpportunityProposalCreatesTheInitiative(t *testing.T) {
 }
 
 func TestInitiative_ReadsAreIsolatedByWorkspace(t *testing.T) {
-	fx := newIniWorkspace(t)
-	other := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
+	other := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Private")
 
 	testutil.Call(t, testHandler.GetInitiative,
@@ -515,7 +525,7 @@ func TestInitiative_ReadsAreIsolatedByWorkspace(t *testing.T) {
 }
 
 func TestInitiative_ListValidatesFiltersAndNeverLeaksPipelines(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	fx.createInitiative(t, "Listed")
 
 	testutil.Call(t, testHandler.ListInitiatives,
@@ -547,7 +557,7 @@ func TestInitiative_ListValidatesFiltersAndNeverLeaksPipelines(t *testing.T) {
 }
 
 func TestPipelineInstall_IsIdempotentAndReportsUnownedStages(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	ps := service.NewPipelineService(testHandler.Queries, testPool)
 
 	// A second install changes nothing and reports the stages still unowned.
@@ -576,7 +586,7 @@ func TestPipelineInstall_IsIdempotentAndReportsUnownedStages(t *testing.T) {
 }
 
 func TestSquadDirectory_ShowsIntakeResponseTimeAndOpenRequests(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	// Product takes requests with a 24 hour response time.
 	dbfx.Exec(t, `INSERT INTO squad_charter (squad_id, workspace_id, mission, intake, response_hours)
 		VALUES ($1, $2, 'Validate opportunities.', 'Send a thesis and a market.', 24)`, fx.Product, fx.ID)
@@ -597,7 +607,7 @@ func TestSquadDirectory_ShowsIntakeResponseTimeAndOpenRequests(t *testing.T) {
 	}
 
 	// Another workspace sees none of these squads.
-	other := newIniWorkspace(t)
+	other := newRoomedIniWorkspace(t)
 	testutil.Call(t, testHandler.ListSquadDirectory, other.as(newRequest("GET", "/api/squads/directory", nil), other.MemberID)).
 		Want(http.StatusOK).JSON(&out)
 	for _, s := range out.Squads {
@@ -615,7 +625,7 @@ func (fx iniWorkspace) forceInitiative(t *testing.T, id, stage string) {
 }
 
 func TestInitiative_OperateReviewSunsetClosesAndRunsLearn(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Launched")
 	fx.forceInitiative(t, created.ID, "operate")
 
@@ -663,7 +673,9 @@ func TestInitiative_OperateReviewSunsetClosesAndRunsLearn(t *testing.T) {
 }
 
 func TestInitiative_ForceToBuildCreatesTheBuildProjectOnTheSDLCWorkflow(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
+	// The build squad starts with no workflow: the build gives it the SDLC one.
+	dbfx.Exec(t, `UPDATE squad SET active_workflow_id = NULL WHERE id = $1`, fx.Build)
 	created := fx.createInitiative(t, "Shipping")
 	fx.forceInitiative(t, created.ID, "build")
 
@@ -712,7 +724,7 @@ func TestInitiative_ForceToBuildCreatesTheBuildProjectOnTheSDLCWorkflow(t *testi
 }
 
 func TestInitiative_LaunchStartsTheWeeklyMetricsRoutine(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Launching")
 	fx.forceInitiative(t, created.ID, "operate")
 
@@ -740,7 +752,7 @@ func TestInitiative_LaunchStartsTheWeeklyMetricsRoutine(t *testing.T) {
 }
 
 func TestDigest_PipelineStalledAndOverdueRequests(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Stalled one")
 
 	// Validate's SLA is 14 days; this initiative has been there for 20.
@@ -788,7 +800,7 @@ func TestDigest_PipelineStalledAndOverdueRequests(t *testing.T) {
 }
 
 func TestInitiative_ScaleStartsAFollowOnAtDefineAndKeepsOperating(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Scaling")
 	fx.forceInitiative(t, created.ID, "operate")
 	dbfx.Exec(t, `UPDATE initiative SET operating_since = now() - interval '31 days' WHERE id = $1`, created.ID)
@@ -839,7 +851,7 @@ func TestInitiative_ScaleStartsAFollowOnAtDefineAndKeepsOperating(t *testing.T) 
 }
 
 func TestSquadRequest_IssueToASquadUnderAParentIsTagged(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	// The sub-issue is filed to the analysis squad, a room: it needs a workflow.
 	giveSquadDefaultWorkflow(t, fx.ID, fx.Analysis)
 	parent := fx.createInitiative(t, "Needs a PRD")
@@ -863,7 +875,7 @@ func TestSquadRequest_IssueToASquadUnderAParentIsTagged(t *testing.T) {
 }
 
 func TestInitiative_OpportunityNeedsAResearchOrProductSquadAndEvidence(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	fx.putSquadOnFloor(t, fx.Product, "Product")
 	// A squad on the Build floor, led by an agent of its own.
 	ops := iniAgent(t, fx.ID, "Ops Leader")
@@ -897,7 +909,7 @@ func TestInitiative_OpportunityNeedsAResearchOrProductSquadAndEvidence(t *testin
 }
 
 func TestInitiative_CreateIsOpenToTheSecretaryOnRequest(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	owner := dbfx.User(t, "Ini Owner "+fx.ID, "ini-owner-"+fx.ID+"@example.com")
 	dbfx.Member(t, fx.ID, owner, "owner")
 	secretary := iniAgent(t, fx.ID, "Ini Secretary "+fx.ID)
@@ -924,7 +936,7 @@ func TestInitiative_CreateIsOpenToTheSecretaryOnRequest(t *testing.T) {
 }
 
 func TestInitiative_ReviewDaysAreSetByAnOwnerOrAdminAndValidated(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Reviewed")
 	patch := func(as string, body map[string]any) *testutil.Response {
 		return testutil.Call(t, testHandler.UpdateInitiative,
@@ -975,7 +987,7 @@ func TestInitiative_ReviewDaysAreSetByAnOwnerOrAdminAndValidated(t *testing.T) {
 }
 
 func TestInitiative_OperateReviewsFileOncePerDayAndEachOutcomeHasItsEffect(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Reviewed twice")
 	fx.forceInitiative(t, created.ID, "operate")
 	// Live for 91 days: the 30 and the 90-day reviews are both due.
@@ -1036,7 +1048,7 @@ func TestInitiative_OperateReviewsFileOncePerDayAndEachOutcomeHasItsEffect(t *te
 }
 
 func TestInitiative_ALinkedArtifactIsRecordedAndAnAutoStageAdvancesOnTheLast(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Auto validate")
 	fx.makeAutoExit(t, 0)
 	link := func(kind string) bool {
@@ -1081,7 +1093,7 @@ func TestInitiative_ALinkedArtifactIsRecordedAndAnAutoStageAdvancesOnTheLast(t *
 }
 
 func TestInitiative_APublishedDocumentTakesItsArtifact(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Documented")
 	fx.makeAutoExit(t, 0)
 	svc := knowledgeFor(t, fx.ID, fx.AdminID)
@@ -1133,7 +1145,7 @@ func TestInitiative_APublishedDocumentTakesItsArtifact(t *testing.T) {
 // (status operating), not the active ones. The clock is moved by setting the
 // launch time back, as days pass in production.
 func TestInitiative_OperateGatesFileFromTheSweepAtThirtyAndNinetyDays(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	created := fx.createInitiative(t, "Launched on the clock")
 	fx.forceInitiative(t, created.ID, "operate")
 	ctx := context.Background()
@@ -1190,4 +1202,17 @@ func TestInitiative_OperateGatesFileFromTheSweepAtThirtyAndNinetyDays(t *testing
 	if d.Initiative.Status != "closed" || d.Initiative.StageKey != "learn" || d.Initiative.ClosedReason != "sunset" {
 		t.Fatalf("sunset should close the initiative at learn: %+v", d.Initiative)
 	}
+}
+
+// A system placement (here, an initiative's first stage handing its issue to the
+// stage owner) into a room with no workflow is refused with the room code, not a
+// server error. The owner keeps its stage; nothing is created.
+func TestInitiative_CreateRefusesAStageOwnerWithoutWorkflow(t *testing.T) {
+	fx := newRoomedIniWorkspace(t)
+	dbfx.Exec(t, `UPDATE squad SET active_workflow_id = NULL WHERE id = $1`, fx.Product)
+
+	req := fx.as(newRequest("POST", "/api/initiatives", map[string]any{
+		"title": "Refused owner", "thesis": "Customers pay for invoices in bulk.",
+	}), fx.AdminID)
+	testutil.Call(t, testHandler.CreateInitiative, req).Want(http.StatusUnprocessableEntity)
 }

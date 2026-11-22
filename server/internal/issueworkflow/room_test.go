@@ -279,3 +279,22 @@ func workflowRow(t *testing.T, id pgtype.UUID, name string, steps []Step, flow *
 	}
 	return row
 }
+
+// CheckRoomPlacement is the check for writes that bypass the issue handlers.
+// It must refuse a squad with no workflow whatever the policy says.
+func TestCheckRoomPlacementRefusesARoomWithoutWorkflow(t *testing.T) {
+	w := newRoomWorld(t)
+	in := RoomIssue{
+		WorkspaceID:  w.ws,
+		ProjectID:    w.project,
+		AssigneeType: pgtype.Text{String: "squad", Valid: true},
+		AssigneeID:   w.bareRoom,
+		CreatorType:  "member",
+		CreatorID:    uuidOf(40),
+	}
+	err := CheckRoomPlacement(context.Background(), w.fake, in)
+	var rwe *RoomWorkflowError
+	if !errors.As(err, &rwe) || rwe.Code != CodeRoomWorkflowRequired {
+		t.Fatalf("CheckRoomPlacement = %v, want room_workflow_required", err)
+	}
+}

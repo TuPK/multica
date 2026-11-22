@@ -57,6 +57,8 @@ func newCompanyDay(t *testing.T) *companyDay {
 	dbfx.SquadMember(t, d.Research, "agent", d.ResearchLead, testutil.Cols{"role": "leader"})
 	fx.putSquadOnFloor(t, d.Research, "Research")
 	fx.putSquadOnFloor(t, d.Product, "Product")
+	// Rooms that receive system-placed work need a workflow (spec section 13).
+	giveAllSquadsDefaultWorkflow(t, fx.ID)
 	return d
 }
 

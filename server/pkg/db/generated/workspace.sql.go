@@ -620,7 +620,16 @@ UPDATE workspace SET
     name = COALESCE($2, name),
     description = COALESCE($3, description),
     context = COALESCE($4, context),
-    settings = COALESCE($5, settings),
+    -- Replaces the settings JSON but keeps the room workflow policy as stored
+    -- (non_request_workflow, written only by its own endpoint). The policy is read
+    -- from the row this UPDATE locks, so a settings form that was loaded earlier
+    -- cannot reset it, and a client cannot write it through here either.
+    settings = CASE
+        WHEN $5::jsonb IS NULL THEN settings
+        ELSE ($5::jsonb - 'non_request_workflow')
+            || CASE WHEN settings -> 'non_request_workflow' IS NULL THEN '{}'::jsonb
+                    ELSE jsonb_build_object('non_request_workflow', settings -> 'non_request_workflow') END
+    END,
     repos = COALESCE($6, repos),
     issue_prefix = COALESCE($7, issue_prefix),
     avatar_url = COALESCE($8, avatar_url),

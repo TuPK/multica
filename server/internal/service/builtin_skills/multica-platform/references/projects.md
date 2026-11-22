@@ -259,8 +259,9 @@ issue inside a workflow needs none of them.
   not pass keep their current value. The change applies to every issue of the
   rooms that use that workflow.
 - Whole workflow: `multica workflow create|update --steps-file <json>`
-  replaces all steps; `multica workflow delete` is refused for Default and for
-  a workflow a squad still uses as its active one.
+  replaces all steps; `multica workflow delete` is refused for Default, for
+  a workflow a squad still uses as its active one, and for the workflow the
+  workspace chose for non-request issues.
 - What non-request issues of a flow squad follow: `multica workflow config set
   <no-action|default|workflow> [workflow]`. Admins only.
 - Status catalog: a step's `new_status` may carry `icon` (`dotted`, `circle`,

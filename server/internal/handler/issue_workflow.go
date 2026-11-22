@@ -1311,6 +1311,18 @@ func (h *Handler) DeleteIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// The workspace's choice for non-request issues names this workflow: deleting
+	// it would send those issues to Default without anyone choosing that.
+	policy, err := issueworkflow.LoadNonRequestPolicy(ctx, qtx, wsUUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to delete workflow")
+		return
+	}
+	if policy.Kind == issueworkflow.NonRequestWorkflow && uuidToString(policy.WorkflowID) == uuidToString(idUUID) {
+		writeErrorCode(w, http.StatusConflict, "workflow_is_non_request_choice",
+			"the workspace uses this workflow for issues that are not requests of a flow squad: choose another one in Settings first")
+		return
+	}
 	flowRequests := make([]string, len(flowRequestIDs))
 	for i, id := range flowRequestIDs {
 		flowRequests[i] = uuidToString(id)

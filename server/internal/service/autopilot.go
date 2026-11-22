@@ -22,6 +22,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/issueguard"
 	"github.com/multica-ai/multica/server/internal/issueposition"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
+	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -879,6 +880,18 @@ func (s *AutopilotService) dispatchCreateIssue(ctx context.Context, ap db.Autopi
 		return fmt.Errorf("recent duplicate guard: %w", err)
 	} else if found {
 		return &errDispatchSkipped{reason: "recent duplicate autopilot issue: " + util.UUIDToString(duplicate.ID), code: dispatch.ReasonAlreadyActive}
+	}
+
+	// The autopilot's issue goes to its assignee's room, which must have a workflow.
+	if err := issueworkflow.CheckRoomPlacement(ctx, qtx, issueworkflow.RoomIssue{
+		WorkspaceID:  ap.WorkspaceID,
+		ProjectID:    projectID,
+		AssigneeType: pgtype.Text{String: ap.AssigneeType, Valid: true},
+		AssigneeID:   ap.AssigneeID,
+		CreatorType:  "agent",
+		CreatorID:    leader.ID,
+	}); err != nil {
+		return err
 	}
 
 	issueNumber, err := qtx.IncrementIssueCounter(ctx, ap.WorkspaceID)

@@ -937,6 +937,10 @@ func writeInitiativeError(w http.ResponseWriter, err error) bool {
 	if err == nil {
 		return false
 	}
+	// The stage's squad has no workflow, so the initiative's issue cannot be placed in it.
+	if writeRoomWorkflowError(w, err) {
+		return true
+	}
 	var notReady *service.StageNotReadyError
 	switch {
 	case errors.As(err, &notReady):

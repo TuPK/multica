@@ -64,7 +64,7 @@ func (h *Handler) validateStartStatus(ctx context.Context, w http.ResponseWriter
 			return "", false
 		}
 		if def != nil && !def.IsDefault && !def.Has(status) {
-			writeError(w, http.StatusBadRequest, "start_status must be a status of the project's workflow")
+			writeError(w, http.StatusBadRequest, "start_status must be a status of the issue's workflow")
 			return "", false
 		}
 	}

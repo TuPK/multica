@@ -12,7 +12,7 @@ import (
 // A paused company's auto stage does not advance on its own (spec 4.5). The
 // artifacts still link; the stage moves when the company resumes and the sweep runs.
 func TestInitiative_APausedCompanyHoldsAnAutoStageUntilResume(t *testing.T) {
-	fx := newIniWorkspace(t)
+	fx := newRoomedIniWorkspace(t)
 	ctx := context.Background()
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `DELETE FROM governance_event WHERE workspace_id = $1`, fx.ID)
