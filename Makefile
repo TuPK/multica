@@ -1,4 +1,4 @@
-.PHONY: help makehelp landing landing-stop dev dev-full server daemon cli agent-pack catalog-build multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-start selfhost-build selfhost-build-start selfhost-stop up down status list destroy gc env-exe
+.PHONY: help makehelp install-daemon landing landing-stop dev dev-full server daemon cli agent-pack catalog-build multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-start selfhost-build selfhost-build-start selfhost-stop up down status list destroy gc env-exe
 
 MAIN_ENV_FILE ?= .env
 WORKTREE_ENV_FILE ?= .env.worktree
@@ -248,11 +248,10 @@ start: catalog-build ## Start backend and frontend for the current checkout and 
 		pnpm dev:web & \
 		wait
 
-stop: ## Stop backend and frontend processes for the current checkout
+stop: ## Stop every process of this checkout's stack (app ports, go/next/turbo, installed daemon) for a clean make dev-full
 	$(REQUIRE_ENV)
 	@echo "Stopping services..."
-	@-lsof -nP -iTCP:$(PORT) -sTCP:LISTEN -t | xargs kill -9 2>/dev/null
-	@-lsof -nP -iTCP:$(FRONTEND_PORT) -sTCP:LISTEN -t | xargs kill -9 2>/dev/null
+	@bash scripts/stop-stack.sh "$(CURDIR)" "$(MULTICA_INSTALL_PATH)" "$(PORT)" "$(FRONTEND_PORT)"
 	@case "$(DATABASE_URL)" in \
 		""|*@localhost:*|*@localhost/*|*@127.0.0.1:*|*@127.0.0.1/*|*@\[::1\]:*|*@\[::1\]/*) \
 			echo "✓ App processes stopped. Shared PostgreSQL is still running on localhost:$(POSTGRES_PORT)." ;; \
@@ -342,6 +341,7 @@ dev: ## Bootstrap this checkout end-to-end: create env if needed, ensure DB, mig
 WEB_MODE ?= dev
 
 dev-full: ## Fresh machine: start the WeKnora knowledge services and the Hub object store, fill their secrets, then make dev. WEB_MODE=build serves the built web app
+	@$(MAKE) -s build
 	@WEB_MODE=$(WEB_MODE) bash scripts/dev-full.sh
 
 server: catalog-build ## Run only the Go server for the current checkout
@@ -395,10 +395,19 @@ DATE    ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 # recursive one — which prints `go: Command not found` on frontend-only
 # checkouts with no Go toolchain installed.
 build: EXE = $(if $(filter windows,$(or $(GOOS),$(shell go env GOOS))),.exe,)
-build: catalog-build ## Build the server, CLI, and migrate binaries into server/bin
+build: catalog-build ## Build the server, CLI, and migrate binaries into server/bin, then install the daemon binary
 	cd server && go build -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT)" -o bin/server$(EXE) ./cmd/server
 	cd server && go build -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildCommit=$(BUILD_COMMIT) -X main.date=$(DATE)" -o bin/multica$(EXE) ./cmd/multica
 	cd server && go build -o bin/migrate$(EXE) ./cmd/migrate
+	@$(MAKE) -s install-daemon
+
+# Installs the binary built into server/bin on this machine, so `multica` on PATH runs this checkout's code.
+# Uses sudo because the default path is root-owned; the password prompt needs a terminal.
+MULTICA_INSTALL_PATH ?= /usr/local/bin/multica
+
+install-daemon: ## Install server/bin/multica to MULTICA_INSTALL_PATH (default /usr/local/bin/multica, uses sudo)
+	sudo install -m 755 server/bin/multica $(MULTICA_INSTALL_PATH)
+	@echo "✓ Installed $(MULTICA_INSTALL_PATH) from this checkout ($(VERSION))"
 
 test: catalog-build ## Run Go tests against the <name>_test database (migrations applied there)
 	$(REQUIRE_ENV)
