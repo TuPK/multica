@@ -201,3 +201,11 @@ Xác nhận của người dùng: S1, S2, S3 đều đồng ý. Cờ `room_workf
   - `TestHandlerTestMainRejectsConfiguredDatabaseFailure` và `TestSearchIndexCopyFromRoleBasedAccessIsRebuilt`: cần kiểm tra có liên quan không.
 - Lưu ý: phép so sánh với `FF_ROOM_WORKFLOW=off` không hợp lệ, vì harness test dùng static provider và bỏ qua biến môi trường.
 - Còn lại: P2 (lưu cấu hình workspace bằng `workspace.settings`, endpoint, popup, trang cài đặt, CLI), P3, P4, P5.
+
+### Rà soát sau triển khai (2026-11-22)
+- Cột `project.workflow_id` được giữ lại (O-6 chưa xác nhận). Không có khóa ngoại, không có index, và không còn code nào đọc hoặc ghi. Xóa cột cần đổi `sqlc.yaml` (sqlc đọc migration theo thứ tự chữ cái, nên migration xóa 1040 đọc trước migration thêm 577).
+- Cờ `room_workflow` đã bị xóa, không còn đường tắt `FF_ROOM_WORKFLOW=off`. Luật phòng luôn bật.
+- Đường hệ thống tự giao issue vào phòng đều kiểm tra theo spec mục 13: tự động hóa (autopilot), initiative (tạo và chuyển giao), build (issue khởi động), và đề xuất (duyệt giao cho phòng). Các đường này dùng `issueworkflow.CheckRoomPlacement`, trả 422 và không bỏ qua lỗi. Các đường còn lại đi qua `IssueService.Create` hoặc handler cập nhật issue, đã có kiểm tra.
+- Ghi cài đặt workspace không còn có thể ghi đè lựa chọn cho issue không phải yêu cầu (kể cả từ form cũ). Lựa chọn chỉ được ghi qua endpoint riêng.
+- Không xóa được workflow đang là lựa chọn cho issue không phải yêu cầu (409 `workflow_is_non_request_choice`).
+- Còn lại: tên khối `[Project workflow]` trong prompt của agent được giữ, vì daemon và skill phải khớp nhau khi phiên bản daemon chưa đồng bộ. Luật phòng chỉ kiểm tra issue thuộc một dự án, vì issue ngoài dự án không có workflow nào để theo; issue ngoài dự án không bị từ chối. Đây là điểm cần người dùng xác nhận. P5 (bật trên dev) chờ xác nhận S3.
