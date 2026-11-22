@@ -4,13 +4,11 @@
     "new_workflow": "新建工作流",
     "search_placeholder": "搜索工作流...",
     "filter_all": "全部",
-    "filter_projects": "项目",
     "filter_squads": "小队",
     "filter_agents": "智能体",
     "default_badge": "默认",
     "managed_by_template": "由 Kit Việt 管理",
     "steps_count_other": "{{count}} 个步骤",
-    "assigned_projects": "关联项目",
     "assigned_squads": "关联小队",
     "assigned_agents": "关联智能体",
     "empty_title": "未找到工作流",
@@ -30,7 +28,6 @@
       "warning": "确定要删除此工作流吗？",
       "blocked_title": "无法删除工作流",
       "blocked_default": "无法删除工作区的默认工作流。",
-      "blocked_projects": "此工作流当前关联了 {{count}} 个项目，删除前请先重新指定工作流。",
       "blocked_squads": "此工作流当前关联了 {{count}} 个小队，删除前请先重新指定工作流。"
     },
     "copy_name": "{{name}}（副本）"
@@ -225,5 +222,25 @@
       "name": "SDLC 快速修复",
       "description": "由开发人员直接修复到完成"
     }
+  },
+  "room_prompt": {
+    "non_request_title": "选择工作流",
+    "non_request_description": "此任务不属于流程小队的请求。选择后将保存到工作区设置，可随时修改。",
+    "option_default": "默认",
+    "option_existing": "现有工作流",
+    "select_workflow_placeholder": "选择工作流...",
+    "no_custom_workflows": "没有其他可用工作流",
+    "squad_required_title": "需要设置工作流",
+    "squad_required_description": "该小队尚未启用工作流。",
+    "squad_required_description_named": "{{squad}} 尚未启用工作流。",
+    "squad_picker_label": "小队工作流",
+    "squad_member_note": "请联系小队负责人或工作区管理员为其指定工作流。",
+    "open_workflow_tab": "打开工作流",
+    "ok": "确定",
+    "cancel": "取消",
+    "close": "关闭",
+    "saving": "保存中...",
+    "admin_only_error": "只有工作区管理员可以修改此设置。",
+    "save_failed": "无法保存工作流设置。"
   }
 }

@@ -8,12 +8,16 @@ import type { IssueStatus, IssueWorkflow, Project } from "@multica/core/types";
  * so every column variant can read them without threading props.
  */
 export interface BoardWorkflowContextValue {
-  /** Workflow of the project this board is scoped to; heads name each step's handler. */
-  scopeWorkflow: IssueWorkflow | null;
+  /**
+   * The workflow that owns a board status column (for column handoff metadata).
+   * When multiple room workflows share a status key, the first workflow in
+   * appearance order owns the column.
+   */
+  workflowForStatus: (status: string) => IssueWorkflow | null;
   scopeProject: Project | null;
   /**
    * While a card is dragged, why it cannot be dropped on a status column —
-   * its project's workflow does not list the status — or null when it can.
+   * its room's workflow does not list the status — or null when it can.
    */
   dropBlockedReason: (status: IssueStatus) => string | null;
   /**
@@ -31,7 +35,7 @@ export interface BoardDropHint {
 }
 
 const NO_WORKFLOW: BoardWorkflowContextValue = {
-  scopeWorkflow: null,
+  workflowForStatus: () => null,
   scopeProject: null,
   dropBlockedReason: () => null,
   dropHint: () => null,

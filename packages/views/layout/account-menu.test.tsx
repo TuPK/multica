@@ -92,7 +92,7 @@ describe("AccountMenu theme submenu", () => {
     openThemeMenu();
 
     const pop = await screen.findByRole("menuitemradio", { name: "Pop" });
-    expect(screen.getByRole("menuitemradio", { name: "Default" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("menuitemradio", { name: "Blue White" })).toHaveAttribute("aria-checked", "true");
     fireEvent.click(pop);
 
     expect(useAppearanceStore.getState().theme).toBe("pop");

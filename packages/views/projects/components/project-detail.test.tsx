@@ -36,11 +36,7 @@ vi.mock("@multica/ui/lib/clipboard", () => ({
   copyTextAndHtml: mocks.copyTextAndHtml,
 }));
 
-vi.mock("../../workflow/project-workflow-sheet", () => ({
-  ProjectWorkflowMenuItem: () => null,
-  ProjectWorkflowSheet: () => null,
-}));
-vi.mock("../../workflow/project-workflow-row", () => ({ ProjectWorkflowControl: () => null }));
+vi.mock("../../workflow/handoff-confirm-dialog", () => ({ WorkflowHandoffConfirmDialog: () => null }));
 
 vi.mock("@multica/core/pins", () => ({
   pinListOptions: () => ({ queryKey: ["pins"], queryFn: async () => [] }),

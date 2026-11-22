@@ -1,16 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { ISSUE_WORKFLOW_TEMPLATE_IDS } from "../api/schemas";
-import { projectListOptions } from "../projects/queries";
-import type { IssueWorkflow, IssueWorkflowTemplate, IssueWorkflowUsage, Project } from "../types";
+import { agentListOptions, squadListOptions } from "../workspace/queries";
+import type { Agent, IssueWorkflow, IssueWorkflowTemplate, IssueWorkflowUsage, Squad } from "../types";
 import {
-  defaultWorkflow,
   issueWorkflowDetailOptions,
   issueWorkflowListOptions,
   issueWorkflowTemplatesOptions,
   issueWorkflowUsageOptions,
-  resolveProjectWorkflow,
+  roomWorkflowCheckOptions,
+  roomWorkflowPolicyOptions,
 } from "./queries";
+import type { RoomWorkflowCheck, RoomWorkflowCheckParams, RoomWorkflowPolicy } from "../types/room-workflow";
 
 const EMPTY: IssueWorkflow[] = [];
 const EMPTY_TEMPLATES: IssueWorkflowTemplate[] = [];
@@ -54,39 +55,16 @@ export function useIssueWorkflowUsage(wsId: string): {
 }
 
 /**
- * A project and the workflow it uses. `workflow` is null for the Default
- * workflow — including while either list is still loading, which renders the
- * Default behavior rather than an empty board.
- *
- * `defaultWorkflow` is the workspace Default itself, null until loaded or on a
- * server without workflows. An issue outside any project offers its statuses.
- * (MUL-8121)
+ * The squads and agents that decide which workflow an issue follows (the room
+ * rules). Each list is undefined until loaded.
  */
-export function useProjectWithWorkflow(
-  wsId: string,
-  projectId: string | null | undefined,
-): { project: Project | null; workflow: IssueWorkflow | null; defaultWorkflow: IssueWorkflow | null } {
-  const { workflows } = useIssueWorkflows(wsId);
-  const { data: projects } = useQuery({
-    ...projectListOptions(wsId),
-    enabled: Boolean(wsId) && Boolean(projectId),
-  });
-  return useMemo(() => {
-    const project = projectId ? projects?.find((p) => p.id === projectId) ?? null : null;
-    return {
-      project,
-      workflow: resolveProjectWorkflow(workflows, project),
-      defaultWorkflow: defaultWorkflow(workflows),
-    };
-  }, [projectId, projects, workflows]);
-}
-
-/** The workflow a project uses, or null for the Default workflow. */
-export function useProjectWorkflow(
-  wsId: string,
-  projectId: string | null | undefined,
-): IssueWorkflow | null {
-  return useProjectWithWorkflow(wsId, projectId).workflow;
+export function useRoomRoster(wsId: string): {
+  squads: Pick<Squad, "id" | "active_workflow_id">[] | undefined;
+  agents: Pick<Agent, "id" | "home_squad_id">[] | undefined;
+} {
+  const { data: squads } = useQuery({ ...squadListOptions(wsId), enabled: Boolean(wsId) });
+  const { data: agents } = useQuery({ ...agentListOptions(wsId), enabled: Boolean(wsId) });
+  return useMemo(() => ({ squads, agents }), [squads, agents]);
 }
 
 /**
@@ -110,4 +88,23 @@ export function useIssueWorkflowTemplates(wsId: string): {
     }),
     [query.data, query.isPending, query.isError, refetch, wsId],
   );
+}
+
+/** The workspace's non-request workflow choice. `policy` is null until loaded. */
+export function useRoomWorkflowPolicy(wsId: string): { policy: RoomWorkflowPolicy | null; isLoaded: boolean } {
+  const { data } = useQuery({ ...roomWorkflowPolicyOptions(wsId), enabled: Boolean(wsId) });
+  return useMemo(() => ({ policy: data ?? null, isLoaded: data !== undefined }), [data]);
+}
+
+/**
+ * Whether the room rules would refuse a write with these inputs. `check` is null
+ * until the preview answers; callers treat null as "nothing to ask".
+ */
+export function useRoomWorkflowCheck(
+  wsId: string,
+  params: RoomWorkflowCheckParams,
+  enabled = true,
+): { check: RoomWorkflowCheck | null; isLoaded: boolean } {
+  const { data } = useQuery({ ...roomWorkflowCheckOptions(wsId, params), enabled: enabled && Boolean(wsId) });
+  return useMemo(() => ({ check: data ?? null, isLoaded: data !== undefined }), [data]);
 }

@@ -1680,7 +1680,6 @@
     "link_load_failed": "No se pudieron cargar los entregables de esta incidencia para abrir «{{name}}». Recarga para intentarlo de nuevo."
   },
   "workflows": {
-    "default_name": "Predeterminado",
     "default_summary": "Todos los estados, sin traspasos",
     "hands_off_to": "Traspasa a {{name}}",
     "not_in_workflow": "No forma parte del flujo de trabajo {{name}}",
@@ -1819,14 +1818,7 @@
     },
     "project": {
       "label": "Flujo de trabajo",
-      "switched": "Flujo de trabajo cambiado",
-      "error": "No se ha podido cambiar el flujo de trabajo",
-      "picker_title": "Elegir un flujo de trabajo",
-      "default_badge": "Predeterminado",
-      "used_by_short": "Lo usan: {{names}}",
-      "used_by_nobody": "Aún sin proyectos",
-      "manage": "Gestionar flujos de trabajo…",
-      "picker_more": "Crea más flujos de trabajo en Ajustes → Flujos de trabajo."
+      "manage": "Gestionar flujos de trabajo…"
     },
     "picker": {
       "footer": "Solo se muestran los estados del flujo de trabajo de esta tarea. A la derecha aparece a quién se le traspasa al entrar en el estado."
@@ -1892,28 +1884,12 @@
       "search_agents": "Buscar agentes",
       "search_members": "Buscar miembros",
       "instructions": "Qué hace este paso",
-      "scope_line": "Forma parte del flujo de trabajo {{workflow}}",
-      "scope_line_shared": "Forma parte de {{workflow}}, que también usan {{projects}}",
-      "scope_more": "{{names}} y {{count}} más",
-      "scope_question": "¿Dónde se aplica este cambio?",
-      "scope_all": "Los {{count}} proyectos que usan {{workflow}}",
-      "scope_all_hint": "{{projects}} pasan a usar el nuevo traspaso",
-      "scope_project": "Solo {{project}}",
-      "scope_project_hint": "Copia el flujo de trabajo como “{{copy}}” para {{project}}; los demás proyectos no cambian",
-      "saved_copy": "Guardado en “{{workflow}}”, que solo usa {{project}}"
+      "scope_line": "Forma parte del flujo de trabajo {{workflow}}"
     },
     "columns": {
       "new_status": "Estado nuevo…",
       "name_placeholder": "Nombre del estado",
       "add": "Añadir"
-    },
-    "flow": {
-      "title": "Flujo de trabajo {{workflow}}",
-      "scope_own": "Solo este proyecto usa este flujo de trabajo.",
-      "no_handoff_here": "Sin traspaso",
-      "scope_shared_one": "{{count}} proyecto usa este flujo de trabajo. Sus traspasos se aplican a todos los proyectos que lo usan.",
-      "scope_shared_other": "{{count}} proyectos usan este flujo de trabajo. Sus traspasos se aplican a todos ellos.",
-      "switch": "Cambiar de flujo de trabajo"
     },
     "templates": {
       "delivery": {
@@ -2051,7 +2027,6 @@
     "assign_mapping_intro": "Algunas tareas están en estados que el flujo de trabajo SDLC no tiene. Elige a dónde se mueven.",
     "assign_mapping_row": "{{count}} tarea(s) en {{status}} pasan a",
     "assign_not_sdlc": "Este squad necesita los agentes SDLC de desarrollo, revisión y QA.",
-    "assign_workflow_set": "Este proyecto ya usa otro flujo de trabajo. Cámbialo antes en los ajustes del proyecto.",
     "assign_manage": "Gestionar proyecto",
     "assign_manage_title": "Proyecto de {{name}}",
     "assign_assigned_description": "Desasigna el proyecto para dar otro a este squad.",

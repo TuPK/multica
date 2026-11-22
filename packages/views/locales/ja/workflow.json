@@ -4,13 +4,11 @@
     "new_workflow": "新規ワークフロー",
     "search_placeholder": "ワークフローを検索...",
     "filter_all": "すべて",
-    "filter_projects": "プロジェクト",
     "filter_squads": "スクワッド",
     "filter_agents": "エージェント",
     "default_badge": "デフォルト",
     "managed_by_template": "Kit Việt により管理",
     "steps_count_other": "{{count}} ステップ",
-    "assigned_projects": "関連プロジェクト",
     "assigned_squads": "関連スクワッド",
     "assigned_agents": "関連エージェント",
     "empty_title": "ワークフローが見つかりません",
@@ -30,7 +28,6 @@
       "warning": "このワークフローを削除してもよろしいですか？",
       "blocked_title": "ワークフローを削除できません",
       "blocked_default": "ワークスペースのデフォルトワークフローは削除できません。",
-      "blocked_projects": "このワークフローは現在 {{count}} 個のプロジェクトで使用されています。削除する前に再割り当てしてください。",
       "blocked_squads": "このワークフローは現在 {{count}} 個のスクワッドで使用されています。削除する前に再割り当てしてください。"
     },
     "copy_name": "{{name}}（コピー）"
@@ -225,5 +222,25 @@
       "name": "SDLC クイック修正",
       "description": "開発者から完了までの直接バグ修正ループ"
     }
+  },
+  "room_prompt": {
+    "non_request_title": "ワークフローを選択",
+    "non_request_description": "このタスクはフロー付きスクワッドへのリクエストではありません。選択内容はワークスペース設定に保存され、後で変更できます。",
+    "option_default": "デフォルト",
+    "option_existing": "既存のワークフロー",
+    "select_workflow_placeholder": "ワークフローを選択...",
+    "no_custom_workflows": "利用可能な他のワークフローがありません",
+    "squad_required_title": "ワークフローが必要です",
+    "squad_required_description": "このスクワッドにはまだ有効なワークフローがありません。",
+    "squad_required_description_named": "{{squad}} にはまだ有効なワークフローがありません。",
+    "squad_picker_label": "スクワッドのワークフロー",
+    "squad_member_note": "スクワッド管理者またはワークスペース管理者に割り当てを依頼してください。",
+    "open_workflow_tab": "ワークフローを開く",
+    "ok": "OK",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "saving": "保存中...",
+    "admin_only_error": "この設定を変更できるのはワークスペース管理者のみです。",
+    "save_failed": "ワークフローの選択を保存できませんでした。"
   }
 }

@@ -33,13 +33,14 @@ import { useActorName } from "@multica/core/workspace/hooks";
 import { BoardColumn, BOARD_CARD_WIDTH, type BoardColumnGroup } from "./board-column";
 import { BoardWorkflowContext, type BoardWorkflowContextValue } from "./board-workflow-context";
 import {
-  issueStatusWorkflow,
-  resolveProjectWorkflow,
+  issueRoomWorkflow,
   stepHandsOff,
   useIssueWorkflows,
+  useRoomRoster,
   workflowAllowsStatus,
   workflowStep,
 } from "@multica/core/issue-workflows";
+import { mergeColumnWorkflows, projectBoardWorkflows } from "../utils/workflow-columns";
 import { WorkflowHandoffConfirmDialog } from "../../workflow/handoff-confirm-dialog";
 import { stepHandlerActor, useStepHandlerLabel } from "../../workflow/step-handler";
 import { projectListOptions } from "@multica/core/projects/queries";
@@ -493,27 +494,33 @@ function BoardViewImpl({
     anchors: ReturnType<typeof getMoveAnchors>;
   } | null>(null);
 
-  // Project workflows (MUL-7420): a card can only move to a status its
-  // project's workflow lists, and a project board names each step's handler.
+  // Room workflows: a card can only move to a status its room's workflow lists,
+  // and each project board column takes handoff metadata from the workflow that
+  // owns that status (first workflow in appearance order for shared statuses).
   const { workflows } = useIssueWorkflows(boardWsId);
+  const roomRoster = useRoomRoster(boardWsId);
   const { data: workspaceProjects } = useQuery(projectListOptions(boardWsId));
   const workflowOfIssue = useCallback(
     (issue: Issue | null | undefined) => {
       if (!issue?.project_id) return null;
-      return resolveProjectWorkflow(
-        workflows,
-        workspaceProjects?.find((p) => p.id === issue.project_id),
-      );
+      return issueRoomWorkflow(workflows, roomRoster, issue);
     },
-    [workflows, workspaceProjects],
+    [roomRoster, workflows],
   );
-  // Which statuses a card may move to: its project's workflow, or Default
-  // outside a project, where nothing hands off. (MUL-8250)
+  // Which statuses a card may move to: its room's workflow, or Default
+  // outside a project, where nothing hands off.
   const statusWorkflowOfIssue = useCallback(
-    (issue: Issue | null | undefined) => (issue ? issueStatusWorkflow(workflows, workspaceProjects, issue) : null),
-    [workflows, workspaceProjects],
+    (issue: Issue | null | undefined) => (issue ? issueRoomWorkflow(workflows, roomRoster, issue) : null),
+    [roomRoster, workflows],
   );
   const scopeProject = projectId ? workspaceProjects?.find((p) => p.id === projectId) ?? null : null;
+  const scopeColumnWorkflows = useMemo(
+    () =>
+      scopeProject
+        ? mergeColumnWorkflows(projectBoardWorkflows(workflows, roomRoster, issues))
+        : mergeColumnWorkflows([]),
+    [issues, roomRoster, scopeProject, workflows],
+  );
   const activeWorkflow = workflowOfIssue(activeIssue);
   const activeStatusWorkflow = statusWorkflowOfIssue(activeIssue);
   const activeProject = activeIssue?.project_id
@@ -522,7 +529,8 @@ function BoardViewImpl({
   const activeHandlerLabel = useStepHandlerLabel(activeProject);
   const boardWorkflow = useMemo<BoardWorkflowContextValue>(
     () => ({
-      scopeWorkflow: resolveProjectWorkflow(workflows, scopeProject),
+      workflowForStatus: (status) =>
+        scopeColumnWorkflows.workflowByStatus.get(status as IssueStatus) ?? null,
       scopeProject,
       dropBlockedReason: (status) =>
         activeStatusWorkflow && activeIssue?.status !== status && !workflowAllowsStatus(activeStatusWorkflow, status)
@@ -537,7 +545,7 @@ function BoardViewImpl({
         return { name, actor, run: actor ? actor.type !== "member" : step.handler.type === "creator" };
       },
     }),
-    [activeHandlerLabel, activeIssue?.status, activeProject, activeStatusWorkflow, activeWorkflow, scopeProject, t, workflows],
+    [activeHandlerLabel, activeIssue?.status, activeProject, activeStatusWorkflow, activeWorkflow, scopeColumnWorkflows, scopeProject, t],
   );
   // Shared drag/settle primitive: owns the local column mirror, the
   // dragging/settling locks, the post-move animation-frame throttle, and the

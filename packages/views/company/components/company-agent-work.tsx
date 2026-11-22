@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Plus, Search } from "@multica/ui/icons";
 import { useUpdateIssue } from "@multica/core/issues/mutations";
 import { useIssueStatuses } from "@multica/core/issue-statuses";
+import { useRoomWorkflowCheck, useRoomWorkflowPolicy } from "@multica/core/issue-workflows/hooks";
 import { agentListOptions } from "@multica/core/workspace/queries";
 import { useWorkspaceId } from "@multica/core/hooks";
-import type { Issue } from "@multica/core/types";
+import type { Issue, RoomWorkflowCheck } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { cn } from "@multica/ui/lib/utils";
@@ -16,6 +17,11 @@ import { useT } from "../../i18n";
 import { PriorityIcon } from "../../issues/components/priority-icon";
 import { RunQueueControl, RunQueueWaitingLabel } from "../../issues/components/run-queue-control";
 import { StatusIcon } from "../../issues/components/status-icon";
+import {
+  parseRoomWorkflowRefusal,
+  RoomWorkflowPrompt,
+  shouldPromptForRoomWorkflow,
+} from "../../issues/components/room-workflow-prompt";
 import { DONE_LIMIT, WORK_GROUPS, groupAgentWork, type WorkGroup } from "../lib/agent-work";
 
 /**
@@ -44,21 +50,61 @@ export function CompanyAgentWork({
   const update = useUpdateIssue();
   const [query, setQuery] = useState("");
   const [doneOpen, setDoneOpen] = useState(false);
+  const [roomPrompt, setRoomPrompt] = useState<RoomWorkflowCheck | null>(null);
+  const [roomPromptIssue, setRoomPromptIssue] = useState<Issue | null>(null);
 
   const groups = useMemo(
     () => groupAgentWork(issues, agentId, catalog.categoryOf, query),
     [issues, agentId, catalog.categoryOf, query],
   );
-  const name = agents.find((agent) => agent.id === agentId)?.name ?? "";
+  const agent = agents.find((a) => a.id === agentId);
+  const name = agent?.name ?? "";
 
-  const assign = (issue: Issue) =>
-    update.mutate(
-      { id: issue.id, assignee_type: "agent", assignee_id: agentId },
-      {
-        onSuccess: () => toast.success(t(($) => $.company.assign_done, { identifier: issue.identifier, name })),
-        onError: () => toast.error(t(($) => $.company.assign_failed)),
-      },
-    );
+  const { policy: roomWorkflowPolicy } = useRoomWorkflowPolicy(wsId);
+  const { check: roomWorkflowCheck } = useRoomWorkflowCheck(
+    wsId,
+    {
+      assigneeType: "agent",
+      assigneeId: agentId,
+    },
+    Boolean(agentId),
+  );
+
+  const executeAssign = useCallback(
+    (issue: Issue) => {
+      update.mutate(
+        { id: issue.id, assignee_type: "agent", assignee_id: agentId },
+        {
+          onSuccess: () =>
+            toast.success(
+              t(($) => $.company.assign_done, { identifier: issue.identifier, name }),
+            ),
+          onError: (err) => {
+            const roomRefusal = parseRoomWorkflowRefusal(
+              err,
+              roomWorkflowCheck?.squadId ?? agent?.home_squad_id ?? null,
+            );
+            if (roomRefusal) {
+              setRoomPromptIssue(issue);
+              setRoomPrompt(roomRefusal);
+              return;
+            }
+            toast.error(t(($) => $.company.assign_failed));
+          },
+        },
+      );
+    },
+    [agent?.home_squad_id, agentId, name, roomWorkflowCheck?.squadId, t, update],
+  );
+
+  const assign = (issue: Issue) => {
+    if (shouldPromptForRoomWorkflow(roomWorkflowCheck, roomWorkflowPolicy)) {
+      setRoomPromptIssue(issue);
+      setRoomPrompt(roomWorkflowCheck);
+      return;
+    }
+    executeAssign(issue);
+  };
 
   const groupLabels: Record<WorkGroup, string> = {
     active: t(($) => $.company.group_active),
@@ -134,6 +180,22 @@ export function CompanyAgentWork({
           );
         })}
       </div>
+      <RoomWorkflowPrompt
+        open={roomPrompt !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRoomPrompt(null);
+            setRoomPromptIssue(null);
+          }
+        }}
+        refusal={roomPrompt}
+        onResolved={() => {
+          const issue = roomPromptIssue;
+          setRoomPrompt(null);
+          setRoomPromptIssue(null);
+          if (issue) executeAssign(issue);
+        }}
+      />
     </div>
   );
 }

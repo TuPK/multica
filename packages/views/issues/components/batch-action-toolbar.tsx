@@ -20,7 +20,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@multica/ui/components/ui/dropdown-menu";
-import { useQuery } from "@tanstack/react-query";
 import { useIssueDeletion } from "@multica/core/issues/use-issue-deletion";
 import {
   isListPropertyType,
@@ -31,8 +30,7 @@ import {
 } from "@multica/core/types";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { commonIssueFields } from "@multica/core/issues/batch";
-import { sharedWorkflowStatusKeys, useIssueWorkflows } from "@multica/core/issue-workflows";
-import { projectListOptions } from "@multica/core/projects/queries";
+import { sharedWorkflowStatusKeys, useIssueWorkflows, useRoomRoster } from "@multica/core/issue-workflows";
 import { useBatchUpdateIssues, useBatchDeleteIssues } from "@multica/core/issues/mutations";
 import { BatchRunQueueControl } from "./run-queue-control";
 import { useModalStore } from "@multica/core/modals";
@@ -110,21 +108,15 @@ export function BatchActionToolbar({
     [selectedIssues],
   );
 
-  // A selection inside one project offers that project's workflow statuses;
-  // one spanning projects offers the statuses every selected issue's
-  // workflow allows. (MUL-7420)
-  const sharedProjectId = useMemo(() => {
-    const first = selectedIssues[0]?.project_id ?? null;
-    return first && selectedIssues.every((i) => i.project_id === first) ? first : null;
-  }, [selectedIssues]);
+  // Offer the statuses every selected issue's room workflow allows.
   const wsId = useWorkspaceId();
   const { canDelete } = useIssueDeletion(wsId);
   const canDeleteSelection = selectedIssues.every(canDelete);
   const { workflows } = useIssueWorkflows(wsId);
-  const { data: projects } = useQuery({ ...projectListOptions(wsId), enabled: count > 0 && !sharedProjectId });
+  const roomRoster = useRoomRoster(wsId);
   const allowedStatuses = useMemo(
-    () => (sharedProjectId ? null : sharedWorkflowStatusKeys(workflows, projects, selectedIssues)),
-    [sharedProjectId, workflows, projects, selectedIssues],
+    () => (count > 0 ? sharedWorkflowStatusKeys(workflows, roomRoster, selectedIssues) : null),
+    [count, workflows, roomRoster, selectedIssues],
   );
 
   const [statusOpen, setStatusOpen] = useState(false);
@@ -289,7 +281,7 @@ export function BatchActionToolbar({
   const menuProps = {
     issues: selectedIssues,
     common,
-    projectId: sharedProjectId,
+    projectId: null,
     allowedStatuses,
     disabled: loading,
     canDelete: canDeleteSelection,
@@ -332,9 +324,6 @@ export function BatchActionToolbar({
         {/* Status */}
         <StatusPicker
           status={common.status}
-          // No shared project spans projects (or none): not the Default-only
-          // list of a single issue outside a project. (MUL-8121)
-          projectId={sharedProjectId ?? undefined}
           allowedStatuses={allowedStatuses}
           onUpdate={handleBatchStatus}
           open={statusOpen}

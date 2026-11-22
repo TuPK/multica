@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -12,9 +13,18 @@ import {
 } from "@multica/ui/components/ui/dialog";
 import { Button } from "@multica/ui/components/ui/button";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import type { IssueAssigneeType, IssueStatus, UpdateIssueRequest } from "@multica/core/types";
+import type { IssueAssigneeType, IssueStatus, RoomWorkflowCheck, UpdateIssueRequest } from "@multica/core/types";
 import { useUpdateIssue, useBatchUpdateIssues } from "@multica/core/issues/mutations";
+import { issueDetailOptions } from "@multica/core/issues/queries";
+import { useRoomWorkflowCheck, useRoomWorkflowPolicy } from "@multica/core/issue-workflows/hooks";
+import { assigneeSquadId } from "@multica/core/company";
+import { agentListOptions } from "@multica/core/workspace/queries";
 import { useBatchResultToast } from "../issues/components/batch-result-toast";
+import {
+  parseRoomWorkflowRefusal,
+  RoomWorkflowPrompt,
+  shouldPromptForRoomWorkflow,
+} from "../issues/components/room-workflow-prompt";
 import { errorCode } from "@multica/core/api";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
@@ -123,6 +133,33 @@ export function RunConfirmModal({
   // the issue, and re-sending the same assignee would turn a status write into
   // an assignee write on the server's side of the trigger predicate.
   const isPromote = d.mode === "promote" && !!d.status;
+  const isSingleAssign =
+    !isPromote &&
+    issueIds.length === 1 &&
+    (d.assigneeType === "agent" || d.assigneeType === "squad") &&
+    Boolean(d.assigneeId);
+
+  const { data: targetIssue } = useQuery({
+    ...issueDetailOptions(wsId, issueIds[0] ?? ""),
+    enabled: isSingleAssign && Boolean(issueIds[0]),
+  });
+  const { data: agents = [] } = useQuery({
+    ...agentListOptions(wsId),
+    enabled: isSingleAssign && d.assigneeType === "agent",
+  });
+  const { check: roomWorkflowCheck } = useRoomWorkflowCheck(
+    wsId,
+    {
+      projectId: targetIssue?.project_id ?? null,
+      assigneeType: d.assigneeType ?? null,
+      assigneeId: d.assigneeId ?? null,
+      parentIssueId: targetIssue?.parent_issue_id ?? null,
+    },
+    isSingleAssign,
+  );
+  const { policy: roomWorkflowPolicy } = useRoomWorkflowPolicy(wsId);
+  const [roomPrompt, setRoomPrompt] = useState<RoomWorkflowCheck | null>(null);
+  const pendingSuppressRef = useRef(false);
 
   const applyTo = (extra: Partial<UpdateIssueRequest>) => {
     const base: UpdateIssueRequest = isPromote
@@ -140,8 +177,17 @@ export function RunConfirmModal({
     d.assigneeName ??
     getActorName(d.assigneeType === "squad" ? "squad" : "agent", d.assigneeId ?? "");
 
-  const submit = async (suppressRun: boolean) => {
+  const submit = async (suppressRun: boolean, opts?: { skipRoomCheck?: boolean }) => {
     if (issueIds.length === 0 || submitting) return;
+    if (
+      !opts?.skipRoomCheck &&
+      isSingleAssign &&
+      shouldPromptForRoomWorkflow(roomWorkflowCheck, roomWorkflowPolicy)
+    ) {
+      pendingSuppressRef.current = suppressRun;
+      setRoomPrompt(roomWorkflowCheck);
+      return;
+    }
     setPendingAction(suppressRun ? "suppress" : "go");
     const payload = applyTo(suppressRun ? { suppress_run: true } : {});
     try {
@@ -167,6 +213,18 @@ export function RunConfirmModal({
       d.onApplied?.();
       onClose();
     } catch (err) {
+      const roomRefusal = parseRoomWorkflowRefusal(
+        err,
+        roomWorkflowCheck?.squadId ??
+          assigneeSquadId(d.assigneeType, d.assigneeId, agents) ??
+          null,
+      );
+      if (roomRefusal) {
+        pendingSuppressRef.current = suppressRun;
+        setPendingAction(null);
+        setRoomPrompt(roomRefusal);
+        return;
+      }
       toast.error(
         errorCode(err) === "revision_conflict"
           ? tIssues(($) => $.revision.conflict)
@@ -272,6 +330,18 @@ export function RunConfirmModal({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <RoomWorkflowPrompt
+        open={roomPrompt !== null}
+        onOpenChange={(open) => {
+          if (!open) setRoomPrompt(null);
+        }}
+        refusal={roomPrompt}
+        onResolved={() => {
+          setRoomPrompt(null);
+          void submit(pendingSuppressRef.current, { skipRoomCheck: true });
+        }}
+        onNavigateAway={onClose}
+      />
     </Dialog>
   );
 }

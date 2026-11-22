@@ -32,7 +32,6 @@ const baseWorkflow = {
       back_status_key: "todo",
     },
   ],
-  project_ids: ["project-1"],
   created_at: "2026-09-24T00:00:00Z",
   updated_at: "2026-09-24T00:00:00Z",
 };
@@ -41,7 +40,6 @@ describe("workflow schemas (MUL-7420)", () => {
   it("parses a workflow list", () => {
     const parsed = ListIssueWorkflowsResponseSchema.parse({ workflows: [baseWorkflow], total: 1 });
     expect(parsed.workflows[0]?.steps[1]?.handler).toEqual({ type: "agent", id: "agent-1" });
-    expect(parsed.workflows[0]?.project_ids).toEqual(["project-1"]);
   });
 
   it("falls back to an empty list on a malformed response", () => {
@@ -64,10 +62,9 @@ describe("workflow schemas (MUL-7420)", () => {
   });
 
   it("defaults the optional fields an older server may omit", () => {
-    const { description: _d, project_ids: _p, ...minimal } = baseWorkflow;
+    const { description: _d, ...minimal } = baseWorkflow;
     const parsed = IssueWorkflowSchema.parse({ ...minimal, steps: [{ status_key: "todo" }] });
     expect(parsed.description).toBe("");
-    expect(parsed.project_ids).toEqual([]);
     expect(parsed.steps[0]?.handler.type).toBe("none");
   });
 
@@ -198,20 +195,20 @@ describe("workflow transitions (workflow-tab §3)", () => {
 describe("workflow usage and delete blockers (workflow-tab §4)", () => {
   it("parses where each workflow is used", () => {
     const parsed = ListIssueWorkflowUsageResponseSchema.parse({
-      usage: [{ workflow_id: "wf-1", project_ids: ["p-1"], squad_ids: [], agent_ids: ["a-1"] }],
+      usage: [{ workflow_id: "wf-1", squad_ids: [], agent_ids: ["a-1"] }],
       total: 1,
     });
-    expect(parsed.usage).toEqual([{ workflow_id: "wf-1", project_ids: ["p-1"], squad_ids: [], agent_ids: ["a-1"] }]);
+    expect(parsed.usage).toEqual([{ workflow_id: "wf-1", squad_ids: [], agent_ids: ["a-1"] }]);
   });
 
   it("defaults missing usage lists to empty", () => {
     const parsed = ListIssueWorkflowUsageResponseSchema.parse({ usage: [{ workflow_id: "wf-2" }] });
-    expect(parsed.usage[0]).toEqual({ workflow_id: "wf-2", project_ids: [], squad_ids: [], agent_ids: [] });
+    expect(parsed.usage[0]).toEqual({ workflow_id: "wf-2", squad_ids: [], agent_ids: [] });
   });
 
   it("drops a usage row without a workflow id and keeps the others", () => {
     const parsed = ListIssueWorkflowUsageResponseSchema.parse({
-      usage: [{ project_ids: ["p-1"] }, { workflow_id: "wf-3", project_ids: [] }],
+      usage: [{ squad_ids: [] }, { workflow_id: "wf-3" }],
     });
     expect(parsed.usage.map((u) => u.workflow_id)).toEqual(["wf-3"]);
   });

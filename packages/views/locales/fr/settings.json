@@ -891,7 +891,17 @@
     "brief_catchup_hour_label": "Heure de rattrapage",
     "brief_catchup_hour_option": "{{hour}}:00",
     "brief_catchup_saved": "Paramètres du briefing quotidien enregistrés",
-    "brief_catchup_failed": "Impossible d'enregistrer les paramètres du briefing quotidien"
+    "brief_catchup_failed": "Impossible d'enregistrer les paramètres du briefing quotidien",
+    "room_workflow_section": "Flux de travail",
+    "room_workflow_label": "Tâches qui ne sont pas des demandes d'une squad avec flux",
+    "room_workflow_workflow_label": "Flux de travail",
+    "room_workflow_no_action": "Aucune action",
+    "room_workflow_default": "Par défaut",
+    "room_workflow_existing": "Flux de travail existant",
+    "room_workflow_select_placeholder": "Sélectionner un flux de travail...",
+    "room_workflow_saved": "Paramètre de flux de travail enregistré",
+    "room_workflow_failed": "Impossible d'enregistrer le paramètre de flux de travail",
+    "room_workflow_admin_only": "Seuls les administrateurs de l'espace de travail peuvent modifier ce paramètre."
   },
   "delete_workspace_dialog": {
     "title": "Supprimer l'espace de travail",

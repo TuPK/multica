@@ -5,8 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Settings, Workflow } from "@multica/ui/icons";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
-import { issueFlowOptions, useProjectWithWorkflow } from "@multica/core/issue-workflows";
+import {
+  issueFlowOptions,
+  issueRoomWorkflow,
+  useIssueWorkflows,
+  useRoomRoster,
+} from "@multica/core/issue-workflows";
 import { useWorkspacePaths } from "@multica/core/paths";
+import { projectListOptions } from "@multica/core/projects/queries";
 import { Button } from "@multica/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@multica/ui/components/ui/popover";
 import { cn } from "@multica/ui/lib/utils";
@@ -22,6 +28,8 @@ import { IssueFlowStatePanel } from "./issue-flow-state-panel";
 export interface IssueFlowCardProps {
   issueId?: string;
   projectId: string | null;
+  assigneeType?: string | null;
+  assigneeId?: string | null;
   currentStatus: string;
   canManage?: boolean;
 }
@@ -29,12 +37,14 @@ export interface IssueFlowCardProps {
 /**
  * The workflow an issue follows:
  * - If it is an enforced flow request, renders the full IssueFlowStatePanel.
- * - Otherwise follows the project workflow through its project (MUL-7420),
- *   opening a read-only card of its columns and handoffs.
+ * - Otherwise follows its room's workflow (or Default), opening a read-only
+ *   card of its columns and handoffs.
  */
 export function IssueFlowCard({
   issueId,
   projectId,
+  assigneeType = null,
+  assigneeId = null,
   currentStatus,
   canManage = false,
 }: IssueFlowCardProps) {
@@ -48,7 +58,18 @@ export function IssueFlowCard({
   // Flow query for enforced squad flow
   const flowQuery = useQuery({ ...issueFlowOptions(wsId, issueId ?? ""), enabled: Boolean(issueId) });
 
-  const { project, workflow } = useProjectWithWorkflow(wsId, projectId);
+  const { workflows } = useIssueWorkflows(wsId);
+  const roster = useRoomRoster(wsId);
+  const { data: projects = [] } = useQuery({
+    ...projectListOptions(wsId),
+    enabled: Boolean(wsId) && Boolean(projectId),
+  });
+  const project = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
+  const workflow = issueRoomWorkflow(workflows, roster, {
+    project_id: projectId,
+    assignee_type: assigneeType,
+    assignee_id: assigneeId,
+  });
   const { canCreateWorkflow } = useWorkflowPermissions(project);
   const handlerLabel = useStepHandlerLabel(project);
   const [open, setOpen] = useState(false);
@@ -65,7 +86,7 @@ export function IssueFlowCard({
     );
   }
 
-  if (!workflow || !project) return null;
+  if (!workflow) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -82,7 +103,9 @@ export function IssueFlowCard({
       />
       <PopoverContent align="start" className="w-72 p-3">
         <p className="mb-2 text-caption text-muted-foreground">
-          {t(($) => $.workflows.detail.card_title, { workflow: workflow.name, project: project.title })}
+          {project
+            ? t(($) => $.workflows.detail.card_title, { workflow: workflow.name, project: project.title })
+            : workflow.name}
         </p>
         <ol className="space-y-0.5">
           {workflow.steps.map((step) => {

@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import {
@@ -10,11 +9,10 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@multica/ui/components/ui/sheet";
-import { ArrowRight, Bot, FolderKanban, Pencil, Users, Workflow } from "@multica/ui/icons";
+import { ArrowRight, Bot, Pencil, Users, Workflow } from "@multica/ui/icons";
 import { useCreateFlowDraft } from "@multica/core/flow-drafts";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
-import { projectListOptions } from "@multica/core/projects/queries";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { StatusIcon } from "../../issues/components/status-icon";
@@ -45,7 +43,6 @@ export function WorkflowDetailDrawer({
   const { statuses } = useIssueStatuses(wsId);
   const getStatusLabel = useStatusLabel(wsId);
   const { getActorName } = useActorName();
-  const { data: projects = [] } = useQuery(projectListOptions(wsId));
   const createDraftMut = useCreateFlowDraft();
 
   if (!workflow) return null;
@@ -66,10 +63,6 @@ export function WorkflowDetailDrawer({
       // toast or handled by mutation
     }
   };
-
-  const assignedProjects = projects.filter((proj) =>
-    usage?.project_ids.includes(proj.id),
-  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -128,22 +121,6 @@ export function WorkflowDetailDrawer({
 
         {/* Assigned entities */}
         <div className="space-y-4 py-4 border-b border-border">
-          {assignedProjects.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 text-caption font-medium text-muted-foreground mb-1.5">
-                <FolderKanban className="size-3.5" />
-                <span>{t(($) => $.manage.assigned_projects)}</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {assignedProjects.map((proj) => (
-                  <Badge key={proj.id} variant="outline" className="gap-1 text-caption">
-                    {proj.title}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
           {usage && usage.squad_ids.length > 0 && (
             <div>
               <div className="flex items-center gap-1.5 text-caption font-medium text-muted-foreground mb-1.5">

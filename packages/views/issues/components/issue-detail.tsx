@@ -87,7 +87,16 @@ import { useIsGuest } from "@multica/core/permissions";
 import { RunQueueControl, RunQueueWaitingLabel } from "./run-queue-control";
 import { TimelineHandoff } from "../../workflow/timeline-handoff";
 import { PropertyIcon } from "../../common/property-icon";
-import type { Attachment, Issue, IssueProperty, IssueStatus, IssueStatusCategory, IssuePriority, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
+import type { Attachment, Issue, IssueProperty, IssueStatus, IssueStatusCategory, IssuePriority, RoomWorkflowCheck, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
+import { assigneeSquadId } from "@multica/core/company";
+import { useRoomWorkflowPolicy } from "@multica/core/issue-workflows/hooks";
+import { roomWorkflowCheckOptions } from "@multica/core/issue-workflows/queries";
+import { runConfirmIntent } from "../actions/run-confirm-gate";
+import {
+  parseRoomWorkflowRefusal,
+  RoomWorkflowPrompt,
+  shouldPromptForRoomWorkflow,
+} from "./room-workflow-prompt";
 import { contentReferencesAttachment } from "@multica/core/types";
 import { isBuiltInIssueStatus } from "@multica/core/issue-statuses";
 import { commentLandingTarget, isDeletedComment } from "@multica/core/issues/comment-deletion";
@@ -110,7 +119,7 @@ import { IssueActionsDropdown, useIssuePageMenu, useIssueActions, useArchivedInb
 import { LabelChip } from "../../labels/label-chip";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { SubIssuesAgentWorkingChip } from "./sub-issues-agent-working-chip";
-import { IssueProjectPicker } from "../../projects/components/issue-project-picker";
+import { ProjectPicker } from "../../projects/components/project-picker";
 import { IssuePropertyPills } from "./issue-property-pills";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { useNewRunIds } from "./use-run-comment-motion";
@@ -153,15 +162,17 @@ import {
   useDeliverableLinkSession,
   useFreshTimelineRead,
 } from "./deliverables/deliverable-link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useIssueReadState } from "@multica/core/issues/read-state";
 import { useAuthStore } from "@multica/core/auth";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
 import {
-  useProjectWorkflow,
   issueFlowOptions,
+  issueRoomWorkflow,
+  useIssueWorkflows,
+  useRoomRoster,
 } from "@multica/core/issue-workflows";
 import { useRecentContextStore } from "@multica/core/chat";
 import { useRegisterCommandBarContext } from "../../search/register-context";
@@ -3018,6 +3029,91 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
   // Called before the `if (!issue)` early return so hook order stays stable.
   const actions = useIssueActions(issue);
   const handleUpdateField = actions.updateField;
+  const directUpdateIssue = useUpdateIssue();
+  const queryClient = useQueryClient();
+  const { entryOf: detailStatusEntryOf } = useIssueStatuses(wsId);
+  const { policy: roomWorkflowPolicy } = useRoomWorkflowPolicy(wsId);
+  const [roomPrompt, setRoomPrompt] = useState<RoomWorkflowCheck | null>(null);
+  const [roomPromptUpdate, setRoomPromptUpdate] = useState<Partial<UpdateIssueRequest> | null>(null);
+
+  const applyAssigneeUpdate = useCallback(
+    (updates: Partial<UpdateIssueRequest>) => {
+      if (!issue) return;
+      if (runConfirmIntent(issue, updates, { entryOf: detailStatusEntryOf })) {
+        handleUpdateField(updates);
+        return;
+      }
+      void directUpdateIssue
+        .mutateAsync({ id: issue.id, ...updates })
+        .catch((err: unknown) => {
+          const roomRefusal = parseRoomWorkflowRefusal(
+            err,
+            assigneeSquadId(
+              updates.assignee_type ?? undefined,
+              updates.assignee_id ?? undefined,
+              agents,
+            ) ?? null,
+          );
+          if (roomRefusal) {
+            setRoomPromptUpdate(updates);
+            setRoomPrompt(roomRefusal);
+            return;
+          }
+          toast.error(
+            issueUpdateErrorMessage(err, t, t(($) => $.detail.update_failed)),
+          );
+        });
+    },
+    [agents, detailStatusEntryOf, directUpdateIssue, handleUpdateField, issue, t],
+  );
+
+  const handleAssigneeOrFieldUpdate = useCallback(
+    (updates: Partial<UpdateIssueRequest>) => {
+      if (
+        issue &&
+        (updates.assignee_type === "agent" || updates.assignee_type === "squad") &&
+        updates.assignee_id
+      ) {
+        if (runConfirmIntent(issue, updates, { entryOf: detailStatusEntryOf })) {
+          handleUpdateField(updates);
+          return;
+        }
+        void queryClient
+          .fetchQuery(
+            roomWorkflowCheckOptions(wsId, {
+              projectId: issue.project_id ?? null,
+              assigneeType: updates.assignee_type,
+              assigneeId: updates.assignee_id,
+              parentIssueId: issue.parent_issue_id ?? null,
+            }),
+          )
+          .then(
+            (check) => {
+              if (shouldPromptForRoomWorkflow(check, roomWorkflowPolicy)) {
+                setRoomPromptUpdate(updates);
+                setRoomPrompt(check);
+                return;
+              }
+              applyAssigneeUpdate(updates);
+            },
+            () => {
+              applyAssigneeUpdate(updates);
+            },
+          );
+        return;
+      }
+      handleUpdateField(updates);
+    },
+    [
+      applyAssigneeUpdate,
+      detailStatusEntryOf,
+      handleUpdateField,
+      issue,
+      queryClient,
+      roomWorkflowPolicy,
+      wsId,
+    ],
+  );
   // The inbox passes `onDone` and owns archive and restore there.
   const archivedInboxItemId = useArchivedInboxItemId(id, !onDone);
   const pageMenu = useIssuePageMenu();
@@ -3379,7 +3475,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
               {locked(<PriorityPicker priority={issue.priority} onUpdate={handleUpdateField} align="start" />)}
             </PropRow>
             <PropRow interactive={false} label={t(($) => $.detail.prop_project)}>
-              {locked(<IssueProjectPicker projectId={issue.project_id} onUpdate={handleUpdateField} issue={issue} />)}
+              {locked(<ProjectPicker projectId={issue.project_id} onUpdate={handleUpdateField} />)}
             </PropRow>
             {attachedLabels.length > 0 && (
               <PropRow interactive={false} label={t(($) => $.detail.prop_labels)}>
@@ -3419,18 +3515,19 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
             </PropRow>
           )}
           <PropRow label={t(($) => $.detail.prop_assignee)}>
-            <AssigneePicker assigneeType={issue.assignee_type} assigneeId={issue.assignee_id} onUpdate={handleUpdateField} align="start" />
+            <AssigneePicker assigneeType={issue.assignee_type} assigneeId={issue.assignee_id} onUpdate={handleAssigneeOrFieldUpdate} align="start" />
           </PropRow>
           <PropRow label={t(($) => $.detail.prop_project)}>
-            <IssueProjectPicker
+            <ProjectPicker
               projectId={issue.project_id}
               onUpdate={handleUpdateField}
-              issue={issue}
             />
           </PropRow>
           <IssueWorkflowPropRow
             issueId={issue.id}
             projectId={issue.project_id}
+            assigneeType={issue.assignee_type}
+            assigneeId={issue.assignee_id}
             status={issue.status}
             label={t(($) => $.workflows.project.label)}
             canManage={canModerateComments}
@@ -4147,7 +4244,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
             <div className="mt-3">
               <IssuePropertyPills
                 issue={issue}
-                onUpdate={handleUpdateField}
+                onUpdate={handleAssigneeOrFieldUpdate}
                 onMarkDuplicate={actions.openMarkDuplicate}
                 isDuplicate={isDuplicateIssue(issue)}
               />
@@ -4713,6 +4810,22 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
         onLocate={locateOrigin}
         onCopyLink={copyDeliverableLink}
       />
+      <RoomWorkflowPrompt
+        open={roomPrompt !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRoomPrompt(null);
+            setRoomPromptUpdate(null);
+          }
+        }}
+        refusal={roomPrompt}
+        onResolved={() => {
+          const updates = roomPromptUpdate;
+          setRoomPrompt(null);
+          setRoomPromptUpdate(null);
+          if (updates) applyAssigneeUpdate(updates);
+        }}
+      />
     </PreviewSequenceProvider>
   );
 
@@ -4783,22 +4896,32 @@ function IssueDetailActionsDropdown({
   return <IssueActionsDropdown {...props} onShowInSidebar={locateInSidebar ? (showInSidebar ?? undefined) : undefined} />;
 }
 
-/** The workflow the issue follows through its project (MUL-7420). */
+/** The workflow the issue follows through its room (or Default). */
 function IssueWorkflowPropRow({
   issueId,
   projectId,
+  assigneeType,
+  assigneeId,
   status,
   label,
   canManage,
 }: {
   issueId?: string;
   projectId: string | null;
+  assigneeType: string | null;
+  assigneeId: string | null;
   status: string;
   label: string;
   canManage?: boolean;
 }) {
   const wsId = useWorkspaceId();
-  const workflow = useProjectWorkflow(wsId, projectId);
+  const { workflows } = useIssueWorkflows(wsId);
+  const roster = useRoomRoster(wsId);
+  const workflow = issueRoomWorkflow(workflows, roster, {
+    project_id: projectId,
+    assignee_type: assigneeType,
+    assignee_id: assigneeId,
+  });
   const flowQuery = useQuery({ ...issueFlowOptions(wsId, issueId ?? ""), enabled: Boolean(issueId) });
   const isFlow = Boolean(flowQuery.data?.managed);
 
@@ -4810,6 +4933,8 @@ function IssueWorkflowPropRow({
         <IssueFlowCard
           issueId={issueId}
           projectId={projectId}
+          assigneeType={assigneeType}
+          assigneeId={assigneeId}
           currentStatus={status}
           canManage={canManage}
         />
@@ -4822,6 +4947,8 @@ function IssueWorkflowPropRow({
       <IssueFlowCard
         issueId={issueId}
         projectId={projectId}
+        assigneeType={assigneeType}
+        assigneeId={assigneeId}
         currentStatus={status}
         canManage={canManage}
       />

@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@multica/ui/components/
 import { ActorAvatar } from "../common/actor-avatar";
 import { useStatusLabel } from "../issues/utils/status-label";
 import { useT } from "../i18n";
-import { useWorkflowSharing, WorkflowHandoffForm } from "./handoff-form";
+import { WorkflowHandoffForm } from "./handoff-form";
 import { useWorkflowPermissions } from "./permissions";
 import { stepHandlerActor, useStepHandlerLabel } from "./step-handler";
 
@@ -33,9 +33,8 @@ export function ColumnHandoff({
   const labelOf = useStatusLabel(wsId);
   const handlerLabel = useStepHandlerLabel(project);
   const { getActorName } = useActorName();
-  const { canEditWorkflow: canEdit, canManageProject } = useWorkflowPermissions(project, workflow);
+  const { canEditWorkflow: canEdit } = useWorkflowPermissions(project, workflow);
   const [open, setOpen] = useState(false);
-  const sharing = useWorkflowSharing(workflow, project.id);
   const step = workflowStep(workflow, status);
   if (!step || !statusAcceptsHandoff(status)) return null;
   const label = handlerLabel(step);
@@ -73,9 +72,7 @@ export function ColumnHandoff({
           <p className="flex items-start gap-1.5 text-caption text-muted-foreground">
             <Workflow aria-hidden className="mt-0.5 size-3 shrink-0" />
             <span>
-              {sharing.others.length > 0
-                ? t(($) => $.workflows.handoff.scope_line_shared, { workflow: workflow.name, projects: sharing.label })
-                : t(($) => $.workflows.handoff.scope_line, { workflow: workflow.name })}
+              {t(($) => $.workflows.handoff.scope_line, { workflow: workflow.name })}
             </span>
           </p>
         </div>
@@ -83,7 +80,6 @@ export function ColumnHandoff({
           workflow={workflow}
           statusKey={status}
           canEdit={canEdit}
-          canCopyForProject={canManageProject}
           project={project}
           onSaved={() => setOpen(false)}
         />

@@ -12,6 +12,7 @@ import {
   sharedWorkflowStatusKeys,
   stepHandsOff,
   useIssueWorkflows,
+  useRoomRoster,
   workflowStep,
 } from "@multica/core/issue-workflows";
 import { issueLabelsOptions, labelListOptions } from "@multica/core/labels/queries";
@@ -46,11 +47,6 @@ function common<T>(issues: Issue[], pick: (issue: Issue) => T): T | undefined {
   return issues.every((issue) => pick(issue) === value) ? value : undefined;
 }
 
-function sharedProjectIdOf(issues: Issue[]): string | null | undefined {
-  const first = issues[0]?.project_id ?? null;
-  return first && issues.every((i) => i.project_id === first) ? first : undefined;
-}
-
 function filterByLabel<T>(items: T[], query: string, label: (item: T) => string, keywords?: (item: T) => string[]) {
   const q = query.trim().toLowerCase();
   if (!q) return items;
@@ -69,23 +65,19 @@ export function IssueStatusPage({ target, query }: { target: IssueTarget; query:
   const writer = useIssueTargetWriter(target);
   const issues = writer.issues;
   const single = target.kind === "single" ? target.issue : null;
-  const sharedProjectId = single ? single.project_id : sharedProjectIdOf(issues);
   const { workflows } = useIssueWorkflows(wsId);
-  const { data: projects } = useQuery({
-    ...projectListOptions(wsId),
-    enabled: !single && sharedProjectId === undefined,
-  });
-  // A selection inside one project offers that project's workflow statuses;
-  // one spanning projects offers the statuses every selected issue's
-  // workflow allows — the batch toolbar's rule. (MUL-7420)
+  const roomRoster = useRoomRoster(wsId);
+  // A single issue offers its room workflow's statuses; a multi-issue selection
+  // offers the statuses every selected issue's room workflow allows.
   const { options, workflow } = useIssueStatusOptions(
     wsId,
-    single ? single.project_id : (sharedProjectId ?? undefined),
+    single ? single.project_id : undefined,
     single?.status,
+    single ?? undefined,
   );
   const allowed = useMemo(
-    () => (single || sharedProjectId ? null : sharedWorkflowStatusKeys(workflows, projects, issues)),
-    [issues, projects, sharedProjectId, single, workflows],
+    () => (single ? null : sharedWorkflowStatusKeys(workflows, roomRoster, issues)),
+    [issues, roomRoster, single, workflows],
   );
   const current = common(issues, (issue) => issue.status);
   const visible = filterByLabel(

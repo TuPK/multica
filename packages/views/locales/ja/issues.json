@@ -1617,7 +1617,6 @@
     "link_load_failed": "「{{name}}」を開くための成果物を読み込めませんでした。再読み込みしてもう一度お試しください。"
   },
   "workflows": {
-    "default_name": "Default",
     "default_summary": "すべてのステータス、引き継ぎなし",
     "hands_off_to": "{{name}} に引き継ぐ",
     "not_in_workflow": "「{{name}}」にこのステータスはありません",
@@ -1744,14 +1743,7 @@
     },
     "project": {
       "label": "ワークフロー",
-      "switched": "ワークフローを変更しました",
-      "error": "ワークフローを変更できませんでした",
-      "picker_title": "ワークフローを選択",
-      "default_badge": "デフォルト",
-      "used_by_short": "使用中：{{names}}",
-      "used_by_nobody": "まだプロジェクトがありません",
-      "manage": "ワークフローを管理…",
-      "picker_more": "「設定 → ワークフロー」でワークフローを追加できます。"
+      "manage": "ワークフローを管理…"
     },
     "picker": {
       "footer": "このタスクのワークフローのステータスだけを表示しています。右側はそのステータスに入ったときの引き継ぎ先です。"
@@ -1815,27 +1807,12 @@
       "search_agents": "エージェントを検索",
       "search_members": "メンバーを検索",
       "instructions": "このステップでやること",
-      "scope_line": "「{{workflow}}」ワークフローの一部",
-      "scope_line_shared": "「{{workflow}}」の一部。{{projects}} でも使用中",
-      "scope_more": "{{names}} ほか {{count}} 件",
-      "scope_question": "この変更をどこに適用しますか？",
-      "scope_all": "「{{workflow}}」を使う {{count}} 件のプロジェクト",
-      "scope_all_hint": "{{projects}} すべてに新しい引き継ぎを適用",
-      "scope_project": "{{project}} のみ",
-      "scope_project_hint": "「{{copy}}」としてコピーし {{project}} で使用。他のプロジェクトは変わりません",
-      "saved_copy": "「{{workflow}}」に保存しました（{{project}} のみ使用）"
+      "scope_line": "「{{workflow}}」ワークフローの一部"
     },
     "columns": {
       "new_status": "新しいステータス…",
       "name_placeholder": "ステータス名",
       "add": "追加"
-    },
-    "flow": {
-      "title": "ワークフロー「{{workflow}}」",
-      "scope_own": "このワークフローを使用しているのはこのプロジェクトだけです。",
-      "no_handoff_here": "引き継ぎなし",
-      "scope_shared_other": "{{count}} 件のプロジェクトがこのワークフローを使用しています。引き継ぎはそのすべてに適用されます。",
-      "switch": "ワークフローを切り替え"
     },
     "templates": {
       "delivery": {
@@ -1968,7 +1945,6 @@
     "assign_mapping_intro": "SDLC ワークフローにないステータスの課題があります。移動先を選んでください。",
     "assign_mapping_row": "{{status}} の課題 {{count}} 件の移動先",
     "assign_not_sdlc": "このスクワッドには SDLC の開発・レビュー・QA エージェントが必要です。",
-    "assign_workflow_set": "このプロジェクトは別のワークフローを使っています。先にプロジェクト設定で変更してください。",
     "assign_manage": "プロジェクトを管理",
     "assign_manage_title": "{{name}}のプロジェクト",
     "assign_assigned_description": "別のプロジェクトを割り当てるには、先に現在のプロジェクトの割り当てを解除してください。",

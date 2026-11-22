@@ -484,7 +484,7 @@ export function useIssueSurfaceController({
 
   // Display preferences hide individual columns; status filters independently
   // select exact keys. Selecting a key explicitly restores its hidden column.
-  const serverStatuses = useMemo<IssueStatus[]>(
+  const baseServerStatuses = useMemo<IssueStatus[]>(
     () => {
       const visible = workflowColumns(
         visibleStatusKeys(
@@ -826,6 +826,45 @@ export function useIssueSurfaceController({
     },
     [usesServerFacets],
   );
+  // On a project board, room workflows can introduce custom statuses beyond
+  // Default. Include any visible status that the server's status facet reports
+  // as non-empty so its branch is fetched before room workflows are derived
+  // from the loaded issues.
+  const serverStatuses = useMemo<IssueStatus[]>(() => {
+    if (!projectId) return baseServerStatuses;
+    const statusFacet = tableFacetsQuery.data?.facets.find(
+      (facet) => facet.kind === "status",
+    );
+    if (!statusFacet) return baseServerStatuses;
+    const visible = new Set(
+      visibleStatusKeys(
+        columnStatus.statuses,
+        columnStatus.hiddenStatuses,
+        catalog,
+        columnStatus.negated,
+      ),
+    );
+    const seen = new Set<IssueStatus>(baseServerStatuses);
+    const extra: IssueStatus[] = [];
+    for (const entry of statusFacet.values) {
+      const key = entry.key as IssueStatus;
+      if (entry.count <= 0 || seen.has(key) || !visible.has(key)) continue;
+      if (effectiveViewMode === "list" && listCollapsedStatuses.includes(key)) {
+        continue;
+      }
+      seen.add(key);
+      extra.push(key);
+    }
+    return extra.length > 0 ? [...baseServerStatuses, ...extra] : baseServerStatuses;
+  }, [
+    baseServerStatuses,
+    catalog,
+    columnStatus,
+    effectiveViewMode,
+    listCollapsedStatuses,
+    projectId,
+    tableFacetsQuery.data,
+  ]);
   const serverStatusBranches = useIssueStatusBranches({
     wsId,
     query: tableQuerySpec,

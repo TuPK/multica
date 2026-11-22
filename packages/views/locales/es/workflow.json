@@ -4,14 +4,12 @@
     "new_workflow": "Nuevo flujo",
     "search_placeholder": "Buscar flujos de trabajo...",
     "filter_all": "Todos",
-    "filter_projects": "Proyectos",
     "filter_squads": "Squads",
     "filter_agents": "Agentes",
     "default_badge": "Predeterminado",
     "managed_by_template": "Gestionado por Kit Việt",
     "steps_count_one": "{{count}} paso",
     "steps_count_other": "{{count}} pasos",
-    "assigned_projects": "Proyectos asociados",
     "assigned_squads": "Squads asociados",
     "assigned_agents": "Agentes asociados",
     "empty_title": "No se encontraron flujos de trabajo",
@@ -31,7 +29,6 @@
       "warning": "¿Seguro que deseas eliminar este flujo de trabajo?",
       "blocked_title": "No se puede eliminar el flujo",
       "blocked_default": "El flujo de trabajo predeterminado no se puede eliminar.",
-      "blocked_projects": "Este flujo está en uso por {{count}} proyecto(s). Reasígnalos antes de eliminar.",
       "blocked_squads": "Este flujo está en uso por {{count}} squad(s). Reasígnalos antes de eliminar."
     },
     "copy_name": "{{name}} (copia)"
@@ -227,5 +224,25 @@
       "name": "SDLC Quick Fix",
       "description": "Corrección directa de errores de desarrollador a completado"
     }
+  },
+  "room_prompt": {
+    "non_request_title": "Elegir un flujo de trabajo",
+    "non_request_description": "Esta tarea no es una solicitud de un squad con flujo. Tu elección se guarda en los ajustes del espacio de trabajo y se puede cambiar después.",
+    "option_default": "Predeterminado",
+    "option_existing": "Flujo de trabajo existente",
+    "select_workflow_placeholder": "Seleccionar un flujo de trabajo...",
+    "no_custom_workflows": "No hay otros flujos de trabajo disponibles",
+    "squad_required_title": "Se requiere un flujo de trabajo",
+    "squad_required_description": "Este squad aún no tiene un flujo de trabajo activo.",
+    "squad_required_description_named": "{{squad}} aún no tiene un flujo de trabajo activo.",
+    "squad_picker_label": "Flujo de trabajo del squad",
+    "squad_member_note": "Pide a un responsable del squad o a un administrador del espacio de trabajo que asigne uno.",
+    "open_workflow_tab": "Abrir Flujos de trabajo",
+    "ok": "Aceptar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "saving": "Guardando...",
+    "admin_only_error": "Solo los administradores del espacio de trabajo pueden cambiar este ajuste.",
+    "save_failed": "No se pudo guardar la elección del flujo de trabajo."
   }
 }

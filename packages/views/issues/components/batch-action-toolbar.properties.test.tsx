@@ -25,6 +25,7 @@ vi.mock("@multica/core/issues/mutations", () => ({
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("@multica/core/issue-workflows", () => ({
   useIssueWorkflows: () => ({ workflows: [] }),
+  useRoomRoster: () => ({ squads: [], agents: [] }),
   sharedWorkflowStatusKeys: () => null,
 }));
 vi.mock("@tanstack/react-query", async (importOriginal) => ({

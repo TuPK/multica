@@ -919,7 +919,6 @@ export const IssueWorkflowSchema = z.object({
   is_default: z.boolean().default(false),
   owner_id: z.string().nullable().default(null),
   steps: z.array(IssueWorkflowStepSchema).default([]),
-  project_ids: z.array(z.string()).default([]),
   created_at: z.string(),
   updated_at: z.string(),
   // The enforced workflow engine's fields. Older servers omit them, and one the
@@ -1032,7 +1031,6 @@ export const EMPTY_ISSUE_WORKFLOW: IssueWorkflow = {
   is_default: false,
   owner_id: null,
   steps: [],
-  project_ids: [],
   created_at: "",
   updated_at: "",
 };
@@ -1041,7 +1039,6 @@ export const EMPTY_ISSUE_WORKFLOW: IssueWorkflow = {
 // not parse is dropped alone, as a transition is.
 const IssueWorkflowUsageItemSchema = z.object({
   workflow_id: z.string(),
-  project_ids: z.array(z.string()).default([]),
   squad_ids: z.array(z.string()).default([]),
   agent_ids: z.array(z.string()).default([]),
 }).loose();
@@ -2415,7 +2412,6 @@ export const ProjectSchema = z.object({
   issue_count: z.number().default(0),
   done_count: z.number().default(0),
   resource_count: z.number().default(0),
-  workflow_id: z.string().nullable().default(null),
   archived_at: z.string().nullable().default(null).catch(null),
   archived_by_type: z.enum(["member", "agent"]).nullable().default(null).catch(null),
   archived_by_id: z.string().nullable().default(null).catch(null),
@@ -7104,3 +7100,22 @@ export const QuotaRequestListResponseSchema = z
       .transform((v) => v ?? []),
   })
   .loose();
+
+// The room-owned workflow policy and its write preview (squad-room-workflow spec, sections 4 to 6).
+const RoomWorkflowCodeSchema = z.enum(["room_workflow_required", "room_no_workflow_for_non_request"]);
+
+export const RoomWorkflowPolicyResponseSchema = z.object({
+  non_request_workflow: z
+    .object({
+      kind: z.enum(["no_action", "default", "workflow"]).catch("no_action"),
+      workflow_id: z.string().nullish(),
+    })
+    .catch({ kind: "no_action" }),
+});
+
+export const RoomWorkflowCheckSchema = z.object({
+  needs_workflow: z.boolean().catch(false),
+  code: RoomWorkflowCodeSchema.nullish(),
+  message: z.string().nullish(),
+  squad_id: z.string().nullish(),
+});

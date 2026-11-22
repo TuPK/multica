@@ -90,6 +90,10 @@ vi.mock("./private-projects-section", () => ({
   PrivateProjectsSection: () => <div data-testid="private-projects" />,
 }));
 
+vi.mock("./room-workflow-policy-setting", () => ({
+  RoomWorkflowPolicySetting: () => <div data-testid="room-workflow-policy-setting" />,
+}));
+
 vi.mock("sonner", () => ({
   toast: { success: mockToastSuccess, error: vi.fn() },
 }));

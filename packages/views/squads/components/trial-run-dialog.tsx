@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { clientErrorMessage } from "@multica/core/api";
+import { useWorkspaceId } from "@multica/core/hooks";
 import { useCreateIssue } from "@multica/core/issues/mutations";
+import { useRoomWorkflowCheck, useRoomWorkflowPolicy } from "@multica/core/issue-workflows/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
-import type { IssueWorkflow, Squad } from "@multica/core/types";
+import type { IssueWorkflow, RoomWorkflowCheck, Squad } from "@multica/core/types";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +21,11 @@ import { Input } from "@multica/ui/components/ui/input";
 import { Loader2 } from "@multica/ui/icons";
 import { useNavigation } from "../../navigation";
 import { useT } from "../../i18n";
+import {
+  parseRoomWorkflowRefusal,
+  RoomWorkflowPrompt,
+  shouldPromptForRoomWorkflow,
+} from "../../issues/components/room-workflow-prompt";
 
 export interface TrialRunDialogProps {
   open: boolean;
@@ -39,13 +46,21 @@ export function canTrialRun(workflow: IssueWorkflow): boolean {
  */
 export function TrialRunDialog({ open, onOpenChange, squad, workflow }: TrialRunDialogProps) {
   const { t } = useT("squads");
+  const wsId = useWorkspaceId();
   const nav = useNavigation();
   const paths = useWorkspacePaths();
   const createMut = useCreateIssue();
   const [title, setTitle] = useState("");
+  const [roomPrompt, setRoomPrompt] = useState<RoomWorkflowCheck | null>(null);
   const trimmed = title.trim();
+  const { check: roomWorkflowCheck } = useRoomWorkflowCheck(
+    wsId,
+    { assigneeType: "squad", assigneeId: squad.id },
+    open,
+  );
+  const { policy: roomWorkflowPolicy } = useRoomWorkflowPolicy(wsId);
 
-  const start = async () => {
+  const executeStart = async () => {
     if (!trimmed) return;
     try {
       const issue = await createMut.mutateAsync({
@@ -59,8 +74,22 @@ export function TrialRunDialog({ open, onOpenChange, squad, workflow }: TrialRun
       onOpenChange(false);
       nav.push(paths.issueDetail(issue.id));
     } catch (err) {
+      const roomRefusal = parseRoomWorkflowRefusal(err, squad.id);
+      if (roomRefusal) {
+        setRoomPrompt(roomRefusal);
+        return;
+      }
       toast.error(clientErrorMessage(err) ?? t(($) => $.flow_designer.trial.failed));
     }
+  };
+
+  const start = async () => {
+    if (!trimmed) return;
+    if (shouldPromptForRoomWorkflow(roomWorkflowCheck, roomWorkflowPolicy)) {
+      setRoomPrompt(roomWorkflowCheck);
+      return;
+    }
+    await executeStart();
   };
 
   return (
@@ -98,6 +127,18 @@ export function TrialRunDialog({ open, onOpenChange, squad, workflow }: TrialRun
           </Button>
         </DialogFooter>
       </DialogContent>
+      <RoomWorkflowPrompt
+        open={roomPrompt !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setRoomPrompt(null);
+        }}
+        refusal={roomPrompt}
+        onResolved={() => {
+          setRoomPrompt(null);
+          void executeStart();
+        }}
+        onNavigateAway={() => onOpenChange(false)}
+      />
     </Dialog>
   );
 }

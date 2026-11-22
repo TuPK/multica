@@ -21,14 +21,25 @@ vi.mock("@multica/core/issue-statuses/hooks", () => ({
   useIssueStatuses: () => buildIssueStatusCatalog(catalogEntries),
 }));
 
-// Project workflows (MUL-7420): the picker resolves the issue's project and its
-// workflow through one hook, fed directly here like the catalog.
+// Room workflows: the picker resolves the issue's workflow from workflows +
+// room roster through `@multica/core/issue-workflows`.
 let projectWorkflow: IssueWorkflow | null = null;
 let workspaceDefault: IssueWorkflow | null = null;
 
+vi.mock("@tanstack/react-query", () => ({
+  queryOptions: (options: unknown) => options,
+  useQuery: () => ({ data: undefined }),
+}));
+
 vi.mock("@multica/core/issue-workflows", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/issue-workflows")>()),
-  useProjectWithWorkflow: () => ({ project: null, workflow: projectWorkflow, defaultWorkflow: workspaceDefault }),
+  useIssueWorkflows: () => ({
+    workflows: [workspaceDefault, projectWorkflow].filter((w): w is IssueWorkflow => Boolean(w)),
+    isLoaded: true,
+  }),
+  useRoomRoster: () => ({ squads: [], agents: [] }),
+  issueRoomWorkflow: () => projectWorkflow,
+  defaultWorkflow: () => workspaceDefault,
 }));
 
 vi.mock("../../../common/actor-avatar", () => ({
@@ -202,7 +213,6 @@ describe("StatusPicker in a project that uses a workflow", () => {
         { status_key: "qa", handler: { type: "agent", id: "agent-1" }, instructions: "" },
         { status_key: "done", handler: { type: "none" }, instructions: "" },
       ],
-      project_ids: ["project-1"],
       created_at: "",
       updated_at: "",
     };
@@ -249,7 +259,6 @@ describe("StatusPicker on an issue outside any project (MUL-8121)", () => {
       { status_key: "in_review", handler: { type: "agent", id: "agent-1" }, instructions: "" },
       { status_key: "done", handler: { type: "none" }, instructions: "" },
     ],
-    project_ids: [],
     created_at: "",
     updated_at: "",
   };

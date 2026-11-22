@@ -1092,7 +1092,17 @@
     "brief_catchup_hour_label": "Catch-up hour",
     "brief_catchup_hour_option": "{{hour}}:00",
     "brief_catchup_saved": "Daily brief settings saved",
-    "brief_catchup_failed": "Could not save daily brief settings"
+    "brief_catchup_failed": "Could not save daily brief settings",
+    "room_workflow_section": "Рабочие процессы",
+    "room_workflow_label": "Задачи, не являющиеся запросами для команды с процессом",
+    "room_workflow_workflow_label": "Рабочий процесс",
+    "room_workflow_no_action": "Без действия",
+    "room_workflow_default": "По умолчанию",
+    "room_workflow_existing": "Существующий рабочий процесс",
+    "room_workflow_select_placeholder": "Выберите рабочий процесс...",
+    "room_workflow_saved": "Настройка рабочего процесса сохранена",
+    "room_workflow_failed": "Не удалось сохранить настройку рабочего процесса",
+    "room_workflow_admin_only": "Изменять эту настройку могут только администраторы рабочего пространства."
   },
   "delete_workspace_dialog": {
     "title": "Удалить рабочее пространство",

@@ -26,7 +26,7 @@ vi.mock("@multica/core/issues/mutations", () => ({
   useBatchDeleteIssues: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
-const { WORKFLOWS, PROJECTS } = vi.hoisted(() => {
+const { WORKFLOWS, ROSTER } = vi.hoisted(() => {
   const workflow = (id: string, isDefault: boolean, keys: string[]) => ({
     id,
     workspace_id: "ws-1",
@@ -34,7 +34,6 @@ const { WORKFLOWS, PROJECTS } = vi.hoisted(() => {
     description: "",
     is_default: isDefault,
     steps: keys.map((status_key) => ({ status_key, handler: { type: "none" }, instructions: "" })),
-    project_ids: [],
     created_at: "",
     updated_at: "",
   });
@@ -44,11 +43,14 @@ const { WORKFLOWS, PROJECTS } = vi.hoisted(() => {
       workflow("dev", false, ["todo", "in_progress", "code_review", "done"]),
       workflow("design", false, ["todo", "mockup", "done"]),
     ],
-    PROJECTS: [
-      { id: "p-dev", workflow_id: "dev" },
-      { id: "p-design", workflow_id: "design" },
-      { id: "p-default", workflow_id: null },
-    ],
+    ROSTER: {
+      squads: [
+        { id: "sq-dev", active_workflow_id: "dev" },
+        { id: "sq-design", active_workflow_id: "design" },
+        { id: "sq-default", active_workflow_id: null },
+      ],
+      agents: [],
+    },
   };
 });
 
@@ -57,10 +59,7 @@ vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("@multica/core/issue-workflows", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/issue-workflows")>()),
   useIssueWorkflows: () => ({ workflows: WORKFLOWS }),
-}));
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useQuery: () => ({ data: PROJECTS }),
+  useRoomRoster: () => ROSTER,
 }));
 
 vi.mock("../../i18n", () => ({
@@ -211,11 +210,11 @@ describe("BatchActionToolbar picker wiring", () => {
     expect(screen.getByTestId("due-date-picker")).toHaveAttribute("data-due", "__none__");
   });
 
-  it("offers only the statuses every selected project's workflow allows", () => {
+  it("offers only the statuses every selected room's workflow allows", () => {
     const issues = [
-      makeIssue({ id: "a", project_id: "p-dev" }),
-      makeIssue({ id: "b", project_id: "p-design" }),
-      makeIssue({ id: "c", project_id: "p-default" }),
+      makeIssue({ id: "a", project_id: "p-1", assignee_type: "squad", assignee_id: "sq-dev" }),
+      makeIssue({ id: "b", project_id: "p-1", assignee_type: "squad", assignee_id: "sq-design" }),
+      makeIssue({ id: "c", project_id: "p-1", assignee_type: "squad", assignee_id: "sq-default" }),
     ];
     selection.selectedIds = new Set(["a", "b", "c"]);
 
@@ -224,8 +223,11 @@ describe("BatchActionToolbar picker wiring", () => {
     expect(screen.getByTestId("status-picker")).toHaveAttribute("data-allowed", "done,todo");
   });
 
-  it("offers Default's statuses for issues on Default or outside any project (MUL-8250)", () => {
-    const issues = [makeIssue({ id: "a", project_id: "p-default" }), makeIssue({ id: "b" })];
+  it("offers Default's statuses for issues with no room workflow or outside any project (MUL-8250)", () => {
+    const issues = [
+      makeIssue({ id: "a", project_id: "p-1", assignee_type: "squad", assignee_id: "sq-default" }),
+      makeIssue({ id: "b" }),
+    ];
     selection.selectedIds = new Set(["a", "b"]);
 
     render(<BatchActionToolbar issues={issues} />);

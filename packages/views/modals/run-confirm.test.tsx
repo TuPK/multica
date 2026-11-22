@@ -9,6 +9,14 @@ import {
 import { RunConfirmModal } from "./run-confirm";
 
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-test" }));
+vi.mock("@tanstack/react-query", () => ({
+  queryOptions: (options: unknown) => options,
+  useQuery: () => ({ data: undefined }),
+}));
+vi.mock("@multica/core/issue-workflows/hooks", () => ({
+  useRoomWorkflowCheck: () => ({ check: null, isLoaded: false }),
+  useRoomWorkflowPolicy: () => ({ policy: null, isLoaded: false }),
+}));
 vi.mock("@multica/core/issue-statuses/hooks", () => ({
   useIssueStatuses: () =>
     buildIssueStatusCatalog([

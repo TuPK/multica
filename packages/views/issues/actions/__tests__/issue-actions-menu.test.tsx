@@ -43,6 +43,10 @@ vi.mock("@multica/core/auth", () => ({
   registerAuthStore: vi.fn(),
 }));
 
+const { squadListMock } = vi.hoisted(() => ({
+  squadListMock: vi.fn(async (): Promise<Array<{ id: string; active_workflow_id?: string | null }>> => []),
+}));
+
 vi.mock("@multica/core/workspace/queries", () => ({
   memberListOptions: () => ({
     queryKey: ["workspaces", "ws-1", "members"],
@@ -57,7 +61,7 @@ vi.mock("@multica/core/workspace/queries", () => ({
   }),
   squadListOptions: () => ({
     queryKey: ["workspaces", "ws-1", "squads"],
-    queryFn: () => Promise.resolve([]),
+    queryFn: () => squadListMock(),
   }),
 }));
 
@@ -883,12 +887,18 @@ describe("Sidebar variant (MUL-8425)", () => {
   });
 });
 
-describe("Status in a workflow project (MUL-7420)", () => {
-  const workflowIssue = { ...mockIssue, project_id: "proj-1" } as Issue;
+describe("Status in a workflow room (MUL-7420)", () => {
+  const workflowIssue = {
+    ...mockIssue,
+    project_id: "proj-1",
+    assignee_type: "squad",
+    assignee_id: "sq-1",
+  } as Issue;
 
   beforeEach(() => {
+    squadListMock.mockResolvedValue([{ id: "sq-1", active_workflow_id: "wf-1" }]);
     apiMocks.listProjects.mockResolvedValue({
-      projects: [{ id: "proj-1", title: "App", workflow_id: "wf-1", lead_type: null, lead_id: null }],
+      projects: [{ id: "proj-1", title: "App", lead_type: null, lead_id: null }],
     });
     apiMocks.listIssueWorkflows.mockResolvedValue({
       workflows: [
@@ -897,7 +907,6 @@ describe("Status in a workflow project (MUL-7420)", () => {
           name: "Delivery",
           description: "",
           is_default: false,
-          project_ids: ["proj-1"],
           steps: [
             { status_key: "todo", handler: { type: "none" }, instructions: "" },
             { status_key: "in_progress", handler: { type: "agent", id: "agent-1" }, instructions: "" },

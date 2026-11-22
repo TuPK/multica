@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
@@ -15,7 +14,6 @@ import {
 import { Input } from "@multica/ui/components/ui/input";
 import {
   Copy,
-  FolderKanban,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -33,7 +31,6 @@ import {
   useIssueWorkflows,
   useIssueWorkflowUsage,
 } from "@multica/core/issue-workflows";
-import { projectListOptions } from "@multica/core/projects/queries";
 import type { IssueWorkflow } from "@multica/core/types";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { ActorAvatar } from "../../common/actor-avatar";
@@ -43,7 +40,7 @@ import { localDeleteBlockers, workflowStepInputs, type DeleteBlocker } from "../
 import { WorkflowDeleteDialog } from "./workflow-delete-dialog";
 import { WorkflowDetailDrawer } from "./workflow-detail-drawer";
 
-type FilterTab = "all" | "projects" | "squads" | "agents";
+type FilterTab = "all" | "squads" | "agents";
 
 export function WorkflowManagePage() {
   const { t } = useT("workflow");
@@ -57,7 +54,6 @@ export function WorkflowManagePage() {
   const { usageById } = useIssueWorkflowUsage(wsId);
   const createWorkflow = useCreateIssueWorkflow();
   const deleteWorkflow = useDeleteIssueWorkflow();
-  const { data: projects = [] } = useQuery(projectListOptions(wsId));
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
@@ -83,9 +79,6 @@ export function WorkflowManagePage() {
 
       // Filter tab
       const usage = usageById[wf.id];
-      if (activeFilter === "projects") {
-        return (usage?.project_ids.length ?? 0) > 0;
-      }
       if (activeFilter === "squads") {
         return (usage?.squad_ids.length ?? 0) > 0;
       }
@@ -177,7 +170,7 @@ export function WorkflowManagePage() {
         </div>
 
         <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-lg">
-          {(["all", "projects", "squads", "agents"] as const).map((tab) => (
+          {(["all", "squads", "agents"] as const).map((tab) => (
             <Button
               key={tab}
               variant={activeFilter === tab ? "brand" : "ghost"}
@@ -186,7 +179,6 @@ export function WorkflowManagePage() {
               className="text-caption font-medium"
             >
               {tab === "all" && t(($) => $.manage.filter_all)}
-              {tab === "projects" && t(($) => $.manage.filter_projects)}
               {tab === "squads" && t(($) => $.manage.filter_squads)}
               {tab === "agents" && t(($) => $.manage.filter_agents)}
             </Button>
@@ -206,9 +198,7 @@ export function WorkflowManagePage() {
         <div className="grid grid-cols-1 gap-3">
           {filteredWorkflows.map((wf) => {
             const usage = usageById[wf.id];
-            const assignedProjects = projects.filter((proj) =>
-              usage?.project_ids.includes(proj.id),
-            );
+            const squadIds = usage?.squad_ids ?? [];
 
             return (
               <div
@@ -253,35 +243,23 @@ export function WorkflowManagePage() {
 
                   {/* Assigned Chips */}
                   <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                    {assignedProjects.slice(0, 3).map((proj) => (
+                    {squadIds.slice(0, 3).map((squadId) => (
                       <Badge
-                        key={proj.id}
+                        key={squadId}
                         variant="ghost"
                         className="gap-1 text-micro text-muted-foreground border border-border/60 bg-muted/30"
                       >
-                        <FolderKanban className="size-3" />
-                        <span className="truncate max-w-[120px]">{proj.title}</span>
+                        <ActorAvatar actorType="squad" actorId={squadId} className="size-3" />
+                        <span className="truncate max-w-[120px]">
+                          {getActorName("squad", squadId)}
+                        </span>
                       </Badge>
                     ))}
-                    {assignedProjects.length > 3 && (
+                    {squadIds.length > 3 && (
                       <Badge variant="ghost" className="text-micro text-muted-foreground">
-                        +{assignedProjects.length - 3}
+                        +{squadIds.length - 3}
                       </Badge>
                     )}
-
-                    {usage &&
-                      usage.squad_ids.slice(0, 2).map((squadId) => (
-                        <Badge
-                          key={squadId}
-                          variant="ghost"
-                          className="gap-1 text-micro text-muted-foreground border border-border/60 bg-muted/30"
-                        >
-                          <ActorAvatar actorType="squad" actorId={squadId} className="size-3" />
-                          <span className="truncate max-w-[100px]">
-                            {getActorName("squad", squadId)}
-                          </span>
-                        </Badge>
-                      ))}
 
                     {usage &&
                       usage.agent_ids.slice(0, 2).map((agentId) => (

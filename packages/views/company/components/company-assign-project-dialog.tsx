@@ -31,10 +31,10 @@ const SDLC_STATUS_KEYS = ["todo", "in_progress", "in_review", "qa"] as const;
 const CLOSED_PROJECT_STATUSES = new Set(["completed", "cancelled"]);
 
 /**
- * Picks a project for a squad's room. The project takes the SDLC Auto workflow.
- * A squad works one project at a time, so once one is assigned the dialog only
- * offers to unassign it. When the project's issues sit on statuses the workflow
- * lacks, the dialog asks where each group moves first.
+ * Picks a project for a squad's room. A squad works one project at a time, so
+ * once one is assigned the dialog only offers to unassign it. When the
+ * project's issues sit on statuses the squad's workflow lacks, the dialog asks
+ * where each group moves first.
  */
 export function CompanyAssignProjectDialog({
   squad,
@@ -129,11 +129,9 @@ function AssignBody({
           toast.error(
             code === "build_squad_not_sdlc"
               ? t(($) => $.company.assign_not_sdlc)
-              : code === "project_workflow_set"
-                ? t(($) => $.company.assign_workflow_set)
-                : code === "squad_has_project"
-                  ? t(($) => $.company.assign_squad_has_project)
-                  : t(($) => $.company.assign_failed),
+              : code === "squad_has_project"
+                ? t(($) => $.company.assign_squad_has_project)
+                : t(($) => $.company.assign_failed),
           );
         },
       },

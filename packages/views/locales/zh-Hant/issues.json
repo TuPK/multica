@@ -1617,7 +1617,6 @@
     "link_load_failed": "沒能載入這個任務的產物，打不開「{{name}}」。重新整理頁面再試一次。"
   },
   "workflows": {
-    "default_name": "Default",
     "default_summary": "全部狀態，不自動交接",
     "hands_off_to": "交給 {{name}}",
     "not_in_workflow": "「{{name}}」裡沒有這個狀態",
@@ -1744,14 +1743,7 @@
     },
     "project": {
       "label": "工作流",
-      "switched": "已切換工作流",
-      "error": "無法切換工作流",
-      "picker_title": "選擇工作流",
-      "default_badge": "預設",
-      "used_by_short": "用於：{{names}}",
-      "used_by_nobody": "暫無專案",
-      "manage": "管理工作流…",
-      "picker_more": "在「設定 → 工作流」裡可以新建更多工作流。"
+      "manage": "管理工作流…"
     },
     "picker": {
       "footer": "只顯示這個任務所在工作流裡的狀態。右側是進入該狀態時的處理人。"
@@ -1815,27 +1807,12 @@
       "search_agents": "搜尋 AI 代理",
       "search_members": "搜尋成員",
       "instructions": "這一步要做什麼",
-      "scope_line": "屬於「{{workflow}}」工作流",
-      "scope_line_shared": "屬於「{{workflow}}」，也用於 {{projects}}",
-      "scope_more": "{{names}} 等 {{count}} 個專案",
-      "scope_question": "這次修改用在哪？",
-      "scope_all": "用於「{{workflow}}」的 {{count}} 個專案",
-      "scope_all_hint": "{{projects}} 都按新的交接執行",
-      "scope_project": "只用於{{project}}",
-      "scope_project_hint": "複製一份「{{copy}}」給{{project}}用，其他專案不變",
-      "saved_copy": "已儲存到「{{workflow}}」，只有{{project}}使用"
+      "scope_line": "屬於「{{workflow}}」工作流"
     },
     "columns": {
       "new_status": "新建狀態…",
       "name_placeholder": "狀態名稱",
       "add": "新增"
-    },
-    "flow": {
-      "title": "「{{workflow}}」工作流",
-      "scope_own": "只有這個專案使用這個工作流。",
-      "no_handoff_here": "不交接",
-      "scope_shared_other": "{{count}} 個專案使用這個工作流，它的交接對這些專案都生效。",
-      "switch": "切換工作流"
     },
     "templates": {
       "delivery": {
@@ -1968,7 +1945,6 @@
     "assign_mapping_intro": "部分議題的狀態不在 SDLC 工作流中。請選擇它們的移動目標。",
     "assign_mapping_row": "{{status}} 狀態的 {{count}} 個議題移至",
     "assign_not_sdlc": "此小組需要 SDLC 開發、審查和 QA 代理。",
-    "assign_workflow_set": "該專案已使用其他工作流。請先在專案設定中變更。",
     "assign_manage": "管理專案",
     "assign_manage_title": "{{name}}的專案",
     "assign_assigned_description": "請先取消指派專案，才能指派另一個專案給這個小組。",

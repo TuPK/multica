@@ -41,8 +41,6 @@ export function WorkflowDeleteDialog({
   // English and would not match the locale.
   const blockerMessage = (blocker: DeleteBlocker): string => {
     switch (blocker.code) {
-      case "workflow_in_use":
-        return t(($) => $.manage.delete_dialog.blocked_projects, { count: blocker.count });
       case "workflow_is_squad_active":
         return t(($) => $.manage.delete_dialog.blocked_squads, { count: blocker.count });
       default:

@@ -887,7 +887,17 @@
     "brief_catchup_hour_label": "나중 작성 시각",
     "brief_catchup_hour_option": "{{hour}}:00",
     "brief_catchup_saved": "일일 브리프 설정이 저장되었습니다",
-    "brief_catchup_failed": "일일 브리프 설정을 저장하지 못했습니다"
+    "brief_catchup_failed": "일일 브리프 설정을 저장하지 못했습니다",
+    "room_workflow_section": "워크플로",
+    "room_workflow_label": "플로우 스쿼드 요청이 아닌 태스크",
+    "room_workflow_workflow_label": "워크플로",
+    "room_workflow_no_action": "동작 없음",
+    "room_workflow_default": "기본",
+    "room_workflow_existing": "기존 워크플로",
+    "room_workflow_select_placeholder": "워크플로 선택...",
+    "room_workflow_saved": "워크플로 설정이 저장되었습니다",
+    "room_workflow_failed": "워크플로 설정을 저장하지 못했습니다",
+    "room_workflow_admin_only": "워크스페이스 관리자만 이 설정을 변경할 수 있습니다."
   },
   "delete_workspace_dialog": {
     "title": "워크스페이스 삭제",

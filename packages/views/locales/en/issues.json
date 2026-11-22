@@ -1680,7 +1680,6 @@
     "link_load_failed": "Couldn’t load this issue’s deliverables to open “{{name}}”. Reload to try again."
   },
   "workflows": {
-    "default_name": "Default",
     "default_summary": "Every status, no handoffs",
     "hands_off_to": "Hands off to {{name}}",
     "not_in_workflow": "Not in the {{name}} workflow",
@@ -1819,14 +1818,7 @@
     },
     "project": {
       "label": "Workflow",
-      "switched": "Workflow changed",
-      "error": "Couldn't change the workflow",
-      "picker_title": "Choose a workflow",
-      "default_badge": "Default",
-      "used_by_short": "Used by: {{names}}",
-      "used_by_nobody": "No projects yet",
-      "manage": "Manage workflows…",
-      "picker_more": "Create more workflows in Settings → Workflows."
+      "manage": "Manage workflows…"
     },
     "picker": {
       "footer": "Only this issue’s workflow statuses are shown. The right side is who entering the status hands it to."
@@ -1892,28 +1884,12 @@
       "search_agents": "Search agents",
       "search_members": "Search members",
       "instructions": "What this step does",
-      "scope_line": "Part of the {{workflow}} workflow",
-      "scope_line_shared": "Part of {{workflow}}, also used by {{projects}}",
-      "scope_more": "{{names}} and {{count}} more",
-      "scope_question": "Where should this change apply?",
-      "scope_all": "All {{count}} projects using {{workflow}}",
-      "scope_all_hint": "{{projects}} all use the new handoff",
-      "scope_project": "Only {{project}}",
-      "scope_project_hint": "Copies the workflow as “{{copy}}” for {{project}}; other projects stay as they are",
-      "saved_copy": "Saved to “{{workflow}}”, used only by {{project}}"
+      "scope_line": "Part of the {{workflow}} workflow"
     },
     "columns": {
       "new_status": "New status…",
       "name_placeholder": "Status name",
       "add": "Add"
-    },
-    "flow": {
-      "title": "{{workflow}} workflow",
-      "scope_own": "Only this project uses this workflow.",
-      "no_handoff_here": "No handoff",
-      "scope_shared_one": "{{count}} project uses this workflow. Its handoffs apply to every project using it.",
-      "scope_shared_other": "{{count}} projects use this workflow. Its handoffs apply to all of them.",
-      "switch": "Switch workflow"
     },
     "templates": {
       "delivery": {
@@ -2051,7 +2027,6 @@
     "assign_mapping_intro": "Some issues are on statuses the SDLC workflow does not have. Choose where they move.",
     "assign_mapping_row": "{{count}} issue(s) on {{status}} move to",
     "assign_not_sdlc": "This squad needs the SDLC developer, reviewer and QA agents.",
-    "assign_workflow_set": "This project already uses another workflow. Change it in the project's settings first.",
     "assign_manage": "Manage project",
     "assign_manage_title": "{{name}}'s project",
     "assign_assigned_description": "Unassign the project to give this squad another one.",

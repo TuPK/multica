@@ -113,7 +113,7 @@ export function IssueActionsMenuItems({
   const statusLabel = useStatusLabel(wsId);
   // Only the statuses the issue's workflow allows; entering a step that hands
   // the issue off confirms first, as in the status picker. (MUL-7420)
-  const { options: statusOptions, workflow } = useIssueStatusOptions(wsId, issue.project_id, issue.status);
+  const { options: statusOptions, workflow } = useIssueStatusOptions(wsId, issue.project_id, issue.status, issue);
   const openModal = useModalStore((s) => s.open);
   const setStatus = (status: string) => {
     if (workflow && status !== issue.status && stepHandsOff(workflowStep(workflow, status))) {

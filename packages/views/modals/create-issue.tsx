@@ -31,6 +31,7 @@ import type {
   IssuePriority,
   IssueAssigneeType,
   IssuePropertyValue,
+  RoomWorkflowCheck,
   SourceContextPreview,
 } from "@multica/core/types";
 import { contentReferencesAttachment } from "@multica/core/types";
@@ -65,7 +66,8 @@ import { useActorName } from "@multica/core/workspace/hooks";
 import { useCurrentWorkspace, useWorkspacePaths } from "@multica/core/paths";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
-import { useProjectWithWorkflow, useProjectWorkflow, workflowAllowsStatus, workflowStep } from "@multica/core/issue-workflows";
+import { defaultWorkflow, issueRoomWorkflow, useIssueWorkflows, useRoomRoster, workflowAllowsStatus, workflowStep } from "@multica/core/issue-workflows";
+import { useRoomWorkflowCheck, useRoomWorkflowPolicy } from "@multica/core/issue-workflows/hooks";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { agentListOptions } from "@multica/core/workspace/queries";
 import { assigneeSquadId, findSquadProject } from "@multica/core/company";
@@ -108,6 +110,11 @@ import { useLimitRecoveryPrompt } from "./use-limit-recovery-prompt";
 import { StorageLimitNotice, storageLimitRefusal, type StorageLimitRefusal } from "../billing/storage-limit-notice";
 import { SourceContextPreviewCard, useSourceContextFailureMessage } from "./source-context-preview";
 import { CopyParentFields } from "./copy-parent-fields";
+import {
+  parseRoomWorkflowRefusal,
+  RoomWorkflowPrompt,
+  shouldPromptForRoomWorkflow,
+} from "../issues/components/room-workflow-prompt";
 
 // ManualCreatePanel — manual-mode body of the create-issue dialog. Renders
 // DialogContent + everything inside; the surrounding `<Dialog>` is owned by
@@ -212,7 +219,8 @@ function CreateRunHint({
 function WorkflowHandoffHint({ projectId, status }: { projectId?: string; status: IssueStatus }) {
   const { t } = useT("issues");
   const wsId = useWorkspaceId();
-  const workflow = useProjectWorkflow(wsId, projectId);
+  const { workflows } = useIssueWorkflows(wsId);
+  const workflow = projectId ? defaultWorkflow(workflows) : null;
   const { data: projects } = useQuery({ ...projectListOptions(wsId), enabled: !!workflow });
   const project = projects?.find((p) => p.id === projectId);
   const handlerLabel = useStepHandlerLabel(project);
@@ -361,10 +369,25 @@ export function ManualCreatePanel({
   // object, and we never need to hydrate from an ID the way we do for parent.
   const [childIssues, setChildIssues] = useState<Issue[]>([]);
   const [childPickerOpen, setChildPickerOpen] = useState(false);
+  const [roomPrompt, setRoomPrompt] = useState<RoomWorkflowCheck | null>(null);
   // Fetch parent issue details for the chip (status/identifier/title).
   // List cache usually has it already, so this resolves synchronously.
   const wsId = useWorkspaceId();
   const queryClient = useQueryClient();
+  const roomCheckEnabled = Boolean(
+    assigneeId && (assigneeType === "agent" || assigneeType === "squad"),
+  );
+  const { check: roomWorkflowCheck } = useRoomWorkflowCheck(
+    wsId,
+    {
+      projectId: projectId ?? null,
+      assigneeType: assigneeType ?? null,
+      assigneeId: assigneeId ?? null,
+      parentIssueId: parentIssueId ?? null,
+    },
+    roomCheckEnabled,
+  );
+  const { policy: roomWorkflowPolicy } = useRoomWorkflowPolicy(wsId);
   const { categoryOf: draftStatusCategory, colorOf, iconOf } = useIssueStatuses(wsId);
   const { data: workspaceProperties = [] } = useQuery(propertyListOptions(wsId));
   // Issues handed to a squad's agents, or to the squad, take the squad's project,
@@ -453,11 +476,16 @@ export function ManualCreatePanel({
     setParentIssueId(id);
     setStage(null);
   };
-  // An issue only takes its workflow's columns — its project's, or Default's
-  // outside a project: a status it does not list moves to todo, which every
-  // workflow keeps. (MUL-7420, MUL-8250)
-  const { workflow: projectWorkflow, defaultWorkflow: workspaceDefault } = useProjectWithWorkflow(wsId, projectId);
-  const createWorkflow = projectId ? projectWorkflow : workspaceDefault;
+  // An issue only takes its room workflow's columns — or Default when it has
+  // no room or project: a status it does not list moves to todo, which every
+  // workflow keeps.
+  const { workflows } = useIssueWorkflows(wsId);
+  const roomRoster = useRoomRoster(wsId);
+  const createWorkflow = issueRoomWorkflow(workflows, roomRoster, {
+    project_id: projectId ?? null,
+    assignee_type: assigneeType ?? null,
+    assignee_id: assigneeId ?? null,
+  });
   useEffect(() => {
     if (createWorkflow && !workflowAllowsStatus(createWorkflow, status)) {
       setStatus("todo");
@@ -743,6 +771,16 @@ export function ManualCreatePanel({
         if (mountedRef.current) setStorageCopyRefusal({ ...copyRefusal, kind: "copy" });
         return false;
       }
+      const roomRefusal = parseRoomWorkflowRefusal(
+        err,
+        roomWorkflowCheck?.squadId ??
+          assigneeSquadId(assigneeType, assigneeId, agentList) ??
+          null,
+      );
+      if (roomRefusal) {
+        if (mountedRef.current) setRoomPrompt(roomRefusal);
+        return false;
+      }
       const sourceCode = err instanceof ApiError && err.body && typeof err.body === "object"
         ? (err.body as { code?: unknown }).code
         : undefined;
@@ -901,6 +939,10 @@ export function ManualCreatePanel({
     if (anchorCommentId && !sourcePreview) return;
     if (!title.trim()) {
       titleEditorRef.current?.focus();
+      return;
+    }
+    if (roomCheckEnabled && shouldPromptForRoomWorkflow(roomWorkflowCheck, roomWorkflowPolicy)) {
+      setRoomPrompt(roomWorkflowCheck);
       return;
     }
     void composer.submit();
@@ -1162,6 +1204,8 @@ export function ManualCreatePanel({
                 <StatusPicker
                   status={status}
                   projectId={projectId ?? null}
+                  assigneeType={assigneeType ?? null}
+                  assigneeId={assigneeId ?? null}
                   onUpdate={(u) => { if (u.status) updateStatus(u.status); }}
                   triggerRender={<PillButton />}
                   tooltip={tIssues(($) => $.detail.prop_status)}
@@ -1581,6 +1625,18 @@ export function ManualCreatePanel({
                   prev.some((x) => x.id === selected.id) ? prev : [...prev, selected],
                 );
               }}
+            />
+            <RoomWorkflowPrompt
+              open={roomPrompt !== null}
+              onOpenChange={(open) => {
+                if (!open) setRoomPrompt(null);
+              }}
+              refusal={roomPrompt}
+              onResolved={() => {
+                setRoomPrompt(null);
+                void composer.submit();
+              }}
+              onNavigateAway={onClose}
             />
 
             {/* Footer — same 2x2-grid-on-phones / single-row-from-`sm` shape

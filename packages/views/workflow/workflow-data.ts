@@ -52,9 +52,6 @@ export function localDeleteBlockers(
 ): DeleteBlocker[] {
   const blockers: DeleteBlocker[] = [];
   if (workflow.is_default) blockers.push({ code: "workflow_is_default", count: 0 });
-  if (usage && usage.project_ids.length > 0) {
-    blockers.push({ code: "workflow_in_use", count: usage.project_ids.length });
-  }
   if (usage && usage.squad_ids.length > 0) {
     blockers.push({ code: "workflow_is_squad_active", count: usage.squad_ids.length });
   }

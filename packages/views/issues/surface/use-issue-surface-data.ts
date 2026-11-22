@@ -420,8 +420,8 @@ export function useIssueSurfaceData({
   );
 
   const catalog = useIssueStatuses(wsId);
-  // Columns follow the project's workflow, or Default outside a project.
-  // (MUL-7420)
+  // On a project board, columns are the union of room workflows its issues
+  // follow; outside a project, columns follow Default.
   const statusNegated = negatedFilters.includes("status");
   const columnStatus = useMemo(
     () => statusColumnFilter(statusFilters, statusNegated, advancedFilter, hiddenStatusKeys),
@@ -431,8 +431,14 @@ export function useIssueSurfaceData({
     wsId,
     projectId,
     columnStatus.statuses.length > 0 && !columnStatus.negated,
+    surfaceIssues,
   );
-  const { workflow: scopeWorkflow } = useColumnWorkflow(wsId, projectId, false);
+  const { workflow: scopeWorkflow } = useColumnWorkflow(
+    wsId,
+    projectId,
+    false,
+    surfaceIssues,
+  );
 
   const visibleStatuses = useMemo<IssueStatus[]>(() => {
     // An explicit exact-key filter wins over hidden column preferences.

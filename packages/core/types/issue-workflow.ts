@@ -138,7 +138,6 @@ export interface IssueWorkflowTransition {
 /** Where one workflow is assigned (GET /api/issue-workflows/usage). */
 export interface IssueWorkflowUsage {
   workflow_id: string;
-  project_ids: string[];
   /** Squads whose active workflow this is. */
   squad_ids: string[];
   /** Agents the workflow's columns and branches hand work to. */
@@ -163,13 +162,11 @@ export interface IssueWorkflow {
   workspace_id: string;
   name: string;
   description: string;
-  /** The workspace Default: used by every project that names no workflow. */
+  /** The workspace Default: used by every issue outside a squad's room. */
   is_default: boolean;
   /** The member who owns the workflow and may edit it; null for Default. */
   owner_id: string | null;
   steps: IssueWorkflowStep[];
-  /** Projects currently using this workflow. */
-  project_ids: string[];
   created_at: string;
   updated_at: string;
   /** Set on a workflow that runs requests on a flow; always present on a parsed response, null for an ordinary workflow. */
@@ -263,13 +260,6 @@ export interface IssueWorkflowMappingPlan {
   unchanged: IssueWorkflowStatusCount[];
   total_issues: number;
   affected_issues: number;
-}
-
-export interface SetProjectWorkflowRequest {
-  /** null switches the project back to the Default workflow. */
-  workflow_id: string | null;
-  status_mapping?: Record<string, string>;
-  dry_run?: boolean;
 }
 
 export interface IssueWorkflowDryRunResponse {

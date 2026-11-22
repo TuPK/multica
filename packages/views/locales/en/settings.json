@@ -891,7 +891,17 @@
     "brief_catchup_hour_label": "Catch-up hour",
     "brief_catchup_hour_option": "{{hour}}:00",
     "brief_catchup_saved": "Daily brief settings saved",
-    "brief_catchup_failed": "Could not save daily brief settings"
+    "brief_catchup_failed": "Could not save daily brief settings",
+    "room_workflow_section": "Workflows",
+    "room_workflow_label": "Issues that are not requests of a flow squad",
+    "room_workflow_workflow_label": "Workflow",
+    "room_workflow_no_action": "No action",
+    "room_workflow_default": "Default",
+    "room_workflow_existing": "Existing workflow",
+    "room_workflow_select_placeholder": "Select a workflow...",
+    "room_workflow_saved": "Workflow setting saved",
+    "room_workflow_failed": "Could not save workflow setting",
+    "room_workflow_admin_only": "Only workspace admins can change this setting."
   },
   "delete_workspace_dialog": {
     "title": "Delete workspace",

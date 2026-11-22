@@ -4,14 +4,12 @@
     "new_workflow": "Nouveau flux",
     "search_placeholder": "Rechercher des flux...",
     "filter_all": "Tous",
-    "filter_projects": "Projets",
     "filter_squads": "Squads",
     "filter_agents": "Agents",
     "default_badge": "Par défaut",
     "managed_by_template": "Géré par Kit Việt",
     "steps_count_one": "{{count}} étape",
     "steps_count_other": "{{count}} étapes",
-    "assigned_projects": "Projets associés",
     "assigned_squads": "Squads associées",
     "assigned_agents": "Agents associés",
     "empty_title": "Aucun flux de travail trouvé",
@@ -31,7 +29,6 @@
       "warning": "Êtes-vous sûr de vouloir supprimer ce flux ?",
       "blocked_title": "Impossible de supprimer le flux",
       "blocked_default": "Le flux par défaut de l'espace ne peut pas être supprimé.",
-      "blocked_projects": "Ce flux est actuellement utilisé par {{count}} projet(s). Réassignez-les avant de supprimer.",
       "blocked_squads": "Ce flux est actuellement utilisé par {{count}} squad(s). Réassignez-les avant de supprimer."
     },
     "copy_name": "{{name}} (copie)"
@@ -227,5 +224,25 @@
       "name": "SDLC Quick Fix",
       "description": "Boucle directe de correction de bug du développeur à terminé"
     }
+  },
+  "room_prompt": {
+    "non_request_title": "Choisir un flux de travail",
+    "non_request_description": "Cette tâche n'est pas une demande d'une squad avec flux. Votre choix est enregistré dans les paramètres de l'espace de travail et peut être modifié plus tard.",
+    "option_default": "Par défaut",
+    "option_existing": "Flux de travail existant",
+    "select_workflow_placeholder": "Sélectionner un flux de travail...",
+    "no_custom_workflows": "Aucun autre flux de travail disponible",
+    "squad_required_title": "Flux de travail requis",
+    "squad_required_description": "Cette squad n'a pas encore de flux de travail actif.",
+    "squad_required_description_named": "{{squad}} n'a pas encore de flux de travail actif.",
+    "squad_picker_label": "Flux de travail de la squad",
+    "squad_member_note": "Demandez à un responsable de la squad ou à un administrateur de l'espace de travail d'en attribuer un.",
+    "open_workflow_tab": "Ouvrir Flux de travail",
+    "ok": "OK",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "saving": "Enregistrement...",
+    "admin_only_error": "Seuls les administrateurs de l'espace de travail peuvent modifier ce paramètre.",
+    "save_failed": "Impossible d'enregistrer le choix du flux de travail."
   }
 }

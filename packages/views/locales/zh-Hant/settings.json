@@ -887,7 +887,17 @@
     "brief_catchup_hour_label": "補寫時間",
     "brief_catchup_hour_option": "{{hour}}:00",
     "brief_catchup_saved": "每日簡報設定已儲存",
-    "brief_catchup_failed": "無法儲存每日簡報設定"
+    "brief_catchup_failed": "無法儲存每日簡報設定",
+    "room_workflow_section": "工作流程",
+    "room_workflow_label": "非流程小隊請求的任務",
+    "room_workflow_workflow_label": "工作流程",
+    "room_workflow_no_action": "無動作",
+    "room_workflow_default": "預設",
+    "room_workflow_existing": "現有工作流程",
+    "room_workflow_select_placeholder": "選擇工作流程...",
+    "room_workflow_saved": "工作流程設定已儲存",
+    "room_workflow_failed": "無法儲存工作流程設定",
+    "room_workflow_admin_only": "只有工作區管理員可以變更此設定。"
   },
   "delete_workspace_dialog": {
     "title": "刪除工作區",

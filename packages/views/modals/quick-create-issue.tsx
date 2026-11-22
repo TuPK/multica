@@ -58,9 +58,12 @@ import {
   contentReferencesAttachment,
   type Agent,
   type IssuePriority,
+  type RoomWorkflowCheck,
   type SourceContextPreview,
   type Squad,
 } from "@multica/core/types";
+import { assigneeSquadId } from "@multica/core/company";
+import { useRoomWorkflowCheck, useRoomWorkflowPolicy } from "@multica/core/issue-workflows/hooks";
 import { ActorAvatar } from "../common/actor-avatar";
 import { ClearablePillButton, PillButton } from "../common/pill-button";
 import { useComposerVoice, VoiceDialogFooter, VoiceMicButton } from "../voice";
@@ -91,6 +94,11 @@ import { useLimitRecoveryPrompt } from "./use-limit-recovery-prompt";
 import { StorageLimitNotice, storageLimitRefusal, type StorageLimitRefusal } from "../billing/storage-limit-notice";
 import { matchesPinyin } from "../editor/extensions/pinyin-match";
 import { SourceContextPreviewCard, useSourceContextFailureMessage } from "./source-context-preview";
+import {
+  parseRoomWorkflowRefusal,
+  RoomWorkflowPrompt,
+  shouldPromptForRoomWorkflow,
+} from "../issues/components/room-workflow-prompt";
 
 type ActorSelection =
   | { type: "agent"; id: string }
@@ -393,6 +401,18 @@ export function AgentCreatePanel({
   const [justSent, setJustSent] = useState(false);
   const [sentCount, setSentCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [roomPrompt, setRoomPrompt] = useState<RoomWorkflowCheck | null>(null);
+  const { check: roomWorkflowCheck } = useRoomWorkflowCheck(
+    wsId,
+    {
+      projectId,
+      assigneeType: actor?.type ?? null,
+      assigneeId: actor?.id ?? null,
+      parentIssueId: parentIssueId ?? null,
+    },
+    Boolean(actor),
+  );
+  const { policy: roomWorkflowPolicy } = useRoomWorkflowPolicy(wsId);
   const uploadGate = useUploadGate(editorRef);
   // Coordinator-owned uploads in the shared draft pool (MUL-5181, L2): a file
   // pasted into the prompt survives dialog close and mode switches, aborts on
@@ -509,6 +529,15 @@ export function AgentCreatePanel({
           setStorageCopyRefusal({ ...copyRefusal, kind: "copy" });
           return false;
         }
+        const roomRefusal = parseRoomWorkflowRefusal(
+          e,
+          roomWorkflowCheck?.squadId ??
+            (actor ? assigneeSquadId(actor.type, actor.id, agents) : null),
+        );
+        if (roomRefusal) {
+          if (mountedRef.current) setRoomPrompt(roomRefusal);
+          return false;
+        }
         // Server returns 422 with { code, ... } for the structured rejection
         // paths the modal cares about. Surface the reason in-modal so the
         // user can switch to a live agent / upgrade their daemon without
@@ -606,6 +635,17 @@ export function AgentCreatePanel({
     },
   });
   const submit = () => {
+    if (
+      actor &&
+      hasContent &&
+      !versionBlocked &&
+      !qoderAttachmentBlocked &&
+      !(anchorCommentId && !sourcePreview) &&
+      shouldPromptForRoomWorkflow(roomWorkflowCheck, roomWorkflowPolicy)
+    ) {
+      setRoomPrompt(roomWorkflowCheck);
+      return;
+    }
     void composer.submit();
   };
   const submitting = composer.submitting;
@@ -1021,6 +1061,18 @@ export function AgentCreatePanel({
             )}
           </div>
         </VoiceDialogFooter>
+        <RoomWorkflowPrompt
+          open={roomPrompt !== null}
+          onOpenChange={(open) => {
+            if (!open) setRoomPrompt(null);
+          }}
+          refusal={roomPrompt}
+          onResolved={() => {
+            setRoomPrompt(null);
+            void composer.submit();
+          }}
+          onNavigateAway={onClose}
+        />
     </>
   );
 }

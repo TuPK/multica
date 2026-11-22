@@ -7,7 +7,6 @@ import { api, clientErrorMessage } from "@multica/core/api";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
 import { useSetWorkflowHandoff, workflowNextStatus } from "@multica/core/issue-workflows";
-import { projectListOptions } from "@multica/core/projects/queries";
 import { agentListOptions, memberListOptions, squadListOptions } from "@multica/core/workspace/queries";
 import type { IssueWorkflow, IssueWorkflowStep, Project } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
@@ -66,60 +65,25 @@ function sameStep(a: IssueWorkflowStep, b: IssueWorkflowStep): boolean {
 }
 
 /**
- * The other projects using `workflow` besides `projectId`, and a short label
- * naming them ("A、B" or "A、B、C and 2 more").
- */
-export function useWorkflowSharing(workflow: IssueWorkflow, projectId: string | undefined) {
-  const { t } = useT("issues");
-  const wsId = useWorkspaceId();
-  const { data: projects = [] } = useQuery(projectListOptions(wsId));
-  return useMemo(() => {
-    const others = workflow.project_ids
-      .filter((id) => id !== projectId)
-      .map((id) => projects.find((p) => p.id === id))
-      .filter((p): p is Project => !!p);
-    const separator = t(($) => $.workflows.list_separator);
-    const names = others.slice(0, 3).map((p) => p.title).join(separator);
-    const label =
-      others.length > 3 ? t(($) => $.workflows.handoff.scope_more, { names, count: others.length }) : names;
-    return { others, label };
-  }, [workflow.project_ids, projectId, projects, t]);
-}
-
-type SaveScope = "all" | "project";
-
-/**
  * One column's handoff (MUL-7420): who entering the column hands the issue
- * to, what they are told, and where it goes next. It belongs to the workflow,
- * so saving applies to every project using it — unless, opened from one of
- * several projects sharing a named workflow, the admin chooses to keep the
- * change to that project: it then lands on a copy of the workflow only that
- * project uses. The board's column popover and the full-flow panel both
- * render this form.
+ * to, what they are told, and where it goes next. Handoffs belong to the
+ * workflow directly.
  */
 export function WorkflowHandoffForm({
   workflow,
   statusKey,
   canEdit,
-  canCopyForProject = true,
   project,
   onSaved,
 }: {
   workflow: IssueWorkflow;
   statusKey: string;
   canEdit: boolean;
-  /**
-   * Whether saving for this project only is offered: the copy switches the
-   * project's workflow, which only admins and the project's lead may do.
-   */
-  canCopyForProject?: boolean;
   /** The project the form is opened from: the brief preview is for it. */
   project?: Pick<Project, "id" | "title">;
   onSaved?: () => void;
 }) {
   const { t } = useT("issues");
-  const sharing = useWorkflowSharing(workflow, project?.id);
-  const [scope, setScope] = useState<SaveScope>("all");
   const saved = useMemo<IssueWorkflowStep>(
     () =>
       workflow.steps.find((s) => s.status_key === statusKey) ?? {
@@ -137,29 +101,19 @@ export function WorkflowHandoffForm({
   const handler = draft.handler;
   const needsTarget = (handler.type === "agent" || handler.type === "squad" || handler.type === "member") && !handler.id;
   const dirty = !sameStep(savedHandoff(draft), savedHandoff(saved));
-  const askScope = canEdit && canCopyForProject && dirty && !!project && !workflow.is_default && sharing.others.length > 0;
-  useEffect(() => {
-    if (!dirty) setScope("all");
-  }, [dirty]);
 
   const save = async () => {
     const out = savedHandoff(draft);
-    const copyFor = askScope && scope === "project" ? project : undefined;
     try {
-      const result = await setHandoff.mutateAsync({
+      await setHandoff.mutateAsync({
         workflowId: workflow.id,
         statusKey,
         handler: out.handler,
         instructions: out.instructions,
         next_status_key: out.next_status_key,
         back_status_key: out.back_status_key,
-        copyForProjectId: copyFor?.id,
       });
-      toast.success(
-        copyFor
-          ? t(($) => $.workflows.handoff.saved_copy, { workflow: result.name, project: copyFor.title })
-          : t(($) => $.workflows.handoff.saved),
-      );
+      toast.success(t(($) => $.workflows.handoff.saved));
       onSaved?.();
     } catch (err) {
       toast.error(clientErrorMessage(err) ?? t(($) => $.workflows.handoff.error));
@@ -175,35 +129,6 @@ export function WorkflowHandoffForm({
         onPatch={(patch) => setDraft((d) => ({ ...d, ...patch }))}
         onPreview={() => setPreviewOpen(true)}
       />
-      {askScope && project && (
-        <div className="rounded-lg border border-surface-border bg-muted/40 p-2">
-          <p className="px-1.5 pb-1.5 pt-0.5 text-caption font-medium text-muted-foreground">
-            {t(($) => $.workflows.handoff.scope_question)}
-          </p>
-          <div role="radiogroup" aria-label={t(($) => $.workflows.handoff.scope_question)} className="space-y-1">
-            <ScopeOption
-              selected={scope === "all"}
-              onSelect={() => setScope("all")}
-              title={t(($) => $.workflows.handoff.scope_all, {
-                workflow: workflow.name,
-                count: sharing.others.length + 1,
-              })}
-              hint={t(($) => $.workflows.handoff.scope_all_hint, {
-                projects: [project.title, sharing.label].join(t(($) => $.workflows.list_separator)),
-              })}
-            />
-            <ScopeOption
-              selected={scope === "project"}
-              onSelect={() => setScope("project")}
-              title={t(($) => $.workflows.handoff.scope_project, { project: project.title })}
-              hint={t(($) => $.workflows.handoff.scope_project_hint, {
-                copy: `${workflow.name} (${project.title})`,
-                project: project.title,
-              })}
-            />
-          </div>
-        </div>
-      )}
       {canEdit ? (
         <div className="flex items-center justify-end gap-2">
           {dirty && (
@@ -241,37 +166,6 @@ function RadioDot({ selected }: { selected: boolean }) {
     >
       {selected && <span className="size-2 rounded-full bg-brand" />}
     </span>
-  );
-}
-
-function ScopeOption({
-  selected,
-  onSelect,
-  title,
-  hint,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  hint: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={cn(
-        "flex w-full items-start gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors",
-        selected ? "bg-background shadow-xs ring-1 ring-surface-border" : "hover:bg-accent/60",
-      )}
-    >
-      <RadioDot selected={selected} />
-      <span className="min-w-0">
-        <span className="block text-body font-medium">{title}</span>
-        <span className="block text-caption leading-5 text-muted-foreground">{hint}</span>
-      </span>
-    </button>
   );
 }
 

@@ -4,13 +4,11 @@
     "new_workflow": "建立工作流程",
     "search_placeholder": "搜尋工作流程...",
     "filter_all": "全部",
-    "filter_projects": "專案",
     "filter_squads": "小隊",
     "filter_agents": "AI 代理",
     "default_badge": "預設",
     "managed_by_template": "由 Kit Việt 管理",
     "steps_count_other": "{{count}} 個步驟",
-    "assigned_projects": "關聯專案",
     "assigned_squads": "關聯小隊",
     "assigned_agents": "關聯 AI 代理",
     "empty_title": "未找到工作流程",
@@ -30,7 +28,6 @@
       "warning": "確定要刪除此工作流程嗎？",
       "blocked_title": "無法刪除工作流程",
       "blocked_default": "無法刪除工作區的預設工作流程。",
-      "blocked_projects": "此工作流程目前關聯了 {{count}} 個專案，刪除前請先重新指定工作流程。",
       "blocked_squads": "此工作流程目前關聯了 {{count}} 個小隊，刪除前請先重新指定工作流程。"
     },
     "copy_name": "{{name}}（副本）"
@@ -225,5 +222,25 @@
       "name": "SDLC 快速修復",
       "description": "由開發人員直接修復到完成"
     }
+  },
+  "room_prompt": {
+    "non_request_title": "選擇工作流程",
+    "non_request_description": "此任務不屬於流程小隊的請求。選擇後將儲存至工作區設定，日後可隨時變更。",
+    "option_default": "預設",
+    "option_existing": "現有工作流程",
+    "select_workflow_placeholder": "選擇工作流程...",
+    "no_custom_workflows": "沒有其他可用的工作流程",
+    "squad_required_title": "需要設定工作流程",
+    "squad_required_description": "此小隊尚未啟用工作流程。",
+    "squad_required_description_named": "{{squad}} 尚未啟用工作流程。",
+    "squad_picker_label": "小隊工作流程",
+    "squad_member_note": "請聯絡小隊負責人或工作區管理員為其指派工作流程。",
+    "open_workflow_tab": "開啟工作流程",
+    "ok": "確定",
+    "cancel": "取消",
+    "close": "關閉",
+    "saving": "儲存中...",
+    "admin_only_error": "只有工作區管理員可以變更此設定。",
+    "save_failed": "無法儲存工作流程選擇。"
   }
 }

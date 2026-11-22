@@ -1680,7 +1680,6 @@
     "link_load_failed": "Impossible de charger les livrables de ce ticket pour ouvrir « {{name}} ». Rechargez pour réessayer."
   },
   "workflows": {
-    "default_name": "Default",
     "default_summary": "Tous les états, sans passage de relais",
     "hands_off_to": "Confiée à {{name}}",
     "not_in_workflow": "Absent du workflow {{name}}",
@@ -1819,14 +1818,7 @@
     },
     "project": {
       "label": "Workflow",
-      "switched": "Workflow modifié",
-      "error": "Impossible de changer le workflow",
-      "picker_title": "Choisir un workflow",
-      "default_badge": "Par défaut",
-      "used_by_short": "Utilisé par : {{names}}",
-      "used_by_nobody": "Aucun projet pour l’instant",
-      "manage": "Gérer les workflows…",
-      "picker_more": "Créez d’autres workflows dans Paramètres → Workflows."
+      "manage": "Gérer les workflows…"
     },
     "picker": {
       "footer": "Seuls les états du workflow de cette tâche sont affichés. À droite : à qui elle est confiée en entrant dans l’état."
@@ -1892,28 +1884,12 @@
       "search_agents": "Rechercher des agents",
       "search_members": "Rechercher des membres",
       "instructions": "Ce que fait cette étape",
-      "scope_line": "Fait partie du workflow {{workflow}}",
-      "scope_line_shared": "Fait partie de {{workflow}}, aussi utilisé par {{projects}}",
-      "scope_more": "{{names}} et {{count}} autres",
-      "scope_question": "Où appliquer cette modification ?",
-      "scope_all": "Les {{count}} projets qui utilisent {{workflow}}",
-      "scope_all_hint": "{{projects}} suivent tous le nouveau relais",
-      "scope_project": "Seulement {{project}}",
-      "scope_project_hint": "Copie le workflow sous « {{copy}} » pour {{project}} ; les autres projets ne changent pas",
-      "saved_copy": "Enregistré dans « {{workflow}} », utilisé seulement par {{project}}"
+      "scope_line": "Fait partie du workflow {{workflow}}"
     },
     "columns": {
       "new_status": "Nouvel état…",
       "name_placeholder": "Nom de l’état",
       "add": "Ajouter"
-    },
-    "flow": {
-      "title": "Workflow {{workflow}}",
-      "scope_own": "Seul ce projet utilise ce workflow.",
-      "no_handoff_here": "Pas de relais",
-      "scope_shared_one": "{{count}} projet utilise ce workflow. Ses transferts s’appliquent à chaque projet qui l’utilise.",
-      "scope_shared_other": "{{count}} projets utilisent ce workflow. Ses transferts s’appliquent à tous.",
-      "switch": "Changer de workflow"
     },
     "templates": {
       "delivery": {
@@ -2051,7 +2027,6 @@
     "assign_mapping_intro": "Certains tickets sont sur des statuts absents du workflow SDLC. Choisissez où ils passent.",
     "assign_mapping_row": "{{count}} ticket(s) en {{status}} passent à",
     "assign_not_sdlc": "Cette squad a besoin des agents SDLC développeur, relecteur et QA.",
-    "assign_workflow_set": "Ce projet utilise déjà un autre workflow. Changez-le d'abord dans les paramètres du projet.",
     "assign_manage": "Gérer le projet",
     "assign_manage_title": "Projet de {{name}}",
     "assign_assigned_description": "Retirez d'abord le projet pour en attribuer un autre à cette squad.",

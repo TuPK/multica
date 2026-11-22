@@ -2,11 +2,10 @@
 import { describe, expect, it } from "vitest";
 import type { IssueWorkflow, IssueWorkflowStep } from "../types";
 import {
-  issueStatusWorkflow,
+  issueRoomWorkflow,
   issueWorkflowKeys,
   issueWorkflowTemplatesOptions,
   projectMoveMayHandOff,
-  resolveProjectWorkflow,
   sharedWorkflowStatusKeys,
   stepHandsOff,
   statusAcceptsHandoff,
@@ -29,7 +28,6 @@ const defaultWorkflow: IssueWorkflow = {
   is_default: true,
   owner_id: null,
   steps: columns("in_progress", "in_review"),
-  project_ids: [],
   created_at: "",
   updated_at: "",
 };
@@ -45,51 +43,72 @@ const content: IssueWorkflow = {
 
 const lead: IssueWorkflowStep = { status_key: "in_review", handler: { type: "project_lead" }, instructions: "Review it." };
 
-describe("project workflow resolution (MUL-7420)", () => {
-  it("uses the project's workflow, else Default", () => {
-    expect(resolveProjectWorkflow([defaultWorkflow, content], { workflow_id: "wf-content" })?.id).toBe("wf-content");
-    expect(resolveProjectWorkflow([defaultWorkflow, content], { workflow_id: null })?.id).toBe("wf-default");
-    // A dangling reference renders as Default, like the server treats it.
-    expect(resolveProjectWorkflow([defaultWorkflow, content], { workflow_id: "gone" })?.id).toBe("wf-default");
-  });
+// A room is a squad with an active workflow; an agent belongs to a room through
+// its home squad. The rules mirror the server's (squad-room-workflow spec, section 3).
+const roster = {
+  squads: [
+    { id: "squad-content", active_workflow_id: "wf-content" },
+    { id: "squad-bare", active_workflow_id: null },
+    { id: "squad-flow", active_workflow_id: "wf-flow" },
+  ],
+  agents: [
+    { id: "agent-content", home_squad_id: "squad-content" },
+    { id: "agent-loose", home_squad_id: null },
+  ],
+};
 
-  it("is unknown while workflows load or without a project", () => {
-    expect(resolveProjectWorkflow(undefined, { workflow_id: null })).toBeNull();
-    expect(resolveProjectWorkflow([defaultWorkflow], undefined)).toBeNull();
-    expect(resolveProjectWorkflow([], { workflow_id: null })).toBeNull();
-  });
+const flowWorkflow: IssueWorkflow = {
+  ...content,
+  id: "wf-flow",
+  name: "Flow",
+  flow_config: { version: 1, switches: [] } as unknown as IssueWorkflow["flow_config"],
+};
 
-  it("carries the workflow's own handoffs", () => {
-    const reviewed = { ...content, steps: content.steps.map((s) => (s.status_key === "editing" ? { ...lead, status_key: "editing" } : s)) };
-    const resolved = resolveProjectWorkflow([defaultWorkflow, reviewed], { workflow_id: "wf-content" });
-    expect(stepHandsOff(workflowStep(resolved, "editing"))).toBe(true);
-    expect(workflowStep(resolved, "editing")?.instructions).toBe("Review it.");
-    expect(stepHandsOff(workflowStep(resolved, "drafting"))).toBe(false);
-  });
-});
-
-describe("issue status workflow (MUL-8250)", () => {
-  const projects = [
-    { id: "p-content", workflow_id: "wf-content" },
-    { id: "p-default", workflow_id: null },
-  ];
-
-  it("uses Default outside a project and the project's workflow inside one", () => {
+describe("room workflow resolution (squad-room-workflow spec, section 3)", () => {
+  it("follows the squad the issue is assigned to, or the agent's home squad", () => {
     const workflows = [defaultWorkflow, content];
-    expect(issueStatusWorkflow(workflows, projects, { project_id: null })?.id).toBe("wf-default");
-    expect(issueStatusWorkflow(workflows, projects, { project_id: "p-content" })?.id).toBe("wf-content");
-    expect(issueStatusWorkflow(workflows, projects, { project_id: "p-default" })?.id).toBe("wf-default");
-    expect(issueStatusWorkflow(workflows, undefined, { project_id: "p-content" })).toBeNull();
-    expect(issueStatusWorkflow(undefined, projects, { project_id: null })).toBeNull();
+    const inProject = { project_id: "p-1" };
+    expect(issueRoomWorkflow(workflows, roster, { ...inProject, assignee_type: "squad", assignee_id: "squad-content" })?.id).toBe("wf-content");
+    expect(issueRoomWorkflow(workflows, roster, { ...inProject, assignee_type: "agent", assignee_id: "agent-content" })?.id).toBe("wf-content");
+  });
+
+  it("reads Default for an issue outside a project, with no room, or in a room without a workflow", () => {
+    const workflows = [defaultWorkflow, content];
+    expect(issueRoomWorkflow(workflows, roster, { project_id: null, assignee_type: "squad", assignee_id: "squad-content" })?.id).toBe("wf-default");
+    expect(issueRoomWorkflow(workflows, roster, { project_id: "p-1", assignee_type: null, assignee_id: null })?.id).toBe("wf-default");
+    expect(issueRoomWorkflow(workflows, roster, { project_id: "p-1", assignee_type: "agent", assignee_id: "agent-loose" })?.id).toBe("wf-default");
+    expect(issueRoomWorkflow(workflows, roster, { project_id: "p-1", assignee_type: "squad", assignee_id: "squad-bare" })?.id).toBe("wf-default");
+  });
+
+  it("reads Default for a flow room, whose requests run on the flow", () => {
+    const workflows = [defaultWorkflow, content, flowWorkflow];
+    expect(issueRoomWorkflow(workflows, roster, { project_id: "p-1", assignee_type: "squad", assignee_id: "squad-flow" })?.id).toBe("wf-default");
+  });
+
+  it("is unknown while workflows or the roster load", () => {
+    const ref = { project_id: "p-1", assignee_type: "squad", assignee_id: "squad-content" };
+    expect(issueRoomWorkflow(undefined, roster, ref)).toBeNull();
+    expect(issueRoomWorkflow([defaultWorkflow], { squads: undefined, agents: undefined }, ref)).toBeNull();
   });
 
   it("limits a batch to the statuses every issue's workflow lists, Default included", () => {
     const workflows = [defaultWorkflow, content];
-    const outside = sharedWorkflowStatusKeys(workflows, projects, [{ project_id: null }]);
+    const outside = sharedWorkflowStatusKeys(workflows, roster, [{ project_id: null, assignee_type: null, assignee_id: null }]);
     expect(outside && [...outside]).toEqual(["backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"]);
-    const mixed = sharedWorkflowStatusKeys(workflows, projects, [{ project_id: null }, { project_id: "p-content" }]);
+    const mixed = sharedWorkflowStatusKeys(workflows, roster, [
+      { project_id: null, assignee_type: null, assignee_id: null },
+      { project_id: "p-1", assignee_type: "squad", assignee_id: "squad-content" },
+    ]);
     expect(mixed && [...mixed]).toEqual(["backlog", "todo", "blocked", "done", "cancelled"]);
-    expect(sharedWorkflowStatusKeys(undefined, projects, [{ project_id: null }])).toBeNull();
+    expect(sharedWorkflowStatusKeys(undefined, roster, [{ project_id: null, assignee_type: null, assignee_id: null }])).toBeNull();
+  });
+
+  it("carries the room workflow's own handoffs", () => {
+    const reviewed = { ...content, steps: content.steps.map((s) => (s.status_key === "editing" ? { ...lead, status_key: "editing" } : s)) };
+    const resolved = issueRoomWorkflow([defaultWorkflow, reviewed], roster, { project_id: "p-1", assignee_type: "squad", assignee_id: "squad-content" });
+    expect(stepHandsOff(workflowStep(resolved, "editing"))).toBe(true);
+    expect(workflowStep(resolved, "editing")?.instructions).toBe("Review it.");
+    expect(stepHandsOff(workflowStep(resolved, "drafting"))).toBe(false);
   });
 });
 

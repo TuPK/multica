@@ -887,7 +887,17 @@
     "brief_catchup_hour_label": "後から作成する時刻",
     "brief_catchup_hour_option": "{{hour}}:00",
     "brief_catchup_saved": "デイリーブリーフの設定を保存しました",
-    "brief_catchup_failed": "デイリーブリーフの設定を保存できませんでした"
+    "brief_catchup_failed": "デイリーブリーフの設定を保存できませんでした",
+    "room_workflow_section": "ワークフロー",
+    "room_workflow_label": "フロー付きスクワッドへのリクエストではないタスク",
+    "room_workflow_workflow_label": "ワークフロー",
+    "room_workflow_no_action": "アクションなし",
+    "room_workflow_default": "デフォルト",
+    "room_workflow_existing": "既存のワークフロー",
+    "room_workflow_select_placeholder": "ワークフローを選択...",
+    "room_workflow_saved": "ワークフロー設定を保存しました",
+    "room_workflow_failed": "ワークフロー設定を保存できませんでした",
+    "room_workflow_admin_only": "この設定を変更できるのはワークスペース管理者のみです。"
   },
   "delete_workspace_dialog": {
     "title": "ワークスペースを削除",

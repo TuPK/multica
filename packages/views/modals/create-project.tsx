@@ -64,7 +64,6 @@ import { ProjectDueDatePicker } from "../projects/components/project-due-date-pi
 import { ProjectAccessDraftPicker } from "../projects/components/project-access";
 import { usePaidFeatureErrorMessage } from "../billing";
 import { PillButton } from "../common/pill-button";
-import { WorkflowPill } from "../workflow/workflow-pill";
 import { githubShortLabel } from "../common/github-url";
 import {
   GithubRefField,
@@ -323,7 +322,6 @@ export function CreateProjectModal({
     setLocalMode(null);
   };
 
-  const [workflowId, setWorkflowId] = useState<string | null>(null);
   const folders = useProjectFolders(wsId);
   const FolderField = getProjectFoldersExtension()?.CreateProjectField;
   const [folderId, setFolderId] = useState<string | null>(
@@ -418,7 +416,6 @@ export function CreateProjectModal({
         lead_id: leadId,
         start_date: startDate || undefined,
         due_date: dueDate || undefined,
-        ...(workflowId ? { workflow_id: workflowId } : {}),
         // Server attaches these in the same transaction as the project.
         resources,
         ...(visibility === "private" ? { visibility, member_ids: memberIds } : {}),
@@ -644,7 +641,6 @@ export function CreateProjectModal({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <WorkflowPill value={workflowId} onChange={setWorkflowId} />
           {FolderField && <FolderField value={folderId} onChange={setFolderId} />}
           {<ProjectAccessDraftPicker visibility={visibility} memberIds={memberIds} members={members}
             leadId={leadType === "member" ? leadId : undefined}

@@ -4,11 +4,12 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { PRIORITY_DISPLAY_ORDER } from "@multica/core/issues/config";
 import { useCreateIssue } from "@multica/core/issues/mutations";
+import { useRoomWorkflowCheck, useRoomWorkflowPolicy } from "@multica/core/issue-workflows/hooks";
 import { findSquadProject } from "@multica/core/company";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useQuery } from "@tanstack/react-query";
-import type { Agent, IssuePriority, IssueStatus } from "@multica/core/types";
+import type { Agent, IssuePriority, IssueStatus, RoomWorkflowCheck } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
@@ -26,6 +27,11 @@ import { RunQueueWaitPicker } from "../../issues/components/run-queue-control";
 import { useRunQueueApply } from "../../issues/components/use-run-queue-apply";
 import { StatusPicker } from "../../issues/components/pickers/status-picker";
 import { priorityLabel } from "../../issues/utils/priority-label";
+import {
+  parseRoomWorkflowRefusal,
+  RoomWorkflowPrompt,
+  shouldPromptForRoomWorkflow,
+} from "../../issues/components/room-workflow-prompt";
 
 /**
  * A quick issue form, handed to the agent by default. Handing it over starts the
@@ -66,9 +72,20 @@ export function CompanyAgentNewIssue({
   const [queued, setQueued] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
   const [waits, setWaits] = useState<string[]>([]);
+  const [roomPrompt, setRoomPrompt] = useState<RoomWorkflowCheck | null>(null);
   const { apply, dialog } = useRunQueueApply();
+  const { check: roomWorkflowCheck } = useRoomWorkflowCheck(
+    wsId,
+    {
+      projectId: effectiveProjectId,
+      assigneeType: assign ? "agent" : null,
+      assigneeId: assign ? agent.id : null,
+    },
+    assign,
+  );
+  const { policy: roomWorkflowPolicy } = useRoomWorkflowPolicy(wsId);
 
-  const submit = () => {
+  const executeSubmit = () => {
     const trimmed = title.trim();
     if (!trimmed || create.isPending || uploads.gate.isBlocked()) return;
     const description = descriptionRef.current?.getMarkdown().trim() ?? "";
@@ -96,9 +113,29 @@ export function CompanyAgentNewIssue({
           const done = () => onCreated(issue.id);
           void apply([issue.id], { queued: true, afterIssueIds: waits }, { onDone: done, onCancel: done });
         },
-        onError: () => toast.error(t(($) => $.company.new_failed)),
+        onError: (err) => {
+          const roomRefusal = parseRoomWorkflowRefusal(
+            err,
+            roomWorkflowCheck?.squadId ?? agent.home_squad_id ?? null,
+          );
+          if (roomRefusal) {
+            setRoomPrompt(roomRefusal);
+            return;
+          }
+          toast.error(t(($) => $.company.new_failed));
+        },
       },
     );
+  };
+
+  const submit = () => {
+    const trimmed = title.trim();
+    if (!trimmed || create.isPending || uploads.gate.isBlocked()) return;
+    if (assign && shouldPromptForRoomWorkflow(roomWorkflowCheck, roomWorkflowPolicy)) {
+      setRoomPrompt(roomWorkflowCheck);
+      return;
+    }
+    executeSubmit();
   };
 
   return (
@@ -220,6 +257,18 @@ export function CompanyAgentNewIssue({
         </Button>
       </div>
       {dialog}
+      <RoomWorkflowPrompt
+        open={roomPrompt !== null}
+        onOpenChange={(open) => {
+          if (!open) setRoomPrompt(null);
+        }}
+        refusal={roomPrompt}
+        onResolved={() => {
+          setRoomPrompt(null);
+          executeSubmit();
+        }}
+        onNavigateAway={onCancel}
+      />
     </form>
   );
 }

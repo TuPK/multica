@@ -398,11 +398,12 @@ export const BoardColumn = memo(function BoardColumn({
   );
 });
 
-/** On a project board, the column's handoff for that project. (MUL-7420) */
+/** On a project board, the column's handoff from the workflow that owns it. */
 function WorkflowStepHandlerBadge({ status }: { status: string }) {
-  const { scopeWorkflow, scopeProject } = useBoardWorkflow();
-  if (!scopeWorkflow || !scopeProject) return null;
-  return <ColumnHandoff status={status} workflow={scopeWorkflow} project={scopeProject} />;
+  const { workflowForStatus, scopeProject } = useBoardWorkflow();
+  const workflow = workflowForStatus(status);
+  if (!workflow || !scopeProject) return null;
+  return <ColumnHandoff status={status} workflow={workflow} project={scopeProject} />;
 }
 
 function BoardGroupHeading({

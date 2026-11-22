@@ -1617,7 +1617,6 @@
     "link_load_failed": "没能加载这个任务的产物，打不开“{{name}}”。刷新页面重试。"
   },
   "workflows": {
-    "default_name": "Default",
     "default_summary": "全部状态，不自动交接",
     "hands_off_to": "交给 {{name}}",
     "not_in_workflow": "「{{name}}」里没有这个状态",
@@ -1744,14 +1743,7 @@
     },
     "project": {
       "label": "工作流",
-      "switched": "已切换工作流",
-      "error": "无法切换工作流",
-      "picker_title": "选择工作流",
-      "default_badge": "默认",
-      "used_by_short": "用于：{{names}}",
-      "used_by_nobody": "暂无项目",
-      "manage": "管理工作流…",
-      "picker_more": "在「设置 → 工作流」里可以新建更多工作流。"
+      "manage": "管理工作流…"
     },
     "picker": {
       "footer": "只显示这个任务所在工作流里的状态。右侧是进入该状态时的处理人。"
@@ -1815,27 +1807,12 @@
       "search_agents": "搜索智能体",
       "search_members": "搜索成员",
       "instructions": "这一步要做什么",
-      "scope_line": "属于「{{workflow}}」工作流",
-      "scope_line_shared": "属于「{{workflow}}」，也用于 {{projects}}",
-      "scope_more": "{{names}} 等 {{count}} 个项目",
-      "scope_question": "这次修改用在哪？",
-      "scope_all": "用于「{{workflow}}」的 {{count}} 个项目",
-      "scope_all_hint": "{{projects}} 都按新的交接执行",
-      "scope_project": "只用于{{project}}",
-      "scope_project_hint": "复制一份「{{copy}}」给{{project}}用，其他项目不变",
-      "saved_copy": "已保存到「{{workflow}}」，只有{{project}}使用"
+      "scope_line": "属于「{{workflow}}」工作流"
     },
     "columns": {
       "new_status": "新建状态…",
       "name_placeholder": "状态名称",
       "add": "添加"
-    },
-    "flow": {
-      "title": "「{{workflow}}」工作流",
-      "scope_own": "只有这个项目使用这个工作流。",
-      "no_handoff_here": "不交接",
-      "scope_shared_other": "{{count}} 个项目使用这个工作流，它的交接对这些项目都生效。",
-      "switch": "切换工作流"
     },
     "templates": {
       "delivery": {
@@ -1968,7 +1945,6 @@
     "assign_mapping_intro": "部分议题的状态不在 SDLC 工作流中。请选择它们的移动目标。",
     "assign_mapping_row": "{{status}} 状态的 {{count}} 个议题移至",
     "assign_not_sdlc": "此小组需要 SDLC 开发、评审和 QA 智能体。",
-    "assign_workflow_set": "该项目已使用其他工作流。请先在项目设置中更改。",
     "assign_manage": "管理项目",
     "assign_manage_title": "{{name}}的项目",
     "assign_assigned_description": "先取消分配项目，才能给这个小组分配另一个项目。",

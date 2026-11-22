@@ -9,7 +9,7 @@ import { cn } from "@multica/ui/lib/utils";
 import { copyText, copyTextAndHtml } from "@multica/ui/lib/clipboard";
 import { toast } from "sonner";
 import { isFeatureLockedError } from "@multica/core/billing";
-import type { Project, ProjectStatus, ProjectPriority } from "@multica/core/types";
+import type { ProjectStatus, ProjectPriority } from "@multica/core/types";
 import { useAuthStore } from "@multica/core/auth";
 import { canDeleteProject } from "@multica/core/projects/deletion-permissions";
 import { projectDetailOptions, projectSubscriptionOptions } from "@multica/core/projects/queries";
@@ -36,8 +36,6 @@ import { ProjectDueDatePicker } from "./project-due-date-picker";
 import { usePaidFeatureErrorMessage } from "../../billing";
 import { ProjectAccessControl } from "./project-access";
 import { ProjectLeadPicker } from "./project-lead-picker";
-import { ProjectWorkflowControl } from "../../workflow/project-workflow-row";
-import { ProjectWorkflowMenuItem, ProjectWorkflowSheet } from "../../workflow/project-workflow-sheet";
 import { IssueSurface } from "../../issues/surface/issue-surface";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { Button, buttonVariants } from "@multica/ui/components/ui/button";
@@ -110,16 +108,6 @@ function PropRow({
         {children}
       </div>
     </div>
-  );
-}
-
-// The project's workflow (MUL-7420).
-function ProjectWorkflowPropRow({ project, onOpen }: { project: Project; onOpen: () => void }) {
-  const { t } = useT("issues");
-  return (
-    <PropRow label={t(($) => $.workflows.project.label)}>
-      <ProjectWorkflowControl project={project} onOpen={onOpen} />
-    </PropRow>
   );
 }
 
@@ -226,12 +214,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   } = useAnimatedRightSidebarState(desktopSidebarInitialOpen);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const sidebarOpen = isMobile ? mobileSidebarOpen : desktopSidebarOpen;
-  const [workflowSheetOpen, setWorkflowSheetOpen] = useState(false);
-  // The flow panel is its own modal sheet; it can't stack over the mobile sidebar sheet.
-  const openWorkflowSheet = useCallback(() => {
-    setMobileSidebarOpen(false);
-    setWorkflowSheetOpen(true);
-  }, []);
 
   useEffect(() => {
     if (isMobile) {
@@ -451,7 +433,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           <PropRow label={t(($) => $.detail.prop_due_date)}>
             <ProjectDueDatePicker dueDate={project.due_date} onUpdate={handleUpdateField} />
           </PropRow>
-          <ProjectWorkflowPropRow project={project} onOpen={openWorkflowSheet} />
           {archived && (
             <PropRow label={t(($) => $.archive.prop_label)}>
               <span className="tabular-nums">{formatRelativeDate(project.archived_at!)}</span>
@@ -601,7 +582,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                       {isSubscribed ? <BellOff className="h-3.5 w-3.5" /> : <BellRing className="h-3.5 w-3.5" />}
                       {isSubscribed ? t(($) => $.detail.unsubscribe_action) : t(($) => $.detail.subscribe_action)}
                     </DropdownMenuItem>
-                    <ProjectWorkflowMenuItem project={project} onOpen={() => setWorkflowSheetOpen(true)} />
                     <DropdownMenuSeparator />
                     {archived ? (
                       <DropdownMenuItem onClick={() => restore(project)}>
@@ -684,7 +664,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         )}
       </ResizablePanelGroup>
 
-      <ProjectWorkflowSheet project={project} open={workflowSheetOpen} onOpenChange={setWorkflowSheetOpen} />
       {archiveDialog}
 
       {/* Delete confirmation */}

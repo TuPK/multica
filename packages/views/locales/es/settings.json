@@ -891,7 +891,17 @@
     "brief_catchup_hour_label": "Hora de recuperación",
     "brief_catchup_hour_option": "{{hour}}:00",
     "brief_catchup_saved": "Ajustes del resumen diario guardados",
-    "brief_catchup_failed": "No se pudieron guardar los ajustes del resumen diario"
+    "brief_catchup_failed": "No se pudieron guardar los ajustes del resumen diario",
+    "room_workflow_section": "Flujos de trabajo",
+    "room_workflow_label": "Tareas que no son solicitudes de un squad con flujo",
+    "room_workflow_workflow_label": "Flujo de trabajo",
+    "room_workflow_no_action": "Sin acción",
+    "room_workflow_default": "Predeterminado",
+    "room_workflow_existing": "Flujo de trabajo existente",
+    "room_workflow_select_placeholder": "Seleccionar un flujo de trabajo...",
+    "room_workflow_saved": "Ajuste de flujo de trabajo guardado",
+    "room_workflow_failed": "No se pudo guardar el ajuste de flujo de trabajo",
+    "room_workflow_admin_only": "Solo los administradores del espacio de trabajo pueden cambiar este ajuste."
   },
   "delete_workspace_dialog": {
     "title": "Eliminar espacio de trabajo",

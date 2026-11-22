@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { useWorkspaceId } from "../hooks";
 import { issueKeys } from "../issues/queries";
-import { projectKeys } from "../projects/queries";
 import { workspaceKeys } from "../workspace/queries";
 import type {
   DetachFlowRequest,
@@ -12,10 +11,10 @@ import type {
   StartFlowRequest,
   SetSquadActiveWorkflowRequest,
   ListIssueWorkflowsResponse,
-  SetProjectWorkflowRequest,
   SetWorkflowHandoffRequest,
 } from "../types";
 import { issueFlowKeys, issueWorkflowKeys } from "./queries";
+import type { RoomWorkflowPolicy } from "../types/room-workflow";
 
 /**
  * Workflow mutations (MUL-7420).
@@ -96,47 +95,18 @@ export function useDeleteIssueWorkflow() {
   });
 }
 
-export function useSetProjectWorkflow() {
-  const qc = useQueryClient();
-  const wsId = useWorkspaceId();
-  return useMutation({
-    mutationFn: ({ projectId, ...data }: { projectId: string } & SetProjectWorkflowRequest) =>
-      api.setProjectWorkflow(projectId, data),
-    onSettled: (_data, _error, { projectId }) => {
-      qc.invalidateQueries({ queryKey: projectKeys.list(wsId) });
-      qc.invalidateQueries({ queryKey: projectKeys.detail(wsId, projectId) });
-      // project_ids on each workflow row changed.
-      qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
-      // Remapped issues moved columns.
-      qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
-    },
-  });
-}
-
 /**
- * Saves a workflow's handoff for one column, for every project using it — or,
- * with `copyForProjectId`, on a copy only that project uses.
+ * Saves a workflow's handoff for one column, for every issue the workflow
+ * governs (the rooms that use it).
  */
 export function useSetWorkflowHandoff() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
   return useMutation({
-    mutationFn: ({
-      workflowId,
-      statusKey,
-      copyForProjectId,
-      ...data
-    }: { workflowId: string; statusKey: string; copyForProjectId?: string } & SetWorkflowHandoffRequest) =>
-      api.setWorkflowHandoff(workflowId, statusKey, data, copyForProjectId),
-    onSuccess: (saved, { workflowId, copyForProjectId }) => {
+    mutationFn: ({ workflowId, statusKey, ...data }: { workflowId: string; statusKey: string } & SetWorkflowHandoffRequest) =>
+      api.setWorkflowHandoff(workflowId, statusKey, data),
+    onSuccess: (saved, { workflowId }) => {
       if (!saved.id) return;
-      if (copyForProjectId) {
-        // A new workflow row, and the project now points at it.
-        qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
-        qc.invalidateQueries({ queryKey: projectKeys.list(wsId) });
-        qc.invalidateQueries({ queryKey: projectKeys.detail(wsId, copyForProjectId) });
-        return;
-      }
       qc.setQueryData<ListIssueWorkflowsResponse>(issueWorkflowKeys.list(wsId), (old) =>
         old && { ...old, workflows: old.workflows.map((w) => (w.id === workflowId ? saved : w)) },
       );
@@ -243,6 +213,22 @@ export function useSetSquadActiveWorkflow(wsId: string, squadId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
       qc.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
+    },
+  });
+}
+
+/**
+ * Stores the workspace's non-request workflow choice (admins only). The room
+ * previews are refreshed, since the choice changes what they answer.
+ */
+export function useSetRoomWorkflowPolicy() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (policy: RoomWorkflowPolicy) => api.setRoomWorkflowPolicy(wsId, policy),
+    onSuccess: (saved) => {
+      qc.setQueryData(issueWorkflowKeys.roomPolicy(wsId), saved);
+      qc.invalidateQueries({ queryKey: issueWorkflowKeys.roomChecks(wsId) });
     },
   });
 }

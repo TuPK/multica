@@ -66,6 +66,8 @@ import type { WorkspaceWakeupPage, WorkspaceWakeupFilters } from "../types/issue
 import { WorkspaceWakeupPageSchema, IssueWakeupSchema, IssueWakeupSummaryRowSchema, PausedWakeupSchema, SystemWakeupSchema, WakeupRunSchema, WorkspaceSystemWakeupSchema, RunQueuePreviewSchema, RunQueueWaitSchema } from "./schemas";
 import { archivedInboxQuery, type ArchivedInboxFilters } from "../inbox/filters";
 import type { ListIssueWorkflowTemplatesResponse } from "../types/issue-workflow";
+import type { RoomNonRequestKind, RoomWorkflowCheck, RoomWorkflowCheckParams, RoomWorkflowCode, RoomWorkflowPolicy } from "../types/room-workflow";
+import { RoomWorkflowCheckSchema, RoomWorkflowPolicyResponseSchema } from "./schemas";
 import type { CreatePublishChannelInput, SavePublishSettingsInput } from "../types/publish";
 import type { UpdateResearchSettingsInput } from "../types/research";
 import type { ArchivedInboxPage, ArchivedInboxFacets } from "../types/inbox";
@@ -252,7 +254,6 @@ import type {
   IssueWorkflowDryRunResponse,
   ListIssueWorkflowsResponse,
   ListIssueWorkflowUsageResponse,
-  SetProjectWorkflowRequest,
   SetWorkflowHandoffRequest,
   WorkflowHandoffPreview,
   IssueLabelsResponse,
@@ -3625,6 +3626,52 @@ export class ApiClient {
     );
   }
 
+  // The workflow chosen for issues that are not requests of a flow room (spec
+  // section 4). A response that cannot be read is the server default: no_action.
+  async getRoomWorkflowPolicy(workspaceId: string): Promise<RoomWorkflowPolicy> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/room-workflow`);
+    const parsed = parseWithFallback<RoomPolicyBody>(raw, RoomWorkflowPolicyResponseSchema, { non_request_workflow: { kind: "no_action" } }, {
+      endpoint: "GET /api/workspaces/:id/room-workflow",
+    });
+    return toRoomWorkflowPolicy(parsed.non_request_workflow);
+  }
+
+  // Admins only; the server refuses a member's write.
+  async setRoomWorkflowPolicy(workspaceId: string, policy: RoomWorkflowPolicy): Promise<RoomWorkflowPolicy> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/room-workflow`, {
+      method: "PUT",
+      body: JSON.stringify({
+        non_request_workflow: { kind: policy.kind, workflow_id: policy.workflowId ?? undefined },
+      }),
+    });
+    const sent: RoomPolicyBody = { non_request_workflow: { kind: policy.kind, workflow_id: policy.workflowId } };
+    const parsed = parseWithFallback<RoomPolicyBody>(raw, RoomWorkflowPolicyResponseSchema, sent, {
+      endpoint: "PUT /api/workspaces/:id/room-workflow",
+    });
+    return toRoomWorkflowPolicy(parsed.non_request_workflow);
+  }
+
+  // Previews the room rules for a write the form is about to send. A response that
+  // cannot be read says the write needs nothing, and the server still checks it.
+  async checkRoomWorkflow(workspaceId: string, params: RoomWorkflowCheckParams): Promise<RoomWorkflowCheck> {
+    const query = new URLSearchParams();
+    if (params.projectId) query.set("project_id", params.projectId);
+    if (params.assigneeType) query.set("assignee_type", params.assigneeType);
+    if (params.assigneeId) query.set("assignee_id", params.assigneeId);
+    if (params.parentIssueId) query.set("parent_issue_id", params.parentIssueId);
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/room-workflow/check${suffix}`);
+    const parsed = parseWithFallback<RoomCheckBody>(raw, RoomWorkflowCheckSchema, { needs_workflow: false }, {
+      endpoint: "GET /api/workspaces/:id/room-workflow/check",
+    });
+    return {
+      needsWorkflow: parsed.needs_workflow,
+      code: parsed.code ?? null,
+      message: parsed.message ?? "",
+      squadId: parsed.squad_id ?? null,
+    };
+  }
+
   // Paid-feature states for read-only and upgrade UI (MUL-9482). A response
   // that cannot be read falls back to every feature available: the server
   // still enforces on write.
@@ -6551,21 +6598,13 @@ export class ApiClient {
   }
 
   /**
-   * Saves a workflow's handoff for one column, for every project using it;
-   * handler "none" clears it. With `copyForProjectId` the workflow stays as
-   * it is: the handoff lands on a copy that project switches to, and the copy
-   * is returned. Admin only.
+   * Saves a workflow's handoff for one column, for every issue the workflow
+   * governs; handler "none" clears it. Admin only.
    */
-  async setWorkflowHandoff(
-    workflowId: string,
-    statusKey: string,
-    data: SetWorkflowHandoffRequest,
-    copyForProjectId?: string,
-  ): Promise<IssueWorkflow> {
-    const body = copyForProjectId ? { ...data, copy_for_project_id: copyForProjectId } : data;
+  async setWorkflowHandoff(workflowId: string, statusKey: string, data: SetWorkflowHandoffRequest): Promise<IssueWorkflow> {
     const raw = await this.fetch<unknown>(
       `/api/issue-workflows/${workflowId}/handoffs/${encodeURIComponent(statusKey)}`,
-      { method: "PUT", body: JSON.stringify(body) },
+      { method: "PUT", body: JSON.stringify(data) },
     );
     return parseWithFallback(raw, IssueWorkflowSchema, EMPTY_ISSUE_WORKFLOW, {
       endpoint: "PUT /api/issue-workflows/{id}/handoffs/{status}",
@@ -6573,7 +6612,7 @@ export class ApiClient {
   }
 
   /**
-   * What moving an issue to `status` would do under its project's workflow:
+   * What moving an issue to `status` would do under its room's workflow:
    * who it goes to, the current agent's active runs, and the brief. Writes
    * nothing; a status outside the workflow answers 400. With `projectId` it
    * previews moving the issue into that project instead, entering the column
@@ -6586,28 +6625,6 @@ export class ApiClient {
     const raw = await this.fetch<unknown>(`/api/issues/${issueId}/workflow-handoff?${query.toString()}`);
     return parseWithFallback(raw, WorkflowHandoffPreviewSchema, EMPTY_WORKFLOW_HANDOFF_PREVIEW, {
       endpoint: "GET /api/issues/{id}/workflow-handoff",
-    });
-  }
-
-  /**
-   * Switches a project's workflow; issues on unlisted statuses need a mapping.
-   * Callers refetch the project and its issues, so the response is not read.
-   */
-  async setProjectWorkflow(projectId: string, data: SetProjectWorkflowRequest): Promise<void> {
-    await this.fetch<unknown>(`/api/projects/${projectId}/workflow`, {
-      method: "POST",
-      body: JSON.stringify({ ...data, dry_run: false }),
-    });
-  }
-
-  async dryRunProjectWorkflow(projectId: string, workflowId: string | null): Promise<IssueWorkflowDryRunResponse> {
-    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/workflow`, {
-      method: "POST",
-      readOnly: true,
-      body: JSON.stringify({ workflow_id: workflowId, dry_run: true }),
-    });
-    return parseWithFallback(raw, IssueWorkflowDryRunResponseSchema, EMPTY_ISSUE_WORKFLOW_DRY_RUN, {
-      endpoint: "POST /api/projects/{id}/workflow (dry run)",
     });
   }
 
@@ -9885,4 +9902,12 @@ export class ApiClient {
     });
     return res.blob();
   }
+}
+
+// The wire shapes of the room workflow endpoints (squad-room-workflow spec, section 6).
+type RoomPolicyBody = { non_request_workflow: { kind: RoomNonRequestKind; workflow_id?: string | null } };
+type RoomCheckBody = { needs_workflow: boolean; code?: RoomWorkflowCode | null; message?: string | null; squad_id?: string | null };
+
+function toRoomWorkflowPolicy(body: RoomPolicyBody["non_request_workflow"]): RoomWorkflowPolicy {
+  return { kind: body.kind, workflowId: body.kind === "workflow" ? (body.workflow_id ?? null) : null };
 }

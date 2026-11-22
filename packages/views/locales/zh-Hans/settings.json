@@ -887,7 +887,17 @@
     "brief_catchup_hour_label": "补写时间",
     "brief_catchup_hour_option": "{{hour}}:00",
     "brief_catchup_saved": "每日简报设置已保存",
-    "brief_catchup_failed": "无法保存每日简报设置"
+    "brief_catchup_failed": "无法保存每日简报设置",
+    "room_workflow_section": "工作流",
+    "room_workflow_label": "非流程小队请求的任务",
+    "room_workflow_workflow_label": "工作流",
+    "room_workflow_no_action": "无操作",
+    "room_workflow_default": "默认",
+    "room_workflow_existing": "现有工作流",
+    "room_workflow_select_placeholder": "选择工作流...",
+    "room_workflow_saved": "工作流设置已保存",
+    "room_workflow_failed": "无法保存工作流设置",
+    "room_workflow_admin_only": "只有工作区管理员可以修改此设置。"
   },
   "delete_workspace_dialog": {
     "title": "删除工作区",

@@ -60,6 +60,7 @@ import {
 } from "./settings-layout";
 import { useAutoSave } from "./use-auto-save";
 import { BriefCatchupSetting } from "./brief-catchup-setting";
+import { RoomWorkflowPolicySetting } from "./room-workflow-policy-setting";
 
 interface WorkspaceDetailsDraft {
   name: string;
@@ -483,6 +484,10 @@ export function WorkspaceTab() {
 
       <SettingsSection title={t(($) => $.workspace.brief_catchup_section)} anchor="daily-brief">
         <BriefCatchupSetting workspace={workspace} canManage={canManageWorkspace} />
+      </SettingsSection>
+
+      <SettingsSection title={t(($) => $.workspace.room_workflow_section)} anchor="room-workflows">
+        <RoomWorkflowPolicySetting wsId={workspace.id} canManage={canManageWorkspace} />
       </SettingsSection>
 
       {membersFetched && isOwner ? <PrivateProjectsSection /> : null}

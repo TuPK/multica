@@ -32,6 +32,8 @@ export function StatusPicker({
   onMarkDuplicate,
   isDuplicate,
   projectId,
+  assigneeType,
+  assigneeId,
   allowedStatuses,
   issue,
 }: {
@@ -59,16 +61,18 @@ export function StatusPicker({
   /** The issue already carries a mark, so the action re-points it. */
   isDuplicate?: boolean;
   /**
-   * The issue's project. When it uses a workflow, only that workflow's steps
-   * are offered, in workflow order, each naming who entering it hands the
-   * issue to. (MUL-7420) `null` is an issue outside any project: it offers
-   * only the Default workflow's statuses, search included. (MUL-8121,
-   * MUL-8250) Omit (`undefined`) when the surface spans projects.
+   * The issue's project. When set, the issue's room workflow determines which
+   * statuses are offered and which steps hand off. `null` is an issue outside
+   * any project (workspace Default statuses, no handoffs). Omit (`undefined`)
+   * for multi-issue / multi-project surfaces.
    */
   projectId?: string | null;
+  /** Optional assignee context for create surfaces that have no saved issue yet. */
+  assigneeType?: string | null;
+  assigneeId?: string | null;
   /**
-   * Narrows the options to these keys — for a selection spanning projects,
-   * the statuses every selected issue's workflow allows. Null offers all.
+   * Narrows the options to these keys — for a multi-issue selection, the
+   * statuses every selected issue's room workflow allows. Null offers all.
    */
   allowedStatuses?: ReadonlySet<string> | null;
   /**
@@ -76,7 +80,12 @@ export function StatusPicker({
    * hands the issue off first shows the handoff confirmation for it; the
    * write carries the choice to stop the previous agent's run. (MUL-7420)
    */
-  issue?: { id: string; identifier: string };
+  issue?: {
+    id: string;
+    identifier: string;
+    assignee_type?: string | null;
+    assignee_id?: string | null;
+  };
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -90,14 +99,22 @@ export function StatusPicker({
   const { categoryOf, colorOf, iconOf } = useIssueStatuses(wsId);
   const labelOf = useStatusLabel(wsId);
 
-  // The project workflow's steps, or the catalog in canonical category order
+  const roomRef = useMemo(
+    () => ({
+      assignee_type: issue?.assignee_type ?? assigneeType ?? null,
+      assignee_id: issue?.assignee_id ?? assigneeId ?? null,
+    }),
+    [assigneeId, assigneeType, issue?.assignee_id, issue?.assignee_type],
+  );
+
+  // The room workflow's steps, or the catalog in canonical category order
   // without archived statuses (MUL-6243).
   const {
     options: projectOptions,
     workflow,
     project,
     defaultScope,
-  } = useIssueStatusOptions(wsId, projectId, status);
+  } = useIssueStatusOptions(wsId, projectId, status, roomRef);
   const allOptions = useMemo(
     () => (allowedStatuses ? projectOptions.filter((o) => allowedStatuses.has(o.key)) : projectOptions),
     [projectOptions, allowedStatuses],

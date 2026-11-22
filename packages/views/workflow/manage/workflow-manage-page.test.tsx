@@ -28,7 +28,6 @@ const { apiMock, testWorkflows, testUsage } = vi.hoisted(() => {
         { status_key: "done", handler: { type: "none" }, instructions: "", transitions: [] },
         { status_key: "cancelled", handler: { type: "none" }, instructions: "", transitions: [] },
       ],
-      project_ids: ["p-1"],
       created_at: "2026-10-01T00:00:00Z",
       updated_at: "2026-10-15T00:00:00Z",
     },
@@ -44,14 +43,13 @@ const { apiMock, testWorkflows, testUsage } = vi.hoisted(() => {
         { status_key: "done", handler: { type: "none" }, instructions: "", transitions: [] },
         { status_key: "cancelled", handler: { type: "none" }, instructions: "", transitions: [] },
       ],
-      project_ids: [],
       created_at: "2026-10-02T00:00:00Z",
       updated_at: "2026-10-16T00:00:00Z",
     },
   ] as IssueWorkflow[];
   const testUsage = [
-    { workflow_id: "wf-default", project_ids: ["p-1"], squad_ids: [], agent_ids: ["agent-1"] },
-    { workflow_id: "wf-custom", project_ids: [], squad_ids: [], agent_ids: [] },
+    { workflow_id: "wf-default", squad_ids: ["sq-1"], agent_ids: ["agent-1"] },
+    { workflow_id: "wf-custom", squad_ids: [], agent_ids: [] },
   ];
   return {
     testWorkflows,
@@ -61,7 +59,6 @@ const { apiMock, testWorkflows, testUsage } = vi.hoisted(() => {
       listIssueWorkflowUsage: vi.fn(),
       createIssueWorkflow: vi.fn(),
       deleteIssueWorkflow: vi.fn(),
-      listProjects: vi.fn(),
     },
   };
 });
@@ -121,9 +118,6 @@ describe("WorkflowManagePage", () => {
   beforeEach(() => {
     apiMock.listIssueWorkflows.mockResolvedValue({ workflows: testWorkflows });
     apiMock.listIssueWorkflowUsage.mockResolvedValue({ usage: testUsage, total: testUsage.length });
-    apiMock.listProjects.mockResolvedValue({
-      projects: [{ id: "p-1", title: "Platform", workflow_id: "wf-default" }],
-    });
     apiMock.createIssueWorkflow.mockReset();
     apiMock.deleteIssueWorkflow.mockReset();
     queryClient = new QueryClient({
@@ -154,7 +148,7 @@ describe("WorkflowManagePage", () => {
     expect(screen.getByText("Default")).toBeTruthy();
     expect(screen.getByText("4 steps")).toBeTruthy();
     expect(screen.getByText("3 steps")).toBeTruthy();
-    expect(screen.getByText("Platform")).toBeTruthy();
+    expect(screen.getByText("Actor-sq-1")).toBeTruthy();
   });
 
   it("filters workflows by search query", async () => {
@@ -173,7 +167,7 @@ describe("WorkflowManagePage", () => {
     renderComponent();
     await screen.findByText("Default Workflow");
 
-    fireEvent.click(screen.getByRole("button", { name: "Projects" }));
+    fireEvent.click(screen.getByRole("button", { name: "Squads" }));
 
     expect(screen.getByText("Default Workflow")).toBeTruthy();
     expect(screen.queryByText("Custom QA Workflow")).toBeNull();
@@ -278,10 +272,10 @@ describe("WorkflowManagePage", () => {
     const { ApiError } = await import("@multica/core/api");
     apiMock.deleteIssueWorkflow.mockRejectedValue(
       new ApiError("conflict", 409, "Conflict", {
-        error: "2 project(s) still use this workflow",
-        code: "workflow_in_use",
+        error: "2 squad(s) still use this workflow",
+        code: "workflow_is_squad_active",
         reasons: [
-          { code: "workflow_in_use", count: 2, ids: ["p-1", "p-2"], message: "2 project(s) still use this workflow" },
+          { code: "workflow_is_squad_active", count: 2, ids: ["sq-1", "sq-2"], message: "2 squad(s) still use this workflow" },
         ],
       }),
     );
@@ -293,6 +287,6 @@ describe("WorkflowManagePage", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
 
     expect(await screen.findByText("Cannot delete workflow")).toBeTruthy();
-    expect(screen.getByText(/This workflow is currently used by 2 project/)).toBeTruthy();
+    expect(screen.getByText(/This workflow is currently used by 2 squad/)).toBeTruthy();
   });
 });

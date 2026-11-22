@@ -4,14 +4,12 @@
     "new_workflow": "New workflow",
     "search_placeholder": "Search workflows...",
     "filter_all": "All",
-    "filter_projects": "Projects",
     "filter_squads": "Squads",
     "filter_agents": "Agents",
     "default_badge": "Default",
     "managed_by_template": "Managed by Kit Việt",
     "steps_count_one": "{{count}} step",
     "steps_count_other": "{{count}} steps",
-    "assigned_projects": "Projects",
     "assigned_squads": "Squads",
     "assigned_agents": "Agents",
     "empty_title": "No workflows found",
@@ -31,7 +29,6 @@
       "warning": "Are you sure you want to delete this workflow?",
       "blocked_title": "Cannot delete workflow",
       "blocked_default": "The workspace default workflow cannot be deleted.",
-      "blocked_projects": "This workflow is currently used by {{count}} project(s). Remap them before deleting.",
       "blocked_squads": "This workflow is currently used by {{count}} squad(s). Remap them before deleting."
     },
     "copy_name": "{{name}} (Copy)"
@@ -227,5 +224,25 @@
       "name": "SDLC Quick Fix",
       "description": "Direct bugfix loop through developer to done"
     }
+  },
+  "room_prompt": {
+    "non_request_title": "Choose a workflow",
+    "non_request_description": "This issue is not a request of a flow squad. Your choice is saved to workspace settings and can be changed later.",
+    "option_default": "Default",
+    "option_existing": "Existing workflow",
+    "select_workflow_placeholder": "Select a workflow...",
+    "no_custom_workflows": "No other workflows available",
+    "squad_required_title": "Workflow required",
+    "squad_required_description": "This squad has no active workflow yet.",
+    "squad_required_description_named": "{{squad}} has no active workflow yet.",
+    "squad_picker_label": "Squad workflow",
+    "squad_member_note": "Ask a squad manager or workspace admin to assign one.",
+    "open_workflow_tab": "Open Workflows",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "close": "Close",
+    "saving": "Saving...",
+    "admin_only_error": "Only workspace admins can change this setting.",
+    "save_failed": "Could not save the workflow choice."
   }
 }

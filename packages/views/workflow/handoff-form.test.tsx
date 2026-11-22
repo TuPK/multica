@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildIssueStatusCatalog } from "@multica/core/issue-statuses";
 import { agentListOptions, memberListOptions, squadListOptions } from "@multica/core/workspace/queries";
-import { projectListOptions } from "@multica/core/projects/queries";
 import type { IssueWorkflow, IssueWorkflowStep } from "@multica/core/types";
 import { renderWithI18n } from "../test/i18n";
 import { HandoffFields, WorkflowHandoffForm } from "./handoff-form";
@@ -119,38 +118,33 @@ describe("HandoffFields", () => {
 });
 
 describe("WorkflowHandoffForm", () => {
-  const PROJECTS = [
-    { id: "p-pay", title: "Payments" },
-    { id: "p-orders", title: "Orders" },
-  ];
-  const workflow = (projectIds: string[]): IssueWorkflow =>
+  const PROJECT = { id: "p-pay", title: "Payments" };
+  const workflow = (): IssueWorkflow =>
     ({
       id: "wf-1",
       workspace_id: "ws-1",
       name: "Delivery",
       description: "",
       is_default: false,
+      owner_id: null,
       steps: WORKFLOW.steps,
-      project_ids: projectIds,
       created_at: "",
       updated_at: "",
     }) as IssueWorkflow;
 
-  function renderForm(wf: IssueWorkflow, canCopyForProject = true) {
-    mutateAsync.mockReset().mockResolvedValue({ ...wf, name: "Delivery (Payments)" });
+  function renderForm(wf: IssueWorkflow) {
+    mutateAsync.mockReset().mockResolvedValue(wf);
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     qc.setQueryData(agentListOptions("ws-1").queryKey, [{ id: "agent-1", name: "Builder", archived_at: null }] as never);
     qc.setQueryData(memberListOptions("ws-1").queryKey, [] as never);
     qc.setQueryData(squadListOptions("ws-1").queryKey, [{ id: "squad-1", name: "Review team", archived_at: null }] as never);
-    qc.setQueryData(projectListOptions("ws-1").queryKey, { projects: PROJECTS } as never);
     renderWithI18n(
       <QueryClientProvider client={qc}>
         <WorkflowHandoffForm
           workflow={wf}
           statusKey="in_progress"
           canEdit
-          canCopyForProject={canCopyForProject}
-          project={PROJECTS[0]}
+          project={PROJECT}
         />
       </QueryClientProvider>,
     );
@@ -162,46 +156,22 @@ describe("WorkflowHandoffForm", () => {
     fireEvent.click(await screen.findByText("Builder"));
   }
 
-  it("saves for every project when the editor may not switch this project's workflow", async () => {
-    renderForm(workflow(["p-pay", "p-orders"]), false);
-    await handToBuilder();
-    expect(screen.queryByText("Where should this change apply?")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    await vi.waitFor(() => expect(mutateAsync).toHaveBeenCalled());
-    expect(mutateAsync.mock.calls[0]![0].copyForProjectId).toBeUndefined();
-  });
-
-  it("asks where a change to a shared workflow applies, and can keep it to this project", async () => {
-    renderForm(workflow(["p-pay", "p-orders"]));
-    expect(screen.queryByText("Where should this change apply?")).toBeNull();
+  it("saves the handoff directly on the workflow", async () => {
+    renderForm(workflow());
 
     await handToBuilder();
-    expect(screen.getByRole("radio", { name: /All 2 projects using Delivery/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole("radio", { name: /Only Payments/ }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await vi.waitFor(() => expect(mutateAsync).toHaveBeenCalled());
     expect(mutateAsync.mock.calls[0]![0]).toMatchObject({
       workflowId: "wf-1",
+      statusKey: "in_progress",
       handler: { type: "agent", id: "agent-1" },
-      copyForProjectId: "p-pay",
     });
   });
 
-  it("saves to the workflow directly when only this project uses it", async () => {
-    renderForm(workflow(["p-pay"]));
-
-    await handToBuilder();
-    expect(screen.queryByText("Where should this change apply?")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    await vi.waitFor(() => expect(mutateAsync).toHaveBeenCalled());
-    expect(mutateAsync.mock.calls[0]![0].copyForProjectId).toBeUndefined();
-  });
-
   it("saves a squad without dropping its instructions or next and back statuses", async () => {
-    const wf = workflow(["p-pay"]);
+    const wf = workflow();
     wf.steps = wf.steps.map((step) => step.status_key === "in_progress" ? {
       ...step, handler: { type: "agent", id: "agent-1" }, instructions: "Review the PR.",
       next_status_key: "done", back_status_key: "todo",

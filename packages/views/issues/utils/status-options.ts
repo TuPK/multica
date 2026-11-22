@@ -1,17 +1,25 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ALL_STATUSES,
   BUILT_IN_STATUS_CATEGORY,
   BUILT_IN_STATUS_ORDER,
 } from "@multica/core/issues/config";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
-import { useProjectWithWorkflow } from "@multica/core/issue-workflows";
+import {
+  defaultWorkflow,
+  issueRoomWorkflow,
+  useIssueWorkflows,
+  useRoomRoster,
+} from "@multica/core/issue-workflows";
+import type { RoomIssueRef } from "@multica/core/issue-workflows/queries";
 import {
   issueStatusColor,
   normalizeIssueStatusCategory,
 } from "@multica/core/issue-statuses/queries";
+import { projectListOptions } from "@multica/core/projects/queries";
 import type { IssueStatus, IssueStatusCategory, IssueWorkflow, Project } from "@multica/core/types";
 import { useStatusLabel } from "./status-label";
 
@@ -25,22 +33,6 @@ export interface StatusOption {
   icon?: string | null;
 }
 
-/**
- * The statuses a user can pick or filter by, as one flat list in canonical
- * category order (MUL-6243, MUL-6399).
- *
- * Category is carried per option rather than expressed as a heading. Shape
- * and color belong to the concrete status and convey no automation behavior.
- *
- * Shared by the status picker and the status filter so the two can never drift
- * — a status offered in one and missing from the other is exactly how an issue
- * becomes unfindable.
- *
- * Archived statuses are excluded by default: archiving retires a status from
- * future assignment. A read-only filter can opt specific current keys back in
- * through `includeArchivedKeys`, so existing issues remain findable without a
- * picker offering a retired value for assignment.
- */
 const NO_ARCHIVED_STATUS_KEYS: readonly IssueStatus[] = [];
 
 export function useStatusOptions(
@@ -59,9 +51,6 @@ export function useStatusOptions(
             normalizeIssueStatusCategory(entry.category) === category &&
             (!entry.archived_at || includedArchived.has(entry.key)),
         );
-        // No catalog row for this category: the fetch is still in flight, or
-        // this workspace predates the seed. Offer every built-in in the
-        // category so the seven concrete status choices remain available.
         if (entries.length === 0) {
           return BUILT_IN_STATUS_ORDER.filter(
             (key) => BUILT_IN_STATUS_CATEGORY[key] === category,
@@ -88,28 +77,21 @@ export function useStatusOptions(
 const CATEGORY_RANK = new Map<IssueStatusCategory, number>(ALL_STATUSES.map((c, i) => [c, i]));
 
 /**
- * The statuses an issue in `projectId` may take: its project workflow's steps
- * in workflow order, or the whole catalog when the project has none. Every
- * single-issue status control offers this set, so a status the workflow
- * refuses is never on offer. (MUL-7420)
+ * The statuses an issue may take: its room workflow's steps in workflow order,
+ * or Default outside any project (or when the issue has no room).
  *
  * `projectId` is three-valued:
- * - a project id: that project's workflow;
- * - `null`: an issue outside any project. It offers the workspace Default
- *   workflow's statuses and nothing else, as a project on Default does and
- *   as the server enforces. (MUL-8121, MUL-8250) Default has no handoffs
- *   here — the server applies none outside a project — so `workflow` stays
- *   null and `defaultScope` names the Default instead.
- * - `undefined`: a surface spanning projects; the whole catalog.
- *
- * On Default, `currentStatus` stays listed even when Default leaves it out
- * (the issue left a project whose workflow added it, or Default dropped it),
- * so it can still be seen and moved off.
+ * - a project id: the room workflow resolved for `issue` (or Default if no room);
+ * - `null`: an issue outside any project. Offers workspace Default's statuses
+ *   without handoffs (`workflow` stays null, `defaultScope` names Default);
+ * - `undefined`: a multi-issue / multi-project surface; the whole catalog
+ *   (narrowed by `allowedStatuses` when provided).
  */
 export function useIssueStatusOptions(
   wsId: string,
   projectId: string | null | undefined,
   currentStatus?: IssueStatus | null,
+  issue?: Partial<RoomIssueRef> | null,
 ): {
   options: StatusOption[];
   workflow: IssueWorkflow | null;
@@ -119,8 +101,28 @@ export function useIssueStatusOptions(
   const catalogOptions = useStatusOptions(wsId);
   const { categoryOf, colorOf, iconOf } = useIssueStatuses(wsId);
   const labelOf = useStatusLabel(wsId);
-  const { workflow, project, defaultWorkflow } = useProjectWithWorkflow(wsId, projectId);
-  const defaultScope = projectId === null && !workflow ? defaultWorkflow ?? null : null;
+  const { workflows } = useIssueWorkflows(wsId);
+  const roster = useRoomRoster(wsId);
+  const { data: projects } = useQuery({
+    ...projectListOptions(wsId),
+    enabled: Boolean(wsId) && Boolean(projectId),
+  });
+
+  const project = useMemo(
+    () => (projectId ? projects?.find((p) => p.id === projectId) ?? null : null),
+    [projectId, projects],
+  );
+  const workspaceDefault = useMemo(() => defaultWorkflow(workflows), [workflows]);
+  const workflow = useMemo(() => {
+    if (!projectId) return null;
+    return issueRoomWorkflow(workflows, roster, {
+      project_id: projectId,
+      assignee_type: issue?.assignee_type ?? null,
+      assignee_id: issue?.assignee_id ?? null,
+    });
+  }, [issue?.assignee_id, issue?.assignee_type, projectId, roster, workflows]);
+
+  const defaultScope = projectId === null && !workflow ? workspaceDefault : null;
   const options = useMemo<StatusOption[]>(() => {
     const listed = workflow ?? defaultScope;
     if (!listed) return catalogOptions;

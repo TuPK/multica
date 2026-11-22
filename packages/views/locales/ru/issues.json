@@ -1771,7 +1771,6 @@
     "overview_summary_with_size_many": "{{count}} результатов · {{size}} всего"
   },
   "workflows": {
-    "default_name": "По умолчанию",
     "default_summary": "Все статусы, без передачи задач",
     "hands_off_to": "Передаёт задачу: {{name}}",
     "not_in_workflow": "Не входит в рабочий процесс «{{name}}»",
@@ -1934,14 +1933,7 @@
     },
     "project": {
       "label": "Рабочий процесс",
-      "switched": "Рабочий процесс изменён",
-      "error": "Не удалось изменить рабочий процесс",
-      "picker_title": "Выберите рабочий процесс",
-      "default_badge": "По умолчанию",
-      "used_by_short": "Используется: {{names}}",
-      "used_by_nobody": "Пока нет проектов",
-      "manage": "Управление рабочими процессами…",
-      "picker_more": "Создайте другие рабочие процессы в разделе «Настройки → Рабочие процессы»."
+      "manage": "Управление рабочими процессами…"
     },
     "picker": {
       "footer": "Показаны только статусы рабочего процесса этой задачи. Справа указан исполнитель, которому задача передаётся при переходе в статус."
@@ -2011,30 +2003,12 @@
       "search_agents": "Поиск агентов",
       "search_members": "Поиск участников",
       "instructions": "Что нужно сделать на этом этапе",
-      "scope_line": "Часть рабочего процесса «{{workflow}}»",
-      "scope_line_shared": "Часть «{{workflow}}», также используется в {{projects}}",
-      "scope_more": "{{names}} и ещё {{count}}",
-      "scope_question": "Где применить это изменение?",
-      "scope_all": "Все проекты ({{count}}), использующие «{{workflow}}»",
-      "scope_all_hint": "В {{projects}} будет использоваться новая передача",
-      "scope_project": "Только {{project}}",
-      "scope_project_hint": "Создаёт копию «{{copy}}» для {{project}}; остальные проекты остаются без изменений",
-      "saved_copy": "Сохранено в «{{workflow}}», используется только в {{project}}"
+      "scope_line": "Часть рабочего процесса «{{workflow}}»"
     },
     "columns": {
       "new_status": "Новый статус…",
       "name_placeholder": "Название статуса",
       "add": "Добавить"
-    },
-    "flow": {
-      "title": "Рабочий процесс «{{workflow}}»",
-      "scope_own": "Этот рабочий процесс используется только в данном проекте.",
-      "no_handoff_here": "Без передачи",
-      "scope_shared_one": "Этот рабочий процесс используется в {{count}} проекте. Его передачи применяются ко всем проектам, использующим этот процесс.",
-      "scope_shared_other": "Этот рабочий процесс используется в {{count}} проекта. Его передачи применяются ко всем этим проектам.",
-      "scope_shared_few": "Этот рабочий процесс используется в {{count}} проектах. Его передачи применяются ко всем этим проектам.",
-      "scope_shared_many": "Этот рабочий процесс используется в {{count}} проектах. Его передачи применяются ко всем этим проектам.",
-      "switch": "Сменить рабочий процесс"
     },
     "templates": {
       "delivery": {
@@ -2454,7 +2428,6 @@
     "assign_mapping_intro": "Some issues are on statuses the SDLC workflow does not have. Choose where they move.",
     "assign_mapping_row": "{{count}} issue(s) on {{status}} move to",
     "assign_not_sdlc": "This squad needs the SDLC developer, reviewer and QA agents.",
-    "assign_workflow_set": "This project already uses another workflow. Change it in the project's settings first.",
     "assign_manage": "Manage project",
     "assign_manage_title": "{{name}}'s project",
     "assign_assigned_description": "Unassign the project to give this squad another one.",
