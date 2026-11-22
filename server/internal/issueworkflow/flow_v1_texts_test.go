@@ -300,8 +300,8 @@ func TestV1StatesDecode(t *testing.T) {
 // change since is the catalog wording of f32b6e5a1).
 func TestLift_RenderedTextUnchanged(t *testing.T) {
 	flows := loadCatalogFlows(t)
-	if len(flows) != 21 {
-		t.Skipf("%d catalog flows loaded, want 21 (build the catalog first)", len(flows))
+	if len(flows) != 25 {
+		t.Skipf("%d catalog flows loaded, want 25 (build the catalog first)", len(flows))
 	}
 	for id, f := range flows {
 		t.Run(id, func(t *testing.T) {

@@ -1,0 +1,445 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "flow_content_studio",
+  "version": "1.0.0",
+  "ui": false,
+  "requires": [
+    {
+      "kind": "squad",
+      "id": "content_studio"
+    }
+  ],
+  "flow": {
+    "squad": "content_studio",
+    "config": {
+      "version": 1,
+      "task_timeout_minutes": 120,
+      "task_hard_cap_minutes": 240,
+      "task_max_attempts": 2,
+      "switches": [
+        {
+          "key": "second_market",
+          "type": "bool",
+          "default": false
+        },
+        {
+          "key": "export",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "messages": {
+        "stop1": "BLOCKED · stop 1 · missing evidence\nMissing:\n{missing}\nReason: {reason}\nTasks run so far:\n{tasks}\nWhat you need to send: the missing items above, then let the request run again.\n{requester}",
+        "stop2": "IN REVIEW · stop 2 · before anything leaves the workspace\nThe checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.\nTasks:\n{tasks}\nWhat you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.\n{requester}",
+        "stop3": "BLOCKED · stop 3 · two rework rounds used up\nRework rounds used: {rework}/2\nTasks of the last step:\n{tasks}\nWhat you need: a decision on the draft (facts, sources or approval), then let the request run again.\n{requester}",
+        "stalled": "BLOCKED · stalled · the request cannot move on\n{request} is stuck at step {step}.\n{reason}\nTasks:\n{tasks}\n{requester}",
+        "human": "WAITING · the boss decides the publish proposal\nThe checks passed. Open the publish proposal in the decision queue: approve, ask for changes, or snooze. Nothing is published until you approve.\nTasks:\n{tasks}\n{requester}"
+      }
+    },
+    "steps": [
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "id": "plan_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "outcome",
+              "op": "eq",
+              "value": "blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "plan_ok",
+            "label": "Đã lập kế hoạch",
+            "when": null,
+            "to": "sources"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Sources",
+          "category": "started"
+        },
+        "statusKey": "sources",
+        "tasks": [
+          {
+            "key": "scout",
+            "title": "Find topics and competitor coverage",
+            "kind": "work",
+            "role": "cs_scout",
+            "instructions": "Find topics for the brief and what competitors published on them, with a link and a date for each. Attach your findings as 01-scout.md. Do not conclude that anything is verified.",
+            "requires": [
+              "attachment"
+            ]
+          },
+          {
+            "key": "research",
+            "title": "Collect the facts and their sources",
+            "kind": "work",
+            "role": "cs_researcher",
+            "instructions": "Collect every fact and source the item needs, each with where it came from (URL or document, and date). A fact without a source is marked [missing], never invented. Attach as 02-research.md.",
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "sources_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "sources_done",
+            "label": "Đã thu thập nguồn",
+            "when": null,
+            "to": "draft"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Draft",
+          "category": "started"
+        },
+        "statusKey": "draft",
+        "tasks": [
+          {
+            "key": "drafter",
+            "title": "Draft the first market version",
+            "kind": "work",
+            "role": "cs_drafter",
+            "instructions": "Write the draft for the first market of the brief from the researched facts only, in that market's language and within the channel's limits. Attach as 03-draft.md. Do not mark the draft as checked.",
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "draft_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "draft_done",
+            "label": "Đã soạn",
+            "when": null,
+            "to": "gate"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Gate",
+          "category": "started"
+        },
+        "statusKey": "gate",
+        "tasks": [
+          {
+            "key": "claim_gate",
+            "title": "Check every claim against its source",
+            "kind": "gate",
+            "role": "cs_claim_gate",
+            "instructions": "Check every figure, feature and comparison in the draft against the source it cites. Read only: you have the draft and its sources. Attach your verdict as a list of each failed claim with the reason.",
+            "requires": [
+              "outcome"
+            ]
+          },
+          {
+            "key": "market_gate",
+            "title": "Check market and channel rules",
+            "kind": "gate",
+            "role": "cs_market_gate",
+            "instructions": "Check the market's advertising and AI-label rules and the channel's limits for this draft. Read only. Attach your verdict as a list of each failed rule with the reason.",
+            "requires": [
+              "outcome"
+            ]
+          },
+          {
+            "key": "voice_gate",
+            "title": "Check the brand voice",
+            "kind": "gate",
+            "role": "cs_voice_gate",
+            "instructions": "Check the brand voice and remove any working notes that would reach the post. Read only. Attach your verdict as a list of each failed line with the reason.",
+            "requires": [
+              "outcome"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "gate_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "gate_second",
+            "label": "Mọi cổng QUA, làm bản thị trường thứ hai",
+            "when": {
+              "all": [
+                {
+                  "field": "tasks_outcome",
+                  "op": "eq",
+                  "value": "all_approved"
+                },
+                {
+                  "field": "switch.second_market",
+                  "op": "eq",
+                  "value": true
+                }
+              ]
+            },
+            "to": "localize"
+          },
+          {
+            "id": "gate_approved",
+            "label": "Mọi cổng QUA",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "handover"
+          },
+          {
+            "id": "gate_rework",
+            "label": "Sửa lại (tối đa 2 vòng)",
+            "when": {
+              "all": [
+                {
+                  "field": "tasks_outcome",
+                  "op": "eq",
+                  "value": "any_rejected"
+                },
+                {
+                  "field": "rework_count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            },
+            "to": "draft",
+            "rework": true
+          },
+          {
+            "id": "gate_exhausted",
+            "label": "Hết 2 vòng sửa (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Localize",
+          "category": "started"
+        },
+        "statusKey": "localize",
+        "tasks": [
+          {
+            "key": "localizer",
+            "title": "Write the second market version",
+            "kind": "work",
+            "role": "cs_localizer",
+            "instructions": "Write the approved draft for the second market in that market's own words, not a translation. Attach as 04-localized.md. Do not mark it as checked.",
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "localize_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "localize_done",
+            "label": "Đã làm bản thứ hai",
+            "when": null,
+            "to": "second_gate"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Second gate",
+          "category": "started"
+        },
+        "statusKey": "second_gate",
+        "tasks": [
+          {
+            "key": "claim_gate",
+            "title": "Check every claim against its source",
+            "kind": "gate",
+            "role": "cs_claim_gate",
+            "instructions": "Check every figure, feature and comparison in the draft against the source it cites. Read only: you have the draft and its sources. Attach your verdict as a list of each failed claim with the reason.",
+            "requires": [
+              "outcome"
+            ]
+          },
+          {
+            "key": "market_gate",
+            "title": "Check market and channel rules",
+            "kind": "gate",
+            "role": "cs_market_gate",
+            "instructions": "Check the market's advertising and AI-label rules and the channel's limits for this draft. Read only. Attach your verdict as a list of each failed rule with the reason.",
+            "requires": [
+              "outcome"
+            ]
+          },
+          {
+            "key": "voice_gate",
+            "title": "Check the brand voice",
+            "kind": "gate",
+            "role": "cs_voice_gate",
+            "instructions": "Check the brand voice and remove any working notes that would reach the post. Read only. Attach your verdict as a list of each failed line with the reason.",
+            "requires": [
+              "outcome"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "second_gate_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "second_gate_approved",
+            "label": "Mọi cổng QUA",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "handover"
+          },
+          {
+            "id": "second_gate_rework",
+            "label": "Sửa lại từ bản nháp (tối đa 2 vòng)",
+            "when": {
+              "all": [
+                {
+                  "field": "tasks_outcome",
+                  "op": "eq",
+                  "value": "any_rejected"
+                },
+                {
+                  "field": "rework_count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            },
+            "to": "draft",
+            "rework": true
+          },
+          {
+            "id": "second_gate_exhausted",
+            "label": "Hết 2 vòng sửa (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Handover",
+          "category": "started"
+        },
+        "statusKey": "handover",
+        "tasks": [
+          {
+            "key": "handover",
+            "title": "File the publish proposal",
+            "kind": "work",
+            "role": "cs_handover",
+            "instructions": "Package each checked version with its channels and time, and file one publish proposal per item and market version for the boss to approve. Attach the list as 05-handover.md. Do not publish anything.",
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "handover_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "handover_done",
+            "label": "Đã đề xuất đăng",
+            "when": null,
+            "to": "in_review"
+          }
+        ]
+      },
+      {
+        "status": {
+          "key": "in_review"
+        },
+        "statusKey": "in_review",
+        "humanOnly": true,
+        "tasks": [
+          {
+            "key": "export",
+            "title": "Report what was posted",
+            "kind": "work",
+            "role": "cs_publisher",
+            "instructions": "Run only after the boss approves the publish proposal. Report what was posted on each channel and what failed, with the links.",
+            "when": {
+              "field": "switch.export",
+              "op": "eq",
+              "value": true
+            }
+          }
+        ]
+      },
+      {
+        "status": {
+          "key": "blocked"
+        },
+        "statusKey": "blocked"
+      }
+    ]
+  }
+}

@@ -6,7 +6,7 @@ Flow:
 1. Triage: sort the request into an audit, a plan, an experiment or a report. Name the market, the scope and what data you have.
 2. Route: give the audit to Search (SEO, AI search, site structure), Conversion (pages, forms, copy), Paid Media (campaigns, creative), Lifecycle (email, onboarding, churn, referrals, pricing) or Measurement (tracking, experiments). Give each member a clear scope and the data it can use.
 3. Gather: each member reads its data and writes its findings with a source and a date for each claim.
-4. Check: the Checker recomputes every figure and checks every claim. A FAIL goes back to the member once; two FAILs stop the item and go to the requester with the open problem.
+4. Check: the Checker recomputes every figure and checks every claim. A FAIL goes back to the member, for up to two rework rounds; if the checker still FAILs after the second round, the item stops and goes to the requester with the open problem.
 5. Consolidate: write one comment: the top changes in priority order, each with its evidence, its expected effect, its cost, and the check that would show it failed. Put MISSING inputs and the evidence that would settle each one in a separate list.
 6. Hand over: any change that needs a decision (spend, price, tracking) becomes a proposal for the person who owns it.
 

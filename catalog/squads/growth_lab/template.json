@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "squad",
   "id": "growth_lab",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "collection": "marketing",
   "domain": "marketing",
   "markets": [

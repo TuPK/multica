@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "flow_market_research",
+  "version": "1.0.0",
+  "ui": false,
+  "requires": [
+    {
+      "kind": "squad",
+      "id": "market_research"
+    }
+  ],
+  "flow": {
+    "squad": "market_research",
+    "config": {
+      "version": 1,
+      "task_timeout_minutes": 120,
+      "task_hard_cap_minutes": 240,
+      "task_max_attempts": 2,
+      "messages": {
+        "stop1": "BLOCKED · stop 1 · missing evidence\nMissing:\n{missing}\nReason: {reason}\nTasks run so far:\n{tasks}\nWhat you need to send: the missing items above, then let the request run again.\n{requester}",
+        "stop2": "IN REVIEW · stop 2 · before anything leaves the workspace\nThe checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.\nTasks:\n{tasks}\nWhat you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.\n{requester}",
+        "stop3": "BLOCKED · stop 3 · two rework rounds used up\nRework rounds used: {rework}/2\nTasks of the last step:\n{tasks}\nWhat you need: a decision on the draft (facts, sources or approval), then let the request run again.\n{requester}",
+        "stalled": "BLOCKED · stalled · the request cannot move on\n{request} is stuck at step {step}.\n{reason}\nTasks:\n{tasks}\n{requester}",
+        "human": "WAITING · the weekly scan is ready for the boss\nThe critic passed the claims. Read the report and the proposals: each proposal names its evidence, the options, the cost and the decision it needs.\nTasks:\n{tasks}\n{requester}"
+      }
+    },
+    "steps": [
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "id": "plan_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "outcome",
+              "op": "eq",
+              "value": "blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "plan_ok",
+            "label": "Đã lập kế hoạch",
+            "when": null,
+            "to": "research"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Research",
+          "category": "started"
+        },
+        "statusKey": "research",
+        "tasks": [
+          {
+            "key": "scout",
+            "title": "Scan markets and customers (last 7 days)",
+            "kind": "work",
+            "role": "scout",
+            "instructions": "Find the changes in the named markets and customer segments in the last seven days. Every claim has a dated source link. Attach as 01-scan.md.",
+            "requires": [
+              "attachment"
+            ]
+          },
+          {
+            "key": "competitor",
+            "title": "Analyse the named competitors",
+            "kind": "work",
+            "role": "competitor",
+            "instructions": "Track each named competitor's products, pricing and moves from primary sources, each with its date. Attach as 02-competitors.md.",
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "research_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "research_done",
+            "label": "Đã có báo cáo",
+            "when": null,
+            "to": "challenge"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Challenge",
+          "category": "started"
+        },
+        "statusKey": "challenge",
+        "tasks": [
+          {
+            "key": "critic",
+            "title": "Challenge every claim before filing",
+            "kind": "gate",
+            "role": "critic",
+            "instructions": "Challenge each claim in both reports and in each draft proposal. Each blocking objection is answered with evidence or the claim is dropped. Writes no findings of its own. Attach as 03-challenge.md.",
+            "requires": [
+              "outcome"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "challenge_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "challenge_approved",
+            "label": "Mọi kiểm tra QUA",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "in_review"
+          },
+          {
+            "id": "challenge_rework",
+            "label": "Sửa lại (tối đa 2 vòng)",
+            "when": {
+              "all": [
+                {
+                  "field": "tasks_outcome",
+                  "op": "eq",
+                  "value": "any_rejected"
+                },
+                {
+                  "field": "rework_count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            },
+            "to": "research",
+            "rework": true
+          },
+          {
+            "id": "challenge_exhausted",
+            "label": "Hết lượt sửa (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "key": "in_review"
+        },
+        "statusKey": "in_review",
+        "humanOnly": true
+      },
+      {
+        "status": {
+          "key": "blocked"
+        },
+        "statusKey": "blocked"
+      }
+    ]
+  }
+}

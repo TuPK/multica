@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "flow_research_lab",
+  "version": "1.0.0",
+  "ui": false,
+  "requires": [
+    {
+      "kind": "squad",
+      "id": "research_lab"
+    }
+  ],
+  "flow": {
+    "squad": "research_lab",
+    "config": {
+      "version": 1,
+      "task_timeout_minutes": 120,
+      "task_hard_cap_minutes": 240,
+      "task_max_attempts": 2,
+      "messages": {
+        "stop1": "BLOCKED · stop 1 · missing evidence\nMissing:\n{missing}\nReason: {reason}\nTasks run so far:\n{tasks}\nWhat you need to send: the missing items above, then let the request run again.\n{requester}",
+        "stop2": "IN REVIEW · stop 2 · before anything leaves the workspace\nThe checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.\nTasks:\n{tasks}\nWhat you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.\n{requester}",
+        "stop3": "BLOCKED · stop 3 · two rework rounds used up\nRework rounds used: {rework}/2\nTasks of the last step:\n{tasks}\nWhat you need: a decision on the draft (facts, sources or approval), then let the request run again.\n{requester}",
+        "stalled": "BLOCKED · stalled · the request cannot move on\n{request} is stuck at step {step}.\n{reason}\nTasks:\n{tasks}\n{requester}",
+        "human": "WAITING · the literature digest is ready for you\nThe audit passed. Read the papers table and the digest. Every claim names its papers, and every DOI was checked. Move the request to done when you accept it.\nTasks:\n{tasks}\n{requester}"
+      }
+    },
+    "steps": [
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "id": "plan_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "outcome",
+              "op": "eq",
+              "value": "blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "plan_ok",
+            "label": "Đã lập kế hoạch",
+            "when": null,
+            "to": "search"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Search",
+          "category": "started"
+        },
+        "statusKey": "search",
+        "tasks": [
+          {
+            "key": "scout",
+            "title": "Run the bounded search rounds",
+            "kind": "work",
+            "role": "lab_scout",
+            "instructions": "Run the search rounds from the protocol with `multica research`, merge the duplicates, and attach the candidate list as 01-candidates.csv (id, title, DOI, year, source). Do not add a paper from memory.",
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "search_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "search_done",
+            "label": "Đã có danh sách ứng viên",
+            "when": null,
+            "to": "screen"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Screen",
+          "category": "started"
+        },
+        "statusKey": "screen",
+        "tasks": [
+          {
+            "key": "screener",
+            "title": "Score each candidate against the criteria",
+            "kind": "work",
+            "role": "lab_screener",
+            "instructions": "Score each candidate's title and abstract against the protocol's criteria, with a reason for each score. Use only the papers the search found. Attach as 02-scores.csv.",
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "screen_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "screen_done",
+            "label": "Đã chấm điểm",
+            "when": null,
+            "to": "synthesize"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Synthesize",
+          "category": "started"
+        },
+        "statusKey": "synthesize",
+        "tasks": [
+          {
+            "key": "synthesizer",
+            "title": "Summarise the selected papers and write the claims",
+            "kind": "work",
+            "role": "lab_synthesizer",
+            "instructions": "Summarise each selected paper from its abstract only, and write the cross-paper claims, each naming its papers. A paper with no abstract is not summarised. Attach as 03-digest.md.",
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "synth_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "synth_done",
+            "label": "Đã tổng hợp",
+            "when": null,
+            "to": "audit"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Audit",
+          "category": "started"
+        },
+        "statusKey": "audit",
+        "tasks": [
+          {
+            "key": "auditor",
+            "title": "Check DOIs, provenance and a sample of claims",
+            "kind": "gate",
+            "role": "lab_auditor",
+            "instructions": "Check every DOI and provenance field, and a sample of the claims against their abstracts. Read only; report each failed item by its id. Attach as 04-audit.md.",
+            "requires": [
+              "outcome"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "audit_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "audit_approved",
+            "label": "Mọi kiểm tra QUA",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "in_review"
+          },
+          {
+            "id": "audit_rework",
+            "label": "Sửa lại (tối đa 2 vòng)",
+            "when": {
+              "all": [
+                {
+                  "field": "tasks_outcome",
+                  "op": "eq",
+                  "value": "any_rejected"
+                },
+                {
+                  "field": "rework_count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            },
+            "to": "synthesize",
+            "rework": true
+          },
+          {
+            "id": "audit_exhausted",
+            "label": "Hết 2 vòng sửa (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "key": "in_review"
+        },
+        "statusKey": "in_review",
+        "humanOnly": true
+      },
+      {
+        "status": {
+          "key": "blocked"
+        },
+        "statusKey": "blocked"
+      }
+    ]
+  }
+}

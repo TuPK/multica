@@ -1,0 +1,563 @@
+=== round 0 / gather / search / TaskDescription ===
+Audit SEO and AI-search visibility, site structure, content plans and link opportunities from the data you were given. Every finding has a source and a date. Missing data is marked MISSING, never estimated. Attach as 01-search.md.
+
+This issue is the task `search` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gather / search / FlowTaskBrief ===
+This issue is the task "search" (Audit search visibility and content) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-2 --attachment <file> --content "..."
+Done                → multica issue status KV-2 done
+Can't go on         → comment what is missing, then multica issue status KV-2 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gather / conversion / TaskDescription ===
+Audit pages, forms, sign-up flows and popups, and write the copy changes that would convert better, each with its evidence. Attach as 02-conversion.md.
+
+This issue is the task `conversion` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gather / conversion / FlowTaskBrief ===
+This issue is the task "conversion" (Audit conversion and write copy changes) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-3 --attachment <file> --content "..."
+Done                → multica issue status KV-3 done
+Can't go on         → comment what is missing, then multica issue status KV-3 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gather / paid / TaskDescription ===
+Review the paid campaigns and creative: what to keep, cut or test, with the reason taken from the numbers. Attach as 03-paid.md.
+
+This issue is the task `paid` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gather / paid / FlowTaskBrief ===
+This issue is the task "paid" (Review paid campaigns and creative) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-4 --attachment <file> --content "..."
+Done                → multica issue status KV-4 done
+Can't go on         → comment what is missing, then multica issue status KV-4 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gather / lifecycle / TaskDescription ===
+Review the email and onboarding sequences, churn and referral programmes, and pricing as a lifecycle lever, each with its evidence. Attach as 04-lifecycle.md.
+
+This issue is the task `lifecycle` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gather / lifecycle / FlowTaskBrief ===
+This issue is the task "lifecycle" (Review lifecycle, churn and pricing) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-5 --attachment <file> --content "..."
+Done                → multica issue status KV-5 done
+Can't go on         → comment what is missing, then multica issue status KV-5 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gather / measure / TaskDescription ===
+Design the measurement and the experiments: hypothesis, metric, sample size and stop rule for each. The runtime has no analytics connection; say so when a conclusion needs one. Attach as 05-measure.md.
+
+This issue is the task `measure` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gather / measure / FlowTaskBrief ===
+This issue is the task "measure" (Design the measurement and experiments) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-6 --attachment <file> --content "..."
+Done                → multica issue status KV-6 done
+Can't go on         → comment what is missing, then multica issue status KV-6 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / check / checker / TaskDescription ===
+Recompute every figure and check every claim against its source. A FAIL names the claim and what is wrong. Writes no recommendations of its own. Attach your verdict as 06-check.md.
+
+This issue is the task `checker` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-2 · search: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-3 · conversion: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-4 · paid: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-5 · lifecycle: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-6 · measure: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / check / checker / FlowTaskBrief ===
+This issue is the task "checker" (Check every recommendation and figure) of the request KV-1, run by the workflow flow_growth_lab at the step Check. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-2 · search
+- KV-3 · conversion
+- KV-4 · paid
+- KV-5 · lifecycle
+- KV-6 · measure
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-7 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-7 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-7 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gather / search / TaskDescription ===
+Audit SEO and AI-search visibility, site structure, content plans and link opportunities from the data you were given. Every finding has a source and a date. Missing data is marked MISSING, never estimated. Attach as 01-search.md.
+
+This issue is the task `search` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-7 · checker
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gather / search / FlowTaskBrief ===
+This issue is the task "search" (Audit search visibility and content) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-7 · checker
+
+Your moves:
+Attach your output  → multica issue comment add KV-8 --attachment <file> --content "..."
+Done                → multica issue status KV-8 done
+Can't go on         → comment what is missing, then multica issue status KV-8 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gather / conversion / TaskDescription ===
+Audit pages, forms, sign-up flows and popups, and write the copy changes that would convert better, each with its evidence. Attach as 02-conversion.md.
+
+This issue is the task `conversion` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-7 · checker
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gather / conversion / FlowTaskBrief ===
+This issue is the task "conversion" (Audit conversion and write copy changes) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-7 · checker
+
+Your moves:
+Attach your output  → multica issue comment add KV-9 --attachment <file> --content "..."
+Done                → multica issue status KV-9 done
+Can't go on         → comment what is missing, then multica issue status KV-9 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gather / paid / TaskDescription ===
+Review the paid campaigns and creative: what to keep, cut or test, with the reason taken from the numbers. Attach as 03-paid.md.
+
+This issue is the task `paid` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-7 · checker
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gather / paid / FlowTaskBrief ===
+This issue is the task "paid" (Review paid campaigns and creative) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-7 · checker
+
+Your moves:
+Attach your output  → multica issue comment add KV-10 --attachment <file> --content "..."
+Done                → multica issue status KV-10 done
+Can't go on         → comment what is missing, then multica issue status KV-10 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gather / lifecycle / TaskDescription ===
+Review the email and onboarding sequences, churn and referral programmes, and pricing as a lifecycle lever, each with its evidence. Attach as 04-lifecycle.md.
+
+This issue is the task `lifecycle` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-7 · checker
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gather / lifecycle / FlowTaskBrief ===
+This issue is the task "lifecycle" (Review lifecycle, churn and pricing) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-7 · checker
+
+Your moves:
+Attach your output  → multica issue comment add KV-11 --attachment <file> --content "..."
+Done                → multica issue status KV-11 done
+Can't go on         → comment what is missing, then multica issue status KV-11 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gather / measure / TaskDescription ===
+Design the measurement and the experiments: hypothesis, metric, sample size and stop rule for each. The runtime has no analytics connection; say so when a conclusion needs one. Attach as 05-measure.md.
+
+This issue is the task `measure` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-7 · checker
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gather / measure / FlowTaskBrief ===
+This issue is the task "measure" (Design the measurement and experiments) of the request KV-1, run by the workflow flow_growth_lab at the step Gather. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-7 · checker
+
+Your moves:
+Attach your output  → multica issue comment add KV-12 --attachment <file> --content "..."
+Done                → multica issue status KV-12 done
+Can't go on         → comment what is missing, then multica issue status KV-12 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / check / checker / TaskDescription ===
+Recompute every figure and check every claim against its source. A FAIL names the claim and what is wrong. Writes no recommendations of its own. Attach your verdict as 06-check.md.
+
+This issue is the task `checker` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-8 · search: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-9 · conversion: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-10 · paid: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-11 · lifecycle: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-12 · measure: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-7 · checker
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / check / checker / FlowTaskBrief ===
+This issue is the task "checker" (Check every recommendation and figure) of the request KV-1, run by the workflow flow_growth_lab at the step Check. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-8 · search
+- KV-9 · conversion
+- KV-10 · paid
+- KV-11 · lifecycle
+- KV-12 · measure
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-7 · checker
+
+Your moves:
+Pass                → multica issue status KV-13 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-13 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-13 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== lead / plan step / FlowLeadBrief ===
+KV-1 is run by the workflow flow_growth_lab and is at the step todo. A server moves it: you do not split the work and you do not hand it out.
+
+Plan it:
+1. Read the request and its attachments: `multica issue get KV-1`.
+2. Run `multica issue flow show KV-1` to see the state.
+3. Choose the switches and run `multica issue flow plan KV-1`, for example `--switch customs_lookup=true`.
+   The switches of this workflow:
+   - focus: one of all, search, conversion, paid, lifecycle, measurement (now all)
+4. If the request lacks what the work needs, report it instead: `multica issue flow plan KV-1 --blocked --missing "<what>" --reason "<why>"`.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / after the plan / FlowLeadBrief ===
+KV-1 is run by the workflow flow_growth_lab and is at the step Gather. A server moves it: you do not split the work and you do not hand it out.
+
+When you are woken, run `multica issue flow advance KV-1`. It opens the tasks of the step, or moves the request on when they are all closed, and tells you what it waits for. It is safe to run again.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stop 1 / FlowLeadBrief ===
+KV-1 is run by the workflow flow_growth_lab and is at the step Gather. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stop 3 / FlowLeadBrief ===
+KV-1 is run by the workflow flow_growth_lab and is at the step Gather. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stalled / FlowLeadBrief ===
+KV-1 is run by the workflow flow_growth_lab and is at the step Gather. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== round 0 / message stop1 ===
+BLOCKED · stop 1 · missing evidence
+Missing:
+- the signed contract
+Reason: The task did not report in time.
+Tasks run so far:
+- KV-2 · search · done · -
+- KV-3 · conversion · done · -
+- KV-4 · paid · done · -
+- KV-5 · lifecycle · done · -
+- KV-6 · measure · done · -
+What you need to send: the missing items above, then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stop2 ===
+IN REVIEW · stop 2 · before anything leaves the workspace
+The checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.
+Tasks:
+- KV-2 · search · done · -
+- KV-3 · conversion · done · -
+- KV-4 · paid · done · -
+- KV-5 · lifecycle · done · -
+- KV-6 · measure · done · -
+What you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stop3 ===
+BLOCKED · stop 3 · two rework rounds used up
+Rework rounds used: 0/2
+Tasks of the last step:
+- KV-2 · search · done · -
+- KV-3 · conversion · done · -
+- KV-4 · paid · done · -
+- KV-5 · lifecycle · done · -
+- KV-6 · measure · done · -
+What you need: a decision on the draft (facts, sources or approval), then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stalled ===
+BLOCKED · stalled · the request cannot move on
+KV-1 is stuck at step Gather.
+The task did not report in time.
+Tasks:
+- KV-2 · search · done · -
+- KV-3 · conversion · done · -
+- KV-4 · paid · done · -
+- KV-5 · lifecycle · done · -
+- KV-6 · measure · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message human ===
+WAITING · the consolidated recommendations are ready
+The checker passed the figures and claims. Read the consolidated comment: the changes in priority order, their evidence, and the MISSING list. Any change that needs spend, a price or tracking is a proposal for its owner.
+Tasks:
+- KV-2 · search · done · -
+- KV-3 · conversion · done · -
+- KV-4 · paid · done · -
+- KV-5 · lifecycle · done · -
+- KV-6 · measure · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop1 ===
+BLOCKED · stop 1 · missing evidence
+Missing:
+- the signed contract
+Reason: The task did not report in time.
+Tasks run so far:
+- KV-8 · search · done · -
+- KV-9 · conversion · done · -
+- KV-10 · paid · done · -
+- KV-11 · lifecycle · done · -
+- KV-12 · measure · done · -
+What you need to send: the missing items above, then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop2 ===
+IN REVIEW · stop 2 · before anything leaves the workspace
+The checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.
+Tasks:
+- KV-8 · search · done · -
+- KV-9 · conversion · done · -
+- KV-10 · paid · done · -
+- KV-11 · lifecycle · done · -
+- KV-12 · measure · done · -
+What you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop3 ===
+BLOCKED · stop 3 · two rework rounds used up
+Rework rounds used: 1/2
+Tasks of the last step:
+- KV-8 · search · done · -
+- KV-9 · conversion · done · -
+- KV-10 · paid · done · -
+- KV-11 · lifecycle · done · -
+- KV-12 · measure · done · -
+What you need: a decision on the draft (facts, sources or approval), then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stalled ===
+BLOCKED · stalled · the request cannot move on
+KV-1 is stuck at step Gather.
+The task did not report in time.
+Tasks:
+- KV-8 · search · done · -
+- KV-9 · conversion · done · -
+- KV-10 · paid · done · -
+- KV-11 · lifecycle · done · -
+- KV-12 · measure · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message human ===
+WAITING · the consolidated recommendations are ready
+The checker passed the figures and claims. Read the consolidated comment: the changes in priority order, their evidence, and the MISSING list. Any change that needs spend, a price or tracking is a proposal for its owner.
+Tasks:
+- KV-8 · search · done · -
+- KV-9 · conversion · done · -
+- KV-10 · paid · done · -
+- KV-11 · lifecycle · done · -
+- KV-12 · measure · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)

@@ -22,11 +22,12 @@ describe("the flows of the Kit Viet squads", () => {
       expect(flows, squad.id).toHaveLength(1);
       expect(flowForSquad(squad.id)?.id, squad.id).toBe(`flow_${squad.id}`);
     }
-    expect(Object.keys(CATALOG_FLOWS)).toHaveLength(KITVIET.length);
+    // Every flow is the flow of a catalog squad; the squads outside Kit Viet have one too.
+    for (const flow of Object.values(CATALOG_FLOWS)) expect(CATALOG_SQUADS.some((s) => s.id === flow.squad), flow.id).toBe(true);
   });
 
   it("names the revision in the template_ref", () => {
-    for (const flow of Object.values(CATALOG_FLOWS)) expect(flowTemplateRef(flow)).toMatch(/^flow_kv_[a-z0-9]+@[0-9a-f]{8}$/);
+    for (const flow of Object.values(CATALOG_FLOWS)) expect(flowTemplateRef(flow)).toMatch(/^flow_[a-z0-9_]+@[0-9a-f]{8}$/);
   });
 
   it("gives the route switch exactly the routes of the squad's table (spec 12.2)", () => {

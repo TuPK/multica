@@ -1,0 +1,1172 @@
+=== round 0 / sources / scout / TaskDescription ===
+Find topics for the brief and what competitors published on them, with a link and a date for each. Attach your findings as 01-scout.md. Do not conclude that anything is verified.
+
+This issue is the task `scout` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / sources / scout / FlowTaskBrief ===
+This issue is the task "scout" (Find topics and competitor coverage) of the request KV-1, run by the workflow flow_content_studio at the step Sources. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-2 --attachment <file> --content "..."
+Done                → multica issue status KV-2 done
+Can't go on         → comment what is missing, then multica issue status KV-2 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / sources / research / TaskDescription ===
+Collect every fact and source the item needs, each with where it came from (URL or document, and date). A fact without a source is marked [missing], never invented. Attach as 02-research.md.
+
+This issue is the task `research` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / sources / research / FlowTaskBrief ===
+This issue is the task "research" (Collect the facts and their sources) of the request KV-1, run by the workflow flow_content_studio at the step Sources. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-3 --attachment <file> --content "..."
+Done                → multica issue status KV-3 done
+Can't go on         → comment what is missing, then multica issue status KV-3 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / draft / drafter / TaskDescription ===
+Write the draft for the first market of the brief from the researched facts only, in that market's language and within the channel's limits. Attach as 03-draft.md. Do not mark the draft as checked.
+
+This issue is the task `drafter` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-2 · scout: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-3 · research: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / draft / drafter / FlowTaskBrief ===
+This issue is the task "drafter" (Draft the first market version) of the request KV-1, run by the workflow flow_content_studio at the step Draft. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-2 · scout
+- KV-3 · research
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Attach your output  → multica issue comment add KV-4 --attachment <file> --content "..."
+Done                → multica issue status KV-4 done
+Can't go on         → comment what is missing, then multica issue status KV-4 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gate / claim_gate / TaskDescription ===
+Check every figure, feature and comparison in the draft against the source it cites. Read only: you have the draft and its sources. Attach your verdict as a list of each failed claim with the reason.
+
+This issue is the task `claim_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-4 · drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gate / claim_gate / FlowTaskBrief ===
+This issue is the task "claim_gate" (Check every claim against its source) of the request KV-1, run by the workflow flow_content_studio at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-4 · drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-5 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-5 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-5 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gate / market_gate / TaskDescription ===
+Check the market's advertising and AI-label rules and the channel's limits for this draft. Read only. Attach your verdict as a list of each failed rule with the reason.
+
+This issue is the task `market_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-4 · drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gate / market_gate / FlowTaskBrief ===
+This issue is the task "market_gate" (Check market and channel rules) of the request KV-1, run by the workflow flow_content_studio at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-4 · drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-6 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-6 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-6 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gate / voice_gate / TaskDescription ===
+Check the brand voice and remove any working notes that would reach the post. Read only. Attach your verdict as a list of each failed line with the reason.
+
+This issue is the task `voice_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-4 · drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gate / voice_gate / FlowTaskBrief ===
+This issue is the task "voice_gate" (Check the brand voice) of the request KV-1, run by the workflow flow_content_studio at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-4 · drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-7 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-7 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-7 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / localize / localizer / TaskDescription ===
+Write the approved draft for the second market in that market's own words, not a translation. Attach as 04-localized.md. Do not mark it as checked.
+
+This issue is the task `localizer` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-5 · claim_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-6 · market_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-7 · voice_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / localize / localizer / FlowTaskBrief ===
+This issue is the task "localizer" (Write the second market version) of the request KV-1, run by the workflow flow_content_studio at the step Localize. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Attach your output  → multica issue comment add KV-8 --attachment <file> --content "..."
+Done                → multica issue status KV-8 done
+Can't go on         → comment what is missing, then multica issue status KV-8 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / second_gate / claim_gate / TaskDescription ===
+Check every figure, feature and comparison in the draft against the source it cites. Read only: you have the draft and its sources. Attach your verdict as a list of each failed claim with the reason.
+
+This issue is the task `claim_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-8 · localizer: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / second_gate / claim_gate / FlowTaskBrief ===
+This issue is the task "claim_gate" (Check every claim against its source) of the request KV-1, run by the workflow flow_content_studio at the step Second gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-8 · localizer
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-9 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-9 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-9 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / second_gate / market_gate / TaskDescription ===
+Check the market's advertising and AI-label rules and the channel's limits for this draft. Read only. Attach your verdict as a list of each failed rule with the reason.
+
+This issue is the task `market_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-8 · localizer: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / second_gate / market_gate / FlowTaskBrief ===
+This issue is the task "market_gate" (Check market and channel rules) of the request KV-1, run by the workflow flow_content_studio at the step Second gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-8 · localizer
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-10 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-10 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-10 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / second_gate / voice_gate / TaskDescription ===
+Check the brand voice and remove any working notes that would reach the post. Read only. Attach your verdict as a list of each failed line with the reason.
+
+This issue is the task `voice_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-8 · localizer: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / second_gate / voice_gate / FlowTaskBrief ===
+This issue is the task "voice_gate" (Check the brand voice) of the request KV-1, run by the workflow flow_content_studio at the step Second gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-8 · localizer
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-11 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-11 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-11 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / handover / handover / TaskDescription ===
+Package each checked version with its channels and time, and file one publish proposal per item and market version for the boss to approve. Attach the list as 05-handover.md. Do not publish anything.
+
+This issue is the task `handover` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-9 · claim_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-10 · market_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-11 · voice_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / handover / handover / FlowTaskBrief ===
+This issue is the task "handover" (File the publish proposal) of the request KV-1, run by the workflow flow_content_studio at the step Handover. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Attach your output  → multica issue comment add KV-12 --attachment <file> --content "..."
+Done                → multica issue status KV-12 done
+Can't go on         → comment what is missing, then multica issue status KV-12 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / in_review / export / TaskDescription ===
+Run only after the boss approves the publish proposal. Report what was posted on each channel and what failed, with the links.
+
+This issue is the task `export` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-12 · handover: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / in_review / export / FlowTaskBrief ===
+This issue is the task "export" (Report what was posted) of the request KV-1, run by the workflow flow_content_studio at the step in_review. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-12 · handover
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Done                → multica issue status KV-13 done
+Can't go on         → comment what is missing, then multica issue status KV-13 blocked --outcome blocked
+
+The server refuses:
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / sources / scout / TaskDescription ===
+Find topics for the brief and what competitors published on them, with a link and a date for each. Attach your findings as 01-scout.md. Do not conclude that anything is verified.
+
+This issue is the task `scout` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / sources / scout / FlowTaskBrief ===
+This issue is the task "scout" (Find topics and competitor coverage) of the request KV-1, run by the workflow flow_content_studio at the step Sources. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Attach your output  → multica issue comment add KV-14 --attachment <file> --content "..."
+Done                → multica issue status KV-14 done
+Can't go on         → comment what is missing, then multica issue status KV-14 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / sources / research / TaskDescription ===
+Collect every fact and source the item needs, each with where it came from (URL or document, and date). A fact without a source is marked [missing], never invented. Attach as 02-research.md.
+
+This issue is the task `research` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / sources / research / FlowTaskBrief ===
+This issue is the task "research" (Collect the facts and their sources) of the request KV-1, run by the workflow flow_content_studio at the step Sources. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Attach your output  → multica issue comment add KV-15 --attachment <file> --content "..."
+Done                → multica issue status KV-15 done
+Can't go on         → comment what is missing, then multica issue status KV-15 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / draft / drafter / TaskDescription ===
+Write the draft for the first market of the brief from the researched facts only, in that market's language and within the channel's limits. Attach as 03-draft.md. Do not mark the draft as checked.
+
+This issue is the task `drafter` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-14 · scout: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-15 · research: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / draft / drafter / FlowTaskBrief ===
+This issue is the task "drafter" (Draft the first market version) of the request KV-1, run by the workflow flow_content_studio at the step Draft. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-14 · scout
+- KV-15 · research
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Attach your output  → multica issue comment add KV-16 --attachment <file> --content "..."
+Done                → multica issue status KV-16 done
+Can't go on         → comment what is missing, then multica issue status KV-16 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gate / claim_gate / TaskDescription ===
+Check every figure, feature and comparison in the draft against the source it cites. Read only: you have the draft and its sources. Attach your verdict as a list of each failed claim with the reason.
+
+This issue is the task `claim_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-16 · drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gate / claim_gate / FlowTaskBrief ===
+This issue is the task "claim_gate" (Check every claim against its source) of the request KV-1, run by the workflow flow_content_studio at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-16 · drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Pass                → multica issue status KV-17 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-17 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-17 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gate / market_gate / TaskDescription ===
+Check the market's advertising and AI-label rules and the channel's limits for this draft. Read only. Attach your verdict as a list of each failed rule with the reason.
+
+This issue is the task `market_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-16 · drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gate / market_gate / FlowTaskBrief ===
+This issue is the task "market_gate" (Check market and channel rules) of the request KV-1, run by the workflow flow_content_studio at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-16 · drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Pass                → multica issue status KV-18 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-18 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-18 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gate / voice_gate / TaskDescription ===
+Check the brand voice and remove any working notes that would reach the post. Read only. Attach your verdict as a list of each failed line with the reason.
+
+This issue is the task `voice_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-16 · drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gate / voice_gate / FlowTaskBrief ===
+This issue is the task "voice_gate" (Check the brand voice) of the request KV-1, run by the workflow flow_content_studio at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-16 · drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Pass                → multica issue status KV-19 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-19 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-19 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / localize / localizer / TaskDescription ===
+Write the approved draft for the second market in that market's own words, not a translation. Attach as 04-localized.md. Do not mark it as checked.
+
+This issue is the task `localizer` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-17 · claim_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-18 · market_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-19 · voice_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / localize / localizer / FlowTaskBrief ===
+This issue is the task "localizer" (Write the second market version) of the request KV-1, run by the workflow flow_content_studio at the step Localize. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-17 · claim_gate
+- KV-18 · market_gate
+- KV-19 · voice_gate
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Attach your output  → multica issue comment add KV-20 --attachment <file> --content "..."
+Done                → multica issue status KV-20 done
+Can't go on         → comment what is missing, then multica issue status KV-20 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / second_gate / claim_gate / TaskDescription ===
+Check every figure, feature and comparison in the draft against the source it cites. Read only: you have the draft and its sources. Attach your verdict as a list of each failed claim with the reason.
+
+This issue is the task `claim_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-20 · localizer: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / second_gate / claim_gate / FlowTaskBrief ===
+This issue is the task "claim_gate" (Check every claim against its source) of the request KV-1, run by the workflow flow_content_studio at the step Second gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-20 · localizer
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Pass                → multica issue status KV-21 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-21 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-21 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / second_gate / market_gate / TaskDescription ===
+Check the market's advertising and AI-label rules and the channel's limits for this draft. Read only. Attach your verdict as a list of each failed rule with the reason.
+
+This issue is the task `market_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-20 · localizer: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / second_gate / market_gate / FlowTaskBrief ===
+This issue is the task "market_gate" (Check market and channel rules) of the request KV-1, run by the workflow flow_content_studio at the step Second gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-20 · localizer
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Pass                → multica issue status KV-22 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-22 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-22 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / second_gate / voice_gate / TaskDescription ===
+Check the brand voice and remove any working notes that would reach the post. Read only. Attach your verdict as a list of each failed line with the reason.
+
+This issue is the task `voice_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-20 · localizer: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / second_gate / voice_gate / FlowTaskBrief ===
+This issue is the task "voice_gate" (Check the brand voice) of the request KV-1, run by the workflow flow_content_studio at the step Second gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-20 · localizer
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Pass                → multica issue status KV-23 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-23 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-23 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / handover / handover / TaskDescription ===
+Package each checked version with its channels and time, and file one publish proposal per item and market version for the boss to approve. Attach the list as 05-handover.md. Do not publish anything.
+
+This issue is the task `handover` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-21 · claim_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-22 · market_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-23 · voice_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / handover / handover / FlowTaskBrief ===
+This issue is the task "handover" (File the publish proposal) of the request KV-1, run by the workflow flow_content_studio at the step Handover. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-21 · claim_gate
+- KV-22 · market_gate
+- KV-23 · voice_gate
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Attach your output  → multica issue comment add KV-24 --attachment <file> --content "..."
+Done                → multica issue status KV-24 done
+Can't go on         → comment what is missing, then multica issue status KV-24 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / in_review / export / TaskDescription ===
+Run only after the boss approves the publish proposal. Report what was posted on each channel and what failed, with the links.
+
+This issue is the task `export` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-24 · handover: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / in_review / export / FlowTaskBrief ===
+This issue is the task "export" (Report what was posted) of the request KV-1, run by the workflow flow_content_studio at the step in_review. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-24 · handover
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-5 · claim_gate
+- KV-6 · market_gate
+- KV-7 · voice_gate
+- KV-9 · claim_gate
+- KV-10 · market_gate
+- KV-11 · voice_gate
+
+Your moves:
+Done                → multica issue status KV-25 done
+Can't go on         → comment what is missing, then multica issue status KV-25 blocked --outcome blocked
+
+The server refuses:
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== lead / plan step / FlowLeadBrief ===
+KV-1 is run by the workflow flow_content_studio and is at the step todo. A server moves it: you do not split the work and you do not hand it out.
+
+Plan it:
+1. Read the request and its attachments: `multica issue get KV-1`.
+2. Run `multica issue flow show KV-1` to see the state.
+3. Choose the switches and run `multica issue flow plan KV-1`, for example `--switch customs_lookup=true`.
+   The switches of this workflow:
+   - second_market: true or false (now false)
+   - export: true or false (now false)
+4. If the request lacks what the work needs, report it instead: `multica issue flow plan KV-1 --blocked --missing "<what>" --reason "<why>"`.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / after the plan / FlowLeadBrief ===
+KV-1 is run by the workflow flow_content_studio and is at the step Sources. A server moves it: you do not split the work and you do not hand it out.
+
+When you are woken, run `multica issue flow advance KV-1`. It opens the tasks of the step, or moves the request on when they are all closed, and tells you what it waits for. It is safe to run again.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stop 1 / FlowLeadBrief ===
+KV-1 is run by the workflow flow_content_studio and is at the step Sources. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stop 3 / FlowLeadBrief ===
+KV-1 is run by the workflow flow_content_studio and is at the step Sources. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stalled / FlowLeadBrief ===
+KV-1 is run by the workflow flow_content_studio and is at the step Sources. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== round 0 / message stop1 ===
+BLOCKED · stop 1 · missing evidence
+Missing:
+- the signed contract
+Reason: The task did not report in time.
+Tasks run so far:
+- KV-2 · scout · done · -
+- KV-3 · research · done · -
+What you need to send: the missing items above, then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stop2 ===
+IN REVIEW · stop 2 · before anything leaves the workspace
+The checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.
+Tasks:
+- KV-2 · scout · done · -
+- KV-3 · research · done · -
+What you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stop3 ===
+BLOCKED · stop 3 · two rework rounds used up
+Rework rounds used: 0/2
+Tasks of the last step:
+- KV-2 · scout · done · -
+- KV-3 · research · done · -
+What you need: a decision on the draft (facts, sources or approval), then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stalled ===
+BLOCKED · stalled · the request cannot move on
+KV-1 is stuck at step Sources.
+The task did not report in time.
+Tasks:
+- KV-2 · scout · done · -
+- KV-3 · research · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message human ===
+WAITING · the boss decides the publish proposal
+The checks passed. Open the publish proposal in the decision queue: approve, ask for changes, or snooze. Nothing is published until you approve.
+Tasks:
+- KV-2 · scout · done · -
+- KV-3 · research · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop1 ===
+BLOCKED · stop 1 · missing evidence
+Missing:
+- the signed contract
+Reason: The task did not report in time.
+Tasks run so far:
+- KV-14 · scout · done · -
+- KV-15 · research · done · -
+What you need to send: the missing items above, then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop2 ===
+IN REVIEW · stop 2 · before anything leaves the workspace
+The checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.
+Tasks:
+- KV-14 · scout · done · -
+- KV-15 · research · done · -
+What you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop3 ===
+BLOCKED · stop 3 · two rework rounds used up
+Rework rounds used: 1/2
+Tasks of the last step:
+- KV-14 · scout · done · -
+- KV-15 · research · done · -
+What you need: a decision on the draft (facts, sources or approval), then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stalled ===
+BLOCKED · stalled · the request cannot move on
+KV-1 is stuck at step Sources.
+The task did not report in time.
+Tasks:
+- KV-14 · scout · done · -
+- KV-15 · research · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message human ===
+WAITING · the boss decides the publish proposal
+The checks passed. Open the publish proposal in the decision queue: approve, ask for changes, or snooze. Nothing is published until you approve.
+Tasks:
+- KV-14 · scout · done · -
+- KV-15 · research · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)

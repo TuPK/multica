@@ -1,0 +1,330 @@
+=== round 0 / research / scout / TaskDescription ===
+Find the changes in the named markets and customer segments in the last seven days. Every claim has a dated source link. Attach as 01-scan.md.
+
+This issue is the task `scout` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / research / scout / FlowTaskBrief ===
+This issue is the task "scout" (Scan markets and customers (last 7 days)) of the request KV-1, run by the workflow flow_market_research at the step Research. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-2 --attachment <file> --content "..."
+Done                → multica issue status KV-2 done
+Can't go on         → comment what is missing, then multica issue status KV-2 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / research / competitor / TaskDescription ===
+Track each named competitor's products, pricing and moves from primary sources, each with its date. Attach as 02-competitors.md.
+
+This issue is the task `competitor` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / research / competitor / FlowTaskBrief ===
+This issue is the task "competitor" (Analyse the named competitors) of the request KV-1, run by the workflow flow_market_research at the step Research. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-3 --attachment <file> --content "..."
+Done                → multica issue status KV-3 done
+Can't go on         → comment what is missing, then multica issue status KV-3 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / challenge / critic / TaskDescription ===
+Challenge each claim in both reports and in each draft proposal. Each blocking objection is answered with evidence or the claim is dropped. Writes no findings of its own. Attach as 03-challenge.md.
+
+This issue is the task `critic` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-2 · scout: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-3 · competitor: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / challenge / critic / FlowTaskBrief ===
+This issue is the task "critic" (Challenge every claim before filing) of the request KV-1, run by the workflow flow_market_research at the step Challenge. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-2 · scout
+- KV-3 · competitor
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-4 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-4 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-4 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / research / scout / TaskDescription ===
+Find the changes in the named markets and customer segments in the last seven days. Every claim has a dated source link. Attach as 01-scan.md.
+
+This issue is the task `scout` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-4 · critic
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / research / scout / FlowTaskBrief ===
+This issue is the task "scout" (Scan markets and customers (last 7 days)) of the request KV-1, run by the workflow flow_market_research at the step Research. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-4 · critic
+
+Your moves:
+Attach your output  → multica issue comment add KV-5 --attachment <file> --content "..."
+Done                → multica issue status KV-5 done
+Can't go on         → comment what is missing, then multica issue status KV-5 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / research / competitor / TaskDescription ===
+Track each named competitor's products, pricing and moves from primary sources, each with its date. Attach as 02-competitors.md.
+
+This issue is the task `competitor` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-4 · critic
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / research / competitor / FlowTaskBrief ===
+This issue is the task "competitor" (Analyse the named competitors) of the request KV-1, run by the workflow flow_market_research at the step Research. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-4 · critic
+
+Your moves:
+Attach your output  → multica issue comment add KV-6 --attachment <file> --content "..."
+Done                → multica issue status KV-6 done
+Can't go on         → comment what is missing, then multica issue status KV-6 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / challenge / critic / TaskDescription ===
+Challenge each claim in both reports and in each draft proposal. Each blocking objection is answered with evidence or the claim is dropped. Writes no findings of its own. Attach as 03-challenge.md.
+
+This issue is the task `critic` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-5 · scout: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-6 · competitor: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-4 · critic
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / challenge / critic / FlowTaskBrief ===
+This issue is the task "critic" (Challenge every claim before filing) of the request KV-1, run by the workflow flow_market_research at the step Challenge. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-5 · scout
+- KV-6 · competitor
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-4 · critic
+
+Your moves:
+Pass                → multica issue status KV-7 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-7 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-7 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== lead / plan step / FlowLeadBrief ===
+KV-1 is run by the workflow flow_market_research and is at the step todo. A server moves it: you do not split the work and you do not hand it out.
+
+Plan it:
+1. Read the request and its attachments: `multica issue get KV-1`.
+2. Run `multica issue flow show KV-1` to see the state.
+3. Choose the switches and run `multica issue flow plan KV-1`, for example `--switch customs_lookup=true`.
+4. If the request lacks what the work needs, report it instead: `multica issue flow plan KV-1 --blocked --missing "<what>" --reason "<why>"`.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / after the plan / FlowLeadBrief ===
+KV-1 is run by the workflow flow_market_research and is at the step Research. A server moves it: you do not split the work and you do not hand it out.
+
+When you are woken, run `multica issue flow advance KV-1`. It opens the tasks of the step, or moves the request on when they are all closed, and tells you what it waits for. It is safe to run again.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stop 1 / FlowLeadBrief ===
+KV-1 is run by the workflow flow_market_research and is at the step Research. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stop 3 / FlowLeadBrief ===
+KV-1 is run by the workflow flow_market_research and is at the step Research. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stalled / FlowLeadBrief ===
+KV-1 is run by the workflow flow_market_research and is at the step Research. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== round 0 / message stop1 ===
+BLOCKED · stop 1 · missing evidence
+Missing:
+- the signed contract
+Reason: The task did not report in time.
+Tasks run so far:
+- KV-2 · scout · done · -
+- KV-3 · competitor · done · -
+What you need to send: the missing items above, then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stop2 ===
+IN REVIEW · stop 2 · before anything leaves the workspace
+The checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.
+Tasks:
+- KV-2 · scout · done · -
+- KV-3 · competitor · done · -
+What you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stop3 ===
+BLOCKED · stop 3 · two rework rounds used up
+Rework rounds used: 0/2
+Tasks of the last step:
+- KV-2 · scout · done · -
+- KV-3 · competitor · done · -
+What you need: a decision on the draft (facts, sources or approval), then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stalled ===
+BLOCKED · stalled · the request cannot move on
+KV-1 is stuck at step Research.
+The task did not report in time.
+Tasks:
+- KV-2 · scout · done · -
+- KV-3 · competitor · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message human ===
+WAITING · the weekly scan is ready for the boss
+The critic passed the claims. Read the report and the proposals: each proposal names its evidence, the options, the cost and the decision it needs.
+Tasks:
+- KV-2 · scout · done · -
+- KV-3 · competitor · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop1 ===
+BLOCKED · stop 1 · missing evidence
+Missing:
+- the signed contract
+Reason: The task did not report in time.
+Tasks run so far:
+- KV-5 · scout · done · -
+- KV-6 · competitor · done · -
+What you need to send: the missing items above, then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop2 ===
+IN REVIEW · stop 2 · before anything leaves the workspace
+The checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.
+Tasks:
+- KV-5 · scout · done · -
+- KV-6 · competitor · done · -
+What you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop3 ===
+BLOCKED · stop 3 · two rework rounds used up
+Rework rounds used: 1/2
+Tasks of the last step:
+- KV-5 · scout · done · -
+- KV-6 · competitor · done · -
+What you need: a decision on the draft (facts, sources or approval), then let the request run again.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stalled ===
+BLOCKED · stalled · the request cannot move on
+KV-1 is stuck at step Research.
+The task did not report in time.
+Tasks:
+- KV-5 · scout · done · -
+- KV-6 · competitor · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message human ===
+WAITING · the weekly scan is ready for the boss
+The critic passed the claims. Read the report and the proposals: each proposal names its evidence, the options, the cost and the decision it needs.
+Tasks:
+- KV-5 · scout · done · -
+- KV-6 · competitor · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)

@@ -1316,13 +1316,14 @@ describe("runSquadQuickstart for the research lab", () => {
     expect(out.skills).toEqual({ status: "ready" });
   });
 
-  it("opens no routine and no workflow, and writes no knowledge document", async () => {
-    const client = fakeClient();
+  it("opens no routine, puts its flow on the squad, and writes no knowledge document", async () => {
+    const client = fakeClient({ setSquadActiveWorkflow: vi.fn(async () => ({})) as never });
 
     const out = await runSquadQuickstart(client, lab, options);
 
     expect(out.routines).toEqual([]);
-    expect(out.workflow.status).toBe("skipped");
+    expect(out.workflow.status).toBe("created");
+    expect(client.createIssueWorkflow.mock.calls[0]![0]).toMatchObject({ template_ref: expect.stringMatching(/^flow_research_lab@/) });
     expect(client.createSquadRoutine).not.toHaveBeenCalled();
     expect(client.createKnowledgeDocument).not.toHaveBeenCalled();
   });

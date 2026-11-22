@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "flow_growth_lab",
+  "version": "1.0.0",
+  "ui": false,
+  "requires": [
+    {
+      "kind": "squad",
+      "id": "growth_lab"
+    }
+  ],
+  "flow": {
+    "squad": "growth_lab",
+    "config": {
+      "version": 1,
+      "task_timeout_minutes": 120,
+      "task_hard_cap_minutes": 240,
+      "task_max_attempts": 2,
+      "switches": [
+        {
+          "key": "focus",
+          "type": "enum",
+          "values": [
+            "all",
+            "search",
+            "conversion",
+            "paid",
+            "lifecycle",
+            "measurement"
+          ],
+          "default": "all"
+        }
+      ],
+      "messages": {
+        "stop1": "BLOCKED · stop 1 · missing evidence\nMissing:\n{missing}\nReason: {reason}\nTasks run so far:\n{tasks}\nWhat you need to send: the missing items above, then let the request run again.\n{requester}",
+        "stop2": "IN REVIEW · stop 2 · before anything leaves the workspace\nThe checks and handovers have PASSED. Nothing has been sent, published, posted or paid for.\nTasks:\n{tasks}\nWhat you must do: read the result and the points to decide in the handover comment, then act outside the workspace yourself. When done, move the request to done.\n{requester}",
+        "stop3": "BLOCKED · stop 3 · two rework rounds used up\nRework rounds used: {rework}/2\nTasks of the last step:\n{tasks}\nWhat you need: a decision on the draft (facts, sources or approval), then let the request run again.\n{requester}",
+        "stalled": "BLOCKED · stalled · the request cannot move on\n{request} is stuck at step {step}.\n{reason}\nTasks:\n{tasks}\n{requester}",
+        "human": "WAITING · the consolidated recommendations are ready\nThe checker passed the figures and claims. Read the consolidated comment: the changes in priority order, their evidence, and the MISSING list. Any change that needs spend, a price or tracking is a proposal for its owner.\nTasks:\n{tasks}\n{requester}"
+      }
+    },
+    "steps": [
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "id": "plan_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "outcome",
+              "op": "eq",
+              "value": "blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "plan_ok",
+            "label": "Đã lập kế hoạch",
+            "when": null,
+            "to": "gather"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Gather",
+          "category": "started"
+        },
+        "statusKey": "gather",
+        "tasks": [
+          {
+            "key": "search",
+            "title": "Audit search visibility and content",
+            "kind": "work",
+            "role": "gl_search",
+            "instructions": "Audit SEO and AI-search visibility, site structure, content plans and link opportunities from the data you were given. Every finding has a source and a date. Missing data is marked MISSING, never estimated. Attach as 01-search.md.",
+            "requires": [
+              "attachment"
+            ],
+            "when": {
+              "field": "switch.focus",
+              "op": "in",
+              "value": [
+                "all",
+                "search"
+              ]
+            }
+          },
+          {
+            "key": "conversion",
+            "title": "Audit conversion and write copy changes",
+            "kind": "work",
+            "role": "gl_conversion",
+            "instructions": "Audit pages, forms, sign-up flows and popups, and write the copy changes that would convert better, each with its evidence. Attach as 02-conversion.md.",
+            "requires": [
+              "attachment"
+            ],
+            "when": {
+              "field": "switch.focus",
+              "op": "in",
+              "value": [
+                "all",
+                "conversion"
+              ]
+            }
+          },
+          {
+            "key": "paid",
+            "title": "Review paid campaigns and creative",
+            "kind": "work",
+            "role": "gl_paid",
+            "instructions": "Review the paid campaigns and creative: what to keep, cut or test, with the reason taken from the numbers. Attach as 03-paid.md.",
+            "requires": [
+              "attachment"
+            ],
+            "when": {
+              "field": "switch.focus",
+              "op": "in",
+              "value": [
+                "all",
+                "paid"
+              ]
+            }
+          },
+          {
+            "key": "lifecycle",
+            "title": "Review lifecycle, churn and pricing",
+            "kind": "work",
+            "role": "gl_lifecycle",
+            "instructions": "Review the email and onboarding sequences, churn and referral programmes, and pricing as a lifecycle lever, each with its evidence. Attach as 04-lifecycle.md.",
+            "requires": [
+              "attachment"
+            ],
+            "when": {
+              "field": "switch.focus",
+              "op": "in",
+              "value": [
+                "all",
+                "lifecycle"
+              ]
+            }
+          },
+          {
+            "key": "measure",
+            "title": "Design the measurement and experiments",
+            "kind": "work",
+            "role": "gl_measure",
+            "instructions": "Design the measurement and the experiments: hypothesis, metric, sample size and stop rule for each. The runtime has no analytics connection; say so when a conclusion needs one. Attach as 05-measure.md.",
+            "requires": [
+              "attachment"
+            ],
+            "when": {
+              "field": "switch.focus",
+              "op": "in",
+              "value": [
+                "all",
+                "measurement"
+              ]
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "id": "gather_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "gather_done",
+            "label": "Đã thu thập kết quả",
+            "when": null,
+            "to": "check"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Check",
+          "category": "started"
+        },
+        "statusKey": "check",
+        "tasks": [
+          {
+            "key": "checker",
+            "title": "Check every recommendation and figure",
+            "kind": "gate",
+            "role": "gl_checker",
+            "instructions": "Recompute every figure and check every claim against its source. A FAIL names the claim and what is wrong. Writes no recommendations of its own. Attach your verdict as 06-check.md.",
+            "requires": [
+              "outcome"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "check_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "check_approved",
+            "label": "Mọi kiểm tra QUA",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "in_review"
+          },
+          {
+            "id": "check_rework",
+            "label": "Sửa lại (tối đa 2 vòng)",
+            "when": {
+              "all": [
+                {
+                  "field": "tasks_outcome",
+                  "op": "eq",
+                  "value": "any_rejected"
+                },
+                {
+                  "field": "rework_count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            },
+            "to": "gather",
+            "rework": true
+          },
+          {
+            "id": "check_exhausted",
+            "label": "Hết lượt sửa (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "key": "in_review"
+        },
+        "statusKey": "in_review",
+        "humanOnly": true
+      },
+      {
+        "status": {
+          "key": "blocked"
+        },
+        "statusKey": "blocked"
+      }
+    ]
+  }
+}

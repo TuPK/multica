@@ -1167,7 +1167,8 @@ func minus(a, b []string) []string {
 }
 
 // The gate of plan step P9: the role rules the catalog tool applies hold for all
-// 21 Kit Viet flows on the rosters of their squads, with no manifest changed.
+// 25 catalog flows (the 21 Kit Viet flows and the four flows of Content Studio, Growth
+// Lab, Research Lab and Market Research) on the rosters of their squads, with no manifest changed.
 func TestValidateSchema1ForSquad_AllCatalogFlowsPass(t *testing.T) {
 	flows := loadCatalogFlows(t)
 	if len(flows) == 0 {
@@ -1199,8 +1200,8 @@ func TestValidateSchema1ForSquad_AllCatalogFlowsPass(t *testing.T) {
 			}
 		})
 	}
-	if checked != 21 {
-		t.Errorf("%d flows checked, want 21", checked)
+	if checked != 25 {
+		t.Errorf("%d flows checked, want 25", checked)
 	}
 	t.Logf("%d flows, warnings by code: %v", checked, warnings)
 
