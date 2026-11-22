@@ -358,13 +358,13 @@ var briefStatusCategoryOrder = issuestatus.Categories()
 // CHECK-constrained server-side; sanitizeBriefCodeToken is defense-in-depth,
 // and an entry whose key fails it is dropped rather than rendered mangled.
 func writeIssueStatusCommand(b *strings.Builder, ctx TaskContextForEnv) {
-	// An issue on a project workflow gets its statuses and commands from the
-	// per-turn [Project workflow] block; listing any keys here would only
+	// An issue on a workflow gets its statuses and commands from the
+	// per-turn [Workflow] block; listing any keys here would only
 	// compete with it — built-ins the workflow may reject included. The line
 	// stays as the command's reference for other issues, and is fixed text so
 	// the cache prefix splits only on whether a workflow is present (MUL-8145).
 	if ctx.HasProjectWorkflow {
-		b.WriteString("- `multica issue status <id> <status>` — flip status. This issue's statuses and commands are in `[Project workflow]`; for other issues, an invalid status errors with the full valid list.\n")
+		b.WriteString("- `multica issue status <id> <status>` — flip status. This issue's statuses and commands are in `[Workflow]`; for other issues, an invalid status errors with the full valid list.\n")
 		return
 	}
 	if len(ctx.IssueStatuses) == 0 {
@@ -702,7 +702,7 @@ func writeWorkflowIssue(b *strings.Builder, ctx TaskContextForEnv) {
 		b.WriteString("4. **Post your final results as a comment — this step is mandatory**: post it with `multica issue comment add` using the platform-correct non-inline mode from ## Comment Formatting (never inline `--content`). When the per-turn user message carries a triggering comment, reply in its thread with the `--parent` value it gives you for THIS turn (never one from an earlier turn); when it lists several threads, post one reply per thread. With no triggering comment, post a new top-level comment. `## Output` states why this call is the only delivery channel.\n")
 	}
 	if ctx.HasProjectWorkflow {
-		b.WriteString("5. Before exiting, confirm the issue sits where things actually stand: you ran the matching command from `[Project workflow]`, or you left it at its current step on purpose because its work continues.\n\n")
+		b.WriteString("5. Before exiting, confirm the issue sits where things actually stand: you ran the matching command from `[Workflow]`, or you left it at its current step on purpose because its work continues.\n\n")
 		writeIssueStatusRulesForWorkflow(b, ctx)
 		return
 	}
@@ -724,16 +724,16 @@ func writeWorkflowIssue(b *strings.Builder, ctx TaskContextForEnv) {
 }
 
 // writeIssueStatusRulesForWorkflow replaces the built-in status rules for an
-// issue whose project workflow came with the claim (MUL-8145). The workflow
+// issue whose workflow came with the claim (MUL-8145). The workflow
 // may list neither `in_progress` nor `in_review` — the server rejects a status
 // outside it — and entering a step that hands off reassigns the issue, so a
 // built-in "set in_progress first" can hand the issue away. The per-turn
-// [Project workflow] block carries the step's own commands; this section only
+// [Workflow] block carries the step's own commands; this section only
 // says that block is the contract. It is fixed text, so the cache prefix splits
 // into just two forms: with and without a workflow.
 func writeIssueStatusRulesForWorkflow(b *strings.Builder, ctx TaskContextForEnv) {
-	b.WriteString("**Issue status — this issue follows its project workflow** (skip any status call your Agent Identity forbids)\n\n")
-	b.WriteString("`[Project workflow]` in the per-turn message is this issue's status contract: its statuses, the step it is at, and the commands that finish that step. Move this issue only with its commands.\n\n")
+	b.WriteString("**Issue status — this issue follows its workflow** (skip any status call your Agent Identity forbids)\n\n")
+	b.WriteString("`[Workflow]` in the per-turn message is this issue's status contract: its statuses, the step it is at, and the commands that finish that step. Move this issue only with its commands.\n\n")
 	b.WriteString("- You finished the work of your step → run its Step done command. Entering a step that hands off reassigns the issue and starts that handler's run.\n")
 	b.WriteString("- What you received needs rework at an earlier step → run its Needs changes command, when it has one.\n")
 	b.WriteString("- The issue's work continues beyond this turn — you dispatched sub-issues, or delivered one part with more underway → leave it at its current step.\n")

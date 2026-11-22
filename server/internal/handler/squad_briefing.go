@@ -137,7 +137,7 @@ type leaderWorkflow int
 const (
 	leaderNoWorkflow leaderWorkflow = iota
 	// leaderWorkflowCurrentDaemon: the runtime brief points at
-	// [Project workflow] and states no built-in moves.
+	// [Workflow] and states no built-in moves.
 	leaderWorkflowCurrentDaemon
 	// leaderWorkflowLegacyDaemon: the runtime brief still says to set
 	// in_progress first and in_review on delivery, so responsibility 6 has
@@ -150,24 +150,24 @@ const (
 
 const squadParentStatusStepMoved = `6. **Leave the parent issue's status unchanged for this run.** This issue
    is assigned to your squad, but this run's workflow binding no longer matches
-   the issue's current step. Follow the explanation in ` + "`" + `[Project workflow]` + "`" + `.
+   the issue's current step. Follow the explanation in ` + "`" + `[Workflow]` + "`" + `.
    Keep the current status even when you confirm the overall goal is met; do
    not change it to mark progress or delivery. This overrides the status rules
    in your runtime instructions. Leave a comment if something needs attention;
    a member can review the current state and explicitly rerun the work.`
 
 // squadParentStatusOwnedInWorkflow is responsibility 6 for an owning leader
-// whose issue follows a project workflow that came with the claim (MUL-8145).
+// whose issue follows a workflow that came with the claim (MUL-8145).
 // The workflow may list neither in_progress nor in_review — the server rejects
 // a status outside it — and entering a step with a handler reassigns the
 // issue, so squadParentStatusOwned's "move to in_progress, then in_review"
 // would be refused or hand the parent away mid-dispatch. The ownership
 // boundary and the standing wrap-up authorization stay; the moves become the
-// [Project workflow] commands the runtime brief points at.
-const squadParentStatusOwnedInWorkflow = `6. **Own the parent issue status — through its project workflow.** This issue
-   is assigned to your squad and follows its project workflow, so its status
+// [Workflow] commands the runtime brief points at.
+const squadParentStatusOwnedInWorkflow = `6. **Own the parent issue status — through its workflow.** This issue
+   is assigned to your squad and follows its workflow, so its status
    is yours to move (unless Agent Identity forbids status changes), using only
-   the commands in ` + "`" + `[Project workflow]` + "`" + `. Delegate only the current
+   the commands in ` + "`" + `[Workflow]` + "`" + `. Delegate only the current
    step's work and pass its instructions and constraints to members in your
    delegation comment; their observer brief does not include step instructions.
    The parent stays at its
@@ -421,7 +421,7 @@ func squadInitiativesBriefing(initiatives []squadInitiative) string {
 
 // squadOperatingProtocolFor assembles the protocol, selecting the parent-status
 // responsibility that matches this leader's actual authority over the issue
-// and, for an owner, whether the issue's project workflow governs its moves.
+// and, for an owner, whether the issue's workflow governs its moves.
 func squadOperatingProtocolFor(ownsIssueStatus bool, workflow leaderWorkflow) string {
 	status := squadParentStatusNotOwned
 	switch {
@@ -456,7 +456,7 @@ func squadOperatingProtocolFor(ownsIssueStatus bool, workflow leaderWorkflow) st
 // including ones where the squad is a guest on someone else's issue, so this
 // flag is what keeps status authority from leaking along with the roster.
 //
-// workflow says whether the claim carries a [Project workflow] block for the
+// workflow says whether the claim carries a [Workflow] block for the
 // issue; an owning leader then moves the parent with that block's commands
 // instead of in_progress / in_review (MUL-8145).
 //

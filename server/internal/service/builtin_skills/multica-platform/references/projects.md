@@ -191,7 +191,7 @@ An issue follows the workflow of its room: the squad it is assigned to, or the
 home squad of the agent it is assigned to. A workflow is an ordered list of
 status columns, where a column may hand the issue off to a handler — a fixed
 agent, squad or member, the squad lead, or the issue's creator. When the
-issue's room uses one, the per-turn prompt carries a `[Project workflow]` block.
+issue's room uses one, the per-turn prompt carries a `[Workflow]` block.
 Its statuses and commands are the whole status contract for this issue: the
 built-in moves in the issues reference (`in_progress` on start, `in_review` on
 delivery) do not apply. An issue with no room follows the workspace Default

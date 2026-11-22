@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// The built-in status rules a project workflow replaces (MUL-8145): each one
+// The built-in status rules a workflow replaces (MUL-8145): each one
 // names a status the workflow may not list, or moves the issue into a step
 // that hands it to someone else.
 var builtInStatusRules = []string{
@@ -35,11 +35,11 @@ func TestBriefWithProjectWorkflowDropsBuiltInStatusRules(t *testing.T) {
 		}
 		for _, want := range []string{
 			"3. Complete the task within your Agent Identity boundaries",
-			"5. Before exiting, confirm the issue sits where things actually stand: you ran the matching command from `[Project workflow]`",
-			"**Issue status — this issue follows its project workflow**",
+			"5. Before exiting, confirm the issue sits where things actually stand: you ran the matching command from `[Workflow]`",
+			"**Issue status — this issue follows its workflow**",
 			"Move this issue only with its commands.",
 			"run its Step done command",
-			"— flip status. This issue's statuses and commands are in `[Project workflow]`; for other issues, an invalid status errors with the full valid list.",
+			"— flip status. This issue's statuses and commands are in `[Workflow]`; for other issues, an invalid status errors with the full valid list.",
 			// The duplicate-mark bullet still rides on the status command.
 			"--duplicate-of",
 			// The no-write default for question-only turns survives the swap.
@@ -49,7 +49,7 @@ func TestBriefWithProjectWorkflowDropsBuiltInStatusRules(t *testing.T) {
 				t.Errorf("%s: workflow brief missing %q\n---\n%s", name, want, out)
 			}
 		}
-		// No status key list competes with [Project workflow]: neither the
+		// No status key list competes with [Workflow]: neither the
 		// built-in line nor the custom catalog.
 		for _, list := range []string{"(todo / in_progress / in_review", "Available statuses by lifecycle category", "`later`", "`code_review`"} {
 			if strings.Contains(out, list) {
@@ -91,7 +91,7 @@ func TestBriefWithoutProjectWorkflowKeepsBuiltInStatusRules(t *testing.T) {
 			t.Errorf("brief without a workflow lost built-in rule %q", want)
 		}
 	}
-	for _, leak := range []string{"[Project workflow]", "follows its project workflow"} {
+	for _, leak := range []string{"[Workflow]", "follows its workflow"} {
 		if strings.Contains(out, leak) {
 			t.Errorf("brief without a workflow must not mention %q", leak)
 		}

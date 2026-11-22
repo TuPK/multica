@@ -59,7 +59,7 @@ func TestClient_IdentityHeaders_PostJSON(t *testing.T) {
 			// waited for its run; they start runs of their own instead.
 			protocol.DaemonCapabilityJoinedWakeupsV1,
 			// Without it the server keeps adding the lines that override the
-			// built-in in_progress / in_review rules to [Project workflow],
+			// built-in in_progress / in_review rules to [Workflow],
 			// rules this daemon's brief no longer states (MUL-8145).
 			protocol.DaemonCapabilityWorkflowStatusRulesV1,
 		} {

@@ -188,7 +188,7 @@ func TestWorkflowSquadHandoffPreservesPendingStages(t *testing.T) {
 				if resp.Task == nil || resp.Task.ID != nextID || !resp.Task.IsLeaderTask || resp.Task.ProjectWorkflow == nil || resp.Task.Agent == nil {
 					t.Fatalf("new stage was not delivered: %+v", resp.Task)
 				}
-				if !strings.Contains(resp.Task.ProjectWorkflow.Brief, "Handle only in_review") || strings.Contains(resp.Task.ProjectWorkflow.Brief, "This run remains bound") || !strings.Contains(resp.Task.Agent.Instructions, "Own the parent issue status — through its project workflow") {
+				if !strings.Contains(resp.Task.ProjectWorkflow.Brief, "Handle only in_review") || strings.Contains(resp.Task.ProjectWorkflow.Brief, "This run remains bound") || !strings.Contains(resp.Task.Agent.Instructions, "Own the parent issue status — through its workflow") {
 					t.Fatalf("new stage received stale or guest instructions: %+v", resp.Task)
 				}
 			})

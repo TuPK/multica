@@ -66,7 +66,7 @@ type IssueStatusData struct {
 	Description string `json:"description,omitempty"`
 }
 
-// ProjectWorkflowData mirrors the claim payload's project workflow (MUL-7420).
+// ProjectWorkflowData mirrors the claim payload's workflow (MUL-7420).
 // Brief is rendered by the server for this run — the assignee's or an
 // observer's — and goes into the per-turn prompt as is.
 type ProjectWorkflowData struct {

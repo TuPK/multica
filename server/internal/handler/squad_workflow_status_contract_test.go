@@ -13,7 +13,7 @@ import (
 // squad_parent_status_contract_test.go: the leader's status contract is split
 // between the squad protocol (Agent Identity, which outranks the workflow) and
 // the runtime brief. When the issue follows a project workflow, both halves
-// must move the parent only through [Project workflow] — neither may name the
+// must move the parent only through [Workflow] — neither may name the
 // built-in in_progress / in_review moves, which the workflow may not list and
 // which can hand the parent to another step's handler mid-dispatch.
 //
@@ -66,7 +66,7 @@ func TestOwningLeaderInWorkflowMovesOnlyByWorkflowCommands(t *testing.T) {
 		}
 		for _, want := range []string{
 			// The ownership grant and its standing wrap-up authorization survive.
-			"Own the parent issue status — through its project workflow.",
+			"Own the parent issue status — through its workflow.",
 			"Delegate only the current step's work",
 			"pass its instructions and constraints to members",
 			"confirm the current step's goal is met",
@@ -87,7 +87,7 @@ func TestOwningLeaderInWorkflowMovesOnlyByWorkflowCommands(t *testing.T) {
 // outside a handoff workflow see no change.
 func TestOwningLeaderWithoutWorkflowKeepsBuiltInMoves(t *testing.T) {
 	protocol := squadOperatingProtocolFor(true, leaderNoWorkflow)
-	if strings.Contains(protocol, "through its project workflow") {
+	if strings.Contains(protocol, "through its workflow") {
 		t.Fatalf("owner protocol without a workflow must be the built-in form:\n%s", protocol)
 	}
 	compact := strings.Join(strings.Fields(protocol), " ")
