@@ -3,6 +3,7 @@
     ".github/actions/frontend-quality/**",
     "apps/web/**",
     "apps/desktop/**",
+    "apps/collab/**",
     "packages/**",
     "catalog/**",
     "scripts/catalog/**",
@@ -20,6 +21,10 @@
   ],
   "docs": [
     "apps/docs/**",
+    "server/internal/daemon/agents_probe.go",
+    "server/internal/daemon/config.go",
+    "server/pkg/agent/builtin_runtimes.go",
+    "server/internal/featureflags/keys.go",
     "package.json",
     ".npmrc",
     "pnpm-lock.yaml",
@@ -32,6 +37,8 @@
   ],
   "backend": [
     "server/**",
+    "docs/engineering/r4-currency-inventory.md",
+    "platform-management/contract/testdata/**",
     "catalog/**",
     "scripts/catalog/**",
     "packages/core/runtimes/cli-version.ts",

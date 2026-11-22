@@ -25,11 +25,11 @@
       },
       "trusted": {
         "name": "信任",
-        "body": "与“工作”相同，但知识草稿可在审核后发布。常设批准可批准其提案。"
+        "body": "与\"工作\"相同，但知识草稿可在审核后发布。常设批准可批准其提案。"
       },
       "autonomous": {
         "name": "自主",
-        "body": "与“信任”相同，且常设批准可在首个阶段基于其自身机会创建项目（须在上限和预算内）。"
+        "body": "与\"信任\"相同，且常设批准可在首个阶段基于其自身机会创建项目（须在上限和预算内）。"
       }
     },
     "boss_only_note": "发布上线和组织变更在任何级别下都始终由老板决定。资金在任何级别下都受预算约束。",
@@ -244,7 +244,7 @@
     },
     "change": {
       "instruction_change": "指令变更",
-      "skill_change": "技能变更",
+      "skill_change": "skill变更",
       "charter_change": "章程变更",
       "autonomy_change": "自主级别变更",
       "hire": "招聘",
@@ -261,7 +261,7 @@
     "no_recommendations": "没有建议"
   },
   "goals": {
-    "loading": "正在加载目标…",
+    "loading": "正在加载目标...",
     "load_failed": "无法加载目标。",
     "tree": {
       "company": "公司",

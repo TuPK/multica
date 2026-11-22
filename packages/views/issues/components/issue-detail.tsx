@@ -19,22 +19,18 @@ import { AppLink, useBackOrReplace } from "../../navigation";
 import { IssueDuplicateBanner, IssueDuplicatesSection, isDuplicateIssue } from "./issue-duplicates";
 import {
   AlertTriangle,
-  Archive,
   Calendar,
   CalendarClock,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleCheck,
   FileQuestion,
   Loader2,
   Lock,
   Milestone,
   MoreHorizontal,
   PanelRight,
-  Pin,
-  PinOff,
   Plus,
   SlidersHorizontal,
   Tag,
@@ -50,7 +46,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@multica/u
 import { Sheet, SheetContent } from "@multica/ui/components/ui/sheet";
 import { useIsMobile } from "@multica/ui/hooks/use-mobile";
 import { StorageLimitNotice } from "../../billing/storage-limit-notice";
-import { ContentEditor, ReadonlyContent, type ContentEditorRef, TitleEditor, type TitleEditorRef, useFileDropZone, FileDropOverlay, useLazyEditor, useEditorUpload, PreviewSequenceProvider, collectPreviewSequence } from "../../editor";
+import { ContentEditor, ReadonlyContent, type ContentEditorRef, TitleEditor, type TitleEditorRef, useFileDropZone, FileDropOverlay, useLazyEditor, useEditorUpload, PreviewSequenceProvider, collectPreviewSequence, ImageThumbnailsProvider } from "../../editor";
 import {
   WAKEUP_ACTIVITY_ACTIONS,
   WakeupActivityIcon,
@@ -81,13 +77,15 @@ import { MemberProfileCard } from "../../members/member-profile-card";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@multica/ui/components/ui/hover-card";
 import { ActionShortcutKeycaps } from "../../common/shortcut-keycaps";
 import { UnsubscribeArchiveButton } from "../../inbox/components/unsubscribe-archive-button";
+import { InboxArchiveButton, InboxOpenBar } from "../../inbox/components/inbox-bar";
+import { InboxIssueActions } from "./inbox-issue-actions";
 import type { InboxUnsubscribeScope } from "@multica/core/inbox/mutations";
 import { PropRow } from "../../common/prop-row";
 import { useIsGuest } from "@multica/core/permissions";
 import { RunQueueControl, RunQueueWaitingLabel } from "./run-queue-control";
 import { TimelineHandoff } from "../../workflow/timeline-handoff";
 import { PropertyIcon } from "../../common/property-icon";
-import type { Attachment, Issue, IssueProperty, IssueStatus, IssueStatusCategory, IssuePriority, RoomWorkflowCheck, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
+import type { Attachment, InboxItem, Issue, IssueProperty, IssueStatus, IssueStatusCategory, IssuePriority, RoomWorkflowCheck, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
 import { assigneeSquadId } from "@multica/core/company";
 import { useRoomWorkflowPolicy } from "@multica/core/issue-workflows/hooks";
 import { roomWorkflowCheckOptions } from "@multica/core/issue-workflows/queries";
@@ -115,7 +113,7 @@ import { AssigneePicker } from "./pickers/assignee-picker";
 import { LabelPicker } from "./pickers/label-picker";
 import { CustomPropertyValueEditor, CustomPropertyValueDisplay } from "./pickers/custom-property-picker";
 import { Switch } from "@multica/ui/components/ui/switch";
-import { IssueActionsDropdown, useIssuePageMenu, useIssueActions, useArchivedInboxItemId, IssueActionsContextMenu, IssueContextMenuProvider, IssueInboxActions } from "../actions";
+import { IssueActionsDropdown, useIssuePageMenu, useIssueActions, useArchivedInboxItemId, IssueActionsContextMenu, IssueContextMenuProvider, IssueInboxBar } from "../actions";
 import { LabelChip } from "../../labels/label-chip";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { SubIssuesAgentWorkingChip } from "./sub-issues-agent-working-chip";
@@ -164,8 +162,9 @@ import {
 } from "./deliverables/deliverable-link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useIssueReadState } from "@multica/core/issues/read-state";
+import { useIssueRouteRef } from "@multica/core/issues/canonical-id";
 import { useAuthStore } from "@multica/core/auth";
-import { useWorkspacePaths } from "@multica/core/paths";
+import { useWorkspacePaths, issueRouteRef } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
 import {
@@ -476,10 +475,18 @@ function formatActivity(
       return t(($) => $.activity.duplicate_removed, {
         identifier: details.duplicate_identifier || "?",
       });
-    case "task_completed":
-      return t(($) => $.activity.task_completed, { count: entry.coalesced_count ?? 1 });
-    case "task_failed":
-      return t(($) => $.activity.task_failed, { count: entry.coalesced_count ?? 1 });
+    case "task_completed": {
+      const count = entry.coalesced_count ?? 1;
+      return count === 1
+        ? t(($) => $.activity.task_completed_single)
+        : t(($) => $.activity.task_completed, { count });
+    }
+    case "task_failed": {
+      const count = entry.coalesced_count ?? 1;
+      return count === 1
+        ? t(($) => $.activity.task_failed_single)
+        : t(($) => $.activity.task_failed, { count });
+    }
     case "squad_leader_evaluated": {
       const reason = details.reason?.trim();
       switch (details.outcome) {
@@ -555,13 +562,15 @@ function duplicateActivityLink(entry: TimelineEntry): { id: string; identifier: 
 function ActivityText({ entry, text }: { entry: TimelineEntry; text: string }) {
   const paths = useWorkspacePaths();
   const link = duplicateActivityLink(entry);
+  // The identifier in the activity is a snapshot; the cache knows the current one.
+  const linkRef = useIssueRouteRef(useWorkspaceId(), link?.id ?? "");
   const at = link ? text.indexOf(link.identifier) : -1;
   if (!link || at < 0) return <>{text}</>;
   return (
     <>
       {text.slice(0, at)}
       <AppLink
-        href={paths.issueDetail(link.id)}
+        href={paths.issueDetail(linkRef)}
         newTabTitle={link.identifier}
         className="font-medium text-foreground underline-offset-4 hover:underline"
       >
@@ -1066,7 +1075,7 @@ function SubIssueRow({
           }
         />
         <AppLink
-          href={paths.issueDetail(child.id)}
+          href={paths.issueDetail(issueRouteRef(child))}
           className="flex min-w-0 flex-1 items-center gap-2.5"
         >
           <span className="text-caption text-muted-foreground tabular-nums shrink-0">
@@ -1266,13 +1275,18 @@ function SubIssueDisplayPopover({
 interface IssueDetailProps {
   issueId: string;
   onDelete?: () => void;
-  /** Called after the issue is marked as done via the toolbar button. */
-  onDone?: () => void;
   /**
-   * The Inbox's "unsubscribe & archive", shown next to Done on issues that
-   * are not the viewer's own. Only read alongside `onDone`.
+   * The Inbox page's Archive in its bar: archives the open notification. The
+   * Inbox page owns the bar then; without it, the Work panel's Inbox does.
+   */
+  onArchive?: () => void;
+  /**
+   * The Inbox's "unsubscribe & archive", shown next to Archive on issues that
+   * are not the viewer's own. Only read alongside `onArchive`.
    */
   onUnsubscribeArchive?: (scope: InboxUnsubscribeScope) => void;
+  /** The Inbox page's open notification, whose bar says why it is here. Only read alongside `onArchive`. */
+  inboxItem?: InboxItem;
   defaultSidebarOpen?: boolean;
   layoutId?: string;
   /** When set, the issue detail will auto-scroll to this comment and briefly highlight it. */
@@ -1311,8 +1325,12 @@ interface IssueDetailProps {
   variant?: "page" | "peek";
   /** Peek only: host controls at the end of the header (open full page, close). */
   trailingActions?: ReactNode;
-  /** A bar the host shows under the header, above the scrolling body. */
-  notice?: ReactNode;
+  /**
+   * A bar the host shows under the header in place of the Inbox bar, above the
+   * scrolling body, given the issue's own actions to keep in it. Returning
+   * nothing shows the Inbox bar.
+   */
+  notice?: (issueActions: ReactNode) => ReactNode;
   /**
    * Read the viewer's inbox notifications on this issue while it is on screen
    * (MUL-8588). The inbox turns this off for the issue it has open: it reads
@@ -1532,7 +1550,7 @@ export function IssueDetailSkeleton({
 
 // IssueDetail
 
-export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, defaultSidebarOpen = true, layoutId = ISSUE_DETAIL_LAYOUT_ID, highlightCommentId: linkedCommentId, highlightRequestToken: linkedRequestToken, highlightRequestPending = false, onHighlightLanded, highlightAppRequestId, leadingAction, variant = "page", trailingActions, notice, readsInbox = true, skipInitialRefetch = false, openDeliverable, onDeliverableLinkDone }: IssueDetailProps) {
+export function IssueDetail({ issueId, onDelete, onArchive, onUnsubscribeArchive, inboxItem, defaultSidebarOpen = true, layoutId = ISSUE_DETAIL_LAYOUT_ID, highlightCommentId: linkedCommentId, highlightRequestToken: linkedRequestToken, highlightRequestPending = false, onHighlightLanded, highlightAppRequestId, leadingAction, variant = "page", trailingActions, notice, readsInbox = true, skipInitialRefetch = false, openDeliverable, onDeliverableLinkDone }: IssueDetailProps) {
   const isPeek = variant === "peek";
   const { t } = useT("issues");
   const { t: tCommon } = useT("common");
@@ -1768,7 +1786,8 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
   // User preference: pin the bottom comment bar to the scroll viewport. Off
   // below `md` regardless of the preference — see the hook.
   const stickyComposer = useStickyComposer();
-  // Read by the image rules in editor/styles/attachment.css.
+  // Read by the image rules in editor/styles/attachment.css; under
+  // "thumbnails" the timeline's images also load the server's thumbnails.
   const commentImageLayout = useCommentComposerStore((s) => s.imageLayout);
 
   // Per-session: which resolved threads the user has temporarily expanded.
@@ -1971,24 +1990,49 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
     previousCommentRuns.current = next.runs;
     return next;
   }, [commentTasks, timeline]);
+  // Scope entering run IDs per thread and reuse unchanged Sets so a new run in
+  // one thread never busts React.memo on sibling CommentCards.
+  const prevThreadEnteringRef = useRef(new Map<string, ReadonlySet<string>>());
+  const enteringRunIdsByThread = useMemo(() => {
+    const next = new Map<string, ReadonlySet<string>>();
+    if (enteringRunIds.size > 0) {
+      const prev = prevThreadEnteringRef.current;
+      for (const [rootId, runs] of commentRuns) {
+        const matched = runs.filter((run) => enteringRunIds.has(run.task.id)).map((run) => run.task.id);
+        if (matched.length === 0) continue;
+        const prior = prev.get(rootId);
+        if (prior && prior.size === matched.length && matched.every((taskId) => prior.has(taskId))) {
+          next.set(rootId, prior);
+        } else {
+          next.set(rootId, new Set(matched));
+        }
+      }
+    }
+    prevThreadEnteringRef.current = next;
+    return next;
+  }, [commentRuns, enteringRunIds]);
 
   // Resolve / unresolve must always clear the per-session expand entry so
   // re-resolving an already-expanded thread folds it back to the bar (the
   // expand Set is keyed only on commentId, not on resolution state). Without
   // this wrapper, an expand → unresolve → resolve sequence keeps the thread
-  // visually expanded after the second resolve.
+  // visually expanded after the second resolve. Read displayTimeline via ref
+  // so every timeline mutation does not mint a new callback and bust React.memo
+  // on every mounted CommentCard.
+  const displayTimelineRef = useRef(displayTimeline);
+  displayTimelineRef.current = displayTimeline;
   const handleResolveToggle = useCallback(
     (commentId: string, resolved: boolean) => {
       // Fold the thread back on any resolve change: clear the thread ROOT's
       // expand entry (expand state is keyed on root id, but a resolve target
       // can be a reply). Walk parent_id up to the root.
-      const byId = new Map(displayTimeline.map((e) => [e.id, e]));
+      const byId = new Map(displayTimelineRef.current.map((e) => [e.id, e]));
       let cur = byId.get(commentId);
       while (cur?.parent_id && byId.get(cur.parent_id)) cur = byId.get(cur.parent_id)!;
       clearResolvedExpand(cur?.id ?? commentId);
       toggleResolveComment(commentId, resolved);
     },
-    [displayTimeline, clearResolvedExpand, toggleResolveComment],
+    [clearResolvedExpand, toggleResolveComment],
   );
 
   // Memoized timeline grouping. Each render rebuilds the per-parent map from
@@ -2342,16 +2386,29 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
   // The extra `offset` lifts the row's bottom clear of the sticky composer.
   // `scrollContainerEl` stays out of the deps: a container re-measure would
   // cancel the scroll mid-flight.
+  const scrollContainerElRef = useRef<HTMLDivElement | null>(null);
+  scrollContainerElRef.current = scrollContainerEl;
   useEffect(() => {
     if (!pendingPostedCommentId) return;
     const rootId = replyToRoot.get(pendingPostedCommentId) ?? pendingPostedCommentId;
     const index = items.findIndex((item) => item.id === rootId);
     if (index < 0) return;
     let timer: number | undefined;
+    let cancelled = false;
     const scrollEnd = () => {
+      if (cancelled) return;
       const composerHeight = composerRef.current?.getBoundingClientRect().height ?? 0;
       virtuosoRef.current?.scrollToIndex({ index, align: "end", offset: composerHeight });
     };
+    const container = scrollContainerElRef.current;
+    const stopOnUserInput = () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      if (timer !== undefined) window.clearTimeout(timer);
+      setPendingPostedCommentId(null);
+    };
+    const userEvents = ["wheel", "touchstart", "pointerdown"] as const;
+    for (const type of userEvents) container?.addEventListener(type, stopOnUserInput, { passive: true });
     const frame = requestAnimationFrame(() => {
       scrollEnd();
       timer = window.setTimeout(() => {
@@ -2360,8 +2417,10 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
       }, 100);
     });
     return () => {
+      cancelled = true;
       cancelAnimationFrame(frame);
       if (timer !== undefined) window.clearTimeout(timer);
+      for (const type of userEvents) container?.removeEventListener(type, stopOnUserInput);
     };
   }, [pendingPostedCommentId, items, replyToRoot]);
   const jumpFlashTimerRef = useRef<number | null>(null);
@@ -2786,15 +2845,24 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
     const container = scrollContainerEl;
     if (!container) return;
     if (targetIdx < 0) return;
+    const markUserCancelled = () => {
+      completed = true;
+      interruptedLandingRef.current = null;
+      didHighlightRef.current = highlightCommentId;
+      writeViewState(issueHighlightMementoKey(id), highlightCommentId);
+      onHighlightLandedRef.current?.();
+      releaseLandingChrome();
+      releaseLandingOverscan();
+    };
+    let completed = false;
     if (!timelineSized) {
       // Virtuoso measures nothing while the list is below the viewport, and
       // without height estimates it cannot place the target until it does.
       const list = virtualTimelineRef.current;
-      return list ? revealTimelineList(container, list) : undefined;
+      return list ? revealTimelineList(container, list, markUserCancelled) : undefined;
     }
 
     interruptedLandingRef.current = null;
-    let completed = false;
     const cancel = scrollToTimelineComment({
       container, virtualizer: virtuosoRef.current,
       index: targetIdx, commentId: landingId,
@@ -2813,6 +2881,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
         // After the aligned frame paints, not inside it.
         window.setTimeout(releaseLandingOverscan, 0);
       },
+      onUserCancel: markUserCancelled,
     });
     return () => {
       cancel();
@@ -2966,7 +3035,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
 
   // Identifier form, like the issue's own copy link: a pasted link should say
   // which issue it points at.
-  const copyDeliverableLink = useCopyDeliverableLink(issue?.identifier ?? id);
+  const copyDeliverableLink = useCopyDeliverableLink(issueRouteRef({ id, identifier: issue?.identifier }));
   const describeDeliverable = useDeliverableDetails({
     files: deliverableFiles,
     commentById,
@@ -3114,8 +3183,8 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
       wsId,
     ],
   );
-  // The inbox passes `onDone` and owns archive and restore there.
-  const archivedInboxItemId = useArchivedInboxItemId(id, !onDone);
+  // The inbox passes `onArchive` and owns archive and restore there.
+  const archivedInboxItemId = useArchivedInboxItemId(id, !onArchive);
   const pageMenu = useIssuePageMenu();
 
   // Labels live in their own query (not on the issue body) — fetch the count
@@ -3640,7 +3709,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
           {parentIssueOpen && <div className="px-2">
             <div className="flex items-center gap-0.5 rounded-md px-2 hover:bg-accent/50 transition-colors group">
               <AppLink
-                href={paths.issueDetail(parentIssue.id)}
+                href={paths.issueDetail(issueRouteRef(parentIssue))}
                 className="flex flex-1 min-w-0 items-center gap-1.5 py-2 text-label"
               >
                 <StatusIcon
@@ -3684,7 +3753,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
             {sidebarChildIssues.map((child) => (
               <li key={child.id}>
                 <AppLink
-                  href={paths.issueDetail(child.id)}
+                  href={paths.issueDetail(issueRouteRef(child))}
                   title={`${child.identifier} ${child.title}`}
                   aria-label={`${child.identifier} ${child.title}, ${resolveStatusLabel(child.status)}`}
                   className="group flex min-w-0 items-center gap-1.5 rounded-md px-2 py-2 text-label transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -3833,7 +3902,8 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
             onCollapseResolved: reply.resolved_at ? () => toggleResolvedExpand(reply.id, false) : undefined,
             expandedResolvedIds: expandedResolved, onResolvedExpandChange: toggleResolvedExpand,
             highlightedCommentId: highlightedId,
-            runs: commentRuns.get(reply.id) ?? EMPTY_COMMENT_RUNS, enteringRunIds,
+            runs: commentRuns.get(reply.id) ?? EMPTY_COMMENT_RUNS,
+            enteringRunIds: enteringRunIdsByThread.get(reply.id),
           } : undefined} />}
       </div>;
     }
@@ -3856,7 +3926,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
             issueId={id}
             replyScrollParent={scrollContainerEl}
             runs={commentRuns.get(item.id) ?? EMPTY_COMMENT_RUNS}
-            enteringRunIds={enteringRunIds}
+            enteringRunIds={enteringRunIdsByThread.get(item.id)}
             entry={item.entry}
             replies={timelineView.threadReplies.get(item.id) ?? EMPTY_REPLIES}
             currentUserId={user?.id}
@@ -3914,7 +3984,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
   // panel. The workspace name is intentionally absent — "all issues" is a view,
   // not a container.
   const breadcrumbSegments: BreadcrumbSegment[] = parentIssue
-    ? [{ href: paths.issueDetail(parentIssue.id), label: parentIssue.identifier }]
+    ? [{ href: paths.issueDetail(issueRouteRef(parentIssue)), label: parentIssue.identifier }]
     : breadcrumbProject
       ? [
           {
@@ -3935,6 +4005,14 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
   // What the header names the issue: the identifier only in a peek, where the
   // title is right below it; identifier and title on the page.
   const headerLeafLabel = isPeek ? issue.identifier : `${issue.identifier} ${issue.title}`;
+  const inboxIssueActions = guest ? undefined : (
+    <InboxIssueActions
+      issue={issue}
+      onUpdate={handleUpdateField}
+      onMarkDuplicate={actions.openMarkDuplicate}
+      isDuplicate={isDuplicateIssue(issue)}
+    />
+  );
 
   const detailContent = (
     <CurrentIssueRenderContextProvider value={currentIssueRenderContext}>
@@ -3969,7 +4047,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
             // Below the trigger, since the header sits at the top of the page.
             <TruncatedTooltip content={headerLeafLabel} side="bottom">
               <AppLink
-                href={paths.issueDetail(issue.id)}
+                href={paths.issueDetail(issueRouteRef(issue))}
                 className="flex min-w-0 transition-opacity hover:opacity-80"
               >
                 <span className="truncate font-medium text-foreground">
@@ -3985,47 +4063,6 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
                 It self-hides when no agent is active. */}
             {!guest && <IssueAgentHeaderChip issueId={id} onJumpToRun={jumpToRun} />}
             {!guest && <IssueWakeupHeaderChip issueId={id} onOpen={openWakeups} />}
-            {!onDone && !isPeek && (
-              <IssueInboxActions
-                issueId={id}
-                onMarkDone={
-                  issueBehavesAsAny(issue, ["done", "closed"])
-                    ? undefined
-                    : (onSaved) => handleUpdateField({ status: "done" }, { onSuccess: onSaved })
-                }
-              />
-            )}
-            {onDone && onUnsubscribeArchive && (
-              <UnsubscribeArchiveButton issueId={id} userId={user?.id} onConfirm={onUnsubscribeArchive} />
-            )}
-            {onDone && !issueBehavesAsAny(issue, ["done", "closed"]) && (
-              <IconButton
-                label={t(($) => $.detail.mark_done_tooltip)}
-                tooltipSide="bottom"
-                className="text-muted-foreground"
-                onClick={() => { handleUpdateField({ status: "done" }); onDone?.(); }}
-              >
-                <CircleCheck />
-              </IconButton>
-            )}
-            {onDone && issueBehavesAs(issue, "done") && (
-              <IconButton
-                label={t(($) => $.detail.archive_tooltip)}
-                tooltipSide="bottom"
-                className="text-muted-foreground"
-                onClick={() => { onDone(); }}
-              >
-                <Archive />
-              </IconButton>
-            )}
-            <IconButton
-              label={actions.isPinned ? t(($) => $.detail.unpin_tooltip) : t(($) => $.detail.pin_tooltip)}
-              tooltipSide="bottom"
-              className={cn("text-muted-foreground", actions.isPinned && "text-foreground")}
-              onClick={actions.togglePin}
-            >
-              {actions.isPinned ? <PinOff /> : <Pin />}
-            </IconButton>
             {!guest && <IssueDetailActionsDropdown
               issue={issue}
               locateInSidebar={!isPeek}
@@ -4063,7 +4100,19 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
             </>
           }
         />
-        {notice}
+        {notice?.(inboxIssueActions) ??
+          (onArchive ? (
+            inboxItem && (
+              <InboxOpenBar item={inboxItem} issueActions={inboxIssueActions}>
+                {onUnsubscribeArchive && (
+                  <UnsubscribeArchiveButton issueId={id} userId={user?.id} onConfirm={onUnsubscribeArchive} />
+                )}
+                <InboxArchiveButton onClick={onArchive} />
+              </InboxOpenBar>
+            )
+          ) : (
+            !isPeek && <IssueInboxBar issueId={id} issueActions={inboxIssueActions} />
+          ))}
 
         {/* scrollbar-gutter both-edges: with classic (space-taking) scrollbars —
             macOS with a mouse or "always show", Windows, Linux — the global
@@ -4211,7 +4260,7 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
 
           {parentIssue && !issue.source_context && (
             <AppLink
-              href={paths.issueDetail(parentIssue.id)}
+              href={paths.issueDetail(issueRouteRef(parentIssue))}
               className="mt-2 inline-flex max-w-full items-center gap-1.5 text-label text-muted-foreground hover:text-foreground transition-colors group/parent"
             >
               <span className="shrink-0">{t(($) => $.detail.sub_issue_of)}</span>
@@ -4661,28 +4710,30 @@ export function IssueDetail({ issueId, onDelete, onDone, onUnsubscribeArchive, d
                 // flash empty.
                 <TimelineSkeleton />
               ) : (
-                <div ref={virtualTimelineRef} className="mt-4">
-                  <Virtuoso
-                    key={`${wsId}:${id}`}
-                    ref={virtuosoRef}
-                    customScrollParent={scrollContainerEl}
-                    data={items}
-                    initialScrollTop={readingAnchor ? undefined : restoredScrollTop}
-                    heightEstimates={timelineHeightEstimates}
-                    increaseViewportBy={timelineOverscan}
-                    totalListHeightChanged={handleTimelineHeightChange}
-                    rangeChanged={handleTimelineRangeChanged}
-                    computeItemKey={(_i, item) => `${item.kind}:${item.kind === "run" ? item.run.task.id : item.id}`}
-                    // Also load-bearing for long threads: keepThreadRowAnchored
-                    // corrects after Virtuoso's resize handling in the same frame.
-                    skipAnimationFrameInResizeObserver
-                    // followOutput intentionally NOT set. Virtuoso treats
-                    // it as a sticky "is at bottom" flag and resets
-                    // scrollTop to maxScrollTop on every height-change
-                    // tick — issue-detail is document-shaped, not chat.
-                    itemContent={renderItem}
-                  />
-                </div>
+                <ImageThumbnailsProvider enabled={commentImageLayout === "thumbnails"}>
+                  <div ref={virtualTimelineRef} className="mt-4">
+                    <Virtuoso
+                      key={`${wsId}:${id}`}
+                      ref={virtuosoRef}
+                      customScrollParent={scrollContainerEl}
+                      data={items}
+                      initialScrollTop={readingAnchor ? undefined : restoredScrollTop}
+                      heightEstimates={timelineHeightEstimates}
+                      increaseViewportBy={timelineOverscan}
+                      totalListHeightChanged={handleTimelineHeightChange}
+                      rangeChanged={handleTimelineRangeChanged}
+                      computeItemKey={(_i, item) => `${item.kind}:${item.kind === "run" ? item.run.task.id : item.id}`}
+                      // Also load-bearing for long threads: keepThreadRowAnchored
+                      // corrects after Virtuoso's resize handling in the same frame.
+                      skipAnimationFrameInResizeObserver
+                      // followOutput intentionally NOT set. Virtuoso treats
+                      // it as a sticky "is at bottom" flag and resets
+                      // scrollTop to maxScrollTop on every height-change
+                      // tick — issue-detail is document-shaped, not chat.
+                      itemContent={renderItem}
+                    />
+                  </div>
+                </ImageThumbnailsProvider>
               )
             )}
 

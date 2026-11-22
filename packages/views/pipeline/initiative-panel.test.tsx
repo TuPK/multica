@@ -152,7 +152,7 @@ describe("InitiativePanel", () => {
 
   it("shows the loading state before the detail arrives", () => {
     renderPanel();
-    expect(screen.getByText("Loading initiative…")).toBeTruthy();
+    expect(screen.getByText("Loading initiative...")).toBeTruthy();
   });
 
   it("says so when the detail cannot be loaded", async () => {

@@ -104,6 +104,7 @@ var Columns = []Column{
 	{"project_member", "user_id", ActionDelete, "job removes the rows"},
 	{"project_resource", "created_by", ActionKeep, refReason},
 	{"project_subscriber", "user_id", ActionDelete, "removed with the membership, or with the workspace"},
+	{"remote_app_connection", "owner_id", ActionDelete, "job removes the rows; they hold the user's own OAuth connection"},
 	{"runtime_profile", "created_by", ActionKeep, refReason},
 	{"runtime_quickstart_request", "initiator_user_id", ActionKeep, refReason},
 	{"seat_capacity_outbox", "user_id", ActionKeep, "billing outbox row; it must outlive the user to settle the seat"},

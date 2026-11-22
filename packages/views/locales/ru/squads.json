@@ -196,7 +196,6 @@
     },
     "title": "Объедините агентов в команду для совместной работы"
   },
-  "toolbar": {},
   "capabilities": {
     "section_title": "Skills & plugins",
     "skills_title": "Skills",
@@ -809,7 +808,7 @@
     "installing": "Installing…",
     "install_failed": "Could not install the pack",
     "disabled": {
-      "blocked": "The security scan blocked this pack",
+      "blocked": "The security scan `blocked` this pack",
       "errors": "Fix the problems in the pack first",
       "leader": "Choose a leader to make the squad",
       "runtime": "Choose a runtime for the agents to create",

@@ -140,7 +140,7 @@
   },
   "profile_card": {
     "unavailable": "小隊不可用",
-    "detail_link": "詳情 →",
+    "detail_link": "檢視詳情 →",
     "archived": "已歸檔",
     "member_count_other": "{{count}} 名成員",
     "members_section": "成員",
@@ -156,7 +156,6 @@
     "mine": "我的小隊",
     "all": "全部小隊"
   },
-  "toolbar": {},
   "capabilities": {
     "section_title": "技能與外掛",
     "skills_title": "技能",

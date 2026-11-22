@@ -7,7 +7,7 @@ import {
   type ReviewRecommendation,
 } from "@multica/core/governance";
 import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
+import { useWorkspacePaths, issueRouteRef } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
@@ -124,7 +124,7 @@ function RecommendationRow({ rec }: { rec: ReviewRecommendation }) {
         <span className="text-muted-foreground">{status}</span>
         {rec.proposal_id && rec.proposal_issue_id ? (
           <AppLink
-            href={paths.issueDetail(rec.proposal_issue_id)}
+            href={paths.issueDetail(issueRouteRef({ id: rec.proposal_issue_id, identifier: null }))}
             className="font-mono text-xs text-primary hover:underline"
           >
             {t(($) => $.reviews_tab.proposal, { id: rec.proposal_id.slice(0, 8) })}

@@ -513,7 +513,7 @@ describe("IssueActionsDropdown", () => {
     await waitFor(() => {
       expect(listTasksByIssueMock).toHaveBeenCalledWith("issue-1", false, { view: "timeline" });
     });
-    fireEvent.click(await screen.findByText("Copy local workdir path"));
+    fireEvent.click(await screen.findByText("Copy local working directory path"));
 
     await waitFor(() => {
       expect(copyTextMock).toHaveBeenCalledWith("/managed/task/worktree");
@@ -833,7 +833,7 @@ describe("Sidebar variant (MUL-8425)", () => {
       "Mark as unread",
       "Copy link",
       "Copy link with title",
-      "Copy identifier",
+      "Copy issue ID",
     ]);
     expect(screen.getByTestId("row")).toHaveAttribute("data-popup-open");
     // No workdir entry, so the menu has no reason to fetch the task list.
@@ -864,7 +864,7 @@ describe("Sidebar variant (MUL-8425)", () => {
 
   it("copies the identifier", async () => {
     openSidebarMenu();
-    fireEvent.click(await screen.findByText("Copy identifier"));
+    fireEvent.click(await screen.findByText("Copy issue ID"));
 
     await waitFor(() => {
       expect(copyTextMock).toHaveBeenCalledWith("TES-1");

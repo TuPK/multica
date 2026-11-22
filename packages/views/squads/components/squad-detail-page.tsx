@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@multica/core/api";
 import { useAuthStore } from "@multica/core/auth";
-import { useCurrentWorkspace, useWorkspacePaths } from "@multica/core/paths";
+import { useCurrentWorkspace, useWorkspacePaths, issueRouteRef } from "@multica/core/paths";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useModalStore } from "@multica/core/modals";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
@@ -807,12 +807,14 @@ export function SquadDetailView({
 /** An issue reference: opens in place when the host supplies `onOpenIssue`, else navigates to the issue. */
 function IssueLink({
   issueId,
+  identifier,
   onOpenIssue,
   className,
   title,
   children,
 }: {
   issueId: string;
+  identifier: string | null | undefined;
   onOpenIssue?: (issueId: string) => void;
   className?: string;
   title?: string;
@@ -827,7 +829,7 @@ function IssueLink({
     );
   }
   return (
-    <AppLink href={p.issueDetail(issueId)} title={title} className={className}>
+    <AppLink href={p.issueDetail(issueRouteRef({ id: issueId, identifier }))} title={title} className={className}>
       {children}
     </AppLink>
   );
@@ -1196,6 +1198,7 @@ function SquadMembersSection({
                         <span className="shrink-0">{t(($) => $.detail.working_on)}</span>
                         <IssueLink
                           issueId={primaryIssue.issue_id}
+                          identifier={primaryIssue.identifier}
                           onOpenIssue={onOpenIssue}
                           title={primaryIssue.title}
                           className="shrink-0 font-mono uppercase transition-colors hover:text-foreground"
@@ -1437,6 +1440,7 @@ function SquadRecentWorkSection({
             <IssueLink
               key={issue.id}
               issueId={issue.id}
+              identifier={issue.identifier}
               onOpenIssue={onOpenIssue}
               className="flex h-10 items-center gap-3 px-3 text-body transition-colors hover:bg-accent/50"
             >

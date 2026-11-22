@@ -193,7 +193,7 @@ describe("LimitRecoveryDialog", () => {
     expect(queryRecoveryDialog()).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Checking the billing actions available for this workspace…",
+        "Checking the billing actions available for this workspace...",
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);

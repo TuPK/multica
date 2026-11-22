@@ -93,7 +93,7 @@
     "pause_hint": "Routine and delegated runs wait. Chat and the Secretary keep working.",
     "stop_work": "Pause and stop running work",
     "stop_confirm_title": "Pause and stop running work?",
-    "stop_confirm_description": "Running routine and delegated tasks are cancelled. Queued ones wait until you resume.",
+    "stop_confirm_description": "Running routine and delegated tasks are `cancelled`. Queued ones wait until you resume.",
     "stop_confirm_action": "Pause and stop",
     "cancel": "Cancel",
     "state_save_failed": "Could not change the company state. Try again.",

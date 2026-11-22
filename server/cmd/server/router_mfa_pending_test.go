@@ -34,6 +34,7 @@ var mfaPendingPublicRoutes = map[string]string{
 	"GET /api/site/star":                        "public marketing footer star",
 	"POST /api/site/star/turns":                 "public marketing footer star",
 	"POST /api/apps/mcp":                        "apps gateway, verifies its own task token",
+	"POST /api/apps/mcp/{app}":                  "apps gateway, verifies its own task token",
 	"POST /auth/sso/discover":                   "SSO login start",
 	"GET /auth/sso/start":                       "SSO login start",
 	"GET /auth/sso/callback":                    "first-factor login",

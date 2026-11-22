@@ -83,6 +83,7 @@ var viewerWriteExceptions = map[string]string{
 	"POST /api/site/star/turns":        "public marketing footer star",
 	"POST /auth/sso/mobile/exchange":   "SSO sign-in exchange, no workspace data",
 	"POST /api/apps/mcp":               "apps gateway outside the workspace routes; verifies its own task token",
+	"POST /api/apps/mcp/{app}":         "apps gateway outside the workspace routes; verifies its own task token",
 	// User-scoped: the caller's own account, tokens, or sign-in. No workspace data.
 	"POST /api/auth/refresh":                             "user session refresh",
 	"POST /api/cli-token":                                "issues the caller's CLI token",

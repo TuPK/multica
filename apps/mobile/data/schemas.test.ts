@@ -6,8 +6,6 @@ import {
   MemberWithUserSchema,
   ProjectSchema,
   EMPTY_TASK_MESSAGE_LIST,
-  MemberWithUserSchema,
-  ProjectSchema,
   TaskMessageListSchema,
 } from "./schemas";
 
@@ -87,7 +85,7 @@ describe("MemberWithUserSchema", () => {
     },
   );
 
-  it.each(["guest", "", undefined, 42])(
+  it.each(["", undefined, 42])(
     "maps unknown or missing role %j to viewer (fail-closed read-only)",
     (role) => {
       expect(MemberWithUserSchema.parse({ ...baseMember, role }).role).toBe("viewer");
@@ -107,7 +105,7 @@ describe("MemberWithUserSchema role", () => {
     const [parsed] = MemberListSchema.parse([{ ...member, role: "guest", project_ids: ["p-1"] }]);
     expect(parsed).toMatchObject({ role: "guest", project_ids: ["p-1"] });
   });
-  it("still falls back to member for an unknown role", () => {
-    expect(MemberWithUserSchema.parse({ ...member, role: "superuser" }).role).toBe("member");
+  it("falls back to viewer for an unknown role (fail-closed)", () => {
+    expect(MemberWithUserSchema.parse({ ...member, role: "superuser" }).role).toBe("viewer");
   });
 });

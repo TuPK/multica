@@ -609,7 +609,7 @@ describe("AgentCreatePanel", () => {
 
     expect(
       screen.getByPlaceholderText(
-        'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+        'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
       ),
     ).toHaveValue("Persisted draft prompt");
   });
@@ -624,7 +624,7 @@ describe("AgentCreatePanel", () => {
 
     expect(
       screen.getByPlaceholderText(
-        'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+        'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
       ),
     ).toHaveValue("fix the Safari login callback 500");
     expect(mockIssueDraftStore.draft.agent.prompt).toBe("fix the Safari login callback 500");
@@ -679,7 +679,7 @@ describe("AgentCreatePanel", () => {
     renderPanel({ onClose, isExpanded: false, setIsExpanded: vi.fn() });
 
     const editor = screen.getByPlaceholderText(
-      'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+      'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
     );
 
     await user.clear(editor);
@@ -744,7 +744,7 @@ describe("AgentCreatePanel", () => {
     renderPanel({ onClose, isExpanded: false, setIsExpanded: vi.fn() });
 
     const editor = screen.getByPlaceholderText(
-      'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+      'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
     );
     fireEvent.change(editor, { target: { value: "Half-typed request" } });
     await user.click(screen.getByRole("button", { name: "Customize fields..." }));
@@ -796,7 +796,7 @@ describe("AgentCreatePanel", () => {
     const onClose = vi.fn();
     renderPanel({ onClose, isExpanded: false, setIsExpanded: vi.fn() });
     const editor = screen.getByPlaceholderText(
-      'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+      'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
     );
     fireEvent.change(editor, { target: { value: "Draft A prompt" } });
     fireEvent.click(screen.getByRole("button", { name: /^Create$/i }));
@@ -827,7 +827,7 @@ describe("AgentCreatePanel", () => {
     );
     const view = renderPanel({ onClose: vi.fn(), isExpanded: false, setIsExpanded: vi.fn() });
     const editor = screen.getByPlaceholderText(
-      'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+      'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
     );
     fireEvent.change(editor, { target: { value: "Draft A prompt" } });
     fireEvent.click(screen.getByRole("button", { name: /^Create$/i }));
@@ -855,7 +855,7 @@ describe("AgentCreatePanel", () => {
     );
     const view = renderPanel({ onClose: vi.fn(), isExpanded: false, setIsExpanded: vi.fn() });
     const editor = screen.getByPlaceholderText(
-      'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+      'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
     );
     fireEvent.change(editor, { target: { value: "Draft A prompt" } });
     fireEvent.click(screen.getByRole("button", { name: /^Create$/i }));
@@ -880,7 +880,7 @@ describe("AgentCreatePanel", () => {
     await waitFor(() => expect(mockApiUploadFile).toHaveBeenCalled());
 
     const editor = screen.getByPlaceholderText(
-      'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+      'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
     );
     await user.clear(editor);
     fireEvent.change(editor, {
@@ -920,7 +920,7 @@ describe("AgentCreatePanel", () => {
     await user.click(screen.getByRole("button", { name: /Frontend Squad/ }));
 
     const editor = screen.getByPlaceholderText(
-      'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+      'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
     );
     await user.clear(editor);
     await user.type(editor, "Investigate the regression");
@@ -982,7 +982,7 @@ describe("AgentCreatePanel", () => {
       await user.click(screen.getByTestId("project-picker"));
       await user.type(
         screen.getByPlaceholderText(
-          'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+          'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
         ),
         "Ship it",
       );
@@ -1094,7 +1094,7 @@ describe("AgentCreatePanel", () => {
     expect(screen.getByTestId("agent-sub-issue-chip")).toBeInTheDocument();
 
     const editor = screen.getByPlaceholderText(
-      'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+      'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
     );
     await user.clear(editor);
     await user.type(editor, "Investigate the regression");
@@ -1209,7 +1209,7 @@ describe("AgentCreatePanel", () => {
       // Each file is its own queue entry — making users wait for the first to
       // land before picking the second was a restriction with no race behind
       // it, and this issue explicitly removed it.
-      const submit = await screen.findByRole("button", { name: "Uploading…" });
+      const submit = await screen.findByRole("button", { name: "Uploading..." });
       expect(submit).toBeDisabled();
       expect(screen.getByRole("button", { name: "Upload file" })).not.toBeDisabled();
     });
@@ -1242,7 +1242,7 @@ describe("AgentCreatePanel", () => {
       // ...and Create is reachable (gated only by prompt content, as usual).
       await user.type(
         screen.getByPlaceholderText(
-          'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+          'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
         ),
         "Ship it",
       );
@@ -1266,7 +1266,7 @@ describe("AgentCreatePanel", () => {
       expect(screen.getByText(/Create with agent needs ≥/i)).toBeInTheDocument();
       await user.type(
         screen.getByPlaceholderText(
-          'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+          'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
         ),
         "Ship it",
       );
@@ -1291,7 +1291,7 @@ describe("AgentCreatePanel", () => {
       renderPanel({ onClose: vi.fn(), isExpanded: false, setIsExpanded: vi.fn() });
 
       const editor = screen.getByPlaceholderText(
-        'Tell the agent what to do, e.g. "let Bohan fix the inbox loading slowness in the Web project"',
+        'Tell the agent what to do, e.g. "fix the slow inbox loading in the Web project"',
       );
 
       // Both presses inside ONE act: React cannot re-render between them, so

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@multica/core/auth";
 import { useCurrentWorkspace, useWorkspacePaths } from "@multica/core/paths";
@@ -14,6 +14,7 @@ import { useSidebarTreeStore } from "@multica/core/issues/stores/sidebar-tree-st
 import { projectListOptions } from "@multica/core/projects/queries";
 import type { Project } from "@multica/core/types";
 import { resolveClickIntent, useHeldUntilArrival, useNavigation } from "../../navigation";
+import { AutoArchivePromptDialog } from "../../inbox/components/auto-archive-prompt-dialog";
 import { useSidebarInboxIssue } from "../../inbox/components/use-sidebar-inbox-issue";
 import { IssueContextMenuProvider } from "../../issues/actions";
 import { useIssueViewActions } from "../../issue-views/use-view-actions";
@@ -68,12 +69,24 @@ export function KeptRowsRelease() {
   const issueId = issueSegment ? (issue?.id ?? (isIssueUuid(issueSegment) ? issueSegment : undefined)) : null;
   const projectId = routeSegment(pathname, p.projects());
   // The notification the Inbox page has open, as its rows are keyed.
-  const inboxKey = pathname === p.inbox() ? searchParams.get("issue") : null;
+  const onInbox = pathname === p.inbox();
+  const inboxKey = onInbox ? searchParams.get("issue") : null;
+  const wasOnInbox = useRef(false);
   useLayoutEffect(() => {
     if (issueId === undefined) return;
     useSidebarKeptStore.getState().release([issueId, projectId].filter((id) => id !== null));
-    if (wsId) useInboxSelectionStore.getState().releaseRows(wsId, [issueId, inboxKey].filter((id) => id !== null));
-  }, [wsId, issueId, projectId, inboxKey]);
+    if (wsId) {
+      const store = useInboxSelectionStore.getState();
+      store.releaseRows(wsId, [issueId, inboxKey].filter((id) => id !== null));
+      // Keep the Inbox Zero undo context only while on /inbox, or while the
+      // just-cleared issue is still handing off its navigation to /inbox.
+      const lastCleared = store.lastClearedByWorkspace[wsId];
+      if (lastCleared && !onInbox && (wasOnInbox.current || issueId !== lastCleared.key)) {
+        store.clearLastCleared(wsId);
+      }
+    }
+    wasOnInbox.current = onInbox;
+  }, [wsId, issueId, projectId, inboxKey, onInbox]);
   return null;
 }
 
@@ -151,9 +164,9 @@ export function WorkPanel() {
       : link.closest("[data-inbox-card]")
         ? INBOX_LIST
         : (link.closest("[data-sidebar-list]")?.getAttribute("data-sidebar-list") ?? null);
-    // Inbox links open the issue at its identifier; the Inbox records, and
-    // the issue header compares, the issue's id.
-    const segment = (list === INBOX_LIST && link.getAttribute("data-issue-id")) || routeSegment(path, p.issues());
+    // Inbox and tree links open the issue at its identifier; the lists
+    // record, and the issue header compares, the issue's id.
+    const segment = link.getAttribute("data-issue-id") || routeSegment(path, p.issues());
     // A click that opens a tab or window, as AppLink resolves it, leaves this
     // page and its records where they are. A desktop tab shares this page's
     // store, so an issue the Inbox opens there is recorded beside them.
@@ -240,6 +253,8 @@ export function WorkPanel() {
           through the React tree, and must not reach rememberClickedIssue. */}
       <IssueContextMenuProvider variant="sidebar">
         <PanelBody onClickCapture={rememberClickedIssue} onAuxClickCapture={rememberClickedIssue}>
+          {wsId && <PinnedSection pins={pins} wsId={wsId} />}
+
           <PanelList className="mb-2">
             <PanelLink
               href={p.pipeline()}
@@ -262,12 +277,7 @@ export function WorkPanel() {
               activeIssueId={inboxClaimsIssue ? currentIssueId : null}
             />
           )}
-
-          {wsId && (
-            <div data-pinned-section className="contents">
-              <PinnedSection pins={pins} wsId={wsId} />
-            </div>
-          )}
+          {wsId && <AutoArchivePromptDialog wsId={wsId} active={!!inboxOpenKey} />}
 
           {wsId && (
             <ViewsSection

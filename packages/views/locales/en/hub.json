@@ -230,7 +230,7 @@
     },
     "upload": {
       "drop": "Drop a .zip, .skill archive or folder here",
-      "reading": "Reading files…",
+      "reading": "Reading files...",
       "choose_archive": "Choose archive",
       "choose_folder": "Choose folder",
       "read_failed": "Couldn't read these files.",
@@ -248,7 +248,7 @@
     "preview": {
       "back": "Back",
       "commit": "Import",
-      "committing": "Importing…",
+      "committing": "Importing...",
       "version": "v{{version}}",
       "expired": "This preview has expired.",
       "preview_again": "Preview again",
@@ -329,7 +329,7 @@
     "size_none": "—",
     "cancel": "Cancel",
     "apply": "Update",
-    "applying": "Updating…",
+    "applying": "Updating...",
     "choose_local": "Choose an option to continue.",
     "local": {
       "legend": "Local edits",
@@ -398,7 +398,7 @@
     },
     "local_edits_warning": "This item has edits made here. Applying an update asks what to do with them.",
     "check": "Check for updates",
-    "checking": "Checking…",
+    "checking": "Checking...",
     "read_only": "Ask someone who can edit this item to check for or apply updates."
   },
   "sources": {

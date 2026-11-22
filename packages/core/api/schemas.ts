@@ -1820,6 +1820,7 @@ export const EMPTY_STORE_THEME_LIST: { themes: StoreTheme[] } = { themes: [] };
 export const NotificationPreferenceResponseSchema = z.object({
   workspace_id: z.string(),
   preferences: z.record(z.string(), z.string()).default({}),
+  auto_archive_prompt: z.boolean().optional(),
 }).loose();
 
 export const EMPTY_NOTIFICATION_PREFERENCE_RESPONSE: NotificationPreferenceResponse = {
@@ -4032,6 +4033,8 @@ export const SnoozedInboxListSchema = z.array(
   z
     .object({
       issue_id: z.string(),
+      // Older servers omit it; the row then links by issue_id.
+      issue_identifier: z.string().min(1).nullish().catch(null),
       item_id: z.string(),
       snoozed_until: z.string(),
       snoozed_at: z.string(),

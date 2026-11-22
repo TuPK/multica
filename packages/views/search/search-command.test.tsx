@@ -1271,7 +1271,7 @@ describe("SearchCommand", () => {
       expect(handRow()).toHaveTextContent(`Hand to agent: “${prompt}”`);
       fireEvent.keyDown(input(), { key: "Enter" });
 
-      expect(mockPush).toHaveBeenCalledWith("/ws-test/issues/issue-812");
+      expect(mockPush).toHaveBeenCalledWith("/ws-test/issues/MUL-812");
       expect(mockOpenModal).not.toHaveBeenCalled();
       expect(api("quickCreateIssue")).not.toHaveBeenCalled();
     });
@@ -1356,7 +1356,7 @@ describe("SearchCommand", () => {
       await user.type(input(), "localized");
 
       await waitFor(() => expect(screen.getByText("进行中")).toBeInTheDocument(), { timeout: 2000 });
-      expect(screen.queryByText("In Progress")).toBeNull();
+      expect(screen.queryByText("In progress")).toBeNull();
     });
 
     it("keeps live rows of both types above every cancelled row", async () => {

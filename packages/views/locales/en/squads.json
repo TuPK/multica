@@ -26,14 +26,14 @@
     "description": "\"{{name}}\" will be archived. Issues currently assigned to this squad will be transferred to its leader. This can't be undone — create a new squad if you need the routing back.",
     "cancel": "Cancel",
     "confirm": "Archive",
-    "archiving": "Archiving…",
+    "archiving": "Archiving...",
     "success": "Squad archived"
   },
   "name_editor": {
     "placeholder": "Squad name"
   },
   "add_member_dialog": {
-    "title": "Add Member",
+    "title": "Add member",
     "description": "Choose workspace members or agents.",
     "label_member": "Member",
     "label_role": "Role",
@@ -47,13 +47,13 @@
     "add": "Add"
   },
   "role_editor": {
-    "empty": "Add role…",
+    "empty": "Add role...",
     "placeholder": "Role (e.g. Reviewer)"
   },
   "members_tab": {
     "section_title": "Members",
     "add_member_button": "Add member",
-    "create_agent_button": "Create Agent",
+    "create_agent_button": "Create agent",
     "leader_chip": "Leader",
     "view_agent_tooltip": "Open agent detail",
     "make_leader_tooltip": "Make squad leader",
@@ -140,7 +140,7 @@
   },
   "profile_card": {
     "unavailable": "Squad unavailable",
-    "detail_link": "Detail →",
+    "detail_link": "View details →",
     "archived": "Archived",
     "member_count_one": "{{count}} member",
     "member_count_other": "{{count}} members",
@@ -158,7 +158,6 @@
     "mine": "My squads",
     "all": "All squads"
   },
-  "toolbar": {},
   "capabilities": {
     "section_title": "Skills & plugins",
     "skills_title": "Skills",
@@ -268,7 +267,7 @@
   "kitviet_update": {
     "button": "Update Kit Việt",
     "title": "Kit Việt squads updated",
-    "running": "Updating Kit Việt squads…",
+    "running": "Updating Kit Việt squads...",
     "none": "No Kit Việt squad is in this workspace.",
     "agents": "Agents: {{upgraded}} updated, {{current}} current, {{kept}} kept, {{failed}} failed",
     "squad": "Squad instructions: {{status}}",
@@ -327,14 +326,14 @@
       "import": "Import a file",
       "proposal": "Ask an agent to draft",
       "name": "Name",
-      "creating": "Creating…",
+      "creating": "Creating...",
       "failed": "Could not create the draft"
     },
     "export": "Export",
     "save": {
       "saved": "Saved",
       "unsaved": "Unsaved changes",
-      "saving": "Saving…",
+      "saving": "Saving...",
       "failed": "Could not save"
     },
     "conflict": {
@@ -413,7 +412,7 @@
     "publish": {
       "note": "Publishing creates a locked version. Running requests keep theirs.",
       "make_active": "Make this the active workflow",
-      "checking": "Checking…",
+      "checking": "Checking...",
       "blocked": "Fix the errors before publishing",
       "stale": "A newer version was published",
       "edit_latest": "Edit the latest version",
@@ -625,19 +624,19 @@
       "col_reset": "Reset",
       "delete": "Delete {{key}}",
       "empty": "No loops declared",
-      "header_placeholder": "Header step…",
+      "header_placeholder": "Header step...",
       "mode_fixed": "Fixed count",
       "mode_var": "From variable",
       "max_var": "From {{var}}, up to {{cap}}",
       "var_label": "Eligible integer variable",
-      "var_placeholder": "Select variable…",
+      "var_placeholder": "Select variable...",
       "var_option": "{{key}} (max: {{max}})",
       "cap_placeholder": "Cap",
       "add": "Add loop"
     },
     "outline": {
       "title": "Steps",
-      "search": "Search steps…",
+      "search": "Search steps...",
       "empty": "No steps found"
     },
     "inspector": {
@@ -660,7 +659,7 @@
       "no_skills": "The role has no skills",
       "missing_skills": "R09: the role lacks skills: {{skills}}",
       "instructions": "Instructions",
-      "instructions_placeholder": "What the agent or member does…",
+      "instructions_placeholder": "What the agent or member does...",
       "input_slot": "File slot of {{from}}",
       "input_any_slot": "Any file"
     },
@@ -737,7 +736,7 @@
       "choose": "Choose a zip file"
     },
     "preview": "Read the pack",
-    "reading": "Reading the pack…",
+    "reading": "Reading the pack...",
     "read_failed": "Could not read the pack",
     "change_source": "Choose another pack",
     "squad_name": "Squad name",
@@ -778,7 +777,7 @@
     "problems": "Problems in the pack",
     "draft_from_flow": "Make a draft from the flow in the pack",
     "install": "Install",
-    "installing": "Installing…",
+    "installing": "Installing...",
     "install_failed": "Could not install the pack",
     "disabled": {
       "blocked": "The security scan blocked this pack",

@@ -125,7 +125,7 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 | `server/internal/integrations/ghsnapshot/client.go` | `vnd` | `mintInstallationToken`, `restGet` | text | media type | exempt | HTTP Accept media type application/vnd.github+json; not a currency. |
 | `server/internal/integrations/lark/outbound_media.go` | `vnd` | `isImageAttachment` | text | media type | exempt | MIME type image/vnd.microsoft.icon; not a currency. |
 | `server/internal/metrics/business.go` | `usd` | `NewBusinessMetrics`, `ObserveChatClaimRolloutMissingQuery` | text | metric help text and comment | exempt | Help text and comment for the AI token cost metric; agent cost, not platform billing. |
-| `server/internal/metrics/pricing.go` | `usd` | `file-level comment` | text | comment | exempt | Comments on the AI token price sheet; agent cost, not platform billing. |
+| `platform-management/pricing/pricing.go` | `usd` | `file-level comment`, `TokenCostUSD` | text | comment and function name | exempt | Comments and name of the AI token price sheet; agent cost, not platform billing. |
 | `server/internal/salescollect/probe.go` | `usd` | `file-level comment` | text | UI copy | exempt | UI price hint for a third-party data source; not platform billing. |
 | `server/internal/salescollect/recipe.go` | `usd` | `Collectable` | text | comment and error text | exempt | Error text: a paid third-party provider's monthly budget (spec 4.12) is 0 USD until an owner sets it; agent budget, not billing. |
 | `server/internal/service/budget_accounting.go` | `usd` | `file-level comment` | text | comment | exempt | Comment on the provider's AI cost in 1e-10 USD; agent cost, not platform billing. |
@@ -209,6 +209,7 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 | `platform-management/console/src/screens/Overview.tsx` | `currency` | `Overview` | formatter | formatted amount | ruled | Formats through formatMinorAmount with the currency read from the data. |
 | `platform-management/console/src/screens/Plans.tsx` | `vnd` | `Plans` | formatter | plan price | ruled | Plan prices are shown in the currency the plan stores. |
 | `platform-management/console/src/screens/WorkspaceDetail.tsx` | `currency` | `WorkspaceDetail` | formatter | formatted amount | ruled | Formats through formatMinorAmount with the currency read from the data. |
+| `platform-management/console/src/screens/WorkspaceDetail.tsx` | `usd` | `usdFormat` | literal | currency code of a formatter | exempt | Formats the workspace's provider-reported AI cost in USD; agent cost, not platform billing. |
 | `packages/views/locales/es/runtimes.json` | `usd` | `unit_hint` | text | UI copy | exempt | Locale string: unit hint for AI token rates; not platform billing. |
 | `packages/views/locales/fr/runtimes.json` | `usd` | `unit_hint` | text | UI copy | exempt | Locale string: unit hint for AI token rates; not platform billing. |
 | `packages/views/locales/ja/runtimes.json` | `usd` | `unit_hint` | text | UI copy | exempt | Locale string: unit hint for AI token rates; not platform billing. |

@@ -29,6 +29,7 @@ import { useWorkspaceStore } from "@/data/workspace-store";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { THEME } from "@/lib/theme";
 import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
+import { useT } from "@/lib/i18n";
 
 export default function CommentEmojiPickerRoute() {
   return (
@@ -39,6 +40,7 @@ export default function CommentEmojiPickerRoute() {
 }
 
 function CommentEmojiPickerContent() {
+  const { t } = useT("issues");
   const { id, commentId } = useLocalSearchParams<{
     id: string;
     commentId: string;
@@ -79,7 +81,7 @@ function CommentEmojiPickerContent() {
     <View className="flex-1">
       <View className="px-4 pt-3 pb-2">
         <Text className="text-lg font-semibold text-foreground">
-          Add Reaction
+          {t("comments.add_reaction")}
         </Text>
       </View>
       <View className="flex-1">

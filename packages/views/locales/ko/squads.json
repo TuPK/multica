@@ -140,7 +140,7 @@
   },
   "profile_card": {
     "unavailable": "스쿼드를 사용할 수 없습니다",
-    "detail_link": "자세히 →",
+    "detail_link": "자세히 보기 →",
     "archived": "보관됨",
     "member_count_other": "멤버 {{count}}명",
     "members_section": "멤버",
@@ -156,7 +156,6 @@
     "mine": "내 스쿼드",
     "all": "전체 스쿼드"
   },
-  "toolbar": {},
   "capabilities": {
     "section_title": "스킬 및 플러그인",
     "skills_title": "스킬",

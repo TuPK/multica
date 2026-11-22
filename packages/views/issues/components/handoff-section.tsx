@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { clientErrorMessage } from "@multica/core/api";
 import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
+import { useWorkspacePaths, issueRouteRef } from "@multica/core/paths";
 import { issueHandoffOptions, useIssueHandoffDecision } from "@multica/core/squads";
 import { Button } from "@multica/ui/components/ui/button";
 import { useCompanyAdmin } from "../../company/lib/use-company-admin";
@@ -56,7 +56,7 @@ export function HandoffSection({ issueId }: { issueId: string }) {
           <p>{text}</p>
           {status === "handed_off" && data.handoff?.target_issue_id ? (
             <AppLink
-              href={paths.issueDetail(data.handoff.target_issue_id)}
+              href={paths.issueDetail(issueRouteRef({ id: data.handoff.target_issue_id, identifier: null }))}
               className="text-caption text-muted-foreground underline-offset-2 hover:underline"
             >
               {t(($) => $.handoff.open_request)}

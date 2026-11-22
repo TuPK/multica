@@ -38,7 +38,7 @@
     "stalled": "Past the stage SLA"
   },
   "panel": {
-    "loading": "Loading initiative…",
+    "loading": "Loading initiative...",
     "unavailable": "This initiative could not be loaded.",
     "overview": "Overview",
     "stage": "Stage",

@@ -28,6 +28,7 @@ vi.mock("@multica/core/paths", () => ({
     squadDetail: (id: string) => `/acme/squads/${id}`,
     issueDetail: (id: string) => `/acme/issues/${id}`,
   }),
+  issueRouteRef: (issue: { id: string; identifier?: string | null }) => issue.identifier || issue.id,
 }));
 vi.mock("../flow-designer/download-json", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../flow-designer/download-json")>()),

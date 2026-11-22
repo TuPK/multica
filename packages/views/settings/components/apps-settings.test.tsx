@@ -10,6 +10,7 @@ import enCommon from "../../locales/en/common.json";
 import enSettings from "../../locales/en/settings.json";
 import enBilling from "../../locales/en/billing.json";
 import { toast } from "sonner";
+import { openExternal } from "../../platform";
 import { AppsSettings } from "./apps-settings";
 
 const nav = vi.hoisted(() => ({
@@ -22,8 +23,12 @@ vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
   api: {
     getAppsOverview: vi.fn(), listAppCatalog: vi.fn(), updateAppSettings: vi.fn(), updateAppRules: vi.fn(),
-    getWorkspaceFeatures: vi.fn(),
+    getWorkspaceFeatures: vi.fn(), connectApp: vi.fn(),
   },
+}));
+vi.mock("../../platform", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../platform")>()),
+  openExternal: vi.fn(),
 }));
 vi.mock("@multica/core/paths", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -79,7 +84,7 @@ it("recovers an empty saved catalog only after the admin confirms", async () => 
   expect(api.updateAppSettings).not.toHaveBeenCalled();
   await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Show all apps" }));
   await waitFor(() => expect(api.updateAppSettings).toHaveBeenCalledWith({ catalog_mode: "all", allowed_toolkits: [] }));
-  await waitFor(() => expect(screen.queryByText("A saved app list is hiding other apps.")).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryByText("A previous app list is hiding other apps.")).not.toBeInTheDocument());
 });
 
 it("lets a member recover only their personal account and keeps failed confirmation open", async () => {
@@ -87,7 +92,7 @@ it("lets a member recover only their personal account and keeps failed confirmat
   vi.mocked(api.updateAppRules).mockRejectedValueOnce(new Error("offline"));
   const user = userEvent.setup();
   renderSettings();
-  await screen.findByText("A saved app list is hiding other apps.");
+  await screen.findByText("A previous app list is hiding other apps.");
   expect(screen.queryByRole("button", { name: "Show all apps" })).not.toBeInTheDocument();
   expect(screen.getAllByRole("button", { name: "Allow all actions" })).toHaveLength(1);
   await user.click(screen.getByRole("button", { name: "Allow all actions" }));
@@ -103,7 +108,23 @@ it("lets a member recover only their personal account and keeps failed confirmat
     { action_class: "share", policy: "allow" },
   ]));
   await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
-  expect(screen.getAllByText("Saved action restrictions are still blocking this account.")).toHaveLength(1);
+  expect(screen.getAllByText("Previous action restrictions are still limiting this account.")).toHaveLength(1);
+});
+
+it("reconnects an expired account from its row", async () => {
+  overview.personal = [
+    ...overview.personal,
+    { id: "personal-2", toolkit_slug: "mobbin", status: "expired", connected_at: "", last_used_at: null },
+  ];
+  vi.mocked(api.connectApp).mockResolvedValue({ redirect_url: "https://auth.example.com/authorize?state=s" });
+  const user = userEvent.setup();
+  renderSettings();
+  expect(await screen.findByText("Needs reconnecting")).toBeVisible();
+  const buttons = screen.getAllByRole("button", { name: "Reconnect" });
+  expect(buttons).toHaveLength(1);
+  await user.click(buttons[0]!);
+  await waitFor(() => expect(api.connectApp).toHaveBeenCalledWith("personal", "mobbin"));
+  expect(openExternal).toHaveBeenCalledWith("https://auth.example.com/authorize?state=s", { webTarget: "same-tab" });
 });
 
 it("opens a connection dialog for the section that launched it", async () => {
@@ -129,7 +150,7 @@ it("only offers members the personal connection entry", async () => {
 it("reloads accounts when the Desktop window is focused again after connecting in the browser", async () => {
   (window as { desktopAPI?: unknown }).desktopAPI = { pickDirectory: vi.fn() };
   renderSettings();
-  await screen.findByText("A saved app list is hiding other apps.");
+  await screen.findByText("A previous app list is hiding other apps.");
   expect(api.getAppsOverview).toHaveBeenCalledTimes(1);
   fireEvent.focus(window);
   await waitFor(() => expect(api.getAppsOverview).toHaveBeenCalledTimes(2));
@@ -137,7 +158,7 @@ it("reloads accounts when the Desktop window is focused again after connecting i
 
 it("does not reload on focus on the web, where the flow returns to this tab", async () => {
   renderSettings();
-  await screen.findByText("A saved app list is hiding other apps.");
+  await screen.findByText("A previous app list is hiding other apps.");
   fireEvent.focus(window);
   await new Promise((resolve) => setTimeout(resolve, 20));
   expect(api.getAppsOverview).toHaveBeenCalledTimes(1);

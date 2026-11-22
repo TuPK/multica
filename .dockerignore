@@ -35,12 +35,13 @@ coverage
 /docs/
 *.md
 
-# Dockerfile.web needs the web workspace and root dependency patch inputs.
-# Dockerfile.landing needs the landing workspace.
+# Dockerfile.web and Dockerfile.collab need their workspaces and root
+# dependency patch inputs. Dockerfile.landing needs the landing workspace.
 # Default-exclude other app files so they do not enter the build context.
 /apps/*
 !/apps/web/
 !/apps/landing/
+!/apps/collab/
 !/apps/mobile
 /apps/mobile/*
 !/apps/mobile/patches

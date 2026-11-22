@@ -22,7 +22,7 @@ describe("Outline by keyboard", () => {
     const user = userEvent.setup();
     const onSelectStep = vi.fn();
     renderWithI18n(<Outline doc={doc(3)} selectedStepKey={null} onSelectStep={onSelectStep} />);
-    await user.click(screen.getByPlaceholderText("Search steps…"));
+    await user.click(screen.getByPlaceholderText("Search steps..."));
     await user.tab();
     expect(document.activeElement?.textContent).toMatch(/^Step 1/);
     await user.tab();

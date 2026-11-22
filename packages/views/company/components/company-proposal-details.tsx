@@ -14,7 +14,7 @@ import {
 } from "@multica/core/company";
 import { initiativeDetailOptions } from "@multica/core/pipeline";
 import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
+import { useWorkspacePaths, issueRouteRef } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { ChevronDown, ChevronRight } from "@multica/ui/icons";
 import { ReadonlyContent } from "../../editor/readonly-content";
@@ -226,7 +226,7 @@ export function CompanyProposalRelated({ related }: { related: readonly Proposal
             <li key={`${entry.kind}:${entry.id}:${index}`} className="flex min-w-0 items-center gap-2 text-body">
               {entry.issue_identifier ? (
                 <AppLink
-                  href={paths.issueDetail(entry.issue_identifier)}
+                  href={paths.issueDetail(issueRouteRef({ id: entry.issue_identifier, identifier: entry.issue_identifier }))}
                   className="shrink-0 text-caption text-muted-foreground hover:text-foreground hover:underline"
                 >
                   {entry.issue_identifier}

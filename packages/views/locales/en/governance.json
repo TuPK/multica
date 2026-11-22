@@ -32,7 +32,7 @@
         "body": "As Trusted, and standing approvals may create initiatives from its own opportunities at the first stage, within caps and budget."
       }
     },
-    "boss_only_note": "Launches and organisation changes are always the boss's decision, at every level. Money is bounded by budgets at every level.",
+    "boss_only_note": "Launches and organization changes are always the boss's decision, at every level. Money is bounded by budgets at every level.",
     "squads_heading": "Squad levels",
     "squads_empty": "No squads yet.",
     "read_only": "Only owners and admins can change levels.",
@@ -46,7 +46,7 @@
     "level_save_failed": "Could not change the level. Try again.",
     "panel_heading": "Autonomy",
     "policies_heading": "Standing approvals",
-    "policies_note": "A standing approval approves a narrow class of proposals from squads at the right level, and you see them afterwards in the brief. It never covers organisation changes, launch gates, budget raises, urgent proposals or other standing approvals.",
+    "policies_note": "A standing approval approves a narrow class of proposals from squads at the right level, and you see them afterwards in the brief. It never covers organization changes, launch gates, budget raises, urgent proposals or other standing approvals.",
     "policies_empty": "No standing approvals yet.",
     "policies_load_failed": "Could not load the standing approvals.",
     "policy_kind": {
@@ -261,7 +261,7 @@
     "no_recommendations": "No recommendations"
   },
   "goals": {
-    "loading": "Loading goals…",
+    "loading": "Loading goals...",
     "load_failed": "Could not load goals.",
     "tree": {
       "company": "Company",

@@ -9,10 +9,31 @@ import (
 	"testing"
 )
 
-// legacyDuplicateMigrationStems are migrations 595–616 that already shipped with
+// legacyDuplicateMigrationStems are migrations 595–616, and 713–722 (fork and
+// upstream numbered them independently), that already shipped with
 // a shared prefix. They are applied on live databases keyed by their full name,
 // so they cannot be renamed. Any new duplicate is still an error.
 var legacyDuplicateMigrationStems = map[string]bool{
+	"713_doc_collab":                              true,
+	"713_proposal_revision_workspace_index":       true,
+	"714_brief_inquiry":                           true,
+	"714_doc_collab_state_pkey_index":             true,
+	"715_brief_inquiry_pkey_index":                true,
+	"715_doc_collab_state_pkey":                   true,
+	"716_brief_inquiry_primary_key":               true,
+	"716_doc_revision_pkey_index":                 true,
+	"717_brief_inquiry_workspace_day_index":       true,
+	"717_doc_revision_pkey":                       true,
+	"718_auto_archive_prompt":                     true,
+	"718_squad_attention":                         true,
+	"719_remote_app_connection":                   true,
+	"719_squad_attention_pkey_index":              true,
+	"720_remote_app_oauth_client_idx":             true,
+	"720_squad_attention_primary_key":             true,
+	"721_brief_push_preference":                   true,
+	"721_remote_app_connection_owner_idx":         true,
+	"722_auto_archive_agent_trigger_prompt":       true,
+	"722_brief_push_preference_pkey_index":        true,
 	"600_agent_office_room":                       true,
 	"600_wecom_install_session":                   true,
 	"601_office_floor":                            true,

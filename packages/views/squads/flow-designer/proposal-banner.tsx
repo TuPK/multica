@@ -6,7 +6,7 @@ import { clientErrorMessage } from "@multica/core/api";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { flowErrorCode } from "@multica/core/flow-drafts";
 import { latestProposalFile, proposalFilesOptions, proposalSource, useImportFlowProposal } from "@multica/core/packs";
-import { useWorkspacePaths } from "@multica/core/paths";
+import { useWorkspacePaths, issueRouteRef } from "@multica/core/paths";
 import { agentListOptions } from "@multica/core/workspace/queries";
 import type { FlowDraft } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
@@ -76,7 +76,7 @@ export function ProposalBanner({ squadId, draft, saveNow, onImported }: Proposal
         <span className="text-muted-foreground">{t(($) => $.flow_designer.proposal.waiting)}</span>
       )}
       {source && (
-        <AppLink href={paths.issueDetail(source.issue_id)} className="text-muted-foreground underline-offset-2 hover:underline">
+        <AppLink href={paths.issueDetail(issueRouteRef({ id: source.issue_id, identifier: null }))} className="text-muted-foreground underline-offset-2 hover:underline">
           {t(($) => $.flow_designer.proposal.open_issue)}
         </AppLink>
       )}

@@ -37,7 +37,7 @@
     "stalled": "已超出阶段时限"
   },
   "panel": {
-    "loading": "正在加载专项…",
+    "loading": "正在加载专项...",
     "unavailable": "无法加载此专项。",
     "overview": "概览",
     "stage": "阶段",
@@ -88,7 +88,7 @@
       "scale": "扩大",
       "sunset": "终止"
     },
-    "outcome_hint": "继续则保持运营。扩大会在“定义”阶段启动一个后续项目。终止则关闭该项目。",
+    "outcome_hint": "继续则保持运营。扩大会在\"定义\"阶段启动一个后续项目。终止则关闭该项目。",
     "reject": "驳回",
     "reject_note": "驳回原因",
     "reject_note_required": "驳回闸门需要填写说明。",

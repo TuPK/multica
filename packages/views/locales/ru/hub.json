@@ -264,7 +264,7 @@
         "blocked": "Blocked",
         "blocked_hint": "This import can't be installed. Go back and choose another source.",
         "warn_hint": "Review the findings before importing.",
-        "blocked_error": "This import is blocked and can't be installed.",
+        "blocked_error": "This import is `blocked` and can't be installed.",
         "warn_error": "Confirm the warnings before importing.",
         "acknowledge": "I understand the warnings",
         "severity": {

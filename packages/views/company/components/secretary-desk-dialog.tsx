@@ -10,7 +10,7 @@ import {
   type SecretaryDeskItem,
 } from "@multica/core/company";
 import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
+import { useWorkspacePaths, issueRouteRef } from "@multica/core/paths";
 import { squadListOptions } from "@multica/core/workspace/queries";
 import type { Issue, Squad } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
@@ -91,7 +91,7 @@ function SecretaryDeskList() {
         <DeskRow
           key={item.issue.id}
           item={item}
-          href={paths.issueDetail(item.issue.identifier)}
+          href={paths.issueDetail(issueRouteRef(item.issue))}
           status={statusLabel(item.issue.status)}
           squad={squadOf(item.issue, squads.data ?? [])}
           age={timeAgo(item.issue.created_at)}

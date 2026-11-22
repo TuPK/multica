@@ -10,7 +10,7 @@ import {
   type PipelineStage,
 } from "@multica/core/pipeline";
 import type { Squad } from "@multica/core/types";
-import { useWorkspacePaths } from "@multica/core/paths";
+import { useWorkspacePaths, issueRouteRef } from "@multica/core/paths";
 import { useT } from "../i18n";
 import { AppLink } from "../navigation";
 import { InitiativeActions } from "./initiative-actions";
@@ -97,7 +97,7 @@ export function InitiativePanel({
 
       <InitiativeGates gates={gates} canManage={canManage} />
 
-      <AppLink href={paths.issueDetail(initiative.issue_id)} className="text-body text-primary hover:underline">
+      <AppLink href={paths.issueDetail(issueRouteRef({ id: initiative.issue_id, identifier: null }))} className="text-body text-primary hover:underline">
         {t(($) => $.panel.open_issue)}
       </AppLink>
 

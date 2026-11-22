@@ -1,6 +1,6 @@
 {
   "title": "扩展中心",
-  "search_placeholder": "搜索技能和插件",
+  "search_placeholder": "搜索skill和插件",
   "view_label": "视图",
   "tabs": {
     "items": "项目",
@@ -12,11 +12,11 @@
   },
   "kinds": {
     "all": "全部",
-    "skill": "技能",
+    "skill": "skill",
     "plugin": "插件"
   },
   "kind_singular": {
-    "skill": "技能",
+    "skill": "skill",
     "plugin": "插件"
   },
   "view": {
@@ -142,7 +142,7 @@
     "cancel": "取消"
   },
   "overview": {
-    "no_content": "这个技能还没有 SKILL.md 内容。",
+    "no_content": "这个skill还没有 SKILL.md 内容。",
     "no_readme": "这个版本没有 README。",
     "plugin_key": "插件标识",
     "latest": "最新版本",
@@ -157,8 +157,8 @@
     "published": "{{time}}发布"
   },
   "usage": {
-    "agents_title": "使用此技能的智能体",
-    "agents_empty": "还没有智能体使用此技能。",
+    "agents_title": "使用此skill的智能体",
+    "agents_empty": "还没有智能体使用此skill。",
     "installs_title": "在此工作区中安装",
     "installs_empty": "未在此工作区中安装。",
     "install_version": "版本 {{version}}",
@@ -228,7 +228,7 @@
     },
     "upload": {
       "drop": "将 .zip、.skill 压缩包或文件夹拖到此处",
-      "reading": "正在读取文件…",
+      "reading": "正在读取文件...",
       "choose_archive": "选择压缩包",
       "choose_folder": "选择文件夹",
       "read_failed": "无法读取这些文件。",
@@ -241,12 +241,12 @@
       }
     },
     "blank": {
-      "create": "创建空白技能"
+      "create": "创建空白skill"
     },
     "preview": {
       "back": "返回",
       "commit": "导入",
-      "committing": "正在导入…",
+      "committing": "正在导入...",
       "version": "v{{version}}",
       "expired": "此预览已过期。",
       "preview_again": "重新预览",
@@ -268,7 +268,7 @@
         }
       },
       "conflict": {
-        "legend": "Hub 中已存在“{{name}}”",
+        "legend": "Hub 中已存在\"{{name}}\"",
         "rename": "以新名称导入",
         "rename_label": "新名称",
         "replace": "替换现有条目",
@@ -326,7 +326,7 @@
     "size_none": "—",
     "cancel": "取消",
     "apply": "更新",
-    "applying": "正在更新…",
+    "applying": "正在更新...",
     "choose_local": "请选择一个选项以继续。",
     "local": {
       "legend": "本地编辑",
@@ -395,7 +395,7 @@
     },
     "local_edits_warning": "此条目包含在此处所做的编辑。应用更新时会询问如何处理这些编辑。",
     "check": "检查更新",
-    "checking": "正在检查…",
+    "checking": "正在检查...",
     "read_only": "请让有编辑权限的成员检查或应用更新。"
   },
   "sources": {

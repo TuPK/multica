@@ -6,7 +6,7 @@ import { clientErrorMessage } from "@multica/core/api";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useCreateIssue } from "@multica/core/issues/mutations";
 import { useRoomWorkflowCheck, useRoomWorkflowPolicy } from "@multica/core/issue-workflows/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
+import { useWorkspacePaths, issueRouteRef } from "@multica/core/paths";
 import type { IssueWorkflow, RoomWorkflowCheck, Squad } from "@multica/core/types";
 import {
   Dialog,
@@ -72,7 +72,7 @@ export function TrialRunDialog({ open, onOpenChange, squad, workflow }: TrialRun
       });
       setTitle("");
       onOpenChange(false);
-      nav.push(paths.issueDetail(issue.id));
+      nav.push(paths.issueDetail(issueRouteRef(issue)));
     } catch (err) {
       const roomRefusal = parseRoomWorkflowRefusal(err, squad.id);
       if (roomRefusal) {
