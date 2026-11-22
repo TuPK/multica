@@ -102,6 +102,7 @@ vi.mock("./api/hooks", () => ({
     refetch: vi.fn(),
   }),
   useWorkspaceUsage: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
+  useWorkspaceAICost: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useWorkspaceBillingProfile: () => ({ data: null, isLoading: false, isError: false }),
   useWorkspaceNotes: () => ({ data: [], isLoading: false }),
   useWorkspaceAudit: () => ({ data: [], isLoading: false }),

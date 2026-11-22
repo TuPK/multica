@@ -2,6 +2,7 @@ package console
 
 import (
 	"context"
+	"github.com/multica-ai/multica/platform-management/internal/aicost"
 
 	"github.com/multica-ai/multica/platform-management/internal/quota"
 	"github.com/multica-ai/multica/platform-management/internal/tenantpolicy"
@@ -381,6 +382,8 @@ type Reader interface {
 	ListOrders(ctx context.Context, status billing.Status, newestFirst bool, limit int, scope Scope) ([]OrderRow, error)
 	// WorkspaceUsage returns the usage tab of a workspace for the UTC month of now.
 	WorkspaceUsage(ctx context.Context, workspaceID string, now time.Time) (usage.Month, error)
+	// WorkspaceAICostRows reads the AI spend rows of a workspace since the given instant.
+	WorkspaceAICostRows(ctx context.Context, workspaceID string, since time.Time) ([]aicost.Row, error)
 	// WorkspaceLimits returns the effective limit of every gate of a workspace at
 	// now: its plan, its overrides and its tenant (spec R6 section 3b.4). A nil
 	// limit is no limit.

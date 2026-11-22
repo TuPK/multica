@@ -1,4 +1,4 @@
-package metrics
+package pricing
 
 import (
 	"regexp"
@@ -424,7 +424,7 @@ func priceForAntigravityModel(model string) (ModelPrice, bool) {
 	return ModelPrice{}, false
 }
 
-func tokenCostUSD(tokens int64, pricePerM float64) float64 {
+func TokenCostUSD(tokens int64, pricePerM float64) float64 {
 	if tokens <= 0 || pricePerM <= 0 {
 		return 0
 	}

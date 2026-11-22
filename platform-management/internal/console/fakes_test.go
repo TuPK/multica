@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/multica-ai/multica/platform-management/internal/aicost"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/quota"
 	"github.com/multica-ai/multica/platform-management/internal/tenantpolicy"
@@ -211,6 +212,10 @@ func (r *fakeReader) RateCurrent(_ context.Context, ws string, _ time.Time) (int
 
 func (r *fakeReader) WorkspaceUsage(_ context.Context, ws string, _ time.Time) (usage.Month, error) {
 	return usage.Month{WorkspaceID: ws}, nil
+}
+
+func (r *fakeReader) WorkspaceAICostRows(_ context.Context, _ string, _ time.Time) ([]aicost.Row, error) {
+	return nil, nil
 }
 
 func (r *fakeReader) GetOrder(_ context.Context, id string) (OrderRow, bool, error) {

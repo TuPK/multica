@@ -1,4 +1,4 @@
-package metrics
+package pricing
 
 // EstimateCostUSD prices one usage row's tokens with the rate table that
 // RecordLLMUsage uses (PriceForRuntimeModel). It is the server's one estimate of
@@ -10,8 +10,8 @@ func EstimateCostUSD(rawProvider, model string, inputTokens, outputTokens, cache
 	if !ok {
 		return 0, false
 	}
-	return tokenCostUSD(inputTokens, price.InputPerM) +
-		tokenCostUSD(outputTokens, price.OutputPerM) +
-		tokenCostUSD(cacheReadTokens, price.CacheReadPerM) +
-		tokenCostUSD(cacheWriteTokens, price.CacheWritePerM), true
+	return TokenCostUSD(inputTokens, price.InputPerM) +
+		TokenCostUSD(outputTokens, price.OutputPerM) +
+		TokenCostUSD(cacheReadTokens, price.CacheReadPerM) +
+		TokenCostUSD(cacheWriteTokens, price.CacheWritePerM), true
 }

@@ -1,4 +1,4 @@
-package metrics
+package pricing
 
 import "testing"
 

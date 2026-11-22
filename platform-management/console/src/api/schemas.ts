@@ -592,6 +592,18 @@ export const WorkspaceUsageSchema = z.object({
 });
 export type WorkspaceUsage = z.output<typeof WorkspaceUsageSchema>;
 
+// AI spend of a workspace over one window (GET .../ai-cost). cost_usd is the
+// provider-reported charge plus the rate-table estimate; complete is false when
+// some tokens had no rate, so the figure is a floor.
+export const WorkspaceAICostSchema = z.object({
+  window: text,
+  since: text,
+  until: text,
+  cost_usd: z.number().default(0),
+  complete: z.boolean().default(true),
+});
+export type WorkspaceAICost = z.output<typeof WorkspaceAICostSchema>;
+
 // A tenant holds one or more workspaces (spec R6 section 5). max_workspaces is
 // the tenant's effective limit; null, like an absent value, is no limit (I9).
 export const TenantSchema = z.object({
@@ -971,6 +983,12 @@ export function parsePutBillingProfileResponse(data: unknown): PutBillingProfile
 export function parseWorkspaceUsage(data: unknown): WorkspaceUsage | null {
   return parseWithFallback<WorkspaceUsage | null>(data, WorkspaceUsageSchema, null, {
     endpoint: "GET /api/platform/workspaces/{id}/usage",
+  });
+}
+
+export function parseWorkspaceAICost(data: unknown): WorkspaceAICost | null {
+  return parseWithFallback<WorkspaceAICost | null>(data, WorkspaceAICostSchema, null, {
+    endpoint: "GET /api/platform/workspaces/{id}/ai-cost",
   });
 }
 

@@ -150,6 +150,7 @@ func routeTable() []routeSpec {
 		{base + "/workspaces/{id}", staff.ActionWorkspacesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getWorkspace}},
 		{base + "/workspaces/{id}/status", staff.ActionWorkspacesLock, nil, map[string]handlerFunc{http.MethodPost: (*Handler).setWorkspaceStatus}},
 		{base + "/workspaces/{id}/usage", staff.ActionWorkspacesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getWorkspaceUsage}},
+		{base + "/workspaces/{id}/ai-cost", staff.ActionWorkspacesRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).getWorkspaceAICost}},
 		{base + "/workspaces/{id}/audit-events", staff.ActionAuditRead, nil, map[string]handlerFunc{http.MethodGet: (*Handler).listWorkspaceAuditEvents}},
 		{base + "/workspaces/{id}/notes", staff.ActionWorkspacesRead, map[string]string{http.MethodPost: staff.ActionNotesWrite}, map[string]handlerFunc{
 			http.MethodGet:  (*Handler).listNotes,

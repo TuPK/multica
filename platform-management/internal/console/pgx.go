@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/multica-ai/multica/platform-management/internal/aicost"
 	"github.com/multica-ai/multica/platform-management/internal/quota"
 	"github.com/multica-ai/multica/platform-management/internal/tenantpolicy"
 	"time"
@@ -745,6 +746,11 @@ func (r *PgxReader) GetOrder(ctx context.Context, id string) (OrderRow, bool, er
 // WorkspaceUsage implements Reader.
 func (r *PgxReader) WorkspaceUsage(ctx context.Context, workspaceID string, now time.Time) (usage.Month, error) {
 	return r.usage.Month(ctx, workspaceID, now)
+}
+
+// WorkspaceAICostRows implements Reader.
+func (r *PgxReader) WorkspaceAICostRows(ctx context.Context, workspaceID string, since time.Time) ([]aicost.Row, error) {
+	return aicost.Load(ctx, r.pool, workspaceID, since)
 }
 
 // RecentOrders implements Reader.

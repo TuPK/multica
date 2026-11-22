@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"github.com/multica-ai/multica/platform-management/pricing"
 	"math"
 	"strconv"
 	"testing"
@@ -280,7 +281,7 @@ func TestBusinessMetricsPrefersProviderReportedCost(t *testing.T) {
 	// table. The provider says the turn cost $16 — the long-context tier.
 	const actualUSD = 16.0
 	m.RecordLLMUsage("issue", "local", "grok", "grok-4.5",
-		1_000_000, 1_000_000, 0, 0, int64(actualUSD*CostUSDTicksPerUSD))
+		1_000_000, 1_000_000, 0, 0, int64(actualUSD*pricing.CostUSDTicksPerUSD))
 
 	input := testutil.ToFloat64(m.llmCostUSD.WithLabelValues("xai", "grok-4.5", "input", "local", "issue"))
 	output := testutil.ToFloat64(m.llmCostUSD.WithLabelValues("xai", "grok-4.5", "output", "local", "issue"))
@@ -329,7 +330,7 @@ func TestBusinessMetricsCostOnlyUsage(t *testing.T) {
 			m := NewBusinessMetrics()
 			const actualUSD = 0.01
 			m.RecordLLMUsage("issue", "local", "grok", tc.model,
-				0, 0, 0, 0, int64(actualUSD*CostUSDTicksPerUSD))
+				0, 0, 0, 0, int64(actualUSD*pricing.CostUSDTicksPerUSD))
 
 			// Inspect collectors without creating zero-token series in the test.
 			if got := testutil.CollectAndCount(m.llmTokens); got != 0 {
@@ -425,7 +426,7 @@ func TestBusinessMetricsRecordsProviderCostForUnpricedModel(t *testing.T) {
 
 	const actualUSD = 1.23456789
 	m.RecordLLMUsage("issue", "local", "grok", "grok-composer-2.5-fast",
-		500, 100, 0, 0, int64(actualUSD*CostUSDTicksPerUSD))
+		500, 100, 0, 0, int64(actualUSD*pricing.CostUSDTicksPerUSD))
 
 	// No rates means no way to split by token type, so the whole charge lands
 	// in one bucket — but it must be the whole charge.

@@ -9,6 +9,7 @@ import { findAlert } from "../test/alert";
 const mockUseMe = vi.fn();
 const mockUseWorkspace = vi.fn();
 const mockUseWorkspaceUsage = vi.fn();
+const mockUseWorkspaceAICost = vi.fn();
 const mockUseWorkspaceBillingProfile = vi.fn();
 const mockUseWorkspaceNotes = vi.fn();
 const mockUseWorkspaceAudit = vi.fn();
@@ -33,6 +34,7 @@ vi.mock("../api/hooks", () => ({
   useMe: () => mockUseMe(),
   useWorkspace: () => mockUseWorkspace(),
   useWorkspaceUsage: () => mockUseWorkspaceUsage(),
+  useWorkspaceAICost: (id?: string, window?: string) => mockUseWorkspaceAICost(id, window),
   useWorkspaceBillingProfile: (id?: string) => mockUseWorkspaceBillingProfile(id),
   useWorkspaceNotes: () => mockUseWorkspaceNotes(),
   useWorkspaceAudit: () => mockUseWorkspaceAudit(),
@@ -157,6 +159,7 @@ describe("WorkspaceDetail screen", () => {
       isError: false,
       refetch: vi.fn(),
     });
+    mockUseWorkspaceAICost.mockReturnValue({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() });
     mockUseWorkspaceUsage.mockReturnValue({
       data: {
         workspace_id: "t-123",
@@ -324,6 +327,31 @@ describe("WorkspaceDetail screen", () => {
     expect(screen.getByRole("heading", { name: "Usage" })).toBeInTheDocument();
     expect(screen.getByTestId("usage-daily").textContent).toBe("No daily snapshot yet.");
     expect(screen.getByRole("heading", { name: "Acme Corp" })).toBeInTheDocument();
+  });
+
+  describe("AI spend", () => {
+    it("loads all time by default and marks the total as a floor when some tokens had no rate", () => {
+      mockUseWorkspaceAICost.mockReturnValue({
+        data: {
+          window: "all",
+          since: "2026-01-05T00:00:00Z",
+          until: "2026-11-22T00:00:00Z",
+          cost_usd: 12.5,
+          complete: false,
+        },
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+      render(<WorkspaceDetail workspaceId="t-123" onBack={vi.fn()} userRole="support" />);
+
+      expect(mockUseWorkspaceAICost).toHaveBeenCalledWith("t-123", "all");
+      const total = within(screen.getByTestId("ai-cost-total"));
+      expect(total.getByText(/≥/)).toBeTruthy();
+      expect(total.getByText(/12\.50/)).toBeTruthy();
+      expect(total.getByText(/floor/)).toBeTruthy();
+    });
   });
 
   describe("monthly usage and usage debt write-off", () => {

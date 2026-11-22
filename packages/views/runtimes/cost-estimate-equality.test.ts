@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import fixture from "../../../server/internal/metrics/testdata/cost_estimate_cases.json";
+import fixture from "../../../platform-management/pricing/testdata/cost_estimate_cases.json";
 import { estimateCost } from "./utils";
 
 // The shared fixture the server's EstimateCostUSD is tested against

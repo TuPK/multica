@@ -81,6 +81,7 @@ func matrix() []matrixRoute {
 		{"GET", "/api/platform/workspaces/" + wsID, "", scopedAll, 200},
 		{"POST", "/api/platform/workspaces/" + wsID + "/status", `{"status":"read_only","reason":"r"}`, scopedLock, 200},
 		{"GET", "/api/platform/workspaces/" + wsID + "/usage", "", scopedAll, 200},
+		{"GET", "/api/platform/workspaces/" + wsID + "/ai-cost", "", scopedAll, 200},
 		{"GET", "/api/platform/workspaces/" + wsID + "/audit-events", "", scopedAll, 200},
 		{"GET", "/api/platform/workspaces/" + wsID + "/notes", "", scopedAll, 200},
 		{"POST", "/api/platform/workspaces/" + wsID + "/notes", `{"body":"hello"}`, scopedAll, 201},

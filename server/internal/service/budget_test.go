@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/multica-ai/multica/platform-management/pricing"
 	"os"
 	"sort"
 	"sync/atomic"
@@ -12,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -58,7 +58,7 @@ func TestUsageRowCostPrefersTheProviderPriceAndEstimatesTheRest(t *testing.T) {
 		t.Errorf("5000 ticks = %d micros, want 1", got)
 	}
 	// No provider price: the shared estimate, the same figure RecordLLMUsage prices with.
-	usd, ok := metrics.EstimateCostUSD("anthropic", "claude-sonnet-4.6", 1_000_000, 100_000, 0, 0)
+	usd, ok := pricing.EstimateCostUSD("anthropic", "claude-sonnet-4.6", 1_000_000, 100_000, 0, 0)
 	if !ok || usd <= 0 {
 		t.Fatalf("claude-sonnet-4.6 must have a rate row (usd %v, ok %v)", usd, ok)
 	}

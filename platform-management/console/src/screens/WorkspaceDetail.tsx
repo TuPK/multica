@@ -31,6 +31,7 @@ import { RowActions, useRowActionsWidth } from "../components/RowActions";
 import {
   useMe,
   useWorkspace,
+  useWorkspaceAICost,
   useWorkspaceUsage,
   useWorkspaceBillingProfile,
   useWorkspaceNotes,
@@ -93,6 +94,62 @@ function formatUsageQuantity(row: WorkspaceUsageRow): string {
     return formatBytes(row.quantity);
   }
   return row.quantity.toLocaleString();
+}
+
+const AI_COST_WINDOWS = ["all", "7d", "30d", "90d"] as const;
+type AICostWindow = (typeof AI_COST_WINDOWS)[number];
+
+const AI_COST_WINDOW_LABELS: Record<AICostWindow, string> = {
+  all: "All time",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+  "90d": "Last 90 days",
+};
+
+const usdFormat = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
+
+/** Provider-reported AI spend of a workspace over one window, with a period picker. */
+function AICostSection({ workspaceId }: { workspaceId: string }) {
+  const [period, setPeriod] = useState<AICostWindow>("all");
+  const { data, isLoading, isError, error, refetch } = useWorkspaceAICost(workspaceId, period);
+
+  return (
+    <Section variant="transparent" padding={0} data-testid="ai-cost" className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Heading level={2}>{t("AI spend")}</Heading>
+        <Selector
+          label={t("Period")}
+          id="ai-cost-window"
+          options={AI_COST_WINDOWS.map((value) => ({ value, label: t(AI_COST_WINDOW_LABELS[value]) }))}
+          value={period}
+          onChange={(val) => {
+            if (AI_COST_WINDOWS.includes(val as AICostWindow)) setPeriod(val as AICostWindow);
+          }}
+        />
+      </div>
+
+      {isLoading && <LoadingState message={t("Loading AI spend...")} />}
+      {isError && (
+        <ErrorState
+          title={t("Failed to load AI spend")}
+          message={error instanceof Error ? error.message : t("Unable to load AI spend.")}
+          onRetry={() => void refetch()}
+        />
+      )}
+      {!isLoading && !isError && data && (
+        <div className="space-y-1" data-testid="ai-cost-total">
+          <Heading level={3}>
+            {data.complete ? "" : "≥ "}
+            {usdFormat.format(data.cost_usd)}
+          </Heading>
+          <Text>
+            {data.since.slice(0, 10)} {t("to")} {data.until.slice(0, 10)} {t("(UTC)")}
+          </Text>
+          {!data.complete && <Text>{t("Some models have no rate, so this total is a floor.")}</Text>}
+        </div>
+      )}
+    </Section>
+  );
 }
 
 interface MonthlyUsageSectionProps {
@@ -987,6 +1044,10 @@ export function WorkspaceDetail({ workspaceId, onBack, backLabel = t("Back to te
         canWriteOff={canWriteOff}
         onWriteOff={handleOpenWriteOffDialog}
       />
+
+      <Divider />
+
+      <AICostSection workspaceId={workspaceId} />
 
       {canManageMembers && (
         <>

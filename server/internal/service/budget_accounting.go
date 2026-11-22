@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/multica-ai/multica/platform-management/pricing"
 	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -91,7 +91,7 @@ func UsageRowCostMicros(provider, model string, inputTokens, outputTokens, cache
 	if costUSDTicks > 0 {
 		return (costUSDTicks + ticksPerMicro/2) / ticksPerMicro
 	}
-	usd, ok := metrics.EstimateCostUSD(provider, model, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens)
+	usd, ok := pricing.EstimateCostUSD(provider, model, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens)
 	if !ok {
 		return 0
 	}

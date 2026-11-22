@@ -2,6 +2,7 @@ package console
 
 import (
 	"encoding/json"
+	"github.com/multica-ai/multica/platform-management/internal/aicost"
 	"net/http"
 	"time"
 
@@ -272,6 +273,53 @@ func (h *Handler) getWorkspaceUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, m)
+}
+
+// getWorkspaceAICost is the AI spend of a workspace over one window: "all" from
+// its creation, or the last 7, 30 or 90 days. It carries money only (isolation
+// rule I6).
+func (h *Handler) getWorkspaceAICost(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.scopeFor(w, r, staff.ActionWorkspacesRead)
+	if !ok {
+		return
+	}
+	id, perr := pathID(r, "id")
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	if visible, err := h.workspaceVisible(r.Context(), scope, id); err != nil {
+		h.fail(w, r, "check workspace scope", err)
+		return
+	} else if !visible {
+		writeError(w, notFound())
+		return
+	}
+	d, found, err := h.Reader.GetWorkspace(r.Context(), id)
+	if err != nil {
+		h.fail(w, r, "get workspace", err)
+		return
+	}
+	if !found {
+		writeError(w, notFound())
+		return
+	}
+	window := r.URL.Query().Get("window")
+	if window == "" {
+		window = aicost.WindowAll
+	}
+	now := h.Now()
+	since, ok := aicost.Since(window, d.CreatedAt, now)
+	if !ok {
+		writeError(w, badRequest("invalid_window", "window must be all, 7d, 30d or 90d"))
+		return
+	}
+	rows, err := h.Reader.WorkspaceAICostRows(r.Context(), id, since)
+	if err != nil {
+		h.fail(w, r, "workspace ai cost", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, aicost.Summarize(window, since, now, rows))
 }
 
 type userJSON struct {

@@ -297,6 +297,7 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/workspaces/{id}/members/{user_id}/role":   systemTenant,
 		"/api/platform/workspaces/{id}/status":                   scopedLock,
 		"/api/platform/workspaces/{id}/usage":                    scopedAll,
+		"/api/platform/workspaces/{id}/ai-cost":                  scopedAll,
 		"/api/platform/workspaces/{id}/audit-events":             scopedAll,
 		"/api/platform/workspaces/{id}/notes":                    scopedAll,
 		"/api/platform/users":                                    scopedAll,

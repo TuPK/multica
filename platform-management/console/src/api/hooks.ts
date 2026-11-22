@@ -17,6 +17,7 @@ import {
   parseWorkspaceExportResponse,
   parseTenantDetail,
   parseTenantPage,
+  parseWorkspaceAICost,
   parseWorkspaceUsage,
   parseUserDetail,
   parseUserPage,
@@ -78,6 +79,7 @@ import {
   type WorkspaceListItem,
   type WorkspaceExportResponse,
   type WorkspaceStatus,
+  type WorkspaceAICost,
   type WorkspaceUsage,
   type UserDetail,
   type Order,
@@ -172,6 +174,7 @@ export type {
   PlanHistoryEntry,
   Limits,
   WorkspaceUsage,
+  WorkspaceAICost,
   WorkspaceListItem,
   WorkspaceExportResponse,
   PriceChange,
@@ -356,6 +359,7 @@ export const platformKeys = {
   legalHolds: () => ["platform", "legal-holds"] as const,
   workspace: (id: string) => ["platform", "workspaces", "detail", id] as const,
   workspaceUsage: (id: string) => ["platform", "workspaces", "usage", id] as const,
+  workspaceAICost: (id: string, window: string) => ["platform", "workspaces", "ai-cost", id, window] as const,
   workspaceBillingProfile: (id: string) => ["platform", "workspaces", "billing-profile", id] as const,
   workspaceAudits: (id: string) => ["platform", "workspaces", "audit", id] as const,
   workspaceAudit: (id: string, filters: AuditFilters) => ["platform", "workspaces", "audit", id, clean(filters)] as const,
@@ -531,6 +535,19 @@ export function useWorkspaceUsage(id: string | undefined) {
     enabled: !!id,
     queryFn: async ({ signal }): Promise<WorkspaceUsage> =>
       orMalformed(parseWorkspaceUsage(await platformFetch(`/workspaces/${pathSegment(id ?? "")}/usage`, { signal }))),
+  });
+}
+
+export function useWorkspaceAICost(id: string | undefined, window: string) {
+  return useQuery({
+    queryKey: platformKeys.workspaceAICost(id ?? "", window),
+    enabled: !!id,
+    queryFn: async ({ signal }): Promise<WorkspaceAICost> =>
+      orMalformed(
+        parseWorkspaceAICost(
+          await platformFetch(`/workspaces/${pathSegment(id ?? "")}/ai-cost?window=${encodeURIComponent(window)}`, { signal }),
+        ),
+      ),
   });
 }
 
