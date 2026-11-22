@@ -59,13 +59,14 @@ func TestSetIssueRunQueue_StoresAndValidatesStartStatus(t *testing.T) {
 	}
 }
 
-func TestSetIssueRunQueue_RefusesAStartStatusTheProjectWorkflowLacks(t *testing.T) {
+func TestSetIssueRunQueue_RefusesAStartStatusTheRoomWorkflowLacks(t *testing.T) {
 	seedTestCatalog(t)
-	resetDefaultWorkflow(t)
 	wf := createTestWorkflow(t, "Start status "+workflowTestSuffix(), "in_review")
 	projectID := createWorkflowTestProject(t, "Start status project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
-	id := dbfx.Issue(t, "start status workflow", testutil.Cols{"project_id": projectID, "status": "backlog"})
+	room := roomWithWorkflow(t, "Start status room", wf.ID)
+	id := dbfx.Issue(t, "start status workflow", testutil.Cols{
+		"project_id": projectID, "status": "backlog", "assignee_type": "squad", "assignee_id": room,
+	})
 
 	if w := putRunQueue(t, id, `{"queued":true,"start_status":"architecture"}`); w.Code != http.StatusBadRequest {
 		t.Fatalf("unlisted status: status = %d, want 400", w.Code)

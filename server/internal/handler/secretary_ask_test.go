@@ -75,6 +75,8 @@ func TestSecretaryAsk_LeaderAddresseeIsFiledToTheSquad(t *testing.T) {
 	dbfx.Project(t, "Secretary desk", testutil.Cols{"workspace_id": testWorkspaceID})
 	leader := createHandlerTestAgent(t, "ask squad leader "+uuid.NewString(), nil)
 	squadID := dbfx.Squad(t, "Ask squad "+uuid.NewString(), leader)
+	// The child is filed to the squad, which is a room: it needs a workflow.
+	giveSquadDefaultWorkflow(t, testWorkspaceID, squadID)
 
 	deadline := time.Now().Add(72 * time.Hour).UTC().Format(time.RFC3339)
 	var out SecretaryAskResponse
@@ -111,9 +113,10 @@ func TestSecretaryAsk_ChildrenAreFiledInTheSquadsProject(t *testing.T) {
 	repoProject := dbfx.Project(t, "Repo project "+uuid.NewString(), testutil.Cols{"workspace_id": testWorkspaceID})
 	leader := createHandlerTestAgent(t, "ask project leader "+uuid.NewString(), nil)
 	squadID := dbfx.Squad(t, "Ask project squad "+uuid.NewString(), leader)
+	giveSquadDefaultWorkflow(t, testWorkspaceID, squadID)
 	dbfx.Exec(t, `UPDATE project SET squad_ids = ARRAY[$2::uuid] WHERE id = $1`, repoProject, squadID)
 	bareLeader := createHandlerTestAgent(t, "ask bare leader "+uuid.NewString(), nil)
-	dbfx.Squad(t, "Ask bare squad "+uuid.NewString(), bareLeader)
+	giveSquadDefaultWorkflow(t, testWorkspaceID, dbfx.Squad(t, "Ask bare squad "+uuid.NewString(), bareLeader))
 	plain := createHandlerTestAgent(t, "ask plain agent "+uuid.NewString(), nil)
 
 	deadline := time.Now().Add(72 * time.Hour).UTC().Format(time.RFC3339)

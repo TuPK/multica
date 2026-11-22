@@ -675,19 +675,19 @@ func TestInitiative_ForceToBuildCreatesTheBuildProjectOnTheSDLCWorkflow(t *testi
 		t.Fatalf("the build stage should record its build project")
 	}
 
-	// The project runs the SDLC workflow, not the workspace default.
+	// The build squad runs the SDLC workflow, which its build issues follow.
 	var workflowName string
-	dbfx.QueryRow(t, `SELECT w.name FROM project p JOIN issue_workflow w ON w.id = p.workflow_id WHERE p.id = $1`,
-		*detail.Initiative.BuildProjectID).Scan(&workflowName)
+	dbfx.QueryRow(t, `SELECT w.name FROM squad s JOIN issue_workflow w ON w.id = s.active_workflow_id WHERE s.id = $1`,
+		fx.Build).Scan(&workflowName)
 	if workflowName != "SDLC Auto" {
 		t.Fatalf("the build project should use the SDLC Auto workflow, got %q", workflowName)
 	}
 	// Its developer, reviewer and QA steps hand to the squad's SDLC agents.
 	var agentSteps int
-	dbfx.QueryRow(t, `SELECT count(*) FROM project p JOIN issue_workflow w ON w.id = p.workflow_id,
-		jsonb_array_elements(w.steps) AS s
-		WHERE p.id = $1 AND s->'handler'->>'type' = 'agent' AND s->>'status_key' IN ('todo', 'in_progress', 'in_review', 'qa')`,
-		*detail.Initiative.BuildProjectID).Scan(&agentSteps)
+	dbfx.QueryRow(t, `SELECT count(*) FROM squad sq JOIN issue_workflow w ON w.id = sq.active_workflow_id,
+		jsonb_array_elements(w.steps) AS st
+		WHERE sq.id = $1 AND st->'handler'->>'type' = 'agent' AND st->>'status_key' IN ('todo', 'in_progress', 'in_review', 'qa')`,
+		fx.Build).Scan(&agentSteps)
 	if agentSteps != 4 {
 		t.Fatalf("developer, in progress, reviewer and QA steps should hand to agents, found %d", agentSteps)
 	}
@@ -840,6 +840,8 @@ func TestInitiative_ScaleStartsAFollowOnAtDefineAndKeepsOperating(t *testing.T) 
 
 func TestSquadRequest_IssueToASquadUnderAParentIsTagged(t *testing.T) {
 	fx := newIniWorkspace(t)
+	// The sub-issue is filed to the analysis squad, a room: it needs a workflow.
+	giveSquadDefaultWorkflow(t, fx.ID, fx.Analysis)
 	parent := fx.createInitiative(t, "Needs a PRD")
 	var parentIssue string
 	dbfx.QueryRow(t, `SELECT issue_id::text FROM initiative WHERE id = $1`, parent.ID).Scan(&parentIssue)

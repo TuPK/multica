@@ -97,14 +97,13 @@ func TestLegacyEditKeepsStoredTransitionsWhenRoutingUnchanged(t *testing.T) {
 	}
 }
 
-func TestWorkflowUsageListsProjectsAndAgents(t *testing.T) {
+func TestWorkflowUsageListsSquadsAndAgents(t *testing.T) {
 	seedTestCatalog(t)
 	agentID := seededReadyAgentID(t)
 	created := createTestWorkflowSteps(t, "Usage "+workflowTestSuffix(), []map[string]any{
 		{"status_key": "in_progress", "handler": map[string]any{"type": "agent", "id": agentID}, "instructions": "Build it."},
 	})
-	projectID := createWorkflowTestProject(t, "Usage project "+workflowTestSuffix())
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": created.ID}).Want(http.StatusOK)
+	room := roomWithWorkflow(t, "Usage room", created.ID)
 
 	var out struct {
 		Usage []IssueWorkflowUsage `json:"usage"`
@@ -120,8 +119,8 @@ func TestWorkflowUsageListsProjectsAndAgents(t *testing.T) {
 	if found == nil {
 		t.Fatalf("usage has no entry for workflow %s: %+v", created.ID, out.Usage)
 	}
-	if !workflowListHas(found.ProjectIDs, projectID) {
-		t.Fatalf("project_ids = %v, want %s", found.ProjectIDs, projectID)
+	if !workflowListHas(found.SquadIDs, room) {
+		t.Fatalf("squad_ids = %v, want %s", found.SquadIDs, room)
 	}
 	if !workflowListHas(found.AgentIDs, agentID) {
 		t.Fatalf("agent_ids = %v, want the step's agent %s", found.AgentIDs, agentID)
@@ -131,29 +130,28 @@ func TestWorkflowUsageListsProjectsAndAgents(t *testing.T) {
 	}
 }
 
-// Deleting a workflow a project uses is refused with the blocking reasons in
-// the body, each with its ids.
+// Deleting a workflow a squad uses is refused with the blocking reasons in the
+// body, each with its ids.
 func TestDeleteWorkflowReportsBlockingReasons(t *testing.T) {
 	seedTestCatalog(t)
 	created := createTestWorkflow(t, "Blocked delete "+workflowTestSuffix(), "in_review")
-	projectID := createWorkflowTestProject(t, "Blocked delete project "+workflowTestSuffix())
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": created.ID}).Want(http.StatusOK)
+	room := roomWithWorkflow(t, "Blocked delete room", created.ID)
 
 	body := testutil.Call(t, testHandler.DeleteIssueWorkflow, withURLParams(workflowRequest("DELETE", "/api/issue-workflows/"+created.ID, nil), "id", created.ID)).
 		Want(http.StatusConflict).Map()
-	if body["code"] != "workflow_in_use" {
-		t.Fatalf("code = %v, want workflow_in_use", body["code"])
+	if body["code"] != "workflow_is_squad_active" {
+		t.Fatalf("code = %v, want workflow_is_squad_active", body["code"])
 	}
 	reasons, ok := body["reasons"].([]any)
 	if !ok || len(reasons) != 1 {
 		t.Fatalf("reasons = %v, want one reason", body["reasons"])
 	}
 	reason := reasons[0].(map[string]any)
-	if reason["code"] != "workflow_in_use" || reason["count"] != float64(1) {
+	if reason["code"] != "workflow_is_squad_active" || reason["count"] != float64(1) {
 		t.Fatalf("reason = %v", reason)
 	}
-	if ids, _ := reason["ids"].([]any); len(ids) != 1 || ids[0] != projectID {
-		t.Fatalf("reason ids = %v, want [%s]", reason["ids"], projectID)
+	if ids, _ := reason["ids"].([]any); len(ids) != 1 || ids[0] != room {
+		t.Fatalf("reason ids = %v, want [%s]", reason["ids"], room)
 	}
 }
 
@@ -163,7 +161,7 @@ func TestOutcomeRouteMustMatchTheStatusWritten(t *testing.T) {
 	seedTestCatalog(t)
 	created := createTestWorkflowSteps(t, "Outcome routing "+workflowTestSuffix(), urgentOrRejectedSteps())
 	projectID := createWorkflowTestProject(t, "Outcome project "+workflowTestSuffix())
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": created.ID}).Want(http.StatusOK)
+	useAsWorkspaceDefault(t, created.ID)
 	issueID := dbfx.Issue(t, "route me "+workflowTestSuffix(), testutil.Cols{"project_id": projectID, "status": issuestatus.InReview})
 
 	refused := updateIssueForTest(t, issueID, map[string]any{"status": "in_progress", "outcome": "approved"}).

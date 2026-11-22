@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/multica-ai/multica/server/internal/testutil"
@@ -102,69 +101,6 @@ func TestPrivateProjectDashboardsKeepWorkspaceTotals(t *testing.T) {
 		})
 	}
 }
-
-func TestPrivateProjectWorkflowsHideProject(t *testing.T) {
-	f := newPrivateProjectFixture(t)
-	type workflowList struct {
-		Workflows []IssueWorkflowResponse `json:"workflows"`
-	}
-	list := func(userID string) workflowList {
-		var out workflowList
-		testutil.Call(t, testHandler.ListIssueWorkflows, asUser(workflowRequest(http.MethodGet, "/api/issue-workflows", nil), userID)).
-			Want(http.StatusOK).JSON(&out)
-		return out
-	}
-	names := func(wfs []IssueWorkflowResponse) bool {
-		for _, wf := range wfs {
-			for _, id := range wf.ProjectIDs {
-				if id == f.projectID {
-					return true
-				}
-			}
-		}
-		return false
-	}
-	insider, outsider := list(f.insider), list(f.outsider)
-	if !names(insider.Workflows) {
-		t.Fatal("project member: no workflow lists the private project")
-	}
-	if names(outsider.Workflows) {
-		t.Fatal("outsider: a workflow lists the private project")
-	}
-
-	var def IssueWorkflowResponse
-	for _, wf := range insider.Workflows {
-		if wf.IsDefault {
-			def = wf
-		}
-	}
-	if def.ID == "" || len(def.Steps) == 0 {
-		t.Fatalf("no Default workflow with steps: %+v", insider.Workflows)
-	}
-	var one IssueWorkflowResponse
-	testutil.Call(t, testHandler.GetIssueWorkflow, withURLParam(asUser(workflowRequest(http.MethodGet, "/api/issue-workflows/"+def.ID, nil), f.outsider), "id", def.ID)).
-		Want(http.StatusOK).JSON(&one)
-	if names([]IssueWorkflowResponse{one}) {
-		t.Fatal("outsider: GET workflow lists the private project")
-	}
-
-	brief := func(userID string) string {
-		var out struct {
-			Brief string `json:"brief"`
-		}
-		body := map[string]any{"status_key": def.Steps[0].StatusKey, "project_id": f.projectID}
-		req := withURLParam(asUser(workflowRequest(http.MethodPost, "/api/issue-workflows/"+def.ID+"/brief", body), userID), "id", def.ID)
-		testutil.Call(t, testHandler.PreviewIssueWorkflowBrief, req).Want(http.StatusOK).JSON(&out)
-		return out.Brief
-	}
-	if b := brief(f.insider); !strings.Contains(b, f.marker+" secret project") {
-		t.Fatalf("project member's brief lacks the project: %q", b)
-	}
-	if b := brief(f.outsider); strings.Contains(b, f.marker) {
-		t.Fatalf("outsider's brief names the private project: %q", b)
-	}
-}
-
 func TestPrivateProjectSearchIndexManifestLeavesOutHiddenRows(t *testing.T) {
 	f := newPrivateProjectFixture(t)
 	manifest := func(userID string) SearchIndexManifestResponse {

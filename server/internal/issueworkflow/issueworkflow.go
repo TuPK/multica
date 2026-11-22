@@ -646,6 +646,8 @@ type Querier interface {
 	GetProjectInWorkspace(ctx context.Context, arg db.GetProjectInWorkspaceParams) (db.Project, error)
 	GetSquadInWorkspace(ctx context.Context, arg db.GetSquadInWorkspaceParams) (db.Squad, error)
 	GetAgentInWorkspace(ctx context.Context, arg db.GetAgentInWorkspaceParams) (db.Agent, error)
+	IsSquadLeaderInWorkspace(ctx context.Context, arg db.IsSquadLeaderInWorkspaceParams) (bool, error)
+	GetWorkspace(ctx context.Context, id pgtype.UUID) (db.Workspace, error)
 }
 
 // DefaultFor loads the workspace Default workflow, or the built-in one when
@@ -659,41 +661,6 @@ func DefaultFor(ctx context.Context, q Querier, workspaceID pgtype.UUID) (Defini
 		return Definition{}, err
 	}
 	return Decode(row)
-}
-
-// ForIssue loads the workflow an issue in a project uses. def is nil only for an
-// issue outside any project.
-//
-// A squad routes its issues through its active workflow: an issue assigned to a
-// squad uses that squad's, and an issue assigned to an agent uses its home
-// squad's. When that squad has no active workflow, or the issue has no such
-// squad, the project's own workflow applies, as it always did.
-func ForIssue(ctx context.Context, q Querier, workspaceID, projectID pgtype.UUID, assigneeType pgtype.Text, assigneeID pgtype.UUID) (*Definition, db.Project, error) {
-	if !projectID.Valid {
-		return nil, db.Project{}, nil
-	}
-	project, err := q.GetProjectInWorkspace(ctx, db.GetProjectInWorkspaceParams{ID: projectID, WorkspaceID: workspaceID})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, db.Project{}, nil
-		}
-		return nil, db.Project{}, err
-	}
-	routing, err := routingSquad(ctx, q, workspaceID, assigneeType, assigneeID)
-	if err != nil {
-		return nil, db.Project{}, err
-	}
-	if routing.Valid {
-		def, ok, err := activeWorkflowOf(ctx, q, workspaceID, routing)
-		if err != nil {
-			return nil, db.Project{}, err
-		}
-		if ok {
-			return &def, project, nil
-		}
-	}
-	def, err := ForProjectRow(ctx, q, project)
-	return def, project, err
 }
 
 // routingSquad returns the squad whose active workflow an issue with this
@@ -718,38 +685,6 @@ func routingSquad(ctx context.Context, q Querier, workspaceID pgtype.UUID, assig
 	return pgtype.UUID{}, nil
 }
 
-// activeWorkflowOf loads a squad's active workflow. ok is false when the squad
-// has none, or the reference dangles, so the caller falls back to the project.
-func activeWorkflowOf(ctx context.Context, q Querier, workspaceID, squadID pgtype.UUID) (Definition, bool, error) {
-	squad, err := q.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{ID: squadID, WorkspaceID: workspaceID})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return Definition{}, false, nil
-		}
-		return Definition{}, false, err
-	}
-	if !squad.ActiveWorkflowID.Valid {
-		return Definition{}, false, nil
-	}
-	row, err := q.GetIssueWorkflow(ctx, db.GetIssueWorkflowParams{ID: squad.ActiveWorkflowID, WorkspaceID: workspaceID})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return Definition{}, false, nil
-		}
-		return Definition{}, false, err
-	}
-	def, err := Decode(row)
-	if err != nil {
-		return Definition{}, false, err
-	}
-	// A flow runs the squad's requests and their tasks, not its other issues:
-	// those keep the project's workflow.
-	if def.Flow != nil {
-		return Definition{}, false, nil
-	}
-	return def, true, nil
-}
-
 // OutsideProject loads the workflow that limits the statuses of an issue
 // outside any project: the workspace's stored Default, or nil before the
 // workspace stores one. Nothing hands off outside a project, so it is only
@@ -763,29 +698,6 @@ func OutsideProject(ctx context.Context, q Querier, workspaceID pgtype.UUID) (*D
 		return nil, err
 	}
 	def, err := Decode(row)
-	if err != nil {
-		return nil, err
-	}
-	return &def, nil
-}
-
-// ForProjectRow loads the workflow of an already-loaded project. A dangling
-// workflow reference falls back to Default.
-func ForProjectRow(ctx context.Context, q Querier, project db.Project) (*Definition, error) {
-	var def Definition
-	var err error
-	if project.WorkflowID.Valid {
-		var row db.IssueWorkflow
-		row, err = q.GetIssueWorkflow(ctx, db.GetIssueWorkflowParams{ID: project.WorkflowID, WorkspaceID: project.WorkspaceID})
-		if err == nil {
-			def, err = Decode(row)
-			return &def, err
-		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, err
-		}
-	}
-	def, err = DefaultFor(ctx, q, project.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

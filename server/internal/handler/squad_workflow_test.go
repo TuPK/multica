@@ -3,8 +3,6 @@ package handler
 import (
 	"context"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -131,8 +129,10 @@ func TestSquadsOnOneProjectRouteIssuesThroughTheirActiveWorkflows(t *testing.T) 
 	project := util.MustParseUUID(projectID)
 	routedName := func(assigneeType, assigneeID string) string {
 		t.Helper()
-		def, _, err := issueworkflow.ForIssue(context.Background(), testHandler.Queries, workspace, project,
-			pgtype.Text{String: assigneeType, Valid: true}, util.MustParseUUID(assigneeID))
+		def, _, err := issueworkflow.Resolve(context.Background(), testHandler.Queries, issueworkflow.RoomIssue{
+			WorkspaceID: workspace, ProjectID: project,
+			AssigneeType: pgtype.Text{String: assigneeType, Valid: true}, AssigneeID: util.MustParseUUID(assigneeID),
+		})
 		if err != nil || def == nil {
 			t.Fatalf("resolve %s %s: def=%v err=%v", assigneeType, assigneeID, def, err)
 		}
@@ -147,9 +147,9 @@ func TestSquadsOnOneProjectRouteIssuesThroughTheirActiveWorkflows(t *testing.T) 
 	if got := routedName("agent", developer); got != customName+" "+fx.ID[:8] {
 		t.Fatalf("developer's issue uses %q, want its home squad's custom workflow", got)
 	}
-	def, _, err := issueworkflow.ForIssue(context.Background(), testHandler.Queries, workspace, project, pgtype.Text{}, pgtype.UUID{})
+	def, _, err := issueworkflow.Resolve(context.Background(), testHandler.Queries, issueworkflow.RoomIssue{WorkspaceID: workspace, ProjectID: project})
 	if err != nil || def == nil || !def.IsDefault {
-		t.Fatalf("issue with no assignee: def=%v err=%v, want the project's Default", def, err)
+		t.Fatalf("issue with no assignee: def=%v err=%v, want the workspace Default", def, err)
 	}
 }
 
@@ -315,80 +315,5 @@ func TestProjectDetailShowsEachSquadsActiveWorkflow(t *testing.T) {
 	}
 	if len(detail.Squads) != 2 || names[fx.Build] != "SDLC Auto" || names[second] != "Detail custom "+fx.ID[:8] {
 		t.Fatalf("project squads = %+v, want the build squad on SDLC Auto and the second on its custom workflow", detail.Squads)
-	}
-}
-
-// TestSquadWorkflowBackfillLinksExistingWorkflows runs the two backfill
-// migrations on workflows stored before squads owned them. Both run in one
-// transaction that is rolled back, so the shared database keeps its rows.
-func TestSquadWorkflowBackfillLinksExistingWorkflows(t *testing.T) {
-	fx := newIniWorkspace(t)
-	ctx := context.Background()
-	developer := agentNamedInSquad(t, fx.Build, "SDLC Developer")
-	legacySteps, err := issueworkflow.EncodeSteps(issueworkflow.Arrange([]issueworkflow.Step{
-		{StatusKey: "todo", Handler: issueworkflow.Handler{Type: issueworkflow.HandlerAgent, ID: developer}},
-		{StatusKey: "done", Handler: issueworkflow.Handler{Type: issueworkflow.HandlerNone}},
-	}))
-	if err != nil {
-		t.Fatalf("encode steps: %v", err)
-	}
-	legacy, err := testHandler.Queries.CreateIssueWorkflow(ctx, db.CreateIssueWorkflowParams{
-		WorkspaceID: util.MustParseUUID(fx.ID), Name: "SDLC Auto", InitialStatusKey: "todo", Steps: legacySteps,
-	})
-	if err != nil {
-		t.Fatalf("create legacy SDLC workflow: %v", err)
-	}
-	t.Cleanup(func() { testPool.Exec(ctx, `DELETE FROM issue_workflow WHERE id = $1`, legacy.ID) })
-	buildProject := dbfxProject(t, fx, "Legacy build")
-	dbfx.Exec(t, `UPDATE project SET workflow_id = $1, squad_ids = ARRAY[$2::uuid] WHERE id = $3`,
-		util.UUIDToString(legacy.ID), fx.Build, buildProject)
-
-	planning, lead := planningSquad(t, fx, "Legacy planning")
-	createPlanningWorkflow(t, fx, lead)
-	var planningWorkflow string
-	dbfx.QueryRow(t, `SELECT id::text FROM issue_workflow WHERE workspace_id = $1 AND name = 'BMAD Planning Auto'`, fx.ID).Scan(&planningWorkflow)
-	planningProject := dbfxProject(t, fx, "Legacy planning project")
-	dbfx.Exec(t, `UPDATE project SET workflow_id = $1, squad_ids = ARRAY[$2::uuid] WHERE id = $3`,
-		planningWorkflow, planning, planningProject)
-
-	tx, err := testPool.Begin(ctx)
-	if err != nil {
-		t.Fatalf("begin: %v", err)
-	}
-	defer tx.Rollback(ctx)
-	for _, file := range []string{"975_issue_workflow_squad_backfill.up.sql", "976_squad_active_workflow_backfill.up.sql"} {
-		sql, err := os.ReadFile(filepath.Join("..", "..", "migrations", file))
-		if err != nil {
-			t.Fatalf("read %s: %v", file, err)
-		}
-		if _, err := tx.Exec(ctx, string(sql)); err != nil {
-			t.Fatalf("run %s: %v", file, err)
-		}
-	}
-
-	var legacySquad, planningSquadID, buildActive, planningActive *string
-	if err := tx.QueryRow(ctx, `SELECT squad_id::text FROM issue_workflow WHERE id = $1`, util.UUIDToString(legacy.ID)).Scan(&legacySquad); err != nil {
-		t.Fatalf("read legacy squad: %v", err)
-	}
-	if err := tx.QueryRow(ctx, `SELECT squad_id::text FROM issue_workflow WHERE id = $1`, planningWorkflow).Scan(&planningSquadID); err != nil {
-		t.Fatalf("read planning squad: %v", err)
-	}
-	if err := tx.QueryRow(ctx, `SELECT active_workflow_id::text FROM squad WHERE id = $1`, fx.Build).Scan(&buildActive); err != nil {
-		t.Fatalf("read build active: %v", err)
-	}
-	if err := tx.QueryRow(ctx, `SELECT active_workflow_id::text FROM squad WHERE id = $1`, planning).Scan(&planningActive); err != nil {
-		t.Fatalf("read planning active: %v", err)
-	}
-	if legacySquad == nil || *legacySquad != fx.Build {
-		t.Fatalf("SDLC workflow squad_id = %v, want the build squad %s", legacySquad, fx.Build)
-	}
-	if planningSquadID == nil || *planningSquadID != planning {
-		t.Fatalf("planning workflow squad_id = %v, want %s", planningSquadID, planning)
-	}
-	if buildActive == nil || *buildActive != util.UUIDToString(legacy.ID) {
-		t.Fatalf("build squad active = %v, want the legacy SDLC workflow", buildActive)
-	}
-	if planningActive == nil || *planningActive != planningWorkflow {
-		t.Fatalf("planning squad active = %v, want %s", planningActive, planningWorkflow)
 	}
 }

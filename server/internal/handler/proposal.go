@@ -737,6 +737,9 @@ func (h *Handler) DecideProposal(w http.ResponseWriter, r *http.Request) {
 		return
 	case writeIssueLimitReached(w, err):
 		return
+	case isRoomWorkflowRefusal(err):
+		writeRoomWorkflowError(w, err)
+		return
 	case err != nil:
 		slog.Warn("decide proposal failed", append(logger.RequestAttrs(r), "error", err, "proposal_id", chi.URLParam(r, "id"))...)
 		writeError(w, http.StatusInternalServerError, "failed to decide proposal")

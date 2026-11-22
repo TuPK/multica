@@ -2025,6 +2025,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// Paid-feature states for read-only and upgrade UI; the
 					// server enforces on every write regardless.
 					r.Get("/features", h.GetWorkspaceFeatures)
+					// The workflow chosen for issues that are not requests of a flow
+					// room, and the room rules' preview for the create and assign forms.
+					r.Get("/room-workflow", h.GetRoomWorkflowPolicy)
+					r.Get("/room-workflow/check", h.CheckRoomWorkflow)
 					// The plan's member limit for upgrade UI; every admission
 					// is checked on the server regardless.
 					r.Get("/member-limit", h.GetMemberLimit)
@@ -2068,6 +2072,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
 					r.Put("/", h.UpdateWorkspace)
 					r.Patch("/", h.UpdateWorkspace)
+					r.Put("/room-workflow", h.PutRoomWorkflowPolicy)
 					r.Route("/members/{memberId}", func(r chi.Router) {
 						r.Patch("/", h.UpdateMember)
 						r.Delete("/", h.DeleteMember)
@@ -2744,7 +2749,6 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.With(handler.RequireHumanActor).Post("/join", h.JoinPrivateProject)
 					r.Post("/archive", h.ArchiveProject)
 					r.Post("/restore", h.RestoreProject)
-					r.Post("/workflow", h.SetProjectWorkflow)
 					r.Get("/members", h.ListProjectMembers)
 					r.Post("/members", h.AddProjectMembers)
 					r.Delete("/members/{userId}", h.RemoveProjectMember)

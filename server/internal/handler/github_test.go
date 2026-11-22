@@ -1596,11 +1596,11 @@ func TestPRAutoComplete_TargetStatus(t *testing.T) {
 	}
 }
 
-// TestPRAutoComplete_RespectsProjectWorkflow: a merge writes only a status the
-// issue's project workflow lists. Issues outside any project and projects on
-// Default move as before; a named workflow without the target leaves the
-// issue where it is, and the issue page says nothing about it.
-func TestPRAutoComplete_RespectsProjectWorkflow(t *testing.T) {
+// TestPRAutoComplete_RespectsRoomWorkflow: a merge writes only a status the
+// issue's room workflow lists. Issues outside any project and issues with no room
+// in a project move as before (Default); a room whose workflow omits the target
+// leaves the issue where it is, and the issue page says nothing about it.
+func TestPRAutoComplete_RespectsRoomWorkflow(t *testing.T) {
 	if testHandler == nil {
 		t.Skip("handler test fixture not initialized (no DB?)")
 	}
@@ -1614,20 +1614,21 @@ func TestPRAutoComplete_RespectsProjectWorkflow(t *testing.T) {
 	withoutTarget := createTestWorkflow(t, "PR merge: no in_review", "in_progress")
 	defaultProject := createWorkflowTestProject(t, "PR merge on Default")
 	withTargetProject := createWorkflowTestProject(t, "PR merge with in_review")
-	setProjectWorkflow(t, withTargetProject, map[string]any{"workflow_id": withTarget.ID}).Want(http.StatusOK)
+	withTargetRoom := roomWithWorkflow(t, "PR merge room with in_review", withTarget.ID)
 	withoutTargetProject := createWorkflowTestProject(t, "PR merge without in_review")
-	setProjectWorkflow(t, withoutTargetProject, map[string]any{"workflow_id": withoutTarget.ID}).Want(http.StatusOK)
+	withoutTargetRoom := roomWithWorkflow(t, "PR merge room without in_review", withoutTarget.ID)
 
 	cases := []struct {
 		name      string
 		projectID string
+		roomID    string
 		wantState string
 		wantAfter string
 	}{
-		{"no project", "", prAutoCompleteWaiting, "in_review"},
-		{"default workflow", defaultProject, prAutoCompleteWaiting, "in_review"},
-		{"named workflow lists the target", withTargetProject, prAutoCompleteWaiting, "in_review"},
-		{"named workflow without the target", withoutTargetProject, prAutoCompleteNotInWorkflow, "in_progress"},
+		{"no project", "", "", prAutoCompleteWaiting, "in_review"},
+		{"project without a room", defaultProject, "", prAutoCompleteWaiting, "in_review"},
+		{"room lists the target", withTargetProject, withTargetRoom, prAutoCompleteWaiting, "in_review"},
+		{"room without the target", withoutTargetProject, withoutTargetRoom, prAutoCompleteNotInWorkflow, "in_progress"},
 	}
 	for i, tc := range cases {
 		inst := int64(0)
@@ -1637,6 +1638,9 @@ func TestPRAutoComplete_RespectsProjectWorkflow(t *testing.T) {
 		issue := prAutoCompleteTestIssue(t, "workflow target: "+tc.name, inst)
 		if tc.projectID != "" {
 			dbfx.Exec(t, `UPDATE issue SET project_id = $2 WHERE id = $1`, issue.ID, tc.projectID)
+		}
+		if tc.roomID != "" {
+			dbfx.Exec(t, `UPDATE issue SET assignee_type = 'squad', assignee_id = $2 WHERE id = $1`, issue.ID, tc.roomID)
 		}
 		number := int32(100 + i)
 		branch := fmt.Sprintf("fix/workflow-%d", i)

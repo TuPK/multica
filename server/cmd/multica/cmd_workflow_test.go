@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -136,52 +135,6 @@ func TestResolveWorkflowByNameDefaultAndPrefix(t *testing.T) {
 		t.Fatal("resolveWorkflow(nope) = nil error, want error")
 	}
 }
-
-func TestProjectWorkflowSetSendsMappingAndDryRun(t *testing.T) {
-	_, reqs := workflowTestServer(t)
-	cmd := &cobra.Command{}
-	cmd.Flags().StringArray("map", nil, "")
-	cmd.Flags().Bool("dry-run", false, "")
-	cmd.Flags().String("output", "json", "")
-	_ = cmd.Flags().Set("map", "in_progress=in_review")
-	_ = cmd.Flags().Set("dry-run", "true")
-
-	if err := runProjectWorkflowSet(cmd, []string{testProjectUUID, "Review flow"}); err != nil {
-		t.Fatalf("run: %v", err)
-	}
-	post := lastRequest(t, *reqs, http.MethodPost)
-	if post.Path != "/api/projects/"+testProjectUUID+"/workflow" {
-		t.Fatalf("path = %s", post.Path)
-	}
-	if post.Body["workflow_id"] != testWorkflowUUID || post.Body["dry_run"] != true {
-		t.Fatalf("body = %v", post.Body)
-	}
-	mapping, _ := post.Body["status_mapping"].(map[string]any)
-	if mapping["in_progress"] != "in_review" {
-		t.Fatalf("status_mapping = %v", post.Body["status_mapping"])
-	}
-}
-
-func TestProjectWorkflowSetDefaultSendsNull(t *testing.T) {
-	_, reqs := workflowTestServer(t)
-	cmd := &cobra.Command{}
-	cmd.Flags().StringArray("map", nil, "")
-	cmd.Flags().Bool("dry-run", false, "")
-	cmd.Flags().String("output", "json", "")
-
-	if err := runProjectWorkflowSet(cmd, []string{testProjectUUID, "Default"}); err != nil {
-		t.Fatalf("run: %v", err)
-	}
-	post := lastRequest(t, *reqs, http.MethodPost)
-	v, present := post.Body["workflow_id"]
-	if !present || v != nil {
-		t.Fatalf("workflow_id = %v (present=%v), want explicit null", v, present)
-	}
-	if _, ok := post.Body["dry_run"]; ok {
-		t.Fatalf("dry_run sent without --dry-run: %v", post.Body)
-	}
-}
-
 func TestWorkflowHandoffSetKeepsUnchangedFields(t *testing.T) {
 	_, reqs := workflowTestServer(t)
 	cmd := &cobra.Command{}
@@ -271,24 +224,6 @@ func TestWorkflowUpdateSendsPatch(t *testing.T) {
 	}
 }
 
-func TestProjectWorkflowGetFallsBackToDefault(t *testing.T) {
-	_, reqs := workflowTestServer(t)
-	cmd := &cobra.Command{}
-	cmd.Flags().String("output", "json", "")
-	if err := runProjectWorkflowGet(cmd, []string{testProjectUUID}); err != nil {
-		t.Fatalf("run: %v", err)
-	}
-	sawList := false
-	for _, r := range *reqs {
-		if r.Method == http.MethodGet && r.Path == "/api/issue-workflows" {
-			sawList = true
-		}
-	}
-	if !sawList {
-		t.Fatalf("expected the Default workflow to be looked up from the list; got %+v", *reqs)
-	}
-}
-
 // mappingRequiredServer answers every write with the server's 409
 // workflow_status_mapping_required, listing two statuses to map.
 func mappingRequiredServer(t *testing.T) {
@@ -326,30 +261,6 @@ func newProjectWorkflowSetTestCmd(output string) *cobra.Command {
 	cmd.Flags().String("output", output, "")
 	return cmd
 }
-
-func TestProjectWorkflowSetMappingRequiredPrintsFullPlanJSON(t *testing.T) {
-	mappingRequiredServer(t)
-	cmd := newProjectWorkflowSetTestCmd("json")
-	out, err := captureStdout(t, func() error {
-		return runProjectWorkflowSet(cmd, []string{testProjectUUID, testWorkflowUUID})
-	})
-	if err != errSilent {
-		t.Fatalf("err = %v, want errSilent so the command exits non-zero without printing twice", err)
-	}
-	var got map[string]any
-	if jerr := json.Unmarshal([]byte(out), &got); jerr != nil {
-		t.Fatalf("stdout is not JSON: %v\n%s", jerr, out)
-	}
-	if got["code"] != "workflow_status_mapping_required" {
-		t.Fatalf("code = %v", got["code"])
-	}
-	plan, _ := got["plan"].(map[string]any)
-	required, _ := plan["required"].([]any)
-	if len(required) != 2 {
-		t.Fatalf("plan.required has %d entries, want both statuses: %s", len(required), out)
-	}
-}
-
 func TestWorkflowUpdateMappingRequiredPrintsPlanTable(t *testing.T) {
 	mappingRequiredServer(t)
 	cmd := &cobra.Command{}
@@ -370,71 +281,5 @@ func TestWorkflowUpdateMappingRequiredPrintsPlanTable(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("table output missing %q:\n%s", want, out)
 		}
-	}
-}
-
-func TestProjectWorkflowSetOtherConflictKeepsDefaultError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte(`{"error":"only workspace admins and the project lead can change this project's workflow"}`))
-	}))
-	t.Cleanup(srv.Close)
-	setCLITestServerEnv(t, srv.URL)
-	cmd := newProjectWorkflowSetTestCmd("json")
-	out, err := captureStdout(t, func() error {
-		return runProjectWorkflowSet(cmd, []string{testProjectUUID, "default"})
-	})
-	if err == nil || err == errSilent {
-		t.Fatalf("err = %v, want the HTTP error for the default formatter", err)
-	}
-	if out != "" {
-		t.Fatalf("stdout = %q, want empty", out)
-	}
-}
-
-// The same plan with 45 statuses runs past 4 KiB; the command must still
-// print all of it through the real HTTP client.
-func TestProjectWorkflowSetMappingRequiredKeepsLargePlan(t *testing.T) {
-	required := make([]any, 0, 45)
-	for i := 0; i < 45; i++ {
-		required = append(required, map[string]any{
-			"status_key":           fmt.Sprintf("custom_status_with_a_long_key_%02d", i),
-			"issue_count":          1,
-			"suggested_status_key": "todo",
-		})
-	}
-	payload, _ := json.Marshal(map[string]any{
-		"error": "map every status", "code": "workflow_status_mapping_required",
-		"plan": map[string]any{"required": required, "unchanged": []any{}, "total_issues": 45, "affected_issues": 45},
-	})
-	if len(payload) <= 4096 {
-		t.Fatalf("fixture is %d bytes; it must exceed 4096", len(payload))
-	}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			_ = json.NewEncoder(w).Encode(map[string]any{"id": testWorkflowUUID, "name": "Review flow", "steps": []any{}})
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusConflict)
-		_, _ = w.Write(payload)
-	}))
-	t.Cleanup(srv.Close)
-	setCLITestServerEnv(t, srv.URL)
-
-	cmd := newProjectWorkflowSetTestCmd("json")
-	out, err := captureStdout(t, func() error {
-		return runProjectWorkflowSet(cmd, []string{testProjectUUID, testWorkflowUUID})
-	})
-	if err != errSilent {
-		t.Fatalf("err = %v, want errSilent", err)
-	}
-	var got map[string]any
-	if jerr := json.Unmarshal([]byte(out), &got); jerr != nil {
-		t.Fatalf("stdout is not JSON: %v", jerr)
-	}
-	plan, _ := got["plan"].(map[string]any)
-	if rows, _ := plan["required"].([]any); len(rows) != 45 {
-		t.Fatalf("plan.required has %d rows, want 45", len(rows))
 	}
 }

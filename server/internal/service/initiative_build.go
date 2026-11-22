@@ -80,12 +80,22 @@ func (s *InitiativeService) startBuild(ctx context.Context, q *db.Queries, ini d
 		return pgtype.UUID{}, err
 	}
 
+	// The build runs in the owning squad's room, which follows its active
+	// workflow: an owner with none takes the SDLC workflow the build uses.
+	ownerSquad, err := q.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{ID: owner, WorkspaceID: ini.WorkspaceID})
+	if err != nil {
+		return pgtype.UUID{}, fmt.Errorf("load build squad: %w", err)
+	}
+	if !ownerSquad.ActiveWorkflowID.Valid {
+		if _, err := q.SetSquadActiveWorkflow(ctx, db.SetSquadActiveWorkflowParams{WorkflowID: workflow.ID, ID: owner, WorkspaceID: ini.WorkspaceID}); err != nil {
+			return pgtype.UUID{}, fmt.Errorf("give the build squad its workflow: %w", err)
+		}
+	}
 	project, err := q.CreateProject(ctx, db.CreateProjectParams{
 		WorkspaceID: ini.WorkspaceID,
 		Title:       fmt.Sprintf("INI-%d %s", ini.Seq, ini.Title),
 		Status:      "planned",
 		Priority:    "none",
-		WorkflowID:  workflow.ID,
 	})
 	if err != nil {
 		return pgtype.UUID{}, fmt.Errorf("create build project: %w", err)

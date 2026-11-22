@@ -195,7 +195,7 @@ func projectWithPlainWorkflow(t *testing.T, label string) string {
 	t.Helper()
 	wf := createTestWorkflow(t, label+" "+workflowTestSuffix(), "in_review")
 	projectID := createWorkflowTestProject(t, label+" project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+	useAsWorkspaceDefault(t, wf.ID)
 	return projectID
 }
 

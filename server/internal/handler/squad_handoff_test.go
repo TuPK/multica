@@ -27,6 +27,8 @@ func newHandoffFx(t *testing.T) handoffFx {
 	dbfx.Exec(t, `UPDATE workspace SET issue_counter = 1000 WHERE id = $1`, fx.ID)
 	squad, lead := planningSquad(t, fx, "Planning")
 	project := dbfxProject(t, fx, "Build repo")
+	// The build squad is the room a handed-off request lands in; it needs a workflow.
+	giveSquadDefaultWorkflow(t, fx.ID, fx.Build)
 	dbfx.Exec(t, `UPDATE project SET squad_ids = ARRAY[$1::uuid] WHERE id = $2`, fx.Build, project)
 	return handoffFx{iniWorkspace: fx, Planning: squad, Lead: lead, LeadTask: createHandlerTestTaskForAgent(t, lead), Project: project}
 }

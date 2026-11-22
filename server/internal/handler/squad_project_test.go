@@ -41,9 +41,6 @@ func TestAssignSquadProjectSetsSDLCWorkflowAndSquad(t *testing.T) {
 	if out.Project.SquadID == nil || *out.Project.SquadID != fx.Build {
 		t.Fatalf("project squad_id = %v, want %s", out.Project.SquadID, fx.Build)
 	}
-	if got := projectWorkflowName(t, projectID); got != "" {
-		t.Fatalf("project workflow = %q, want none: assigning a squad leaves the project's workflow alone", got)
-	}
 	if got := squadActiveWorkflowName(t, fx.Build); got != "SDLC Auto" {
 		t.Fatalf("squad active workflow = %q, want SDLC Auto", got)
 	}
@@ -95,32 +92,6 @@ func TestAssignSquadProjectNeedsSDLCSquad(t *testing.T) {
 	assignSquadProject(t, fx, fx.Product, projectID, nil).Want(http.StatusUnprocessableEntity)
 }
 
-// TestAssignSquadProjectKeepsTheProjectWorkflow: assigning a project never
-// changes its workflow, even when the project already uses another one.
-func TestAssignSquadProjectKeepsTheProjectWorkflow(t *testing.T) {
-	fx := newIniWorkspace(t)
-	projectID := dbfxProject(t, fx, "Custom flow")
-	customID, customName := insertWorkflowIn(t, fx, "Project custom "+fx.ID[:8], "in_progress")
-	setProjectWorkflowIn(t, fx, projectID, map[string]any{"workflow_id": customID}).Want(http.StatusOK)
-
-	assignSquadProject(t, fx, fx.Build, projectID, nil).Want(http.StatusOK)
-
-	if got := projectWorkflowName(t, projectID); got != customName {
-		t.Fatalf("project workflow = %q, want %q unchanged", got, customName)
-	}
-}
-
-// setProjectWorkflowIn sets a project's workflow as the admin of the fixture's
-// workspace. setProjectWorkflow sends the shared test workspace, which does not
-// hold a project created by newIniWorkspace.
-func setProjectWorkflowIn(t *testing.T, fx iniWorkspace, projectID string, body map[string]any) *testutil.Response {
-	t.Helper()
-	req := newRequestAs(fx.AdminID, "POST", "/api/projects/"+projectID+"/workflow", body)
-	req.Header.Set("X-Workspace-ID", fx.ID)
-	req = withURLParam(req, "id", projectID)
-	return testutil.Call(t, testHandler.SetProjectWorkflow, req)
-}
-
 // insertWorkflowIn stores a workflow in the fixture's workspace with the given
 // middle statuses, bracketed by backlog and blocked. It returns the id and name.
 func insertWorkflowIn(t *testing.T, fx iniWorkspace, name string, middle ...string) (string, string) {
@@ -145,7 +116,6 @@ func insertWorkflowIn(t *testing.T, fx iniWorkspace, name string, middle ...stri
 		t.Fatalf("create workflow %q: %v", name, err)
 	}
 	t.Cleanup(func() {
-		testPool.Exec(context.Background(), `UPDATE project SET workflow_id = NULL WHERE workflow_id = $1`, util.UUIDToString(row.ID))
 		testPool.Exec(context.Background(), `DELETE FROM issue_workflow WHERE id = $1`, util.UUIDToString(row.ID))
 	})
 	return util.UUIDToString(row.ID), name
@@ -233,17 +203,6 @@ func dbfxProject(t *testing.T, fx iniWorkspace, title string) string {
 	return dbfx.Project(t, title+" "+fx.ID[:8], testutil.Cols{"workspace_id": fx.ID})
 }
 
-func projectWorkflowName(t *testing.T, projectID string) string {
-	t.Helper()
-	var name *string
-	// LEFT JOIN: a project with no workflow still has a row to read.
-	dbfx.QueryRow(t, `SELECT w.name FROM project p LEFT JOIN issue_workflow w ON w.id = p.workflow_id WHERE p.id = $1`, projectID).Scan(&name)
-	if name == nil {
-		return ""
-	}
-	return *name
-}
-
 // planningSquad makes a squad led by the quickstart's planning lead, and returns its id
 // and the lead's id.
 func planningSquad(t *testing.T, fx iniWorkspace, name string) (string, string) {
@@ -291,9 +250,6 @@ func TestAssignSquadProjectGivesAPlanningSquadItsWorkflow(t *testing.T) {
 	if got := squadActiveWorkflowName(t, squad); got != "BMAD Planning Auto" {
 		t.Fatalf("squad active workflow = %q, want BMAD Planning Auto", got)
 	}
-	if got := projectWorkflowName(t, projectID); got != "" {
-		t.Fatalf("project workflow = %q, want none", got)
-	}
 }
 
 // TestAssignSquadProjectNeedsThePlanningWorkflow: without the workflow the quickstart creates, the
@@ -306,10 +262,5 @@ func TestAssignSquadProjectNeedsThePlanningWorkflow(t *testing.T) {
 	resp := assignSquadProject(t, fx, squad, projectID, nil).Want(http.StatusUnprocessableEntity)
 	if got := resp.Text(); !strings.Contains(got, "planning_workflow_missing") {
 		t.Fatalf("body = %s, want code planning_workflow_missing", got)
-	}
-	var withWorkflow int
-	dbfx.QueryRow(t, `SELECT count(*) FROM project WHERE id = $1 AND workflow_id IS NOT NULL`, projectID).Scan(&withWorkflow)
-	if withWorkflow != 0 {
-		t.Fatalf("the project got a workflow although the planning workflow is missing")
 	}
 }

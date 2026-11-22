@@ -83,7 +83,7 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to assign project")
 		return
 	}
-	project, err := qtx.LockProjectForWorkflowChange(ctx, db.LockProjectForWorkflowChangeParams{ID: projectUUID, WorkspaceID: wsUUID})
+	project, err := qtx.LockProjectForSquadChange(ctx, db.LockProjectForSquadChangeParams{ID: projectUUID, WorkspaceID: wsUUID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "project not found")
@@ -183,9 +183,9 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 	h.publishIssueSnapshots(ctx, changed, "member", actorID)
 	h.broadcastCancelledWakeups(ctx, wsUUID, cancelled)
 	for _, p := range unassigned {
-		h.publishProjectWorkflowUpdate(ctx, workspaceID, member, p)
+		h.publishProjectUpdate(ctx, workspaceID, member, p)
 	}
-	resp := h.publishProjectWorkflowUpdate(ctx, workspaceID, member, assigned)
+	resp := h.publishProjectUpdate(ctx, workspaceID, member, assigned)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"project":        resp,
 		"updated_issues": len(changed),
@@ -222,7 +222,7 @@ func (h *Handler) UnassignSquadProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, p := range unassigned {
-		h.publishProjectWorkflowUpdate(r.Context(), workspaceID, member, p)
+		h.publishProjectUpdate(r.Context(), workspaceID, member, p)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"unassigned": len(unassigned)})
 }

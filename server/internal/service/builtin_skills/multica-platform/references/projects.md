@@ -12,7 +12,7 @@ display metadata; it is context later injected into task briefs and
 - [When to add a resource](#when-to-add-a-resource)
 - [Debugging wrong context](#debugging-wrong-context)
 - [Side effects](#side-effects)
-- [Project workflows](#project-workflows)
+- [Workflows of rooms](#workflows-of-rooms)
 - [Reading and changing workflows](#reading-and-changing-workflows)
 
 ## Core model
@@ -185,14 +185,17 @@ Project create/update/delete/status/archive/restore and project resource
 add/update/remove mutate durable workspace state and affect future tasks. Ask before changing
 `local_directory` unless the user explicitly requested that exact local path.
 
-## Project workflows
+## Workflows of rooms
 
-A project can use a workflow: its ordered status columns, where a column may
-hand the issue off to a handler — a fixed agent, squad or member, the project
-lead, or the issue's creator. When the issue's project uses one, the per-turn
-prompt carries a `[Project workflow]` block. Its statuses and commands are
-the whole status contract for this issue: the built-in moves in the issues
-reference (`in_progress` on start, `in_review` on delivery) do not apply.
+An issue follows the workflow of its room: the squad it is assigned to, or the
+home squad of the agent it is assigned to. A workflow is an ordered list of
+status columns, where a column may hand the issue off to a handler — a fixed
+agent, squad or member, the squad lead, or the issue's creator. When the
+issue's room uses one, the per-turn prompt carries a `[Project workflow]` block.
+Its statuses and commands are the whole status contract for this issue: the
+built-in moves in the issues reference (`in_progress` on start, `in_review` on
+delivery) do not apply. An issue with no room follows the workspace Default
+workflow. Projects no longer have a workflow of their own.
 
 - **The step's scope is its instructions.** A step that hands off carries the
   instructions its owner wrote; that is the work for this run. A step
@@ -204,6 +207,12 @@ reference (`in_progress` on start, `in_review` on delivery) do not apply.
   statuses; any other status write fails with `status_not_in_workflow`, and
   the error lists the allowed keys. The workspace Default workflow accepts
   every status, so issues on statuses it no longer lists keep working.
+- **A room needs a workflow before it takes work.** Assigning an issue to a
+  squad that has no active workflow fails with `room_workflow_required` (HTTP
+  422). Creating a sub-issue of a flow squad that is not a request of that squad
+  fails with `room_no_workflow_for_non_request` while the workspace has not
+  chosen what such issues follow. Ask the user to pick the workflow; do not
+  retry with another assignee to get around it.
 - **Changing the status is the handoff.** Entering a column that hands off
   reassigns the issue to that column's handler and starts their run; a member
   handler is assigned and runs nothing. Nothing advances the status when a run
@@ -237,22 +246,23 @@ reference (`in_progress` on start, `in_review` on delivery) do not apply.
 ## Reading and changing workflows
 
 Use these only when the task is about the workflow itself: who handles a
-status, a step's instructions, or which workflow a project uses. Working an
+status, a step's instructions, or which workflow a squad uses. Working an
 issue inside a workflow needs none of them.
 
 - Read first: `multica workflow list`, `multica workflow get <workflow>`
   (an ID, ID prefix, exact name, or `default`), and
-  `multica project workflow get <project-id>`, which returns the effective
-  workflow with `uses_default: true` when the project has none set.
+  `multica workflow config get`, which shows what issues that are not requests
+  of a flow squad follow.
 - One step: `multica workflow handoff set <workflow> <status-key>` with
   `--handler` (`none`, `project_lead`, `creator`, or a member/agent/squad),
   `--instructions` / `--instructions-file`, `--next`, `--back`. Flags you do
-  not pass keep their current value. The change applies to every project on
-  that workflow; `--copy-for-project <project-id>` saves it on a copy only that
-  project uses.
+  not pass keep their current value. The change applies to every issue of the
+  rooms that use that workflow.
 - Whole workflow: `multica workflow create|update --steps-file <json>`
   replaces all steps; `multica workflow delete` is refused for Default and for
-  a workflow a project still uses.
+  a workflow a squad still uses as its active one.
+- What non-request issues of a flow squad follow: `multica workflow config set
+  <no-action|default|workflow> [workflow]`. Admins only.
 - Status catalog: a step's `new_status` may carry `icon` (`dotted`, `circle`,
   `half`, `three_quarters`, `check`, `slash`, `cross`; empty keeps the category
   default), so a definition applied in a fresh workspace renders the glyph its
@@ -263,14 +273,10 @@ issue inside a workflow needs none of them.
   (`--icon ""` resets it), and read the catalog with `multica issue-status
   list`. These commands edit the workspace catalog, not a workflow, and need
   workspace owner/admin.
-- Switching: `multica project workflow set <project-id> <workflow|default>`.
-  Run it with `--dry-run` first. Issues on statuses the target lacks need
-  `--map old=new`; a missing mapping fails with
-  `workflow_status_mapping_required` and the plan. Pick each target from the
-  plan or ask; never guess. The move neither reassigns issues nor starts runs.
-- Permissions are the server's: editing or deleting a workflow needs its owner
-  or a workspace admin, switching a project needs an admin or the project
-  lead. A 403 is the answer, not something to work around.
+- Switching a squad's workflow goes through the squad's own settings, and a
+  switch lists the statuses its issues must move to. Permissions are the
+  server's: editing or deleting a workflow needs its owner or a workspace admin,
+  and a 403 is the answer, not something to work around.
 
 All of these except the reads change what every later issue in those projects
 does. Ask before running one the user did not request.

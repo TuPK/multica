@@ -213,10 +213,10 @@ func (q *Queries) CountIssuesByProject(ctx context.Context, arg CountIssuesByPro
 const createProject = `-- name: CreateProject :one
 INSERT INTO project (
     workspace_id, title, description, icon, status,
-    lead_type, lead_id, priority, start_date, due_date, workflow_id,
+    lead_type, lead_id, priority, start_date, due_date,
     creator_type, creator_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
@@ -231,7 +231,6 @@ type CreateProjectParams struct {
 	Priority    string      `json:"priority"`
 	StartDate   pgtype.Date `json:"start_date"`
 	DueDate     pgtype.Date `json:"due_date"`
-	WorkflowID  pgtype.UUID `json:"workflow_id"`
 	CreatorType pgtype.Text `json:"creator_type"`
 	CreatorID   pgtype.UUID `json:"creator_id"`
 }
@@ -248,7 +247,6 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		arg.Priority,
 		arg.StartDate,
 		arg.DueDate,
-		arg.WorkflowID,
 		arg.CreatorType,
 		arg.CreatorID,
 	)
@@ -619,6 +617,51 @@ func (q *Queries) LockProjectForDelete(ctx context.Context, arg LockProjectForDe
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const lockProjectForSquadChange = `-- name: LockProjectForSquadChange :one
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
+WHERE id = $1::uuid
+  AND workspace_id = $2::uuid
+FOR UPDATE
+`
+
+type LockProjectForSquadChangeParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+// Serializes a change to which squads work a project, so two assignments cannot
+// both pick the squad's workflow.
+func (q *Queries) LockProjectForSquadChange(ctx context.Context, arg LockProjectForSquadChangeParams) (Project, error) {
+	row := q.db.QueryRow(ctx, lockProjectForSquadChange, arg.ID, arg.WorkspaceID)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Title,
+		&i.Description,
+		&i.Icon,
+		&i.Status,
+		&i.LeadType,
+		&i.LeadID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Priority,
+		&i.Access,
+		&i.StartDate,
+		&i.DueDate,
+		&i.WorkflowID,
+		&i.CreatorType,
+		&i.CreatorID,
+		&i.Visibility,
+		&i.ArchivedAt,
+		&i.ArchivedByType,
+		&i.ArchivedByID,
+		&i.FolderID,
+		&i.SquadIds,
+	)
+	return i, err
 }
 
 const restoreProject = `-- name: RestoreProject :one

@@ -22,7 +22,7 @@ func TestWorkflowHandoffCancelsDeferredSquadStages(t *testing.T) {
 				fx := newSquadBriefingClaimFixture(t, t.Context(), "Cancel waiting squad stages")
 				wf := createTestWorkflow(t, "Cancel waiting flow "+workflowTestSuffix(), "in_progress", "in_review")
 				projectID := createWorkflowTestProject(t, "Cancel waiting project")
-				setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+				useAsWorkspaceDefault(t, wf.ID)
 				for _, status := range []string{"in_progress", "in_review"} {
 					setWorkflowHandoff(t, wf.ID, status, map[string]any{"handler": map[string]any{"type": "squad", "id": fx.SquadID}}).Want(http.StatusOK)
 				}
@@ -87,7 +87,7 @@ func TestWorkflowSquadHandoffReplayDoesNotDuplicate(t *testing.T) {
 	seedTestCatalog(t)
 	fx := newSquadBriefingClaimFixture(t, t.Context(), "Idempotent squad handoff")
 	projectID := createWorkflowTestProject(t, "Idempotent squad project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": createTestWorkflow(t, "Idempotent flow "+workflowTestSuffix(), "in_progress").ID}).Want(http.StatusOK)
+	useAsWorkspaceDefault(t, createTestWorkflow(t, "Idempotent flow "+workflowTestSuffix(), "in_progress").ID)
 	setColumnHandoff(t, projectID, "in_progress", map[string]any{"handler": map[string]any{"type": "squad", "id": fx.SquadID}}).Want(http.StatusOK)
 	dbfx.Exec(t, `UPDATE issue SET project_id=$2,status='todo',parent_issue_id=$3 WHERE id=$1`, fx.IssueID, projectID, dbfx.Issue(t, "Workflow parent", testutil.Cols{"workspace_id": testWorkspaceID}))
 	updateIssueForTest(t, fx.IssueID, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
@@ -142,7 +142,7 @@ func TestWorkflowSquadHandoffPreservesPendingStages(t *testing.T) {
 				}
 				wf := createTestWorkflow(t, "Pending squad flow "+workflowTestSuffix(), "in_progress", "in_review")
 				projectID := createWorkflowTestProject(t, "Pending squad project")
-				setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+				useAsWorkspaceDefault(t, wf.ID)
 				for status, squad := range map[string]string{"in_progress": fx.SquadID, "in_review": nextSquad} {
 					setWorkflowHandoff(t, wf.ID, status, map[string]any{
 						"handler": map[string]any{"type": "squad", "id": squad}, "instructions": "Handle only " + status,
@@ -201,7 +201,7 @@ func TestWorkflowHandoffToSquadStartsLeaderAtEachStep(t *testing.T) {
 	fx := newSquadBriefingClaimFixture(t, t.Context(), "Workflow squad handoff")
 	wf := createTestWorkflow(t, "Squad flow "+workflowTestSuffix(), "in_progress", "in_review")
 	projectID := createWorkflowTestProject(t, "Squad handoff project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+	useAsWorkspaceDefault(t, wf.ID)
 	dbfx.Exec(t, `UPDATE issue SET project_id=$2,status='todo',parent_issue_id=$3 WHERE id=$1`, fx.IssueID, projectID, dbfx.Issue(t, "Workflow parent", testutil.Cols{"workspace_id": testWorkspaceID}))
 
 	for _, status := range []string{"in_progress", "in_review"} {

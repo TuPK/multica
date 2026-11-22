@@ -225,10 +225,8 @@ func LoadOrgMap(ctx context.Context, q *db.Queries, workspaceID, floorID pgtype.
 		}
 		if s.ProjectID.Valid {
 			squad.Project = &OrgMapProject{
-				ID:           util.UUIDToString(s.ProjectID),
-				Title:        s.ProjectTitle,
-				WorkflowID:   optionalUUID(s.WorkflowID),
-				WorkflowName: s.WorkflowName,
+				ID:    util.UUIDToString(s.ProjectID),
+				Title: s.ProjectTitle,
 			}
 		}
 		out.Squads = append(out.Squads, squad)

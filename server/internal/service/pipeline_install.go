@@ -304,7 +304,6 @@ func writePipeline(ctx context.Context, q *db.Queries, ws pgtype.UUID, name stri
 	}
 	project, err := q.CreateProject(ctx, db.CreateProjectParams{
 		WorkspaceID: ws, Title: "Initiatives", Status: "planned", Priority: "none",
-		WorkflowID: workflow.ID,
 	})
 	if err != nil {
 		return db.Pipeline{}, fmt.Errorf("create initiative board project: %w", err)

@@ -11,66 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countProjectIssuesByStatus = `-- name: CountProjectIssuesByStatus :many
-SELECT i.status, COUNT(*)::bigint AS issue_count
-FROM issue i
-WHERE i.workspace_id = $1::uuid
-  AND i.project_id = ANY($2::uuid[])
-  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
-  AND i.flow IS NULL
-  AND i.flow_task IS NULL
-  AND NOT EXISTS (
-      SELECT 1 FROM squad s
-      WHERE s.workspace_id = i.workspace_id
-        AND s.active_workflow_id IS NOT NULL
-        -- A squad on a flow routes only its flow requests; its other issues keep the project's workflow.
-        AND NOT EXISTS (SELECT 1 FROM issue_workflow fw WHERE fw.id = s.active_workflow_id AND fw.flow_config IS NOT NULL)
-        AND s.id = CASE
-            WHEN i.assignee_type = 'squad' THEN i.assignee_id
-            WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
-        END
-  )
-AND ($3::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
-GROUP BY i.status
-ORDER BY i.status
-`
-
-type CountProjectIssuesByStatusParams struct {
-	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
-	ProjectIds       []pgtype.UUID `json:"project_ids"`
-	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
-}
-
-type CountProjectIssuesByStatusRow struct {
-	Status     string `json:"status"`
-	IssueCount int64  `json:"issue_count"`
-}
-
-// Status census for a project workflow switch or step removal, including
-// terminal issues: every issue of the project that the project's workflow
-// governs must end on a status it lists. Issues a squad routes through its own
-// active workflow are left out (see the NOT EXISTS below).
-// MUL-8472: private projects the caller cannot see.
-func (q *Queries) CountProjectIssuesByStatus(ctx context.Context, arg CountProjectIssuesByStatusParams) ([]CountProjectIssuesByStatusRow, error) {
-	rows, err := q.db.Query(ctx, countProjectIssuesByStatus, arg.WorkspaceID, arg.ProjectIds, arg.HiddenProjectIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []CountProjectIssuesByStatusRow{}
-	for rows.Next() {
-		var i CountProjectIssuesByStatusRow
-		if err := rows.Scan(&i.Status, &i.IssueCount); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const countSquadIssuesByStatus = `-- name: CountSquadIssuesByStatus :many
 SELECT i.status, COUNT(*)::bigint AS issue_count
 FROM issue i
@@ -468,7 +408,7 @@ WHERE workspace_id = $1::uuid
 ORDER BY is_default DESC, lower(name), created_at, id
 `
 
-// Project workflows (MUL-7420). A workflow selects and orders statuses from
+// Issue workflows (MUL-7420). A workflow selects and orders statuses from
 // the workspace's issue_status catalog. Projects opt in through
 // project.workflow_id; a project without one uses the workspace's Default
 // workflow row. Each step also stores who an issue entering it is handed to.
@@ -538,123 +478,6 @@ func (q *Queries) ListNamedIssueWorkflowSteps(ctx context.Context, workspaceID p
 	return items, nil
 }
 
-const listProjectsUsingDefaultIssueWorkflow = `-- name: ListProjectsUsingDefaultIssueWorkflow :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
-WHERE workspace_id = $1::uuid
-  AND workflow_id IS NULL
-AND ($2::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($2::uuid[])))
-ORDER BY created_at, id
-`
-
-type ListProjectsUsingDefaultIssueWorkflowParams struct {
-	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
-	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
-}
-
-// MUL-8472: private projects the caller cannot see.
-func (q *Queries) ListProjectsUsingDefaultIssueWorkflow(ctx context.Context, arg ListProjectsUsingDefaultIssueWorkflowParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjectsUsingDefaultIssueWorkflow, arg.WorkspaceID, arg.HiddenProjectIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Project{}
-	for rows.Next() {
-		var i Project
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.Title,
-			&i.Description,
-			&i.Icon,
-			&i.Status,
-			&i.LeadType,
-			&i.LeadID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Priority,
-			&i.Access,
-			&i.StartDate,
-			&i.DueDate,
-			&i.WorkflowID,
-			&i.CreatorType,
-			&i.CreatorID,
-			&i.Visibility,
-			&i.ArchivedAt,
-			&i.ArchivedByType,
-			&i.ArchivedByID,
-			&i.FolderID,
-			&i.SquadIds,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listProjectsUsingIssueWorkflow = `-- name: ListProjectsUsingIssueWorkflow :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
-WHERE workspace_id = $1::uuid
-  AND workflow_id = $2::uuid
-AND ($3::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
-ORDER BY created_at, id
-`
-
-type ListProjectsUsingIssueWorkflowParams struct {
-	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
-	WorkflowID       pgtype.UUID   `json:"workflow_id"`
-	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
-}
-
-// MUL-8472: private projects the caller cannot see.
-func (q *Queries) ListProjectsUsingIssueWorkflow(ctx context.Context, arg ListProjectsUsingIssueWorkflowParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjectsUsingIssueWorkflow, arg.WorkspaceID, arg.WorkflowID, arg.HiddenProjectIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Project{}
-	for rows.Next() {
-		var i Project
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.Title,
-			&i.Description,
-			&i.Icon,
-			&i.Status,
-			&i.LeadType,
-			&i.LeadID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Priority,
-			&i.Access,
-			&i.StartDate,
-			&i.DueDate,
-			&i.WorkflowID,
-			&i.CreatorType,
-			&i.CreatorID,
-			&i.Visibility,
-			&i.ArchivedAt,
-			&i.ArchivedByType,
-			&i.ArchivedByID,
-			&i.FolderID,
-			&i.SquadIds,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listSquadIssueWorkflows = `-- name: ListSquadIssueWorkflows :many
 SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by FROM issue_workflow
 WHERE workspace_id = $1::uuid
@@ -707,171 +530,6 @@ func (q *Queries) ListSquadIssueWorkflows(ctx context.Context, arg ListSquadIssu
 	return items, nil
 }
 
-const lockProjectForWorkflowChange = `-- name: LockProjectForWorkflowChange :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
-WHERE id = $1::uuid
-  AND workspace_id = $2::uuid
-FOR UPDATE
-`
-
-type LockProjectForWorkflowChangeParams struct {
-	ID          pgtype.UUID `json:"id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-}
-
-// Serializes concurrent workflow switches of one project.
-func (q *Queries) LockProjectForWorkflowChange(ctx context.Context, arg LockProjectForWorkflowChangeParams) (Project, error) {
-	row := q.db.QueryRow(ctx, lockProjectForWorkflowChange, arg.ID, arg.WorkspaceID)
-	var i Project
-	err := row.Scan(
-		&i.ID,
-		&i.WorkspaceID,
-		&i.Title,
-		&i.Description,
-		&i.Icon,
-		&i.Status,
-		&i.LeadType,
-		&i.LeadID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Priority,
-		&i.Access,
-		&i.StartDate,
-		&i.DueDate,
-		&i.WorkflowID,
-		&i.CreatorType,
-		&i.CreatorID,
-		&i.Visibility,
-		&i.ArchivedAt,
-		&i.ArchivedByType,
-		&i.ArchivedByID,
-		&i.FolderID,
-		&i.SquadIds,
-	)
-	return i, err
-}
-
-const remapProjectIssueStatus = `-- name: RemapProjectIssueStatus :many
-UPDATE issue AS i SET
-    status = $1::text,
-    duplicate_of_issue_id = NULL,
-    position = (
-        SELECT COALESCE(MIN(target.position), 0) - 1
-        FROM issue AS target
-        WHERE target.workspace_id = i.workspace_id
-          AND target.status = $1::text
-    ),
-    revision = i.revision + 1,
-    last_activity_at = GREATEST(COALESCE(i.last_activity_at, i.updated_at), now()),
-    updated_at = now()
-WHERE i.workspace_id = $2::uuid
-  AND i.project_id = ANY($3::uuid[])
-  AND i.status = $4::text
-  AND i.status <> $1::text
-  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
-  AND i.flow IS NULL
-  AND i.flow_task IS NULL
-  AND NOT EXISTS (
-      SELECT 1 FROM squad s
-      WHERE s.workspace_id = i.workspace_id
-        AND s.active_workflow_id IS NOT NULL
-        -- A squad on a flow routes only its flow requests; its other issues keep the project's workflow.
-        AND NOT EXISTS (SELECT 1 FROM issue_workflow fw WHERE fw.id = s.active_workflow_id AND fw.flow_config IS NOT NULL)
-        AND s.id = CASE
-            WHEN i.assignee_type = 'squad' THEN i.assignee_id
-            WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
-        END
-  )
-AND ($5::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($5::uuid[])))
-RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.requester_user_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
-`
-
-type RemapProjectIssueStatusParams struct {
-	ToStatus         string        `json:"to_status"`
-	WorkspaceID      pgtype.UUID   `json:"workspace_id"`
-	ProjectIds       []pgtype.UUID `json:"project_ids"`
-	FromStatus       string        `json:"from_status"`
-	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
-}
-
-// Moves every issue of the given projects that the project's workflow governs
-// from one status to another as part of an administrative workflow change.
-// Mirrors UpdateIssueStatus: the issue is re-ranked to the top of its new
-// column, the revision advances, and a duplicate mark only survives
-// cancelled -> cancelled (never the case here, because from and to differ). It
-// deliberately touches nothing else, so it never hands an issue off or starts a
-// run. The squad-routed issues CountProjectIssuesByStatus leaves out are left
-// out here too.
-// MUL-8472: private projects the caller cannot see.
-func (q *Queries) RemapProjectIssueStatus(ctx context.Context, arg RemapProjectIssueStatusParams) ([]Issue, error) {
-	rows, err := q.db.Query(ctx, remapProjectIssueStatus,
-		arg.ToStatus,
-		arg.WorkspaceID,
-		arg.ProjectIds,
-		arg.FromStatus,
-		arg.HiddenProjectIds,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Issue{}
-	for rows.Next() {
-		var i Issue
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.Title,
-			&i.Description,
-			&i.Status,
-			&i.Priority,
-			&i.AssigneeType,
-			&i.AssigneeID,
-			&i.CreatorType,
-			&i.CreatorID,
-			&i.ParentIssueID,
-			&i.AcceptanceCriteria,
-			&i.ContextRefs,
-			&i.Position,
-			&i.DueDate,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Number,
-			&i.ProjectID,
-			&i.OriginType,
-			&i.OriginID,
-			&i.FirstExecutedAt,
-			&i.StartDate,
-			&i.Metadata,
-			&i.Stage,
-			&i.Properties,
-			&i.Revision,
-			&i.LastActivityAt,
-			&i.TriageState,
-			&i.DuplicateOfIssueID,
-			&i.RequesterUserID,
-			&i.DoneAt,
-			&i.ReopenCount,
-			&i.LastReopenedAt,
-			&i.RunQueued,
-			&i.RunAfterIssueIds,
-			&i.RunStartStatus,
-			&i.Outcome,
-			&i.Flow,
-			&i.FlowStep,
-			&i.FlowTask,
-			&i.FlowRound,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const remapSquadIssueStatus = `-- name: RemapSquadIssueStatus :many
 UPDATE issue AS i SET
     status = $1::text,
@@ -912,8 +570,8 @@ type RemapSquadIssueStatusParams struct {
 	HiddenProjectIds []pgtype.UUID `json:"hidden_project_ids"`
 }
 
-// Moves a squad's routed project issues (the same set CountSquadIssuesByStatus
-// counts) from one status to another, with RemapProjectIssueStatus's effects.
+// Moves a squad's routed issues (the same set CountSquadIssuesByStatus counts)
+// from one status to another.
 // MUL-8472: private projects the caller cannot see.
 func (q *Queries) RemapSquadIssueStatus(ctx context.Context, arg RemapSquadIssueStatusParams) ([]Issue, error) {
 	rows, err := q.db.Query(ctx, remapSquadIssueStatus,
@@ -1046,52 +704,6 @@ func (q *Queries) SetIssueWorkflowSquad(ctx context.Context, arg SetIssueWorkflo
 		&i.Version,
 		&i.PublishedAt,
 		&i.PublishedBy,
-	)
-	return i, err
-}
-
-const setProjectWorkflow = `-- name: SetProjectWorkflow :one
-UPDATE project SET
-    workflow_id = $1::uuid,
-    updated_at = now()
-WHERE id = $2::uuid
-  AND workspace_id = $3::uuid
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
-`
-
-type SetProjectWorkflowParams struct {
-	WorkflowID  pgtype.UUID `json:"workflow_id"`
-	ID          pgtype.UUID `json:"id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-}
-
-func (q *Queries) SetProjectWorkflow(ctx context.Context, arg SetProjectWorkflowParams) (Project, error) {
-	row := q.db.QueryRow(ctx, setProjectWorkflow, arg.WorkflowID, arg.ID, arg.WorkspaceID)
-	var i Project
-	err := row.Scan(
-		&i.ID,
-		&i.WorkspaceID,
-		&i.Title,
-		&i.Description,
-		&i.Icon,
-		&i.Status,
-		&i.LeadType,
-		&i.LeadID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Priority,
-		&i.Access,
-		&i.StartDate,
-		&i.DueDate,
-		&i.WorkflowID,
-		&i.CreatorType,
-		&i.CreatorID,
-		&i.Visibility,
-		&i.ArchivedAt,
-		&i.ArchivedByType,
-		&i.ArchivedByID,
-		&i.FolderID,
-		&i.SquadIds,
 	)
 	return i, err
 }

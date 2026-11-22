@@ -1,4 +1,4 @@
--- Project workflows (MUL-7420). A workflow selects and orders statuses from
+-- Issue workflows (MUL-7420). A workflow selects and orders statuses from
 -- the workspace's issue_status catalog. Projects opt in through
 -- project.workflow_id; a project without one uses the workspace's Default
 -- workflow row. Each step also stores who an issue entering it is handed to.
@@ -45,14 +45,6 @@ UPDATE issue_workflow SET
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND is_default
   AND steps @> jsonb_build_array(jsonb_build_object('status_key', sqlc.arg('status_key')::text));
-
--- name: ListProjectsUsingDefaultIssueWorkflow :many
-SELECT * FROM project
-WHERE workspace_id = sqlc.arg('workspace_id')::uuid
-  AND workflow_id IS NULL
--- MUL-8472: private projects the caller cannot see.
-AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
-ORDER BY created_at, id;
 
 -- name: GetIssueWorkflow :one
 SELECT * FROM issue_workflow
@@ -144,85 +136,6 @@ WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND steps @> jsonb_build_array(jsonb_build_object('status_key', sqlc.arg('status_key')::text))
 ORDER BY lower(name);
 
--- name: ListProjectsUsingIssueWorkflow :many
-SELECT * FROM project
-WHERE workspace_id = sqlc.arg('workspace_id')::uuid
-  AND workflow_id = sqlc.arg('workflow_id')::uuid
--- MUL-8472: private projects the caller cannot see.
-AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
-ORDER BY created_at, id;
-
--- name: CountProjectIssuesByStatus :many
--- Status census for a project workflow switch or step removal, including
--- terminal issues: every issue of the project that the project's workflow
--- governs must end on a status it lists. Issues a squad routes through its own
--- active workflow are left out (see the NOT EXISTS below).
-SELECT i.status, COUNT(*)::bigint AS issue_count
-FROM issue i
-WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
-  AND i.project_id = ANY(sqlc.arg('project_ids')::uuid[])
-  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
-  AND i.flow IS NULL
-  AND i.flow_task IS NULL
-  AND NOT EXISTS (
-      SELECT 1 FROM squad s
-      WHERE s.workspace_id = i.workspace_id
-        AND s.active_workflow_id IS NOT NULL
-        -- A squad on a flow routes only its flow requests; its other issues keep the project's workflow.
-        AND NOT EXISTS (SELECT 1 FROM issue_workflow fw WHERE fw.id = s.active_workflow_id AND fw.flow_config IS NOT NULL)
-        AND s.id = CASE
-            WHEN i.assignee_type = 'squad' THEN i.assignee_id
-            WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
-        END
-  )
--- MUL-8472: private projects the caller cannot see.
-AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
-GROUP BY i.status
-ORDER BY i.status;
-
--- name: RemapProjectIssueStatus :many
--- Moves every issue of the given projects that the project's workflow governs
--- from one status to another as part of an administrative workflow change.
--- Mirrors UpdateIssueStatus: the issue is re-ranked to the top of its new
--- column, the revision advances, and a duplicate mark only survives
--- cancelled -> cancelled (never the case here, because from and to differ). It
--- deliberately touches nothing else, so it never hands an issue off or starts a
--- run. The squad-routed issues CountProjectIssuesByStatus leaves out are left
--- out here too.
-UPDATE issue AS i SET
-    status = sqlc.arg('to_status')::text,
-    duplicate_of_issue_id = NULL,
-    position = (
-        SELECT COALESCE(MIN(target.position), 0) - 1
-        FROM issue AS target
-        WHERE target.workspace_id = i.workspace_id
-          AND target.status = sqlc.arg('to_status')::text
-    ),
-    revision = i.revision + 1,
-    last_activity_at = GREATEST(COALESCE(i.last_activity_at, i.updated_at), now()),
-    updated_at = now()
-WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
-  AND i.project_id = ANY(sqlc.arg('project_ids')::uuid[])
-  AND i.status = sqlc.arg('from_status')::text
-  AND i.status <> sqlc.arg('to_status')::text
-  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
-  AND i.flow IS NULL
-  AND i.flow_task IS NULL
-  AND NOT EXISTS (
-      SELECT 1 FROM squad s
-      WHERE s.workspace_id = i.workspace_id
-        AND s.active_workflow_id IS NOT NULL
-        -- A squad on a flow routes only its flow requests; its other issues keep the project's workflow.
-        AND NOT EXISTS (SELECT 1 FROM issue_workflow fw WHERE fw.id = s.active_workflow_id AND fw.flow_config IS NOT NULL)
-        AND s.id = CASE
-            WHEN i.assignee_type = 'squad' THEN i.assignee_id
-            WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
-        END
-  )
--- MUL-8472: private projects the caller cannot see.
-AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
-RETURNING i.*;
-
 -- name: CountSquadIssuesByStatus :many
 -- Status census for a squad's active-workflow switch or an edit of that workflow:
 -- the project issues routed to the squad, either assigned to it or to an agent
@@ -248,8 +161,8 @@ GROUP BY i.status
 ORDER BY i.status;
 
 -- name: RemapSquadIssueStatus :many
--- Moves a squad's routed project issues (the same set CountSquadIssuesByStatus
--- counts) from one status to another, with RemapProjectIssueStatus's effects.
+-- Moves a squad's routed issues (the same set CountSquadIssuesByStatus counts)
+-- from one status to another.
 UPDATE issue AS i SET
     status = sqlc.arg('to_status')::text,
     duplicate_of_issue_id = NULL,
@@ -280,18 +193,3 @@ WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
 -- MUL-8472: private projects the caller cannot see.
 AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 RETURNING i.*;
-
--- name: LockProjectForWorkflowChange :one
--- Serializes concurrent workflow switches of one project.
-SELECT * FROM project
-WHERE id = sqlc.arg('id')::uuid
-  AND workspace_id = sqlc.arg('workspace_id')::uuid
-FOR UPDATE;
-
--- name: SetProjectWorkflow :one
-UPDATE project SET
-    workflow_id = sqlc.narg('workflow_id')::uuid,
-    updated_at = now()
-WHERE id = sqlc.arg('id')::uuid
-  AND workspace_id = sqlc.arg('workspace_id')::uuid
-RETURNING *;

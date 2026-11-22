@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
@@ -55,7 +54,6 @@ func createTestWorkflowSteps(t *testing.T, name string, steps []map[string]any) 
 	})).Want(http.StatusCreated).JSON(&created)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		testPool.Exec(ctx, `UPDATE project SET workflow_id = NULL WHERE workflow_id = $1`, created.ID)
 		testPool.Exec(ctx, `DELETE FROM issue_workflow WHERE id = $1`, created.ID)
 	})
 	return created
@@ -75,18 +73,10 @@ func createWorkflowTestProject(t *testing.T, title string) string {
 	projectID := dbfx.Project(t, title)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		testPool.Exec(ctx, `DELETE FROM issue_workflow WHERE id = (SELECT workflow_id FROM project WHERE id = $1)
-			AND NOT EXISTS (SELECT 1 FROM project p WHERE p.workflow_id = issue_workflow.id AND p.id <> $1)`, projectID)
 		testPool.Exec(ctx, `DELETE FROM issue WHERE project_id = $1`, projectID)
 		testPool.Exec(ctx, `DELETE FROM project WHERE id = $1`, projectID)
 	})
 	return projectID
-}
-
-func setProjectWorkflow(t *testing.T, projectID string, body map[string]any) *testutil.Response {
-	t.Helper()
-	req := withURLParam(workflowRequest("POST", "/api/projects/"+projectID+"/workflow", body), "id", projectID)
-	return testutil.Call(t, testHandler.SetProjectWorkflow, req)
 }
 
 // projectWorkflowID is the workflow a project uses. For a project on Default
@@ -154,7 +144,7 @@ func deliveryProject(t *testing.T, title, agentID string) string {
 	return projectID
 }
 
-func TestProjectWorkflowsAvailableWithoutFlag(t *testing.T) {
+func TestWorkflowsAvailableWithoutFlag(t *testing.T) {
 	seedTestCatalog(t)
 	resetDefaultWorkflow(t)
 	withFeatureFlag(t, testHandler, "project_workflows_v1", false)
@@ -168,28 +158,14 @@ func TestProjectWorkflowsAvailableWithoutFlag(t *testing.T) {
 	}
 
 	wf := createTestWorkflow(t, "Available "+workflowTestSuffix(), "in_progress")
-	projectID := createWorkflowTestProject(t, "Workflow available project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
 	agentID := seededReadyAgentID(t)
 	setWorkflowHandoff(t, wf.ID, "in_progress", handToAgent(agentID, "")).Want(http.StatusOK)
-
-	var project ProjectResponse
-	testutil.Call(t, testHandler.CreateProject, workflowRequest("POST", "/api/projects", map[string]any{
-		"title": "Created with workflow", "workflow_id": wf.ID,
-	})).Want(http.StatusCreated).JSON(&project)
-	t.Cleanup(func() {
-		testPool.Exec(context.Background(), `DELETE FROM project WHERE id = $1`, project.ID)
-	})
-	if project.WorkflowID == nil || *project.WorkflowID != wf.ID {
-		t.Fatalf("workflow_id = %v, want %s", project.WorkflowID, wf.ID)
-	}
 }
 
 func TestProjectWorkflowsKeepWorkspaceIsolation(t *testing.T) {
 	seedTestCatalog(t)
 	resetDefaultWorkflow(t)
 	wf := createTestWorkflow(t, "Isolated "+workflowTestSuffix(), "in_progress")
-	projectID := createWorkflowTestProject(t, "Isolated workflow project")
 	outsiderID := dbfx.User(t, "Workflow outsider", "workflow-outsider-"+workflowTestSuffix()+"@example.com")
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		req := workflowRequest(method, "/api/issue-workflows", map[string]any{"name": "Unauthorized", "steps": statusSteps()})
@@ -210,13 +186,8 @@ func TestProjectWorkflowsKeepWorkspaceIsolation(t *testing.T) {
 	}
 	get := withURLParam(otherRequest("GET", "/api/issue-workflows/"+wf.ID, nil), "id", wf.ID)
 	testutil.Call(t, testHandler.GetIssueWorkflow, get).Want(http.StatusNotFound)
-	switchReq := withURLParam(otherRequest("POST", "/api/projects/"+projectID+"/workflow", map[string]any{"workflow_id": wf.ID}), "id", projectID)
-	testutil.Call(t, testHandler.SetProjectWorkflow, switchReq).Want(http.StatusNotFound)
 	handoff := withURLParams(otherRequest("PUT", "/api/issue-workflows/"+wf.ID+"/handoffs/in_progress", map[string]any{"handler": map[string]any{"type": "none"}}), "id", wf.ID, "status", "in_progress")
 	testutil.Call(t, testHandler.SetIssueWorkflowHandoff, handoff).Want(http.StatusNotFound)
-	testutil.Call(t, testHandler.CreateProject, otherRequest("POST", "/api/projects", map[string]any{
-		"title": "Cross-workspace workflow", "workflow_id": wf.ID,
-	})).Want(http.StatusBadRequest)
 }
 
 func TestCreateIssueWorkflowPlacesFixedStatusesAndValidates(t *testing.T) {
@@ -411,65 +382,12 @@ func TestDefaultWorkflowIsEditableButNotDeletable(t *testing.T) {
 	del := withURLParam(workflowRequest("DELETE", "/api/issue-workflows/"+def.ID, nil), "id", def.ID)
 	testutil.Call(t, testHandler.DeleteIssueWorkflow, del).Want(http.StatusBadRequest)
 }
-
-func TestSetProjectWorkflowMapsOnlyUnlistedStatuses(t *testing.T) {
-	seedTestCatalog(t)
-	resetDefaultWorkflow(t)
-	agentID := seededReadyAgentID(t)
-	wf := createTestWorkflow(t, "Map "+workflowTestSuffix(), "in_review")
-	projectID := createWorkflowTestProject(t, "Workflow map project")
-	setWorkflowHandoff(t, wf.ID, "in_review", handToAgent(agentID, "")).Want(http.StatusOK)
-	keep := dbfx.Issue(t, "stays on todo", testutil.Cols{"project_id": projectID, "status": "todo"})
-	moved := dbfx.Issue(t, "leaves in_progress", testutil.Cols{"project_id": projectID, "status": "in_progress"})
-
-	var dry struct {
-		Plan workflowMappingPlan `json:"plan"`
-	}
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID, "dry_run": true}).Want(http.StatusOK).JSON(&dry)
-	if len(dry.Plan.Required) != 1 || dry.Plan.Required[0].StatusKey != "in_progress" || dry.Plan.Required[0].IssueCount != 1 {
-		t.Fatalf("plan = %+v, want only in_progress with one issue", dry.Plan)
-	}
-	if len(dry.Plan.Unchanged) != 1 || dry.Plan.Unchanged[0].StatusKey != "todo" {
-		t.Fatalf("unchanged = %+v, want todo kept", dry.Plan.Unchanged)
-	}
-	if got := dry.Plan.Required[0].SuggestedStatusKey; got != "in_review" {
-		t.Fatalf("suggested target = %q, want the same-category step in_review", got)
-	}
-
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusConflict)
-	setProjectWorkflow(t, projectID, map[string]any{
-		"workflow_id":    wf.ID,
-		"status_mapping": map[string]string{"in_progress": "code_review_nope"},
-	}).Want(http.StatusConflict)
-
-	setProjectWorkflow(t, projectID, map[string]any{
-		"workflow_id":    wf.ID,
-		"status_mapping": map[string]string{"in_progress": "in_review"},
-	}).Want(http.StatusOK)
-
-	if status, _, _ := issueStatusAndAssignee(t, keep); status != "todo" {
-		t.Fatalf("an issue on a listed status moved to %q", status)
-	}
-	status, assigneeType, _ := issueStatusAndAssignee(t, moved)
-	if status != "in_review" {
-		t.Fatalf("mapped issue status = %q, want in_review", status)
-	}
-	// Mapping is administrative: entering a handoff column this way neither
-	// reassigns the issue nor starts a run.
-	if assigneeType != "" || taskCountFor(t, moved, agentID) != 0 {
-		t.Fatalf("a workflow switch handed the issue off (assignee type %q)", assigneeType)
-	}
-
-	// Switching back to Default needs no mapping.
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": nil}).Want(http.StatusOK)
-}
-
 func TestUpdateIssueRejectsStatusOutsideNamedWorkflow(t *testing.T) {
 	seedTestCatalog(t)
 	resetDefaultWorkflow(t)
 	wf := createTestWorkflow(t, "Reject "+workflowTestSuffix())
 	projectID := createWorkflowTestProject(t, "Workflow reject project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+	useAsWorkspaceDefault(t, wf.ID)
 	issueID := dbfx.Issue(t, "reject in_progress", testutil.Cols{"project_id": projectID, "status": "todo"})
 
 	body := updateIssueForTest(t, issueID, map[string]any{"status": "in_progress"}).Want(http.StatusBadRequest).Map()
@@ -586,7 +504,7 @@ func TestStatusChangeHandsOffOnDefaultProject(t *testing.T) {
 
 	// A project on a workflow without handoffs hands nothing off.
 	plainProject := createWorkflowTestProject(t, "Workflow no handoff project")
-	setProjectWorkflow(t, plainProject, map[string]any{"workflow_id": createTestWorkflow(t, "Plain "+workflowTestSuffix(), "in_progress").ID}).Want(http.StatusOK)
+	useAsWorkspaceDefault(t, createTestWorkflow(t, "Plain "+workflowTestSuffix(), "in_progress").ID)
 	plain := dbfx.Issue(t, "no handoff", testutil.Cols{"project_id": plainProject, "status": "todo"})
 	updateIssueForTest(t, plain, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
 	if _, at, _ := issueStatusAndAssignee(t, plain); at != "" {
@@ -751,38 +669,7 @@ func TestWorkflowOwnerPermissions(t *testing.T) {
 	// Back to the steps the handoff checks below expect.
 	patchSteps(asAdmin, map[string]any{"steps": statusSteps("backlog", "in_progress", "blocked")}).Want(http.StatusOK)
 
-	// Copying the workflow for one project switches that project, which
-	// needs the project's lead or an admin, even for the workflow's owner.
-	projectID := createWorkflowTestProject(t, "Workflow owner project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
-	body := handToAgent(agentID, "Only here")
-	body["copy_for_project_id"] = projectID
-	copyReq := func() *http.Request {
-		return withURLParams(asOwner(workflowRequest("PUT", "/api/issue-workflows/"+wf.ID+"/handoffs/in_progress", body)),
-			"id", wf.ID, "status", "in_progress")
-	}
-	testutil.Call(t, testHandler.SetIssueWorkflowHandoff, copyReq()).Want(http.StatusForbidden)
-	dbfx.Exec(t, `UPDATE project SET lead_type = 'member', lead_id = $1 WHERE id = $2`, ownerID, projectID)
-	var copied IssueWorkflowResponse
-	testutil.Call(t, testHandler.SetIssueWorkflowHandoff, copyReq()).Want(http.StatusCreated).JSON(&copied)
-	t.Cleanup(func() {
-		testPool.Exec(context.Background(), `DELETE FROM issue_workflow WHERE id = $1`, copied.ID)
-	})
-	if copied.OwnerID == nil || *copied.OwnerID != ownerID {
-		t.Fatalf("copy owner_id = %v, want %s", copied.OwnerID, ownerID)
-	}
-
-	// A lead who does not own the workflow switches the project but cannot
-	// edit the workflow.
-	otherID, _ := addWorkflowTestMember(t, "lead")
-	asLead := func(r *http.Request) *http.Request { r.Header.Set("X-User-ID", otherID); return r }
-	dbfx.Exec(t, `UPDATE project SET lead_type = 'member', lead_id = $1 WHERE id = $2`, otherID, projectID)
-	sw := withURLParam(asLead(workflowRequest("POST", "/api/projects/"+projectID+"/workflow", map[string]any{"workflow_id": wf.ID})), "id", projectID)
-	testutil.Call(t, testHandler.SetProjectWorkflow, sw).Want(http.StatusOK)
-	patch(asLead, wf.ID, "Lead renamed "+workflowTestSuffix()).Want(http.StatusForbidden)
-
-	// The owner deletes it once no project uses it.
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": nil}).Want(http.StatusOK)
+	// The owner deletes it once no room uses it.
 	remove(asOwner).Want(http.StatusNoContent)
 }
 
@@ -800,14 +687,14 @@ func TestWorkflowWithoutBacklogOrBlocked(t *testing.T) {
 		t.Fatalf("lean steps = %s", got)
 	}
 	projectID := createWorkflowTestProject(t, "Workflow lean project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": lean.ID}).Want(http.StatusOK)
-	issueID := dbfx.Issue(t, "lean", testutil.Cols{"project_id": projectID, "status": "todo"})
+	leanRoom := roomWithWorkflow(t, "Lean room", lean.ID)
+	issueID := roomPiece(t, projectID, leanRoom, "lean", testutil.Cols{"status": "todo"})
 	updateIssueForTest(t, issueID, map[string]any{"status": "blocked"}).Want(http.StatusBadRequest)
 
 	full := createTestWorkflow(t, "Full "+workflowTestSuffix(), "in_progress")
 	other := createWorkflowTestProject(t, "Workflow drop blocked project")
-	setProjectWorkflow(t, other, map[string]any{"workflow_id": full.ID}).Want(http.StatusOK)
-	stuck := dbfx.Issue(t, "stuck", testutil.Cols{"project_id": other, "status": "blocked"})
+	fullRoom := roomWithWorkflow(t, "Full room", full.ID)
+	stuck := roomPiece(t, other, fullRoom, "stuck", testutil.Cols{"status": "blocked"})
 	edit := func(body map[string]any) *testutil.Response {
 		return testutil.Call(t, testHandler.UpdateIssueWorkflow, withURLParam(workflowRequest("PATCH", "/api/issue-workflows/"+full.ID, body), "id", full.ID))
 	}
@@ -844,25 +731,30 @@ func TestExplicitAssigneeWinsOverStepHandler(t *testing.T) {
 
 func TestMoveIntoWorkflowProjectKeepsEquivalentStatusWithoutHandoff(t *testing.T) {
 	seedTestCatalog(t)
-	resetDefaultWorkflow(t)
 	agentID := seededReadyAgentID(t)
 	wf := createTestWorkflow(t, "Move "+workflowTestSuffix(), "in_review")
+	room := roomWithWorkflow(t, "Move room", wf.ID)
 	projectID := createWorkflowTestProject(t, "Workflow move project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
-	setColumnHandoff(t, projectID, "in_review", handToAgent(agentID, "")).Want(http.StatusOK)
-	issueID := dbfx.Issue(t, "moving in", testutil.Cols{"status": "in_progress"})
+	setWorkflowHandoff(t, wf.ID, "in_review", handToAgent(agentID, "")).Want(http.StatusOK)
+	// A request of the room, outside any project: a move into the project is
+	// checked against the room's workflow.
+	issueID := dbfx.Issue(t, "moving in", testutil.Cols{"status": "in_progress", "assignee_type": "squad", "assignee_id": room})
 
 	updateIssueForTest(t, issueID, map[string]any{"project_id": projectID}).Want(http.StatusOK)
 	status, assigneeType, _ := issueStatusAndAssignee(t, issueID)
 	if status != "in_review" {
 		t.Fatalf("status after move = %q, want the same-category step in_review", status)
 	}
-	if assigneeType != "" || taskCountFor(t, issueID, agentID) != 0 {
+	if assigneeType != "squad" || taskCountFor(t, issueID, agentID) != 0 {
 		t.Fatal("moving an issue into a project must not hand it off")
 	}
 
-	// A move confirmed in the UI enters the column it lands on.
-	entering := dbfx.Issue(t, "entering", testutil.Cols{"status": "in_progress"})
+	// A move confirmed in the UI enters the column it lands on. The entering
+	// issue is a piece of a request, the kind a workflow hands off.
+	parent := dbfx.Issue(t, "request of entering", testutil.Cols{"status": "in_progress", "assignee_type": "squad", "assignee_id": room})
+	entering := dbfx.Issue(t, "entering", testutil.Cols{
+		"status": "in_progress", "assignee_type": "squad", "assignee_id": room, "parent_issue_id": parent,
+	})
 	var preview WorkflowHandoffPreviewResponse
 	req := withURLParam(newRequest("GET", "/api/issues/"+entering+"/workflow-handoff?project_id="+projectID, nil), "id", entering)
 	testutil.Call(t, testHandler.PreviewWorkflowHandoff, req).Want(http.StatusOK).JSON(&preview)
@@ -873,54 +765,6 @@ func TestMoveIntoWorkflowProjectKeepsEquivalentStatusWithoutHandoff(t *testing.T
 	status, assigneeType, assigneeID := issueStatusAndAssignee(t, entering)
 	if status != "in_review" || assigneeType != "agent" || assigneeID != agentID || taskCountFor(t, entering, agentID) != 1 {
 		t.Fatalf("entering move = %s %s/%s, want in_review handed to the agent with one run", status, assigneeType, assigneeID)
-	}
-}
-
-// Saving a shared workflow's handoff for one project copies the workflow for
-// that project; the other projects keep the original.
-func TestWorkflowHandoffCopyForProject(t *testing.T) {
-	seedTestCatalog(t)
-	agentID := seededReadyAgentID(t)
-	wf := createTestWorkflow(t, "Shared "+workflowTestSuffix(), "in_progress")
-	mine := createWorkflowTestProject(t, "Workflow copy mine")
-	theirs := createWorkflowTestProject(t, "Workflow copy theirs")
-	elsewhere := createWorkflowTestProject(t, "Workflow copy elsewhere")
-	setProjectWorkflow(t, mine, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
-	setProjectWorkflow(t, theirs, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
-
-	body := handToAgent(agentID, "Only here")
-	body["copy_for_project_id"] = elsewhere
-	setWorkflowHandoff(t, wf.ID, "in_progress", body).Want(http.StatusConflict)
-
-	body["copy_for_project_id"] = mine
-	var copied IssueWorkflowResponse
-	setWorkflowHandoff(t, wf.ID, "in_progress", body).Want(http.StatusCreated).JSON(&copied)
-	if copied.ID == wf.ID || !strings.HasPrefix(copied.Name, wf.Name+" (") || len(copied.ProjectIDs) != 1 || copied.ProjectIDs[0] != mine {
-		t.Fatalf("copy = %+v, want a new workflow used only by the project", copied)
-	}
-	handlerOf := func(id string) string {
-		var steps string
-		dbfx.QueryRow(t, `SELECT steps::text FROM issue_workflow WHERE id = $1`, id).Scan(&steps)
-		return steps
-	}
-	if !strings.Contains(handlerOf(copied.ID), agentID) || strings.Contains(handlerOf(wf.ID), agentID) {
-		t.Fatal("the handoff must land on the copy only")
-	}
-	var theirsWorkflow string
-	dbfx.QueryRow(t, `SELECT workflow_id::text FROM project WHERE id = $1`, theirs).Scan(&theirsWorkflow)
-	if theirsWorkflow != wf.ID {
-		t.Fatalf("the other project moved to %s", theirsWorkflow)
-	}
-}
-
-func TestProjectCopyName(t *testing.T) {
-	taken := map[string]bool{"delivery (payments)": true}
-	if got := projectCopyName("Delivery", "Payments", taken); got != "Delivery (Payments 2)" {
-		t.Fatalf("name = %q", got)
-	}
-	long := strings.Repeat("x", 70)
-	if got := projectCopyName(long, "P", nil); utf8.RuneCountInString(got) > issueworkflow.MaxNameRunes || !strings.HasSuffix(got, " (P)") {
-		t.Fatalf("long name = %q", got)
 	}
 }
 
@@ -947,7 +791,7 @@ func TestCreateIssueHandsOffItsStartingColumn(t *testing.T) {
 
 	wf := createTestWorkflow(t, "Create "+workflowTestSuffix())
 	named := createWorkflowTestProject(t, "Workflow create named project")
-	setProjectWorkflow(t, named, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+	useAsWorkspaceDefault(t, wf.ID)
 	testutil.Call(t, testHandler.CreateIssue, newRequest("POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
 		"title": "outside the workflow", "project_id": named, "status": "in_progress",
 	})).Want(http.StatusBadRequest)
@@ -1102,7 +946,15 @@ func TestClaimStartsRunWhoseIssueStillHandsItOff(t *testing.T) {
 func TestClaimExplainsMovedWorkflowStep(t *testing.T) {
 	seedTestCatalog(t)
 	agentID := seededReadyAgentID(t)
-	projectID := deliveryProject(t, "Workflow continuation project", agentID)
+	// The agent works for a room whose workflow hands in_progress to it.
+	wf := createTestWorkflow(t, "Continuation "+workflowTestSuffix(), "in_progress", "in_review")
+	setWorkflowHandoff(t, wf.ID, "in_progress", handToAgent(agentID, "Implement it and open a PR.")).Want(http.StatusOK)
+	room := roomWithWorkflow(t, "Continuation room", wf.ID)
+	dbfx.Exec(t, `UPDATE agent SET home_squad_id = $2 WHERE id = $1`, agentID, room)
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `UPDATE agent SET home_squad_id = NULL WHERE id = $1`, agentID)
+	})
+	projectID := createWorkflowTestProject(t, "Workflow continuation project")
 	issueID := dbfx.Issue(t, "continued after an external move", testutil.Cols{
 		"project_id": projectID, "status": "in_progress", "assignee_type": "agent", "assignee_id": agentID,
 	})
@@ -1161,8 +1013,8 @@ func TestClaimExplainsMovedWorkflowStep(t *testing.T) {
 	if brief := claimBriefForTest(t, issueID, task); !strings.Contains(brief, "last moved by "+handlerTestName) {
 		t.Fatalf("brief lost the known status mover:\n%s", brief)
 	}
-	named := createTestWorkflow(t, "Continuation "+workflowTestSuffix(), "in_progress", "in_review")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": named.ID}).Want(http.StatusOK)
+	named := createTestWorkflow(t, "Continuation named "+workflowTestSuffix(), "in_progress", "in_review")
+	giveSquadWorkflow(t, room, named.ID)
 	if brief := claimBriefForTest(t, issueID, task); !strings.Contains(brief, `bound to "waiting_for_merge"`) || strings.Contains(brief, "multica issue status") {
 		t.Fatalf("named workflow without handoffs lost the step guard:\n%s", brief)
 	}
@@ -1484,7 +1336,11 @@ func TestWorkflowSwitchIntoDoneEndsWakeups(t *testing.T) {
 	resetDefaultWorkflow(t)
 	agentID := seededReadyAgentID(t)
 	projectID := createWorkflowTestProject(t, "Workflow switch wakeups project")
-	issueID := dbfx.Issue(t, "wakeups end with the issue", testutil.Cols{"project_id": projectID, "status": "in_review"})
+	squadID := dbfx.Squad(t, "Wakeup room "+workflowTestSuffix(), agentID)
+	giveSquadWorkflow(t, squadID, createTestWorkflow(t, "Wakeup start "+workflowTestSuffix(), "in_review").ID)
+	issueID := dbfx.Issue(t, "wakeups end with the issue", testutil.Cols{
+		"project_id": projectID, "status": "in_review", "assignee_type": "squad", "assignee_id": squadID,
+	})
 	svc := service.IssueWakeupService{Tasks: testHandler.TaskService}
 	wakeup, err := svc.Create(context.Background(), parseUUID(issueID), parseUUID(testUserID), pgtype.UUID{},
 		service.WakeupInput{AgentID: agentID, Kind: "at", AfterSeconds: 600, Instruction: "check the PR"})
@@ -1499,10 +1355,10 @@ func TestWorkflowSwitchIntoDoneEndsWakeups(t *testing.T) {
 		"context": testutil.Raw("jsonb_build_object('wakeup_id', '" + uuidToString(wakeup.ID) + "')"),
 	})
 
-	wf := createTestWorkflow(t, "Wakeup switch "+workflowTestSuffix())
-	setProjectWorkflow(t, projectID, map[string]any{
-		"workflow_id": wf.ID, "status_mapping": map[string]string{"in_review": "done"},
-	}).Want(http.StatusOK)
+	target := insertSquadWorkflow(t, testWorkspaceID, squadID, "Wakeup switch "+workflowTestSuffix(), "todo", "in_progress", "done")
+	testutil.Call(t, testHandler.SetSquadActiveWorkflow, withURLParams(workflowRequest("POST", "/api/squads/"+squadID+"/workflow", map[string]any{
+		"workflow_id": target, "status_mapping": map[string]string{"in_review": "done"},
+	}), "id", squadID, "workspaceId", testWorkspaceID)).Want(http.StatusOK)
 
 	var enabled bool
 	var taskStatus string
@@ -1664,11 +1520,11 @@ func TestAgentCannotSkipWorkflowStepToDone(t *testing.T) {
 	agentID := seededReadyAgentID(t)
 	wf := createTestWorkflow(t, "Skip done "+workflowTestSuffix(), "in_progress", "in_review", "qa_review")
 	projectID := createWorkflowTestProject(t, "Workflow skip done project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+	room := roomWithWorkflow(t, "Skip done room", wf.ID)
 	setWorkflowHandoff(t, wf.ID, "in_review", handToAgent(agentID, "Review it.")).Want(http.StatusOK)
 	setWorkflowHandoff(t, wf.ID, "qa_review", handToAgent(agentID, "QA it.")).Want(http.StatusOK)
 
-	issueID := dbfx.Issue(t, "skip done", testutil.Cols{"project_id": projectID, "status": "in_review"})
+	issueID := roomPiece(t, projectID, room, "skip done", testutil.Cols{"status": "in_review"})
 	var runtimeID string
 	dbfx.QueryRow(t, `SELECT runtime_id::text FROM agent WHERE id = $1`, agentID).Scan(&runtimeID)
 	taskID := dbfx.Task(t, agentID, testutil.Cols{

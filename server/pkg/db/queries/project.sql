@@ -47,10 +47,10 @@ FOR UPDATE;
 -- name: CreateProject :one
 INSERT INTO project (
     workspace_id, title, description, icon, status,
-    lead_type, lead_id, priority, start_date, due_date, workflow_id,
+    lead_type, lead_id, priority, start_date, due_date,
     creator_type, creator_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) RETURNING *;
 
 -- name: UpdateProject :one
@@ -138,3 +138,11 @@ WHERE workspace_id = sqlc.arg('workspace_id')::uuid
 -- MUL-8472: private projects the caller cannot see.
 AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 ORDER BY created_at, id;
+
+-- name: LockProjectForSquadChange :one
+-- Serializes a change to which squads work a project, so two assignments cannot
+-- both pick the squad's workflow.
+SELECT * FROM project
+WHERE id = sqlc.arg('id')::uuid
+  AND workspace_id = sqlc.arg('workspace_id')::uuid
+FOR UPDATE;

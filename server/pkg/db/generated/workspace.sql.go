@@ -550,6 +550,51 @@ func (q *Queries) LockWorkspaceForDelete(ctx context.Context, id pgtype.UUID) (p
 	return id_2, err
 }
 
+const setWorkspaceNonRequestWorkflow = `-- name: SetWorkspaceNonRequestWorkflow :one
+UPDATE workspace
+SET settings = jsonb_set(COALESCE(settings, '{}'::jsonb), '{non_request_workflow}', $1::jsonb),
+    updated_at = now()
+WHERE id = $2::uuid
+RETURNING id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode
+`
+
+type SetWorkspaceNonRequestWorkflowParams struct {
+	Value []byte      `json:"value"`
+	ID    pgtype.UUID `json:"id"`
+}
+
+// Stores the workspace's choice for issues in a flow room that are not requests of
+// that room (squad-room-workflow spec, section 4). It writes one key of the settings
+// JSON and leaves the other keys alone.
+func (q *Queries) SetWorkspaceNonRequestWorkflow(ctx context.Context, arg SetWorkspaceNonRequestWorkflowParams) (Workspace, error) {
+	row := q.db.QueryRow(ctx, setWorkspaceNonRequestWorkflow, arg.Value, arg.ID)
+	var i Workspace
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.Settings,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Context,
+		&i.Repos,
+		&i.IssuePrefix,
+		&i.IssueCounter,
+		&i.AvatarUrl,
+		&i.AttributionFailClosed,
+		&i.SecretaryAgentID,
+		&i.CompanyState,
+		&i.CompanyStateUpdatedAt,
+		&i.QuietEnabled,
+		&i.QuietStart,
+		&i.QuietEnd,
+		&i.QuietTimezone,
+		&i.DigestMode,
+	)
+	return i, err
+}
+
 const setWorkspacePinned = `-- name: SetWorkspacePinned :one
 UPDATE member
 SET pinned_at = CASE WHEN $1::bool THEN COALESCE(pinned_at, now()) ELSE NULL END

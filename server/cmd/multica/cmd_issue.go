@@ -1934,7 +1934,7 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 		if msg, ok := activeDuplicateIssueCreateMessage(err); ok {
 			return errors.New(msg)
 		}
-		return fmt.Errorf("create issue: %w", err)
+		return fmt.Errorf("create issue: %w", roomWorkflowRefusal(err))
 	}
 	if prAutoCompleteDisabled != nil {
 		if err := confirmCreatedIssuePRAutoComplete(ctx, client, result, *prAutoCompleteDisabled); err != nil {

@@ -55,7 +55,28 @@ func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params 
 	if handled, err := h.applyFlowStatusRules(ctx, prev, params); handled {
 		return nil, err
 	}
-	def, project, err := issueworkflow.ForIssue(ctx, h.Queries, prev.WorkspaceID, params.ProjectID, params.AssigneeType, params.AssigneeID)
+	in := issueworkflow.RoomIssue{
+		WorkspaceID:   prev.WorkspaceID,
+		ProjectID:     params.ProjectID,
+		AssigneeType:  params.AssigneeType,
+		AssigneeID:    params.AssigneeID,
+		ParentIssueID: params.ParentIssueID,
+		CreatorType:   prev.CreatorType,
+		CreatorID:     prev.CreatorID,
+		FlowTask:      prev.FlowTask,
+	}
+	// The room rules refuse a placement (assignee, project or parent) that
+	// leaves the issue in a room with no workflow. Other writes are not refused.
+	if assigneeTouched || params.ProjectID != prev.ProjectID || params.ParentIssueID != prev.ParentIssueID {
+		policy, err := issueworkflow.LoadNonRequestPolicy(ctx, h.Queries, prev.WorkspaceID)
+		if err != nil {
+			return nil, err
+		}
+		if err := issueworkflow.CheckRoomWrite(ctx, h.Queries, in, policy); err != nil {
+			return nil, err
+		}
+	}
+	def, project, err := issueworkflow.Resolve(ctx, h.Queries, in)
 	if err != nil {
 		return nil, err
 	}
@@ -312,6 +333,9 @@ func (h *Handler) issueRouteFacts(ctx context.Context, issue db.Issue, outcome s
 // writeIssueWorkflowError answers a workflow rejection. It reports false when
 // err is not one, so the caller can fall through to its generic 500.
 func writeIssueWorkflowError(w http.ResponseWriter, err error) bool {
+	if writeRoomWorkflowError(w, err) {
+		return true
+	}
 	var notIn *issueworkflow.NotInWorkflowError
 	if errors.As(err, &notIn) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
@@ -581,7 +605,7 @@ func (h *Handler) claimProjectWorkflow(ctx context.Context, issue db.Issue, task
 	if brief := h.claimFlowBrief(ctx, issue); brief != nil {
 		return brief
 	}
-	def, project, err := issueworkflow.ForIssue(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
+	def, project, err := issueworkflow.Resolve(ctx, h.Queries, issueworkflow.RoomIssueOf(issue))
 	if err != nil {
 		slog.Warn("task claim: failed to load project workflow for brief injection",
 			"issue_id", uuidToString(issue.ID), "error", err)
@@ -632,7 +656,7 @@ func (h *Handler) handoffRunStale(ctx context.Context, issue db.Issue, task *db.
 		task.TriggerCommentID.Valid || len(task.CoalescedCommentIds) > 0 {
 		return false
 	}
-	def, _, err := issueworkflow.ForIssue(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
+	def, _, err := issueworkflow.Resolve(ctx, h.Queries, issueworkflow.RoomIssueOf(issue))
 	if err != nil || def == nil || (def.IsDefault && !def.HandsOffAnywhere()) {
 		return false
 	}

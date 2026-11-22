@@ -16,10 +16,9 @@ import (
 	"github.com/multica-ai/multica/server/internal/cli"
 )
 
-// Workflow commands wrap /api/issue-workflows and the project workflow
-// switch. Permission checks stay on the server: edits and deletes are limited
-// to the workflow owner and workspace admins, switching a project's workflow
-// to admins and the project lead. The CLI reports the server's error as is.
+// Workflow commands wrap /api/issue-workflows. Permission checks stay on the
+// server: edits and deletes are limited to the workflow owner and workspace
+// admins. The CLI reports the server's error as is.
 
 var workflowCmd = &cobra.Command{
 	Use:   "workflow",
@@ -95,30 +94,6 @@ name or UUID.`,
 	RunE: runWorkflowHandoffSet,
 }
 
-var projectWorkflowCmd = &cobra.Command{
-	Use:   "workflow",
-	Short: "Show or switch the workflow a project uses",
-}
-
-var projectWorkflowGetCmd = &cobra.Command{
-	Use:   "get <project-id>",
-	Short: "Show the project's effective workflow (Default when none is set)",
-	Args:  exactArgs(1),
-	RunE:  runProjectWorkflowGet,
-}
-
-var projectWorkflowSetCmd = &cobra.Command{
-	Use:   "set <project-id> <workflow|default>",
-	Short: "Switch the project to another workflow",
-	Long: `Switch the project to another workflow, or back to the workspace Default.
-
-Issues on statuses the new workflow does not list must be mapped with
---map old=new. Use --dry-run to print the migration plan first. Moving issues
-this way neither reassigns them nor starts runs.`,
-	Args: exactArgs(2),
-	RunE: runProjectWorkflowSet,
-}
-
 func init() {
 	workflowCmd.AddCommand(workflowListCmd)
 	workflowCmd.AddCommand(workflowGetCmd)
@@ -127,10 +102,6 @@ func init() {
 	workflowCmd.AddCommand(workflowDeleteCmd)
 	workflowCmd.AddCommand(workflowHandoffCmd)
 	workflowHandoffCmd.AddCommand(workflowHandoffSetCmd)
-
-	projectCmd.AddCommand(projectWorkflowCmd)
-	projectWorkflowCmd.AddCommand(projectWorkflowGetCmd)
-	projectWorkflowCmd.AddCommand(projectWorkflowSetCmd)
 
 	workflowListCmd.Flags().String("output", "table", "Output format: table or json")
 	workflowListCmd.Flags().Bool("full-id", false, "Show full UUIDs in table output")
@@ -159,11 +130,6 @@ func init() {
 	workflowHandoffSetCmd.Flags().String("copy-for-project", "", "Save on a copy of the workflow used only by this project")
 	workflowHandoffSetCmd.Flags().String("output", "json", "Output format: table or json")
 
-	projectWorkflowGetCmd.Flags().String("output", "json", "Output format: table or json")
-
-	projectWorkflowSetCmd.Flags().StringArray("map", nil, "Move issues off a status the new workflow lacks: old=new (repeatable)")
-	projectWorkflowSetCmd.Flags().Bool("dry-run", false, "Print the migration plan without writing")
-	projectWorkflowSetCmd.Flags().String("output", "json", "Output format: table or json")
 }
 
 // --- helpers ---
@@ -636,102 +602,6 @@ func runWorkflowHandoffSet(cmd *cobra.Command, args []string) error {
 	}
 	if output, _ := cmd.Flags().GetString("output"); output == "table" {
 		printWorkflowTable(result)
-		return nil
-	}
-	return cli.PrintJSON(os.Stdout, result)
-}
-
-// --- project workflow commands ---
-
-func runProjectWorkflowGet(cmd *cobra.Command, args []string) error {
-	client, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := cli.APIContext(context.Background())
-	defer cancel()
-
-	projectRef, err := resolveProjectID(ctx, client, args[0])
-	if err != nil {
-		return fmt.Errorf("resolve project: %w", err)
-	}
-	var project map[string]any
-	if err := client.GetJSON(ctx, "/api/projects/"+projectRef.ID, &project); err != nil {
-		return fmt.Errorf("get project: %w", err)
-	}
-	ref := strVal(project, "workflow_id")
-	usesDefault := ref == ""
-	if usesDefault {
-		ref = "default"
-	}
-	wf, err := resolveWorkflow(ctx, client, ref)
-	if err != nil {
-		return fmt.Errorf("get workflow: %w", err)
-	}
-
-	if output, _ := cmd.Flags().GetString("output"); output == "table" {
-		if usesDefault {
-			fmt.Fprintln(os.Stdout, "Project uses the workspace Default workflow.")
-		}
-		printWorkflowTable(wf)
-		return nil
-	}
-	return cli.PrintJSON(os.Stdout, map[string]any{
-		"project_id":   projectRef.ID,
-		"uses_default": usesDefault,
-		"workflow":     wf,
-	})
-}
-
-func runProjectWorkflowSet(cmd *cobra.Command, args []string) error {
-	pairs, _ := cmd.Flags().GetStringArray("map")
-	mapping, err := parseStatusMapping(pairs)
-	if err != nil {
-		return err
-	}
-	dryRun, _ := cmd.Flags().GetBool("dry-run")
-
-	client, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := cli.APIContext(context.Background())
-	defer cancel()
-
-	projectRef, err := resolveProjectID(ctx, client, args[0])
-	if err != nil {
-		return fmt.Errorf("resolve project: %w", err)
-	}
-	// workflow_id null switches back to Default.
-	body := map[string]any{"workflow_id": nil}
-	if !strings.EqualFold(strings.TrimSpace(args[1]), "default") {
-		wf, err := resolveWorkflow(ctx, client, args[1])
-		if err != nil {
-			return fmt.Errorf("resolve workflow: %w", err)
-		}
-		body["workflow_id"] = strVal(wf, "id")
-	}
-	if mapping != nil {
-		body["status_mapping"] = mapping
-	}
-	if dryRun {
-		body["dry_run"] = true
-	}
-
-	var result map[string]any
-	if err := client.PostJSON(ctx, "/api/projects/"+projectRef.ID+"/workflow", body, &result); err != nil {
-		if reported := reportMappingRequired(cmd, err); reported != nil {
-			return reported
-		}
-		return fmt.Errorf("set project workflow: %w", err)
-	}
-	if output, _ := cmd.Flags().GetString("output"); output == "table" {
-		plan, _ := result["plan"].(map[string]any)
-		if dryRun {
-			printMappingPlan(plan)
-			return nil
-		}
-		fmt.Fprintf(os.Stdout, "Project workflow changed; %v issue(s) moved.\n", result["updated_issues"])
 		return nil
 	}
 	return cli.PrintJSON(os.Stdout, result)

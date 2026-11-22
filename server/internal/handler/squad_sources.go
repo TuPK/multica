@@ -130,6 +130,9 @@ func (h *Handler) salesIntake(w http.ResponseWriter, r *http.Request, kind strin
 			writeError(w, http.StatusConflict, "this source is already being handled")
 			return
 		}
+		if writeRoomWorkflowError(w, err) {
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "could not create the request issue")
 		return
 	}

@@ -58,7 +58,7 @@ func (h *Handler) validateStartStatus(ctx context.Context, w http.ResponseWriter
 		return "", false
 	}
 	for _, issue := range issues {
-		def, _, err := issueworkflow.ForIssue(ctx, h.Queries, workspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
+		def, _, err := issueworkflow.Resolve(ctx, h.Queries, issueworkflow.RoomIssueOf(issue))
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to check start_status")
 			return "", false

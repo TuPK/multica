@@ -292,3 +292,13 @@ UPDATE member
 SET pinned_at = CASE WHEN @pinned::bool THEN COALESCE(pinned_at, now()) ELSE NULL END
 WHERE workspace_id = @workspace_id AND user_id = @user_id
 RETURNING pinned_at;
+
+-- name: SetWorkspaceNonRequestWorkflow :one
+-- Stores the workspace's choice for issues in a flow room that are not requests of
+-- that room (squad-room-workflow spec, section 4). It writes one key of the settings
+-- JSON and leaves the other keys alone.
+UPDATE workspace
+SET settings = jsonb_set(COALESCE(settings, '{}'::jsonb), '{non_request_workflow}', sqlc.arg('value')::jsonb),
+    updated_at = now()
+WHERE id = sqlc.arg('id')::uuid
+RETURNING *;

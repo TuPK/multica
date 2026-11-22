@@ -971,10 +971,27 @@ func (s *IssueService) createWorkflow(ctx context.Context, qtx *db.Queries, p Is
 		}
 		projectID = parent.ProjectID
 	}
+	in := issueworkflow.RoomIssue{
+		WorkspaceID:   p.WorkspaceID,
+		ProjectID:     projectID,
+		AssigneeType:  p.AssigneeType,
+		AssigneeID:    p.AssigneeID,
+		ParentIssueID: p.ParentIssueID,
+		CreatorType:   p.CreatorType,
+		CreatorID:     p.CreatorID,
+		FlowTask:      p.FlowTask,
+	}
+	policy, err := issueworkflow.LoadNonRequestPolicy(ctx, qtx, p.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	if err := issueworkflow.CheckRoomWrite(ctx, qtx, in, policy); err != nil {
+		return nil, err
+	}
 	if !projectID.Valid {
 		return issueworkflow.OutsideProject(ctx, qtx, p.WorkspaceID)
 	}
-	def, _, err := issueworkflow.ForIssue(ctx, qtx, p.WorkspaceID, projectID, p.AssigneeType, p.AssigneeID)
+	def, _, err := issueworkflow.Resolve(ctx, qtx, in)
 	return def, err
 }
 

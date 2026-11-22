@@ -352,7 +352,7 @@ func (h *Handler) PreviewIssueTrigger(w http.ResponseWriter, r *http.Request) {
 		if req.ProjectID != nil && *req.ProjectID != "" {
 			// A project the viewer cannot see contributes no workflow, like a missing one.
 			if projectUUID, err := util.ParseUUID(*req.ProjectID); err == nil && hidden.CanSeeProject(projectUUID) {
-				if def, project, err := issueworkflow.ForIssue(r.Context(), h.Queries, wsUUID, projectUUID, candidate.AssigneeType, candidate.AssigneeID); err == nil && def != nil {
+				if def, project, err := issueworkflow.Resolve(r.Context(), h.Queries, issueworkflow.RoomIssueOf(candidate)); err == nil && def != nil {
 					if step, ok := def.Step(candidate.Status); ok && step.HandsOff() && !hasNewAssignee {
 						if t, id, ok := issueworkflow.ResolveHandler(step, project, actorType, parseUUID(actorID)); ok {
 							candidate.AssigneeType = pgtype.Text{String: t, Valid: true}
@@ -396,10 +396,11 @@ func (h *Handler) PreviewIssueTrigger(w http.ResponseWriter, r *http.Request) {
 			// issue, exactly as UpdateIssue will. (MUL-7420)
 			if !hasNewAssignee {
 				params := db.UpdateIssueParams{
-					ProjectID:    loaded.ProjectID,
-					Status:       pgtype.Text{String: *req.Status, Valid: true},
-					AssigneeType: loaded.AssigneeType,
-					AssigneeID:   loaded.AssigneeID,
+					ProjectID:     loaded.ProjectID,
+					Status:        pgtype.Text{String: *req.Status, Valid: true},
+					AssigneeType:  loaded.AssigneeType,
+					AssigneeID:    loaded.AssigneeID,
+					ParentIssueID: loaded.ParentIssueID,
 				}
 				if hand, err := h.applyIssueWorkflow(r.Context(), loaded, &params, true, false, false, nil, ""); err == nil && hand != nil {
 					post.AssigneeType = params.AssigneeType

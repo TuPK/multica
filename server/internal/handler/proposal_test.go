@@ -539,6 +539,8 @@ func TestDecideProposal_ApproveWithHandoffStartsTheWork(t *testing.T) {
 	handoffLeader := createHandlerTestAgent(t, "Prop Handoff Leader "+fx.Prefix, nil)
 	handoffSquad := dbfx.Squad(t, "Prop Handoff Squad "+fx.Prefix, handoffLeader)
 	dbfx.SquadMember(t, handoffSquad, "agent", handoffLeader, testutil.Cols{"role": "leader"})
+	// The kickoff request is filed to the handoff squad, a room: it needs a workflow.
+	giveSquadDefaultWorkflow(t, testWorkspaceID, handoffSquad)
 	registerProposalCleanup(t, fx.Prefix, fx.SquadID)
 
 	p := fx.fileProposal(t, "handoff", map[string]any{"handoff_squad_id": handoffSquad})

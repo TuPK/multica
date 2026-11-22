@@ -21,6 +21,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auditstore"
 	"github.com/multica-ai/multica/server/internal/entitlement"
+	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/legalhold"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
@@ -737,12 +738,17 @@ func (h *Handler) UpdateWorkspace(w http.ResponseWriter, r *http.Request) {
 			// Only an old client's flip of the retired PR switch needs the
 			// stored value; see reconcilePRMergeSettings.
 			var stored map[string]any
-			if _, sent := incoming[prAutoCompleteLegacyKey]; sent {
-				if existing, err := h.Queries.GetWorkspace(r.Context(), idUUID); err == nil {
-					_ = json.Unmarshal(existing.Settings, &stored)
-				}
+			if existing, err := h.Queries.GetWorkspace(r.Context(), idUUID); err == nil {
+				_ = json.Unmarshal(existing.Settings, &stored)
 			}
 			reconcilePRMergeSettings(stored, incoming)
+			// The room workflow policy has its own endpoint. A settings form that
+			// was loaded before it changed must not reset it.
+			if v, kept := stored[issueworkflow.NonRequestSettingKey]; kept {
+				if _, sent := incoming[issueworkflow.NonRequestSettingKey]; !sent {
+					incoming[issueworkflow.NonRequestSettingKey] = v
+				}
+			}
 		}
 		s, _ := json.Marshal(req.Settings)
 		params.Settings = s

@@ -3680,7 +3680,16 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	if !h.requireAssigneeCanAccessProject(w, r, wsUUID, assigneeType, assigneeID, workflowProjectID) {
 		return
 	}
-	createWorkflow, createWorkflowProject, err := issueworkflow.ForIssue(r.Context(), h.Queries, wsUUID, workflowProjectID, assigneeType, assigneeID)
+	actorType, actorID := h.resolveActor(r, creatorID, workspaceID)
+	createWorkflow, createWorkflowProject, err := issueworkflow.Resolve(r.Context(), h.Queries, issueworkflow.RoomIssue{
+		WorkspaceID:   wsUUID,
+		ProjectID:     workflowProjectID,
+		AssigneeType:  assigneeType,
+		AssigneeID:    assigneeID,
+		ParentIssueID: parentIssueID,
+		CreatorType:   actorType,
+		CreatorID:     parseUUID(actorID),
+	})
 	if err != nil {
 		slog.Error("create issue: resolve project workflow", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to resolve project workflow")
@@ -4034,6 +4043,9 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if writeIssueNumberCollision(w, err) {
+		return
+	}
+	if writeRoomWorkflowError(w, err) {
 		return
 	}
 	if err != nil {

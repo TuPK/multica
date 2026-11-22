@@ -67,7 +67,7 @@ func (h *Handler) ListSquadWorkflows(w http.ResponseWriter, r *http.Request) {
 			slog.Warn("ListSquadWorkflows decode failed", append(logger.RequestAttrs(r), "workflow_id", uuidToString(row.ID), "error", err)...)
 			continue
 		}
-		item := issueWorkflowToResponse(row, def, nil)
+		item := issueWorkflowToResponse(row, def)
 		item.OpenFlowRequests = openRequests[item.ID]
 		resp = append(resp, item)
 	}
@@ -374,7 +374,7 @@ func (h *Handler) squadWorkflowPlan(ctx context.Context, q *db.Queries, wsUUID, 
 		return workflowMappingPlan{}, err
 	}
 	categoryOf := func(key string) string { return catalog[key].Category }
-	return mappingPlan(squadCountsAsProject(counts), target.Has, func(key string) string {
+	return mappingPlan(counts, target.Has, func(key string) string {
 		return issueworkflow.MoveTarget(target, key, categoryOf)
 	}), nil
 }
@@ -389,25 +389,16 @@ func suggestedMapping(plan workflowMappingPlan) map[string]string {
 	return out
 }
 
-// squadCountsAsProject gives squad census rows the shape mappingPlan reads.
-func squadCountsAsProject(rows []db.CountSquadIssuesByStatusRow) []db.CountProjectIssuesByStatusRow {
-	out := make([]db.CountProjectIssuesByStatusRow, len(rows))
-	for i, row := range rows {
-		out[i] = db.CountProjectIssuesByStatusRow{Status: row.Status, IssueCount: row.IssueCount}
-	}
-	return out
-}
-
 // mergeStatusCounts adds two censuses of issues that do not overlap, one per
 // status, sorted by status.
-func mergeStatusCounts(a, b []db.CountProjectIssuesByStatusRow) []db.CountProjectIssuesByStatusRow {
+func mergeStatusCounts(a, b []db.CountSquadIssuesByStatusRow) []db.CountSquadIssuesByStatusRow {
 	sums := map[string]int64{}
 	for _, c := range slices.Concat(a, b) {
 		sums[c.Status] += c.IssueCount
 	}
-	out := make([]db.CountProjectIssuesByStatusRow, 0, len(sums))
+	out := make([]db.CountSquadIssuesByStatusRow, 0, len(sums))
 	for status, n := range sums {
-		out = append(out, db.CountProjectIssuesByStatusRow{Status: status, IssueCount: n})
+		out = append(out, db.CountSquadIssuesByStatusRow{Status: status, IssueCount: n})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Status < out[j].Status })
 	return out

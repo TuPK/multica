@@ -34,8 +34,6 @@ SELECT
     (c.squad_id IS NOT NULL)::bool AS has_charter,
     pr.id AS project_id,
     COALESCE(pr.title, '')::text AS project_title,
-    pr.workflow_id,
-    COALESCE(wf.name, '')::text AS workflow_name,
     (SELECT count(*) FROM squad_member sm WHERE sm.squad_id = s.id)::bigint AS member_count,
     (
         SELECT count(*) FROM issue i
@@ -62,7 +60,7 @@ LEFT JOIN company_floor f ON f.id = s.floor_id AND f.workspace_id = s.workspace_
 LEFT JOIN agent la ON la.id = s.leader_id AND la.workspace_id = s.workspace_id
 LEFT JOIN agent_runtime lrt ON lrt.id = la.runtime_id
 LEFT JOIN LATERAL (
-    SELECT p.id, p.title, p.workflow_id
+    SELECT p.id, p.title
     FROM project p
     WHERE p.workspace_id = s.workspace_id AND s.id = ANY(p.squad_ids)
       -- MUL-8472: private projects the caller cannot see.
@@ -70,7 +68,6 @@ LEFT JOIN LATERAL (
     ORDER BY p.created_at ASC, p.id ASC
     LIMIT 1
 ) pr ON true
-LEFT JOIN issue_workflow wf ON wf.id = pr.workflow_id AND wf.workspace_id = s.workspace_id
 WHERE s.workspace_id = sqlc.arg('workspace_id')::uuid
   AND s.archived_at IS NULL
   AND (sqlc.narg('floor_id')::uuid IS NULL OR s.floor_id = sqlc.narg('floor_id')::uuid)

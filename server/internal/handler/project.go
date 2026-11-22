@@ -57,9 +57,6 @@ type ProjectResponse struct {
 	// payload to keep parent metadata and child collections separate; clients
 	// that need the list call ListProjectResources directly.
 	ResourceCount int64 `json:"resource_count"`
-	// WorkflowID is the workflow this project uses; null means the workspace
-	// Default workflow. (MUL-7420)
-	WorkflowID *string `json:"workflow_id"`
 	// Visibility is "workspace" (every member) or "private" (project members
 	// only, whatever their workspace role). (MUL-8472, MUL-9284)
 	Visibility string `json:"visibility"`
@@ -90,6 +87,16 @@ type ProjectSquadResponse struct {
 	ActiveWorkflowName *string `json:"active_workflow_name"`
 }
 
+// publishProjectUpdate announces a project whose squads or their workflows
+// changed and returns the project as the API shapes it.
+func (h *Handler) publishProjectUpdate(ctx context.Context, workspaceID string, member db.Member, project db.Project) ProjectResponse {
+	resp := projectToResponse(project)
+	h.fillProjectIssueStats(ctx, &resp, project)
+	resp.ResourceCount = h.loadProjectResourceCount(ctx, project.ID)
+	h.publish(protocol.EventProjectUpdated, workspaceID, "member", uuidToString(member.UserID), map[string]any{"project": resp})
+	return resp
+}
+
 func projectToResponse(p db.Project) ProjectResponse {
 	return ProjectResponse{
 		ID:          uuidToString(p.ID),
@@ -110,7 +117,6 @@ func projectToResponse(p db.Project) ProjectResponse {
 		UpdatedAt:   timestampToString(p.UpdatedAt),
 		// Until issue stats are applied, the project's own edits are its activity.
 		LastActivityAt: timestampToString(p.UpdatedAt),
-		WorkflowID:     uuidToPtr(p.WorkflowID),
 		SquadIDs:       projectSquadIDStrings(p.SquadIds),
 		SquadID:        firstSquadIDPtr(p.SquadIds),
 		Visibility:     projectVisibilityOrDefault(p.Visibility),
@@ -205,10 +211,6 @@ type CreateProjectRequest struct {
 	// always added.
 	Visibility *string  `json:"visibility,omitempty"`
 	MemberIDs  []string `json:"member_ids,omitempty"`
-	// WorkflowID picks the project's workflow at creation; omitted or null
-	// uses the workspace Default workflow. A new project has no issues, so no
-	// status mapping is involved. (MUL-7420)
-	WorkflowID *string `json:"workflow_id,omitempty"`
 }
 
 // CreateProjectResourceRequestPayload mirrors CreateProjectResourceRequest but
@@ -463,21 +465,6 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var workflowID pgtype.UUID
-	if req.WorkflowID != nil && *req.WorkflowID != "" {
-		id, ok := parseUUIDOrBadRequest(w, *req.WorkflowID, "workflow_id")
-		if !ok {
-			return
-		}
-		row, err := h.Queries.GetIssueWorkflow(r.Context(), db.GetIssueWorkflowParams{ID: id, WorkspaceID: wsUUID})
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "workflow not found in this workspace")
-			return
-		}
-		if !row.IsDefault {
-			workflowID = id
-		}
-	}
 
 	// start_date / due_date are optional calendar days; an absent or empty
 	// value leaves the column NULL. Mirrors CreateIssue's date handling.
@@ -602,7 +589,6 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 		Priority:    priority,
 		StartDate:   startDate,
 		DueDate:     dueDate,
-		WorkflowID:  workflowID,
 	}
 
 	// Without resources, keep the simple non-tx path.

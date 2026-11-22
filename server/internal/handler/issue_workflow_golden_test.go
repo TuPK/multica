@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -151,10 +152,16 @@ func TestWorkflowGolden_SDLCAutoWrites(t *testing.T) {
 	}
 	wf := createTestWorkflowSteps(t, "Golden SDLC Auto "+workflowTestSuffix(), steps)
 	projectID := createWorkflowTestProject(t, "Golden SDLC project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+	roomID := roomWithWorkflow(t, "Golden SDLC room", wf.ID)
+	// The developer and the lead work for this room, so an issue handed to them
+	// stays in it.
+	dbfx.Exec(t, `UPDATE agent SET home_squad_id = $2 WHERE id = ANY($1::uuid[])`, []string{devID, leadID}, roomID)
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `UPDATE agent SET home_squad_id = NULL WHERE id = ANY($1::uuid[])`, []string{devID, leadID})
+	})
 
 	// To Do -> In Progress hands the issue to the developer and queues a run.
-	issueID := dbfx.Issue(t, "golden sdlc", testutil.Cols{"project_id": projectID, "status": "todo"})
+	issueID := roomPiece(t, projectID, roomID, "golden sdlc", testutil.Cols{"status": "todo"})
 	updateIssueForTest(t, issueID, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
 	goldenWantStatus(t, issueID, "in_progress", devID)
 	if n := taskCountFor(t, issueID, devID); n != 1 {
@@ -243,10 +250,14 @@ func TestWorkflowGolden_PlanningAutoWrites(t *testing.T) {
 		map[string]string{"plan_researcher": workerID, "plan_reviewer": workerID, "plan_lead": leadID})
 	wf := createTestWorkflowSteps(t, "Golden Planning Auto "+workflowTestSuffix(), steps)
 	projectID := createWorkflowTestProject(t, "Golden Planning project")
-	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+	roomID := roomWithWorkflow(t, "Golden planning room", wf.ID)
+	dbfx.Exec(t, `UPDATE agent SET home_squad_id = $2 WHERE id = ANY($1::uuid[])`, []string{workerID, leadID}, roomID)
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `UPDATE agent SET home_squad_id = NULL WHERE id = ANY($1::uuid[])`, []string{workerID, leadID})
+	})
 
 	// Entering Research hands the issue to the researcher.
-	issueID := dbfx.Issue(t, "golden planning", testutil.Cols{"project_id": projectID, "status": "todo"})
+	issueID := roomPiece(t, projectID, roomID, "golden planning", testutil.Cols{"status": "todo"})
 	updateIssueForTest(t, issueID, map[string]any{"status": "research"}).Want(http.StatusOK)
 	goldenWantStatus(t, issueID, "research", workerID)
 	var taskID string

@@ -65,6 +65,10 @@ func TestSecretaryScale_FiftySquadOrgMapAndTwentyAddresseeRequest(t *testing.T) 
 		t.Fatalf("decode request: %v", err)
 	}
 	squads := all.Squads
+	// Each addressee is filed to its room, which must have a workflow.
+	for i := 0; i < 20; i++ {
+		giveSquadDefaultWorkflow(t, e.WorkspaceID, squads[i].ID)
+	}
 	start = time.Now()
 	for i := 0; i < 20; i++ {
 		c := post(map[string]any{

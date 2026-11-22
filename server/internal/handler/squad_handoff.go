@@ -312,6 +312,9 @@ func (h *Handler) writeHandoffResult(w http.ResponseWriter, r *http.Request, iss
 	case errors.Is(err, service.ErrGovernanceActorNotBoss):
 		writeError(w, http.StatusForbidden, err.Error())
 		return
+	case isRoomWorkflowRefusal(err):
+		writeRoomWorkflowError(w, err)
+		return
 	case err != nil:
 		slog.Warn("squad handoff failed", append(logger.RequestAttrs(r), "error", err, "issue_id", uuidToString(issue.ID))...)
 		writeError(w, http.StatusInternalServerError, "failed to hand the request off")
