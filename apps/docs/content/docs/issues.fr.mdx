@@ -91,14 +91,14 @@ La démonstration ci-dessous part d'une tâche déjà assignée à un agent et l
 
 <IssueStatusDemo />
 
-Les membres et les agents peuvent modifier directement les statuts. Dans un projet avec un [workflow](/workflows), choisissez parmi ses étapes. Entrer dans une étape avec passage de relais peut aussi changer le responsable et demander à un agent de commencer.
+Les membres et les agents peuvent modifier directement les statuts. Quand la tâche est assignée à un squad, choisissez parmi les étapes du [workflow](/workflows) de ce squad. Entrer dans une étape avec passage de relais peut aussi changer le responsable et demander à un agent de commencer.
 
-Les agents mettent à jour le statut au fil du travail : par défaut, ils passent la tâche à `in_progress` en commençant et à `in_review` à la livraison. Si le projet utilise un workflow, ils suivent ses étapes et ses consignes de relais.
+Les agents mettent à jour le statut au fil du travail : par défaut, ils passent la tâche à `in_progress` en commençant et à `in_review` à la livraison. Si le squad de la tâche a un workflow, ils suivent ses étapes et ses consignes de relais.
 
 <Callout type="info">
 Deux changements sont effectués par le système :
 
-- Lorsqu'une exécution échoue, que la tâche n'a aucune autre exécution et qu'aucune relance n'est déclenchée, `in_progress` passe à `blocked` : le travail ne peut pas continuer tant que la cause n'est pas corrigée. Si le workflow du projet ne liste pas `blocked`, le statut reste inchangé et le commentaire d'échec explique ce qui s'est passé.
+- Lorsqu'une exécution échoue, que la tâche n'a aucune autre exécution et qu'aucune relance n'est déclenchée, `in_progress` passe à `blocked` : le travail ne peut pas continuer tant que la cause n'est pas corrigée. Si le workflow de la tâche ne liste pas `blocked`, le statut reste inchangé et le commentaire d'échec explique ce qui s'est passé.
 - Lorsqu'une PR GitHub liée est fusionnée avec intention de clôture et qu'aucune autre PR liée n'est encore ouverte ou en brouillon, la tâche passe à `done`.
 </Callout>
 
@@ -112,7 +112,7 @@ Un `owner` ou un `admin` peut ajouter des statuts comme **Revue de code**, **QA*
 - Les statuts personnalisés affichent le nom saisi. Modifier leur nom ou leur couleur les met à jour partout où ils sont utilisés.
 - Avant d’archiver un statut, déplacez toutes les tâches qui l’utilisent vers un autre statut adapté, y compris celles terminées ou annulées. Retirez-le aussi des workflows personnalisés. Il ne sera ensuite plus proposé.
 
-La bibliothèque contient les statuts disponibles. Le workflow d’un projet choisit ceux que ses tâches utilisent et leur ordre.
+La bibliothèque contient les statuts disponibles. Le workflow de chaque squad choisit ceux que ses tâches utilisent et leur ordre.
 
 ## Propriétés personnalisées
 
@@ -179,7 +179,7 @@ Les étiquettes indiquent si elles sont présentes sur toutes les tâches sélec
 
 Si certaines tâches refusent une modification, les autres sont quand même mises à jour. Le résultat indique les tâches ignorées et pourquoi, avec une action pour ne sélectionner que celles-ci afin de les corriger et de réessayer.
 
-- Si la sélection couvre plusieurs projets, le menu des statuts ne propose que ceux que tous les workflows concernés autorisent. Une tâche qui n'accepte pas la modification garde sa valeur, les autres sont mises à jour.
+- Si la sélection couvre plusieurs squads, le menu des statuts ne propose que ceux que tous les workflows concernés autorisent. Une tâche qui n'accepte pas la modification garde sa valeur, les autres sont mises à jour.
 - Un changement de statut groupé s'applique directement. Les tâches assignées à un agent qui quittent `backlog` démarrent normalement une exécution.
 - Une assignation groupée à un agent ou à un squad demande d'abord de confirmer les exécutions qui vont démarrer ; si toutes les tâches sélectionnées sont en `backlog`, elle s'applique directement.
 
@@ -193,7 +193,7 @@ La tâche passe en `cancelled` et garde le lien vers l'originale :
 - Le panneau latéral de l'originale gagne une section **Doublons** qui liste les tâches marquées comme ses doublons et leurs créateurs.
 - En cas d'erreur, cliquez sur **Pas un doublon** dans le bandeau : la tâche revient en `todo`. Passer la tâche à n'importe quel statut autre que `cancelled` retire aussi la marque.
 
-La relation n'a qu'un niveau : une tâche déjà marquée comme doublon ne peut pas servir d'originale, et une tâche qui a déjà des doublons ne peut pas être marquée comme doublon. Si le workflow du projet n'a pas de `cancelled`, le menu d'actions de la tâche ne propose pas cette option.
+La relation n'a qu'un niveau : une tâche déjà marquée comme doublon ne peut pas servir d'originale, et une tâche qui a déjà des doublons ne peut pas être marquée comme doublon. Si le workflow de la tâche n'a pas de `cancelled`, le menu d'actions de la tâche ne propose pas cette option.
 
 ## Supprimer une tâche
 

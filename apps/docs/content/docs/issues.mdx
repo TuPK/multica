@@ -91,14 +91,14 @@ The demo below starts from an issue already assigned to an agent and parked in `
 
 <IssueStatusDemo />
 
-Members and agents can change statuses directly. In a project with a [workflow](/workflows), choose from that workflow’s steps. Moving into a step with a handoff can also change the assignee and ask an agent to start work.
+Members and agents can change statuses directly. When the issue is assigned to a squad, choose from that squad’s [workflow](/workflows) steps. Moving into a step with a handoff can also change the assignee and ask an agent to start work.
 
-Agents update the issue’s status as work progresses: by default they set `in_progress` when they begin and `in_review` when they deliver. When a project has a workflow, they follow its steps and handoff instructions instead.
+Agents update the issue’s status as work progresses: by default they set `in_progress` when they begin and `in_review` when they deliver. When the issue’s squad has a workflow, they follow its steps and handoff instructions instead.
 
 <Callout type="info">
 Two changes are made by the system:
 
-- When a run fails, the issue has no other runs, and no retry is triggered, `in_progress` moves to `blocked`: the work cannot continue until someone fixes the cause. In a project whose workflow does not list `blocked`, the status stays as it is and the failure comment says what happened.
+- When a run fails, the issue has no other runs, and no retry is triggered, `in_progress` moves to `blocked`: the work cannot continue until someone fixes the cause. When the issue’s workflow does not list `blocked`, the status stays as it is and the failure comment says what happened.
 - When every PR linked to the issue is merged, the issue moves to the status the workspace chose (`done` by default) — unless the workspace leaves status alone or the issue is switched off. See [GitHub integration](/github-integration#when-merged-prs-move-an-issue).
 </Callout>
 
@@ -112,7 +112,7 @@ When you create one, pick its category — **Unstarted**, **Started**, **Done**,
 - Custom status names appear as you entered them. Changing a name or color updates it wherever that status is used.
 - Before archiving a status, move all issues using it to another suitable status, including completed or cancelled issues. Remove it from any custom workflows too. Archiving then removes it from future choices.
 
-The status library holds the available statuses. A project’s workflow chooses which ones its issues use and in what order.
+The status library holds the available statuses. The workflow of each squad chooses which ones its issues use and in what order.
 
 ## Custom properties
 
@@ -181,7 +181,7 @@ Labels show whether they are on all, some, or none of the selected issues. Add o
 
 If some issues cannot take a change, the others are still updated. The result names skipped issues and their reasons, with an action to select only those issues for correction and retry.
 
-- When the selection spans several projects, the status menu offers only statuses every selected issue's workflow allows. An issue that does not support a change keeps its value, and the rest are updated.
+- When the selection spans several squads, the status menu offers only statuses every selected issue's workflow allows. An issue that does not support a change keeps its value, and the rest are updated.
 - Batch status changes apply directly. Agent-assigned issues that leave `backlog` start running as usual.
 - Batch-assigning to an agent or squad first asks you to confirm the runs that will start; if every selected issue is in `backlog`, the assignment applies directly.
 
@@ -195,7 +195,7 @@ The issue moves to `cancelled` and remembers its original:
 - The original's sidebar gains a **Duplicates** section listing the issues marked as its duplicates and who created them.
 - To undo a mistake, click **Not a duplicate** on the banner; the issue goes back to `todo`. Changing the status to anything other than `cancelled` also removes the mark.
 
-The relation is one level deep: an issue that is itself a duplicate cannot be an original, and an issue that already has duplicates cannot be marked as a duplicate. If a project's workflow has no `cancelled`, the issue actions menu does not offer it.
+The relation is one level deep: an issue that is itself a duplicate cannot be an original, and an issue that already has duplicates cannot be marked as a duplicate. If the issue's workflow has no `cancelled`, the issue actions menu does not offer it.
 
 ## Delete an issue
 

@@ -1,12 +1,12 @@
 ---
 title: Workflows
-description: Définissez les étapes des tâches d’un projet et qui prend le relais à chaque étape.
+description: Définissez les étapes que suivent les tâches d’une escouade et qui prend le relais à chaque étape.
 ---
 
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { WorkflowDemo } from "@/components/demos/workflow-demo";
 
-Un workflow fixe les étapes que suivent les tâches d’un projet, qui s’occupe de chacune et ce qu’il faut y faire.
+Un workflow fixe les étapes que suit une tâche, qui s’occupe de chacune et ce qu’il faut y faire. Chaque squad utilise un workflow pour les tâches qu’il traite.
 
 Par exemple, un workflow de livraison peut suivre ce parcours :
 
@@ -18,7 +18,7 @@ Par exemple, un workflow de livraison peut suivre ce parcours :
 
 Passer une tâche en revue la confie à l’agent de revue. La description, les échanges et les résultats précédents restent dans la même tâche pour que le prochain responsable puisse prendre la suite.
 
-Le modèle **Livraison** suit exactement cette structure. Les projets sans workflow choisi utilisent **Default** : tous les statuts sont disponibles et rien n’est confié automatiquement, comme auparavant.
+Le modèle **Livraison** suit exactement cette structure. Les tâches qui ne sont assignées à aucun squad utilisent **Default** : tous les statuts sont disponibles et rien n’est confié automatiquement, comme auparavant.
 
 ## Créer un workflow
 
@@ -56,13 +56,17 @@ Si vous avez ajouté un nouveau statut, enregistrez d’abord le workflow avant 
 
 Sans passage de relais, le responsable ne change pas. Confier la tâche à un membre change le responsable sans lancer d’agent. La confier à un agent lui demande de commencer cette étape. Vous devez avoir le droit de l’appeler et son ordinateur doit être en ligne pour l’exécuter.
 
-## L’utiliser dans un projet
+## L’utiliser avec un squad
 
-Ouvrez un projet et choisissez son **Workflow**. Les `owner`, les `admin` et le responsable du projet, s’il s’agit d’un membre, peuvent modifier ce choix.
+Ouvrez le squad et choisissez son **Workflow**. Les responsables du squad et les `admin` de l’espace de travail peuvent le modifier. La confirmation indique quelles tâches du squad gardent leur statut. Si certaines utilisent un statut absent du nouveau workflow, choisissez où les placer. Changer de workflow ne transmet pas les tâches et ne lance pas d’agent.
 
-La confirmation indique quelles tâches gardent leur statut. Si certaines utilisent un statut absent du nouveau workflow, choisissez où les placer. Changer de workflow ne transmet pas les tâches à un autre responsable et ne lance pas d’agent.
+Une tâche suit le workflow du squad auquel elle est assignée, ou celui du squad auquel appartient l’agent assigné. Un squad sans workflow ne peut pas recevoir de nouveau travail : quand vous lui assignez une tâche, le formulaire vous demande d’abord de choisir un workflow pour ce squad.
 
-Le tableau du projet suit désormais les colonnes du workflow. Chaque tâche propose uniquement les étapes de ce workflow dans son choix de statut et indique qui prend le relais. Les projets sans autre workflow utilisent **Default** ; vous pouvez y revenir plus tard.
+Les projets n’ont pas de workflow propre. Le tableau d’un projet affiche une colonne pour chaque statut utilisé par les workflows des squads qui traitent ses tâches, dans l’ordre de leur première apparition. Le sélecteur de statut de chaque tâche propose les étapes du workflow de son propre squad et indique qui prend le relais.
+
+### Tâches qui ne sont pas des demandes d’un squad à flux
+
+Un squad dont le workflow est un flux exécute ses propres demandes sur ce flux. Les autres tâches de ce squad, comme les sous-tâches, suivent le choix de l’espace de travail défini dans **Paramètres → Workflows** : **Aucune action** (par défaut, qui vous demande la première fois), **Default**, ou un workflow que vous choisissez. Seuls les `admin` de l’espace de travail peuvent le modifier.
 
 ## Passer à l’étape suivante
 
@@ -70,7 +74,7 @@ Changez le statut d’une tâche ou faites glisser sa carte vers une autre colon
 
 <WorkflowDemo />
 
-Si vous créez une tâche dans un projet sans choisir de responsable et que son statut prévoit un passage de relais, elle est confiée directement au responsable de cette étape ; un agent commence aussitôt. La fenêtre de création indique à qui elle sera confiée. Pour la créer sans rien lancer, placez-la dans Backlog.
+Quand vous créez une tâche et l’assignez à un squad, et que son statut prévoit un passage de relais dans le workflow de ce squad, elle est confiée directement au responsable de cette étape ; un agent commence aussitôt. La fenêtre de création indique à qui elle sera confiée. Pour la créer sans rien lancer, placez-la dans Backlog.
 
 Si le responsable précédent est un agent dont l’exécution est encore en cours ou en attente, la confirmation propose en plus de l’arrêter ou de l’annuler, option cochée par défaut. Laissez-la cochée, sauf si vous voulez que les deux agents travaillent en même temps ; ses commentaires publiés et le travail déjà enregistré sont conservés.
 
@@ -80,18 +84,18 @@ Le passage de relais et ses consignes restent dans l’historique de la tâche. 
 
 ## Ajuster un workflow
 
-Plusieurs projets peuvent partager un workflow. Les modifications enregistrées dans **Paramètres → Workflows** s’appliquent à tous les projets qui l’utilisent. Pour changer le parcours d’un seul projet, dupliquez le workflow et choisissez la copie dans ce projet.
+Plusieurs squads peuvent partager un workflow. Les modifications enregistrées dans **Paramètres → Workflows** s’appliquent à tous les squads qui l’utilisent. Pour changer le parcours d’un seul squad, dupliquez le workflow et choisissez la copie dans ce squad.
 
-Les administrateurs peuvent aussi configurer un passage de relais depuis le tableau du projet : survolez l’en-tête d’une colonne et cliquez sur **Confier à…**, ou sur le responsable déjà affiché. Si d’autres projets partagent le workflow, la question **Où appliquer cette modification ?** s’affiche. Choisir uniquement le projet actuel crée une copie du workflow pour lui, sans changer les autres projets.
+Les administrateurs peuvent aussi configurer un passage de relais depuis le tableau du projet : survolez l’en-tête d’une colonne et cliquez sur **Confier à…**, ou sur le responsable déjà affiché. La modification s’applique à toutes les tâches des squads qui utilisent ce workflow.
 
 Retirer une colonne peut vous demander de choisir un nouveau statut pour les tâches qui s’y trouvent. Les autres restent en place et ce déplacement ne lance pas d’agent. La bibliothèque de statuts, sous la liste des workflows, permet de modifier les noms et les couleurs ; ces changements s’appliquent partout où le statut est utilisé.
 
-Pour supprimer un workflow, passez d’abord les projets qui l’utilisent à un autre workflow. Les tâches gardent leur statut actuel.
+Pour supprimer un workflow, passez d’abord les squads qui l’utilisent à un autre workflow. Les tâches gardent leur statut actuel.
 
 Si **Paramètres** ne contient pas **Workflows**, la fonctionnalité n’est pas encore disponible dans cet espace de travail ; les statuts se gèrent toujours dans **Paramètres → États des tâches**.
 
 ## Guides associés
 
-- [Projets](/projects) — regrouper les tâches qui suivent un workflow.
+- [Projets](/projects) — regrouper les tâches que traitent les squads.
 - [Actions rapides](/quick-actions) — enregistrer une demande fréquente comme bouton sur une tâche.
 - [Automatisations](/autopilots) — commencer un travail selon un calendrier ou un événement extérieur.
