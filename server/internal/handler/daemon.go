@@ -220,18 +220,29 @@ func (h *Handler) requireDaemonRuntimeAccess(w http.ResponseWriter, r *http.Requ
 
 // runtimeDisabled reports whether staff disabled the runtime.
 func (h *Handler) runtimeDisabled(ctx context.Context, runtimeID pgtype.UUID) (bool, error) {
+	return h.runtimeDisabledVia(ctx, h.Queries, runtimeID)
+}
+
+// runtimeDisabledVia reads the platform state through q, the caller's own queries
+// (a transaction's, when it holds one).
+func (h *Handler) runtimeDisabledVia(ctx context.Context, q runtimeguard.Querier, runtimeID pgtype.UUID) (bool, error) {
 	g := h.RuntimeGuard
 	if g == nil {
 		g = runtimeguard.New(h.Queries, nil)
 	}
-	return g.Disabled(ctx, runtimeID)
+	return g.DisabledVia(ctx, q, runtimeID)
 }
 
 // refuseDisabledRuntime answers the request and returns true when staff disabled
 // the runtime (403 runtime_disabled), or when that state cannot be read (503: the
 // guard fails closed rather than letting a disabled runtime through).
 func (h *Handler) refuseDisabledRuntime(ctx context.Context, w http.ResponseWriter, runtimeID pgtype.UUID) bool {
-	disabled, err := h.runtimeDisabled(ctx, runtimeID)
+	return h.refuseDisabledRuntimeVia(ctx, w, h.Queries, runtimeID)
+}
+
+// refuseDisabledRuntimeVia is refuseDisabledRuntime reading through q.
+func (h *Handler) refuseDisabledRuntimeVia(ctx context.Context, w http.ResponseWriter, q runtimeguard.Querier, runtimeID pgtype.UUID) bool {
+	disabled, err := h.runtimeDisabledVia(ctx, q, runtimeID)
 	if err != nil {
 		slog.Warn("read platform runtime state failed", "runtime_id", uuidToString(runtimeID), "error", err)
 		writeError(w, http.StatusServiceUnavailable, "runtime state unavailable")
@@ -1029,7 +1040,9 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 		// A brand-new runtime on an already-named machine inherits the machine's
 		// shared custom name so the machine title stays stable as providers come
 		// and go (MUL-4217). Shared with the failed-profile path below.
-		if h.refuseDisabledRuntime(r.Context(), w, registered.ID) {
+		// Inside the registration transaction: the read must not take a second
+		// pool connection, or concurrent registrations can exhaust the pool.
+		if h.refuseDisabledRuntimeVia(r.Context(), w, qtx, registered.ID) {
 			return
 		}
 		registered = h.inheritMachineCustomName(r.Context(), qtx, registered, inserted)

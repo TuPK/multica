@@ -70,6 +70,13 @@ type cached struct {
 // returned as is: the guard fails closed, so the caller answers 503 and does
 // not guess. Cache errors are ignored and fall back to the database.
 func (g *Guard) Disabled(ctx context.Context, runtimeID pgtype.UUID) (bool, error) {
+	return g.DisabledVia(ctx, g.q, runtimeID)
+}
+
+// DisabledVia is Disabled with the database read done through q. A caller that
+// holds a transaction passes it, so the read does not need a second pool
+// connection while the transaction keeps its own.
+func (g *Guard) DisabledVia(ctx context.Context, q Querier, runtimeID pgtype.UUID) (bool, error) {
 	k := Key(runtimeID)
 	if b, ok, err := g.cache.Get(ctx, k); err == nil && ok {
 		var c cached
@@ -77,7 +84,7 @@ func (g *Guard) Disabled(ctx context.Context, runtimeID pgtype.UUID) (bool, erro
 			return c.Disabled, nil
 		}
 	}
-	disabled, err := g.q.GetPlatformRuntimeDisabled(ctx, runtimeID)
+	disabled, err := q.GetPlatformRuntimeDisabled(ctx, runtimeID)
 	if err != nil {
 		return false, fmt.Errorf("read platform runtime state: %w", err)
 	}
