@@ -60,9 +60,12 @@ func createRestrictedFixtureProject(t *testing.T, title, access string) string {
 		makeProjectPrivate(t, p.ID)
 	}
 	t.Cleanup(func() {
-		testPool.Exec(context.Background(), `DELETE FROM project_member WHERE project_id = $1`, p.ID)
+		// Delete while the owner can still see the project: removing its members
+		// first makes the private project invisible to that delete, which then
+		// leaves the row behind in the shared workspace.
 		r := withURLParam(newRequest("DELETE", "/api/projects/"+p.ID, nil), "id", p.ID)
 		testHandler.DeleteProject(httptest.NewRecorder(), r)
+		testPool.Exec(context.Background(), `DELETE FROM project_member WHERE project_id = $1`, p.ID)
 	})
 	return p.ID
 }
