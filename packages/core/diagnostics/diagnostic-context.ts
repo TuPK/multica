@@ -95,6 +95,8 @@ const WORKSPACE_ROUTES: readonly RoutePattern[] = [
   ["workflow"],
   ["workflow", "new"],
   ["workflow", ":id"],
+  ["apps"],
+  ["apps", ":id"],
   ["settings"],
   ["attachments", ":id", "preview"],
 ];

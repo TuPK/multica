@@ -39,6 +39,8 @@ export type TabSubject =
   | { kind: "hub"; itemKind: "skill" | "plugin"; id: string }
   | { kind: "doc"; id: string }
   | { kind: "docFolder"; id: string }
+  /** One app's page, addressed by its toolkit slug. */
+  | { kind: "app"; slug: string }
   /** A runtime machine detail. */
   | { kind: "machine"; machineId: string }
   /** A runtime nested under a machine. */
@@ -151,6 +153,8 @@ export function parseTabSubject(url: string): TabSubject {
     case "workflow":
       if (id === "new") return { kind: "flow", flow: "create-workflow" };
       return id ? { kind: "workflow", id } : { kind: "page", page: "workflow" };
+    case "apps":
+      return id ? { kind: "app", slug: id } : { kind: "page", page: "apps" };
     case "settings":
       return { kind: "page", page: "settings" };
     case "attachments":
@@ -197,6 +201,8 @@ export function tabSubjectKey(subject: TabSubject): string {
       return `doc:${subject.id}`;
     case "docFolder":
       return `docFolder:${subject.id}`;
+    case "app":
+      return `app:${subject.slug}`;
     case "machine":
       return `machine:${subject.machineId}`;
     case "runtime":

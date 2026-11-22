@@ -102,6 +102,10 @@ type IssueResponse struct {
 	CreatedAt      string  `json:"created_at"`
 	UpdatedAt      string  `json:"updated_at"`
 	Revision       int64   `json:"revision"`
+	// DescriptionRevision counts changes to the description alone. A whole
+	// rewrite sends it back as description_base_revision so it is merged
+	// with what others changed since. Omitted by list endpoints.
+	DescriptionRevision *int64 `json:"description_revision,omitempty"`
 	// LastActivityAt is the latest semantic issue activity. It stays nullable
 	// while the operator-run historical backfill is incomplete.
 	LastActivityAt *string `json:"last_activity_at"`
@@ -559,38 +563,39 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 		statusCategory = i.Status
 	}
 	return IssueResponse{
-		ID:                 uuidToString(i.ID),
-		WorkspaceID:        uuidToString(i.WorkspaceID),
-		Number:             i.Number,
-		Identifier:         identifier,
-		Title:              i.Title,
-		Description:        textToPtr(i.Description),
-		Status:             i.Status,
-		StatusCategory:     statusCategory,
-		Priority:           i.Priority,
-		AssigneeType:       textToPtr(i.AssigneeType),
-		AssigneeID:         uuidToPtr(i.AssigneeID),
-		CreatorType:        i.CreatorType,
-		CreatorID:          uuidToString(i.CreatorID),
-		RequesterID:        uuidToPtr(i.RequesterUserID),
-		ParentIssueID:      uuidToPtr(i.ParentIssueID),
-		duplicateOfIssueID: duplicateOfPointer(i.Status, i.DuplicateOfIssueID),
-		ProjectID:          uuidToPtr(i.ProjectID),
-		Position:           i.Position,
-		Stage:              int4ToPtr(i.Stage),
-		RunQueued:          i.RunQueued,
-		RunStartStatus:     i.RunStartStatus,
-		RunAfterIssueIds:   uuidStringsOrEmpty(i.RunAfterIssueIds),
-		Outcome:            textToPtr(i.Outcome),
-		Flow:               issueworkflow.IssueFlowRef(i.Flow, i.FlowStep, i.FlowTask, i.FlowRound),
-		StartDate:          dateToPtr(i.StartDate),
-		DueDate:            dateToPtr(i.DueDate),
-		CreatedAt:          timestampToString(i.CreatedAt),
-		UpdatedAt:          timestampToString(i.UpdatedAt),
-		Revision:           i.Revision,
-		LastActivityAt:     timestampToNanoPtr(i.LastActivityAt),
-		Metadata:           parseIssueMetadata(i.Metadata),
-		Properties:         parseIssueProperties(i.Properties),
+		ID:                  uuidToString(i.ID),
+		WorkspaceID:         uuidToString(i.WorkspaceID),
+		Number:              i.Number,
+		Identifier:          identifier,
+		Title:               i.Title,
+		Description:         textToPtr(i.Description),
+		Status:              i.Status,
+		StatusCategory:      statusCategory,
+		Priority:            i.Priority,
+		AssigneeType:        textToPtr(i.AssigneeType),
+		AssigneeID:          uuidToPtr(i.AssigneeID),
+		CreatorType:         i.CreatorType,
+		CreatorID:           uuidToString(i.CreatorID),
+		RequesterID:         uuidToPtr(i.RequesterUserID),
+		ParentIssueID:       uuidToPtr(i.ParentIssueID),
+		duplicateOfIssueID:  duplicateOfPointer(i.Status, i.DuplicateOfIssueID),
+		ProjectID:           uuidToPtr(i.ProjectID),
+		Position:            i.Position,
+		Stage:               int4ToPtr(i.Stage),
+		RunQueued:           i.RunQueued,
+		RunStartStatus:      i.RunStartStatus,
+		RunAfterIssueIds:    uuidStringsOrEmpty(i.RunAfterIssueIds),
+		Outcome:             textToPtr(i.Outcome),
+		Flow:                issueworkflow.IssueFlowRef(i.Flow, i.FlowStep, i.FlowTask, i.FlowRound),
+		StartDate:           dateToPtr(i.StartDate),
+		DueDate:             dateToPtr(i.DueDate),
+		CreatedAt:           timestampToString(i.CreatedAt),
+		UpdatedAt:           timestampToString(i.UpdatedAt),
+		Revision:            i.Revision,
+		DescriptionRevision: &i.DescriptionRevision,
+		LastActivityAt:      timestampToNanoPtr(i.LastActivityAt),
+		Metadata:            parseIssueMetadata(i.Metadata),
+		Properties:          parseIssueProperties(i.Properties),
 	}
 }
 
@@ -2618,6 +2623,9 @@ func (h *Handler) GetIssue(w http.ResponseWriter, r *http.Request) {
 	if h.refuseOutsideSecretaryTree(w, r, issue) {
 		return
 	}
+	// Agents quote the description back in edits; give them what people
+	// have typed, not the last autosave.
+	issue = h.flushIssueDescriptionCollab(r, issue)
 	hidden, ok := h.requestHiddenProjects(w, r, uuidToString(issue.WorkspaceID))
 	if !ok {
 		return
@@ -4026,17 +4034,22 @@ type UpdateIssueRequest struct {
 	// that landed asynchronously after that base without making media already
 	// present in the base impossible for the user to delete. Older clients omit
 	// it and receive conservative channel-media preservation.
-	DescriptionBase *string  `json:"description_base,omitempty"`
-	Status          *string  `json:"status"`
-	Priority        *string  `json:"priority"`
-	AssigneeType    *string  `json:"assignee_type"`
-	AssigneeID      *string  `json:"assignee_id"`
-	Position        *float64 `json:"position"`
-	StartDate       *string  `json:"start_date"`
-	DueDate         *string  `json:"due_date"`
-	ParentIssueID   *string  `json:"parent_issue_id"`
-	ProjectID       *string  `json:"project_id"`
-	Stage           *int32   `json:"stage"`
+	DescriptionBase *string `json:"description_base,omitempty"`
+	// DescriptionBaseRevision is the description_revision the writer read
+	// before producing Description. With live editing the write is merged
+	// with what changed since, block by block; without it a stale revision
+	// is refused instead of overwriting newer text.
+	DescriptionBaseRevision *int64   `json:"description_base_revision,omitempty"`
+	Status                  *string  `json:"status"`
+	Priority                *string  `json:"priority"`
+	AssigneeType            *string  `json:"assignee_type"`
+	AssigneeID              *string  `json:"assignee_id"`
+	Position                *float64 `json:"position"`
+	StartDate               *string  `json:"start_date"`
+	DueDate                 *string  `json:"due_date"`
+	ParentIssueID           *string  `json:"parent_issue_id"`
+	ProjectID               *string  `json:"project_id"`
+	Stage                   *int32   `json:"stage"`
 	// AttachmentIDs lets the description editor bind newly uploaded files to
 	// this issue so they surface in `GET /api/issues/:id/attachments` and the
 	// editor's preview Eye keeps working past a refresh. Existing bindings
@@ -4160,7 +4173,12 @@ func refreshUntouchedNullableIssueParams(params *db.UpdateIssueParams, current d
 
 var errIssueFieldConflict = errors.New("issue text field conflict")
 
-func (h *Handler) updateIssueAtomically(ctx context.Context, workspaceID pgtype.UUID, params db.UpdateIssueParams, rawFields map[string]json.RawMessage, titleBase, descriptionBase *string, attachmentIDs []pgtype.UUID, statusKey string, workflowAssignee bool) (db.Issue, db.Issue, bool, error) {
+// errIssueDescriptionRevisionConflict: a description written from a
+// description_base_revision that is no longer current, without the live
+// session that could merge it.
+var errIssueDescriptionRevisionConflict = errors.New("issue description revision conflict")
+
+func (h *Handler) updateIssueAtomically(ctx context.Context, workspaceID pgtype.UUID, params db.UpdateIssueParams, rawFields map[string]json.RawMessage, titleBase, descriptionBase *string, descriptionBaseRevision *int64, attachmentIDs []pgtype.UUID, statusKey string, workflowAssignee bool) (db.Issue, db.Issue, bool, error) {
 	if h.TxStarter == nil {
 		return db.Issue{}, db.Issue{}, false, errors.New("atomic issue update requires transaction starter")
 	}
@@ -4195,6 +4213,10 @@ func (h *Handler) updateIssueAtomically(ctx context.Context, workspaceID pgtype.
 
 	if params.Title.Valid && titleBase != nil && current.Title != *titleBase && current.Title != params.Title.String {
 		return db.Issue{}, current, false, errIssueFieldConflict
+	}
+
+	if params.Description.Valid && descriptionBaseRevision != nil && current.DescriptionRevision != *descriptionBaseRevision {
+		return db.Issue{}, current, false, errIssueDescriptionRevisionConflict
 	}
 
 	if params.Description.Valid {
@@ -4235,6 +4257,11 @@ func (h *Handler) updateIssueAtomically(ctx context.Context, workspaceID pgtype.
 	issue, cancelledWakeups, err := updateIssueStoppingWakeups(ctx, qtx, params)
 	if err != nil {
 		return db.Issue{}, current, false, fmt.Errorf("update locked issue: %w", err)
+	}
+	if issue.DescriptionRevision != current.DescriptionRevision {
+		if err := recordIssueDescriptionRevision(ctx, qtx, current, issue); err != nil {
+			return db.Issue{}, current, false, fmt.Errorf("record issue description revision: %w", err)
+		}
 	}
 
 	attachmentsChanged := false
@@ -4603,6 +4630,32 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// With live editing on, the description goes through its live session,
+	// merged into what people are typing; the other fields follow as usual.
+	// Everything above has been validated, so nothing is refused after it.
+	// A write pinned to expected_revision stays a direct compare-and-swap of
+	// the whole issue; the live session folds it in on its next save.
+	if client := h.issueCollab(r.Context()); req.Description != nil && req.ExpectedRevision == nil && client != nil {
+		writerType, writerID := h.resolveActor(r, userID, workspaceID)
+		handled, ok := h.updateIssueDescriptionViaCollab(w, r, client, prevIssue, req, writerType, writerID)
+		if !ok {
+			return
+		}
+		if handled {
+			if issueUpdateOnlyDescription(rawFields) {
+				updated, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: prevIssue.ID, WorkspaceID: prevIssue.WorkspaceID})
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "failed to load issue")
+					return
+				}
+				h.writeIssueForCaller(w, r, updated)
+				return
+			}
+			req.Description, req.DescriptionBase, req.DescriptionBaseRevision = nil, nil, nil
+			params.Description = pgtype.Text{}
+		}
+	}
+
 	// The agent this write hands the issue to gets the change as its own run,
 	// not also through its event wakeups.
 	writeCtx := withWakeupHandedTo(r.Context(), h.handedToAgent(r.Context(), prevIssue, params, handoff != nil))
@@ -4614,7 +4667,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	if req.Description != nil || req.TitleBase != nil || req.DescriptionBase != nil || len(attachmentIDs) > 0 {
 		var lockedPrev db.Issue
 		issue, lockedPrev, attachmentsChanged, err = h.updateIssueAtomically(
-			writeCtx, prevIssue.WorkspaceID, params, rawFields, req.TitleBase, req.DescriptionBase, attachmentIDs, statusKeyForGuard, handoff != nil,
+			writeCtx, prevIssue.WorkspaceID, params, rawFields, req.TitleBase, req.DescriptionBase, req.DescriptionBaseRevision, attachmentIDs, statusKeyForGuard, handoff != nil,
 		)
 		if lockedPrev.ID.Valid {
 			prevIssue = lockedPrev
@@ -4631,6 +4684,10 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, errIssueFieldConflict) {
 			writeEditConflict(w, "issue", prevIssue.ID)
+			return
+		}
+		if errors.Is(err, errIssueDescriptionRevisionConflict) {
+			writeRevisionConflict(w, "issue_description", prevIssue.ID, *req.DescriptionBaseRevision, prevIssue.DescriptionRevision)
 			return
 		}
 		if errors.Is(err, pgx.ErrNoRows) && req.ExpectedRevision != nil {
@@ -5651,7 +5708,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			// legacy single-update clients that omit description_base.
 			var lockedPrev db.Issue
 			issue, lockedPrev, _, err = h.updateIssueAtomically(
-				writeCtx, prevIssue.WorkspaceID, params, rawUpdates, nil, nil, nil, issueStatusGuard, handoff != nil,
+				writeCtx, prevIssue.WorkspaceID, params, rawUpdates, nil, nil, nil, nil, issueStatusGuard, handoff != nil,
 			)
 			if err == nil {
 				prevIssue = lockedPrev

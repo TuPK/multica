@@ -161,6 +161,8 @@ import type {
   IssueUnread,
   Label,
   Project,
+  ProjectProgressDetail,
+  ProjectActivityPage,
   ListProjectsResponse,
   MemberWithUser,
   IssueProperty,
@@ -2319,6 +2321,7 @@ export const IssueSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   revision: z.number().int().positive().optional(),
+  description_revision: z.number().int().nonnegative().optional(),
   // Optional for compatibility with older self-hosted backends; a current
   // backend emits null until its historical backfill reaches the issue.
   last_activity_at: z.string().nullable().optional(),
@@ -2388,6 +2391,15 @@ export interface ProjectWithAccess extends Project {
   access?: ProjectAccess;
   can_manage_access?: boolean;
 }
+const ProjectProgressSchema = z.object({
+  unit: z.literal("issues").catch("issues"),
+  scope: z.number().default(0),
+  completed: z.number().default(0),
+  started: z.number().default(0),
+  unstarted: z.number().default(0),
+  cancelled: z.number().default(0),
+  percent: z.number().default(0),
+}).loose();
 
 export const ProjectSchema = z.object({
   id: z.string(),
@@ -2412,6 +2424,8 @@ export const ProjectSchema = z.object({
   last_activity_at: z.string().optional().catch(undefined),
   issue_count: z.number().default(0),
   done_count: z.number().default(0),
+  // Older servers omit it; consumers fall back to issue_count / done_count.
+  progress: ProjectProgressSchema.optional().catch(undefined),
   resource_count: z.number().default(0),
   archived_at: z.string().nullable().default(null).catch(null),
   archived_by_type: z.enum(["member", "agent"]).nullable().default(null).catch(null),
@@ -2433,6 +2447,60 @@ export const ListProjectsResponseSchema = z.object({
   projects: z.array(ProjectSchema).default([]),
   total: z.number().default(0),
 }).loose();
+
+export const ProjectProgressDetailSchema = z.object({
+  progress: ProjectProgressSchema,
+  by_assignee: z.array(z.object({
+    assignee_type: z.enum(["member", "agent", "squad"]).nullable().catch(null),
+    assignee_id: z.string().nullable().default(null),
+    scope: z.number().default(0),
+    completed: z.number().default(0),
+    started: z.number().default(0),
+  }).loose()).default([]),
+  // Older servers omit it; the label breakdown then has nothing to show.
+  by_label: z.array(z.object({
+    label_id: z.string().nullable().default(null),
+    scope: z.number().default(0),
+    completed: z.number().default(0),
+    started: z.number().default(0),
+  }).loose()).default([]).catch([]),
+  history: z.array(z.object({
+    date: z.string(),
+    scope: z.number().default(0),
+    started: z.number().default(0),
+    completed: z.number().default(0),
+  }).loose()).default([]),
+  forecast: z.object({
+    completion_date: z.string(),
+    weekly_velocity: z.number(),
+  }).loose().nullable().default(null).catch(null),
+}).loose();
+
+export const EMPTY_PROJECT_PROGRESS_DETAIL: ProjectProgressDetail = {
+  progress: { unit: "issues", scope: 0, completed: 0, started: 0, unstarted: 0, cancelled: 0, percent: 0 },
+  by_assignee: [],
+  by_label: [],
+  history: [],
+  forecast: null,
+};
+
+export const ProjectActivityPageSchema = z.object({
+  entries: z.array(z.object({
+    id: z.string(),
+    issue_id: z.string(),
+    issue_identifier: z.string().default(""),
+    issue_title: z.string().default(""),
+    issue_status: z.string().default(""),
+    actor_type: z.string().default(""),
+    actor_id: z.string().default(""),
+    action: z.string(),
+    details: z.record(z.string(), z.unknown()).default({}).catch({}),
+    created_at: z.string(),
+  }).loose()).default([]),
+  next_cursor: z.string().nullable().default(null),
+}).loose();
+
+export const EMPTY_PROJECT_ACTIVITY_PAGE: ProjectActivityPage = { entries: [], next_cursor: null };
 
 export const EMPTY_LIST_PROJECTS_RESPONSE: ListProjectsResponse = { projects: [], total: 0 };
 
@@ -5869,6 +5937,23 @@ export const AppsOverviewSchema = z.object({
   team: z.array(AppConnectionSchema).default([]),
   personal: z.array(AppConnectionSchema).default([]),
   agent_apps: z.array(AgentAppSchema).default([]),
+  team_requests: z.array(z.object({
+    toolkit_slug: z.string(),
+    requested_by: z.array(z.string()).default([]).catch([]),
+    asked_by: z.array(z.string()).optional().catch(undefined),
+    agent_ids: z.array(z.string()).default([]).catch([]),
+    last_requested_at: z.string().default(""),
+  }).loose()).default([]).catch([]),
+}).loose();
+
+export const PersonalAppImpactSchema = z.object({
+  agents: z.array(z.object({
+    id: z.string(),
+    name: z.string().default(""),
+    workspace_id: z.string().default(""),
+    workspace_name: z.string().default(""),
+    running: z.boolean().default(false).catch(false),
+  }).loose()).default([]),
 }).loose();
 
 const AppCatalogEntrySchema = z.object({
@@ -5946,6 +6031,8 @@ export const AppRequestSchema = z.object({
   reason: appNullableString,
   // Withhold the details unless the server said otherwise.
   redacted: z.boolean().default(true).catch(true),
+  adds_app: z.boolean().default(false).catch(false),
+  can_decide: z.boolean().optional().catch(undefined),
   expires_at: z.string(),
   decided_by: appNullableString,
   decided_at: appNullableString,
@@ -5994,6 +6081,7 @@ export const EMPTY_APPS_OVERVIEW: AppsOverview = {
   team: [],
   personal: [],
   agent_apps: [],
+  team_requests: [],
 };
 
 export const EMPTY_APP_CATALOG: AppCatalogResponse = { catalog_mode: "curated", apps: [] };

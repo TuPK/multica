@@ -7,3 +7,4 @@ export {
   useStorageLimitToast,
   type StorageLimitRefusal,
 } from "./storage-limit-notice";
+export { UpgradeToAddLink } from "./upgrade-to-add-link";

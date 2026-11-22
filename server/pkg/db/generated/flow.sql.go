@@ -182,7 +182,7 @@ UPDATE issue SET flow = $1::jsonb
 WHERE id = $2::uuid
   AND workspace_id = $3::uuid
   AND flow IS NULL
-RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round
+RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, description_revision, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round
 `
 
 type InitIssueFlowParams struct {
@@ -227,6 +227,7 @@ func (q *Queries) InitIssueFlow(ctx context.Context, arg InitIssueFlowParams) (I
 		&i.TriageState,
 		&i.DuplicateOfIssueID,
 		&i.RequesterUserID,
+		&i.DescriptionRevision,
 		&i.DoneAt,
 		&i.ReopenCount,
 		&i.LastReopenedAt,
@@ -327,7 +328,7 @@ func (q *Queries) ListAttachmentsOnIssueByUploader(ctx context.Context, arg List
 }
 
 const listAutoFlowRequests = `-- name: ListAutoFlowRequests :many
-SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.requester_user_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round FROM issue i
+SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.requester_user_id, i.description_revision, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round FROM issue i
 JOIN issue_workflow w ON w.id = NULLIF(i.flow->>'workflow_id', '')::uuid AND w.workspace_id = i.workspace_id
 WHERE i.flow IS NOT NULL
   AND NOT (i.flow ? 'closed_at')
@@ -386,6 +387,7 @@ func (q *Queries) ListAutoFlowRequests(ctx context.Context, arg ListAutoFlowRequ
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
 			&i.RequesterUserID,
+			&i.DescriptionRevision,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,
@@ -554,7 +556,7 @@ func (q *Queries) ListFlowManualCloses(ctx context.Context, arg ListFlowManualCl
 }
 
 const listFlowTasks = `-- name: ListFlowTasks :many
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, description_revision, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
 WHERE parent_issue_id = $1::uuid
   AND workspace_id = $2::uuid
   AND flow_task IS NOT NULL
@@ -608,6 +610,7 @@ func (q *Queries) ListFlowTasks(ctx context.Context, arg ListFlowTasksParams) ([
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
 			&i.RequesterUserID,
+			&i.DescriptionRevision,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,
@@ -676,7 +679,7 @@ func (q *Queries) ListOpenFlowRequestIDsByWorkflow(ctx context.Context, arg List
 }
 
 const listOpenFlowRequests = `-- name: ListOpenFlowRequests :many
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, description_revision, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
 WHERE flow IS NOT NULL
   AND NOT (flow ? 'closed_at')
   AND (workspace_id, id) > ($1::uuid, $2::uuid)
@@ -733,6 +736,7 @@ func (q *Queries) ListOpenFlowRequests(ctx context.Context, arg ListOpenFlowRequ
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
 			&i.RequesterUserID,
+			&i.DescriptionRevision,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,
@@ -756,7 +760,7 @@ func (q *Queries) ListOpenFlowRequests(ctx context.Context, arg ListOpenFlowRequ
 }
 
 const listUnstartedFlowRequests = `-- name: ListUnstartedFlowRequests :many
-SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.requester_user_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round FROM issue i
+SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.requester_user_id, i.description_revision, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round FROM issue i
 JOIN squad s ON s.id = i.assignee_id AND s.workspace_id = i.workspace_id
 JOIN issue_workflow w ON w.id = s.active_workflow_id AND w.workspace_id = s.workspace_id
 WHERE i.assignee_type = 'squad'
@@ -819,6 +823,7 @@ func (q *Queries) ListUnstartedFlowRequests(ctx context.Context, pageLimit int32
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
 			&i.RequesterUserID,
+			&i.DescriptionRevision,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,
@@ -843,7 +848,7 @@ func (q *Queries) ListUnstartedFlowRequests(ctx context.Context, pageLimit int32
 
 const lockIssueForFlow = `-- name: LockIssueForFlow :one
 
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, description_revision, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
 WHERE id = $1::uuid
   AND workspace_id = $2::uuid
 FOR UPDATE
@@ -893,6 +898,7 @@ func (q *Queries) LockIssueForFlow(ctx context.Context, arg LockIssueForFlowPara
 		&i.TriageState,
 		&i.DuplicateOfIssueID,
 		&i.RequesterUserID,
+		&i.DescriptionRevision,
 		&i.DoneAt,
 		&i.ReopenCount,
 		&i.LastReopenedAt,
@@ -914,7 +920,7 @@ WHERE id = $2::uuid
   AND workspace_id = $3::uuid
   AND flow->>'step' = $4::text
   AND COALESCE((flow->>'seq')::int, 0) = $5::int
-RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round
+RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, requester_user_id, description_revision, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round
 `
 
 type SetIssueFlowParams struct {
@@ -970,6 +976,7 @@ func (q *Queries) SetIssueFlow(ctx context.Context, arg SetIssueFlowParams) (Iss
 		&i.TriageState,
 		&i.DuplicateOfIssueID,
 		&i.RequesterUserID,
+		&i.DescriptionRevision,
 		&i.DoneAt,
 		&i.ReopenCount,
 		&i.LastReopenedAt,

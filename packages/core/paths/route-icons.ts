@@ -38,6 +38,7 @@ export type RouteIconName =
   | "Package"
   | "Database"
   | "BookOpenText"
+  | "Plug"
   | "Settings"
   | "File"
   | "FileText"
@@ -69,6 +70,7 @@ export type NavLabelKey =
   | "skills"
   | "hub"
   | "workflow"
+  | "apps"
   | "settings";
 
 /** Stable identifier for each workspace navigation page. */
@@ -92,6 +94,7 @@ export type WorkspacePageKey =
   | "skills"
   | "hub"
   | "workflow"
+  | "apps"
   | "settings";
 
 export interface WorkspacePage {
@@ -127,6 +130,7 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   skills: { segment: "skills", icon: "BookOpenText", navKey: "skills" },
   workflow: { segment: "workflow", icon: "Workflow", navKey: "workflow" },
   hub: { segment: "hub", icon: "Package", navKey: "hub" },
+  apps: { segment: "apps", icon: "Plug", navKey: "apps" },
   settings: { segment: "settings", icon: "Settings", navKey: "settings" },
 };
 

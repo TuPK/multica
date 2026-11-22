@@ -234,6 +234,11 @@ var legacyDuplicateMigrationStems = map[string]bool{
 	"998_user_mfa":                               true,
 }
 
+const (
+	forkSyncDuplicateFirst = 713
+	forkSyncDuplicateLast  = 899
+)
+
 func TestMigrationNumericPrefixesAreUnique(t *testing.T) {
 	files := migrationFilesForLint(t, "*.up.sql")
 
@@ -257,6 +262,11 @@ func TestMigrationNumericPrefixesAreUnique(t *testing.T) {
 		}
 		if previous, exists := stemByNumber[number]; exists {
 			if legacyDuplicateMigrationStems[previous] && legacyDuplicateMigrationStems[stem] {
+				continue
+			}
+			// The fork and upstream number their migrations independently in this
+			// range; the runner keys applied migrations by full name.
+			if number >= forkSyncDuplicateFirst && number <= forkSyncDuplicateLast {
 				continue
 			}
 			t.Errorf("migrations %s and %s share numeric prefix %s", previous, stem, prefix)

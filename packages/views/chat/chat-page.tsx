@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@multica/ui/components/ui/button";
 import { IconButton } from "@multica/ui/components/common/icon-button";
 import { useIsCompact } from "@multica/ui/hooks/use-mobile";
+import { cn } from "@multica/ui/lib/utils";
 import { useRequiredWorkspaceSlug, useWorkspacePaths } from "@multica/core/paths";
 import { getCurrentSlug } from "@multica/core/platform";
 import { useChatStore } from "@multica/core/chat";
@@ -21,11 +22,13 @@ import { useListColumnCollapsed } from "../layout/app-shell-context";
 import { ListColumn } from "../layout/list-column";
 import { useNavigation } from "../navigation";
 import { useT } from "../i18n";
+import type { ChatMessageEnterTransition } from "./components/chat-message-list";
 import { ChatThreadList } from "./components/chat-thread-list";
 import { ChatSessionHeader } from "./components/chat-session-header";
 import { NewChatButton } from "./components/new-chat-button";
 import { ChatConversation } from "./components/chat-conversation";
 import { useChatController } from "./components/use-chat-controller";
+import { useChatSessionPrefetch } from "./components/use-chat-session-prefetch";
 import { useRegisterCommandBarContext } from "../search/register-context";
 
 /**
@@ -59,8 +62,15 @@ export function ChatPage() {
   const isCurrentChatRoute = pathname === wsPaths.chat();
   const isCompact = useIsCompact();
 
+  const isSurfaceActive = isCurrentChatRoute && getCurrentSlug() === workspaceSlug;
   const c = useChatController({
-    isActive: isCurrentChatRoute && getCurrentSlug() === workspaceSlug,
+    isActive: isSurfaceActive,
+  });
+  const prefetchSession = useChatSessionPrefetch({
+    wsId: c.wsId,
+    sessions: c.sessions,
+    activeSessionId: c.activeSessionId,
+    isActive: isSurfaceActive,
   });
   const { data: quickActionsPending = null } = useQuery(
     chatQuickActionsPendingOptions(c.activeSessionId ?? ""),
@@ -132,8 +142,37 @@ export function ChatPage() {
     if (urlAgent) consumedAgentIntent.current = urlAgent;
   };
 
+  // Directional hint for in-page session transitions: archiving the current
+  // thread plays a subtle directional glide aligned with list order ("next" or
+  // "prev"); direct clicks or URL switches use a gentle opacity fade. Initial
+  // page load has no transition so first paint lands immediately.
+  const [sessionTransition, setSessionTransition] = useState<{
+    sessionId: string | null;
+    direction: ChatMessageEnterTransition;
+  } | null>(null);
+  const [prevActiveSessionId, setPrevActiveSessionId] = useState<string | null>(
+    c.activeSessionId,
+  );
+  if (c.activeSessionId !== prevActiveSessionId) {
+    setPrevActiveSessionId(c.activeSessionId);
+    if (
+      prevActiveSessionId !== null &&
+      c.activeSessionId !== null &&
+      sessionTransition?.sessionId !== c.activeSessionId
+    ) {
+      setSessionTransition({ sessionId: c.activeSessionId, direction: "fade" });
+    }
+  }
+  const activeTransition: ChatMessageEnterTransition | null =
+    sessionTransition?.sessionId === c.activeSessionId
+      ? sessionTransition.direction
+      : null;
+
   const handleSelect = (session: ChatSession) => {
     supersedeAgentIntent();
+    if (session.id !== c.activeSessionId) {
+      setSessionTransition({ sessionId: session.id, direction: "fade" });
+    }
     c.handleSelectSession(session);
     setComposingNew(false);
   };
@@ -147,10 +186,17 @@ export function ChatPage() {
     supersedeAgentIntent();
     if (session.id === c.activeSessionId) {
       if (isCompact) {
+        setSessionTransition(null);
         c.setActiveSession(null);
         setComposingNew(false);
       } else {
-        c.advanceSelectionAfterArchive(session);
+        const result = c.advanceSelectionAfterArchive(session);
+        if (result?.moved) {
+          setSessionTransition({
+            sessionId: result.targetSessionId,
+            direction: result.direction ?? "fade",
+          });
+        }
       }
     }
     c.archiveSession(session.id);
@@ -160,6 +206,7 @@ export function ChatPage() {
     // A manual ⊕ pick outranks a pending deep link; when called FROM the
     // intent effect the ref is already set to this param, so this is a no-op.
     supersedeAgentIntent();
+    setSessionTransition(null);
     if (agent) c.handleStartNewChat(agent);
     else c.handleNewChat();
     setComposingNew(true);
@@ -253,6 +300,7 @@ export function ChatPage() {
         activeSessionId={c.activeSessionId}
         onSelectSession={handleSelect}
         onArchive={handleArchive}
+        onPrefetchSession={prefetchSession}
       />
     </div>
   );
@@ -275,6 +323,7 @@ export function ChatPage() {
     />
   );
   const backToList = () => {
+    setSessionTransition(null);
     c.setActiveSession(null);
     setComposingNew(false);
   };
@@ -286,6 +335,7 @@ export function ChatPage() {
   const conversation = (
     <ChatConversation
       controller={c}
+      enterTransition={activeTransition}
       quickActionsPending={quickActionsPending}
       onProjectChange={changeProjectContext}
       header={
@@ -309,6 +359,14 @@ export function ChatPage() {
             agent={c.activeAgent}
             onArchive={handleArchive}
           />
+        ) : !isCompact && !listCollapsed && c.activeSessionId ? (
+          // Keep the 48px header band reserved while the active session row
+          // resolves from the sessions query so the message area never drops
+          // down when metadata lands. When `listCollapsed` is true, the desktop
+          // wrapper below already renders a 48px `<PageHeader>` above `conversation`.
+          <PageHeader leading={false} className="bg-background">
+            {null}
+          </PageHeader>
         ) : null
       }
     />
@@ -368,7 +426,12 @@ export function ChatPage() {
         ) : noAgentPage ? (
           noAgentState
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground",
+              activeTransition && "animate-chat-enter-fade",
+            )}
+          >
             <MessageSquare className="h-10 w-10 text-faint-foreground" />
             <p className="text-body">{t(($) => $.page.select_prompt)}</p>
           </div>

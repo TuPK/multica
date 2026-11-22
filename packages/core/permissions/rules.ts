@@ -17,6 +17,12 @@ import { ALLOW, deny, type Decision, type PermissionContext } from "./types";
  * Returning a `Decision` (not a boolean) lets every surface — disabled state,
  * tooltip, banner copy — read the same `reason` and stay consistent without
  * sprinkling copy through the view layer.
+ *
+ * Guests (MUL-9420) are deny-by-default, like the server's route allowlist in
+ * `server/internal/middleware/guest.go`: a rule allows a guest only for what
+ * that list lets through, even on a resource the guest created or owned
+ * before it became a guest. Add every new rule to the guest table in
+ * `guest-deny.test.ts`.
  */
 
 /**
@@ -34,14 +40,22 @@ const isAdminLike = (role: MemberRole | null) =>
 
 /**
  * A viewer writes nothing (spec 6.6). A role this client does not know counts
- * as a viewer, so a newer server role never gains write rights here.
+ * as a viewer, so a newer server role never gains write rights here. A guest
+ * is not a viewer: its rights come from the guest checks beside each rule.
  */
 const isViewerRole = (role: string | null) =>
-  role !== null && role !== "owner" && role !== "admin" && role !== "member";
+  role !== null &&
+  role !== "owner" &&
+  role !== "admin" &&
+  role !== "member" &&
+  role !== "guest";
 
 const isGuest = (
-  ctx: { isGuest?: boolean; is_guest?: boolean } | null | undefined,
-) => ctx?.isGuest === true || ctx?.is_guest === true;
+  ctx:
+    | { isGuest?: boolean; is_guest?: boolean; role?: string | null }
+    | null
+    | undefined,
+) => ctx?.isGuest === true || ctx?.is_guest === true || ctx?.role === "guest";
 
 const viewerDenial = () =>
   deny("viewer_read_only", "Viewers can only read this workspace.");
@@ -124,6 +138,7 @@ export function can(
   if (grant.permissions.includes(key)) return ALLOW;
   return deny("unknown", "You do not have this permission.");
 }
+const guestDenied = (message: string) => deny("guest_role", message);
 
 // ---- Agents ----------------------------------------------------------------
 
@@ -137,6 +152,7 @@ export function canEditAgent(agent: Agent, ctx: GuestPermissionContext): Decisio
     return deny("not_authenticated", "Sign in to edit this agent.");
   }
   if (isViewerRole(ctx.role)) return viewerDenial();
+  if (ctx.role === "guest") return guestDenied("Guests can't edit agents.");
   if (isGuest(ctx)) return guestDenial();
   if (isAdminLike(ctx.role)) return ALLOW;
   if (agent.owner_id !== null && agent.owner_id === ctx.userId) return ALLOW;
@@ -167,6 +183,8 @@ export function canAssignAgentToIssue(
     return deny("not_authenticated", "Sign in to assign agents.");
   }
   if (isViewerRole(ctx.role)) return viewerDenial();
+  // Guests never run agents, not even one they owned as a member.
+  if (ctx.role === "guest") return guestDenied("Guests can't assign work to agents.");
   if (isGuest(ctx)) return guestDenial();
 
   // The owner may always invoke their own agent, regardless of mode.
@@ -219,6 +237,7 @@ export function canEditSkill(
     return deny("not_authenticated", "Sign in to edit this skill.");
   }
   if (isViewerRole(ctx.role)) return viewerDenial();
+  if (ctx.role === "guest") return guestDenied("Guests can't edit skills.");
   if (isGuest(ctx)) return guestDenial();
   if (isAdminLike(ctx.role)) return ALLOW;
   if (skill.created_by !== null && skill.created_by === ctx.userId) {
@@ -238,6 +257,9 @@ export function canDeleteSkill(
 }
 
 // ---- Comments --------------------------------------------------------------
+
+// A guest may edit and delete its own comments: the server lets those routes
+// through and the handler allows only the author.
 
 export function canEditComment(
   comment: Comment,
@@ -291,6 +313,7 @@ export function canDeleteRuntime(
     return deny("not_authenticated", "Sign in to delete runtimes.");
   }
   if (isViewerRole(ctx.role)) return viewerDenial();
+  if (ctx.role === "guest") return guestDenied("Guests can't delete runtimes.");
   if (isGuest(ctx)) return guestDenial();
   if (isAdminLike(ctx.role)) return ALLOW;
   if (runtime.owner_id !== null && runtime.owner_id === ctx.userId) {

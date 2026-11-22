@@ -559,7 +559,7 @@ WHERE i.workspace_id = $2::uuid
   AND i.status = $4::text
   AND i.status <> $1::text
 AND ($5::uuid[] IS NULL OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($5::uuid[])))
-RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.requester_user_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
+RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.requester_user_id, i.description_revision, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
 `
 
 type RemapSquadIssueStatusParams struct {
@@ -620,6 +620,7 @@ func (q *Queries) RemapSquadIssueStatus(ctx context.Context, arg RemapSquadIssue
 			&i.TriageState,
 			&i.DuplicateOfIssueID,
 			&i.RequesterUserID,
+			&i.DescriptionRevision,
 			&i.DoneAt,
 			&i.ReopenCount,
 			&i.LastReopenedAt,

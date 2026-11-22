@@ -40,6 +40,7 @@
     "./hub": "./hub/index.ts",
     "./skills": "./skills/index.ts",
     "./knowledge": "./knowledge/index.ts",
+    "./apps": "./apps/index.ts",
     "./agents": "./agents/index.ts",
     "./agents/agent-detail-page": "./agents/components/agent-detail-page.tsx",
     "./agents/agents-page": "./agents/components/agents-page.tsx",

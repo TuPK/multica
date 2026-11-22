@@ -99,6 +99,8 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"issue_view":                         workspaceDelete,
 	"issue_view_preference":              workspaceDelete,
 	"issue_dependency":                   workspaceDelete,
+	"issue_description_collab_state":     workspaceDelete,
+	"issue_description_revision":         workspaceDelete,
 	"issue_label":                        workspaceDelete,
 	"issue_property":                     workspaceDelete,
 	"issue_pr_automation":                workspaceDelete,
@@ -234,7 +236,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"task_usage_hourly_dirty":            workspaceDelete,
 	"task_usage_hourly_rollup_state":     workspaceDeleteKeep,
 	"user":                               workspaceDeleteKeep,
-	"user_composio_connection":           workspaceDeleteKeep,
+	"user_composio_connection":           workspaceDelete,     // personal accounts made in the workspace; older rows have no workspace and stay
 	"user_mfa":                           workspaceDeleteKeep, // user-level: no workspace_id; the account deletion job removes the row
 	"vcs_commit_status":                  workspaceDelete,
 	"vcs_connection":                     workspaceDelete,
@@ -245,7 +247,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"weixin_login_session":               workspaceDelete,
 	"weixin_account_state":               workspaceDelete,
 	"workspace_composio_connection":      workspaceDelete,
-	"remote_app_connection":              workspaceDelete, // team rows (owner_id = workspace); personal rows are user-owned
+	"remote_app_connection":              workspaceDelete, // team rows (owner_id = workspace) and personal rows made in the workspace
 	"remote_app_oauth_client":            workspaceDeleteKeep,
 	"agent_app":                          workspaceDelete,
 	"app_action_rule":                    workspaceDelete,

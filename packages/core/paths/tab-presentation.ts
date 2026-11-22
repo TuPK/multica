@@ -49,6 +49,7 @@ export type TabLabelKey =
   | "doc"
   | "docFolder"
   | "skill"
+  | "app"
   | "machine"
   | "runtime"
   | "attachment"
@@ -94,6 +95,7 @@ export interface TabEntityData {
   hubItem?: { name: string };
   doc?: {title: string};
   docFolder?: {title: string};
+  app?: { name: string };
   machine?: { name: string };
   runtime?: { name: string };
   /** Resolved chat session title (already includes the "New chat" fallback). */
@@ -217,6 +219,11 @@ export function resolveTabPresentation(
         title: name ? { kind: "text", text: name } : { kind: "nav", navKey: "hub" },
       };
     }
+    case "app":
+      return {
+        visual: { kind: "icon", icon: "Plug" },
+        title: textOr(data.app?.name, "app"),
+      };
     case "machine":
       return {
         visual: { kind: "icon", icon: "Monitor" },

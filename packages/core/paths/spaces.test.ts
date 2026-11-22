@@ -33,6 +33,7 @@ describe("spaceForPath", () => {
     [ws.workflowDetail("wf-1"), "workflow"],
     [ws.pipeline(), "work"],
     [ws.pipelineForSquad("s-1"), "work"],
+    [ws.appDetail("gmail"), "team"],
     [ws.usage(), "team"],
     [ws.chatSession("c-1"), "chat"],
     [ws.autopilotDetail("ap-1"), "autopilots"],

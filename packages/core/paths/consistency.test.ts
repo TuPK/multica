@@ -33,6 +33,7 @@ describe("paths.workspace() shape", () => {
       ["pipeline", "pipeline"],
       ["workflow", "workflow"],
       ["newWorkflow", "workflow/new"],
+      ["apps", "apps"],
       ["squads", "squads"],
       ["settings", "settings"],
     ];

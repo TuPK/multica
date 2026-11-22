@@ -87,7 +87,7 @@ func (q *Queries) DeleteSquadSkills(ctx context.Context, arg DeleteSquadSkillsPa
 }
 
 const listEffectiveAgentSkills = `-- name: ListEffectiveAgentSkills :many
-SELECT s.id, s.workspace_id, s.name, s.description, s.content, s.config, s.created_by, s.created_at, s.updated_at, s.plugin_installation_id FROM skill s
+SELECT s.id, s.workspace_id, s.name, s.description, s.content, s.config, s.created_by, s.created_at, s.updated_at, s.plugin_installation_id, s.revision FROM skill s
 WHERE s.id IN (
     SELECT ask.skill_id FROM agent_skill ask
     WHERE ask.agent_id = $1 AND ask.enabled = TRUE
@@ -124,6 +124,7 @@ func (q *Queries) ListEffectiveAgentSkills(ctx context.Context, agentID pgtype.U
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.PluginInstallationID,
+			&i.Revision,
 		); err != nil {
 			return nil, err
 		}
@@ -136,7 +137,7 @@ func (q *Queries) ListEffectiveAgentSkills(ctx context.Context, agentID pgtype.U
 }
 
 const listEffectiveAgentSkillsByIDs = `-- name: ListEffectiveAgentSkillsByIDs :many
-SELECT s.id, s.workspace_id, s.name, s.description, s.content, s.config, s.created_by, s.created_at, s.updated_at, s.plugin_installation_id FROM skill s
+SELECT s.id, s.workspace_id, s.name, s.description, s.content, s.config, s.created_by, s.created_at, s.updated_at, s.plugin_installation_id, s.revision FROM skill s
 WHERE s.id = ANY($2::uuid[])
   AND s.id IN (
     SELECT ask.skill_id FROM agent_skill ask
@@ -178,6 +179,7 @@ func (q *Queries) ListEffectiveAgentSkillsByIDs(ctx context.Context, arg ListEff
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.PluginInstallationID,
+			&i.Revision,
 		); err != nil {
 			return nil, err
 		}

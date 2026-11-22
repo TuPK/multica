@@ -23,6 +23,7 @@ describe("parseTabSubject", () => {
     ["/acme/pipeline", { kind: "page", page: "pipeline" }],
     ["/acme/pipeline?squad=s-1", { kind: "page", page: "pipeline" }],
     ["/acme/workflow", { kind: "page", page: "workflow" }],
+    ["/acme/apps", { kind: "page", page: "apps" }],
     ["/acme/settings", { kind: "page", page: "settings" }],
     // Resource details
     ["/acme/issues/bug-1", { kind: "issue", id: "bug-1" }],
@@ -35,6 +36,7 @@ describe("parseTabSubject", () => {
     ["/acme/hub", { kind: "page", page: "hub" }],
     ["/acme/hub/sources", { kind: "page", page: "hub" }],
     ["/acme/hub/skill", { kind: "page", page: "hub" }],
+    ["/acme/apps/gmail", { kind: "app", slug: "gmail" }],
     ["/acme/attachments/att1/preview", { kind: "attachment", id: "att1", filename: null }],
     [
       "/acme/attachments/att1/preview?name=report.pdf",

@@ -32,6 +32,8 @@ function CallbackContent() {
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
   const [error, setError] = useState<CallbackError | null>(null);
   const [desktopToken, setDesktopToken] = useState<string | null>(null);
+  // Single-use OAuth codes must only be exchanged once even if React StrictMode
+  // re-invokes mount effects in development.
   const exchangedCodeRef = useRef<string | null>(null);
 
   useEffect(() => {

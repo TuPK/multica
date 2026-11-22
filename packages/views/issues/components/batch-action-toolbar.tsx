@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Ellipsis } from "@multica/ui/icons";
+import { Ellipsis, Link2 } from "@multica/ui/icons";
 import { toast } from "sonner";
 import { Button } from "@multica/ui/components/ui/button";
 import {
@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@multica/ui/components/ui/dropdown-menu";
 import { useIssueDeletion } from "@multica/core/issues/use-issue-deletion";
+import { useIsGuest } from "@multica/core/permissions";
 import {
   isListPropertyType,
   type BatchIssueLabelOps,
@@ -37,7 +38,7 @@ import { useModalStore } from "@multica/core/modals";
 import { StatusPicker, PriorityPicker, AssigneePicker, DueDatePicker, StartDatePicker } from "./pickers";
 import { BatchLabelPicker } from "./pickers/batch-label-picker";
 import { CustomPropertyValueInput } from "./pickers/custom-property-picker";
-import { BatchMenuItems, sharedPropertyValue, type BatchEditor } from "./batch-menu-items";
+import { BatchMenuItems, sharedPropertyValue, useCopyIssueLinks, type BatchEditor } from "./batch-menu-items";
 import { useBatchResultToast } from "./batch-result-toast";
 import { contextPrimitives, dropdownPrimitives } from "../../common/menu-primitives";
 import { useRegisterIssueBatchMenu } from "../actions/issue-actions-context-menu";
@@ -110,7 +111,9 @@ export function BatchActionToolbar({
 
   // Offer the statuses every selected issue's room workflow allows.
   const wsId = useWorkspaceId();
-  const { canDelete } = useIssueDeletion(wsId);
+  const { canDelete, offersDelete } = useIssueDeletion(wsId);
+  // A guest (MUL-9420) edits no issue; its selection only copies links.
+  const guest = useIsGuest(wsId);
   const canDeleteSelection = selectedIssues.every(canDelete);
   const { workflows } = useIssueWorkflows(wsId);
   const roomRoster = useRoomRoster(wsId);
@@ -284,6 +287,8 @@ export function BatchActionToolbar({
     projectId: null,
     allowedStatuses,
     disabled: loading,
+    editable: !guest,
+    offersDelete,
     canDelete: canDeleteSelection,
     onStatus: (status: string) => handleBatchStatus({ status }),
     onAssignee: handleBatchAssignee,
@@ -312,6 +317,34 @@ export function BatchActionToolbar({
   const closeEditor = (open: boolean) => {
     if (!open) setEditor(null);
   };
+
+  const contextMenu = menuPoint && count > 1 && (
+    <BatchContextMenu point={menuPoint} open={menuOpen} onOpenChange={setMenuOpen}>
+      <BatchMenuItems
+        primitives={contextPrimitives}
+        variant="context"
+        {...menuProps}
+        onClearSelection={clear}
+        onClose={() => setMenuOpen(false)}
+      />
+    </BatchContextMenu>
+  );
+
+  if (guest) {
+    return (
+      <>
+        <CollectionBatchBar
+          count={count}
+          onClear={clear}
+          placement={placement === "fixed-bottom" ? "fixed" : "inline"}
+          label={t(($) => $.batch.selected, { count })}
+        >
+          <CopyLinksButton issues={selectedIssues} />
+        </CollectionBatchBar>
+        {contextMenu}
+      </>
+    );
+  }
 
   return (
     <>
@@ -467,17 +500,7 @@ export function BatchActionToolbar({
         </span>
       </CollectionBatchBar>
 
-      {menuPoint && count > 1 && (
-        <BatchContextMenu point={menuPoint} open={menuOpen} onOpenChange={setMenuOpen}>
-          <BatchMenuItems
-            primitives={contextPrimitives}
-            variant="context"
-            {...menuProps}
-            onClearSelection={clear}
-            onClose={() => setMenuOpen(false)}
-          />
-        </BatchContextMenu>
-      )}
+      {contextMenu}
 
       {parentOpen && (
         <IssuePickerModal
@@ -522,6 +545,18 @@ function shared<T>(issues: readonly Issue[], pick: (issue: Issue) => T): T | und
   if (!first) return undefined;
   const value = pick(first);
   return issues.every((issue) => pick(issue) === value) ? value : undefined;
+}
+
+/** A guest's whole batch bar: the one action its selection supports. */
+function CopyLinksButton({ issues }: { issues: Issue[] }) {
+  const { t } = useT("issues");
+  const copyLinks = useCopyIssueLinks(issues);
+  return (
+    <Button variant="ghost" size="sm" onClick={copyLinks}>
+      <Link2 className="size-4" />
+      {t(($) => $.batch.copy_links)}
+    </Button>
+  );
 }
 
 /** The batch menu at the cursor, for a right-click on a selected row. */

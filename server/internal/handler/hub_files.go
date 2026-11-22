@@ -66,7 +66,7 @@ func (h *Handler) SaveHubItemFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	expected := req.Etag
-	sf, etag, ok := h.saveSkillSupportingFile(w, r, skill, req.Path, req.Content, &expected)
+	sf, etag, ok := h.saveSkillSupportingFile(w, r, skill, req.Path, req.Content, &expected, nil)
 	if !ok {
 		return
 	}

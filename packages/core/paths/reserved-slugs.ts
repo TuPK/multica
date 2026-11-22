@@ -303,6 +303,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "pipeline",
   "skills",
   "hub",
+  "apps",
   "settings",
   "workspaces",
   "teams",

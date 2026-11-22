@@ -27,6 +27,7 @@ import { runtimeListOptions } from "@multica/core/runtimes/queries";
 import { runtimeDisplayLabel } from "@multica/core/runtimes";
 import { chatSessionsOptions } from "@multica/core/chat/queries";
 import { issueWorkflowListOptions } from "@multica/core/issue-workflows";
+import { appCatalogOptions } from "@multica/core/connected-apps";
 import {
   inboxListOptions,
   archivedInboxPagesOptions,
@@ -74,6 +75,7 @@ const PENDING_RESOURCE_KEYS: ReadonlySet<TabLabelKey> = new Set<TabLabelKey>([
   "skill",
   "doc",
   "docFolder",
+  "app",
   "machine",
   "runtime",
 ]);
@@ -158,6 +160,7 @@ function useTabEntityData(subject: TabSubject, wsId: string, fetch: boolean): Re
   const runtimes = useQuery({ ...runtimeListOptions(wsId), enabled: false }).data;
   const sessions = useQuery({ ...chatSessionsOptions(wsId), enabled: false }).data;
   const workflows = useQuery({ ...issueWorkflowListOptions(wsId), enabled: false }).data;
+  const appCatalog = useQuery({ ...appCatalogOptions(wsId), enabled: false }).data;
 
   const data: ResolvedTabEntityData = {};
   switch (subject.kind) {
@@ -190,6 +193,11 @@ function useTabEntityData(subject: TabSubject, wsId: string, fetch: boolean): Re
     case "workflow": {
       const wf = workflows?.find((x) => x.id === subject.id);
       if (wf) data.workflow = { name: wf.name };
+      break;
+    }
+    case "app": {
+      const name = appCatalog?.apps.find((a) => a.slug === subject.slug)?.name;
+      if (name) data.app = { name };
       break;
     }
     case "actor": {
