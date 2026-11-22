@@ -202,6 +202,13 @@ Xác nhận của người dùng: S1, S2, S3 đều đồng ý. Cờ `room_workf
 - Lưu ý: phép so sánh với `FF_ROOM_WORKFLOW=off` không hợp lệ, vì harness test dùng static provider và bỏ qua biến môi trường.
 - Còn lại: P2 (lưu cấu hình workspace bằng `workspace.settings`, endpoint, popup, trang cài đặt, CLI), P3, P4, P5.
 
+### Quyết định cuối (2026-11-22)
+
+- **Cột `project.workflow_id` (O-6): giữ, không xóa.** Lý do: (1) xóa cần đổi `sqlc.yaml` (sqlc đọc migration theo thứ tự chữ cái, migration xóa 1040 đọc trước migration thêm 577), là thay đổi chung của repo; (2) xóa không hoàn tác được dữ liệu: dev còn một project có giá trị, `mua_ngon_ecommerce` → SDLC Auto, ghi tại đây để không mất thông tin; (3) cột không có khóa ngoại, không có index, và không còn code nào đọc hay ghi, nên giữ lại không gây rủi ro. Chỉ nên xóa khi có thay đổi sqlc riêng và người dùng xác nhận.
+- **Phạm vi luật phòng: chỉ áp cho issue thuộc dự án, không mở rộng ra issue ngoài dự án.** Lý do: issue ngoài dự án không theo workflow nào (trạng thái là Default của workspace, không có bàn giao), nên workflow của phòng không đổi hành vi của chúng. Mở rộng sẽ chặn việc tạo issue độc lập của phòng chưa có workflow. Dữ liệu dev (workspace tupk): 70 trên 76 phòng chưa có workflow; nhiều phòng đang có issue ngoài dự án. Nếu mở rộng, các phòng này sẽ bị chặn hàng loạt.
+- **Khối prompt đổi tên `[Project workflow]` → `[Workflow]`** trong daemon, execenv, skill, và chỉ dẫn của briefing. Khóa JSON `project_workflow` trên claim được giữ nguyên để tương thích với daemon cũ. Vì tên hiển thị nằm trong daemon và skill, hai phần phải phát hành đồng bộ. Trong khoảng daemon chưa cập nhật, skill có thể chỉ tới tên mới trong khi daemon in tên cũ.
+- **P5 trên dev (workspace tupk):** đã kiểm tra chỉ đọc. Không có issue nào thuộc phòng chưa có workflow, và không có run nào ở trạng thái `queued` hoặc `dispatched`; có 1 run đang `running`. Server dev (cổng 8080) đang chạy một bản build khởi động lúc 08:00, trước khi có luật phòng, nên cần khởi động lại để luật phòng có hiệu lực. Việc khởi động lại chưa thực hiện vì server đang có một run đang chạy.
+
 ### Rà soát sau triển khai (2026-11-22)
 - Cột `project.workflow_id` được giữ lại (O-6 chưa xác nhận). Không có khóa ngoại, không có index, và không còn code nào đọc hoặc ghi. Xóa cột cần đổi `sqlc.yaml` (sqlc đọc migration theo thứ tự chữ cái, nên migration xóa 1040 đọc trước migration thêm 577).
 - Cờ `room_workflow` đã bị xóa, không còn đường tắt `FF_ROOM_WORKFLOW=off`. Luật phòng luôn bật.
