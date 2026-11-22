@@ -1056,7 +1056,7 @@
       "parent_self": "Une tâche ne peut pas être sa propre parente",
       "parent_not_found": "Tâche parente introuvable",
       "parent_cycle": "La tâche parente est l'une de ses sous-tâches",
-      "workflow_rejected": "Le workflow de son projet n'autorise pas cette modification",
+      "workflow_rejected": "Le workflow de la tâche n'autorise pas cette modification",
       "assignee_not_allowed": "Impossible de l'attribuer à ce responsable",
       "properties_too_large": "Ses propriétés personnalisées dépasseraient la taille maximale",
       "write_failed": "Impossible d'enregistrer cette tâche"

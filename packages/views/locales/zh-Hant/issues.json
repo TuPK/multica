@@ -1001,7 +1001,7 @@
       "parent_self": "不能把任務設為它自己的父任務",
       "parent_not_found": "找不到父任務",
       "parent_cycle": "父任務是它的子任務，會形成循環",
-      "workflow_rejected": "所在專案的工作流程不允許這項修改",
+      "workflow_rejected": "任務所在的工作流程不允許這項修改",
       "assignee_not_allowed": "不能指派給這個負責人",
       "properties_too_large": "自訂屬性會超出大小上限",
       "write_failed": "儲存失敗"

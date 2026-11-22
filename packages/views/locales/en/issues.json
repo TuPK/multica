@@ -1056,7 +1056,7 @@
       "parent_self": "An issue can't be its own parent",
       "parent_not_found": "Parent issue not found",
       "parent_cycle": "The parent is one of its sub-issues",
-      "workflow_rejected": "Its project's workflow doesn't allow this change",
+      "workflow_rejected": "Its workflow doesn't allow this change",
       "assignee_not_allowed": "Can't be assigned to this assignee",
       "properties_too_large": "Its custom properties would exceed the size limit",
       "write_failed": "Couldn't save this issue"

@@ -1056,7 +1056,7 @@
       "parent_self": "Una tarea no puede ser su propia tarea principal",
       "parent_not_found": "No se encontró la tarea principal",
       "parent_cycle": "La tarea principal es una de sus subtareas",
-      "workflow_rejected": "El flujo de trabajo de su proyecto no permite este cambio",
+      "workflow_rejected": "El flujo de trabajo de la tarea no permite este cambio",
       "assignee_not_allowed": "No se puede asignar a este responsable",
       "properties_too_large": "Sus propiedades personalizadas superarían el límite de tamaño",
       "write_failed": "No se pudo guardar esta tarea"

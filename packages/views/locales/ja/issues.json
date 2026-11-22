@@ -1001,7 +1001,7 @@
       "parent_self": "タスクを自分自身の親にはできません",
       "parent_not_found": "親タスクが見つかりません",
       "parent_cycle": "親タスクがこのタスクのサブタスクです",
-      "workflow_rejected": "プロジェクトのワークフローがこの変更を許可していません",
+      "workflow_rejected": "タスクのワークフローがこの変更を許可していません",
       "assignee_not_allowed": "この担当者には割り当てられません",
       "properties_too_large": "カスタムプロパティがサイズ上限を超えます",
       "write_failed": "保存できませんでした"

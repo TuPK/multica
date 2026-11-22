@@ -70,7 +70,7 @@ describe("useBatchResultToast", () => {
     // Toast content renders outside the app's providers.
     render(options.description);
     expect(screen.getByText("B")).toBeInTheDocument();
-    expect(screen.getByText("Its project's workflow doesn't allow this change")).toBeInTheDocument();
+    expect(screen.getByText("Its workflow doesn't allow this change")).toBeInTheDocument();
     // An unknown code falls back to the server's message.
     expect(screen.getByText("server message")).toBeInTheDocument();
 

@@ -1001,7 +1001,7 @@
       "parent_self": "不能把任务设为它自己的父任务",
       "parent_not_found": "找不到父任务",
       "parent_cycle": "父任务是它的子任务，会形成循环",
-      "workflow_rejected": "所在项目的工作流不允许这项修改",
+      "workflow_rejected": "任务所在的工作流不允许这项修改",
       "assignee_not_allowed": "不能分配给这个负责人",
       "properties_too_large": "自定义属性会超出大小上限",
       "write_failed": "保存失败"
