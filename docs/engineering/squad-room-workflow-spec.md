@@ -170,10 +170,11 @@ Mỗi rủi ro có biện pháp và test kiểm chứng. Phần này cố ý đ�
 - Hiện (live): Marketing Studio, PR & Comms, E2E-FLOW Squad-test, Dynamic from scratch-test đều có workflow flow nhưng không có issue.
 - Rủi ro: thấp về dữ liệu, nhưng là đường đi chính của các flow mới. Biện pháp: test đầy đủ đường flow.
 
-**R14. Các dịch vụ dùng `issue_workflow.squad_id` (migration 973) và `squad.active_workflow_id` (974)**
-- Hai cách liên kết workflow với phòng cùng tồn tại. `sdlcWorkflowFor` và `planningWorkflowFor` còn dùng `squad_id` của workflow.
-- Rủi ro: resolver mới chỉ đọc `active_workflow_id`, nếu phần khác vẫn đọc `squad_id` thì hai nguồn lệch nhau.
-- Biện pháp: kiểm tra toàn bộ nơi đọc `issue_workflow.squad_id` trước khi làm. Quyết định: `active_workflow_id` là nguồn duy nhất cho resolver; `squad_id` chỉ còn cho các chỗ đã phụ thuộc, hoặc thống nhất trong cùng đợt.
+**R14. Hai cột `issue_workflow.squad_id` (migration 973) và `squad.active_workflow_id` (974) có hai vai trò khác nhau**
+- `squad.active_workflow_id` là workflow đang áp dụng cho squad. Đây là nguồn duy nhất cho resolver (`squadWorkflow`, `flow.sql`) và cho việc định tuyến issue.
+- `issue_workflow.squad_id` là quyền sở hữu thư viện: một squad có nhiều workflow, và workflow chưa có chủ được đưa vào thư viện của squad khi áp dụng lần đầu (`adoptSquadWorkflow`). Nó được dùng ở API (`squad_id` trong JSON, `ListSquadIssueWorkflows`, `flow_draft`), ở lỗi 409 `workflow_belongs_to_other_squad`, và ở `sdlcWorkflowFor` và `planningWorkflowFor`, vốn chỉ tái dùng workflow trong thư viện của chính squad.
+- `squad_id` không chọn workflow áp dụng cho issue. Chỗ duy nhất dùng nó để kiểm tra quyền là chọn flow cho yêu cầu (`flow_start.go`): workflow phải thuộc thư viện của squad hoặc là workflow đang áp dụng.
+- Quyết định (2026-11-22): giữ `squad_id`, không xóa cột, không đổi code. Thư viện và áp dụng là hai khái niệm tách biệt.
 
 **R15. Issue được tạo bởi quy trình tự động của hệ thống**
 - Ví dụ: `isSecretaryFiling` (Secretary tạo desk issue, giao cho chính nó), `squad_planning_workflow.go`, `initiative_build.go`, quy trình kế hoạch của công ty.

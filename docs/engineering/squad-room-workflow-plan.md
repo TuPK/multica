@@ -18,7 +18,7 @@ Quy ước: mỗi bước có **Việc**, **File**, **Kiểm chứng**. Không c
 
 Cần làm:
 1. Liệt kê mọi lời gọi `ForIssue` (không tính các hàm có chữ `ForIssue` trong tên) và kết quả nó quyết định. Đã có danh sách sơ bộ trong spec, mục R6.
-2. Đọc các đường đọc `issue_workflow.squad_id` (migration 973): `sdlcWorkflowFor`, `planningWorkflowFor`, `issue_workflow.go` (dòng 904), `initiative_build.go`, `squad_planning_workflow.go`. Ghi lại đường nào còn phụ thuộc.
+2. Đọc các đường đọc `issue_workflow.squad_id` (migration 973). Đã xác minh: chỉ `sdlcWorkflowFor`, `planningWorkflowFor` và `flow_start.go` đọc nó; không đường nào dùng nó để chọn workflow áp dụng. Giữ cột (spec R14).
 3. Liệt kê đường tạo issue tự động: `isSecretaryFiling`, `squad_planning_workflow.go`, `initiative_build.go`, `autopilot.go` (`EnqueueTaskForIssue`), `service/issue.go` tạo sub-issue.
 4. Kiểm tra `pipeline` (`pkg/db/queries/pipeline.sql`) và `org_map.sql:65` có phụ thuộc `project.workflow_id` không.
 5. Truy vấn dữ liệu live (chỉ đọc, qua CLI hoặc API):
@@ -182,7 +182,7 @@ Xác nhận của người dùng: S1, S2, S3 đều đồng ý. Cờ `room_workf
   - `handler/squad_sources.go:123` — nguồn nhập giao cho phòng.
   Nếu phòng đích chưa có workflow, hoặc là phòng flow với cấu hình `no_action`, các đường này sẽ nhận 422 và luồng tự động bị hỏng. **Cần quyết định**: với đường hệ thống (không phải người dùng và không phải agent của phòng), chặn hay tự dùng Default. Đề xuất: không chặn đường hệ thống; dùng Default và ghi nhật ký rõ. Phải làm rõ trước P1.3.
 - Các đường agent/hệ thống khác cần kiểm tra cùng lúc: `service/retro.go:364`, `service/review.go:514`, `service/initiative_build.go:110`, `integrations/channel/engine/router.go:1209`, `handler/flow_proposal.go:139` (giao cho agent, nên đi theo phòng của agent).
-- `issue_workflow.squad_id` vẫn được đọc ở `service/initiative_build.go:277` (`wf.SquadID`) và `planningWorkflowFor` (đọc theo tên workflow). Cần thống nhất trước khi bỏ resolver cũ.
+- `issue_workflow.squad_id` là quyền sở hữu thư viện, không phải nguồn luật (xem spec R14). Quyết định (2026-11-22): giữ cột, không đổi code. Chỗ đọc: `service/initiative_build.go` (`sdlcWorkflowFor`), `planningWorkflowFor`, `flow_start.go` (kiểm tra quyền chọn flow). Resolver chỉ đọc `squad.active_workflow_id`.
 - `applyFlowStatusRules` (`handler/flow_guards.go:654`) trả `handled=true` khi `prev.FlowTask.Valid`, nên engine task không đi qua resolver khi đổi trạng thái. Đã xác minh.
 
 ### Còn lại
