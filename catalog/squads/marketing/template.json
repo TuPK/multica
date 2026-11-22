@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "squad",
   "id": "marketing",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "collection": "marketing",
   "domain": "marketing",
   "markets": [
@@ -22,7 +22,7 @@
     "floorName": "Launch",
     "leader": "mktg_chief",
     "operatingReview": true,
-    "workflow": null,
+    "workflow": "marketing_auto",
     "roles": [
       {
         "key": "mktg_chief",

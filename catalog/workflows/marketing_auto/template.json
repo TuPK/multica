@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "marketing_auto",
+  "version": "1.0.0",
+  "ui": false,
+  "workflow": {
+    "name": "Marketing Auto",
+    "description": "Marketing requests routed by the leader to the squad that does the work, then checked and reported back to the requester.",
+    "steps": [
+      {
+        "status": {
+          "key": "backlog"
+        },
+        "statusKey": "backlog",
+        "role": null,
+        "instructions": "",
+        "next": "todo",
+        "implicitNext": true
+      },
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "role": "mktg_chief",
+        "instructions": "Intake. Name the market (vn or intl) and the kind of work in your first comment. Route each part of the work as a sub-issue to Marketing Studio, Content Studio, Growth Lab or PR & Comms, with a brief, the market and the channel. Then move this request to in progress.",
+        "next": "in_progress"
+      },
+      {
+        "status": {
+          "key": "in_progress"
+        },
+        "statusKey": "in_progress",
+        "role": "mktg_chief",
+        "instructions": "Routed. Wait for the routed parts. Check each part as it comes back against the market and the brief. A part that failed its gates goes back to its squad with the open problem. When every part is checked, move this request to in review.",
+        "next": "in_review",
+        "back": "todo"
+      },
+      {
+        "status": {
+          "key": "in_review"
+        },
+        "statusKey": "in_review",
+        "role": null,
+        "instructions": "A person checks the report and the parts, then moves the request to done. Nothing is published or sent without that person's approval.",
+        "next": "done"
+      },
+      {
+        "status": {
+          "key": "done"
+        },
+        "statusKey": "done",
+        "role": null,
+        "instructions": ""
+      }
+    ]
+  }
+}
