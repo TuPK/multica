@@ -20,20 +20,45 @@ add_pid() {
   case " $pids " in *" $1 "*) ;; *) pids="$pids $1" ;; esac
 }
 
-# Processes whose command line names this checkout or the installed daemon. Skip this script, its
-# parent shell, and `make` itself, which carries the repo path in its own arguments.
+# Listening PIDs on a port. `next start` runs with relative arguments, and lsof misses some sockets
+# on overlay mounts, so ss (Linux) is read first.
+listeners() {
+  if command -v ss >/dev/null 2>&1; then
+    ss -Hltnp "sport = :$1" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2
+  else
+    lsof -nP -iTCP:"$1" -sTCP:LISTEN -t 2>/dev/null
+  fi
+}
+
+# Processes started from this checkout or running the installed daemon. Matched by command line, or by
+# working directory on Linux, since `next start --port` runs with relative arguments. Skipped: this
+# script, its parent, `make` itself, shell wrappers (`bash -c "cd <repo> && ..."`), interactive
+# shells, and Claude Code, which often runs in the repo directory and must not be stopped.
 while read -r pid args; do
   case "$pid" in "$self" | "$parent") continue ;; esac
   case "$args" in make\ * | */make\ *) continue ;; esac
-  # Shell wrappers such as `bash -c "cd <repo> && ..."` name the repo without running the stack.
   case "$args" in *sh\ -c\ *) continue ;; esac
+  case "$args" in -*sh | sh | bash | zsh | fish | */bash | */zsh | */sh | */fish) continue ;; esac
+  case "$args" in *claude* | *Claude*) continue ;; esac
   case "$args" in
-    *"$root/"* | "$install daemon"*) add_pid "$pid" ;;
+    *"$root/"* | "$install daemon"*) add_pid "$pid"; continue ;;
+  esac
+  # By working directory, only for the stack's own runtimes: editor and search helpers (gopls, ugrep)
+  # also run in the repo and must stay up.
+  cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null)
+  exe=${args%% *}
+  exe=${exe##*/}
+  case "$cwd" in
+    "$root" | "$root"/*)
+      case "$exe" in
+        node | pnpm | next-server | turbo | esbuild | go | server | multica | dotenvx) add_pid "$pid" ;;
+        *) case "$args" in *scripts/dev*) add_pid "$pid" ;; esac ;;
+      esac ;;
   esac
 done < <(ps -eo pid=,args=)
 
 for port in "$@"; do
-  for pid in $(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null); do
+  for pid in $(listeners "$port"); do
     add_pid "$pid"
   done
 done
