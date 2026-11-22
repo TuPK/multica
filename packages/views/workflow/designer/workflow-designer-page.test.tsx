@@ -173,8 +173,8 @@ describe("WorkflowDesignerPage", () => {
 
     expect(await screen.findByDisplayValue("Core Pipeline")).toBeTruthy();
     expect(screen.getByDisplayValue("Development workflow")).toBeTruthy();
-    expect(screen.getByTestId("status-node-todo")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("status-node-todo"));
+    // The canvas nodes render after the name; wait for them instead of racing the render.
+    fireEvent.click(await screen.findByTestId("status-node-todo"));
     expect(screen.getByText("Start")).toBeTruthy();
     expect(screen.getAllByText("Done").length).toBeGreaterThan(0);
     expect(apiMock.getIssueWorkflow).toHaveBeenCalledWith("wf-1");
