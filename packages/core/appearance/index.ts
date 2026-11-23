@@ -340,6 +340,13 @@ export const useAppearanceStore = create<AppearanceState>()(
     }),
     {
       name: APPEARANCE_STORAGE_KEY,
+      // v1: Blue White became the default, so a theme stored while "default" was the
+      // default (never chosen on purpose) moves to it once.
+      version: 1,
+      migrate: (persisted) => {
+        const prefs = sanitizeAppearance(persisted);
+        return prefs.theme === DEFAULT_THEME_ID ? { ...prefs, theme: DEFAULT_APPEARANCE.theme } : prefs;
+      },
       storage: createJSONStorage(() => defaultStorage),
       partialize: (state) => sanitizeAppearance(state),
       merge: (persisted, current) => ({ ...current, ...sanitizeAppearance(persisted) }),

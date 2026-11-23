@@ -349,7 +349,7 @@ dev: ## Bootstrap this checkout end-to-end: create env if needed, ensure DB, mig
 	@bash scripts/dev.sh
 
 # WEB_MODE=build serves a built web app instead of the hot-reloading dev server (see scripts/dev.sh).
-WEB_MODE ?= dev
+WEB_MODE ?= build
 
 dev-full: ## Fresh machine: start the WeKnora knowledge services and the Hub object store, fill their secrets, then make dev. WEB_MODE=build serves the built web app
 	@$(MAKE) -s build

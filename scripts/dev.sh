@@ -60,10 +60,10 @@ echo "==> Running migrations..."
 (cd server && go run ./cmd/migrate up)
 
 # ---------- Start services ----------
-# WEB_MODE=dev (default) runs the hot-reloading dev server, which compiles a page the first time
+# WEB_MODE=dev runs the hot-reloading dev server, which compiles a page the first time
 # it is requested. WEB_MODE=build builds the web app once and serves the build, so page loads and
 # navigation do not wait for compilation. A build is needed again after the web code changes.
-WEB_MODE="${WEB_MODE:-dev}"
+WEB_MODE="${WEB_MODE:-build}"
 case "$WEB_MODE" in
   dev)
     WEB_CMD=(pnpm dev:web)
