@@ -276,12 +276,12 @@ func progressEventID(n progressNudge) string {
 // Neither task:progress nor task:message carries a chat session, so the rows
 // are the only answer, and one run posts dozens of reports. Hence the cache,
 // which also remembers the runs that are not WeCom's so an issue run, an
-// autopilot run or a question typed in Multica costs one read and then
+// autopilot run or a question typed in Delegora costs one read and then
 // nothing.
 //
 // The delivery row comes first because it is the cheaper "no": it exists only
 // for a run asked over a channel, and it names the bot. A run with no row was
-// typed in Multica, and although it can hold a WeCom round for a moment
+// typed in Delegora, and although it can hold a WeCom round for a moment
 // (task:queued binds it; the origin gate gives it back at the end), its steps
 // are not the room's question's steps. The round comes off the task row: see
 // task_sessions.go for why that column is what an auto-retry clone is resolved

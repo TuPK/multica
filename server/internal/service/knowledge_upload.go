@@ -21,7 +21,7 @@ import (
 
 // DefaultKnowledgeUploadMaxBytes is WeKnora's own default file limit
 // (MAX_FILE_SIZE_MB, 50 MB). A larger file would be refused by WeKnora after
-// the upload had crossed the network, so Multica refuses it first.
+// the upload had crossed the network, so Delegora refuses it first.
 const DefaultKnowledgeUploadMaxBytes = 50 << 20
 
 const knowledgeMaxFileName = 255

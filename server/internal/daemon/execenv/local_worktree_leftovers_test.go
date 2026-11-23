@@ -325,7 +325,7 @@ func TestSaveLeftoversNeverOverwritesAnEarlierSave(t *testing.T) {
 	_ = removeLocalWorktreeDir(repo, wt.Path, worktreeTestLogger())
 }
 
-// Leftover refs go with their branch: Multica drops them when it drops the
+// Leftover refs go with their branch: Delegora drops them when it drops the
 // branch, and a later prepare prunes those of a branch the user deleted.
 func TestLeftoverRefsAreDroppedWithTheirBranch(t *testing.T) {
 	t.Parallel()

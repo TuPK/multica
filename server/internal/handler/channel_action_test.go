@@ -302,7 +302,7 @@ func TestChannelPress_UnlinkedSenderIsRefusedWithAppLink(t *testing.T) {
 	p := env.Proposal
 
 	res := env.press(t, env.Installs, "nobody-"+uuid.NewString(), env.token(t, p.ID, service.ProposalDecisionApprove))
-	if res.Settled || !strings.Contains(res.Reply, "Link your Multica account") || !strings.Contains(res.Reply, "https://app.example") {
+	if res.Settled || !strings.Contains(res.Reply, "Link your Delegora account") || !strings.Contains(res.Reply, "https://app.example") {
 		t.Fatalf("unlinked press = %+v, want the link prompt with the app link", res)
 	}
 	if got := proposalState(t, p.ID); got != "pending" {

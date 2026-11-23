@@ -139,7 +139,7 @@ func (f *HTTPConnectionTokenFetcher) Endpoint(ctx context.Context, creds Install
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	// Locale header is sent verbatim by the SDK — Lark uses it for the
 	// error `msg` field (Chinese vs English). We pick zh because that's
-	// the audience Multica server logs are read by today; if i18n
+	// the audience Delegora server logs are read by today; if i18n
 	// matters later this becomes an env or a per-installation knob.
 	req.Header.Set("locale", "zh")
 	resp, err := f.cfg.HTTPClient.Do(req)

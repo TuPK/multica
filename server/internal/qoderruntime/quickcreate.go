@@ -11,7 +11,7 @@ import (
 
 // quickCreate holds the modal selections for a quick-create run. The Qoder
 // agent only drafts the issue; the bridge creates it with the task credential,
-// because a managed session has no Multica CLI.
+// because a managed session has no Delegora CLI.
 type quickCreate struct {
 	Priority      string   `json:"priority,omitempty"`
 	DueDate       string   `json:"due_date,omitempty"`
@@ -49,7 +49,7 @@ func prepareQuickCreate(t *claimedTask, r *run) *run {
 	r.QuickCreate = qc
 
 	var p strings.Builder
-	p.WriteString("A Multica user wants a new issue created from the input below. Do not change code and do not open pull requests. Draft the issue and reply with ONLY a JSON object, no other text:\n")
+	p.WriteString("A Delegora user wants a new issue created from the input below. Do not change code and do not open pull requests. Draft the issue and reply with ONLY a JSON object, no other text:\n")
 	p.WriteString(`{"title": "...", "description": "...", "priority": "urgent|high|medium|low"}` + "\n\n")
 	p.WriteString("- title: a concise but semantically rich summary.\n")
 	p.WriteString("- description: Markdown. Faithfully restate what the user wants, preserving names, identifiers, paths, code and links verbatim. Drop routing wrappers such as \"create an issue\" or \"assign to X\". Never invent requirements or echo the title.\n")
@@ -83,7 +83,7 @@ func (b *Bridge) createQuickIssue(ctx context.Context, r *run) error {
 	}
 	if qc.token == "" {
 		if qc.Submitted {
-			// The create request may have reached Multica before the restart.
+			// The create request may have reached Delegora before the restart.
 			return fail("the Qoder bridge restarted while creating the issue; check whether it was created before retrying quick-create")
 		}
 		return fail("the Qoder bridge restarted before the issue was created; retry quick-create")
@@ -140,7 +140,7 @@ func (b *Bridge) createQuickIssue(ctx context.Context, r *run) error {
 		// same-titled issue from someone else is reported as not found.
 		r.Output = "Created issue: " + draft.Title
 	case definitelyRejected(err):
-		return fail("Multica rejected the issue: " + err.Error())
+		return fail("Delegora rejected the issue: " + err.Error())
 	default:
 		return err
 	}

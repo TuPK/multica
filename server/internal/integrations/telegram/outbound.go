@@ -1101,7 +1101,7 @@ func (o *Outbound) initializeTerminalReply(ctx context.Context, reply *terminalR
 		}
 		// Never deliver a reply this process does not own: an unowned send is
 		// the duplicate this whole mechanism exists to remove. The run's
-		// outcome is still in Multica, and the row shows nothing was sent.
+		// outcome is still in Delegora, and the row shows nothing was sent.
 		return terminalRequestResult{done: true, err: fmt.Errorf("claim telegram reply delivery: %w", err)}
 	case status == deliveryClosed:
 		// Already delivered and settled — a second completion event for this
@@ -1419,7 +1419,7 @@ func (o *Outbound) editNoticeOntoPlaceholder(ctx context.Context, api *botAPI, r
 		return terminalRequestResult{retryAt: o.now()}
 	case isPermanentEditRejection(err):
 		// Keep the placeholder rather than duplicating the turn: the run's
-		// outcome is still visible in Multica.
+		// outcome is still visible in Delegora.
 		o.logger.WarnContext(ctx, "telegram outbound: failure notice edit permanently rejected",
 			"turn_id", uuidText(reply.turn.id), "error", err)
 		o.settleDelivery(ctx, reply.lease, "edit_rejected")

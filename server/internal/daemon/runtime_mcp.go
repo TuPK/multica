@@ -24,7 +24,7 @@ type runtimeLocalMcpServerSummary struct {
 }
 
 // mergeRuntimeAndAgentMcpConfig builds the task-local MCP configuration used
-// when an agent has MCP servers managed by Multica. Runtime servers are the
+// when an agent has MCP servers managed by Delegora. Runtime servers are the
 // base layer and the agent's entries win on a same-name collision. The merge
 // happens inside the local daemon so runtime URLs, headers, commands, and env
 // values never need to leave the machine.
@@ -346,7 +346,7 @@ func normalizeRuntimeMcpEntry(provider string, value any) any {
 	if !ok || provider != "codex" {
 		return value
 	}
-	// Multica's canonical remote shape calls these `headers`; Codex stores
+	// Delegora's canonical remote shape calls these `headers`; Codex stores
 	// them as `http_headers`. Keep the original key as well so less common
 	// Codex-specific settings round-trip through renderCodexMcpServersBlock.
 	if headers, ok := entry["http_headers"]; ok {

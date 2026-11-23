@@ -34,7 +34,7 @@ type ExecOptions struct {
 	// PiSkillPaths contains only the SKILL.md files written for this task by
 	// the daemon. Pi loads them explicitly without trusting other project files.
 	PiSkillPaths []string
-	// SystemPrompt carries the Multica runtime brief for the few providers
+	// SystemPrompt carries the Delegora runtime brief for the few providers
 	// that cannot pick it up from disk. The daemon leaves it empty for every
 	// other provider (see daemon.providerNeedsInlineSystemPrompt), because the
 	// brief is already delivered as a per-task context file in the workdir —
@@ -99,13 +99,13 @@ type ExecOptions struct {
 	// knows the resume is gone, and the backend covers only the case the daemon
 	// cannot see — a live resume RPC rejected mid-run.
 	ResumeContinuityNotice string
-	// TaskToken is the task-scoped Multica API credential (mat_...) the server
+	// TaskToken is the task-scoped Delegora API credential (mat_...) the server
 	// mints at claim time. CLI backends receive it as MULTICA_TOKEN in the
 	// subprocess environment. Backends that delegate remotely (museapp) forward
-	// it in their wire request so the remote worker can call the Multica API
+	// it in their wire request so the remote worker can call the Delegora API
 	// with the same scoped identity. Empty when the server did not provide one.
 	TaskToken string
-	// MulticaServerURL is the Multica API base URL (e.g.
+	// MulticaServerURL is the Delegora API base URL (e.g.
 	// https://multica.example.com). Remote backends forward it so the worker
 	// knows where to call; CLI backends get it as MULTICA_SERVER_URL.
 	MulticaServerURL string
@@ -416,7 +416,7 @@ type Config struct {
 // migration 254 to add reasonix, migration 313 to add dsh, migration 342 to
 // add mcode, migration 370 to add dim, migration 403 to add zeroclaw, and
 // migration 441 to add codearts): a custom runtime profile may
-// only be based on a backend Multica officially supports.
+// only be based on a backend Delegora officially supports.
 // qoder and qoderclicn share the same ACP backend; keeping both provider keys
 // lets the daemon auto-detect and register the international and China-region
 // binaries independently. traecli (Trae) has a New backend, launch

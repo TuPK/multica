@@ -52,7 +52,7 @@ func TestThemeStoreRoutes(t *testing.T) {
 		switch r.URL.Path {
 		case "/index.json":
 			_ = json.NewEncoder(w).Encode(map[string]any{"themes": []any{map[string]any{
-				"id": "sample", "name": "Sample", "author": "Multica", "repo": "multica-ai/multica-theme-sample",
+				"id": "sample", "name": "Sample", "author": "Delegora", "repo": "multica-ai/multica-theme-sample",
 				"modes": []string{"light", "dark"}, "version": "1.0.0", "tag": "v1.0.0",
 				"package":     map[string]any{"url": "https://registry.test/theme.zip", "sha256": hex.EncodeToString(sum[:]), "size": len(zip)},
 				"screenshots": map[string]string{"light": "shots/light.png"},

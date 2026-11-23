@@ -1156,7 +1156,7 @@ func (r *companyRun) ensureVentures(ctx context.Context) (string, string, error)
 	return CompanyStepCreated, "provisioned the knowledge base and its ventures base", nil
 }
 
-// systemWriterKinds are the kinds Multica writes itself: a decision record when
+// systemWriterKinds are the kinds Delegora writes itself: a decision record when
 // the boss decides, a brief archive when the Secretary publishes a brief. Their
 // publish policy is auto by design (spec 3.4). Every other kind keeps the
 // default manual policy, so the step does not write those rows.

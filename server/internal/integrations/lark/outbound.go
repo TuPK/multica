@@ -80,7 +80,7 @@ type defaultRenderer struct{}
 func NewDefaultRenderer() Renderer { return &defaultRenderer{} }
 
 func (defaultRenderer) Render(in RenderInput) (CardRender, error) {
-	header := "Multica"
+	header := "Delegora"
 	if in.AgentName != "" {
 		header = in.AgentName
 	}
@@ -349,7 +349,7 @@ func (p *Patcher) processEvent(ctx context.Context, e events.Event) error {
 
 	// Only bound sessions reach here, so classify the task origin before
 	// spending any send work. Web/mobile direct-chat tasks can reuse a session
-	// that originated in Lark, but their replies belong only in Multica.
+	// that originated in Lark, but their replies belong only in Delegora.
 	// Sealed channel tasks own an input batch just like direct tasks, so the
 	// discriminator is the immutable channel_ingested provenance of that
 	// batch, not chat_input_task_id presence (which #5645 originally used).
@@ -453,7 +453,7 @@ func (p *Patcher) sweepTypingForTask(ctx context.Context, taskID pgtype.UUID, ta
 //     messaged the chat most recently, so a slow answer cannot mention a
 //     later speaker.
 //
-//   - It is the exact platform identity, not one re-derived from the Multica
+//   - It is the exact platform identity, not one re-derived from the Delegora
 //     member. channel_user_binding is unique on (installation_id,
 //     channel_user_id) only, so one member can hold several open_ids on a
 //     single installation; a member-keyed reverse lookup would then be free
@@ -672,7 +672,7 @@ func isTopicIsolated(b ChatSessionBinding) bool {
 // provide would be silently undone.
 //
 // So we decline to send. The member can ask again, the answer is still in
-// Multica, and this is a one-time window: it is reachable only for
+// Delegora, and this is a one-time window: it is reachable only for
 // generations predating migration 460 that are recovered after deploy without
 // a new inbound turn, since every turn after deploy records a trigger before
 // its task is enqueued.

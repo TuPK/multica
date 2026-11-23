@@ -410,7 +410,7 @@ func TestChatWakeupHonorsPrivateProjects(t *testing.T) {
 func TestChatWakeupReplyGoesWhereTheRequestCameFrom(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("web request stays in Multica", func(t *testing.T) {
+	t.Run("web request stays in Delegora", func(t *testing.T) {
 		f := newChatWakeupFixture(t)
 		seedChannelTaskBinding(t, f.fx.Pool, f.session)
 		w := f.create(t, ChatWakeupInput{AfterSeconds: 60})

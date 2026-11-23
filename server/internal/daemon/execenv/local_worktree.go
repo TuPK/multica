@@ -1080,7 +1080,7 @@ func commitIdentityArgs(dir string) []string {
 		return nil
 	}
 	return []string{
-		"-c", "user.name=Multica Agent",
+		"-c", "user.name=Delegora Agent",
 		"-c", "user.email=agent@multica.local",
 	}
 }
@@ -1315,7 +1315,7 @@ const (
 // PARENT is the branch tip at that moment, and whose message names the owner.
 //
 // The checkpoint is what makes the record about this BRANCH rather than merely
-// about its name. Owner alone proved only that Multica once wrote a branch
+// about its name. Owner alone proved only that Delegora once wrote a branch
 // called this, and that stayed true after the user deleted it and created their
 // own under the same name — the next task then continued into their work
 // (MUL-6881 review). Requiring the checkpoint to still be an ancestor of the
@@ -1356,7 +1356,7 @@ func writeBranchRecord(gitRoot, branch, userState, checkpoint string, owner bran
 func branchRecordMessage(owner branchOwner) string {
 	var b strings.Builder
 	b.WriteString("multica: task branch record\n\n")
-	b.WriteString("Written by Multica for a local_directory task running in worktree mode. Its\n")
+	b.WriteString("Written by Delegora for a local_directory task running in worktree mode. Its\n")
 	b.WriteString("tree is the user's working directory as this branch last carried it, and its\n")
 	b.WriteString("second parent is the branch tip at that moment — together they let the next\n")
 	b.WriteString("turn replay only what changed since, and prove the branch is still the one\n")
@@ -2349,7 +2349,7 @@ func dropBranch(gitRoot, branch string, logger *slog.Logger) {
 }
 
 // pruneOrphanedStateRefs drops the snapshot of any branch that is no longer
-// there. Multica deletes both together, but the branch is the user's to delete,
+// there. Delegora deletes both together, but the branch is the user's to delete,
 // rename or merge away at any time, and a ref left behind would pin their whole
 // working tree as of some past turn against `git gc` forever.
 //

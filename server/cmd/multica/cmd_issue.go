@@ -1244,7 +1244,7 @@ func runIssuePullRequestsLink(cmd *cobra.Command, args []string) error {
 		if isUnsyncedPullRequestError(err) {
 			// The generic not-found message would send the user hunting for a
 			// wrong ID; the PR is simply not mirrored here yet.
-			return fmt.Errorf("pull request %s is not in this workspace yet: it can be linked once its repository is connected to Multica and the PR has synced", ref)
+			return fmt.Errorf("pull request %s is not in this workspace yet: it can be linked once its repository is connected to Delegora and the PR has synced", ref)
 		}
 		return fmt.Errorf("link pull request: %w", err)
 	}

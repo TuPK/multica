@@ -23,7 +23,7 @@ import (
 	"github.com/multica-ai/multica/server/pkg/remotemcp"
 )
 
-// The hook engine: the one place Multica calls OUT to a plugin's own server.
+// The hook engine: the one place Delegora calls OUT to a plugin's own server.
 //
 // Everything before this ran the other way — a sandboxed surface asked the host
 // and the host acted on the signed-in user's session, so no request ever left

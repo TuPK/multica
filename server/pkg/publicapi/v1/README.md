@@ -1,4 +1,4 @@
-# Multica Public API v1
+# Delegora Public API v1
 
 This package is the source of truth for the first versioned Public API slice:
 

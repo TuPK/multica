@@ -4,7 +4,7 @@ A small, standalone Go SDK for the [Composio v3.1 REST API](https://docs.composi
 
 This package is intentionally self-contained — its only third-party dependency
 is [`github.com/go-resty/resty/v2`](https://github.com/go-resty/resty). It does
-not import any other Multica package, so it can be reused by other services or
+not import any other Delegora package, so it can be reused by other services or
 extracted into its own module unchanged.
 
 ## Scope (MVP)
@@ -131,7 +131,7 @@ Current coverage: **82.2 %**.
 
 ## Design notes
 
-- **Standalone.** Zero coupling to Multica internals — depend on this package
+- **Standalone.** Zero coupling to Delegora internals — depend on this package
   from `server/internal/integrations/composio` (Stage 2 integration glue) or
   anywhere else without circular-import risk.
 - **`x-api-key`, not Bearer.** Composio's v3.1 REST API authenticates with an

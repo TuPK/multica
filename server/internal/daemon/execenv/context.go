@@ -476,7 +476,7 @@ var nonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
 //     `name` at import time) → prepend `name: <slug>` as the first key of
 //     the existing block so OpenCode can still route the skill.
 //
-// `name` is the one key Multica must own. Runtimes disagree on which field
+// `name` is the one key Delegora must own. Runtimes disagree on which field
 // identifies a skill — Claude routes on the directory name, OpenCode on the
 // frontmatter `name` — so letting the two diverge gives a single skill two
 // different invocable names depending on where it runs (MUL-5529). The slug is
@@ -953,14 +953,14 @@ func sanitizeSkillName(name string) string {
 // local_directory teardown without touching user-owned skill directories
 // that happen to live alongside ours under the same skills/ parent.
 //
-// When a Multica skill's natural slug collides with a user-installed
+// When a Delegora skill's natural slug collides with a user-installed
 // skill at the same path, we allocate a collision-free sibling slug
 // (e.g. `issue-review-multica`) and write there instead. Provider-native
 // discovery still picks it up because every subdir under skillsDir is a
 // distinct skill; the user's original directory stays bit-for-bit
 // intact. Without this fallback writeSkillFiles would have to either
 // overwrite user bytes (the bug PR #3444 review caught) or skip the
-// skill entirely (which would silently drop a Multica skill the agent
+// skill entirely (which would silently drop a Delegora skill the agent
 // expects to see).
 func writeSkillFiles(skillsDir string, skills []SkillContextForEnv, manifest *sidecarManifest) error {
 	return writeSkillFilesTracked(skillsDir, skills, manifest, nil)

@@ -74,7 +74,7 @@ func TestCursorSupplementHookCommandRequiresInstallableHooks(t *testing.T) {
 
 	leftover := writeHooks(t, `{"version":1,"hooks":{"postToolUse":[{"command":"'/opt/multica' '`+agent.CursorHookHelperArg+`'"}]}}`)
 	if _, ok := cursorSupplementHookCommand(&execenv.Environment{WorkDir: leftover}); !ok {
-		t.Fatal("steering refused for a workdir holding only Multica's own hooks.json")
+		t.Fatal("steering refused for a workdir holding only Delegora's own hooks.json")
 	}
 
 	cursorFile := t.TempDir()

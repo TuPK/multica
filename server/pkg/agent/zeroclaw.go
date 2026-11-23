@@ -238,7 +238,7 @@ func (b *zeroclawBackend) Execute(ctx context.Context, prompt string, opts ExecO
 	// runtime, so reaching here means a value saved before that — warn and
 	// continue rather than bricking the task over config we cannot honour.
 	if len(opts.McpConfig) > 0 {
-		b.cfg.Logger.Warn("zeroclaw ignores MCP servers supplied by Multica; its ACP server reads MCP only from its own config-dir ([[mcp.servers]] + [mcp_bundles.*] + agents.<alias>.mcp_bundles with acp_enable_mcp = true)",
+		b.cfg.Logger.Warn("zeroclaw ignores MCP servers supplied by Delegora; its ACP server reads MCP only from its own config-dir ([[mcp.servers]] + [mcp_bundles.*] + agents.<alias>.mcp_bundles with acp_enable_mcp = true)",
 			"backend", "zeroclaw",
 		)
 	}

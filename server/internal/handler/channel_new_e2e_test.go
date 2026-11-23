@@ -112,7 +112,7 @@ func TestChannelClearCommandE2EStartsFreshProviderSession(t *testing.T) {
 }
 
 // /new changes only the future inbound route. A task already queued from the
-// old generation must keep both its Multica Chat and exact external reply
+// old generation must keep both its Delegora Chat and exact external reply
 // target, while the new command gets a distinct Chat and delivery snapshot.
 func TestChannelChatCommandE2ERotatesRouteAndFreezesTaskDelivery(t *testing.T) {
 	if testHandler == nil {
@@ -348,7 +348,7 @@ func TestChannelChatCommandE2ERotatesRouteAndFreezesTaskDelivery(t *testing.T) {
 		}
 	}
 
-	// The empty channel-created Chat remains writable from Multica. Its first
+	// The empty channel-created Chat remains writable from Delegora. Its first
 	// direct turn initializes the same deterministic title, while the direct
 	// task deliberately gets no external delivery snapshot.
 	emptySessionUUID := util.MustParseUUID(emptySessionID)

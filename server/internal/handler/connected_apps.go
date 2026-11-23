@@ -1429,7 +1429,7 @@ func writeDecisionError(w http.ResponseWriter, err error) {
 }
 
 // ApproveAppRequest (POST /api/app-requests/{id}/approve). The approver may
-// send edited arguments; Multica runs the call and resumes the agent.
+// send edited arguments; Delegora runs the call and resumes the agent.
 func (h *Handler) ApproveAppRequest(w http.ResponseWriter, r *http.Request) {
 	if !h.appsReady(w, r) {
 		return
@@ -1547,7 +1547,7 @@ func (h *Handler) ResumeAfterDecision(ctx context.Context, req db.AppActionReque
 	if err != nil {
 		return err
 	}
-	content := "[Multica] " + strings.TrimSpace(note)
+	content := "[Delegora] " + strings.TrimSpace(note)
 	sent, err := h.TaskService.SendDirectChatMessage(ctx, session, agent, actorID, content, nil, "member", actorID)
 	if err != nil {
 		return err

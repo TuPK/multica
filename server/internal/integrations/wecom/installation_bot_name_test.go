@@ -76,14 +76,14 @@ func botNameParams(bot, displayName string) InstallationParams {
 func TestRotatingTheSecretKeepsTheBotName(t *testing.T) {
 	ctx, _, svc := setupBotName(t)
 
-	if _, err := svc.Upsert(ctx, botNameParams(wcNameBotA, "Multica Bot")); err != nil {
+	if _, err := svc.Upsert(ctx, botNameParams(wcNameBotA, "Delegora Bot")); err != nil {
 		t.Fatalf("first install: %v", err)
 	}
 	again, err := svc.Upsert(ctx, botNameParams(wcNameBotA, ""))
 	if err != nil {
 		t.Fatalf("secret rotation: %v", err)
 	}
-	if again.BotDisplayName != "Multica Bot" {
+	if again.BotDisplayName != "Delegora Bot" {
 		t.Fatalf("BotDisplayName after rotation = %q, want it kept — a blank optional field "+
 			"erased the name, and every group slash command goes back to the whitespace guess", again.BotDisplayName)
 	}
@@ -95,7 +95,7 @@ func TestRotatingTheSecretKeepsTheBotName(t *testing.T) {
 func TestRenamingTheBotOverwritesTheStoredName(t *testing.T) {
 	ctx, _, svc := setupBotName(t)
 
-	if _, err := svc.Upsert(ctx, botNameParams(wcNameBotA, "Multica Bot")); err != nil {
+	if _, err := svc.Upsert(ctx, botNameParams(wcNameBotA, "Delegora Bot")); err != nil {
 		t.Fatalf("first install: %v", err)
 	}
 	renamed, err := svc.Upsert(ctx, botNameParams(wcNameBotA, "Acme Support Bot"))
@@ -113,7 +113,7 @@ func TestRenamingTheBotOverwritesTheStoredName(t *testing.T) {
 func TestSwappingTheBotDoesNotInheritTheOldName(t *testing.T) {
 	ctx, _, svc := setupBotName(t)
 
-	if _, err := svc.Upsert(ctx, botNameParams(wcNameBotA, "Multica Bot")); err != nil {
+	if _, err := svc.Upsert(ctx, botNameParams(wcNameBotA, "Delegora Bot")); err != nil {
 		t.Fatalf("first install: %v", err)
 	}
 	swapped, err := svc.Upsert(ctx, botNameParams(wcNameBotB, ""))
@@ -130,7 +130,7 @@ func TestSwappingTheBotDoesNotInheritTheOldName(t *testing.T) {
 // reads at boot.
 func TestTheBotNameSurvivesTheConfigRoundTrip(t *testing.T) {
 	t.Parallel()
-	cfg, err := encodeInstallConfig(Installation{BotID: "bot-xyz", BotDisplayName: "Multica Bot"})
+	cfg, err := encodeInstallConfig(Installation{BotID: "bot-xyz", BotDisplayName: "Delegora Bot"})
 	if err != nil {
 		t.Fatalf("encode: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestTheBotNameSurvivesTheConfigRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if out.BotDisplayName != "Multica Bot" {
-		t.Fatalf("BotDisplayName round trip = %q, want Multica Bot", out.BotDisplayName)
+	if out.BotDisplayName != "Delegora Bot" {
+		t.Fatalf("BotDisplayName round trip = %q, want Delegora Bot", out.BotDisplayName)
 	}
 }

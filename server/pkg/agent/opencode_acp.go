@@ -146,7 +146,7 @@ func opencodeACPToolName(name, title, kind string) string {
 }
 
 // opencodeACPChildUpdate reports whether a session/update came from a 2.x
-// subagent's child session rather than the session Multica prompted.
+// subagent's child session rather than the session Delegora prompted.
 func opencodeACPChildUpdate(update json.RawMessage) bool {
 	var u struct {
 		Meta map[string]json.RawMessage `json:"_meta"`

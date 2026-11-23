@@ -523,7 +523,7 @@ type SetKnowledgeBaseLLMSettingsParams struct {
 // Platform side of the knowledge base (plan 10.11, 10.13, 10.14): model and base
 // settings, restricted-base access, the WeKnora login of each owner, and the
 // tenant deprovision queue.
-// Records the switches Multica asked WeKnora to apply, and marks the base's
+// Records the switches Delegora asked WeKnora to apply, and marks the base's
 // defaults as written so a later enable leaves an admin's choice alone.
 func (q *Queries) SetKnowledgeBaseLLMSettings(ctx context.Context, arg SetKnowledgeBaseLLMSettingsParams) (int64, error) {
 	result, err := q.db.Exec(ctx, setKnowledgeBaseLLMSettings,

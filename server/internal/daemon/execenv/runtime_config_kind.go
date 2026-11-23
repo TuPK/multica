@@ -12,7 +12,7 @@ package execenv
 type taskKind int
 
 const (
-	// kindIssue: this run operates on a real Multica issue. It deliberately
+	// kindIssue: this run operates on a real Delegora issue. It deliberately
 	// does NOT distinguish comment-triggered from assignment-triggered runs.
 	//
 	// Those were two kinds until MUL-5377. Splitting them made the rendered
@@ -55,7 +55,7 @@ func classifyTask(ctx TaskContextForEnv) taskKind {
 	}
 }
 
-// hasIssueContext returns true for the kinds that operate on a real Multica
+// hasIssueContext returns true for the kinds that operate on a real Delegora
 // issue and therefore can read / write issue-scoped state. The slim
 // dispatcher gates one section on this predicate:
 //

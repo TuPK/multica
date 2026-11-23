@@ -351,7 +351,7 @@ func TestKnowledgeListAndSearchStates(t *testing.T) {
 		t.Fatalf("empty query = %v", err)
 	}
 
-	// Offline: reads degrade to the state with Multica's own records.
+	// Offline: reads degrade to the state with Delegora's own records.
 	e.fake.SetUnavailable(true)
 	r, err := e.svc.Search(ctx, e.ws, "published", "", 0)
 	if err != nil || r.State != "offline" || len(r.Hits) != 0 {

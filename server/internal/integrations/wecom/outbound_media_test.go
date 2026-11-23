@@ -220,8 +220,8 @@ func TestProcessEvent_SendsTheAnswerAndThenTheFile(t *testing.T) {
 
 // A file is a second way an answer reaches the room, so the origin gate has to
 // refuse it on the same terms it refuses the words. A session that started in
-// WeCom can be continued from the Multica web UI, and that answer's artifacts
-// belong in Multica — pushing them into a group chat puts a file in front of
+// WeCom can be continued from the Delegora web UI, and that answer's artifacts
+// belong in Delegora — pushing them into a group chat puts a file in front of
 // everyone in the room, which is the failure the gate exists to prevent.
 //
 // This is also what keeps the gate ahead of the upload: the upload is a write
@@ -236,7 +236,7 @@ func TestProcessEvent_AWebUIAnswerDeliversNeitherWordsNorFile(t *testing.T) {
 		ContentType: "application/pdf",
 		SizeBytes:   9,
 	})
-	q.channelIngested = askedInTheWebUI() // asked in Multica, not over WeCom
+	q.channelIngested = askedInTheWebUI() // asked in Delegora, not over WeCom
 	o, instID, conn := newOutboundWithMedia(t, q, &fakeObjectStore{key: "obj/abc", data: []byte("SECRETS!!!")})
 	q.sessionBinding.InstallationID = instID
 	q.installation.ID = instID

@@ -185,7 +185,7 @@ func acquireGitRootFileLock(gitRoot string, logger *slog.Logger) (*os.File, erro
 			// both then believe they hold it — the exact overlap this lock
 			// exists to prevent. The kernel already releases it when the
 			// holding process exits, so an idle lock file is never stale.
-			return nil, fmt.Errorf("%w: %q was still locked after %s by another Multica task (%s) — "+
+			return nil, fmt.Errorf("%w: %q was still locked after %s by another Delegora task (%s) — "+
 				"wait for that task to finish or stop it, then retry; the lock is released "+
 				"automatically when the holding process exits, so the file itself is never stale "+
 				"and deleting it would let two tasks into this section at once",

@@ -618,7 +618,7 @@ ORDER BY created_at ASC
 LIMIT 20
 `
 
-// Writes WeKnora has not accepted yet whose author is Multica itself.
+// Writes WeKnora has not accepted yet whose author is Delegora itself.
 func (q *Queries) ListRetryableKnowledgeLinks(ctx context.Context, workspaceID pgtype.UUID) ([]KnowledgeLink, error) {
 	rows, err := q.db.Query(ctx, listRetryableKnowledgeLinks, workspaceID)
 	if err != nil {

@@ -37,7 +37,7 @@ const (
 // teamAppHasAccount reports whether the workspace already has a team account
 // for slug that is not revoked. Connecting again then reauthorizes it: a
 // workspace keeps one team account per app, so the count never grows.
-// Multica does not store the external identity, so switching to another
+// Delegora does not store the external identity, so switching to another
 // external account on reauthorization is indistinguishable and allowed.
 func (h *Handler) teamAppHasAccount(ctx context.Context, workspaceID pgtype.UUID, slug string) (bool, error) {
 	rows, err := h.Queries.ListWorkspaceComposioConnections(ctx, workspaceID)

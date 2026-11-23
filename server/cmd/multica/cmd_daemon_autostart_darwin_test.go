@@ -106,7 +106,7 @@ func TestLaunchAgentRoundTrip(t *testing.T) {
 }
 
 // TestLaunchAgentLeavesForeignPlistAlone pins the second line of defense: a
-// plist at our path without the Multica marker is the user's own agent, and
+// plist at our path without the Delegora marker is the user's own agent, and
 // refresh must neither overwrite it nor report it as ours.
 func TestLaunchAgentLeavesForeignPlistAlone(t *testing.T) {
 	home := t.TempDir()

@@ -629,7 +629,7 @@ func handleSkillImportError(cmd *cobra.Command, err error) error {
 // such failures with 502 (source error, e.g. SKILL.md not found at that path),
 // 503 (source temporarily unavailable, usually GitHub rate limiting) or 504
 // (fetch deadline exceeded), each with a hand-written message. The generic 5xx
-// copy says the Multica service is unavailable, which points the user at the
+// copy says the Delegora service is unavailable, which points the user at the
 // wrong system. A body without a message (a proxy's own 502/504 page) keeps the
 // generic copy.
 func withSkillSourceMessage(leadIn string, err error) error {

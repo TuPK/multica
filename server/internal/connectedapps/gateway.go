@@ -223,7 +223,7 @@ func (s *Service) dispatch(ctx context.Context, rn *run, req rpcRequest) (rpcRes
 	return resp, notification
 }
 
-const gatewayInstructions = "Multica apps. Use apps_list to see your apps, apps_search_tools to find a tool, apps_get_tool for its input schema, then apps_run_tool. " +
+const gatewayInstructions = "Delegora apps. Use apps_list to see your apps, apps_search_tools to find a tool, apps_get_tool for its input schema, then apps_run_tool. " +
 	"Allowed calls run immediately and return their result. Never work around a blocked call. " +
 	"If an account is not connected, use apps_request_connection and end your turn; you will be resumed after it is connected. " +
 	"If you need an app that apps_list does not show, call apps_request_connection with its slug (e.g. googlecalendar) and end your turn: " +

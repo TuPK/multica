@@ -21,7 +21,7 @@ import (
 //     action=begin and (archetype=PersonalAgent / auth_method=client_secret
 //     / request_user_info=open_id). Lark returns a device_code, a
 //     verification_uri_complete (the QR target), a polling interval,
-//     and an expiry. Multica renders the QR, the user scans it in the
+//     and an expiry. Delegora renders the QR, the user scans it in the
 //     Lark app, walks the "create a PersonalAgent for this account"
 //     flow, and authorizes.
 //
@@ -111,7 +111,7 @@ type RegistrationConfig struct {
 	HTTPClient *http.Client
 
 	// Source labels the QR-code URL's `source` query param so Lark's
-	// telemetry can attribute installs back to Multica. Empty defaults
+	// telemetry can attribute installs back to Delegora. Empty defaults
 	// to "multica".
 	Source string
 
@@ -155,7 +155,7 @@ func NewRegistrationClient(cfg RegistrationConfig) *RegistrationClient {
 // BeginResult is what Begin returns to RegistrationService.
 type BeginResult struct {
 	DeviceCode string
-	// QRCodeURL is the verification_uri_complete with Multica's `source`
+	// QRCodeURL is the verification_uri_complete with Delegora's `source`
 	// telemetry params appended; render this as a QR image client-side.
 	QRCodeURL string
 	// Domain is the polling host this session opened against. The
@@ -246,7 +246,7 @@ func (e *RegistrationError) Error() string {
 //
 // namePreset pre-fills the bot/app name on Lark's "create a
 // PersonalAgent" form so the installed bot defaults to e.g.
-// "<agent> - Multica" instead of Lark's auto-generated
+// "<agent> - Delegora" instead of Lark's auto-generated
 // "{用户姓名}的智能助手". It is a user-editable default (the user can
 // still change it on the form), and it rides on the QR URL — not the
 // begin POST body, which has no name field. Empty omits the pre-fill.
@@ -466,7 +466,7 @@ func (c *RegistrationClient) doForm(ctx context.Context, domain string, form url
 // decorateQRCodeURL appends the SDK-style telemetry params Lark expects
 // on the QR-image URL. Without `from=sdk&tp=sdk&source=<src>` the
 // scanner UI on the user's phone shows a less polished prompt and Lark
-// cannot attribute installs back to Multica in their analytics.
+// cannot attribute installs back to Delegora in their analytics.
 //
 // namePreset, when non-empty, is appended as `name=<...>` to pre-fill
 // the bot/app name on Lark's "create a PersonalAgent" form. This

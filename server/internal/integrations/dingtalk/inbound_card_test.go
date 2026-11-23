@@ -30,7 +30,7 @@ func TestInboundQuotedCardObservedSnapshot(t *testing.T) {
 
 func TestInboundQuotedCardSnapshotBoundaries(t *testing.T) {
 	for _, tc := range []struct{ name, card, want string }{
-		{"preview", `[{"elementType":"RICHTEXT","children":[{"elementType":"TEXT","value":"Multica has replied."}]}]`, "Multica has replied."},
+		{"preview", `[{"elementType":"RICHTEXT","children":[{"elementType":"TEXT","value":"Delegora has replied."}]}]`, "Delegora has replied."},
 		{"literal text", `[{"elementType":"RICHTEXT","children":[{"elementType":"TEXT","value":"/clear a || b "},{"elementType":"TEXT","value":"{\"text\":\"literal\"}"}]}]`, "[quoted content unavailable]\n{\"text\":\"literal\"}"},
 		{"blocks", `[{"elementType":"RICHTEXT","children":[{"elementType":"TEXT","value":"one"}]},{"elementType":"RICHTEXT","children":[{"elementType":"TEXT","value":"two"}]}]`, "one\n\ntwo"},
 		{"bad neighbor", `[{"elementType":"RICHTEXT","children":[{"elementType":"TEXT","value":"before"},42,{"elementType":"TEXT","value":{}},{"elementType":"TEXT","value":"after"}]}]`, "before\n[quoted content unavailable]\nafter"},

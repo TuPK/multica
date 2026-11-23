@@ -294,7 +294,7 @@ func TestBindingPromptFitsInsideThePreviewCap(t *testing.T) {
 	}
 	// Mirrors replier.go sendBindingPrompt.
 	bindURL := "https://multica.example" + "/wecom/bind" + "?token=" + url.QueryEscape(rawToken)
-	upToTokenEnd := "👋 请先绑定你的 Multica 账号，才能与我对话：\n" + bindURL
+	upToTokenEnd := "👋 请先绑定你的 Delegora 账号，才能与我对话：\n" + bindURL
 
 	if n := utf8.RuneCountInString(upToTokenEnd); n > tracePreviewRunes {
 		t.Fatalf("the token ends at rune %d, past the %d-rune cap — the leak this "+

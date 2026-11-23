@@ -25,7 +25,7 @@ const (
 	EnvKey = "MULTICA_MFA_SECRET_KEY"
 
 	// Issuer is the name an authenticator app shows for the entry.
-	Issuer = "Multica"
+	Issuer = "Delegora"
 
 	// Period is the TOTP time step in seconds.
 	Period = 30

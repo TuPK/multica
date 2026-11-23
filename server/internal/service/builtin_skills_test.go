@@ -112,7 +112,7 @@ func TestBuiltinSkillsConformToTemplate(t *testing.T) {
 			// the agent did not already have. Revisit if per-reference
 			// declarations ever exist.
 			if got := strings.TrimSpace(fm["allowed-tools"]); !strings.Contains(got, "Bash(multica *)") {
-				t.Errorf("allowed-tools = %q, want access to the Multica CLI", got)
+				t.Errorf("allowed-tools = %q, want access to the Delegora CLI", got)
 			}
 
 			for _, f := range skill.Files {
@@ -468,7 +468,7 @@ func TestPlatformSkillCoversPlatformContracts(t *testing.T) {
 			want: []string{
 				"multica issue pull-requests <issue-id> --output json",
 				"Default for code-changing issue work",
-				"open or update a PR before posting the final Multica issue comment",
+				"open or update a PR before posting the final Delegora issue comment",
 				"This is a default, not",
 				"put a routable issue key in the PR **title**",
 				"body links nothing",

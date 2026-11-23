@@ -23,7 +23,7 @@ func TestMikaOnboardingOpeningCoversEveryAcceptedLanguage(t *testing.T) {
 		if !strings.Contains(opening, "Mika") {
 			t.Errorf("language %q dropped the agent name: %s", language, opening)
 		}
-		if !strings.Contains(opening, "Multica") {
+		if !strings.Contains(opening, "Delegora") {
 			t.Errorf("language %q never names the product: %s", language, opening)
 		}
 	}

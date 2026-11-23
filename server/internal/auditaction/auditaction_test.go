@@ -57,7 +57,7 @@ func TestCatalogHasNoDuplicates(t *testing.T) {
 }
 
 // The log filter accepts every action the audit package defines that either
-// server writes: the R2 actions of Multica and the billing and plan actions of
+// server writes: the R2 actions of Delegora and the billing and plan actions of
 // the platform.
 func TestIsAcceptsTheR2Actions(t *testing.T) {
 	for _, a := range []string{

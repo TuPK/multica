@@ -46,7 +46,7 @@ func (e *ConflictError) Error() string { return ErrConflict.Error() }
 func (e *ConflictError) Unwrap() error { return ErrConflict }
 
 // LoginView never contains bot credentials, the polling QR value, or a code.
-// Only the initiating Multica user can retrieve this short-lived view.
+// Only the initiating Delegora user can retrieve this short-lived view.
 type LoginView struct {
 	ID             string `json:"id"`
 	Status         string `json:"status"`

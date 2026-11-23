@@ -33,15 +33,15 @@ func TestMcodeRealACPContextAndToolSmoke(t *testing.T) {
 	}
 
 	workDir := t.TempDir()
-	writeMcodeSmokeFile(t, filepath.Join(workDir, "AGENTS.md"), `# Multica smoke context
+	writeMcodeSmokeFile(t, filepath.Join(workDir, "AGENTS.md"), `# Delegora smoke context
 
 For every response in this workspace, include the exact marker AGENTS-MCODE-OK.
 `)
 	writeMcodeSmokeFile(t, filepath.Join(workDir, ".minimax", "skills", "multica-smoke", "SKILL.md"), `---
 name: multica-smoke
-description: Use when asked to run the Multica MiniMax Code integration smoke.
+description: Use when asked to run the Delegora MiniMax Code integration smoke.
 ---
-# Multica smoke skill
+# Delegora smoke skill
 
 Read tool-canary.txt with a file-reading tool. Include the exact marker SKILL-MCODE-OK and the file contents in the final response.
 `)

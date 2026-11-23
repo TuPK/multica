@@ -1006,13 +1006,13 @@ func profileInstanceDeleteRefusal(rt db.AgentRuntime, profile db.RuntimeProfile,
 		parts = append(parts, "Edit this custom runtime and choose the machine that should keep it. Unused copies on other machines are removed when the binding is saved; move or archive their agents and finish pending tasks first. Until then, this legacy instance is kept so the machine can reconnect.")
 	case rt.Status == "online":
 		parts = append(parts, fmt.Sprintf(
-			"It is still online, so its daemon would register it again. Stop that daemon first; Multica then removes the runtime automatically after %d days offline, once no agent is bound to it and nothing is still running on it.",
+			"It is still online, so its daemon would register it again. Stop that daemon first; Delegora then removes the runtime automatically after %d days offline, once no agent is bound to it and nothing is still running on it.",
 			ttlDays,
 		))
 	case !known:
 		// Blocker set unavailable; promise only what holds regardless of it.
 		parts = append(parts, fmt.Sprintf(
-			"It is offline, and Multica removes offline runtimes automatically after %d days, once no agent is bound to them and nothing is still running on them.",
+			"It is offline, and Delegora removes offline runtimes automatically after %d days, once no agent is bound to them and nothing is still running on them.",
 			ttlDays,
 		))
 	case len(blockers.agents) > 0 || blockers.undrainedTasks > 0:
@@ -1028,7 +1028,7 @@ func profileInstanceDeleteRefusal(rt db.AgentRuntime, profile db.RuntimeProfile,
 			holds = append(holds, fmt.Sprintf("%d unfinished task(s) belong to it or to agents bound to it", n))
 		}
 		parts = append(parts, fmt.Sprintf(
-			"It is offline, but %s, which holds it in place; Multica removes the runtime automatically after %d days offline once that is cleared.",
+			"It is offline, but %s, which holds it in place; Delegora removes the runtime automatically after %d days offline once that is cleared.",
 			strings.Join(holds, " and "), ttlDays,
 		))
 		parts = append(parts, blockingAgentRemedies(blockingAgentClassesFromAgents(blockers.agents), blockingAgentScopeInstance)...)
@@ -1037,7 +1037,7 @@ func profileInstanceDeleteRefusal(rt db.AgentRuntime, profile db.RuntimeProfile,
 		}
 	default:
 		parts = append(parts, fmt.Sprintf(
-			"It is offline with no agents bound and nothing still running on it, so Multica removes it automatically after %d days offline — this row will be reclaimed without any action from you.",
+			"It is offline with no agents bound and nothing still running on it, so Delegora removes it automatically after %d days offline — this row will be reclaimed without any action from you.",
 			ttlDays,
 		))
 	}

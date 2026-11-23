@@ -227,7 +227,7 @@ type DigestKnowledge struct {
 	// Retrieval is the latest eval run against the previous one. Nil until a
 	// run is recorded. A fall beyond EvalDropThreshold carries a risk line.
 	Retrieval *DigestRetrieval `json:"retrieval"`
-	// AutoPublished lists the documents Multica published without a person
+	// AutoPublished lists the documents Delegora published without a person
 	// pressing publish since the window opened (spec 3.3). The brief's FYI names
 	// each one. Count is the total, Items is capped at DigestAutoPublishMax.
 	AutoPublished DigestAutoPublishList `json:"auto_published"`

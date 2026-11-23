@@ -41,7 +41,7 @@ const (
 	KnowledgeActorMember = "member"
 	KnowledgeActorSystem = "system"
 
-	// DecisionsKnowledgeKey is the base only Multica writes to.
+	// DecisionsKnowledgeKey is the base only Delegora writes to.
 	DecisionsKnowledgeKey = "decisions"
 
 	knowledgeMaxTitle   = 200
@@ -194,7 +194,7 @@ type KnowledgeDocumentView struct {
 }
 
 // KnowledgeDocumentList is a document listing. State is "ready", or "offline"
-// when WeKnora did not answer and only Multica's own records are listed.
+// when WeKnora did not answer and only Delegora's own records are listed.
 type KnowledgeDocumentList struct {
 	State     string                  `json:"state"`
 	Documents []KnowledgeDocumentView `json:"documents"`
@@ -786,7 +786,7 @@ func (s *KnowledgeService) DiscardDocument(ctx context.Context, workspaceID, lin
 }
 
 // DeleteDocument removes a document in any state from WeKnora and from
-// Multica's records.
+// Delegora's records.
 func (s *KnowledgeService) DeleteDocument(ctx context.Context, workspaceID, linkID pgtype.UUID) error {
 	link, err := s.loadLink(ctx, workspaceID, linkID)
 	if err != nil {
@@ -814,7 +814,7 @@ func (s *KnowledgeService) remove(ctx context.Context, workspaceID pgtype.UUID, 
 
 // ListDocuments lists a workspace's documents. kb is a key or empty for all;
 // state is "draft", "published", "failed" or empty for all. Drafts and failed
-// writes come from Multica's records; published documents come from WeKnora
+// writes come from Delegora's records; published documents come from WeKnora
 // (so ones added there appear too), enriched with the records. When WeKnora
 // does not answer, the list falls back to the records and says "offline".
 func (s *KnowledgeService) ListDocuments(ctx context.Context, workspaceID pgtype.UUID, kb, state string) (KnowledgeDocumentList, error) {
@@ -886,7 +886,7 @@ func (s *KnowledgeService) ListDocumentsFor(ctx context.Context, workspaceID pgt
 	if state != "" && state != KnowledgeLinkPublished {
 		return out, nil
 	}
-	// Published documents WeKnora holds that Multica did not write.
+	// Published documents WeKnora holds that Delegora did not write.
 	for _, b := range bases {
 		if only != nil && b.ID != only.ID {
 			continue

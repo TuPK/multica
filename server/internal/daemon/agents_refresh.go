@@ -158,7 +158,7 @@ func dshOnlyVerdicts(demotable map[string]runtimeVerdict) map[string]runtimeVerd
 }
 
 // dshProfileMismatch names a disagreement between the two states the daemon has
-// to keep aligned: whether the Multica runtime profile is installed, and whether
+// to keep aligned: whether the Delegora runtime profile is installed, and whether
 // a dsh runtime is registered.
 //
 // The kind, rather than a bare bool, is what the caller needs, because the two

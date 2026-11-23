@@ -114,7 +114,7 @@ Splitting one feature:
 MUL-10 Backend: merge API          MUL-11 Frontend: merge button
 
 # correct — one issue, one PR, reviewable commits
-MUL-9: merge PRs from Multica      (api, then UI, then docs as separate commits)
+MUL-9: merge PRs from Delegora      (api, then UI, then docs as separate commits)
 ```
 
 Serial / phased sub-issues (don't start the whole chain at once):

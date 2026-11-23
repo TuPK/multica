@@ -36,7 +36,7 @@ const preparationHelperTestMode = "execenv-preparation-helper"
 // runs. Tests here isolate themselves by pointing HOME at a t.TempDir(), but
 // cli.ProfileDir consults that variable first and never reaches HOME while it
 // is set — so a test asserting a path under $HOME/.multica passed in CI and
-// failed for any agent running the suite from inside a Multica task. Clearing
+// failed for any agent running the suite from inside a Delegora task. Clearing
 // it once here makes the package resolve profile dirs the same way everywhere,
 // and keeps working for parallel tests, which cannot call t.Setenv. A test
 // that wants the task-local branch sets the variable itself.
@@ -137,7 +137,7 @@ func TestPreparationHelperRoundTripsProjectResources(t *testing.T) {
 					ID:           "resource-helper-project-resource",
 					ResourceType: "github_repo",
 					ResourceRef:  json.RawMessage(`{"url":"https://github.com/multica-ai/multica"}`),
-					Label:        "Multica",
+					Label:        "Delegora",
 				},
 			},
 		},
@@ -170,7 +170,7 @@ func TestPreparationHelperRoundTripsProjectResources(t *testing.T) {
 	if resource.ID != "resource-helper-project-resource" ||
 		resource.ResourceType != "github_repo" ||
 		ref.URL != "https://github.com/multica-ai/multica" ||
-		resource.Label != "Multica" {
+		resource.Label != "Delegora" {
 		t.Fatalf("project resource = %#v, want all fields preserved", resource)
 	}
 }

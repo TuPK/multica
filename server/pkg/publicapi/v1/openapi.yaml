@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: Multica Public API
+  title: Delegora Public API
   version: v1
   description: >-
-    Canonical v1 resource contract shared by Multica API surfaces. The Plugin
+    Canonical v1 resource contract shared by Delegora API surfaces. The Plugin
     API is the first deployed consumer and applies installation identity plus
     manifest scopes. Plugin-specific context and storage remain extensions.
 servers:

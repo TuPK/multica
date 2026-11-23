@@ -388,7 +388,7 @@ list workspaces: GET /api/workspaces returned 401: {"error":"invalid token"}
 `)
 		err := daemonStartupFailureError(daemonStartupLogs{logPath: logPath, errLogPath: errLogPath}, nil, "", "http://localhost:8080")
 		msg := err.Error()
-		if !strings.Contains(msg, "cannot reach the Multica server at http://localhost:8080") {
+		if !strings.Contains(msg, "cannot reach the Delegora server at http://localhost:8080") {
 			t.Fatalf("error = %q, want server-unreachable reason with URL", msg)
 		}
 		if strings.Contains(msg, "dial tcp") || strings.Contains(msg, "component=daemon") {
@@ -612,7 +612,7 @@ func TestDaemonRestartUnreachableServerFailsBeforeStopping(t *testing.T) {
 	stopped := fakeRunningDaemon(t, profile)
 
 	err = runDaemonRestart(newRestartTestCmd(t, profile), nil)
-	if err == nil || !strings.Contains(err.Error(), "cannot reach the Multica server") {
+	if err == nil || !strings.Contains(err.Error(), "cannot reach the Delegora server") {
 		t.Fatalf("runDaemonRestart() = %v, want server-unreachable error", err)
 	}
 	select {

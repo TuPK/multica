@@ -63,7 +63,7 @@ type ErrCapabilityUnavailable struct {
 }
 
 func (e *ErrCapabilityUnavailable) Error() string {
-	return fmt.Sprintf("this Multica version does not support: %s", strings.Join(e.Missing, ", "))
+	return fmt.Sprintf("this Delegora version does not support: %s", strings.Join(e.Missing, ", "))
 }
 
 // CheckCapabilities reports every declared contribution the host cannot run.

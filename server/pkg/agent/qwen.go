@@ -19,9 +19,9 @@ type qwenBackend struct {
 	cfg Config
 }
 
-// qwenBlockedArgs are owned by Multica. Qwen accepts the task prompt and stream
+// qwenBlockedArgs are owned by Delegora. Qwen accepts the task prompt and stream
 // protocol as flags, so custom args must not replace either. Model/session are
-// also selected by Multica, and safe mode disables the QWEN.md context file.
+// also selected by Delegora, and safe mode disables the QWEN.md context file.
 // --yolo/-y, --approval-mode, and --core-tools are daemon-owned permission
 // flags; users may not disable bypass mode or narrow the core tool registry
 // from custom_args (use --exclude-tools to hard-deny specific tools instead).

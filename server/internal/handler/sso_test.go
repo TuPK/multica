@@ -96,7 +96,7 @@ func (e *ssoEnv) newEmail() string {
 	return email
 }
 
-// register creates the Multica user for the IdP email. Sign-in only admits
+// register creates the Delegora user for the IdP email. Sign-in only admits
 // accounts platform management registered, so a test that expects the person
 // to join or sign in needs the account first.
 func (e *ssoEnv) register() string {

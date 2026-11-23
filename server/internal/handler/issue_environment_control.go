@@ -251,7 +251,7 @@ func (h *Handler) commandIssueEnvironment(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusConflict, "only environments the repository declares can be restarted or have a log")
 		return
 	case !env.Controllable:
-		writeError(w, http.StatusConflict, "update Multica on this machine to control its environments from the sidebar")
+		writeError(w, http.StatusConflict, "update Delegora on this machine to control its environments from the sidebar")
 		return
 	}
 	rt, ok := h.environmentRuntime(w, r, issue, env.RuntimeID, control)

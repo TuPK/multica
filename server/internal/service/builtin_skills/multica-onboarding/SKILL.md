@@ -1,6 +1,6 @@
 ---
 name: multica-onboarding
-description: "Use when a product-authored kickoff starts or resumes Mika's interactive onboarding for a Multica workspace. The opening greeting has already been sent; carry the member from their first message to one real, confirmed, issue-based execution and a clear handoff."
+description: "Use when a product-authored kickoff starts or resumes Mika's interactive onboarding for a Delegora workspace. The opening greeting has already been sent; carry the member from their first message to one real, confirmed, issue-based execution and a clear handoff."
 user-invocable: false
 allowed-tools: Bash(multica *)
 ---
@@ -24,7 +24,7 @@ what it said.
 This means your first turn here is never an introduction:
 
 - Do not greet the member again, introduce yourself again, or restate what
-  Multica is. They just read all of it.
+  Delegora is. They just read all of it.
 - Do not apologize for, explain, or refer to the opening. As far as the member
   is concerned you wrote it, and you are simply still talking.
 - Answer what they actually said, in the language of the opening.

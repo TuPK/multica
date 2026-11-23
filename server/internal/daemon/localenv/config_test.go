@@ -98,7 +98,7 @@ func TestFindConfigWalksUpToTheBoundary(t *testing.T) {
 	}
 }
 
-// The repository's own environments file is what agents working on Multica
+// The repository's own environments file is what agents working on Delegora
 // start, so a typo in it should fail here rather than in an agent's run.
 func TestRepositoryConfigParses(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", filepath.FromSlash(ConfigPath)))

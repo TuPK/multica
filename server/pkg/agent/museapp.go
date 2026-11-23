@@ -134,12 +134,12 @@ type museappExecuteRequest struct {
 	// daemon and the receptionist share a filesystem — the supported
 	// deployment runs both on the same host.
 	WorkDir string `json:"workdir,omitempty"`
-	// TaskToken is the task-scoped Multica API credential (mat_...). The
-	// receptionist hands it to the worker so the worker can call the Multica
+	// TaskToken is the task-scoped Delegora API credential (mat_...). The
+	// receptionist hands it to the worker so the worker can call the Delegora
 	// API (read issues, post comments) with the same scoped identity a CLI
 	// backend gets via MULTICA_TOKEN. Omitted when the daemon has none.
 	TaskToken string `json:"task_token,omitempty"`
-	// ServerURL is the Multica API base URL. The worker needs it to know
+	// ServerURL is the Delegora API base URL. The worker needs it to know
 	// where to call; CLI backends get it as MULTICA_SERVER_URL.
 	ServerURL string `json:"server_url,omitempty"`
 	// WorkspaceID is the workspace UUID. The worker passes it as a query

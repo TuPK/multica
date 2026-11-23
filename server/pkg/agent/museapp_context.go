@@ -9,7 +9,7 @@ import "strings"
 func museappTaskPrompt(prompt string, env map[string]string, opts ExecOptions, goos string) string {
 	cliPath := env["MULTICA_CLI_PATH"]
 	if cliPath == "" {
-		return prompt // Standalone Backend callers need not use the Multica CLI.
+		return prompt // Standalone Backend callers need not use the Delegora CLI.
 	}
 	keys := []string{
 		"MULTICA_CLI_PATH", "MULTICA_DAEMON_PORT", "MULTICA_TASK_ID",
@@ -46,8 +46,8 @@ func museappTaskPrompt(prompt string, env map[string]string, opts ExecOptions, g
 		}
 		command.WriteString(" " + shellQuote(cliPath))
 	}
-	return "[Multica task CLI environment]\n" +
-		"For every Multica CLI command in the task or AGENTS.md, including commands shown as multica or $MULTICA_CLI_PATH, use the following prefix and append the original command arguments. Use it on every invocation, even in a new shell. The daemon and worker share these paths.\n\n" +
+	return "[Delegora task CLI environment]\n" +
+		"For every Delegora CLI command in the task or AGENTS.md, including commands shown as multica or $MULTICA_CLI_PATH, use the following prefix and append the original command arguments. Use it on every invocation, even in a new shell. The daemon and worker share these paths.\n\n" +
 		"```\n" + command.String() + "\n```\n\n" +
 		"In each shell invocation, set MULTICA_TOKEN from this task's request.json task_token as instructed by the receptionist worker setup; do not rely on an earlier shell's exports. Never substitute an owner credential or an installed CLI for this task's credential and CLI.\n\n" + prompt
 }

@@ -276,7 +276,7 @@ func vcsValidationFailureMessage(err error) string {
 	var verification *tls.CertificateVerificationError
 	switch {
 	case errors.As(err, &unknownCA):
-		return "the provider's TLS certificate is signed by a certificate authority this server does not trust; add that CA to the Multica server's trust store"
+		return "the provider's TLS certificate is signed by a certificate authority this server does not trust; add that CA to the Delegora server's trust store"
 	case errors.As(err, &hostname):
 		return "the provider's TLS certificate does not match the instance URL's host name"
 	case errors.As(err, &verification):

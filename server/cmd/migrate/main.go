@@ -98,7 +98,7 @@ var pgBigmOperatorClass = extensionOperatorClass{
 // MUL-4897 / GH #5544: migration 198 VALIDATEs the strict attribution
 // constraint installed by 197, which drops migration 190's
 // originator_source IS NULL exemption. Self-hosted databases never ran the
-// out-of-band backfill that Multica's cloud did, so their legacy rows make
+// out-of-band backfill that Delegora's cloud did, so their legacy rows make
 // 198 fail closed and the backend refuses to start. The hook reconciles
 // those rows (accountable_user_id := originator_user_id) idempotently BEFORE
 // VALIDATE, so a stuck-at-197 instance auto-heals on `migrate up` with no

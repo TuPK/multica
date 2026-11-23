@@ -19,7 +19,7 @@ import (
 //   - 2.1.258 offers Fable 5.1 as a normal selectable row.
 //   - 2.1.246 — the build whose 400 opened the issue — does not offer it at
 //     all. It reports a disabled row instead, carrying the upstream remedy
-//     ("Update to 2.1.255+ to use Fable 5.1"). That row is the reason Multica
+//     ("Update to 2.1.255+ to use Fable 5.1"). That row is the reason Delegora
 //     does not need a per-model minimum-version table: the CLI already knows.
 func loadClaudeListModelsFixture(t *testing.T, version string) []byte {
 	t.Helper()

@@ -209,7 +209,7 @@ func (s *claudeSupplementSession) prepareHook(msg claudeSDKMessage) (func(io.Wri
 	output := map[string]any{}
 	s.mu.Lock()
 	// Hook registrations are inherited by subagents. Only the main loop may
-	// consume instructions addressed to this Multica task.
+	// consume instructions addressed to this Delegora task.
 	owned := slices.Contains(claudeSupplementEvents, req.Input.Event) && req.CallbackID == "multica-supplement-"+req.Input.Event
 	var delivered []*claudeSupplementInput
 	if owned && req.Input.AgentID == "" && msg.ParentToolUseID == "" && !s.ended && s.ctx.Err() == nil {

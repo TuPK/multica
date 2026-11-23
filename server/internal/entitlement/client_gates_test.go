@@ -112,7 +112,7 @@ func TestAddedGatesShareTheWorkspacesCachedPolicy(t *testing.T) {
 }
 
 func TestAddedGatesAreOffInAPolicyThatLacksThem(t *testing.T) {
-	// samplePolicy is what Multica Cloud and an older platform serve: two gates.
+	// samplePolicy is what Delegora Cloud and an older platform serve: two gates.
 	client, ws := clientFor(t, samplePolicy(1, 0, 60, ActionEnforce))
 	for _, gate := range addedGates {
 		d := client.Gate(context.Background(), ws, gate)

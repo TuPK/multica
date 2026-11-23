@@ -32,7 +32,7 @@ func RuntimeConfigRelPath(workDir, provider string) string {
 }
 
 // ExistingRuntimeConfigContent returns the part of the provider's runtime
-// config file that Multica does not manage: what the repository (or the user)
+// config file that Delegora does not manage: what the repository (or the user)
 // already had in CLAUDE.md / AGENTS.md before the brief was appended. Empty
 // when the file is missing, holds only the managed block, or cannot be read.
 func ExistingRuntimeConfigContent(workDir, provider string) string {

@@ -15,7 +15,7 @@ import (
 )
 
 // Remote MCP apps (MUL-9792): apps such as Mobbin whose own MCP server
-// Multica connects to over OAuth. They sit in the same catalog, accounts and
+// Delegora connects to over OAuth. They sit in the same catalog, accounts and
 // agent apps as Composio apps; only connecting and executing differ.
 
 // AppsRemoteGateway (POST /api/apps/mcp/{app}) is the MCP server a run sees

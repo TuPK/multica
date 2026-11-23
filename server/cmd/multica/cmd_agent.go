@@ -401,7 +401,7 @@ func daemonPortOnlyContextHint() string {
 }
 
 // requireTaskLocalConfigRoot prevents daemon-managed subprocesses that lost
-// part of their injected environment from silently resolving Multica state
+// part of their injected environment from silently resolving Delegora state
 // below the daemon owner's HOME. Commands that intentionally support task-local
 // config (currently config show/set and auth status) call this before any load.
 func requireTaskLocalConfigRoot() error {
@@ -415,9 +415,9 @@ func requireTaskLocalConfigRoot() error {
 		// is as stuck as one hitting the others, and "which command did you
 		// happen to run first" must not decide whether the error is actionable.
 		if hint := taskMarkerHint(); hint != "" {
-			return fmt.Errorf("daemon-managed task requires a task-local Multica config root in %s%s", cli.TaskConfigRootEnv, hint)
+			return fmt.Errorf("daemon-managed task requires a task-local Delegora config root in %s%s", cli.TaskConfigRootEnv, hint)
 		}
-		return fmt.Errorf("daemon-managed task requires a task-local Multica config root in %s%s", cli.TaskConfigRootEnv, daemonPortOnlyContextHint())
+		return fmt.Errorf("daemon-managed task requires a task-local Delegora config root in %s%s", cli.TaskConfigRootEnv, daemonPortOnlyContextHint())
 	}
 	return nil
 }

@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const identityConfigInclude = "# Multica identity defaults; explicit worktree settings below take precedence.\n[include]\n\tpath = multica-identity.config\n"
+const identityConfigInclude = "# Delegora identity defaults; explicit worktree settings below take precedence.\n[include]\n\tpath = multica-identity.config\n"
 
 // isolateWorktreeIdentityContext masks identity inherited from the shared cache
 // without rewriting it: other, possibly running, worktrees must not change.

@@ -15,7 +15,7 @@ import (
 )
 
 // fakeGrokACPScript impersonates `grok agent --always-approve stdio` for unit
-// tests. Wire format mirrors other Multica ACP fakes (traecli/kimi): method
+// tests. Wire format mirrors other Delegora ACP fakes (traecli/kimi): method
 // "session/update" with update.sessionUpdate discriminators, session/new
 // returning sessionId + models, session/prompt returning stopReason=end_turn.
 func fakeGrokACPScript() string {

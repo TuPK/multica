@@ -520,7 +520,7 @@ RETURNING *;
 -- batch OWNER id (chat_input_task_id, which auto-retry clones inherit), not
 -- necessarily the task's own id. The cancel restore-delete and the
 -- empty-completion silent-drop both gate on this — a channel sender has no
--- Multica composer for a restored draft, and the no_response fallback body
+-- Delegora composer for a restored draft, and the no_response fallback body
 -- must never be pushed to an external channel.
 SELECT EXISTS (
     SELECT 1 FROM chat_message

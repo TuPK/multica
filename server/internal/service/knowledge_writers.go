@@ -12,7 +12,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/util"
 )
 
-// System writers: the records Multica itself puts in the knowledge base,
+// System writers: the records Delegora itself puts in the knowledge base,
 // published, under idempotency keys so a retry or a repeated call writes once.
 
 // DecisionRecord is a decided proposal, as written to the decisions base.

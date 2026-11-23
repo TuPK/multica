@@ -109,7 +109,7 @@ func TestAFreshSessionCommandAfterAMentionIsStillACommand(t *testing.T) {
 	}
 }
 
-// TestAMultiWordBotNameDoesNotSwallowTheCommand: a bot named "Multica Bot" is
+// TestAMultiWordBotNameDoesNotSwallowTheCommand: a bot named "Delegora Bot" is
 // mentioned as "@Multica Bot", and cutting the mention at the first space
 // leaves "Bot /issue …", which is not a command either. The configured name is
 // the only way to know where the mention ends — the callback carries no
@@ -122,11 +122,11 @@ func TestAMultiWordBotNameDoesNotSwallowTheCommand(t *testing.T) {
 		in      string
 		want    string
 	}{
-		{"two-word name", "Multica Bot", "@Multica Bot /new 重新分析这批数据", "/new 重新分析这批数据"},
+		{"two-word name", "Delegora Bot", "@Multica Bot /new 重新分析这批数据", "/new 重新分析这批数据"},
 		{"three-word name", "Acme Support Bot", "@Acme Support Bot /issue 登录失败", "/issue 登录失败"},
 		{"one-word name still works", "Andrew", "@Andrew /new 重新分析", "/new 重新分析"},
 		{"chinese name", "小助手", "@小助手 /issue 报销单不对", "/issue 报销单不对"},
-		{"a colleague's mention before ours", "Multica Bot", "@李雷 @Multica Bot /new 分析", "/new 分析"},
+		{"a colleague's mention before ours", "Delegora Bot", "@李雷 @Multica Bot /new 分析", "/new 分析"},
 		{"no name configured falls back to the space", "", "@Andrew /new 重新分析", "/new 重新分析"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -142,7 +142,7 @@ func TestAMultiWordBotNameDoesNotSwallowTheCommand(t *testing.T) {
 // where the mention is recognised, or the table above proves nothing.
 func TestAMultiWordBotNameReachesTheParser(t *testing.T) {
 	t.Parallel()
-	msg := dispatchGroupMessage(t, "Multica Bot", "@Multica Bot /issue 登录失败")
+	msg := dispatchGroupMessage(t, "Delegora Bot", "@Multica Bot /issue 登录失败")
 	cmd, ok := engine.ParseIssueCommand(msg.CommandText)
 	if !ok || cmd.Title != "登录失败" {
 		t.Fatalf("CommandText = %q — the bot's configured name never reached the mention strip", msg.CommandText)
@@ -184,7 +184,7 @@ func TestAMentionOfSomebodyElseIsNotStripped(t *testing.T) {
 func TestAConfiguredNameDoesNotManufactureACommand(t *testing.T) {
 	t.Parallel()
 	const in = "@李雷 ask him about /issue tracking"
-	got := stripLeadingMentions(in, "Multica Bot")
+	got := stripLeadingMentions(in, "Delegora Bot")
 	if strings.HasPrefix(got, "/issue") {
 		t.Fatalf("prose became a command: %q -> %q", in, got)
 	}

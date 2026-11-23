@@ -123,7 +123,7 @@ func TestAgentReadinessVerdict(t *testing.T) {
 	// the user to reinstall a CLI that runs perfectly.
 	profile := runtimeVerdict(db.AgentRuntime{
 		Status:   "offline",
-		Metadata: []byte(`{"offline_reason":{"code":"dsh_profile","detail":"the Multica runtime profile is not installed","repair":{"package":"DeepSeek Harness runtime profile"}}}`),
+		Metadata: []byte(`{"offline_reason":{"code":"dsh_profile","detail":"the Delegora runtime profile is not installed","repair":{"package":"DeepSeek Harness runtime profile"}}}`),
 	}, db.Agent{OwnerID: ownerA})
 	if !profile.Blocked() || profile.Reason != dispatch.ReasonRuntimeProfileMissing {
 		t.Fatalf("missing DSH profile: got %+v, want blocked/runtime_profile_missing", profile)

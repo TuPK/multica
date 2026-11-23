@@ -26,7 +26,7 @@ func TestMediaBindingPreservesFailureNoticeAndIssueDestination(t *testing.T) {
 		IssueID:              dbid.NewV7(),
 		IssueDescriptionBase: pgtype.Text{String: "Original description", Valid: true},
 		IssueCommandText:     "/issue Review image",
-		Body:                 "[Image]\n[WeChat attachment unavailable: file 1; send it again or upload it in Multica.]",
+		Body:                 "[Image]\n[WeChat attachment unavailable: file 1; send it again or upload it in Delegora.]",
 	}
 	if _, err := binder.BindMedia(context.Background(), params); err != nil {
 		t.Fatal(err)

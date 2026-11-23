@@ -56,7 +56,7 @@ Your responsibilities, in order:
    that work, and its response hours say when to expect an answer.
 2. **Delegate by @mention.** Post a single comment on this issue that
    @mentions the chosen member(s) and tells them what to do.
-   - **Be terse.** Every Multica agent already has full context of the
+   - **Be terse.** Every Delegora agent already has full context of the
      issue (title, description, all prior comments, attachments) and
      the surrounding workspace. Do NOT restate or summarise the
      issue body, prior discussion, or known facts in your delegation
@@ -553,7 +553,7 @@ func loadSquadCapabilitiesBriefing(ctx context.Context, q *db.Queries, squad db.
 
 // squadCapabilitiesBriefing renders "## Squad Skills and Plugins". Skills reach
 // every member through the task claim, so the leader only needs to know about
-// them. Plugins are not delivered by Multica: the leader checks for each one on
+// them. Plugins are not delivered by Delegora: the leader checks for each one on
 // the project it is working on and installs it when missing. Returns "" for a
 // squad with neither, so its briefing is unchanged.
 func squadCapabilitiesBriefing(skills []db.ListSquadSkillsRow, plugins []db.ListSquadPluginsRow) string {
@@ -715,7 +715,7 @@ func renderMemberRow(ctx context.Context, q *db.Queries, m db.SquadMember, skill
 		}
 		// Mention syntax for humans uses the user_id (matches the rest of
 		// the product — see util.MentionRe and frontend mention payloads).
-		// Humans have no Multica skills, so no skills segment is rendered.
+		// Humans have no Delegora skills, so no skills segment is rendered.
 		userID := util.UUIDToString(m.MemberID)
 		return formatRosterRow(user.Name, "member (human)", role, "", formatMention(user.Name, "member", userID))
 	default:

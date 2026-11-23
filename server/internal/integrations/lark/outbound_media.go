@@ -31,9 +31,9 @@ type mediaObjectStore interface {
 }
 
 const (
-	mediaSendFailedText               = "部分附件未能发送到飞书，仍保留在 Multica 的这条回复中。"
-	mediaSendUnknownText              = "无法确认部分附件是否已送达飞书，请先检查当前会话；附件仍保留在 Multica 中。"
-	mediaLookupFailedText             = "暂时无法检查这条回复的附件；如有附件，请在 Multica 中查看。"
+	mediaSendFailedText               = "部分附件未能发送到飞书，仍保留在 Delegora 的这条回复中。"
+	mediaSendUnknownText              = "无法确认部分附件是否已送达飞书，请先检查当前会话；附件仍保留在 Delegora 中。"
+	mediaLookupFailedText             = "暂时无法检查这条回复的附件；如有附件，请在 Delegora 中查看。"
 	attachmentBudget                  = 5 * time.Minute
 	attachmentNoticeBudget            = 5 * time.Second
 	maxConcurrentAttachmentDeliveries = 2

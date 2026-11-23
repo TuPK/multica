@@ -17,7 +17,7 @@ type ChannelProvenanceQueries interface {
 // TaskInputIsChannelIngested reports whether a completed chat task took its
 // input from the channel, so its reply (or failure notice) belongs on the
 // external platform. Direct (web/mobile) tasks can reuse a channel-bound
-// session, but their replies stay in Multica (MUL-4988).
+// session, but their replies stay in Delegora (MUL-4988).
 //
 // chat_input_task_id alone cannot discriminate: sealed channel tasks own an
 // input batch exactly like direct tasks do. The verdict is the immutable

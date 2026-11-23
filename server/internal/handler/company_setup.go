@@ -163,7 +163,7 @@ func (h *Handler) SetupCompany(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]any{
 			"error": "an online Hermes runtime is required before the Secretary can be set up",
 			"code":  "runtime_required",
-			"hint":  "Install Hermes on the machine that runs the Multica daemon, start the daemon, then try again.",
+			"hint":  "Install Hermes on the machine that runs the Delegora daemon, start the daemon, then try again.",
 			// Relative to the docs site, which serves the install guide here.
 			"docs_path": "/install-agent-runtime",
 		})

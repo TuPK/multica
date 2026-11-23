@@ -383,7 +383,7 @@ func TestGitHubSetupCallbackReturnsToInitiatingClient(t *testing.T) {
 		rec := httptest.NewRecorder()
 		testHandler.GitHubSetupCallback(rec, req)
 		if desktop {
-			if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Return to Multica") || rec.Header().Get("Location") != "" {
+			if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Return to Delegora") || rec.Header().Get("Location") != "" {
 				t.Fatalf("desktop callback: %d %s", rec.Code, rec.Body.String())
 			}
 		} else {

@@ -202,7 +202,7 @@ func TestRunRuntimeDeleteProfileInstanceConflictShowsServerGuidance(t *testing.T
 	redirectTestHome(t, t.TempDir())
 	t.Setenv("MULTICA_TOKEN", "test-token")
 
-	const guidance = `cannot delete "MSI-S3TEST" on its own: it is registered from the custom runtime profile "Devin CLI (WSL)". It is offline, and Multica removes offline runtimes automatically after 7 days.`
+	const guidance = `cannot delete "MSI-S3TEST" on its own: it is registered from the custom runtime profile "Devin CLI (WSL)". It is offline, and Delegora removes offline runtimes automatically after 7 days.`
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)

@@ -1,4 +1,4 @@
-// qoder-runtime runs a server-hosted Multica to Qoder Cloud Agents bridge.
+// qoder-runtime runs a server-hosted Delegora to Qoder Cloud Agents bridge.
 package main
 
 import (

@@ -1,4 +1,4 @@
-// Package publicapiv1 owns the stable Multica Public API v1 contract.
+// Package publicapiv1 owns the stable Delegora Public API v1 contract.
 //
 // The same resource contract is exposed through different trust surfaces. The
 // Plugin API is the first consumer: it accepts installation/callback tokens and
@@ -22,11 +22,11 @@ const (
 type ContractKind string
 
 const (
-	// ContractSharedResource is a Multica resource contract that can be exposed
+	// ContractSharedResource is a Delegora resource contract that can be exposed
 	// to multiple credential types through surface-specific authorization.
 	ContractSharedResource ContractKind = "shared_resource"
 	// ContractPluginExtension belongs to Plugin installations rather than the
-	// general Multica resource API.
+	// general Delegora resource API.
 	ContractPluginExtension ContractKind = "plugin_extension"
 )
 

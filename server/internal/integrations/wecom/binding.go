@@ -3,7 +3,7 @@ package wecom
 // binding.go — the WeCom smart-bot user-binding token flow. An unbound WeCom
 // user who messages the bot gets a "link your account" prompt (minted here,
 // delivered by the OutboundReplier), clicks through to the in-product redeem
-// page, and their WeCom userid is bound to their Multica account. Mirrors
+// page, and their WeCom userid is bound to their Delegora account. Mirrors
 // slack.BindingTokenService — runs on the generic channel_binding_token /
 // channel_user_binding tables with channel_type='wecom'.
 //
@@ -74,7 +74,7 @@ var (
 	// One opaque error for all three avoids a replay timing oracle.
 	ErrBindingTokenInvalid = errors.New("wecom: binding token invalid or expired")
 	// ErrBindingAlreadyAssigned: this WeCom userid is already bound to a
-	// different Multica user (account transfer must go through explicit
+	// different Delegora user (account transfer must go through explicit
 	// unbind, not implemented in iter 1 — an admin can DELETE the row).
 	ErrBindingAlreadyAssigned = errors.New("wecom: user id is already bound to a different user")
 	// ErrBindingNotWorkspaceMember: the redeemer is not a member of the

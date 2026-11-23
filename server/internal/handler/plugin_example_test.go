@@ -314,7 +314,7 @@ func TestExamplePluginHooksReachAnAgentAsTools(t *testing.T) {
 	}
 }
 
-// The whole round trip: an agent calls the tool, Multica signs the request, the
+// The whole round trip: an agent calls the tool, Delegora signs the request, the
 // plugin's own server sees that signature and answers, and the answer comes
 // back. Nothing is mocked except the author's business logic, which is theirs.
 func TestExamplePluginAgentHookRoundTripIsSigned(t *testing.T) {

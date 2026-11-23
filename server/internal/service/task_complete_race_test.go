@@ -318,7 +318,7 @@ func TestRuntimeCLITimeoutIsNotAutoRetried(t *testing.T) {
 // #7913. The reason moved out of agent_error.* purely so the label is honest —
 // it must not quietly buy the failure a retry it never had. Its causes are the
 // host's: a full volume, a denied permission, a directory another process
-// holds. None of them changes because Multica asked a second time, and
+// holds. None of them changes because Delegora asked a second time, and
 // preparation already waits out the one transient case it knows about (a prior
 // run still holding the directory) before it fails.
 //

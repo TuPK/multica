@@ -21,7 +21,7 @@ import (
 // This file is the Slack user-binding token flow: an unbound Slack user who
 // messages the bot gets a "link your account" prompt (minted here, delivered by
 // the OutboundReplier), clicks through to the in-product redeem page, and their
-// Slack user id is bound to their Multica account. It mirrors
+// Slack user id is bound to their Delegora account. It mirrors
 // lark.BindingTokenService but runs on the generic channel_* queries with
 // channel_type='slack' (lark's ChannelStore hardcodes 'feishu').
 
@@ -34,7 +34,7 @@ var (
 	// opaque error for all three avoids a replay timing oracle.
 	ErrBindingTokenInvalid = errors.New("slack: binding token invalid or expired")
 	// ErrBindingAlreadyAssigned: this Slack user id is already bound to a
-	// different Multica user (account transfer must go through explicit unbind).
+	// different Delegora user (account transfer must go through explicit unbind).
 	ErrBindingAlreadyAssigned = errors.New("slack: user id is already bound to a different user")
 	// ErrBindingNotWorkspaceMember: the redeemer is not a member of the token's
 	// workspace. Translated to 403 at the HTTP boundary.

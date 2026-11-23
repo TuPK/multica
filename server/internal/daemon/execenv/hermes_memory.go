@@ -22,7 +22,7 @@ import (
 // Skill-less agents still use the host home without this overlay. Concurrent tasks
 // of the same agent may overwrite memory files; updates remain last-writer-wins.
 
-// hermesMemoryStoreRoot is the directory under the daemon's Multica profile dir
+// hermesMemoryStoreRoot is the directory under the daemon's Delegora profile dir
 // that holds every agent's persistent Hermes state. `hermes-state` (not
 // `hermes-memories`) because state.db joins it when the session half is solved.
 const hermesMemoryStoreRoot = "hermes-state"
@@ -33,11 +33,11 @@ const hermesMemoriesEntry = "memories"
 
 // HermesMemoryStorePath returns the persistent memory store for (daemonProfile,
 // agentID, sourceHome), or "" when memory must stay task-local — there is no
-// agent to key on, or the Multica profile dir cannot be resolved. The daemon
+// agent to key on, or the Delegora profile dir cannot be resolved. The daemon
 // marks the returned path in-use for the task's duration so
 // PruneHermesMemoryStores never reclaims it mid-mount.
 //
-// daemonProfile namespaces by Multica profile for free: profile dirs are already
+// daemonProfile namespaces by Delegora profile for free: profile dirs are already
 // disjoint, so a staging daemon's GC can never see a production daemon's stores
 // and no hashed namespace segment is needed (unlike the Codex store, which lives
 // in the shared ~/.codex).
@@ -154,7 +154,7 @@ func mountHermesMemories(hermesHome, storeDir string, logger *slog.Logger) error
 // rules follow from that:
 //
 //   - It copies rather than moves. A move is faster but fails across
-//     filesystems — the workspaces root and the Multica profile dir can be on
+//     filesystems — the workspaces root and the Delegora profile dir can be on
 //     different volumes — and a partial move leaves data in neither place.
 //   - It never reports success for anything it did not carry over. An I/O
 //     error reading either directory, or an entry it will not copy (symlink,
@@ -319,7 +319,7 @@ func copyHermesMemoryTree(src, dst string) error {
 
 // detachHermesMemories gives the overlay a real, task-local memories dir. It is
 // the path taken when there is no store to key on (no agent, or an unresolvable
-// Multica profile dir), so it must actively replace a link left by a previous
+// Delegora profile dir), so it must actively replace a link left by a previous
 // run against the persistent store: a reused overlay still carries that link,
 // and MkdirAll would follow it and silently succeed, leaving the task writing to
 // a store the daemon no longer guards from the GC. An existing real directory is

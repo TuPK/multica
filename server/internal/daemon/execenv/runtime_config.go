@@ -225,7 +225,7 @@ func runtimeConfigPath(workDir, provider string) string {
 	}
 }
 
-// writeRuntimeConfigFile writes the Multica runtime brief to path without
+// writeRuntimeConfigFile writes the Delegora runtime brief to path without
 // clobbering any user-authored content already present. Behaviour by file
 // state:
 //
@@ -389,7 +389,7 @@ func runtimeBoundaryInStyle(boundary, gap string) string {
 	return lf
 }
 
-// locateMarkerBlock finds the [start, end) byte range of the Multica marker
+// locateMarkerBlock finds the [start, end) byte range of the Delegora marker
 // block inside content. The returned `end` is one past the block's trailing
 // newline (if any) so callers can splice the block out without leaving an
 // orphan blank line behind.
@@ -433,12 +433,12 @@ func locateMarkerBlock(content string) (start, end int, found bool) {
 	return start, end, true
 }
 
-// CleanupRuntimeConfig excises the Multica marker block from the runtime
+// CleanupRuntimeConfig excises the Delegora marker block from the runtime
 // config file for the given provider and restores the file to its exact
 // pre-injection state, byte for byte. The cleanup is the second half of
 // the contract `writeRuntimeConfigFile` establishes: together they must
 // round-trip a user's local repository config across an arbitrary number
-// of Multica runs without ever touching a single non-managed byte.
+// of Delegora runs without ever touching a single non-managed byte.
 //
 // Behaviour, mirroring the three Inject states:
 //
@@ -463,7 +463,7 @@ func locateMarkerBlock(content string) (start, end int, found bool) {
 //
 // Required for the local_directory flow (WorkDir is the user's own repo):
 // without this pass, a manual `claude` / `codex` run started by
-// the user inside the same directory after a Multica task would pick up
+// the user inside the same directory after a Delegora task would pick up
 // the stale brief and act on the previous task's issue id, trigger
 // comment id, and reply rules. Cloud workspace runs never trigger this
 // pollution because their workdir is daemon scratch that the GC loop
@@ -532,7 +532,7 @@ func CleanupRuntimeConfig(workDir, provider string) error {
 }
 
 // buildMetaSkillContent generates the meta skill markdown that teaches the
-// agent about the Multica runtime environment and available CLI tools.
+// agent about the Delegora runtime environment and available CLI tools.
 //
 // The brief is assembled by buildMetaSkillContentSlim (runtime_config_sections.go),
 // which applies kind-driven section gating + per-section prose compression.

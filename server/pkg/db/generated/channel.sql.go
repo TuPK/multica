@@ -184,7 +184,7 @@ type AdvanceChannelChatContextGenerationRow struct {
 	LastSenderID           pgtype.Text        `json:"last_sender_id"`
 }
 
-// Opens a new agent-visible context while retaining the same Multica Chat.
+// Opens a new agent-visible context while retaining the same Delegora Chat.
 // The triggering platform message is the exclusive end of the old generation
 // and, when it has a body, the inclusive start of the new one.
 func (q *Queries) AdvanceChannelChatContextGeneration(ctx context.Context, arg AdvanceChannelChatContextGenerationParams) (AdvanceChannelChatContextGenerationRow, error) {
@@ -1066,7 +1066,7 @@ type CreateChannelUserBindingParams struct {
 // channel_user_binding
 // =====================
 // Records that a platform user id (per-installation; Feishu open_id) maps
-// to a Multica user. The old composite member-FK is gone, so this no
+// to a Delegora user. The old composite member-FK is gone, so this no
 // longer fails when the redeemer is not a workspace member — the caller
 // (BindingTokenService.RedeemAndBind) validates membership explicitly
 // before calling. ON CONFLICT DO UPDATE is still gated on multica_user_id
@@ -1349,7 +1349,7 @@ type FindChannelBindingForMemberParams struct {
 	ChannelType   string      `json:"channel_type"`
 }
 
-// Outbound notification lookup: given a Multica member and a channel_type,
+// Outbound notification lookup: given a Delegora member and a channel_type,
 // return the (installation, channel_user_id) that outbound push should
 // target. The wecom smart-bot inbox-notification path uses this to decide
 // whether to deliver via the bot at all — no row means "unbound member,
@@ -1408,7 +1408,7 @@ type FindChannelBindingForMemberOnAgentInstallationParams struct {
 // reading.
 //
 // The tiebreak stays for the case where one member holds two channel users on
-// the same bot (two WeCom accounts, one Multica account): both rows answer,
+// the same bot (two WeCom accounts, one Delegora account): both rows answer,
 // and `:one` cannot take more than one, so the newest binding wins here
 // exactly as it does in the recipient-wide lookup.
 //
@@ -1516,12 +1516,12 @@ type FindReusableChannelUserBindingParams struct {
 
 // Cross-installation account-link reuse (MUL-3911). When a platform user
 // messages an installation they have NOT linked, but the SAME user id is already
-// bound to ANOTHER installation in the SAME Multica workspace + SAME Slack team,
+// bound to ANOTHER installation in the SAME Delegora workspace + SAME Slack team,
 // the inbound identity step reuses that link instead of re-prompting. Slack user
 // ids are stable within a team, so an identical channel_user_id denotes the same
 // human across that team's apps. The match is fenced to one workspace AND one
 // team (installation config->>'team_id'): a Slack team can be connected to two
-// different Multica workspaces, and a user may hold different Multica accounts in
+// different Delegora workspaces, and a user may hold different Delegora accounts in
 // each, so reuse must cross neither boundary. Most-recently-bound wins. The
 // caller re-checks membership and materializes a fresh per-installation binding.
 //
@@ -1817,7 +1817,7 @@ type GetChannelInstallationOwnerByAppIDRow struct {
 
 // Identifies the LIVE owner of a (channel_type, config->>'app_id') routing slot
 // so the install path can refuse a rebind with an ACCURATE message instead of the
-// old catch-all "connected to a different Multica workspace". Meant to be read
+// old catch-all "connected to a different Delegora workspace". Meant to be read
 // only after ReclaimDeadChannelInstallationByAppID has removed every DEAD owner,
 // so a returned row is a live active owner. `agent_archived` distinguishes an
 // archived (reversible) owner — its bot stays owned, recovered by unarchiving the
@@ -2021,7 +2021,7 @@ type GetChannelUserBindingByUserIDParams struct {
 	ChannelUserID  string      `json:"channel_user_id"`
 }
 
-// The inbound identity lookup: does this platform user id map to a Multica
+// The inbound identity lookup: does this platform user id map to a Delegora
 // user for this installation? With the member-FK removed, a row's
 // existence no longer proves current workspace membership — the dispatcher
 // re-checks membership after this lookup.
@@ -3530,14 +3530,14 @@ type UpsertChannelInstallationByAppIDParams struct {
 // Team-keyed install / re-install for channels whose natural identity is the
 // platform workspace, not the (agent) pairing. Slack: one Slack workspace
 // (team_id, stored as config->>'app_id') maps to exactly one installation, so
-// re-connecting it — even to represent a DIFFERENT agent in the SAME Multica
+// re-connecting it — even to represent a DIFFERENT agent in the SAME Delegora
 // workspace — UPDATES the existing row (moving agent_id) instead of colliding
 // with the (channel_type, app_id) unique index. Contrast UpsertChannelInstallation,
 // whose conflict key is (workspace_id, agent_id, channel_type): right for Feishu
 // (one app per agent), wrong for Slack.
 //
 // The `WHERE channel_installation.workspace_id = EXCLUDED.workspace_id` fences
-// the conflict update to the SAME Multica workspace: a team already owned by a
+// the conflict update to the SAME Delegora workspace: a team already owned by a
 // DIFFERENT workspace updates no row and RETURNING is empty (pgx.ErrNoRows),
 // which the caller maps to ErrTeamOwnedByAnotherWorkspace. This is the ATOMIC
 // cross-workspace guard — a plain SELECT before the upsert cannot stop two

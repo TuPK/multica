@@ -18,7 +18,7 @@ type Notifier interface {
 	Send(ctx context.Context, binding Binding, msg Message) error
 }
 
-// Binding is the link between one Multica member and one platform user, through
+// Binding is the link between one Delegora member and one platform user, through
 // one installation. ChannelUserID is the platform's address for the member: for
 // Telegram it is the user id, which is also the id of their private chat with
 // the bot.

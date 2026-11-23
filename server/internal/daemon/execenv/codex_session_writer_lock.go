@@ -27,7 +27,7 @@ type CodexSessionWriterLock struct {
 	once sync.Once
 }
 
-// AcquireCodexSessionWriterLock waits until no other Multica task is writing
+// AcquireCodexSessionWriterLock waits until no other Delegora task is writing
 // store. The lock is cross-process and crash-safe: the OS releases it when the
 // daemon exits even if Release is not called.
 //

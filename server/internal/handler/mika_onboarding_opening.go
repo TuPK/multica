@@ -19,7 +19,7 @@ import (
 //
 // The four beats, in order, are load-bearing; keep them when editing:
 //
-//  1. what Multica is, in one sentence,
+//  1. what Delegora is, in one sentence,
 //  2. who Mika is to this member,
 //  3. what happens next,
 //  4. the bridge to the starter cards rendered underneath.
@@ -33,7 +33,7 @@ import (
 // %[1]s is the workspace name, %[2]s Mika's display name. Both are
 // owner-editable, so both are arguments and never part of the format string.
 var mikaOnboardingOpenings = map[string]string{
-	"en": `Hi — welcome to %[1]s. Multica is a workspace where you and AI agents coordinate real work through issues.
+	"en": `Hi — welcome to %[1]s. Delegora is a workspace where you and AI agents coordinate real work through issues.
 
 I'm %[2]s, your Chief of Staff here. I shape what needs doing, bring in the right agent for it, and stay your starting point for anything.
 
@@ -41,7 +41,7 @@ Here's how we begin: you name a goal, I turn it into an issue and start it with 
 
 Pick one below, or just tell me what you want to get done right now.`,
 
-	"zh": `你好，欢迎来到 %[1]s。Multica 是一个人和 AI 智能体通过任务一起把事情做完的工作区。
+	"zh": `你好，欢迎来到 %[1]s。Delegora 是一个人和 AI 智能体通过任务一起把事情做完的工作区。
 
 我是 %[2]s，这里的 Chief of Staff。我负责把事情理清楚、找到合适的智能体接手，也是你随时可以开口的第一站。
 
@@ -49,7 +49,7 @@ Pick one below, or just tell me what you want to get done right now.`,
 
 从下面选一个开始，或者直接告诉我你现在想做成什么。`,
 
-	"ja": `こんにちは。%[1]s へようこそ。Multica は、人と AI エージェントがタスクを通じて実際の仕事を進めるワークスペースです。
+	"ja": `こんにちは。%[1]s へようこそ。Delegora は、人と AI エージェントがタスクを通じて実際の仕事を進めるワークスペースです。
 
 私は %[2]s、ここの Chief of Staff です。やることを整理し、適したエージェントに引き継ぎ、いつでも最初に声をかけてもらえる存在でいます。
 
@@ -57,7 +57,7 @@ Pick one below, or just tell me what you want to get done right now.`,
 
 下から一つ選ぶか、いま進めたいことをそのまま教えてください。`,
 
-	"ko": `안녕하세요, %[1]s에 오신 걸 환영합니다. Multica는 사람과 AI 에이전트가 태스크를 통해 실제 일을 함께 진행하는 워크스페이스입니다.
+	"ko": `안녕하세요, %[1]s에 오신 걸 환영합니다. Delegora는 사람과 AI 에이전트가 태스크를 통해 실제 일을 함께 진행하는 워크스페이스입니다.
 
 저는 이곳의 Chief of Staff, %[2]s입니다. 할 일을 정리하고, 알맞은 에이전트를 붙이고, 언제든 먼저 말을 걸 수 있는 시작점이 되어 드립니다.
 

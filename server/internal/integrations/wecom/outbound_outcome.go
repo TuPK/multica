@@ -5,7 +5,7 @@ package wecom
 //
 // Every branch on the outbound path that ends a turn without putting words in
 // front of the user used to be a bare `return nil` or a lone WARN. That is the
-// shape of GH #7215 and #6890: the answer is in the Multica transcript, the
+// shape of GH #7215 and #6890: the answer is in the Delegora transcript, the
 // WeCom chat stays quiet, and the server-side evidence is either one line with
 // no reason attached or nothing at all. With several distinct causes producing
 // one indistinguishable symptom, neither we nor a deployment's operator can say
@@ -90,8 +90,8 @@ const (
 type skipReason string
 
 const (
-	// skipOriginNotChannel — the turn was asked in the Multica web UI on a
-	// session that originated in WeCom, so its answer belongs in Multica only.
+	// skipOriginNotChannel — the turn was asked in the Delegora web UI on a
+	// session that originated in WeCom, so its answer belongs in Delegora only.
 	// Ordinary in a healthy deployment, and the single largest source of this
 	// counter on a busy workspace.
 	skipOriginNotChannel skipReason = "origin_not_channel"
@@ -123,7 +123,7 @@ const (
 	// under one that reads them (service/task.go writes the row inside the
 	// enqueue transaction for every channel turn, so a steady-state channel
 	// task always has one). The user is left waiting on an answer that exists
-	// in the Multica transcript, which is the shape of #7215 all over again —
+	// in the Delegora transcript, which is the shape of #7215 all over again —
 	// so this is the one skip reason a person should act on: drain the running
 	// and queued channel tasks before swapping the image, or backfill the rows
 	// for the ones still in flight.
@@ -134,7 +134,7 @@ const (
 	//
 	// It is reached BEHIND the origin gate, which is what makes it mean
 	// anything. Ahead of the gate the same branch also caught every question
-	// ever typed in the Multica web UI, and an exit shared with those could
+	// ever typed in the Delegora web UI, and an exit shared with those could
 	// only be silent. A delivery row naming another platform leaves by
 	// skipNotWecomTurn above, so what is left here is a channel turn nobody can
 	// address.

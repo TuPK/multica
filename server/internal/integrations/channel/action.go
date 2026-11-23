@@ -9,7 +9,7 @@ import (
 
 // ActionHandler answers what a member does from a chat app outside the agent
 // pipeline (spec 2.7, plan 9.11): a press on a signed button, and the /brief and
-// /decisions commands. The handler resolves the platform user to a Multica
+// /decisions commands. The handler resolves the platform user to a Delegora
 // member through the binding and applies the app's rules. An adapter only
 // carries the platform's wire format in and renders what comes back.
 type ActionHandler interface {

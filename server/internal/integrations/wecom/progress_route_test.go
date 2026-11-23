@@ -317,7 +317,7 @@ func TestARevokedInstallationGetsNoHandOver(t *testing.T) {
 
 // ---- which runs have steps to show ----
 
-// A question typed in Multica can hold a WeCom round for a moment —
+// A question typed in Delegora can hold a WeCom round for a moment —
 // task:queued binds it, and the origin gate gives it back at the end — but it
 // has no delivery row, and its steps are not the room's question's steps.
 //
@@ -341,7 +341,7 @@ func TestARunTypedInMulticaShowsNoStepsInTheRoomsBubble(t *testing.T) {
 	rig.toolCall(t, "web-1", "Read", map[string]any{"file_path": "/home/dana/salary-review.md"})
 
 	if got := rig.refreshes(t); len(got) != 0 {
-		t.Errorf("a run typed in Multica painted %d step(s) into the room's bubble: %q", len(got), got)
+		t.Errorf("a run typed in Delegora painted %d step(s) into the room's bubble: %q", len(got), got)
 	}
 }
 

@@ -296,7 +296,7 @@ func TestPackPreview_FourFormats(t *testing.T) {
 		}
 	})
 
-	t.Run("an agent pack of Multica", func(t *testing.T) {
+	t.Run("an agent pack of Delegora", func(t *testing.T) {
 		p := w.previewOK(t, packFixture(t, "multica_pack"))
 		if p.Format != "multica_pack" || p.ID != "field-researcher" || len(p.Agents) != 1 || len(p.Skills) != 2 || p.Leader != nil {
 			t.Fatalf("preview = %+v", p)

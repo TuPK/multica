@@ -39,7 +39,7 @@ const (
 	// Unset is the default and means "do not touch the user's DSH
 	// installation". Installing a bundle into another product's home is a
 	// side effect the operator has to ask for — and there is nothing to point
-	// it at by default either, because Multica's own DSH bridge is not
+	// it at by default either, because Delegora's own DSH bridge is not
 	// published to npm yet (multica#6936). Setting this is what turns the
 	// reported drop into a self-healing one.
 	dshProfileBundleEnv = "MULTICA_DSH_PROFILE_BUNDLE"
@@ -47,7 +47,7 @@ const (
 	// dshPluginPathEnv overrides where `dsh plugin` finds pnpm. It exists
 	// because DSH Desktop ships pnpm inside its own runtime-commands
 	// directory and injects that directory into the PATH of the processes it
-	// spawns itself. A daemon started by Multica's desktop app, by launchd or
+	// spawns itself. A daemon started by Delegora's desktop app, by launchd or
 	// from a terminal is not one of them, so the install fails with "pnpm not
 	// found on PATH" on exactly the machines this feature is for.
 	dshPluginPathEnv = "MULTICA_DSH_PLUGIN_PATH"
@@ -83,7 +83,7 @@ const dshProvisionTimeout = 3 * time.Minute
 
 // dshMulticaProfilePresent reports whether the `multica` profile is installed.
 //
-// Installed means the manifest loads the Multica runtime bundle, not that the file
+// Installed means the manifest loads the Delegora runtime bundle, not that the file
 // exists. A refused `dsh plugin add` leaves package.json behind with empty
 // dependencies and only DSH's template bundle; a stat of that file made every
 // later probe look transient and blocked the automatic install.
@@ -130,7 +130,7 @@ func dshMulticaProfileManifestPath() string {
 	return filepath.Join(dshHome, "profiles", dshMulticaProfileName, "package.json")
 }
 
-// dshProfileNamesRuntime reports whether the manifest lists the Multica runtime
+// dshProfileNamesRuntime reports whether the manifest lists the Delegora runtime
 // as a loaded profile bundle, without the legacy bridge.
 func dshProfileNamesRuntime(manifest dshProfileManifest) bool {
 	for _, bundle := range manifest.DSH.Profile.Bundles {
@@ -310,7 +310,7 @@ func dshDiagnosticOutput(raw []byte) string {
 // dshProfileRepair names what is missing, and deliberately carries NO command.
 //
 // The install is `dsh plugin --profile multica add <bundle>`, and <bundle> is
-// the operator's own choice of npm spec, directory or tarball — Multica's own
+// the operator's own choice of npm spec, directory or tarball — Delegora's own
 // bridge is not on a public registry yet (multica#6936). A Repair.Command is
 // rendered to the user inside a shell code fence as the thing to run on that
 // machine, so shipping the placeholder there hands out a line that fails when

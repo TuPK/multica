@@ -12,7 +12,7 @@ import (
 )
 
 // stagedStaffRequest writes the row the platform writes in phase 1 of an
-// immediate deletion (spec R6 section 6.3), so the Multica side can execute it.
+// immediate deletion (spec R6 section 6.3), so the Delegora side can execute it.
 // tenantID may be empty. The row goes away with the test.
 func stagedStaffRequest(t *testing.T, kind, targetID, tenantID string) string {
 	t.Helper()

@@ -1,5 +1,5 @@
-// Package composio is the Stage 2 business-integration glue between Multica and
-// the standalone Composio SDK (server/pkg/composio). It owns Multica semantics:
+// Package composio is the Stage 2 business-integration glue between Delegora and
+// the standalone Composio SDK (server/pkg/composio). It owns Delegora semantics:
 // the signed-state connect handshake, the local user_composio_connection
 // mirror, idempotent disconnect, and the per-user MCP session helper.
 //
@@ -244,7 +244,7 @@ func toolkitLogoURL(slug, upstreamLogoURL string) string {
 // config for it — no static env map. A toolkit with none yields
 // ErrToolkitNotSupported.
 //
-// The composio_user_id sent to Composio is the Multica user id verbatim — the
+// The composio_user_id sent to Composio is the Delegora user id verbatim — the
 // invariant the rest of the integration relies on.
 func (s *Service) BeginConnect(ctx context.Context, userID pgtype.UUID, toolkitSlug string) (string, error) {
 	return s.BeginConnectReturning(ctx, userID, pgtype.UUID{}, toolkitSlug, "")
@@ -367,7 +367,7 @@ func (s *Service) CompleteCallback(ctx context.Context, state, status, connected
 		ToolkitSlug:        claims.ToolkitSlug,
 		AuthConfigID:       authConfigID,
 		ConnectedAccountID: connectedAccountID,
-		// Invariant: composio_user_id == Multica user id.
+		// Invariant: composio_user_id == Delegora user id.
 		ComposioUserID: claims.UserID,
 	}); err != nil {
 		return result, fmt.Errorf("composio: upsert connection: %w", err)

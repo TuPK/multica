@@ -30,7 +30,7 @@ import (
 //
 // The platform's test (platform-management/internal/seat) runs every scenario
 // on its HTTP handler, checks the expectations, and writes the transcript.
-// This file runs the same calls with Multica's own client against a server that
+// This file runs the same calls with Delegora's own client against a server that
 // replays the transcript, and checks the same expectations on what the client
 // decodes. A change either side cannot read fails here or there.
 //

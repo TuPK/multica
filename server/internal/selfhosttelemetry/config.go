@@ -6,7 +6,7 @@ import (
 )
 
 // Config is read once during API server startup. Endpoint selection is
-// deliberately absent: self-host telemetry can only be sent to Multica's
+// deliberately absent: self-host telemetry can only be sent to Delegora's
 // first-party collector compiled into the client.
 type Config struct {
 	Enabled bool

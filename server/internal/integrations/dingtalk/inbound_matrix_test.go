@@ -160,11 +160,11 @@ func dingTalkMatrixBotQuote(t *testing.T, kind dingTalkMatrixMessageKind) dingTa
 			"msgType":    "interactiveCard",
 			"msgId":      "quoted-bot-message",
 			"senderId":   "bot-user-id",
-			"senderNick": "Multica",
+			"senderNick": "Delegora",
 			"content":    map[string]any{"cardContent": cardContent},
 		},
 		messageID: "quoted-bot-message",
-		sender:    "Multica",
+		sender:    "Delegora",
 		body:      "[quoted content unavailable]",
 	}
 }

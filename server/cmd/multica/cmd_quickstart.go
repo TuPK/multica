@@ -24,7 +24,7 @@ team's reference machine. Anything already present is left alone:
   3. Write the workspace skills that are missing into ~/.claude/skills.
 
 Skills come from the workspace you are logged in to, so run "multica login"
-(or "multica setup") first. The same install can be started from the Multica
+(or "multica setup") first. The same install can be started from the Delegora
 web app on a connected machine.`,
 	Args: cobra.NoArgs,
 	RunE: runQuickstart,

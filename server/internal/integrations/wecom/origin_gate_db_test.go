@@ -213,7 +213,7 @@ func TestGetTaskChannelOrigin_RealSQL(t *testing.T) {
 			// batch_owner_unknown is how a caller that needs the OTHER
 			// direction — whether to warn about a missing route — tells this
 			// pair apart from a verdict that was actually established.
-			name: "a legacy row with no batch owner, asked in Multica", taskID: lab.legacyPlain, ingested: true,
+			name: "a legacy row with no batch owner, asked in Delegora", taskID: lab.legacyPlain, ingested: true,
 			ownerUnknown: true,
 			why: "NULL chat_input_task_id is 'legacy row OR channel task' (migration 158), so the " +
 				"row cannot say which. It is delivered, and batch_owner_unknown is what keeps the " +

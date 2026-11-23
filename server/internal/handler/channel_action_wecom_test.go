@@ -141,7 +141,7 @@ func TestChannelPressWecom_ATelegramBindingDoesNotDecideAWecomPress(t *testing.T
 	telegramUser := bindChatSender(t, env.Installs, env.WorkspaceID, owner)
 
 	res := env.pressWecom(t, env.Installs, telegramUser, env.token(t, env.Proposal.ID, service.ProposalDecisionApprove))
-	if res.Settled || !strings.Contains(res.Reply, "Link your Multica account") {
+	if res.Settled || !strings.Contains(res.Reply, "Link your Delegora account") {
 		t.Fatalf("cross-app press = %+v, want the link prompt", res)
 	}
 	if got := proposalState(t, env.Proposal.ID); got != "pending" {

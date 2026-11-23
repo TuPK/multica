@@ -22,7 +22,7 @@ import (
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Configure the CLI, authenticate, and start the daemon",
-	Long: `Configures the CLI to connect to Multica Cloud (multica.ai), then
+	Long: `Configures the CLI to connect to Delegora Cloud (multica.ai), then
 authenticates via browser and starts the agent daemon.
 
 If a configuration already exists, you will be prompted before overwriting.
@@ -41,8 +41,8 @@ Use --profile to create an isolated configuration for a separate environment:
 
 var setupCloudCmd = &cobra.Command{
 	Use:   "cloud",
-	Short: "Configure the CLI for Multica Cloud (multica.ai)",
-	Long: `Explicitly configures the CLI to connect to Multica Cloud (multica.ai).
+	Short: "Configure the CLI for Delegora Cloud (multica.ai)",
+	Long: `Explicitly configures the CLI to connect to Delegora Cloud (multica.ai).
 
 If you run this command over SSH on a remote machine, keep the localhost
 callback and follow the SSH tunnel hint printed during browser login. If your
@@ -55,8 +55,8 @@ This is equivalent to running 'multica setup' without a subcommand.`,
 
 var setupSelfHostCmd = &cobra.Command{
 	Use:   "self-host",
-	Short: "Configure the CLI for a self-hosted Multica server",
-	Long: `Configures the CLI to connect to a self-hosted Multica server.
+	Short: "Configure the CLI for a self-hosted Delegora server",
+	Long: `Configures the CLI to connect to a self-hosted Delegora server.
 
 By default, connects to http://localhost:8080 (backend) and http://localhost:3000 (frontend).
 Use --server-url and --app-url to specify a custom server (e.g. an on-premise deployment).
@@ -164,7 +164,7 @@ func runSetupCloud(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("save config: %w", err)
 	}
 
-	fmt.Fprintln(os.Stderr, "Configured for Multica Cloud (https://multica.ai).")
+	fmt.Fprintln(os.Stderr, "Configured for Delegora Cloud (https://multica.ai).")
 	fmt.Fprintf(os.Stderr, "  server_url: %s\n", cfg.ServerURL)
 	fmt.Fprintf(os.Stderr, "  app_url:    %s\n", cfg.AppURL)
 	printConfigLocation(profile)
@@ -178,7 +178,7 @@ func runSetupCloud(cmd *cobra.Command, args []string) error {
 	if err := runDaemonAfterSetup(cmd, args); err != nil {
 		return fmt.Errorf("start or restart daemon: %w", err)
 	}
-	fmt.Fprintln(os.Stderr, "\n✓ Setup complete! Your machine is now connected to Multica.")
+	fmt.Fprintln(os.Stderr, "\n✓ Setup complete! Your machine is now connected to Delegora.")
 
 	return nil
 }
@@ -239,7 +239,7 @@ func runSetupSelfHost(cmd *cobra.Command, args []string) error {
 		case 0:
 			fmt.Fprintf(os.Stderr, "\n⚠ Server at %s is not reachable.\n", serverURL)
 		case http.StatusOK:
-			fmt.Fprintf(os.Stderr, "\n⚠ Server at %s did not return a healthy Multica backend response.\n", serverURL)
+			fmt.Fprintf(os.Stderr, "\n⚠ Server at %s did not return a healthy Delegora backend response.\n", serverURL)
 			fmt.Fprintln(os.Stderr, "  A login gateway may be intercepting the request to /health.")
 		default:
 			fmt.Fprintf(os.Stderr, "\n⚠ Server at %s returned HTTP %d (%s) from /health.\n", serverURL, probeResult.statusCode, http.StatusText(probeResult.statusCode))
@@ -263,7 +263,7 @@ func runSetupSelfHost(cmd *cobra.Command, args []string) error {
 	if err := runDaemonAfterSetup(cmd, args); err != nil {
 		return fmt.Errorf("start or restart daemon: %w", err)
 	}
-	fmt.Fprintln(os.Stderr, "\n✓ Setup complete! Your machine is now connected to Multica.")
+	fmt.Fprintln(os.Stderr, "\n✓ Setup complete! Your machine is now connected to Delegora.")
 
 	return nil
 }
@@ -338,7 +338,7 @@ func daemonActiveTaskCount(health map[string]any) int64 {
 }
 
 // persistSelfHostConfigIfReachable writes the self-host URLs only after a
-// healthy Multica response, preserving the existing profile on probe failure.
+// healthy Delegora response, preserving the existing profile on probe failure.
 func persistSelfHostConfigIfReachable(serverURL, appURL, profile string, expected cli.CLIConfig, probe func(string) serverProbeResult) (serverProbeResult, error) {
 	result := probe(serverURL)
 	if !result.healthy {
@@ -470,7 +470,7 @@ type serverProbeResult struct {
 
 const maxServerHealthResponseBytes = 4 * 1024
 
-// probeServer requires a healthy Multica payload, including after redirects.
+// probeServer requires a healthy Delegora payload, including after redirects.
 func probeServer(baseURL string) serverProbeResult {
 	url := strings.TrimRight(baseURL, "/") + "/health"
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

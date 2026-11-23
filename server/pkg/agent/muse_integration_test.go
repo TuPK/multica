@@ -34,7 +34,7 @@ func TestMuseRealMSPSmoke(t *testing.T) {
 	}
 
 	workDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(workDir, "AGENTS.md"), []byte(`# Multica smoke context
+	if err := os.WriteFile(filepath.Join(workDir, "AGENTS.md"), []byte(`# Delegora smoke context
 
 For every response in this workspace, include the exact marker AGENTS-MUSE-OK.
 `), 0o644); err != nil {

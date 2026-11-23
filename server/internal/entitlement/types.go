@@ -91,7 +91,7 @@ func (n GateName) valid() bool {
 
 type Action string
 
-// Cloud chooses one of these per gate. ActionObserve is also Multica's local
+// Cloud chooses one of these per gate. ActionObserve is also Delegora's local
 // downgrade of a stale cached ActionEnforce.
 const (
 	ActionOff     Action = "off"

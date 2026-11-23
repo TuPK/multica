@@ -385,7 +385,7 @@ func TestOnMessage_ReturnsBeforeBotNameLookupAndQueuesCallbackSnapshot(t *testin
 		}
 		close(lookupStarted)
 		<-releaseLookup
-		_, _ = w.Write([]byte(`{"chatbotInstanceVOList":[{"robotCode":"robot-1","name":"Multica Bot - Local"}]}`))
+		_, _ = w.Write([]byte(`{"chatbotInstanceVOList":[{"robotCode":"robot-1","name":"Delegora Bot - Local"}]}`))
 	}))
 	defer srv.Close()
 

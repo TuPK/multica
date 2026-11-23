@@ -2622,7 +2622,7 @@ func acpModelIDsEquivalent(configured, current string) bool {
 // extractACPCurrentModelID pulls the model selected by the ACP runtime out of
 // a session/new or session/resume response. Hermes returns this when it uses
 // its own default model, so token usage can still be attributed to a real model
-// even when Multica did not pass an explicit agent.model override.
+// even when Delegora did not pass an explicit agent.model override.
 func extractACPCurrentModelID(result json.RawMessage) string {
 	var r struct {
 		Models struct {
@@ -2816,7 +2816,7 @@ func buildACPMcpServers(raw json.RawMessage, logger *slog.Logger) ([]any, error)
 }
 
 // acpAltMcpConfigKeys are top-level keys that runtime-native MCP config
-// files use instead of Multica's canonical `mcpServers`: jcode and Kiro
+// files use instead of Delegora's canonical `mcpServers`: jcode and Kiro
 // nest under `servers`, OpenCode under `mcp`, Codex's TOML under
 // `mcp_servers`.
 var acpAltMcpConfigKeys = []string{"servers", "mcp", "mcp_servers"}

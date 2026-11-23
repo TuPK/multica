@@ -93,7 +93,7 @@ ORDER BY created_at DESC, id DESC
 LIMIT 500;
 
 -- name: ListRetryableKnowledgeLinks :many
--- Writes WeKnora has not accepted yet whose author is Multica itself.
+-- Writes WeKnora has not accepted yet whose author is Delegora itself.
 SELECT * FROM knowledge_link
 WHERE workspace_id = $1 AND state = 'failed' AND created_by_type = 'system'
 ORDER BY created_at ASC

@@ -58,7 +58,7 @@ type PublishPolicyView struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// AutoPublishEvent records one publish Multica did without a person pressing
+// AutoPublishEvent records one publish Delegora did without a person pressing
 // publish. Every automatic publish produces one (spec 3.3).
 type AutoPublishEvent struct {
 	WorkspaceID   pgtype.UUID

@@ -7,7 +7,7 @@ package wecom
 // receipts, prompts and cards in strings.go.
 //
 // A destination is a person or a room, and only a person has a language of
-// their own. Multica already carries a validated language on every user profile
+// their own. Delegora already carries a validated language on every user profile
 // (the web UI's own setting), so a 1:1 goes to that. A group has many readers,
 // no shared profile, and no member list WeCom hands us — so it goes to the
 // deployment's language. Picking one member's personal setting to address a
@@ -55,9 +55,9 @@ func localeFor(ctx context.Context, q languageLookup, installationID pgtype.UUID
 	return localeForSender(ctx, q, installationID, personID)
 }
 
-// localeForUser reads a Multica user's profile language. Anything missing —
+// localeForUser reads a Delegora user's profile language. Anything missing —
 // nil lookup, no row, an empty field — is the deployment default. Used where
-// the reader is a named Multica user rather than a chat: the inbox push, which
+// the reader is a named Delegora user rather than a chat: the inbox push, which
 // is addressed to one person by their binding row.
 func localeForUser(ctx context.Context, q languageLookup, userID pgtype.UUID) Locale {
 	if q == nil || !userID.Valid {

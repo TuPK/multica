@@ -21,7 +21,7 @@ const (
 	legacyBuiltinSkillsRoot = "builtin_skills_legacy"
 )
 
-// PlatformSkillName is the built-in skill carrying Multica's platform
+// PlatformSkillName is the built-in skill carrying Delegora's platform
 // contracts — issues, mentions, agents, squads, autopilots, projects, runtimes,
 // local environments and skill import — behind one routing SKILL.md. Every agent receives it.
 //

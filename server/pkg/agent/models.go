@@ -51,7 +51,7 @@ type Model struct {
 // UnavailableModel is a model the runtime named but will not run on this host —
 // today only Claude Code, reporting one that needs a newer CLI than the
 // installed one. Reason is the runtime's own remedy ("Update to 2.1.255+ to use
-// Fable 5.1"), forwarded verbatim so the copy stays right without Multica
+// Fable 5.1"), forwarded verbatim so the copy stays right without Delegora
 // tracking upstream version floors.
 //
 // It is a distinct type, and travels in a distinct list, precisely so it can
@@ -491,7 +491,7 @@ func ModelSelectionSupported(providerType string) bool {
 		// source of truth. ZeroClaw goes further: `session/set_model` is not in
 		// its ACP dispatch table at all (0.8.4 answers -32601) and no handler
 		// reads a model param, so the model comes from the ZeroClaw agent
-		// profile (`agents.<alias>.model_provider`) and nothing Multica sends
+		// profile (`agents.<alias>.model_provider`) and nothing Delegora sends
 		// can change it. museapp is a single personal agent behind a remote
 		// receptionist: the wire protocol has no model parameter, so the
 		// receptionist's own configuration is the source of truth.
@@ -504,7 +504,7 @@ func ModelSelectionSupported(providerType string) bool {
 // ModelKnownIncompatibleWithProvider reports whether a saved model is a known
 // mismatch for a target runtime provider. Only Claude and Codex are judged, and
 // only by model-family prefix: they gain same-family model IDs through live
-// discovery without a Multica release, so no static list could be an
+// discovery without a Delegora release, so no static list could be an
 // allow-list here. Unknown/custom model strings still return false because the
 // UI and CLI allow manual entries and the server should not erase values it
 // cannot confidently classify.
@@ -663,7 +663,7 @@ func claudeStaticModels() []Model {
 // list stands in (Catalog.Verified, MUL-7691).
 func codexStaticModels() []Model {
 	// `Default` here is NOT a user-facing "default model" badge — the picker
-	// stopped rendering that (Multica follows the CLI config when the model is
+	// stopped rendering that (Delegora follows the CLI config when the model is
 	// unset). It only marks the current flagship (multica#2009). It is
 	// deliberately NOT used to validate effort for an empty (follow-CLI-config)
 	// model: that config can resolve to any model, so ValidateThinkingLevel
@@ -1155,7 +1155,7 @@ func discoverPiModelsWithin(ctx context.Context, runtimeCmd Command, rpcTimeout,
 
 // discoverPiModelsRPC starts a short-lived Pi RPC session and requests both
 // the available models and current state. The state identifies the model Pi
-// will choose when Multica omits --model; its thinking level is the runtime's
+// will choose when Delegora omits --model; its thinking level is the runtime's
 // effective default for that selected model.
 func discoverPiModelsRPC(ctx context.Context, runtimeCmd Command, lookedUp string) ([]Model, bool) {
 	runtimeCmd.Path = lookedUp
@@ -1294,7 +1294,7 @@ func piModelsFromRPC(rawModels []piRPCModel, state piRPCState) []Model {
 // piThinkingFromRPCModel follows Pi's getSupportedThinkingLevels(model) for
 // reasoning-capable models: off..high are available unless explicitly mapped
 // to null; xhigh/max require an explicit non-null mapping. Pi reports only
-// "off" for reasoning=false; Multica intentionally hides that no-op picker.
+// "off" for reasoning=false; Delegora intentionally hides that no-op picker.
 func piThinkingFromRPCModel(model piRPCModel) *ModelThinking {
 	if !model.Reasoning {
 		return nil
@@ -1570,7 +1570,7 @@ func parseOmpModels(data []byte) ([]Model, error) {
 }
 
 // ompThinkingFromCatalogEntry maps one `omp models --json` entry's reasoning
-// metadata onto Multica's per-model effort catalog.
+// metadata onto Delegora's per-model effort catalog.
 //
 // The rules are omp's own, verified against can1357/oh-my-pi v18.2.0:
 //
@@ -1588,7 +1588,7 @@ func parseOmpModels(data []byte) ([]Model, error) {
 //
 // So a reasoning model gets `off` plus exactly the efforts the catalog
 // advertised, and nothing inferred. A non-reasoning model gets no picker at
-// all, matching how Multica hides pi's inert `off`-only control.
+// all, matching how Delegora hides pi's inert `off`-only control.
 //
 // `auto` is deliberately excluded: omp keeps AUTO_THINKING as a session-level
 // sentinel that is explicitly never an Effort or ThinkingLevel and is resolved

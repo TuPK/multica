@@ -370,7 +370,7 @@ func TestDispatchFrame_GroupMentionedMixedCommand(t *testing.T) {
 		imageRun("https://cos.example.com/a"),
 		textRun("@Multica Bot /issue 登录坏了"),
 	)
-	got, called, _ := dispatchOneAs(t, env, "Multica Bot")
+	got, called, _ := dispatchOneAs(t, env, "Delegora Bot")
 	if !called {
 		t.Fatal("the group message never reached the handler")
 	}
@@ -431,7 +431,7 @@ func TestDispatchFrame_GroupMentionedMixedChatStripsAddressingAndDirective(t *te
 	got, called, _ := dispatchOneAs(t, mixedFrame(t, group,
 		imageRun("https://cos.example.com/a"),
 		textRun("@Multica Bot /new 点评一下"),
-	), "Multica Bot")
+	), "Delegora Bot")
 	if !called {
 		t.Fatal("the group message never reached the handler")
 	}
@@ -486,7 +486,7 @@ func TestDispatchFrame_GroupMentionedSpokenIssueWithAnImage(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, called, _ := dispatchOneAs(t, mixedFrame(t, group, tc.items...), "Multica Bot")
+			got, called, _ := dispatchOneAs(t, mixedFrame(t, group, tc.items...), "Delegora Bot")
 			if !called {
 				t.Fatal("the group message never reached the handler")
 			}

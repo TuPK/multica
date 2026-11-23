@@ -36,7 +36,7 @@ func TestLocalMultica(t *testing.T) {
 	}
 	u, err := url.Parse(cfg.MulticaURL)
 	if err != nil || (u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1") {
-		t.Fatal("integration test requires a loopback Multica server")
+		t.Fatal("integration test requires a loopback Delegora server")
 	}
 	var mu sync.Mutex
 	var prompt string

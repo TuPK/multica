@@ -45,7 +45,7 @@ func newAgentCommandLogArgs(invocationArgs []string, trustedPositionals ...trust
 	}
 }
 
-// Command is the identity of a runtime CLI: the executable Multica spawns plus
+// Command is the identity of a runtime CLI: the executable Delegora spawns plus
 // the argv prefix that belongs to the command itself rather than to any single
 // invocation.
 //
@@ -550,7 +550,7 @@ func ValidateCustomArgs(agentType string, args []string) error {
 			isBlocked = isBlocked || sessionArg
 		}
 		if isBlocked {
-			return fmt.Errorf("custom_args: %q is managed by Multica for runtime %q and cannot be overridden; remove it from custom_args", flag, agentType)
+			return fmt.Errorf("custom_args: %q is managed by Delegora for runtime %q and cannot be overridden; remove it from custom_args", flag, agentType)
 		}
 	}
 	return nil

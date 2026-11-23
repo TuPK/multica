@@ -24,7 +24,7 @@ import (
 // a failure is reported and logged, and knowledge still becomes ready.
 
 // KnowledgeLLM is the OpenAI-compatible endpoint WeKnora calls for the features
-// that need a model: summaries, Wiki, reranking and vision. Multica registers
+// that need a model: summaries, Wiki, reranking and vision. Delegora registers
 // each configured model in the tenant. An empty BaseURL means no LLM.
 type KnowledgeLLM struct {
 	BaseURL     string
@@ -34,7 +34,7 @@ type KnowledgeLLM struct {
 	VisionModel string
 }
 
-// Roles of the models Multica registers, as a connection test names them.
+// Roles of the models Delegora registers, as a connection test names them.
 const (
 	KnowledgeModelChat   = "chat"
 	KnowledgeModelRerank = "rerank"

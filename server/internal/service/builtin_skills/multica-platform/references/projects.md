@@ -126,7 +126,7 @@ twice: at save time, and again against the daemon that claims each task, so a
 machine whose runtime cannot do worktrees gets its tasks cancelled rather than
 run in place. Saving `worktree` is refused (HTTP 422, code
 `daemon_version_unsupported`) while the daemon on that machine does not
-advertise the capability — the fix is updating the Multica app there, then
+advertise the capability — the fix is updating the Delegora app there, then
 retrying. Pass an empty value to clear it back to the default.
 
 ## Archived projects

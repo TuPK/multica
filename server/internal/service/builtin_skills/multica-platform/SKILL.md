@@ -1,11 +1,11 @@
 ---
 name: multica-platform
-description: "Use for Multica actions the runtime brief does not fully cover: issue and PR contracts, sub-issues, batch changes, saved views, comment charts and files, mentions, inbox, agents, squads, autopilots, projects, runtimes, local environments, skill import, themes. Not for product code you are editing."
+description: "Use for Delegora actions the runtime brief does not fully cover: issue and PR contracts, sub-issues, batch changes, saved views, comment charts and files, mentions, inbox, agents, squads, autopilots, projects, runtimes, local environments, skill import, themes. Not for product code you are editing."
 user-invocable: false
 allowed-tools: Bash(multica *), Bash(git *), Bash(gh *)
 ---
 
-# Operating Multica
+# Operating Delegora
 
 Your runtime brief owns the per-turn workflow: which issue you are on, when to
 comment, what status to write. This skill owns the platform contracts behind
@@ -30,7 +30,7 @@ Read the invariants below, then open the reference(s) your task actually needs
 | `references/runtimes.md` | Runtimes, daemons, `repo checkout`, and the task CLI boundary |
 | `references/environments.md` | Local environments in the issue sidebar: writing `.multica/environments.toml`, `multica env start` / `stop` / `list`, detected servers |
 | `references/skill-import.md` | Importing a skill into this workspace from a URL or a local archive; editing a workspace skill's content without overwriting someone else's save (`--base-revision`) |
-| `references/themes.md` | Building or changing a Multica app theme: the format, the checker, delivering to Desktop's themes folder or as a `.zip` |
+| `references/themes.md` | Building or changing a Delegora app theme: the format, the checker, delivering to Desktop's themes folder or as a `.zip` |
 | `references/inbox.md` | Going through the runtime owner's inbox for them: listing unread notifications, marking read or unread, archiving, snoozing, bulk clean-up (`multica inbox`) |
 
 Open what the task needs. A single-domain task usually needs one; a task that

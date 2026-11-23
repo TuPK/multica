@@ -147,7 +147,7 @@ func (h *Handler) RegisterTelegramBot(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, telegram.ErrBotOwnedByArchivedAgent):
 			writeError(w, http.StatusConflict, "this Telegram bot is connected to an archived agent in this workspace — restore that agent, or disconnect its bot, before connecting it here")
 		case errors.Is(err, telegram.ErrBotOwnedByAnotherWorkspace):
-			writeError(w, http.StatusConflict, "this Telegram bot is already connected to a different Multica workspace — disconnect it there before connecting it here")
+			writeError(w, http.StatusConflict, "this Telegram bot is already connected to a different Delegora workspace — disconnect it there before connecting it here")
 		case errors.Is(err, telegram.ErrWebhookConfigured):
 			writeError(w, http.StatusBadRequest, "this Telegram bot has a webhook configured — remove the webhook before connecting it with long polling")
 		default:
@@ -165,7 +165,7 @@ func (h *Handler) RegisterTelegramBot(w http.ResponseWriter, r *http.Request) {
 
 // RevokeTelegramInstallation (DELETE /api/workspaces/{id}/telegram/installations/{installationId})
 // flips status to 'revoked'. Admin-only at the router. The row is preserved
-// for audit and chat history stays in Multica; a re-install (re-pasting the
+// for audit and chat history stays in Delegora; a re-install (re-pasting the
 // bot's token) flips status back to 'active'.
 func (h *Handler) RevokeTelegramInstallation(w http.ResponseWriter, r *http.Request) {
 	if h.TelegramInstall == nil {
@@ -218,7 +218,7 @@ type RedeemTelegramBindingTokenResponse struct {
 }
 
 // RedeemTelegramBindingToken (POST /api/telegram/binding/redeem) binds the
-// Telegram user id carried by the token to the logged-in Multica user. The
+// Telegram user id carried by the token to the logged-in Delegora user. The
 // redeemer's identity comes from the session, not the token. Status codes
 // mirror the Slack redeem handler.
 func (h *Handler) RedeemTelegramBindingToken(w http.ResponseWriter, r *http.Request) {
@@ -249,7 +249,7 @@ func (h *Handler) RedeemTelegramBindingToken(w http.ResponseWriter, r *http.Requ
 		case errors.Is(err, telegram.ErrBindingTokenInvalid):
 			writeError(w, http.StatusGone, "binding token invalid or expired")
 		case errors.Is(err, telegram.ErrBindingAlreadyAssigned):
-			writeError(w, http.StatusConflict, "this Telegram account is already bound to a different Multica user")
+			writeError(w, http.StatusConflict, "this Telegram account is already bound to a different Delegora user")
 		case errors.Is(err, telegram.ErrBindingViewerReadOnly):
 			writeErrorCode(w, http.StatusForbidden, workspaceguard.CodeViewerReadOnly, workspaceguard.Message(workspaceguard.CodeViewerReadOnly))
 		case errors.Is(err, telegram.ErrBindingNotWorkspaceMember):

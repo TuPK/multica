@@ -4,7 +4,7 @@ package wecom
 // pack, not a literal compiled into the file that happens to send it.
 //
 // Localising one surface and not the rest produces the worst possible outcome:
-// a colleague whose Multica profile says English gets an English notice, then
+// a colleague whose Delegora profile says English gets an English notice, then
 // a Chinese binding prompt and a Chinese inbox card around it. The tests below
 // drive the REAL entry points — OutboundReplier.Reply, wecomChannel
 // .dispatchFrame, Outbound.tryDeliverInbox — once per language and assert on
@@ -27,13 +27,13 @@ import (
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
-// localeTestUserID is the Multica user every bound sender in this file
+// localeTestUserID is the Delegora user every bound sender in this file
 // resolves to. Deliberately not mustTestUUID's installation id: a lookup that
 // confuses the two must not pass.
 var localeTestUserID = pgtype.UUID{Bytes: [16]byte{77}, Valid: true}
 
 // fakeLanguages is a languageLookup holding one bound person: their WeCom
-// userid, the Multica user it resolves to, and that profile's language.
+// userid, the Delegora user it resolves to, and that profile's language.
 // Anyone else is unbound, which is what a real first-time sender is.
 type fakeLanguages struct {
 	senderID string

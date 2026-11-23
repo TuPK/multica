@@ -41,7 +41,7 @@ func TestAnnotateCodexRetiredCompaction(t *testing.T) {
 			}
 		}
 		// Having sent people to look at Multica-side launch arguments, the
-		// hint must not then tell them nothing on the Multica side needs
+		// hint must not then tell them nothing on the Delegora side needs
 		// changing. The only target it can safely exclude is the generated
 		// per-task copy, which is rebuilt from the shared config every run.
 		if strings.Contains(strings.ToLower(got), "nothing needs changing") {

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// A delivered file is downloaded from Qoder and uploaded to Multica within one
+// A delivered file is downloaded from Qoder and uploaded to Delegora within one
 // 30-second bridge step, so it is kept small.
 const (
 	maxReplyFileBytes    = 10 << 20
@@ -155,12 +155,12 @@ func (b *Bridge) transferReplyFile(ctx context.Context, r *run, d deliveredFile)
 		ID string `json:"id"`
 	}
 	if err := taskAPI.upload(ctx, "/api/upload-file", name, data, map[string]string{"task_id": r.TaskID}, &attachment); definitelyRejected(err) {
-		return "not attached because Multica refused the upload", nil
+		return "not attached because Delegora refused the upload", nil
 	} else if err != nil {
 		return "delivery could not be confirmed; check the attachments before retrying", nil
 	}
 	if strings.TrimSpace(attachment.ID) == "" {
-		return "not attached because Multica could not save the attachment", nil
+		return "not attached because Delegora could not save the attachment", nil
 	}
 	return "", nil
 }

@@ -34,7 +34,7 @@ const (
 	agentOfflineText  = "⚠️ The agent is offline right now. Your message was received and will be handled once it's back online."
 	agentArchivedText = "⚠️ This agent has been archived and can't respond. Please contact your workspace admin."
 	freshPendingText  = "✅ Fresh start ready. Your next chat message will run without previous context."
-	chatStartedText   = "✅ Started a new Multica chat. Your next message will enter it."
+	chatStartedText   = "✅ Started a new Delegora chat. Your next message will enter it."
 	issueUsageText    = "Please include an issue title. Use:\n\n`/issue <title>`\n`[description]` (optional)"
 )
 
@@ -65,7 +65,7 @@ type OutboundReplier struct {
 type OutboundReplierConfig struct {
 	Binding bindingMinter
 	Decrypt Decrypter
-	// AppURL is the Multica web app host the user clicks into to redeem the
+	// AppURL is the Delegora web app host the user clicks into to redeem the
 	// binding token (e.g. https://multica.example). It comes from MULTICA_APP_URL
 	// (falling back to FRONTEND_ORIGIN) and is intentionally separate from
 	// MULTICA_PUBLIC_URL, which is the backend/API public URL used for webhook and
@@ -223,7 +223,7 @@ func (r *OutboundReplier) sendBindingPrompt(ctx context.Context, inst engine.Res
 	// Wrap the URL as an explicit Slack link <url|label>: formatMrkdwn protects
 	// these from its markdown passes, so the base64url token's `_`/`-` chars are
 	// not mangled into italics.
-	text := "👋 To start chatting with me, link your Slack account to Multica: <" +
+	text := "👋 To start chatting with me, link your Slack account to Delegora: <" +
 		bindURL + "|link your account>\n(This link expires in 15 minutes.)"
 	return r.postResult(ctx, inst, msg, res, text)
 }

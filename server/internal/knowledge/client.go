@@ -393,7 +393,7 @@ type wireKB struct {
 	EmbeddingModelID string `json:"embedding_model_id"`
 	KnowledgeCount   int    `json:"knowledge_count"`
 	SummaryModelID   string `json:"summary_model_id"`
-	// IndexingStrategy is sent back whole on update, so the flags Multica does
+	// IndexingStrategy is sent back whole on update, so the flags Delegora does
 	// not own are read first and returned unchanged.
 	IndexingStrategy wireStrategy `json:"indexing_strategy"`
 }

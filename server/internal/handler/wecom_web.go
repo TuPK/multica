@@ -230,7 +230,7 @@ func writeWecomInstallError(w http.ResponseWriter, err error, wsUUID, agentUUID 
 			"this bot is connected to an archived agent in this workspace — restore that agent, or disconnect its bot, before connecting it here")
 	case errors.Is(err, wecom.ErrBotOwnedByAnotherWorkspace):
 		writeErrorCode(w, http.StatusConflict, "wecom_bot_owned_by_another_workspace",
-			"this bot is already connected to a different Multica workspace — disconnect it there before connecting it here")
+			"this bot is already connected to a different Delegora workspace — disconnect it there before connecting it here")
 	case errors.Is(err, wecom.ErrInvalidInstallationParams):
 		// Something the admin left out. Their input, their fix. This code means
 		// exactly that and nothing else — the two credential outcomes below get
@@ -341,7 +341,7 @@ func (h *Handler) wecomInstallService() *wecom.InstallationService {
 }
 
 // RedeemWecomBindingTokenRequest carries the raw token the user clicked
-// through from the bot's "link your Multica account" prompt.
+// through from the bot's "link your Delegora account" prompt.
 type RedeemWecomBindingTokenRequest struct {
 	Token string `json:"token"`
 }
@@ -355,7 +355,7 @@ type RedeemWecomBindingTokenResponse struct {
 }
 
 // RedeemWecomBindingToken (POST /api/wecom/binding/redeem) binds the WeCom
-// aibot userid carried by the token to the logged-in Multica user. The
+// aibot userid carried by the token to the logged-in Delegora user. The
 // redeemer's identity comes from the session, not the token, so a stolen
 // token cannot bind a WeCom id to an attacker's account. Failure modes map
 // to distinct status codes:
@@ -392,7 +392,7 @@ func (h *Handler) RedeemWecomBindingToken(w http.ResponseWriter, r *http.Request
 		case errors.Is(err, wecom.ErrBindingTokenInvalid):
 			writeError(w, http.StatusGone, "binding token invalid or expired")
 		case errors.Is(err, wecom.ErrBindingAlreadyAssigned):
-			writeError(w, http.StatusConflict, "this WeCom user is already bound to a different Multica user")
+			writeError(w, http.StatusConflict, "this WeCom user is already bound to a different Delegora user")
 		case errors.Is(err, wecom.ErrBindingViewerReadOnly):
 			writeErrorCode(w, http.StatusForbidden, workspaceguard.CodeViewerReadOnly, workspaceguard.Message(workspaceguard.CodeViewerReadOnly))
 		case errors.Is(err, wecom.ErrBindingNotWorkspaceMember):

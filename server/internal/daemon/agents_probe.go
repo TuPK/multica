@@ -163,7 +163,7 @@ var probeAgentCLIs = func() map[string]AgentEntry {
 			// without the executable bit would be advertised as a healthy
 			// runtime and then fail on every spawn.
 			//
-			// The Multica runtime profile gate in the caller still applies:
+			// The Delegora runtime profile gate in the caller still applies:
 			// a bundled CLI without the `multica` profile is not a runtime.
 			for _, p := range dshDesktopAppBundlePaths() {
 				if executableCandidate(p) {
@@ -249,7 +249,7 @@ var probeAgentCLIs = func() map[string]AgentEntry {
 		agents["reasonix"] = e
 	}
 	// DSH resolves here like any other CLI. Whether it is *usable* is decided
-	// one layer up: the Multica runtime profile is what gives it the --stdio
+	// one layer up: the Delegora runtime profile is what gives it the --stdio
 	// protocol, so a bare `dsh` prints a version and still cannot run a task.
 	// That check lives in probeBuiltinRuntime, where a failure produces a
 	// verdict the user can actually see — /health reports it as a skipped
@@ -429,7 +429,7 @@ const (
 	dshProbeOK dshProbeVerdict = iota
 	// An existing profile needs manual repair, never provisioning over it.
 	dshProbeNeedsMigration
-	// dshProbeMissingProfile: the manifest does not name the Multica runtime.
+	// dshProbeMissingProfile: the manifest does not name the Delegora runtime.
 	// A file that merely exists is not enough — a refused install leaves one.
 	// This is the only verdict that may install a bundle.
 	dshProbeMissingProfile
@@ -564,7 +564,7 @@ func probeDshMulticaProfile(ctx context.Context, executablePath string) dshProbe
 	if ctx.Err() == nil && completed {
 		if summary := dshCompatibilitySummary(stderr.String(), dshBridgeCompatibilityRefusal); summary != "" {
 			repairSummary := fmt.Sprintf(
-				"%s; back up and inspect %q, update the Multica bridge to a build compatible with the installed DSH, and rerun dsh --profile multica --probe.",
+				"%s; back up and inspect %q, update the Delegora bridge to a build compatible with the installed DSH, and rerun dsh --profile multica --probe.",
 				summary, dshMulticaProfileManifestPath())
 			return dshProbeResult{verdict: dshProbeNeedsMigration, repairSummary: repairSummary, detail: repairSummary + " " + detail}
 		}

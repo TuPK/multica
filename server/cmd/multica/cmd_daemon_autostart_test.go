@@ -99,11 +99,11 @@ func TestWindowsQuoteArg(t *testing.T) {
 func TestWindowsRunValueName(t *testing.T) {
 	t.Parallel()
 
-	if got := windowsRunValueName(""); got != "Multica" {
-		t.Errorf("windowsRunValueName(default) = %q, want %q", got, "Multica")
+	if got := windowsRunValueName(""); got != "Delegora" {
+		t.Errorf("windowsRunValueName(default) = %q, want %q", got, "Delegora")
 	}
-	if got := windowsRunValueName("staging"); got != "Multica (staging)" {
-		t.Errorf("windowsRunValueName(staging) = %q, want %q", got, "Multica (staging)")
+	if got := windowsRunValueName("staging"); got != "Delegora (staging)" {
+		t.Errorf("windowsRunValueName(staging) = %q, want %q", got, "Delegora (staging)")
 	}
 }
 
@@ -446,7 +446,7 @@ func TestSyncDaemonAutostart(t *testing.T) {
 		syncDaemonAutostart("staging", true)
 		out := sc.read()
 		if writes != 0 {
-			t.Fatalf("writeAutostart calls = %d, want 0 for a file Multica does not own", writes)
+			t.Fatalf("writeAutostart calls = %d, want 0 for a file Delegora does not own", writes)
 		}
 		if out != "" {
 			t.Errorf("stderr = %q, want silence — it IS registered, just not ours", out)
@@ -614,7 +614,7 @@ func TestRunDaemonAutostartEnableDisableStatus(t *testing.T) {
 		}
 	})
 
-	t.Run("enable refuses to overwrite a file Multica does not own", func(t *testing.T) {
+	t.Run("enable refuses to overwrite a file Delegora does not own", func(t *testing.T) {
 		mkProfiles(t)
 		stubPlatform(t, stubAutostartPlatform{
 			supported: true,
@@ -633,7 +633,7 @@ func TestRunDaemonAutostartEnableDisableStatus(t *testing.T) {
 			},
 		})
 		err := runDaemonAutostartEnable(autostartCmdFor(t, "", ""), nil)
-		if err == nil || !strings.Contains(err.Error(), "not created by Multica") {
+		if err == nil || !strings.Contains(err.Error(), "not created by Delegora") {
 			t.Fatalf("runDaemonAutostartEnable = %v, want a refusal naming the foreign file", err)
 		}
 	})
@@ -676,7 +676,7 @@ func TestRunDaemonAutostartEnableDisableStatus(t *testing.T) {
 		}
 	})
 
-	t.Run("disable refuses to remove a file Multica does not own", func(t *testing.T) {
+	t.Run("disable refuses to remove a file Delegora does not own", func(t *testing.T) {
 		mkProfiles(t)
 		stubPlatform(t, stubAutostartPlatform{
 			supported: true,
@@ -695,7 +695,7 @@ func TestRunDaemonAutostartEnableDisableStatus(t *testing.T) {
 			},
 		})
 		err := runDaemonAutostartDisable(autostartCmdFor(t, "", ""), nil)
-		if err == nil || !strings.Contains(err.Error(), "not created by Multica") {
+		if err == nil || !strings.Contains(err.Error(), "not created by Delegora") {
 			t.Fatalf("runDaemonAutostartDisable = %v, want a refusal naming the foreign file", err)
 		}
 	})
@@ -704,7 +704,7 @@ func TestRunDaemonAutostartEnableDisableStatus(t *testing.T) {
 	// default.target.wants", so a hand-written unit that is not enabled (or
 	// enabled under another target) reads disabled — guarding on Enabled let
 	// `disable` delete it. Presence, not enablement, must drive the refusal.
-	t.Run("disable refuses an unlinked file Multica does not own", func(t *testing.T) {
+	t.Run("disable refuses an unlinked file Delegora does not own", func(t *testing.T) {
 		mkProfiles(t)
 		stubPlatform(t, stubAutostartPlatform{
 			supported: true,
@@ -723,7 +723,7 @@ func TestRunDaemonAutostartEnableDisableStatus(t *testing.T) {
 			},
 		})
 		err := runDaemonAutostartDisable(autostartCmdFor(t, "", ""), nil)
-		if err == nil || !strings.Contains(err.Error(), "not created by Multica") {
+		if err == nil || !strings.Contains(err.Error(), "not created by Delegora") {
 			t.Fatalf("runDaemonAutostartDisable = %v, want a refusal for the present-but-unlinked foreign file", err)
 		}
 	})
@@ -804,7 +804,7 @@ func TestRunDaemonAutostartEnableDisableStatus(t *testing.T) {
 		}
 	})
 
-	t.Run("status flags an entry Multica does not own", func(t *testing.T) {
+	t.Run("status flags an entry Delegora does not own", func(t *testing.T) {
 		mkProfiles(t)
 		stubPlatform(t, stubAutostartPlatform{
 			supported: true,
@@ -824,14 +824,14 @@ func TestRunDaemonAutostartEnableDisableStatus(t *testing.T) {
 		if err != nil {
 			t.Fatalf("runDaemonAutostartStatus = %v", err)
 		}
-		if !strings.Contains(out, "not created by Multica") {
+		if !strings.Contains(out, "not created by Delegora") {
 			t.Errorf("status = %q, want it to flag the unmanaged entry", out)
 		}
 	})
 
 	// Present-but-unlinked (or linked under another target): status must
 	// still say whose file it is even though the verdict line says disabled.
-	t.Run("status flags an unlinked entry Multica does not own", func(t *testing.T) {
+	t.Run("status flags an unlinked entry Delegora does not own", func(t *testing.T) {
 		mkProfiles(t)
 		stubPlatform(t, stubAutostartPlatform{
 			supported: true,
@@ -854,7 +854,7 @@ func TestRunDaemonAutostartEnableDisableStatus(t *testing.T) {
 		if !strings.Contains(out, "disabled") {
 			t.Errorf("status = %q, want the enabled/disabled verdict to stay disabled", out)
 		}
-		if !strings.Contains(out, "not created by Multica") {
+		if !strings.Contains(out, "not created by Delegora") {
 			t.Errorf("status = %q, want it to flag the present-but-unlinked unmanaged entry", out)
 		}
 	})

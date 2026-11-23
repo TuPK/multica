@@ -9,7 +9,7 @@ import (
 func configureTaskCLIEnvironment(env map[string]string) error {
 	selfBin, err := resolveSelfExecutable()
 	if err != nil {
-		return fmt.Errorf("resolve task Multica CLI: %w", err)
+		return fmt.Errorf("resolve task Delegora CLI: %w", err)
 	}
 	// Login shell startup files can reorder PATH after the provider starts.
 	// Keep an explicit executable for the commands in the runtime brief.

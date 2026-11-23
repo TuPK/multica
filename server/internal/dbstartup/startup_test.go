@@ -87,13 +87,13 @@ func TestParsePoolConfigPreservesNativeConnectTimeout(t *testing.T) {
 		wantPGXNative time.Duration
 	}{
 		{
-			name:          "URL longer than Multica fallback",
+			name:          "URL longer than Delegora fallback",
 			databaseURL:   "postgres://user:pass@localhost:5432/db?sslmode=disable&connect_timeout=30",
 			multicaValue:  5 * time.Second,
 			wantPGXNative: 30 * time.Second,
 		},
 		{
-			name:          "URL shorter than explicit Multica value",
+			name:          "URL shorter than explicit Delegora value",
 			databaseURL:   "postgres://user:pass@localhost:5432/db?sslmode=disable&connect_timeout=1",
 			multicaValue:  30 * time.Second,
 			wantPGXNative: time.Second,

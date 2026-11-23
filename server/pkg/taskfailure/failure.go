@@ -57,7 +57,7 @@ type Reason string
 const agentErrorPrefix = "agent_error."
 
 const (
-	// Platform / scheduler side: failure attributable to Multica
+	// Platform / scheduler side: failure attributable to Delegora
 	// infrastructure rather than anything the agent process did. These
 	// are emitted by server-side sweepers (ExpireStaleQueuedTasks,
 	// FailStaleTasks, FailTasksForOfflineRuntimes,

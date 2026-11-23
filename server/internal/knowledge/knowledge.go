@@ -1,6 +1,6 @@
-// Package knowledge is Multica's boundary to the company knowledge engine.
+// Package knowledge is Delegora's boundary to the company knowledge engine.
 //
-// The engine is WeKnora, run as a pinned sidecar. Multica owns the contract:
+// The engine is WeKnora, run as a pinned sidecar. Delegora owns the contract:
 // callers see the Knowledge and Workspace interfaces below and the types in
 // this file, never WeKnora's wire shapes, so replacing the engine means a new
 // adapter and not new screens. The HTTP adapter is Client; Fake is an
@@ -235,7 +235,7 @@ type EmbeddingModelSpec struct {
 	// Provider is "ollama" for a local Ollama, or any other WeKnora provider
 	// such as "generic" for an OpenAI-compatible endpoint.
 	Provider string
-	// BaseURL is the endpoint as WeKnora, not Multica, reaches it. A private
+	// BaseURL is the endpoint as WeKnora, not Delegora, reaches it. A private
 	// address must be in WeKnora's SSRF allow-list.
 	BaseURL string
 	// APIKey is optional and write-only.
@@ -288,7 +288,7 @@ type ModelSpec struct {
 	Type ModelType
 	// Provider is "generic" for any OpenAI-compatible endpoint.
 	Provider string
-	// BaseURL is the endpoint as WeKnora, not Multica, reaches it.
+	// BaseURL is the endpoint as WeKnora, not Delegora, reaches it.
 	BaseURL string
 	// APIKey is optional and write-only.
 	APIKey string
@@ -301,7 +301,7 @@ type ModelSpec struct {
 // ModelType is the role a model plays in WeKnora.
 type ModelType string
 
-// The model roles WeKnora knows that Multica registers.
+// The model roles WeKnora knows that Delegora registers.
 const (
 	ModelTypeKnowledgeQA ModelType = "KnowledgeQA"
 	ModelTypeRerank      ModelType = "Rerank"
@@ -481,7 +481,7 @@ type MCPEndpoint struct {
 
 // ReadOnlyMCPTools are the tools of the company-read endpoint. ask is left out
 // because it calls an LLM, and the write tools are left out because agents
-// write drafts through Multica, never straight into the index.
+// write drafts through Delegora, never straight into the index.
 var ReadOnlyMCPTools = []string{
 	"list_knowledge_bases",
 	"search_knowledge",

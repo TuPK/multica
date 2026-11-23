@@ -11,7 +11,7 @@ import (
 )
 
 // weknoraWorkspace is the tenant's API as the service sees it, for changes made
-// behind Multica's back.
+// behind Delegora's back.
 func (e *knowledgeEnv) weknoraWorkspace() knowledge.Workspace {
 	e.t.Helper()
 	row, err := e.q.GetWorkspaceKnowledge(context.Background(), e.ws)

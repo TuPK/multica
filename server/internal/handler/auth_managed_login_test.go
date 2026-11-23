@@ -33,7 +33,7 @@ func loginHandler(t *testing.T) *Handler {
 	return &h
 }
 
-// loginAccount inserts a Multica user. A non-empty status also writes its
+// loginAccount inserts a Delegora user. A non-empty status also writes its
 // platform_account row; an empty status leaves no row, which counts as active.
 func loginAccount(t *testing.T, email, status string) {
 	t.Helper()

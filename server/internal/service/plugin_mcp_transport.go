@@ -12,7 +12,7 @@ import (
 )
 
 // The `mcp` transport: a hook that points at an MCP server the plugin author
-// already runs, whose tools Multica adopts.
+// already runs, whose tools Delegora adopts.
 //
 // The whole difference from an `http` hook is who decides the shape. An http
 // hook declares one endpoint in a manifest an administrator read and approved.

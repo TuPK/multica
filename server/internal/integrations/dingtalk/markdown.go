@@ -29,7 +29,7 @@ const (
 	// piece budget (or make it negative) when the next code line is split.
 	maxMarkdownFenceInfoBytes = 256
 	// defaultMarkdownTitle is used when an answer chunk contains only whitespace.
-	defaultMarkdownTitle = "Multica has replied."
+	defaultMarkdownTitle = "Delegora has replied."
 )
 
 // DingTalk's text quote callback carries the selected message's title.

@@ -82,7 +82,7 @@ type TaskService struct {
 	// epic, MUL-3721) — the integration's "current user's connected apps
 	// → MCP session URL" hook called from each Enqueue* path. Optional: a
 	// nil ComposioOverlayBuilder turns the overlay step into a no-op so
-	// every Multica deployment that hasn't enabled Composio behaves
+	// every Delegora deployment that hasn't enabled Composio behaves
 	// exactly as before. Wired in router.go after composiointeg.NewService
 	// succeeds; the concrete type is *composio.Service.
 	Composio ComposioOverlayBuilder
@@ -3483,7 +3483,7 @@ func (s *TaskService) finalizeCancelledChatMessage(ctx context.Context, task db.
 		restorable := !hasMessages
 		if restorable {
 			// Channel-ingested user messages are the durable record of what
-			// the platform sender wrote — the sender has no Multica composer
+			// the platform sender wrote — the sender has no Delegora composer
 			// to restore a draft into. The gate is the immutable per-message
 			// channel_ingested stamp, NOT the channel_chat_session_binding
 			// row: archiving a session or rebinding an installation deletes

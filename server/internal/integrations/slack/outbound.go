@@ -94,7 +94,7 @@ func (o *Outbound) processEvent(ctx context.Context, e events.Event) error {
 	// Only bound, non-empty completions reach here, so classify the task origin
 	// before loading credentials or sending. Web/mobile direct-chat tasks can
 	// reuse a session that originated in Slack, but their replies belong only in
-	// Multica. Outbound delivery fails closed when the origin cannot be
+	// Delegora. Outbound delivery fails closed when the origin cannot be
 	// established. Sealed channel tasks own an input batch just like direct
 	// tasks, so the discriminator is the immutable channel_ingested provenance
 	// of that batch, not chat_input_task_id presence (which #5645 originally

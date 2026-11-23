@@ -217,7 +217,7 @@ func sessionAMRFromRequest(r *http.Request) []string {
 }
 
 // findManagedUser returns the registered, active user for an email. It never
-// creates a user: an email without a Multica user row gets ErrAccountNotRegistered,
+// creates a user: an email without a Delegora user row gets ErrAccountNotRegistered,
 // and a user whose platform account is not active gets ErrAccountNotActive.
 // A user with no platform_account row counts as active, as in accountguard.
 func (h *Handler) findManagedUser(ctx context.Context, email string) (db.User, error) {

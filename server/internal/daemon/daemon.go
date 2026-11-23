@@ -2418,7 +2418,7 @@ const (
 	builtinProbeNotExecutable
 	// builtinProbeMissingProfile: the CLI resolved and runs, but the runtime
 	// profile its backend speaks through is not installed for it. DSH is the
-	// case in the field: the Multica profile is what gives `dsh` its --stdio
+	// case in the field: the Delegora profile is what gives `dsh` its --stdio
 	// protocol, so a bare binary answers `--version` and `--probe` refuses.
 	// Deterministic like the two above — the same binary keeps refusing until
 	// someone installs the profile — and the reason carries that repair.
@@ -2483,23 +2483,23 @@ const dshProfileMigrationReason = "the multica DSH profile needs manual migratio
 // builtinProbeMissingProfile drop. It names the repair because nothing else in
 // the daemon's output would: the CLI itself is installed, resolvable and
 // answers `--version`, so "not installed" is true only of the profile.
-const dshMissingProfileReason = "the Multica runtime profile is not installed; add the Multica DSH runtime bundle to the `multica` profile with `dsh plugin`, or set MULTICA_DSH_PROFILE_BUNDLE so the daemon installs it"
+const dshMissingProfileReason = "the Delegora runtime profile is not installed; add the Delegora DSH runtime bundle to the `multica` profile with `dsh plugin`, or set MULTICA_DSH_PROFILE_BUNDLE so the daemon installs it"
 
 // dshProfileInstallStartedReason replaces it when the operator configured a
 // bundle for the daemon to install (MULTICA_DSH_PROFILE_BUNDLE), so /health
 // separates "wait for the install" from "nothing is going to happen".
-const dshProfileInstallStartedReason = "the Multica runtime profile is not installed; installing the configured bundle now and re-probing when it finishes"
+const dshProfileInstallStartedReason = "the Delegora runtime profile is not installed; installing the configured bundle now and re-probing when it finishes"
 
 // dshInstallGaveUpReason replaces the "installing now" detail once the
 // automatic install has stopped without producing a profile. It says the
 // attempt happened and ended, because a reader who saw the earlier "installing"
 // reason needs to know which of the two states they are looking at.
-const dshInstallGaveUpReason = "the Multica runtime profile is not installed; the automatic install failed, so it has to be installed by hand"
+const dshInstallGaveUpReason = "the Delegora runtime profile is not installed; the automatic install failed, so it has to be installed by hand"
 
 // dshIncompatibleProfileReason is the /health reason for a profile that answers
 // with a protocol this daemon does not drive. It names both sides because
 // either can be the stale one.
-const dshIncompatibleProfileReason = "the Multica runtime profile answers with a protocol version this daemon does not drive; update the profile bundle or the daemon"
+const dshIncompatibleProfileReason = "the Delegora runtime profile answers with a protocol version this daemon does not drive; update the profile bundle or the daemon"
 
 // dshProbeFailedReason is the transient reason: the probe did not answer with a
 // probe frame at all — a timeout, a failed exec, or unparseable output. It is
@@ -2698,13 +2698,13 @@ probeLoop:
 			continue
 		}
 		// DSH is the one built-in whose binary being present, and runnable, and
-		// new enough still does not make it usable: the Multica runtime profile
+		// new enough still does not make it usable: the Delegora runtime profile
 		// supplies the --stdio protocol the backend drives, so a `dsh` without
 		// it resolves, answers `--version`, clears the minimum, and then cannot
 		// run a single task. Checked here rather than in probeAgentCLIs so the
 		// drop produces a verdict: without it the provider disappeared from the
 		// availability set silently, which is indistinguishable to a user from
-		// "Multica cannot see my dsh at all".
+		// "Delegora cannot see my dsh at all".
 		//
 		// LAST, after version detection has succeeded, and that order is the
 		// point. probeDshMulticaProfile cannot tell "the profile refused" from
@@ -2712,7 +2712,7 @@ probeLoop:
 		// weak a proxy for the second: on Windows the CLI is a .cmd shim that
 		// LookPath happily resolves and that exits 9009 — cmd.exe's "command
 		// not found" — when what it forwards to is missing. Probing the profile
-		// first reported that machine as "the Multica runtime profile is not
+		// first reported that machine as "the Delegora runtime profile is not
 		// installed", which is a repair for a problem it did not have, and with
 		// a bundle configured would have started installing into a DSH that
 		// cannot execute. A CLI that cannot answer `--version` is not one this
@@ -2738,11 +2738,11 @@ probeLoop:
 					reason = fmt.Sprintf("DSH %s: %s", dshDiagnosticOutput([]byte(version)), profileProbe.detail)
 					offlineDetail = fmt.Sprintf("DSH %s: %s", dshDiagnosticOutput([]byte(version)), profileProbe.repairSummary)
 				}
-				d.logger.Warn("skip registering runtime: DSH Multica runtime profile needs manual migration",
+				d.logger.Warn("skip registering runtime: DSH Delegora runtime profile needs manual migration",
 					"name", name, "path", resolved.Path, "error", reason)
 				return builtinProbeResult{version: "", reason: reason, verdict: builtinProbeProfileMigration, offlineDetail: offlineDetail}
 			case dshProbeMissingProfile:
-				d.logger.Warn("skip registering runtime: DSH Multica runtime profile is not installed",
+				d.logger.Warn("skip registering runtime: DSH Delegora runtime profile is not installed",
 					"name", name, "path", resolved.Path)
 				reason := dshMissingProfileReason
 				if d.startDshProfileProvision(resolved.Path) {
@@ -2750,7 +2750,7 @@ probeLoop:
 				}
 				return builtinProbeResult{version: "", reason: reason, verdict: builtinProbeMissingProfile}
 			case dshProbeIncompatible:
-				d.logger.Warn("skip registering runtime: DSH Multica runtime profile speaks another protocol",
+				d.logger.Warn("skip registering runtime: DSH Delegora runtime profile speaks another protocol",
 					"name", name, "path", resolved.Path)
 				return builtinProbeResult{version: "", reason: dshIncompatibleProfileReason, verdict: builtinProbeIncompatibleProfile}
 			default:
@@ -5193,7 +5193,7 @@ func (d *Daemon) handleUpdate(ctx context.Context, runtimeID string, update *Pen
 		d.logger.Info("refusing CLI self-update: daemon is managed by Desktop", "runtime_id", runtimeID, "update_id", update.ID)
 		d.reportUpdateResult(ctx, runtimeID, update.ID, map[string]any{
 			"status": "failed",
-			"error":  "CLI is managed by Multica Desktop — update the Desktop app to upgrade the CLI",
+			"error":  "CLI is managed by Delegora Desktop — update the Desktop app to upgrade the CLI",
 		})
 		return
 	}
@@ -8644,7 +8644,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		// the user's provider config at all, and it is derived from the daemon
 		// PROCESS environment — invisible from the shell the user tests
 		// `hermes acp` in, which is why a mismatch reads as "works by hand,
-		// fails under Multica" (GH #6872). One line, at Info, so the answer is
+		// fails under Delegora" (GH #6872). One line, at Info, so the answer is
 		// in the daemon log before anything fails rather than reconstructed
 		// afterwards.
 		taskLog.Info("hermes home resolved",
@@ -8941,7 +8941,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	// already disabled above (see localAssignment == nil), and the brief
 	// would otherwise live on inside the user's repository — a subsequent
 	// manual `claude` / `codex` run in that directory would pick
-	// up stale Multica instructions (issue id, trigger comment id, reply
+	// up stale Delegora instructions (issue id, trigger comment id, reply
 	// rules) and start acting on the previous task's context. Excise the
 	// marker block on the way out instead.
 	//
@@ -8960,7 +8960,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	// also precede every early return between here and provider launch
 	// (temp-dir setup, StartTask): those paths still run Finalize, and without
 	// this pass Finalize would auto-commit the sidecars Prepare just wrote and
-	// deliver a branch whose only content is Multica's own runtime files — or,
+	// deliver a branch whose only content is Delegora's own runtime files — or,
 	// in place, leave them behind in the user's tree.
 	if env.LocalDirectory || env.LocalWorktree != nil {
 		defer func() {
@@ -8994,7 +8994,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 			// In worktree mode a failed cleanup is NOT survivable: Finalize is
 			// about to `git add -A`, so whatever the cleanup could not remove
 			// gets committed and delivered as the task's branch — a diff whose
-			// content is Multica's own runtime files, which is precisely what
+			// content is Delegora's own runtime files, which is precisely what
 			// this mode promises never to produce. Tell Finalize to abort
 			// instead, so nothing is committed and the worktree is kept for
 			// inspection. (In place there is no commit and no branch, so a
@@ -9141,7 +9141,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	prompt, skillInvocation := buildRuntimePrompt(task, provider, env.SkillDirectories, promptOptions...)
 
 	// Pass task-scoped auth credentials and context so the spawned agent CLI
-	// can call the Multica API and the local daemon (e.g. `multica repo checkout`).
+	// can call the Delegora API and the local daemon (e.g. `multica repo checkout`).
 	// MULTICA_TASK_SLOT is allocated from the daemon-wide concurrency pool, not
 	// per-agent. When one daemon hosts multiple agents, slots index shared
 	// daemon-level resources such as GPUs.
@@ -9187,7 +9187,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	}
 	// HOME and the XDG base dirs are deliberately not touched here: provider
 	// tools such as gh, aws, kubectl, and npm continue resolving the daemon
-	// user's existing state (MUL-5578). The Multica CLI is the exception:
+	// user's existing state (MUL-5578). The Delegora CLI is the exception:
 	// MULTICA_TASK_CONFIG_ROOT above redirects its implicit profile lookup to
 	// private task-local state and prevents Owner-profile fallback.
 	// (Hermes HERMES_HOME is applied after custom_env below so the per-task
@@ -11501,7 +11501,7 @@ const hermesProviderUnconfiguredHint = " [multica] hermes did not read the HERME
 // failure that Hermes itself cannot explain.
 //
 // Hermes reports it against whichever HERMES_HOME it was started with and tells
-// the user to run `hermes model` — but under Multica it was started with a
+// the user to run `hermes model` — but under Delegora it was started with a
 // per-task overlay, seeded from a source home the daemon resolved from ITS OWN
 // process environment. When that disagrees with where the user keeps their
 // config, the remedy Hermes names edits a file the task will never read, and
@@ -11545,7 +11545,7 @@ func annotateHermesProviderUnconfigured(errMsg, provider string, overlayActive b
 // not there, which is the failure mode this hint exists to prevent.
 //
 // For the same reason the closing line excludes only the generated per-task
-// copy, rather than claiming nothing on the Multica side needs changing. Once
+// copy, rather than claiming nothing on the Delegora side needs changing. Once
 // the hint sends people to look at custom_args, a daemon's extra args, or a
 // profile's fixed args, "nothing to change here" contradicts the instruction
 // directly above it and strands exactly the users the argument half was added
@@ -11607,7 +11607,7 @@ func layerCustomEnvAndHermesHome(agentEnv, customEnv map[string]string, overlayH
 // (runtime, agent) while leaving REASONIX_HOME untouched. Current Reasonix
 // reads credentials/config from REASONIX_HOME and state from
 // REASONIX_STATE_HOME, so `reasonix setup` remains the sole credential owner
-// and Multica never copies API keys into task-managed files.
+// and Delegora never copies API keys into task-managed files.
 func prepareReasonixTaskStateHome(profile, runtimeID, agentID string) (string, error) {
 	profileDir, err := cli.ProfileDir(profile)
 	if err != nil {
@@ -11631,7 +11631,7 @@ func prepareReasonixTaskStateHome(profile, runtimeID, agentID string) (string, e
 	return path, nil
 }
 
-// prepareDshTaskSessionRoot keeps DSH transcripts private to one Multica
+// prepareDshTaskSessionRoot keeps DSH transcripts private to one Delegora
 // runtime/agent pair. Credentials and the user's DSH profile remain in the
 // ordinary DSH_HOME; only session persistence is redirected.
 func prepareDshTaskSessionRoot(profile, runtimeID, agentID string) (string, error) {

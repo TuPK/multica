@@ -897,7 +897,7 @@ func TestCopilotEventLoopDeliversFinalTurnOnly(t *testing.T) {
 		t.Fatalf("Result.Output should be the final turn only, got %q", got)
 	}
 	// The transcript must still see the narration — this fix narrows delivery,
-	// not the timeline the Multica UI renders.
+	// not the timeline the Delegora UI renders.
 	if len(streamed) != 2 || streamed[0] != "Let me check the logs." {
 		t.Fatalf("expected both turns streamed as MessageText, got %q", streamed)
 	}

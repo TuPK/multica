@@ -21,7 +21,7 @@ import (
 // This file is the DingTalk install backend. DingTalk uses the
 // bring-your-own-app (BYO) model: an agent owner or workspace admin creates a
 // DingTalk Stream-mode robot, then pastes its AppKey (client id) + AppSecret
-// (client secret) into Multica (the paste path lives in byo_install.go). The
+// (client secret) into Delegora (the paste path lives in byo_install.go). The
 // InstallService owns the at-rest encryption of the AppSecret — so no caller can
 // write a channel_installation with a plaintext secret — plus the shared
 // persistInstall transaction and the list / get / revoke management surface.
@@ -30,11 +30,11 @@ var (
 	// ErrInstallationNotFound surfaces "no row matches in this workspace".
 	ErrInstallationNotFound = errors.New("dingtalk installation not found")
 	// ErrRobotOwnedByAnotherWorkspace is returned when the pasted DingTalk robot
-	// is already connected to a live owner in a DIFFERENT Multica workspace — it
+	// is already connected to a live owner in a DIFFERENT Delegora workspace — it
 	// would collide with the (channel_type, app_id) routing index. A DingTalk
 	// robot is one bot identity and maps to one agent; reusing it here requires
 	// disconnecting it in the other workspace first.
-	ErrRobotOwnedByAnotherWorkspace = errors.New("dingtalk: this DingTalk robot is already connected to a different Multica workspace")
+	ErrRobotOwnedByAnotherWorkspace = errors.New("dingtalk: this DingTalk robot is already connected to a different Delegora workspace")
 	// ErrRobotOwnedBySameWorkspace is returned when the robot is already connected
 	// to a DIFFERENT (live, non-archived) agent in the SAME workspace, pointing
 	// the user at the Disconnect they can actually reach (#4810).

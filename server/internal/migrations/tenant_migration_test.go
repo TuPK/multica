@@ -200,7 +200,7 @@ func TestTenantTablesHaveNoForeignKeysOrInlineConstraints(t *testing.T) {
 	}
 }
 
-// workspace is Multica's table and gets no tenant column (D6, spec R6 section 5.1).
+// workspace is Delegora's table and gets no tenant column (D6, spec R6 section 5.1).
 func TestWorkspaceTableHasNoTenantColumn(t *testing.T) {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {

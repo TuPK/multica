@@ -43,7 +43,7 @@ func TestBuildContextReceiptFileDeliveredBrief(t *testing.T) {
 		Model:          "claude-opus",
 		WorkDir:        workDir,
 		Prompt:         "do the task",
-		RuntimeBrief:   "# Multica Agent Runtime\nbrief",
+		RuntimeBrief:   "# Delegora Agent Runtime\nbrief",
 		BriefWritten:   true,
 		ResumedSession: true,
 		MCPConfig:      json.RawMessage(`{"mcpServers":{"zeta":{"command":"z","env":{"TOKEN":"secret"}},"alpha":{"url":"https://x"}}}`),
@@ -61,7 +61,7 @@ func TestBuildContextReceiptFileDeliveredBrief(t *testing.T) {
 	if r.SchemaVersion != ContextReceiptSchemaVersion || r.Runtime != "kiro" || !r.ResumedSession {
 		t.Fatalf("unexpected header: %+v", r)
 	}
-	if r.PromptBytes != len("do the task") || r.BriefBytes != len("# Multica Agent Runtime\nbrief") {
+	if r.PromptBytes != len("do the task") || r.BriefBytes != len("# Delegora Agent Runtime\nbrief") {
 		t.Fatalf("sizes: prompt=%d brief=%d", r.PromptBytes, r.BriefBytes)
 	}
 	if got := strings.Join(r.MCPServers, ","); got != "alpha,zeta" {

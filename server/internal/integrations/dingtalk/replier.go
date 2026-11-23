@@ -34,14 +34,14 @@ const (
 	agentOfflineText        = "⚠️ The agent is offline, so this message won't be processed automatically."
 	agentArchivedText       = "⚠️ This agent has been archived and can't respond. Please contact your workspace admin."
 	freshPendingText        = "✅ Fresh start ready. Your next chat message will run without previous context."
-	chatStartedText         = "✅ Started a new Multica chat. Your next message will enter it."
+	chatStartedText         = "✅ Started a new Delegora chat. Your next message will enter it."
 	issueUsageText          = "Please include an issue title. Use:\n\n`/issue <title>`\n\n`[description]` (optional)"
 	issueUsageWithMediaText = "Please add a title and resend with the image (*image can come before or after the command*):\n\n`/issue <title>`\n\n`[description]` (optional)"
 	// Refusals for dropped /issue commands, carried over from the deleted
 	// pre-engine IssueCommandProcessor: without them the user's command
 	// vanishes with no signal that it will never be handled.
-	issueNotMemberText = "You're not a member of this Multica workspace, so I can't file an issue for you. Ask a workspace admin to invite you, then send the command again."
-	issueDisabledText  = "This DingTalk robot isn't connected to Multica (or was disconnected). Ask the agent owner or a workspace owner/admin to reconnect it."
+	issueNotMemberText = "You're not a member of this Delegora workspace, so I can't file an issue for you. Ask a workspace admin to invite you, then send the command again."
+	issueDisabledText  = "This DingTalk robot isn't connected to Delegora (or was disconnected). Ask the agent owner or a workspace owner/admin to reconnect it."
 )
 
 // bindingMinter is the binding-token surface the replier needs.
@@ -67,7 +67,7 @@ type OutboundReplierConfig struct {
 	Binding bindingMinter
 	Decrypt Decrypter
 	Client  *Client
-	// AppURL is the Multica web app host the user clicks into to redeem the
+	// AppURL is the Delegora web app host the user clicks into to redeem the
 	// binding token (e.g. https://multica.example). The bind page (/dingtalk/bind)
 	// is served by the web app, so the link must point at the app host, not the
 	// API host. Mirrors the Slack replier's AppURL.
@@ -198,7 +198,7 @@ func (r *OutboundReplier) sendBindingPrompt(ctx context.Context, inst engine.Res
 		return fmt.Errorf("mint binding token: %w", err)
 	}
 	bindURL := r.appURL + r.bindingPath + "?token=" + url.QueryEscape(token.Raw)
-	text := "👋 To start chatting with me, link your DingTalk account to Multica: [link your account](" +
+	text := "👋 To start chatting with me, link your DingTalk account to Delegora: [link your account](" +
 		bindURL + ")\n\n(This link expires in 15 minutes.)"
 	// Deliver the single-use binding link privately (1:1) to the sender, never
 	// via targetFromMessage: in a group that would post the token into the whole

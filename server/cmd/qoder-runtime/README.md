@@ -1,7 +1,7 @@
 # Qoder Cloud Agents runtime bridge (PoC)
 
-This standalone service registers a `qoder_cloud` runtime in one Multica
-workspace. Bind a Multica agent to that runtime and assign it an issue. The
+This standalone service registers a `qoder_cloud` runtime in one Delegora
+workspace. Bind a Delegora agent to that runtime and assign it an issue. The
 bridge reads issue context using the claim's task-scoped token, creates a
 managed Qoder session, sends the work, and reports messages and the final result.
 No local coding-agent CLI, repository checkout, or shell execution is performed
@@ -35,8 +35,8 @@ store. Do not commit tokens to source control.
 
 | Variable | Value |
 | --- | --- |
-| `MULTICA_SERVER_URL` | Multica server origin, without `/api` |
-| `MULTICA_TOKEN` | Multica workspace administrator PAT (standalone mode only) |
+| `MULTICA_SERVER_URL` | Delegora server origin, without `/api` |
+| `MULTICA_TOKEN` | Delegora workspace administrator PAT (standalone mode only) |
 | `MULTICA_WORKSPACE_ID` | Workspace UUID |
 | `QODER_CLOUD_BASE_URL` | Qoder managed API base, including its gateway prefix (for example `https://api.qoder.com/api/v1/cloud`) |
 | `QODER_CLOUD_TOKEN` | Qoder personal access token (PAT) with access to the configured agent/environment |
@@ -53,12 +53,12 @@ fields inherit environment values. Unknown keys are rejected to catch typos.
 ./qoder-runtime --config /private/path/config.json
 ```
 
-`--check` only reads the Multica workspace and Qoder environment. It does
+`--check` only reads the Delegora workspace and Qoder environment. It does
 not register a runtime, claim a task or start execution.
 
-Start `./qoder-runtime`. Startup checks access to the Multica workspace and Qoder environment
+Start `./qoder-runtime`. Startup checks access to the Delegora workspace and Qoder environment
 before registering. Copy the `runtime_id` from its registration log and bind
-an existing Multica agent:
+an existing Delegora agent:
 
 ```sh
 multica agent update <agent-id> --runtime-id <runtime-id>
@@ -106,7 +106,7 @@ mounted, and failing that the workspace's only repository when a credential is
 configured for it. Other workspace repositories are context only.
 
 The prompt asks the agent to push a branch named `multica/<identifier>-<slug>`
-and to prefix the pull request title with the issue identifier, so Multica's
+and to prefix the pull request title with the issue identifier, so Delegora's
 GitHub integration links the pull request back to the issue.
 
 
@@ -114,7 +114,7 @@ GitHub integration links the pull request back to the issue.
 
 - Up to `max_concurrency` runs (default 1 for this binary, 3 for managed
   connections, at most 10) execute at once per bridge; further tasks stay
-  queued in Multica. Deploy one instance per configuration with its dedicated
+  queued in Delegora. Deploy one instance per configuration with its dedicated
   persistent state volume; this is not an HA service.
 - A follow-up run on the same issue, or the next turn in the same chat,
   continues the agent's previous Qoder session when that session is idle, uses
@@ -138,7 +138,7 @@ GitHub integration links the pull request back to the issue.
   files are not deleted by the bridge.
 - Files returned in chat: files the agent delivers with `DeliverArtifacts`
   during a chat turn (up to 10 MB each) are downloaded from Qoder Files and
-  uploaded to Multica with the task credential, which attaches them to the
+  uploaded to Delegora with the task credential, which attaches them to the
   agent's reply. Only files Qoder scopes to the run's session are passed on.
   Each file transfer gets its own guarded poll, alternating with normal run
   polling so other runs and heartbeats continue. Transfers do not share the
@@ -149,7 +149,7 @@ GitHub integration links the pull request back to the issue.
   may mean the file was saved, so the reply asks the user to check its
   attachments before retrying. A successful upload must return a non-empty
   attachment ID. Larger files, files of another session, files Qoder does
-  not offer for download, files Multica refuses, and files not yet attached
+  not offer for download, files Delegora refuses, and files not yet attached
   when the bridge restarts are logged and skipped. Delivery notices name
   files not attached or whose delivery could not be confirmed; the reply
   still completes. Notices survive journal reloads and completion retries.
@@ -162,7 +162,7 @@ GitHub integration links the pull request back to the issue.
   Event IDs and opaque page cursors are tracked separately. A turn is successful
   only after its user message and `session.status_idle` with `end_turn`, without
   an unrecovered error. Thread-level idle does not complete the run.
-- Cancelling/deleting a Multica run requests Qoder cancellation and waits for
+- Cancelling/deleting a Delegora run requests Qoder cancellation and waits for
   the session to become idle or terminated. Losing runtime access also requests
   cancellation. The session cancellation response alone is not proof of a stop.
 - Shutdown leaves remote execution running. Restart with the same directory
@@ -190,7 +190,7 @@ GitHub integration links the pull request back to the issue.
 ## Current boundaries
 
 This is a PoC for issue runs, chat turns and squad leader turns. A squad leader
-has no Multica CLI in its Qoder session: it ends its turn with an `OUTCOME:` /
+has no Delegora CLI in its Qoder session: it ends its turn with an `OUTCOME:` /
 `REASON:` header and the delegation comment, and the bridge posts the comment
 (which triggers the mentioned members) and records the squad evaluation with the
 task credential. A leader cannot change the issue status. Local
@@ -198,7 +198,7 @@ directories, arbitrary Git hosts,
 tag/commit checkout, full comment-history hydration, interactive tool approval, custom client-side tools, terminal access,
 files delivered by issue runs and billing/usage conversion are not implemented. Set up a Qoder
 Agent that can execute autonomously with its configured tools. `requires_action`
-ends the Multica run as failed with the stop reason; approvals are not granted
+ends the Delegora run as failed with the stop reason; approvals are not granted
 implicitly.
 
 Squad quick-create supports Qoder leaders, but quick-create attachments remain
@@ -210,10 +210,10 @@ After a restart, delivery that still needs the task credential fails with a
 notice to inspect comments and activity before retrying. Fully delivered turns
 can still finish reporting completion after a restart.
 
-Multica custom skills and execution overrides are rejected; built-in Multica
+Delegora custom skills and execution overrides are rejected; built-in Delegora
 CLI skills are omitted because their local tools are unavailable. Qoder sessions
 keep any artifacts they produce; textual result and PR/MR links are returned in
-the final summary, without parsing them into structured Multica branch fields.
+the final summary, without parsing them into structured Delegora branch fields.
 
 The bridge uses the existing daemon registration protocol with
 `runtime_mode=cloud` and provider `qoder_cloud`. Existing daemons that omit the
@@ -227,17 +227,17 @@ go vet ./internal/qoderruntime ./cmd/qoder-runtime
 ```
 
 Tests use local HTTP fixtures and never access real accounts or execute an
-installed coding-agent CLI. Live integration still requires a configured Multica
+installed coding-agent CLI. Live integration still requires a configured Delegora
 workspace and Qoder environment; it is not covered by these tests.
 
-To exercise a running **local** Multica server with a simulated Qoder API:
+To exercise a running **local** Delegora server with a simulated Qoder API:
 
 ```sh
 MULTICA_QODER_INTEGRATION_CONFIG=/private/path/config.json \
   go test -race -tags=integration ./internal/qoderruntime -run '^TestLocalMultica$' -count=1 -v
 ```
 
-This test requires a loopback Multica URL and a test workspace. It creates an
+This test requires a loopback Delegora URL and a test workspace. It creates an
 isolated runtime, agent and issue through the real authenticated API, simulates
 a lost transcript response, verifies one persisted output, then cleans up the
 issue/runtime and archives the fixture agent. Qoder credentials in the file are
@@ -249,7 +249,7 @@ The runtime page presents a **Qoder Cloud** card with live status, associated
 agent count, **Configure credentials**, and **Add agent**. Credentials are grouped
 into Qoder Cloud Agents connection and GitHub repository sections; saved PATs remain hidden until
 the administrator chooses **Update credentials**. The quick-add dialog creates a
-Multica agent linked to an existing agent in Qoder Cloud Agents and uses the configured environment.
+Delegora agent linked to an existing agent in Qoder Cloud Agents and uses the configured environment.
 
 
 Workspace administrators can open **Runtimes → Add → Cloud services → Qoder Cloud Agents** to configure one
@@ -294,11 +294,11 @@ After entering a PAT in the Web/Desktop runtime dialog, available environments
 load automatically; one available environment is selected automatically.
 Names are displayed instead of requiring copied IDs. Archived resources are excluded.
 
-In the Multica agent creation form, select the agent in Qoder Cloud Agents under execution settings.
+In the Delegora agent creation form, select the agent in Qoder Cloud Agents under execution settings.
 For existing agents, use the runtime configuration tab. The association is stored
 in `agent.runtime_config.qoder_agent_id` and copied into each run journal before
-session creation. Several Multica agents can share a runtime with different agents
-in Qoder Cloud Agents. Configure models, tools and skills in Qoder; the Multica page links
+session creation. Several Delegora agents can share a runtime with different agents
+in Qoder Cloud Agents. Configure models, tools and skills in Qoder; the Delegora page links
 existing agents in Qoder Cloud Agents rather than creating or editing those remote resources.
 
 The API exposes `POST /api/workspaces/{id}/qoder/environments` (admin-only,
@@ -308,7 +308,7 @@ Only IDs and names are returned; provider configuration and credentials stay
 server-side. Listing follows pagination and excludes archived resources.
 
 When upgrading an earlier PoC configuration, stop idle bridges first, copy the
-old fixed Agent ID to every associated Multica agent's runtime configuration,
+old fixed Agent ID to every associated Delegora agent's runtime configuration,
 and remove `agent_id` from standalone config files. Runtime identity and the
 journal directory now depend on connection/environment, not the fixed Agent ID;
 migrate an idle journal and daemon identity together to preserve existing runtime

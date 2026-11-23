@@ -13,7 +13,7 @@ import (
 // TestAntigravityRealResumedUsageIsPerExecution is opt-in because it consumes
 // the signed-in Antigravity account's quota. It verifies the installed agy
 // binary's wire contract and, importantly, that a resumed execution reports
-// only that execution's completed-step usage to Multica.
+// only that execution's completed-step usage to Delegora.
 func TestAntigravityRealResumedUsageIsPerExecution(t *testing.T) {
 	requireRealAgentSmoke(t)
 	if testing.Short() {

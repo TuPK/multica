@@ -402,7 +402,7 @@ func (r *bubbleRig) reconnect() *bubbleConn {
 // The enqueue only ever happens for messages this adapter ingested, so the run
 // was asked in the room by construction — which is the answer both origin gates
 // want, and the reason it is stated here rather than in every test. A test
-// modelling a question typed in Multica does not come through here; it says so
+// modelling a question typed in Delegora does not come through here; it says so
 // itself with askedInTheBrowser.
 func (r *bubbleRig) queued(t *testing.T, taskName string) {
 	t.Helper()
@@ -593,7 +593,7 @@ var testTaskUUIDs = map[string]string{
 	"retry":  "aaaaaaaa-0000-0000-0000-0000000000ff",
 	// An issue or autopilot run: the same events, no chat session at all.
 	"issue-run": "aaaaaaaa-0000-0000-0000-0000000000e1",
-	// A question typed in Multica on this same WeCom-bound session. Its
+	// A question typed in Delegora on this same WeCom-bound session. Its
 	// task:queued is indistinguishable from the room's on the bus.
 	"web-1": "aaaaaaaa-0000-0000-0000-0000000000b1",
 	"web-2": "aaaaaaaa-0000-0000-0000-0000000000b2",

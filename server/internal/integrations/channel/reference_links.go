@@ -28,7 +28,7 @@ type referenceEdit struct {
 	prefix, suffix  string
 }
 
-// LinkReferences rewrites outbound Multica references using a caller-owned
+// LinkReferences rewrites outbound Delegora references using a caller-owned
 // resolver. Code, existing URLs and unresolved references retain their source.
 // Broadcast mentions have no detail route and become inert display text.
 func LinkReferences(content string, resolve func(kind, reference string) string) string {

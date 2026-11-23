@@ -56,7 +56,7 @@ func platformWriteAutostart(profile string, spec autostartSpec) (autostartState,
 	}
 	previous, readErr := os.ReadFile(path)
 	// Second line of defense behind the shared guard: never overwrite a file
-	// at our path that lacks the Multica marker — it is the user's own agent.
+	// at our path that lacks the Delegora marker — it is the user's own agent.
 	if readErr == nil && !launchAgentManaged(previous) {
 		return autostartState{
 			Mechanism: autostartMechanismLaunchd,

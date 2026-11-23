@@ -64,7 +64,7 @@ func (s sessionUsage) total() *float64 {
 	return s.Usage.TotalCredits
 }
 
-// reportCredits sends the run's credit charge to Multica before the task is
+// reportCredits sends the run's credit charge to Delegora before the task is
 // finished. The session total is authoritative because span events do not
 // cover every billed call (sandbox runtime among them); spans are only the
 // fallback when Qoder exposes no total or a continued run has no baseline.
@@ -98,7 +98,7 @@ func (b *Bridge) reportCredits(ctx context.Context, r *run) error {
 		if !definitelyRejected(err) {
 			return err
 		}
-		b.log.WarnContext(ctx, "Multica rejected Qoder credits usage", "task_id", r.TaskID, "error", err)
+		b.log.WarnContext(ctx, "Delegora rejected Qoder credits usage", "task_id", r.TaskID, "error", err)
 	}
 	r.Credits.ReportedFor = r.SessionID
 	return b.persist()

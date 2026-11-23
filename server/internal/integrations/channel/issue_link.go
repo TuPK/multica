@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// IssueWebLink builds the Multica web deep link for a channel issue result.
+// IssueWebLink builds the Delegora web deep link for a channel issue result.
 // Web routes are workspace-scoped — /{workspaceSlug}/issues/{identifier} — so a
 // link missing the slug cannot resolve to the issue and is not worth sending;
 // any empty part yields an empty string and the caller replies without a link.

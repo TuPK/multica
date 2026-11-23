@@ -70,7 +70,7 @@ func (h *Handler) EnableKnowledge(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, knowledge.ErrUnavailable):
 		writeError(w, http.StatusServiceUnavailable, "the knowledge service is offline")
 	case errors.Is(err, knowledge.ErrAuth), errors.Is(err, knowledge.ErrForbidden):
-		writeError(w, http.StatusBadGateway, "the knowledge service rejected Multica's service account")
+		writeError(w, http.StatusBadGateway, "the knowledge service rejected Delegora's service account")
 	case errors.Is(err, knowledge.ErrQuota):
 		writeError(w, http.StatusBadGateway, "the knowledge service refused to create another workspace")
 	default:

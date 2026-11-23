@@ -596,7 +596,7 @@ func TestIssueAfterAnImageIsStillFiled(t *testing.T) {
 // and it sees "[Image]". Either way no issue is filed, and this is the
 // assertion that says so.
 func TestGroupMentionedIssueAfterAnImageIsStillFiled(t *testing.T) {
-	issues, body := runMixedIssueThroughTheRouter(t, "Multica Bot", "group", "GROUP-BIND-1", "@Multica Bot /issue 登录坏了", false)
+	issues, body := runMixedIssueThroughTheRouter(t, "Delegora Bot", "group", "GROUP-BIND-1", "@Multica Bot /issue 登录坏了", false)
 
 	filed := issues.filed()
 	if len(filed) != 1 {
@@ -620,7 +620,7 @@ func TestGroupMentionedIssueAfterAnImageIsStillFiled(t *testing.T) {
 // unlike the dispatch-level test this one asks the database whether an issue
 // exists.
 func TestGroupMentionedSpokenIssueAfterAnImageIsStillFiled(t *testing.T) {
-	issues, body := runMixedIssueThroughTheRouter(t, "Multica Bot", "group", "GROUP-BIND-2", "@Multica Bot /issue 登录坏了", true)
+	issues, body := runMixedIssueThroughTheRouter(t, "Delegora Bot", "group", "GROUP-BIND-2", "@Multica Bot /issue 登录坏了", true)
 
 	filed := issues.filed()
 	if len(filed) != 1 {

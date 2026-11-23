@@ -159,7 +159,7 @@ func (s *Service) completeTeamCallback(ctx context.Context, claims stateClaims, 
 		gateAdmitted, err := s.teamConnectGate(ctx, workspaceID, claims.ToolkitSlug)
 		if err != nil {
 			// Keep the existing connection and drop the account Composio just
-			// created, so it holds no grant Multica does not track.
+			// created, so it holds no grant Delegora does not track.
 			if errors.Is(err, ErrTeamConnectRefused) {
 				s.revokeUpstream(ctx, connectedAccountID)
 			}

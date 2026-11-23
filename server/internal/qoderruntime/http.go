@@ -1,4 +1,4 @@
-// Package qoderruntime bridges Multica's daemon task protocol to Qoder's managed sessions API.
+// Package qoderruntime bridges Delegora's daemon task protocol to Qoder's managed sessions API.
 package qoderruntime
 
 import (

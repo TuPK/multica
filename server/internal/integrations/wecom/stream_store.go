@@ -703,7 +703,7 @@ func (s *streamStore) retryUnbind(sessionID pgtype.UUID, taskID string) bool {
 }
 
 // releaseRound hands a bubble back when the run bound to it turns out not to be
-// one this adapter will ever close — a question typed in Multica that took the
+// one this adapter will ever close — a question typed in Delegora that took the
 // room's round off task:queued.
 //
 // Unlike retryUnbind there is no replacement coming, so the round genuinely

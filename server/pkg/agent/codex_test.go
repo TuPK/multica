@@ -1414,8 +1414,8 @@ func TestCodexRawItemMCPToolCall(t *testing.T) {
 		messages = append(messages, msg)
 	}
 
-	c.handleLine(`{"jsonrpc":"2.0","method":"item/started","params":{"item":{"type":"mcpToolCall","id":"mcp-1","server":"plugin-exa-search","tool":"web_search_exa","arguments":{"query":"latest Multica news","credentials":{"api_key":"sk-12345678901234567890"}},"status":"inProgress"}}}`)
-	c.handleLine(`{"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"mcpToolCall","id":"mcp-1","server":"plugin-exa-search","tool":"web_search_exa","arguments":{"query":"latest Multica news"},"status":"completed","durationMs":1429,"result":{"content":[{"type":"text","text":"private provider payload"}]}}}}`)
+	c.handleLine(`{"jsonrpc":"2.0","method":"item/started","params":{"item":{"type":"mcpToolCall","id":"mcp-1","server":"plugin-exa-search","tool":"web_search_exa","arguments":{"query":"latest Delegora news","credentials":{"api_key":"sk-12345678901234567890"}},"status":"inProgress"}}}`)
+	c.handleLine(`{"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"mcpToolCall","id":"mcp-1","server":"plugin-exa-search","tool":"web_search_exa","arguments":{"query":"latest Delegora news"},"status":"completed","durationMs":1429,"result":{"content":[{"type":"text","text":"private provider payload"}]}}}}`)
 
 	if len(messages) != 2 {
 		t.Fatalf("expected 2 messages, got %d", len(messages))
@@ -1429,7 +1429,7 @@ func TestCodexRawItemMCPToolCall(t *testing.T) {
 		t.Fatalf("expected MCP server provenance, got %#v", begin.Input)
 	}
 	arguments, ok := begin.Input["arguments"].(map[string]any)
-	if !ok || arguments["query"] != "latest Multica news" {
+	if !ok || arguments["query"] != "latest Delegora news" {
 		t.Fatalf("expected MCP arguments, got %#v", begin.Input["arguments"])
 	}
 	credentials, ok := arguments["credentials"].(map[string]any)
@@ -1980,7 +1980,7 @@ func TestCodexDeliverableOutputExcludesNarration(t *testing.T) {
 				t.Fatalf("Result.Output = %q, want %q", got, tc.want)
 			}
 			// Narrowing delivery must not narrow the transcript: every agent
-			// message still streams to the timeline the Multica UI renders.
+			// message still streams to the timeline the Delegora UI renders.
 			if !reflect.DeepEqual(streamed, tc.wantStreamed) {
 				t.Fatalf("streamed agent messages = %q, want %q", streamed, tc.wantStreamed)
 			}
@@ -2537,7 +2537,7 @@ func TestCodexStartOrResumeThreadResumesPriorThread(t *testing.T) {
 	}
 }
 
-// codexRuntimeBriefCanary stands in for the Multica runtime brief the daemon
+// codexRuntimeBriefCanary stands in for the Delegora runtime brief the daemon
 // would inline if developerInstructions were ever wired back up.
 const codexRuntimeBriefCanary = "MULTICA-RUNTIME-BRIEF-CANARY"
 

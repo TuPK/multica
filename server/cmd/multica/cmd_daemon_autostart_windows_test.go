@@ -44,7 +44,7 @@ func TestWindowsAutostartRegistryRoundTrip(t *testing.T) {
 	if state.Mechanism != autostartMechanismWindowsRun {
 		t.Errorf("mechanism = %q, want %q", state.Mechanism, autostartMechanismWindowsRun)
 	}
-	if !strings.Contains(state.Location, `Multica (staging)`) {
+	if !strings.Contains(state.Location, `Delegora (staging)`) {
 		t.Errorf("location = %q, want it to name the profile's value", state.Location)
 	}
 	wantCommand := windowsAutostartCommand(spec)

@@ -142,7 +142,7 @@ func (b *codebuddyBackend) Execute(ctx context.Context, prompt string, opts Exec
 	if opts.Cwd != "" {
 		cmd.Dir = opts.Cwd
 	}
-	// Multica closes stdin after the first result and cannot wait for
+	// Delegora closes stdin after the first result and cannot wait for
 	// cross-turn task_notification events. Force CodeBuddy's documented
 	// headless disable so Bash/PowerShell/Agent never take the background
 	// path (CODEBUDDY_CODE_DISABLE_BACKGROUND_TASKS; see CLI headless docs).
@@ -592,7 +592,7 @@ const codebuddyInternalPortEnv = "SERVER__PORT"
 
 // buildCodebuddyEnv merges task env and always forces background tasks off,
 // a random internal HTTP port and the PowerShell auto-background disable.
-// Multica's adapter closes stdin after the first result; CodeBuddy's
+// Delegora's adapter closes stdin after the first result; CodeBuddy's
 // background lifecycle can push task_notification after that point, which we
 // cannot observe. The official CLI documents the disable variable for exactly
 // that headless shape (https://www.codebuddy.ai/docs/cli/headless).

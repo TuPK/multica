@@ -290,7 +290,7 @@ func RegisterOAuthClient(ctx context.Context, metadata OAuthMetadata, redirectUR
 		return OAuthClientRegistration{}, err
 	}
 	body, _ := json.Marshal(map[string]any{
-		"client_name":                "Multica",
+		"client_name":                "Delegora",
 		"redirect_uris":              []string{redirectURI},
 		"grant_types":                []string{"authorization_code", "refresh_token"},
 		"response_types":             []string{"code"},

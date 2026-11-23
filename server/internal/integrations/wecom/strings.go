@@ -11,7 +11,7 @@ package wecom
 // spread across three files.
 //
 // Which pack a given message uses is decided by the DESTINATION, not by the
-// installation (language.go): a 1:1 gets that person's Multica profile
+// installation (language.go): a 1:1 gets that person's Delegora profile
 // language, and a room — where there is no shared profile and no member list —
 // gets the deployment's own language.
 //
@@ -286,7 +286,7 @@ func (c copyPack) label(t string) string {
 // body — so it goes through breakMemberLinks here, at the render boundary,
 // exactly as buildInboxMarkdown treats a title before putting it in a card.
 // Without it, "/issue 安全升级：请点击 [重置密码](https://evil.example) 完成验证"
-// comes back from the Multica bot, in the group, as a working link inside a
+// comes back from the Delegora bot, in the group, as a working link inside a
 // confirmation everyone has reason to trust. Our own copy fragments stay raw;
 // only the member-authored field is broken.
 func (c copyPack) issueCreated(identifier, title string) string {
@@ -395,11 +395,11 @@ var copyPacks = map[Locale]copyPack{
 		AgentOffline:         "⚠️ 智能体当前不在线，你的消息已收到，等它上线后会处理。",
 		AgentArchived:        "⚠️ 该智能体已归档，无法回复。请联系工作区管理员。",
 		FreshPending:         "✅ 已准备从空上下文运行。你的下一条聊天消息仍会进入当前对话，但不会带上之前的上下文。",
-		ChatStarted:          "✅ 已新建 Multica 对话。你的下一条消息会进入该对话。",
+		ChatStarted:          "✅ 已新建 Delegora 对话。你的下一条消息会进入该对话。",
 		Help:                 engine.HelpTextChinese,
 		IssueUsage:           "请填写任务标题，格式如下：\n\n`/issue <标题>`\n`[描述]`（可选）",
 		InvokeDenied:         "⚠️ 你没有权限运行该智能体。如需使用，请联系它的所有者。",
-		BindingPromptPrefix:  "👋 请先绑定你的 Multica 账号，才能与我对话：\n",
+		BindingPromptPrefix:  "👋 请先绑定你的 Delegora 账号，才能与我对话：\n",
 		BindingPromptSuffix:  "\n（链接 15 分钟内有效）",
 		BindingPending:       "👋 绑定链接刚才已经发给你了，就在上方，请直接点击完成绑定。",
 		BindingSentPrivately: "👋 已把绑定链接私发给你，请在与我的单聊里点击完成绑定。",
@@ -476,11 +476,11 @@ var copyPacks = map[Locale]copyPack{
 		AgentOffline:         "⚠️ The agent is offline right now. Your message was received and will be handled once it's back.",
 		AgentArchived:        "⚠️ This agent has been archived and can't reply. Please contact your workspace admin.",
 		FreshPending:         "✅ Fresh start ready. Your next message stays in this chat but runs without the earlier context.",
-		ChatStarted:          "✅ Started a new Multica chat. Your next message will enter it.",
+		ChatStarted:          "✅ Started a new Delegora chat. Your next message will enter it.",
 		Help:                 engine.HelpTextEnglish,
 		IssueUsage:           "Please include an issue title. Use:\n\n`/issue <title>`\n`[description]` (optional)",
 		InvokeDenied:         "⚠️ You don't have permission to run this agent. Ask its owner if you need to use it.",
-		BindingPromptPrefix:  "👋 Link your Multica account before we can talk:\n",
+		BindingPromptPrefix:  "👋 Link your Delegora account before we can talk:\n",
 		BindingPromptSuffix:  "\n(the link is good for 15 minutes)",
 		BindingPending:       "👋 I already sent you a link — it is just above, tap it to finish linking.",
 		BindingSentPrivately: "👋 I've sent the link to your direct chat with me — tap it there to finish linking.",

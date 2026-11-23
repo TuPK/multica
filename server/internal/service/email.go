@@ -348,7 +348,7 @@ func (s *EmailService) SendVerificationCode(to, code string) error {
 		</div>`, code)
 
 	if s.smtpHost != "" {
-		return s.sendSMTP(to, "Your Multica verification code", body)
+		return s.sendSMTP(to, "Your Delegora verification code", body)
 	}
 	if s.client == nil {
 		fmt.Printf("[DEV] Verification code for %s: %s\n", to, code)
@@ -357,7 +357,7 @@ func (s *EmailService) SendVerificationCode(to, code string) error {
 	params := &resend.SendEmailRequest{
 		From:    s.fromEmail,
 		To:      []string{to},
-		Subject: "Your Multica verification code",
+		Subject: "Your Delegora verification code",
 		Html:    body,
 	}
 	_, err := s.client.Emails.Send(params)
@@ -398,11 +398,11 @@ func buildInvitationParams(from, to, inviterName, workspaceName, inviteURL strin
 	return &resend.SendEmailRequest{
 		From:    from,
 		To:      []string{to},
-		Subject: fmt.Sprintf("%s invited you to %s on Multica", subjectInviter, subjectWorkspace),
+		Subject: fmt.Sprintf("%s invited you to %s on Delegora", subjectInviter, subjectWorkspace),
 		Html: fmt.Sprintf(
 			`<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
 				<h2>You're invited to join %s</h2>
-				<p><strong>%s</strong> invited you to collaborate in the <strong>%s</strong> workspace on Multica.</p>
+				<p><strong>%s</strong> invited you to collaborate in the <strong>%s</strong> workspace on Delegora.</p>
 				<p style="margin: 24px 0;">
 					<a href="%s" style="display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 500;">Accept invitation</a>
 				</p>
@@ -439,11 +439,11 @@ func buildAccountDeletionScheduledParams(from, to, scheduledAt, appURL string) *
 	return &resend.SendEmailRequest{
 		From:    from,
 		To:      []string{to},
-		Subject: "Your Multica account is scheduled for deletion",
+		Subject: "Your Delegora account is scheduled for deletion",
 		Html: fmt.Sprintf(
 			`<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
 				<h2>Your account will be deleted</h2>
-				<p>We received a request to delete your Multica account. It will be deleted on <strong>%s</strong>, together with the workspaces where you are the only member.</p>
+				<p>We received a request to delete your Delegora account. It will be deleted on <strong>%s</strong>, together with the workspaces where you are the only member.</p>
 				<p>To cancel, sign in at %s before then and choose <strong>Cancel deletion</strong>.</p>
 				<p style="color: #666; font-size: 14px;">If you did not request this, sign in and cancel the deletion, then review your account security.</p>
 			</div>`, when, html.EscapeString(appURL)),
@@ -477,11 +477,11 @@ func buildMFADisabledParams(from, to, appURL string) *resend.SendEmailRequest {
 	return &resend.SendEmailRequest{
 		From:    from,
 		To:      []string{to},
-		Subject: "Two-step sign-in was turned off for your Multica account",
+		Subject: "Two-step sign-in was turned off for your Delegora account",
 		Html: fmt.Sprintf(
 			`<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
 				<h2>Two-step sign-in was turned off</h2>
-				<p>The authenticator code that protected your Multica sign-in has been removed. Signing in now needs only your email code.</p>
+				<p>The authenticator code that protected your Delegora sign-in has been removed. Signing in now needs only your email code.</p>
 				<p>To turn it back on, sign in at %s and open your account security settings.</p>
 				<p style="color: #666; font-size: 14px;">If you did not turn this off, sign in and turn it back on, then review your account security.</p>
 			</div>`, html.EscapeString(appURL)),

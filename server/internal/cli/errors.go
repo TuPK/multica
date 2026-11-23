@@ -412,32 +412,32 @@ var kindMessages = map[ErrorKind][2]string{
 		"请求超时：服务器未在规定时间内响应。请检查网络连接或稍后重试。可通过 MULTICA_HTTP_TIMEOUT 调高超时时间。",
 	},
 	KindNetworkTLSHandshakeTimeout: {
-		"TLS handshake timed out: the connection to the Multica server opened, but the secure handshake never completed. Something on this network path (security software, a VPN, a router, or a firewall) is probably dropping large TLS handshakes; curl or a browser on the same machine may still work. Retry with the environment variable GODEBUG=tlsmlkem=0 set, and keep it set for the CLI and the daemon if that fixes it. MULTICA_HTTP_TIMEOUT does not affect the handshake.",
-		"TLS 握手超时：已连上 Multica 服务器，但安全握手一直没有完成。通常是网络路径上的安全软件、VPN、路由器或防火墙丢弃了较大的 TLS 握手包，同一台机器上的 curl 或浏览器可能仍然正常。请设置环境变量 GODEBUG=tlsmlkem=0 后重试；若因此恢复，请为 CLI 和守护进程长期保留该设置。MULTICA_HTTP_TIMEOUT 对握手无效。",
+		"TLS handshake timed out: the connection to the Delegora server opened, but the secure handshake never completed. Something on this network path (security software, a VPN, a router, or a firewall) is probably dropping large TLS handshakes; curl or a browser on the same machine may still work. Retry with the environment variable GODEBUG=tlsmlkem=0 set, and keep it set for the CLI and the daemon if that fixes it. MULTICA_HTTP_TIMEOUT does not affect the handshake.",
+		"TLS 握手超时：已连上 Delegora 服务器，但安全握手一直没有完成。通常是网络路径上的安全软件、VPN、路由器或防火墙丢弃了较大的 TLS 握手包，同一台机器上的 curl 或浏览器可能仍然正常。请设置环境变量 GODEBUG=tlsmlkem=0 后重试；若因此恢复，请为 CLI 和守护进程长期保留该设置。MULTICA_HTTP_TIMEOUT 对握手无效。",
 	},
 	KindNetworkStalled: {
 		"Transfer stalled: the connection stopped sending data before the response was complete. Check your network connection or try again. You can raise the no-progress budget with MULTICA_HTTP_STALL_TIMEOUT.",
 		"传输中断：响应尚未接收完毕，连接就停止发送数据。请检查网络连接或重试。可通过 MULTICA_HTTP_STALL_TIMEOUT 调高无进展等待时间。",
 	},
 	KindNetworkDNS: {
-		"Could not resolve the Multica server address. Check your network connection or the --server-url setting.",
-		"无法解析 Multica 服务器地址。请检查网络连接或 --server-url 配置。",
+		"Could not resolve the Delegora server address. Check your network connection or the --server-url setting.",
+		"无法解析 Delegora 服务器地址。请检查网络连接或 --server-url 配置。",
 	},
 	KindNetworkRefused: {
-		"Could not connect to the Multica server. Make sure the server address is correct and reachable.",
-		"无法连接到 Multica 服务器。请确认服务器地址正确且网络可达。",
+		"Could not connect to the Delegora server. Make sure the server address is correct and reachable.",
+		"无法连接到 Delegora 服务器。请确认服务器地址正确且网络可达。",
 	},
 	KindNetworkTLS: {
-		"Could not establish a secure connection to the Multica server (TLS/certificate error). Check your system clock and CA certificates.",
-		"无法与 Multica 服务器建立安全连接（TLS/证书错误）。请检查系统时间和 CA 证书。",
+		"Could not establish a secure connection to the Delegora server (TLS/certificate error). Check your system clock and CA certificates.",
+		"无法与 Delegora 服务器建立安全连接（TLS/证书错误）。请检查系统时间和 CA 证书。",
 	},
 	KindNetworkIncompleteResponse: {
-		"The response ended before it was complete. If this keeps happening, check the Multica server or proxy logs.",
-		"响应在完整接收前已结束。如果问题持续发生，请检查 Multica 服务器或代理日志。",
+		"The response ended before it was complete. If this keeps happening, check the Delegora server or proxy logs.",
+		"响应在完整接收前已结束。如果问题持续发生，请检查 Delegora 服务器或代理日志。",
 	},
 	KindNetworkOffline: {
-		"Could not reach the Multica server. Check your network connection.",
-		"无法访问 Multica 服务器。请检查网络连接。",
+		"Could not reach the Delegora server. Check your network connection.",
+		"无法访问 Delegora 服务器。请检查网络连接。",
 	},
 	KindAuthRequired: {
 		"Your session has expired or you are not signed in. Run `multica login` to sign in again. On a self-hosted or non-OAuth setup, ask your administrator for valid credentials.",
@@ -472,8 +472,8 @@ var kindMessages = map[ErrorKind][2]string{
 		"请求过于频繁。请稍候重试；若持续出现，请降低 API 调用频率。",
 	},
 	KindServerError: {
-		"The Multica service is temporarily unavailable (server error). Please try again later; if it persists, contact support. Re-run with --debug to see the raw server response.",
-		"Multica 服务暂时不可用（服务器错误）。请稍后重试；若持续出现请联系支持。可加 --debug 查看服务器原始响应。",
+		"The Delegora service is temporarily unavailable (server error). Please try again later; if it persists, contact support. Re-run with --debug to see the raw server response.",
+		"Delegora 服务暂时不可用（服务器错误）。请稍后重试；若持续出现请联系支持。可加 --debug 查看服务器原始响应。",
 	},
 	KindUnknown: {
 		"An unexpected error occurred.",
@@ -648,7 +648,7 @@ func extractServerMessage(body string) string {
 //
 // It exists for a command whose endpoint writes actionable prose on a status
 // whose generic copy is deliberately vague. A 5xx from most routes means "the
-// Multica service failed"; a 5xx from skill import means "the upstream source
+// Delegora service failed"; a 5xx from skill import means "the upstream source
 // failed", and the server names which one and why.
 func ServerMessage(err error) string {
 	var httpErr *HTTPError

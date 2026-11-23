@@ -44,7 +44,7 @@ type Config struct {
 	RunTimeout        time.Duration                                                        `json:"-"`
 	SubmissionTimeout time.Duration                                                        `json:"-"`
 	PollInterval      time.Duration                                                        `json:"-"`
-	// MaxConcurrency bounds simultaneous remote sessions; extra tasks stay queued in Multica.
+	// MaxConcurrency bounds simultaneous remote sessions; extra tasks stay queued in Delegora.
 	MaxConcurrency int `json:"max_concurrency,omitempty"`
 }
 
@@ -103,7 +103,7 @@ func New(cfg Config, log *slog.Logger) (*Bridge, error) {
 	}
 	m, err := newAPI(cfg.MulticaURL, cfg.MulticaToken, cfg.WorkspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("Multica: %w", err)
+		return nil, fmt.Errorf("Delegora: %w", err)
 	}
 	q, err := newAPI(cfg.QoderURL, cfg.QoderToken, "")
 	if err != nil {
@@ -423,7 +423,7 @@ func (b *Bridge) stepRun(ctx context.Context, r *run) error {
 			return err
 		}
 	} else if status.Status != "running" {
-		return fmt.Errorf("unexpected Multica run status %q", status.Status)
+		return fmt.Errorf("unexpected Delegora run status %q", status.Status)
 	}
 	if r.Phase == "prepared" {
 		// Resolve credentials before reusing a session too, so a revoked or
@@ -591,7 +591,7 @@ func (b *Bridge) createSession(ctx context.Context, r *run, resources []map[stri
 		return err
 	}
 	metadata := map[string]string{"source": "multica", "multica_task_id": r.TaskID, "multica_workspace_id": b.cfg.WorkspaceID, resourcesMetadataKey: fingerprint}
-	if err := b.qoder.call(ctx, http.MethodPost, "/sessions", map[string]any{"agent": r.AgentID, "environment_id": b.cfg.EnvironmentID, "title": "Multica run " + r.TaskID, "metadata": metadata, "resources": resources}, &session); err != nil {
+	if err := b.qoder.call(ctx, http.MethodPost, "/sessions", map[string]any{"agent": r.AgentID, "environment_id": b.cfg.EnvironmentID, "title": "Delegora run " + r.TaskID, "metadata": metadata, "resources": resources}, &session); err != nil {
 		if rateLimited(err) {
 			r.Phase = "prepared"
 			r.RetryAt = time.Now().Add(30 * time.Second)
@@ -610,7 +610,7 @@ func (b *Bridge) createSession(ctx context.Context, r *run, resources []map[stri
 	return b.persist()
 }
 
-// resourcesMetadataKey stores resourceFingerprint on each session Multica creates.
+// resourcesMetadataKey stores resourceFingerprint on each session Delegora creates.
 const resourcesMetadataKey = "multica_resources"
 
 // fingerprintEntry is one repository's stable credential identity: a manual
@@ -920,7 +920,7 @@ func (b *Bridge) Check(ctx context.Context) error {
 		api            *api
 		path, id, name string
 	}{
-		{b.multica, "/api/workspaces/" + url.PathEscape(b.cfg.WorkspaceID), b.cfg.WorkspaceID, "Multica workspace"},
+		{b.multica, "/api/workspaces/" + url.PathEscape(b.cfg.WorkspaceID), b.cfg.WorkspaceID, "Delegora workspace"},
 		{b.qoder, "/environments/" + url.PathEscape(b.cfg.EnvironmentID), b.cfg.EnvironmentID, "Qoder environment"},
 	}
 	for _, resource := range resources {
@@ -992,7 +992,7 @@ func Binding(multicaURL, workspaceID, qoderURL, environmentID string) string {
 }
 
 // CancelRemoteSession is used by the managed supervisor after user access is
-// revoked. It needs only Qoder credentials, never a former owner's Multica PAT.
+// revoked. It needs only Qoder credentials, never a former owner's Delegora PAT.
 func CancelRemoteSession(ctx context.Context, baseURL, token, sessionID string) error {
 	api, err := newAPI(baseURL, token, "")
 	if err != nil {

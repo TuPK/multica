@@ -24,13 +24,13 @@ func (b *Bridge) prepare(ctx context.Context, t *claimedTask) (*run, error) {
 		return nil, fmt.Errorf("claim is missing a task-scoped credential")
 	}
 	if len(t.RemoteMCPConnections) > 0 || len(t.ConnectedApps) > 0 || len(t.PluginHookTools) > 0 {
-		return nil, fmt.Errorf("Multica connected apps and runtime MCP tools are not supported by the Qoder bridge")
+		return nil, fmt.Errorf("Delegora connected apps and runtime MCP tools are not supported by the Qoder bridge")
 	}
 	if t.Agent != nil && (hasCustomSkills(t.Agent.Skills) || len(t.Agent.SkillRefs) > 0 || len(t.Agent.CustomEnv) > 0 || len(t.Agent.CustomArgs) > 0 || len(t.Agent.McpConfig) > 0 && string(t.Agent.McpConfig) != "null" && string(t.Agent.McpConfig) != "{}" || t.Agent.Model != "" || t.Agent.ThinkingLevel != "" || t.Agent.ServiceTier != "") {
-		return nil, fmt.Errorf("configure skills, tools, credentials and model on the Qoder Agent; Multica execution overrides are not supported by this bridge")
+		return nil, fmt.Errorf("configure skills, tools, credentials and model on the Qoder Agent; Delegora execution overrides are not supported by this bridge")
 	}
 	if t.Agent == nil {
-		return nil, fmt.Errorf("associate an agent from Qoder Cloud Agents in the Multica agent runtime configuration")
+		return nil, fmt.Errorf("associate an agent from Qoder Cloud Agents in the Delegora agent runtime configuration")
 	}
 	binding, err := ParseAgentConfig(t.Agent.RuntimeConfig)
 	if err != nil {
@@ -46,10 +46,10 @@ func (b *Bridge) prepare(ctx context.Context, t *claimedTask) (*run, error) {
 	}
 	var p strings.Builder
 	if chat {
-		p.WriteString("You are chatting with a user of a Multica workspace. Reply directly to their message; your final message is shown to them as your reply. This bridge does not expose a local Multica daemon.\n")
+		p.WriteString("You are chatting with a user of a Delegora workspace. Reply directly to their message; your final message is shown to them as your reply. This bridge does not expose a local Delegora daemon.\n")
 		p.WriteString(chatAudience(t.ChatChannelType, t.ChatType))
 		r.Reply = &replyFiles{Locale: t.ChatNoticeLocale, token: t.AuthToken}
-		fmt.Fprintf(&p, "Multica attempts to attach files you deliver with DeliverArtifacts to your reply and adds a delivery notice if a transfer fails or cannot be confirmed. A file over %d MB is not attached; tell the user so instead of saying it was sent.\n", maxReplyFileBytes>>20)
+		fmt.Fprintf(&p, "Delegora attempts to attach files you deliver with DeliverArtifacts to your reply and adds a delivery notice if a transfer fails or cannot be confirmed. A file over %d MB is not attached; tell the user so instead of saying it was sent.\n", maxReplyFileBytes>>20)
 		if t.PriorSessionID != "" {
 			r.PriorSessionID = t.PriorSessionID
 			p.WriteString("This continues an earlier conversation. If it is not in your context, answer from the message below.\n")
@@ -155,9 +155,9 @@ func (b *Bridge) issuePrompt(ctx context.Context, t *claimedTask, r *run, p *str
 	}
 	if t.IsLeaderTask {
 		r.Leader = &squadLeader{IssueID: t.IssueID, TriggerCommentID: t.TriggerCommentID, token: t.AuthToken}
-		p.WriteString("You lead a Multica squad on the following issue. Follow the Squad Operating Protocol in your agent instructions: coordinate, do not do the work yourself. This bridge does not expose a local Multica daemon.\n")
+		p.WriteString("You lead a Delegora squad on the following issue. Follow the Squad Operating Protocol in your agent instructions: coordinate, do not do the work yourself. This bridge does not expose a local Delegora daemon.\n")
 	} else {
-		p.WriteString("Complete the following Multica issue in your Qoder environment. Return a final summary including code changes, tests and branch/PR/MR links when available. This bridge does not expose a local Multica daemon.\n")
+		p.WriteString("Complete the following Delegora issue in your Qoder environment. Return a final summary including code changes, tests and branch/PR/MR links when available. This bridge does not expose a local Delegora daemon.\n")
 	}
 	if t.PriorSessionID != "" {
 		r.PriorSessionID = t.PriorSessionID
@@ -165,7 +165,7 @@ func (b *Bridge) issuePrompt(ctx context.Context, t *claimedTask, r *run, p *str
 	}
 	fmt.Fprintf(p, "\nRun: %s\nIssue: %s\n\n%s\n\n%s\n", t.ID, t.IssueIdentifier, issue.Title, issue.Description)
 	if t.IssueIdentifier != "" && !t.IsLeaderTask {
-		fmt.Fprintf(p, "\nWhen you change code, push a new branch named %s (never the default branch), open a pull request whose title starts with \"%s: \", and put the pull request link in your final summary. Multica links the pull request to this issue through that identifier.\n", BranchName(t.IssueIdentifier, issue.Title), t.IssueIdentifier)
+		fmt.Fprintf(p, "\nWhen you change code, push a new branch named %s (never the default branch), open a pull request whose title starts with \"%s: \", and put the pull request link in your final summary. Delegora links the pull request to this issue through that identifier.\n", BranchName(t.IssueIdentifier, issue.Title), t.IssueIdentifier)
 	}
 	return b.attachFiles(ctx, &taskAPI, "Issue attachments", attachmentMountDir, issue.Attachments, r, p)
 }
@@ -176,17 +176,17 @@ type Repository struct {
 	Ref string `json:"ref,omitempty"`
 }
 
-// AgentConfig is the runtime_config of a Multica agent bound to Qoder.
+// AgentConfig is the runtime_config of a Delegora agent bound to Qoder.
 type AgentConfig struct {
 	AgentID    string      `json:"qoder_agent_id"`
 	Repository *Repository `json:"repository,omitempty"`
 }
 
-// ParseAgentConfig validates the Qoder binding stored on a Multica agent.
+// ParseAgentConfig validates the Qoder binding stored on a Delegora agent.
 func ParseAgentConfig(raw json.RawMessage) (AgentConfig, error) {
 	var cfg AgentConfig
 	if err := json.Unmarshal(raw, &cfg); err != nil || !ValidAgentID(cfg.AgentID) {
-		return cfg, fmt.Errorf("associate an agent from Qoder Cloud Agents in the Multica agent runtime configuration")
+		return cfg, fmt.Errorf("associate an agent from Qoder Cloud Agents in the Delegora agent runtime configuration")
 	}
 	if cfg.Repository != nil && cfg.Repository.URL != "" {
 		if _, err := repositoryResource(*cfg.Repository); err != nil {
@@ -215,7 +215,7 @@ func repositoryResource(ref Repository) (map[string]any, error) {
 
 var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
 
-// BranchName gives remote work a branch Multica's GitHub integration links back
+// BranchName gives remote work a branch Delegora's GitHub integration links back
 // to the issue: the identifier must appear in the branch name.
 func BranchName(identifier, title string) string {
 	slug := strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(title), "-"), "-")

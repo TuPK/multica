@@ -560,7 +560,7 @@ func TestOmpThinkingFromCatalogEntry(t *testing.T) {
 			wantLevels: []string{"off"},
 		},
 		{
-			// No reasoning at all: an off-only control would be inert, so Multica
+			// No reasoning at all: an off-only control would be inert, so Delegora
 			// hides the picker exactly as it does for pi.
 			name:         "not a reasoning model has no picker",
 			reasoning:    false,
@@ -589,7 +589,7 @@ func TestOmpThinkingFromCatalogEntry(t *testing.T) {
 			wantLevels: []string{"off", "low", "high", "max"},
 		},
 		{
-			// Only tokens Multica knows survive, so a future omp effort cannot
+			// Only tokens Delegora knows survive, so a future omp effort cannot
 			// reach the picker before the server's enum accepts it.
 			name:       "unknown tokens are dropped",
 			reasoning:  true,

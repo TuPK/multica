@@ -21,7 +21,7 @@ import (
 // This file is the DingTalk user-binding token flow: an unbound DingTalk user
 // who messages the bot gets a "link your account" prompt (minted here, delivered
 // by the OutboundReplier), clicks through to the in-product redeem page, and
-// their DingTalk staff id is bound to their Multica account. It mirrors
+// their DingTalk staff id is bound to their Delegora account. It mirrors
 // slack.BindingTokenService but runs on the generic channel_* queries with
 // channel_type='dingtalk'.
 
@@ -34,7 +34,7 @@ var (
 	// opaque error for all three avoids a replay timing oracle.
 	ErrBindingTokenInvalid = errors.New("dingtalk: binding token invalid or expired")
 	// ErrBindingAlreadyAssigned: this DingTalk user id is already bound to a
-	// different Multica user (account transfer must go through explicit unbind).
+	// different Delegora user (account transfer must go through explicit unbind).
 	ErrBindingAlreadyAssigned = errors.New("dingtalk: user id is already bound to a different user")
 	// ErrBindingNotWorkspaceMember: the redeemer is not a member of the token's
 	// workspace. Translated to 403 at the HTTP boundary.

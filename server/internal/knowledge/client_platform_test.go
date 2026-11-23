@@ -227,7 +227,7 @@ func TestUpdateKnowledgeBaseTurnsWikiOnKeepingOtherFlags(t *testing.T) {
 	body := decode(t, m.requests("PATCH", "/api/v1/knowledge-bases/"+kbID)[0].Body)
 	strategy := body["indexing_strategy"].(map[string]any)
 	if strategy["vector_enabled"] != true || strategy["keyword_enabled"] != true || strategy["wiki_enabled"] != true {
-		t.Fatalf("strategy sent = %v; the flags Multica does not own must come back unchanged", strategy)
+		t.Fatalf("strategy sent = %v; the flags Delegora does not own must come back unchanged", strategy)
 	}
 	wiki := body["wiki_config"].(map[string]any)
 	if wiki["extraction_granularity"] != "focused" {

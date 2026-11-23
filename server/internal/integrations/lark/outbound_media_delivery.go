@@ -30,7 +30,7 @@ type mediaDeliveryOwner struct {
 // The existing reply ledger fences duplicate completion events and retry
 // attempts across replicas and restarts, beyond Feishu's one-hour UUID window.
 // A crashed in-flight batch is never blindly replayed: per-file receipts are
-// unavailable, so a successor reports the uncertainty and leaves files in Multica.
+// unavailable, so a successor reports the uncertainty and leaves files in Delegora.
 func (p *Patcher) claimMediaDelivery(ctx context.Context, taskID pgtype.UUID, binding ChatSessionBinding) (context.Context, func(), bool) {
 	turn, err := p.queries.GetChannelReplyTurn(ctx, taskID)
 	if errors.Is(err, pgx.ErrNoRows) {

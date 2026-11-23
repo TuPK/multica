@@ -1,5 +1,5 @@
 // Package pack recognises, reads and checks a bundle of skills and agents that a
-// person brings to Multica (spec 16.1). It is pure: it reads a hub.Bundle that is
+// person brings to Delegora (spec 16.1). It is pure: it reads a hub.Bundle that is
 // already unpacked and knows nothing of handlers or storage. It never reads the
 // text of an instruction or a skill to guess a role, a step or a lead; it only
 // lists the markdown files that may hold a procedure (spec 16.1, references).
@@ -15,7 +15,7 @@ type Format string
 const (
 	// FormatNativeBundle is squad-bundle.json at the root (spec appendix E.1).
 	FormatNativeBundle Format = "native_bundle"
-	// FormatMulticaPack is pack.json at the root: an agent pack of Multica.
+	// FormatMulticaPack is pack.json at the root: an agent pack of Delegora.
 	FormatMulticaPack Format = "multica_pack"
 	// FormatClaudeAgents is an agents/ folder of markdown files with frontmatter.
 	FormatClaudeAgents Format = "claude_agents"

@@ -17,20 +17,20 @@ import (
 // Recent Codex `app-server` releases enable `features.multi_agent` by
 // default, exposing spawn_agent / send_input / wait / resume_agent /
 // close_agent tools to the model so a Codex thread can fan out into nested
-// subagents. The Multica daemon currently models only the parent Codex
+// subagents. The Delegora daemon currently models only the parent Codex
 // thread per task: when the parent emits `turn/completed`, the task is
 // marked terminal even if spawned children are still running or have not
 // flushed their output. The result is a class of premature-completion
 // failures where useful child-agent work is dropped.
 //
 // Until either Codex exposes a "parent done but children still open"
-// lifecycle state with drain/cancel primitives, or the Multica runtime
+// lifecycle state with drain/cancel primitives, or the Delegora runtime
 // models child threads as first-class task entities, the daemon disables
 // Codex native multi-agent by default for daemon-managed task sessions.
 // The override only touches the per-task `CODEX_HOME/config.toml`; the
 // user's global `~/.codex/config.toml` is never modified.
 //
-// Users who explicitly want Codex native subagents inside a Multica task
+// Users who explicitly want Codex native subagents inside a Delegora task
 // (and accept the lifecycle risk) can keep the feature enabled by setting
 // `MULTICA_CODEX_MULTI_AGENT=1` in the daemon environment.
 //

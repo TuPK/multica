@@ -414,7 +414,7 @@ func TestDeleteRuntimeProfile_MikaBlockerGetsItsOwnRemedy(t *testing.T) {
 	if !strings.Contains(msg, "a runtime that this profile does not provide") {
 		t.Fatalf("refusal must point at the rebind that actually clears this, got: %s", msg)
 	}
-	if !strings.Contains(msg, "built into Multica)") {
+	if !strings.Contains(msg, "built into Delegora)") {
 		t.Fatalf("the listed blocker should be marked as product-owned, got: %s", msg)
 	}
 
@@ -452,8 +452,8 @@ func TestDeleteRuntimeProfile_MixedBlockersGiveEachItsOwnRemedy(t *testing.T) {
 	msg := conflictMessage(t, body)
 
 	for _, want := range []string{
-		"not marked as built into Multica can be reassigned or archived",
-		"Mika is built into Multica, so it cannot be archived",
+		"not marked as built into Delegora can be reassigned or archived",
+		"Mika is built into Delegora, so it cannot be archived",
 	} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("mixed refusal missing %q, got: %s", want, msg)
@@ -587,7 +587,7 @@ func TestDeleteRuntimeProfile_RemedyCoversBlockersBeyondTheSample(t *testing.T) 
 	body := deleteProfileExpectingConflict(t, ctx, profileID)
 	msg := conflictMessage(t, body)
 
-	if !strings.Contains(msg, "Mika is built into Multica") {
+	if !strings.Contains(msg, "Mika is built into Delegora") {
 		t.Fatalf("Mika is blocker #21 and must still be reported, got: %s", msg)
 	}
 	if !strings.Contains(msg, "a runtime that this profile does not provide") {
@@ -1070,7 +1070,7 @@ func TestMikaRemedyMatchesWhatMikaCanDo(t *testing.T) {
 	if got, _ := body["active_agent_count"].(float64); int(got) != 0 {
 		t.Fatalf("after the rebind the source should hold no agents, got %v", got)
 	}
-	if msg := conflictMessage(t, body); strings.Contains(msg, "Mika is built into Multica") {
+	if msg := conflictMessage(t, body); strings.Contains(msg, "Mika is built into Delegora") {
 		t.Fatalf("Mika moved away but is still named as a blocker: %s", msg)
 	}
 }

@@ -246,7 +246,7 @@ func prepareCodexHomeWithOpts(codexHome string, opts CodexHomeOptions, logger *s
 	// Drop `[[skills.config]]` entries inherited from the user's
 	// ~/.codex/config.toml. Codex Desktop writes plugin-backed skills with a
 	// `name` and no `path`, which the CLI's stricter TOML parser rejects with
-	// `missing field path` and bails out of `thread/start`. Multica writes the
+	// `missing field path` and bails out of `thread/start`. Delegora writes the
 	// agent's active skills directly to `codex-home/skills/`, so the
 	// user-level registry is redundant here. See codex_skill_strip.go.
 	if err := sanitizeCopiedCodexConfig(filepath.Join(codexHome, "config.toml")); err != nil {
@@ -366,7 +366,7 @@ var codexSessionStateGlobs = []string{
 // codexSessionStoreRoot is the directory under the shared Codex home that holds
 // the per-issue session stores. It sits beside the user's own `sessions/` so it
 // shares that volume (making resume-rollout hard links zero-copy) but is never
-// enumerated by a plain `codex` run, keeping Multica task history out of the
+// enumerated by a plain `codex` run, keeping Delegora task history out of the
 // user's own thread list.
 const codexSessionStoreRoot = "multica-sessions"
 

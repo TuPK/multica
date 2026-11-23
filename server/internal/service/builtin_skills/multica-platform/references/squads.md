@@ -139,7 +139,7 @@ the backend adds the new leader as a squad member with role `leader`.
 
 ## Leader briefing
 
-For squad leader tasks, Multica appends a squad leader briefing to the leader
+For squad leader tasks, Delegora appends a squad leader briefing to the leader
 agent instructions. The briefing includes:
 
 - Squad Operating Protocol;

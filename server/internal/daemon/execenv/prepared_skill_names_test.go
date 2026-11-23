@@ -25,7 +25,7 @@ func TestPreparationHelperReturnsAllocatedSkillNames(t *testing.T) {
 				AgentSkills: []SkillContextForEnv{
 					{Name: "Review", Content: "---\nname: first\n---\n\nFirst skill."},
 					{Name: "Review", Content: "---\nname: hidden\ndisable-model-invocation: true\n---\n\nHidden skill."},
-					{Name: "Review Multica", Content: "---\nname: last\n---\n\nLast skill."},
+					{Name: "Review Delegora", Content: "---\nname: last\n---\n\nLast skill."},
 				},
 			}
 			params := PrepareParams{

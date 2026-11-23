@@ -1,4 +1,4 @@
-// Package seatcapacity is the product-side executor for Multica Cloud's
+// Package seatcapacity is the product-side executor for Delegora Cloud's
 // pre-purchased workspace-seat protocol.
 package seatcapacity
 

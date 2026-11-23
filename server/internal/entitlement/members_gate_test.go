@@ -42,7 +42,7 @@ func TestMembersGateIsAPeriodlessCeiling(t *testing.T) {
 	}
 }
 
-// Cloud and Multica deploy independently. A policy from a Cloud that does not
+// Cloud and Delegora deploy independently. A policy from a Cloud that does not
 // send members yet, or sends it malformed, must leave members off without
 // failing the autopilot quota open with it.
 func TestMembersGateFailsOpenAlone(t *testing.T) {

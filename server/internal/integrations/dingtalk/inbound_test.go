@@ -342,7 +342,7 @@ func TestInboundFromCallback_QuotedBotInteractiveCardIsUnavailable(t *testing.T)
 				"msgType":"interactiveCard",
 				"msgId":"bot-message",
 				"senderId":"bot-user-id",
-				"senderNick":"Multica",
+				"senderNick":"Delegora",
 				"content":{"cardContent":{"cardData":{"cardParamMap":{"title":"Date lookup","text":"The date is August 27, 2026.\n\nThe lunar date is the fifteenth day of the seventh month."}}}}
 			}
 		}
@@ -355,7 +355,7 @@ func TestInboundFromCallback_QuotedBotInteractiveCardIsUnavailable(t *testing.T)
 	if !ok {
 		t.Fatal("expected quoted interactive-card message")
 	}
-	want := "> **Multica:**\n>\n> [quoted content unavailable]\n\nPlease verify this information"
+	want := "> **Delegora:**\n>\n> [quoted content unavailable]\n\nPlease verify this information"
 	if msg.Text != want || msg.CommandText != "Please verify this information" || msg.Type != channel.MsgTypeText {
 		t.Fatalf("quoted interactive card = %#v, want text %q", msg, want)
 	}

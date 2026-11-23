@@ -48,7 +48,7 @@ const (
 	ReasonRuntimeAccessDenied ReasonCode = "runtime_access_denied"
 	// ReasonRuntimeProfileMissing: the target is bound to a reachable runtime
 	// whose agent CLI runs fine, but a runtime profile that CLI needs in order
-	// to speak Multica's protocol is not installed on that machine — DeepSeek
+	// to speak Delegora's protocol is not installed on that machine — DeepSeek
 	// Harness, whose `multica` profile supplies the `--stdio` protocol, is the
 	// case in the field. Blocked for the same reason as runtime_unusable
 	// (MUL-6164): the machine is already on and waiting changes nothing. Kept

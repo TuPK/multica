@@ -468,7 +468,7 @@ func (s *Service) executeApproved(ctx context.Context, req db.AppActionRequest) 
 	if string(req.ApprovedArguments) != string(req.Arguments) {
 		edited = " The person edited the arguments before approving; the result reflects their version."
 	}
-	return row, fmt.Sprintf("Your %s was approved and Multica ran it.%s Result:\n```json\n%s\n```\nContinue the task from here. Do not call the tool again for this request.", label, edited, string(result))
+	return row, fmt.Sprintf("Your %s was approved and Delegora ran it.%s Result:\n```json\n%s\n```\nContinue the task from here. Do not call the tool again for this request.", label, edited, string(result))
 }
 
 func (s *Service) agentApp(ctx context.Context, agentID pgtype.UUID, slug string) (db.AgentApp, bool) {

@@ -18,11 +18,11 @@ import (
 // ignores `[sandbox_workspace_write] network_access = true`. DNS resolution is
 // blocked at the syscall layer, so processes inside the sandbox see
 // `no such host` errors when calling out (for example, `multica issue get`
-// hitting the Multica API). See upstream issue openai/codex#10390.
+// hitting the Delegora API). See upstream issue openai/codex#10390.
 //
 // Until a fixed Codex release ships, the per-task Codex config on macOS needs
 // to fall back to `sandbox_mode = "danger-full-access"` so the agent can
-// actually reach the Multica API.
+// actually reach the Delegora API.
 //
 // Linux runs danger-full-access as a deliberate product decision (MUL-5578,
 // #6218), not as a compatibility fallback — see codexSandboxPolicyFor.
@@ -94,7 +94,7 @@ func resolveGOOS(goos string) string {
 //   - darwin with a version at or above CodexDarwinNetworkAccessFixedVersion:
 //     workspace-write with network access (upstream bug fixed).
 //   - darwin otherwise (including when the version is unknown): fall back to
-//     danger-full-access so the Multica CLI can reach the API.
+//     danger-full-access so the Delegora CLI can reach the API.
 func codexSandboxPolicyFor(goos, detectedVersion string) codexSandboxPolicy {
 	if goos == "" {
 		goos = runtime.GOOS

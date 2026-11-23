@@ -35,7 +35,7 @@ func TestSecretIsSealedNotEncoded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCrypto: %v", err)
 	}
-	secret, _, err := NewSecret("Multica", "a@example.com")
+	secret, _, err := NewSecret("Delegora", "a@example.com")
 	if err != nil {
 		t.Fatalf("NewSecret: %v", err)
 	}
@@ -56,20 +56,20 @@ func TestSecretIsSealedNotEncoded(t *testing.T) {
 }
 
 func TestNewSecretBuildsAnOTPAuthURI(t *testing.T) {
-	secret, uri, err := NewSecret("Multica", "a@example.com")
+	secret, uri, err := NewSecret("Delegora", "a@example.com")
 	if err != nil {
 		t.Fatalf("NewSecret: %v", err)
 	}
 	if secret == "" || !strings.HasPrefix(uri, "otpauth://totp/") {
 		t.Fatalf("secret %q, uri %q", secret, uri)
 	}
-	if !strings.Contains(uri, "secret="+secret) || !strings.Contains(uri, "issuer=Multica") {
+	if !strings.Contains(uri, "secret="+secret) || !strings.Contains(uri, "issuer=Delegora") {
 		t.Fatalf("uri %q does not carry the secret and issuer", uri)
 	}
 }
 
 func TestMatchStep(t *testing.T) {
-	secret, _, err := NewSecret("Multica", "a@example.com")
+	secret, _, err := NewSecret("Delegora", "a@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}

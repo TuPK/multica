@@ -4,7 +4,7 @@
 //
 // Decide is the decision table of the platform-management spec, section 5.3.
 // It is a pure function of the status and the route, so the allow-lists below
-// are the only place that names Multica routes for this purpose.
+// are the only place that names Delegora routes for this purpose.
 package workspaceguard
 
 import (

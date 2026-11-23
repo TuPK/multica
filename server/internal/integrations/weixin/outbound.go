@@ -116,7 +116,7 @@ func (o *Outbound) enqueue(e events.Event) {
 	hash := fnv.New32a()
 	_, _ = hash.Write([]byte(e.ChatSessionID))
 	// The event bus is synchronous. Saturation must never hold up task
-	// completion or realtime fanout; the answer remains in the Multica chat.
+	// completion or realtime fanout; the answer remains in the Delegora chat.
 	select {
 	case o.queues[hash.Sum32()%uint32(len(o.queues))] <- e:
 	case <-o.done:
@@ -265,7 +265,7 @@ func (o *Outbound) deliverReply(ctx context.Context, reply outboundReply) error 
 		return settle("send_result_unknown")
 	}
 	if event.Type == protocol.EventTaskFailed {
-		payload.Content = "This run failed. Open Multica to review the error and try again."
+		payload.Content = "This run failed. Open Delegora to review the error and try again."
 	}
 	if event.Type == protocol.EventTaskCancelled {
 		return settle("cancelled")
@@ -295,7 +295,7 @@ func (o *Outbound) deliverReply(ctx context.Context, reply outboundReply) error 
 		} else {
 			item, prepErr := o.attachment(ctx, api, creds.UserID, attachments[i-len(chunks)])
 			if prepErr != nil {
-				msg = textMessage(creds.UserID, token, msg.ClientID, "This file could not be sent to WeChat. It is still attached to the reply in Multica.")
+				msg = textMessage(creds.UserID, token, msg.ClientID, "This file could not be sent to WeChat. It is still attached to the reply in Delegora.")
 				o.logger.WarnContext(ctx, "weixin: attachment unavailable", "error", prepErr)
 			} else {
 				msg.Items = []messageItem{item}

@@ -35,7 +35,7 @@ const inboxMarkdownMaxLen = 4000
 // The notification type labels and the deep link's anchor text live in the
 // copy pack (strings.go), read through copyPack.label / InboxDetailLink. The
 // pack's zh-Hans labels are the same table this file used to hold, character
-// for character; the card is a 1:1 push to a named Multica member, so it is
+// for character; the card is a 1:1 push to a named Delegora member, so it is
 // their own profile language that picks the pack (outbound.go).
 
 // inboxAppURL resolves the frontend URL for building the "view detail" link.

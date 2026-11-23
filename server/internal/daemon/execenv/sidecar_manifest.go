@@ -28,7 +28,7 @@ const sidecarManifestFile = ".multica_sidecar_manifest.json"
 //
 //   - For per-skill directories the caller allocates a collision-free
 //     alternative slug (see allocateCollisionFreeSkillDir) and retries
-//     so the agent still discovers the Multica skill, just under a
+//     so the agent still discovers the Delegora skill, just under a
 //     different directory name.
 //   - For the Multica-only namespace (.multica/project/resources.json)
 //     the caller swallows the error and proceeds — the agent's runtime
@@ -166,7 +166,7 @@ func recordWriteFile(path string, data []byte, perm os.FileMode, m *sidecarManif
 
 // allocateCollisionFreeSkillDir picks a directory under skillsParent
 // whose path does NOT currently exist, so writeSkillFiles can lay
-// down a Multica skill without colliding with a user-installed skill
+// down a Delegora skill without colliding with a user-installed skill
 // of the same slug. The first attempt is always the natural baseSlug
 // — that's the path provider-native discovery already knows. On
 // collision we append `-multica`, then `-multica-2`, `-multica-3`,

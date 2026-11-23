@@ -925,7 +925,7 @@ func TestBuildPromptContainsIssueID(t *testing.T) {
 // one sentence. The dividing question is whether the conversation can still be
 // READ, not whether it is a chat: an issue's comments, a Slack channel's
 // history, and a web chat's / Feishu's / WeCom's / DingTalk's stored
-// chat_message transcript all can; only a surface Multica stores no transcript
+// chat_message transcript all can; only a surface Delegora stores no transcript
 // for cannot. Announcing a loss on the readable ones describes something that
 // did not happen — the user hears "the discussion is gone" when every word
 // survives.
@@ -946,7 +946,7 @@ func TestSessionContinuityNoticeMatchesSurface(t *testing.T) {
 		},
 		{
 			// Slack has a history reader, so the conversation is recoverable —
-			// just from the channel rather than from Multica. Telling the user it
+			// just from the channel rather than from Delegora. Telling the user it
 			// was lost contradicts the commands the same prompt hands the agent.
 			name:         "slack rebuilds from the channel",
 			task:         Task{ChatSessionID: "chat-1", ChatChannelType: execenv.ChannelTypeSlack},
@@ -955,7 +955,7 @@ func TestSessionContinuityNoticeMatchesSurface(t *testing.T) {
 		},
 		{
 			// Web chat history is persisted in chat_message, which `multica chat
-			// history` reads back — recoverable, just from Multica's store.
+			// history` reads back — recoverable, just from Delegora's store.
 			name:         "web chat rebuilds from the stored transcript",
 			task:         Task{ChatSessionID: "chat-1"},
 			tellUser:     false,
@@ -4017,8 +4017,8 @@ func TestExecuteAndDrain_CodexInactivityReportsMCPToolResultTranscript(t *testin
 		`read line` + "\n" +
 		`echo '{"jsonrpc":"2.0","id":3,"result":{}}'` + "\n" +
 		`echo '{"jsonrpc":"2.0","method":"turn/started","params":{"threadId":"thr-drain","turn":{"id":"turn-drain"}}}'` + "\n" +
-		`echo '{"jsonrpc":"2.0","method":"item/started","params":{"threadId":"thr-drain","item":{"type":"mcpToolCall","id":"mcp-1","server":"plugin-exa-search","tool":"web_search_exa","arguments":{"query":"latest Multica news"},"status":"inProgress"}}}'` + "\n" +
-		`echo '{"jsonrpc":"2.0","method":"item/completed","params":{"threadId":"thr-drain","item":{"type":"mcpToolCall","id":"mcp-1","server":"plugin-exa-search","tool":"web_search_exa","arguments":{"query":"latest Multica news"},"status":"completed","durationMs":1627,"result":{"content":[{"type":"text","text":"private provider payload"}]}}}}'` + "\n" +
+		`echo '{"jsonrpc":"2.0","method":"item/started","params":{"threadId":"thr-drain","item":{"type":"mcpToolCall","id":"mcp-1","server":"plugin-exa-search","tool":"web_search_exa","arguments":{"query":"latest Delegora news"},"status":"inProgress"}}}'` + "\n" +
+		`echo '{"jsonrpc":"2.0","method":"item/completed","params":{"threadId":"thr-drain","item":{"type":"mcpToolCall","id":"mcp-1","server":"plugin-exa-search","tool":"web_search_exa","arguments":{"query":"latest Delegora news"},"status":"completed","durationMs":1627,"result":{"content":[{"type":"text","text":"private provider payload"}]}}}}'` + "\n" +
 		// Then go silent until the daemon starts tearing the turn down — its
 		// interrupt request or stdin EOF — so the inactivity watchdog always
 		// fires first, however long the box takes to get there.
@@ -4076,7 +4076,7 @@ func TestExecuteAndDrain_CodexInactivityReportsMCPToolResultTranscript(t *testin
 		for _, msg := range reported {
 			if msg.Seq == 1 && msg.Type == "tool_use" && msg.Tool == "web_search_exa" {
 				arguments, _ := msg.Input["arguments"].(map[string]any)
-				gotToolUse = msg.Input["server"] == "plugin-exa-search" && arguments["query"] == "latest Multica news"
+				gotToolUse = msg.Input["server"] == "plugin-exa-search" && arguments["query"] == "latest Delegora news"
 			}
 			if msg.Seq == 2 && msg.Type == "tool_result" && msg.Tool == "web_search_exa" && msg.Output == "completed\nduration: 1627 ms" {
 				gotToolResult = true

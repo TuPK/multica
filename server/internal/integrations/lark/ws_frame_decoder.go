@@ -118,7 +118,7 @@ func (d *LarkJSONFrameDecoder) Decode(payload []byte, inst Installation) (Inboun
 	// empty: it needs an HTTP round-trip to expand and is handled downstream by
 	// the enricher, which keys off MessageType. Standalone media gets a short
 	// visible marker while the channel adapter separately downloads and binds
-	// the binary as a Multica attachment.
+	// the binary as a Delegora attachment.
 	switch evt.Message.MessageType {
 	case "text", "post":
 		msg.Body = resolveMentions(flattenContent(evt.Message.MessageType, evt.Message.Content),
@@ -330,7 +330,7 @@ func normalizeChatType(t string) ChatType {
 //
 // The bot's stable identifier across WS perspectives is `union_id` —
 // see MUL-2671 group-@-mention triage. In a Lark group with several
-// Multica bots, each bot's WS receives the event, and Lark fills
+// Delegora bots, each bot's WS receives the event, and Lark fills
 // `mentions[].id.open_id` with the per-app form for whichever bot it
 // is talking to: bot X's WS sees X's payload-form open_id when bot Y
 // was @-ed, and a different payload-form open_id when X itself was

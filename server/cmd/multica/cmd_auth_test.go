@@ -563,7 +563,7 @@ func TestNormalizeAPIBaseURL(t *testing.T) {
 
 // TestValidateLoginTokenPrefix pins the accepted PAT prefix set for
 // `multica login --token`. The original implementation hardcoded `mul_`
-// only, which rejected legitimate Multica Cloud Node PATs (`mcn_`) at
+// only, which rejected legitimate Delegora Cloud Node PATs (`mcn_`) at
 // the CLI even though the server's middleware would have accepted them.
 // If a future change drops `mcn_` from the list (or accidentally
 // broadens the set to anything-goes), this test fails.

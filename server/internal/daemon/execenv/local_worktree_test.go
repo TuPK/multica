@@ -698,7 +698,7 @@ func TestPrepareWorktreeModeUsesPerIssueCodexSessionStore(t *testing.T) {
 }
 
 // The daemon runs its sidecar cleanup before Finalize commits. If that cleanup
-// fails, committing anyway would deliver a branch whose content is Multica's
+// fails, committing anyway would deliver a branch whose content is Delegora's
 // own runtime files — the exact leak this mode promises to prevent. The abort
 // must therefore stop the commit AND keep the worktree, since the agent's work
 // is still in it.
@@ -1892,7 +1892,7 @@ func TestBranchRecordRoundTrips(t *testing.T) {
 	}
 }
 
-// Ownership is not a property of the NAME. A branch Multica delivered, that the
+// Ownership is not a property of the NAME. A branch Delegora delivered, that the
 // user then deleted and recreated for something of their own, keeps matching
 // the recorded owner — and there is no prepare in between for the orphan sweep
 // to notice the gap. Only the recorded checkpoint distinguishes them.

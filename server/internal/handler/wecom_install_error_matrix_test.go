@@ -71,7 +71,7 @@ func TestWecomInstallErrorMatrix(t *testing.T) {
 			err:        wecom.ErrBotOwnedByAnotherWorkspace,
 			wantStatus: http.StatusConflict,
 			wantCode:   "wecom_bot_owned_by_another_workspace",
-			wantError:  "this bot is already connected to a different Multica workspace — disconnect it there before connecting it here",
+			wantError:  "this bot is already connected to a different Delegora workspace — disconnect it there before connecting it here",
 			why:        "go disconnect it in the other workspace",
 		},
 		{

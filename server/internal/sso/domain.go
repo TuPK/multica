@@ -1,6 +1,6 @@
 // Package sso holds the single sign-on rules of the platform spec 6.3. This
 // file is the domain verification part: a workspace owner proves control of a
-// domain by publishing a DNS TXT record that holds a token Multica issued.
+// domain by publishing a DNS TXT record that holds a token Delegora issued.
 package sso
 
 import (

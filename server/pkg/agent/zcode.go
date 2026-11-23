@@ -1269,7 +1269,7 @@ func zcodeSessionIDFromSnapshot(result json.RawMessage) string {
 	return snap.Session.SessionID
 }
 
-// splitZcodeModelSelection splits Multica's persisted agent.model string into
+// splitZcodeModelSelection splits Delegora's persisted agent.model string into
 // the ZCode {providerId, modelId} pair. The composite form is the runtime's
 // own picker format (model-selection.ts formatModelPickerValue), and its
 // execution entry rejects a selection without a provider. A string without a
@@ -1345,7 +1345,7 @@ func zcodeWorkspaceKey(taskID, cwd string) string {
 	return cwd
 }
 
-// buildZcodeMcpServers converts Multica's canonical mcp_config JSON into the
+// buildZcodeMcpServers converts Delegora's canonical mcp_config JSON into the
 // ZCode Protocol mcpServers array. Same parsing skeleton and alt-key
 // tolerance as buildACPMcpServers, but the output is built for zcode's strict
 // schema (index.ts zcodeProtocolMcpServerSchema): stdio entries carry

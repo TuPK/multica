@@ -23,7 +23,7 @@ import (
 
 // This file is the Telegram install backend, mirroring slack/install.go +
 // byo_install.go: the workspace admin creates a bot via @BotFather and pastes
-// its token into Multica. The InstallService owns the at-rest encryption of
+// its token into Delegora. The InstallService owns the at-rest encryption of
 // the token — no caller can write a channel_installation with a plaintext
 // token — plus the shared persist transaction and the list / get / revoke
 // management surface.
@@ -38,12 +38,12 @@ var (
 	// distinct from an unreachable API so users are never told to rotate a
 	// valid credential because the deployment's proxy or network is down.
 	ErrCredentialsRejected = errors.New("telegram: Telegram rejected this bot token")
-	// ErrCredentialsUnverifiable means Multica could not complete the live
+	// ErrCredentialsUnverifiable means Delegora could not complete the live
 	// Telegram check. The token has not been persisted or changed.
 	ErrCredentialsUnverifiable = errors.New("telegram: could not reach Telegram to verify this bot")
 	// ErrBotOwnedByAnotherWorkspace: the pasted bot is already connected to a
-	// live owner in a DIFFERENT Multica workspace.
-	ErrBotOwnedByAnotherWorkspace = errors.New("telegram: this bot is already connected to a different Multica workspace")
+	// live owner in a DIFFERENT Delegora workspace.
+	ErrBotOwnedByAnotherWorkspace = errors.New("telegram: this bot is already connected to a different Delegora workspace")
 	// ErrBotOwnedBySameWorkspace: the bot is already connected to a different
 	// live agent in the SAME workspace.
 	ErrBotOwnedBySameWorkspace = errors.New("telegram: this bot is already connected to another agent in this workspace")
@@ -308,7 +308,7 @@ func (s *InstallService) GetInWorkspace(ctx context.Context, id, wsID pgtype.UUI
 }
 
 // Revoke flips status to 'revoked'. The row is preserved for audit; existing
-// chat sessions stay in Multica. The Supervisor stops supervising the
+// chat sessions stay in Delegora. The Supervisor stops supervising the
 // installation, so its polling loop winds down and outbound drops too.
 func (s *InstallService) Revoke(ctx context.Context, id pgtype.UUID) error {
 	return s.q.SetChannelInstallationStatus(ctx, db.SetChannelInstallationStatusParams{

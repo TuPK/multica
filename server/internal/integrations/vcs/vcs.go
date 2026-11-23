@@ -1,5 +1,5 @@
 // Package vcs is the provider abstraction for token-based Git providers that
-// Multica mirrors pull requests and CI status from: Forgejo, Gitea (Forgejo's
+// Delegora mirrors pull requests and CI status from: Forgejo, Gitea (Forgejo's
 // upstream, wire-identical), and GitLab. GitHub is intentionally NOT a vcs
 // provider — its App/installation model and check_suite CI differ enough that
 // it keeps its own handler (server/internal/handler/github.go).

@@ -20,7 +20,7 @@ const (
 
 // mergeDeliveredBranch merges a delivered task branch into the branch checked
 // out in the user's repository. It is the opt-in counterpart to the rule that
-// Multica never writes to the user's working copy, so every refusal below
+// Delegora never writes to the user's working copy, so every refusal below
 // leaves the branch for the user to merge by hand.
 //
 // It returns the outcome and, for anything but a merge, the reason. It never

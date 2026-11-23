@@ -369,7 +369,7 @@ type ListDingTalkUserBindingsForMemberRow struct {
 // DingTalk-specific installation identity operations. The underlying channel_*
 // tables are shared, but these replacement semantics belong to DingTalk's BYO
 // AppKey model and deliberately stay out of the shared channel query surface.
-// Returns only the requesting Multica member's DingTalk identities. The
+// Returns only the requesting Delegora member's DingTalk identities. The
 // installation list is member-visible, so returning every member's staff id
 // here would expose staff ID values more broadly than necessary.
 func (q *Queries) ListDingTalkUserBindingsForMember(ctx context.Context, arg ListDingTalkUserBindingsForMemberParams) ([]ListDingTalkUserBindingsForMemberRow, error) {

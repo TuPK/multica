@@ -1,5 +1,5 @@
 // Package tenant holds the rules of the workspace-to-tenant link that the
-// Multica server owns (spec R6 section 5): the lock that serialises changes to a
+// Delegora server owns (spec R6 section 5): the lock that serialises changes to a
 // tenant's workspaces, and the detach step of workspace deletion.
 package tenant
 

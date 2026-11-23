@@ -52,7 +52,7 @@ func TestWorktreeClaimBlockReason(t *testing.T) {
 		if reason == "" {
 			t.Fatal("an outdated runtime was allowed to claim a worktree task")
 		}
-		if !strings.Contains(reason, "/Users/dev/game") || !strings.Contains(reason, "Update the Multica app") {
+		if !strings.Contains(reason, "/Users/dev/game") || !strings.Contains(reason, "Update the Delegora app") {
 			t.Errorf("reason should name the directory and tell the user to update, got: %q", reason)
 		}
 	})
@@ -698,7 +698,7 @@ func TestClaimTask_WorktreeGateSingular(t *testing.T) {
 	}
 	if body := w.Body.String(); !strings.Contains(body, "/Users/dev/wtgate") ||
 		!strings.Contains(body, "does not support parallel") ||
-		!strings.Contains(body, "Update the Multica app") {
+		!strings.Contains(body, "Update the Delegora app") {
 		t.Errorf("422 body should name the directory and tell the user to update, got: %s", body)
 	}
 	assertWorktreeGateCancelled(t, ctx, taskID)

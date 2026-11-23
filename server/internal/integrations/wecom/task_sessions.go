@@ -63,7 +63,7 @@ type taskRound struct {
 
 	// installation is the bot the run's WeCom delivery row names. Set only
 	// for a run asked over WeCom: a run with no delivery row (typed in
-	// Multica) or another platform's row is not one whose steps a WeCom
+	// Delegora) or another platform's row is not one whose steps a WeCom
 	// bubble shows, and its session is left invalid so nothing is done with
 	// it at all.
 	installation string

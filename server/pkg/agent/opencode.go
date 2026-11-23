@@ -110,7 +110,7 @@ func openCodeEnvironment(cfg Config, opts ExecOptions) ([]string, error) {
 	// On 1.x, OPENCODE_CONFIG_CONTENT — OpenCode's general inline-config
 	// injection mechanism that merges at "local" scope (after the
 	// project-config loop, before remote / managed configs). MCP is the only
-	// field we currently project there; if a future Multica field needs the
+	// field we currently project there; if a future Delegora field needs the
 	// same channel it would assemble a combined OpenCode config slice before
 	// the env append. That path deliberately leaves <workdir>/opencode.json
 	// untouched — the workdir is reused across turns for the same

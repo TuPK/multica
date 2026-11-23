@@ -301,7 +301,7 @@ func (s *KnowledgeService) ensureTenantAndKey(ctx context.Context, workspaceID p
 		return "", fmt.Errorf("load workspace knowledge: %w", err)
 	}
 
-	tenant, err := s.Client.EnsureTenant(ctx, tenantName(workspaceID), "Multica workspace "+util.UUIDToString(workspaceID))
+	tenant, err := s.Client.EnsureTenant(ctx, tenantName(workspaceID), "Delegora workspace "+util.UUIDToString(workspaceID))
 	if err != nil {
 		return "", fmt.Errorf("create knowledge tenant: %w", err)
 	}
@@ -371,8 +371,8 @@ func (s *KnowledgeService) ensureKnowledgeBases(ctx context.Context, workspaceID
 	return nil
 }
 
-// createOrAdoptBase creates the WeKnora base and records it in Multica. A crash
-// between those two steps leaves a base WeKnora knows and Multica does not, so
+// createOrAdoptBase creates the WeKnora base and records it in Delegora. A crash
+// between those two steps leaves a base WeKnora knows and Delegora does not, so
 // a base of the same name in remote is adopted rather than duplicated.
 func (s *KnowledgeService) createOrAdoptBase(ctx context.Context, workspaceID pgtype.UUID, ws knowledge.Workspace, modelID, key, name, description string, position int32, remote []knowledge.KnowledgeBase) error {
 	kbID := ""
@@ -453,7 +453,7 @@ func (s *KnowledgeService) ensureMCPServer(ctx context.Context, workspaceID, act
 	if len(kbIDs) == 0 {
 		return pgtype.UUID{}, errors.New("no workspace-visible knowledge bases to publish")
 	}
-	return s.ensureReadEndpoint(ctx, workspaceID, actorID, ws, KnowledgeMCPServerName, "Read-only company knowledge for Multica agents", kbIDs)
+	return s.ensureReadEndpoint(ctx, workspaceID, actorID, ws, KnowledgeMCPServerName, "Read-only company knowledge for Delegora agents", kbIDs)
 }
 
 // ensureReadEndpoint makes sure a read-only endpoint over kbIDs exists in WeKnora

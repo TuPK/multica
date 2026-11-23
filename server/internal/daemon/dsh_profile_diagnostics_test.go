@@ -79,7 +79,7 @@ func TestProbeBuiltinRuntimeDshRetainsStartupDiagnosis(t *testing.T) {
 				}
 			}
 			if tc.stderr == dshBridgeCompatibilityFixture {
-				if !strings.Contains(reason, "update the Multica bridge to a build compatible with the installed DSH") {
+				if !strings.Contains(reason, "update the Delegora bridge to a build compatible with the installed DSH") {
 					t.Errorf("missing bridge repair guidance: %q", reason)
 				}
 				if strings.Contains(reason, "align profile-local DSH core dependencies") {

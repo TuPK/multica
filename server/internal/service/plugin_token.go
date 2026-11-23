@@ -19,7 +19,7 @@ import (
 // Two credentials, moving in opposite directions.
 //
 // Neither one ever enters an iframe: a surface still holds nothing and still
-// reaches Multica only by asking the host page over postMessage. What changes
+// reaches Delegora only by asking the host page over postMessage. What changes
 // with hooks is that a plugin now has a SERVER, and that server needs a way to
 // be recognised. So the honest statement about the system is no longer "there
 // are no plugin credentials" but "plugin credentials only move between

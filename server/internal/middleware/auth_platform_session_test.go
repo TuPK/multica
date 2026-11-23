@@ -23,7 +23,7 @@ func platformSessionToken(secret string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(payload)) + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
 
-// The platform console's mpa_session cookie is not a Multica credential: Auth
+// The platform console's mpa_session cookie is not a Delegora credential: Auth
 // treats a request that carries only that cookie as one with no credentials.
 // The request never reaches a lookup, so no database is needed.
 func TestAuthIgnoresPlatformSessionCookie(t *testing.T) {

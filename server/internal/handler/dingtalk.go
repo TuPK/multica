@@ -38,7 +38,7 @@ type DingTalkInstallationResponse struct {
 	BoundDingTalkUserIDs []string `json:"bound_dingtalk_user_ids,omitempty"`
 }
 
-// DingTalkGroupBotResponse identifies one connected Multica bot observed in a
+// DingTalkGroupBotResponse identifies one connected Delegora bot observed in a
 // DingTalk group. AgentID is the product-facing identity; BotName is the
 // readable DingTalk identity when the app has qyapi_chat_manage permission.
 type DingTalkGroupBotResponse struct {
@@ -208,7 +208,7 @@ func (h *Handler) ListDingTalkInstallations(w http.ResponseWriter, r *http.Reque
 }
 
 // ListDingTalkGroups (GET /api/workspaces/{id}/dingtalk/groups) returns the
-// Settings inventory of observed groups and connected Multica bots. Workspace
+// Settings inventory of observed groups and connected Delegora bots. Workspace
 // owners/admins see the full inventory; ordinary members only receive bots for
 // Agents they can open, matching ListAgents and Agent Detail.
 func (h *Handler) ListDingTalkGroups(w http.ResponseWriter, r *http.Request) {
@@ -629,7 +629,7 @@ func (h *Handler) RegisterDingTalkBYO(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, dingtalk.ErrRobotOwnedByArchivedAgent):
 			writeError(w, http.StatusConflict, "this DingTalk robot is connected to an archived agent in this workspace — restore that agent, or disconnect its robot, before connecting it here")
 		case errors.Is(err, dingtalk.ErrRobotOwnedByAnotherWorkspace):
-			writeError(w, http.StatusConflict, "this DingTalk robot is already connected to a different Multica workspace — disconnect it there before connecting it here")
+			writeError(w, http.StatusConflict, "this DingTalk robot is already connected to a different Delegora workspace — disconnect it there before connecting it here")
 		case errors.Is(err, dingtalk.ErrCredentialValidation):
 			// The access-token mint rejected the pasted credentials (a user error),
 			// so guide the user to recheck them.
@@ -727,7 +727,7 @@ type RedeemDingTalkBindingTokenResponse struct {
 }
 
 // RedeemDingTalkBindingToken (POST /api/dingtalk/binding/redeem) binds the
-// DingTalk user id carried by the bearer token to the logged-in Multica user.
+// DingTalk user id carried by the bearer token to the logged-in Delegora user.
 // The redeemer's identity comes from the session, while token possession proves
 // control of the link delivered to that DingTalk account. Failure modes map to
 // distinct status codes:
@@ -763,7 +763,7 @@ func (h *Handler) RedeemDingTalkBindingToken(w http.ResponseWriter, r *http.Requ
 		case errors.Is(err, dingtalk.ErrBindingTokenInvalid):
 			writeError(w, http.StatusGone, "binding token invalid or expired")
 		case errors.Is(err, dingtalk.ErrBindingAlreadyAssigned):
-			writeError(w, http.StatusConflict, "this DingTalk account is already bound to a different Multica user")
+			writeError(w, http.StatusConflict, "this DingTalk account is already bound to a different Delegora user")
 		case errors.Is(err, dingtalk.ErrBindingViewerReadOnly):
 			writeErrorCode(w, http.StatusForbidden, workspaceguard.CodeViewerReadOnly, workspaceguard.Message(workspaceguard.CodeViewerReadOnly))
 		case errors.Is(err, dingtalk.ErrBindingNotWorkspaceMember):

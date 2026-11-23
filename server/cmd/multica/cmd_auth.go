@@ -25,7 +25,7 @@ import (
 
 // loginTokenPrefixes are the token prefixes `multica login --token` accepts.
 // The CLI used to hardcode `mul_` only, which made it impossible to log in
-// with a Multica Cloud Node PAT (`mcn_`) even though the server happily
+// with a Delegora Cloud Node PAT (`mcn_`) even though the server happily
 // authenticates both kinds. Keep this list in sync with the prefix branches
 // in server/internal/middleware/auth.go.
 var loginTokenPrefixes = []string{"mul_", auth.CloudPATPrefix}
@@ -44,7 +44,7 @@ func validateLoginTokenPrefix(token string) error {
 
 var authCmd = &cobra.Command{
 	Use:   "auth",
-	Short: "Authenticate multica with Multica",
+	Short: "Authenticate multica with Delegora",
 }
 
 var authStatusCmd = &cobra.Command{
@@ -546,7 +546,7 @@ const callbackSuccessHTML = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Multica — Authenticated</title>
+<title>Delegora — Authenticated</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   @media (prefers-color-scheme: dark) {
@@ -571,7 +571,7 @@ const callbackSuccessHTML = `<!DOCTYPE html>
     <div class="icon-wrap">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
     </div>
-    <div class="brand"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -39.5 421.36 115.5" role="img" aria-label="Multica" height="19.5" width="71"><g fill="none" stroke="currentColor" stroke-width="16"><path d="M8 76V31A23 23 0 0 1 54 31V76M54 31A23 23 0 0 1 100 31V76"/><path d="M128 0V45A23 23 0 0 0 174 45M174 0V76"/><path d="M202 -30V76"/><path d="M239.6 -19.8V76M219.6 8H259.6"/><path d="M277.8 0V76"/><path d="M274.92 -23L274.92 -38.739A16 16 0 0 1 280.68 -38.739L280.68 -23ZM275.764 -25.036L286.892 -36.165A16 16 0 0 1 290.965 -32.092L279.836 -20.964ZM277.8 -25.88L293.539 -25.88A16 16 0 0 1 293.539 -20.12L277.8 -20.12ZM279.836 -25.036L290.965 -13.908A16 16 0 0 1 286.892 -9.835L275.764 -20.964ZM280.68 -23L280.68 -7.261A16 16 0 0 1 274.92 -7.261L274.92 -23ZM279.836 -20.964L268.708 -9.835A16 16 0 0 1 264.635 -13.908L275.764 -25.036ZM277.8 -20.12L262.061 -20.12A16 16 0 0 1 262.061 -25.88L277.8 -25.88ZM275.764 -20.964L264.635 -32.092A16 16 0 0 1 268.708 -36.165L279.836 -25.036Z" fill="currentColor" stroke="none"/><path d="M344.103 14.737A23 23 0 0 0 304.84 31V45A23 23 0 0 0 344.103 61.263"/><path d="M367.36 31A23 23 0 0 1 413.36 31V45A23 23 0 0 1 367.36 45ZM413.36 0V76"/></g></svg></div>
+    <div class="brand"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -39.5 421.36 115.5" role="img" aria-label="Delegora" height="19.5" width="71"><g fill="none" stroke="currentColor" stroke-width="16"><path d="M8 76V31A23 23 0 0 1 54 31V76M54 31A23 23 0 0 1 100 31V76"/><path d="M128 0V45A23 23 0 0 0 174 45M174 0V76"/><path d="M202 -30V76"/><path d="M239.6 -19.8V76M219.6 8H259.6"/><path d="M277.8 0V76"/><path d="M274.92 -23L274.92 -38.739A16 16 0 0 1 280.68 -38.739L280.68 -23ZM275.764 -25.036L286.892 -36.165A16 16 0 0 1 290.965 -32.092L279.836 -20.964ZM277.8 -25.88L293.539 -25.88A16 16 0 0 1 293.539 -20.12L277.8 -20.12ZM279.836 -25.036L290.965 -13.908A16 16 0 0 1 286.892 -9.835L275.764 -20.964ZM280.68 -23L280.68 -7.261A16 16 0 0 1 274.92 -7.261L274.92 -23ZM279.836 -20.964L268.708 -9.835A16 16 0 0 1 264.635 -13.908L275.764 -25.036ZM277.8 -20.12L262.061 -20.12A16 16 0 0 1 262.061 -25.88L277.8 -25.88ZM275.764 -20.964L264.635 -32.092A16 16 0 0 1 268.708 -36.165L279.836 -25.036Z" fill="currentColor" stroke="none"/><path d="M344.103 14.737A23 23 0 0 0 304.84 31V45A23 23 0 0 0 344.103 61.263"/><path d="M367.36 31A23 23 0 0 1 413.36 31V45A23 23 0 0 1 367.36 45ZM413.36 0V76"/></g></svg></div>
     <h1>Authentication successful</h1>
     <p>You can close this tab and return to the terminal.</p>
     <p class="hint">Your CLI session is now authenticated.</p>

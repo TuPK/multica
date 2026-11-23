@@ -1,6 +1,6 @@
 // Package telegram is the Telegram integration for the channel-agnostic
 // engine. It follows the Slack BYO model: the workspace admin creates a bot
-// via @BotFather, pastes its bot token into Multica, and the installation is
+// via @BotFather, pastes its bot token into Delegora, and the installation is
 // keyed by the bot's numeric id (the token prefix). Inbound runs on a
 // per-installation getUpdates long-polling loop (telegram_channel.go) —
 // Telegram offers no WebSocket transport, and long polling is the deployment

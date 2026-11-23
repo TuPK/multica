@@ -20,7 +20,7 @@ import (
 
 // Publishing.
 //
-// An author uploads an artifact bundle; Multica stores it and serves it. There
+// An author uploads an artifact bundle; Delegora stores it and serves it. There
 // is no source URL, and there is no second way in: what an administrator
 // approves and what a reader's browser runs are the same rows in this database.
 //

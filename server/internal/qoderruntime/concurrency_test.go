@@ -125,7 +125,7 @@ func setupMulti(t *testing.T, limit int, tasks ...*daemon.Task) *multiHarness {
 		case strings.HasSuffix(r.URL.Path, "/messages"), strings.HasSuffix(r.URL.Path, "/session"), strings.HasSuffix(r.URL.Path, "/cancel-ack"):
 			io.WriteString(w, `{}`)
 		default:
-			t.Errorf("unexpected Multica request %s", r.URL)
+			t.Errorf("unexpected Delegora request %s", r.URL)
 			http.NotFound(w, r)
 		}
 	}))

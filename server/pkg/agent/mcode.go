@@ -29,7 +29,7 @@ var mcodeBlockedArgs = map[string]blockedArgMode{
 
 // mcodeBackend runs MiniMax Code as an ACP v1 agent server via `mcode acp`.
 // MiniMax Code owns its Runtime, Session, permission, and questionnaire loops;
-// this adapter only maps the shared ACP stream into Multica's Backend contract.
+// this adapter only maps the shared ACP stream into Delegora's Backend contract.
 //
 // The current public ACP surface deliberately declares loadSession:false and
 // does not expose session-scoped model selection. Resume therefore returns a

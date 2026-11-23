@@ -3,7 +3,7 @@
 -- tenant deprovision queue.
 
 -- name: SetKnowledgeBaseLLMSettings :execrows
--- Records the switches Multica asked WeKnora to apply, and marks the base's
+-- Records the switches Delegora asked WeKnora to apply, and marks the base's
 -- defaults as written so a later enable leaves an admin's choice alone.
 UPDATE knowledge_base
 SET wiki_enabled = @wiki_enabled::boolean,

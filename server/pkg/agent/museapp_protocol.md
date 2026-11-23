@@ -6,7 +6,7 @@ the task-scoped `task_token`, `server_url`, `workspace_id`, and task prompt.
 
 For daemon tasks, the prompt includes a CLI command prefix with the daemon's
 absolute executable path, localhost daemon port, task and agent identity, and
-private Multica config root. The worker must use that prefix for each Multica
+private Delegora config root. The worker must use that prefix for each Delegora
 command, including commands copied from AGENTS.md. It must set `MULTICA_TOKEN`
 from its own request's `task_token`; tokens and custom environment secrets are
 never included in the prefix. The existing receptionist passes the prompt

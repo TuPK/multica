@@ -226,7 +226,7 @@ func setup(t *testing.T) *harness {
 		case strings.HasSuffix(r.URL.Path, "/session"):
 			io.WriteString(w, `{}`)
 		default:
-			t.Errorf("unexpected Multica request %s", r.URL)
+			t.Errorf("unexpected Delegora request %s", r.URL)
 			http.NotFound(w, r)
 		}
 	}))

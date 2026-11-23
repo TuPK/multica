@@ -10,7 +10,7 @@
 // as agent_task_queue_accountable_matches_originator_strict (NOT VALID),
 // and migration 198 runs VALIDATE CONSTRAINT on it. Migration 197's
 // comment assumed the violating legacy rows had "been backfilled out of
-// band" — which was true only on Multica's own cloud, where the backfill
+// band" — which was true only on Delegora's own cloud, where the backfill
 // was run manually. Self-hosted deployments never got that step, so their
 // legacy rows (originator_user_id set from before migration 185, or written
 // by an older rolling-deploy backend, with accountable_user_id NULL) make

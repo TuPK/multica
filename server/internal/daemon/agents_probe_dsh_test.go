@@ -315,7 +315,7 @@ func TestProbeAgentCLIsDiscoversDshWithoutMulticaProfile(t *testing.T) {
 
 	entry, found := probeAgentCLIs()["dsh"]
 	if !found {
-		t.Fatal("dsh was not discovered; discovery must not depend on the Multica runtime profile")
+		t.Fatal("dsh was not discovered; discovery must not depend on the Delegora runtime profile")
 	}
 	if want := canonicalExecutablePath(path); entry.Path != want {
 		t.Fatalf("dsh path = %q, want %q", entry.Path, want)
@@ -393,7 +393,7 @@ func TestProbeBuiltinRuntime_DshBinaryGoneIsNotAProfileVerdict(t *testing.T) {
 }
 
 // dshDesktopBundleFixture writes a fake DSH Desktop bundled CLI that answers
-// `--probe` the way the Multica runtime profile does, and pins discovery to
+// `--probe` the way the Delegora runtime profile does, and pins discovery to
 // it. The DSH Desktop app ships its CLI inside the .app bundle and never
 // installs `dsh` onto PATH, so neither LookPath nor the login-shell sweep can
 // find it.
@@ -464,7 +464,7 @@ func TestProbeAgentCLIsIgnoresNonExecutableDshBundle(t *testing.T) {
 // `--version` included.
 //
 // Probing the profile before version detection reported that machine as "the
-// Multica runtime profile is not installed": a repair for a problem it did not
+// Delegora runtime profile is not installed": a repair for a problem it did not
 // have, sending the user to install a bundle while the actual fault was a CLI
 // that cannot execute — and, with a bundle configured, starting that install
 // against it. A CLI that cannot answer `--version` is not one this daemon has

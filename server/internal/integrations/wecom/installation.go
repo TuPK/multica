@@ -377,7 +377,7 @@ var (
 
 	// ErrBotOwnedByAnotherWorkspace — the holder is out of sight entirely and
 	// only someone with access there can release it.
-	ErrBotOwnedByAnotherWorkspace = errors.New("wecom: this bot is already connected to a different Multica workspace")
+	ErrBotOwnedByAnotherWorkspace = errors.New("wecom: this bot is already connected to a different Delegora workspace")
 )
 
 // pgUniqueViolation is Postgres' unique_violation SQLSTATE.

@@ -126,7 +126,7 @@ func rejectRevokedSession(w http.ResponseWriter, r *http.Request, userID string)
 // while leaving the CDN policy pinned to the original login.
 //
 // cloudPAT is optional; when non-nil, tokens with the mcn_ prefix are
-// validated by calling the Multica Cloud Fleet service rather than the
+// validated by calling the Delegora Cloud Fleet service rather than the
 // local DB. When nil (Fleet URL unset) mcn_ tokens are rejected at the
 // prefix branch — we don't fall through to the mul_ / JWT paths, since
 // an mcn_ string is by construction not a valid mul_ PAT or JWT.
@@ -230,7 +230,7 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 			}
 
 			// Cloud Node PAT: "mcn_" prefix. Verified by calling the
-			// Multica Cloud Fleet service — Cloud (not us) is the
+			// Delegora Cloud Fleet service — Cloud (not us) is the
 			// authoritative owner of the token's status and owner_id
 			// binding. We never look at the local
 			// personal_access_tokens table for this prefix; an mcn_

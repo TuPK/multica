@@ -93,7 +93,7 @@ func pinnedDshHome(t *testing.T) string {
 }
 
 // installMulticaProfile creates the manifest dshMulticaProfilePresent looks for:
-// one that names the Multica runtime, not a file that merely exists.
+// one that names the Delegora runtime, not a file that merely exists.
 func installMulticaProfile(t *testing.T, dshHome string) {
 	t.Helper()
 	writeDshProfileManifest(t, dshHome, installedDshProfileManifest())
@@ -182,7 +182,7 @@ func TestProvisionDshMulticaProfile_InstallsTheFirstWorkingCandidate(t *testing.
 }
 
 // The whole point of the knob is to be able to point it at a local build before
-// Multica's bridge is published (multica#6936), so a directory spec must reach
+// Delegora's bridge is published (multica#6936), so a directory spec must reach
 // dsh unmodified.
 func TestProvisionDshMulticaProfile_ForwardsTheSpecVerbatim(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -577,7 +577,7 @@ func TestDshMulticaProfilePresent(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			writeDshProfileManifest(t, home, tc.manifest)
 			if dshMulticaProfilePresent() {
-				t.Fatal("profile reported installed without the Multica runtime")
+				t.Fatal("profile reported installed without the Delegora runtime")
 			}
 		})
 	}

@@ -1,5 +1,5 @@
 // Package entitlement fetches and caches workspace-scoped enforcement policy
-// from Multica Cloud. It is intentionally a mechanical policy consumer: plan
+// from Delegora Cloud. It is intentionally a mechanical policy consumer: plan
 // names, subscription interpretation, and commercial limits are resolved by
 // Cloud and never appear here.
 //

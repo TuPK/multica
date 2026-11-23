@@ -25,7 +25,7 @@ func TestNormalizePolicyAcceptsMaxWorkspacesGate(t *testing.T) {
 	}
 }
 
-// Multica Cloud and older platform builds send no max_workspaces gate. Their
+// Delegora Cloud and older platform builds send no max_workspaces gate. Their
 // policy stays valid and the gate is off.
 func TestAbsentMaxWorkspacesGateIsOff(t *testing.T) {
 	policy := samplePolicy(2, 4, 60, ActionEnforce)

@@ -731,7 +731,7 @@ func HermesTaskEnvPassthroughNames() []string {
 	}
 }
 
-// setHermesTerminalEnvPassthrough lets Multica CLI calls in Hermes tool shells
+// setHermesTerminalEnvPassthrough lets Delegora CLI calls in Hermes tool shells
 // use the task environment already injected by the daemon. Only names are
 // persisted; user entries and other terminal settings remain intact.
 func setHermesTerminalEnvPassthrough(doc *yaml.Node) error {

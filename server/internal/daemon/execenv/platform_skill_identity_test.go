@@ -157,7 +157,7 @@ func TestPlatformSkillDomainsMatchDescription(t *testing.T) {
 func assertPlatformSkillHints(t *testing.T, provider, brief, slug string) {
 	t.Helper()
 	if slug == "" {
-		for _, unwanted := range []string{"For a Multica platform action this brief does not fully cover", "Before creating sub-issues, read"} {
+		for _, unwanted := range []string{"For a Delegora platform action this brief does not fully cover", "Before creating sub-issues, read"} {
 			if strings.Contains(brief, unwanted) {
 				t.Errorf("brief advertised a platform contract without a visible builtin: %q", unwanted)
 			}

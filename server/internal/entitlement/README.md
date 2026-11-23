@@ -32,7 +32,7 @@ The client reads:
   extend enforcement.
 - `gates`: effective `off`, `observe`, or `enforce` instructions and
   parameters. Cloud chooses the action per gate; `observe` carries the same
-  limit and period parameters as `enforce`. Multica also downgrades an expired
+  limit and period parameters as `enforce`. Delegora also downgrades an expired
   cached `enforce` instruction to `observe` locally (see below).
 - `gates.*.notifications`: an optional, additive delivery policy. The autopilot
   quota consumer recognizes two values. `first_rejection_per_period` delivers

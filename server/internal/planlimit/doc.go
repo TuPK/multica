@@ -1,4 +1,4 @@
-// Package planlimit holds the quota rules that Multica applies at the moment a
+// Package planlimit holds the quota rules that Delegora applies at the moment a
 // resource is created (platform-management spec 5.7): the resource gates
 // (agents, runtimes, storage_bytes), the cap on free workspaces one user owns,
 // and the list of blocked sign-up domains.

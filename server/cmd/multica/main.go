@@ -28,8 +28,8 @@ var debugFlag bool
 
 var rootCmd = &cobra.Command{
 	Use:           "multica",
-	Short:         "Multica CLI — local agent runtime and management tool",
-	Long:          "Work seamlessly with Multica from the command line.",
+	Short:         "Delegora CLI — local agent runtime and management tool",
+	Long:          "Work seamlessly with Delegora from the command line.",
 	SilenceUsage:  true,
 	SilenceErrors: true,
 }
@@ -42,7 +42,7 @@ func init() {
 	// server can split logs/metrics by client version.
 	cli.ClientVersion = version
 
-	rootCmd.PersistentFlags().String("server-url", "", "Multica server URL (env: MULTICA_SERVER_URL)")
+	rootCmd.PersistentFlags().String("server-url", "", "Delegora server URL (env: MULTICA_SERVER_URL)")
 	rootCmd.PersistentFlags().String("workspace-id", "", "Workspace ID (env: MULTICA_WORKSPACE_ID)")
 	rootCmd.PersistentFlags().String("profile", "", "Configuration profile name (e.g. dev) — isolates config, daemon state, and workspaces")
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Print full error details on failure (env: MULTICA_DEBUG)")

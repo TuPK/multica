@@ -41,7 +41,7 @@ const reasonixAskTool = "ask"
 // decide against the same policy — where a tool-call hook would only ever reach
 // the executor. The model gets "denied by permission policy" back as an ordinary
 // tool result and keeps working.
-const reasonixProjectConfigHeader = `# Managed by Multica. Written per task, removed when the task env is cleaned up.
+const reasonixProjectConfigHeader = `# Managed by Delegora. Written per task, removed when the task env is cleaned up.
 # Edits are not preserved.
 #
 # [permissions] restates the runtime owner's own table from the Reasonix user

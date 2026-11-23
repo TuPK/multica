@@ -577,7 +577,7 @@ func runDaemonBackground(cmd *cobra.Command) error {
 			fmt.Fprintf(os.Stderr, "Preferred health port %d belongs to another profile; trying a fallback port.\n", healthPort)
 		} else {
 			// Even a no-op start keeps the autostart contract: hint when nothing
-			// is registered, silently refresh an entry Multica owns.
+			// is registered, silently refresh an entry Delegora owns.
 			syncDaemonAutostart(profile, true)
 			label := "daemon"
 			if profile != "" {
@@ -798,7 +798,7 @@ func daemonStartupFailureError(logs daemonStartupLogs, waitErr error, profile, s
 		strings.Contains(joined, "no such host") ||
 		strings.Contains(joined, "i/o timeout") ||
 		strings.Contains(joined, "network is unreachable"):
-		target := "the Multica server"
+		target := "the Delegora server"
 		if serverURL != "" {
 			target += " at " + serverURL
 		}
@@ -1324,7 +1324,7 @@ func requireDaemonRestartPreflight(cmd *cobra.Command, profile string) error {
 			}
 			return fmt.Errorf("refusing to restart: preflight check against %s failed (%w); the running daemon was left untouched", baseURL, err)
 		}
-		return fmt.Errorf("refusing to restart: cannot reach the Multica server at %s (%w); the running daemon was left untouched.\nMake sure the server is running and reachable, then rerun 'multica daemon restart'", baseURL, err)
+		return fmt.Errorf("refusing to restart: cannot reach the Delegora server at %s (%w); the running daemon was left untouched.\nMake sure the server is running and reachable, then rerun 'multica daemon restart'", baseURL, err)
 	}
 	return nil
 }
@@ -1604,7 +1604,7 @@ func daemonStatusHealthPort(cmd *cobra.Command) (int, error) {
 // newer daemon naming a manager this CLI predates is still worth showing.
 func describeDaemonManager(launchedBy string) string {
 	if launchedBy == "desktop" {
-		return "Multica Desktop app (start and stop it from the app)"
+		return "Delegora Desktop app (start and stop it from the app)"
 	}
 	return launchedBy
 }

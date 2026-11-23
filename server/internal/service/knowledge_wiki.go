@@ -14,7 +14,7 @@ import (
 
 // The Wiki of a knowledge base: pages WeKnora writes from the base's documents
 // (a summary page per document, and entity and concept pages across them).
-// Multica shows them and starts the generation; WeKnora writes them in the
+// Delegora shows them and starts the generation; WeKnora writes them in the
 // background with the chat model.
 
 // reparseBatch is how many documents one reparse request names.
@@ -81,7 +81,7 @@ func (s *KnowledgeService) WikiOverviewFor(ctx context.Context, workspaceID pgty
 	}
 	stats, err := ws.WikiStats(ctx, base.WeknoraKbID)
 	if errors.Is(err, knowledge.ErrInvalid) {
-		// Multica says on, WeKnora says off: report what WeKnora will do.
+		// Delegora says on, WeKnora says off: report what WeKnora will do.
 		out.Enabled = false
 		return out, nil
 	}

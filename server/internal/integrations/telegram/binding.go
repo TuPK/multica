@@ -22,7 +22,7 @@ import (
 // slack/binding.go on the generic channel_* queries with
 // channel_type='telegram': an unbound Telegram user who messages the bot gets
 // a "link your account" prompt, clicks through to the in-product redeem page,
-// and their Telegram user id is bound to their Multica account.
+// and their Telegram user id is bound to their Delegora account.
 
 // BindingTokenTTL bounds a token's life; the channel_binding_token CHECK
 // enforces the same 15-minute cap.
@@ -33,7 +33,7 @@ var (
 	// opaque error avoids a replay timing oracle.
 	ErrBindingTokenInvalid = errors.New("telegram: binding token invalid or expired")
 	// ErrBindingAlreadyAssigned: this Telegram user id is already bound to a
-	// different Multica user.
+	// different Delegora user.
 	ErrBindingAlreadyAssigned = errors.New("telegram: user id is already bound to a different user")
 	// ErrBindingNotWorkspaceMember: the redeemer is not a member of the token's
 	// workspace.

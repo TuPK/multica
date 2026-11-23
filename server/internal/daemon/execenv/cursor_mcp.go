@@ -31,7 +31,7 @@ const (
 	cursorWorkspaceTrustedFile = ".workspace-trusted"
 	cursorMcpAuthFile          = "mcp-auth.json"
 
-	// cursorMcpAuthStoreRoot is the directory under the daemon's Multica
+	// cursorMcpAuthStoreRoot is the directory under the daemon's Delegora
 	// profile dir that holds each agent's persistent Cursor MCP OAuth state.
 	cursorMcpAuthStoreRoot = "cursor-mcp-auth"
 
@@ -68,7 +68,7 @@ func CursorUserDataDir() string {
 }
 
 // CursorMcpAuthStorePath returns the agent's persistent Cursor mcp-auth.json on
-// this machine, or "" when there is no agent to key on or the Multica profile
+// this machine, or "" when there is no agent to key on or the Delegora profile
 // dir cannot be resolved.
 //
 // Cursor keys MCP OAuth state by project directory, and every task runs in a

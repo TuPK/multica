@@ -2142,7 +2142,7 @@ func TestGetRemoteDefaultBranchUsesBareHeadHintForCustomDefault(t *testing.T) {
 
 // TestCreateWorktreeInstallsCoAuthoredByHook verifies that CreateWorktree
 // installs a prepare-commit-msg hook that appends a Co-authored-by trailer
-// for the Multica Agent to every commit made in the worktree.
+// for the Delegora Agent to every commit made in the worktree.
 func TestCreateWorktreeInstallsCoAuthoredByHook(t *testing.T) {
 	t.Parallel()
 	sourceRepo := createTestRepo(t)
@@ -2232,7 +2232,7 @@ func TestCoAuthoredByHookIdempotent(t *testing.T) {
 }
 
 // TestCreateWorktreeRemovesCoAuthoredByHookWhenDisabled verifies the toggle-off
-// path: a bare cache that already carries the Multica prepare-commit-msg hook
+// path: a bare cache that already carries the Delegora prepare-commit-msg hook
 // (e.g. from a prior worktree created with the setting on) must drop the hook
 // when the next CreateWorktree call passes CoAuthoredByEnabled=false.
 // Otherwise commits keep getting the trailer even after the user disables the
@@ -2306,7 +2306,7 @@ func TestCreateWorktreeRemovesCoAuthoredByHookWhenDisabled(t *testing.T) {
 // TestCreateWorktreeRemovesLegacyCoAuthoredByHook verifies the migration
 // path: bare clones already on disk from previous daemon versions carry a
 // prepare-commit-msg hook that does NOT include the multicaHookMarker
-// sentinel — only the older `# Installed by the Multica daemon.` comment.
+// sentinel — only the older `# Installed by the Delegora daemon.` comment.
 // Toggling the workspace setting off must still remove those legacy hooks,
 // otherwise users who flip the toggle in production keep seeing the trailer
 // indefinitely (the exact bug reported in MUL-1704).
@@ -2325,8 +2325,8 @@ func TestCreateWorktreeRemovesLegacyCoAuthoredByHook(t *testing.T) {
 	// verbatim copy here means the test fails if recognition logic ever
 	// drifts away from what production hosts actually have on disk.
 	const legacyHook = `#!/bin/sh
-# Multica: add Co-authored-by trailer for the Multica Agent.
-# Installed by the Multica daemon. Do not edit — it will be overwritten.
+# Delegora: add Co-authored-by trailer for the Delegora Agent.
+# Installed by the Delegora daemon. Do not edit — it will be overwritten.
 
 COMMIT_MSG_FILE="$1"
 COMMIT_SOURCE="$2"
@@ -2391,7 +2391,7 @@ git interpret-trailers --in-place --trailer "$TRAILER" "$COMMIT_MSG_FILE"
 
 // TestRemoveCoAuthoredByHookPreservesUserHook verifies that the disable path
 // only deletes hooks installed by the daemon. A prepare-commit-msg hook
-// without the Multica marker (e.g. one a user added manually) must be left
+// without the Delegora marker (e.g. one a user added manually) must be left
 // untouched even when CoAuthoredByEnabled=false.
 func TestRemoveCoAuthoredByHookPreservesUserHook(t *testing.T) {
 	t.Parallel()
@@ -2761,8 +2761,8 @@ func TestWriteCoAuthoredByStateIsAtomic(t *testing.T) {
 // real bytes rather than against a hook this PR's code produced.
 const releasedUngatedHook = `#!/bin/sh
 # multica:prepare-commit-msg:co-authored-by
-# Multica: add Co-authored-by trailer for the Multica Agent.
-# Installed by the Multica daemon. Do not edit — it will be overwritten.
+# Delegora: add Co-authored-by trailer for the Delegora Agent.
+# Installed by the Delegora daemon. Do not edit — it will be overwritten.
 
 COMMIT_MSG_FILE="$1"
 COMMIT_SOURCE="$2"

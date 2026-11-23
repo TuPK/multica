@@ -135,7 +135,7 @@ func TestStartMikaOnboarding_WritesTheOpeningWithoutRunningAnAgent(t *testing.T)
 	if opening.hasTask {
 		t.Error("no agent produced the opening, so it must carry no task id")
 	}
-	if !strings.Contains(opening.content, "Multica") {
+	if !strings.Contains(opening.content, "Delegora") {
 		t.Errorf("the opening does not read like the product copy: %q", opening.content)
 	}
 	// The kickoff quotes the opening — that is what stops Mika greeting twice.

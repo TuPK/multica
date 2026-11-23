@@ -4,7 +4,7 @@ import "regexp"
 
 // FeishuSource is the platform identity of the Feishu/Lark message the current
 // chat task answers, frozen on the task's delivery when it was enqueued. Every
-// field is a Feishu id, never a Multica id, and none is a credential.
+// field is a Feishu id, never a Delegora id, and none is a credential.
 type FeishuSource struct {
 	ChatID       string `json:"chat_id"`
 	ChatType     string `json:"chat_type,omitempty"`

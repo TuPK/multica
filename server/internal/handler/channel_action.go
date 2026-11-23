@@ -19,7 +19,7 @@ import (
 // User-facing copy the chat replies speak, English like the rest of the chat
 // adapters. Each refusal names what to do instead, and carries the app link.
 const (
-	chatMsgNotLinked        = "Link your Multica account to decide from chat."
+	chatMsgNotLinked        = "Link your Delegora account to decide from chat."
 	chatMsgNotOwner         = "Only an owner or admin can decide from chat."
 	chatMsgNotMember        = "You are no longer a member of this workspace."
 	chatMsgExpired          = "This button has expired."
@@ -201,7 +201,7 @@ func (a *ChannelActions) refuse(toast, text, link string) channel.PressResult {
 	return channel.PressResult{Toast: toast, Reply: text}
 }
 
-// binding resolves the platform user to the Multica binding in their
+// binding resolves the platform user to the Delegora binding in their
 // installation. A binding of another chat app does not count.
 func (a *ChannelActions) binding(ctx context.Context, s channel.Sender) (db.ChannelUserBinding, bool, error) {
 	b, err := a.h.Queries.GetChannelUserBindingByUserID(ctx, db.GetChannelUserBindingByUserIDParams{

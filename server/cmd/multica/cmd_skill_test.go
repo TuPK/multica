@@ -212,7 +212,7 @@ var skillSourceErrorCases = []struct {
 		name:   "proxy 502 page keeps generic copy",
 		status: http.StatusBadGateway,
 		body:   `<html><body>502 Bad Gateway</body></html>`,
-		want:   "The Multica service is temporarily unavailable (server error). Please try again later; if it persists, contact support. Re-run with --debug to see the raw server response.",
+		want:   "The Delegora service is temporarily unavailable (server error). Please try again later; if it persists, contact support. Re-run with --debug to see the raw server response.",
 	},
 }
 

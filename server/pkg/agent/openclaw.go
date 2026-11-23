@@ -31,7 +31,7 @@ const minOpenclawVersion = "2026.5.5"
 
 const openclawStateOwnershipLockError = "OpenClaw could not acquire ownership of its state directory because another OpenClaw process owns it. Stop that process, or configure a dedicated state directory through backends.openclaw.state_dir / OPENCLAW_STATE_DIR and retry. A dedicated directory has separate credentials and sessions."
 
-const openclawResidentGatewayLocalRefusalError = "OpenClaw Gateway is already running for this state directory. Switch this OpenClaw runtime's runtime_config.mode to gateway so Multica uses the resident Gateway, or stop it with openclaw gateway stop before retrying in local mode. To keep local mode, configure a dedicated state directory through backends.openclaw.state_dir / OPENCLAW_STATE_DIR; that directory has separate credentials and sessions."
+const openclawResidentGatewayLocalRefusalError = "OpenClaw Gateway is already running for this state directory. Switch this OpenClaw runtime's runtime_config.mode to gateway so Delegora uses the resident Gateway, or stop it with openclaw gateway stop before retrying in local mode. To keep local mode, configure a dedicated state directory through backends.openclaw.state_dir / OPENCLAW_STATE_DIR; that directory has separate credentials and sessions."
 
 // openclawVersionPattern extracts a three-segment dotted version from
 // arbitrary `openclaw --version` output (e.g. "openclaw 2026.5.5",
@@ -284,7 +284,7 @@ func classifyOpenclawStateLockFailure(message string) openclawStateLockFailure {
 
 // buildOpenclawArgs assembles the argv for a one-shot `openclaw agent` invocation.
 //
-// The CLI accepts separate --agent and --model flags. Multica intentionally
+// The CLI accepts separate --agent and --model flags. Delegora intentionally
 // keeps those concerns separate: opts.Model selects the registered OpenClaw
 // agent (identity / workspace / session state), while opts.OpenclawModelOverride
 // carries the agent's persistent underlying-model setting as of this claim.

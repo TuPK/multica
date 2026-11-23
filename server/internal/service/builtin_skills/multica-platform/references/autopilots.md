@@ -16,7 +16,7 @@ resumes accepted runs and owns recoverable issue/task dispatch.
 
 Execution modes:
 
-- `create_issue` creates a Multica issue, making the run visible as issue state.
+- `create_issue` creates a Delegora issue, making the run visible as issue state.
 - `run_only` creates an agent task directly. No issue is created; any durable
   report location has to come from other task context or instructions.
 

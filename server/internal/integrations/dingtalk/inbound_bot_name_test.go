@@ -8,7 +8,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
 )
 
-const verifiedTestBotName = "Multica Bot - Local"
+const verifiedTestBotName = "Delegora Bot - Local"
 
 func TestInboundFromCallbackWithBotName_PlainTextRemovesOnlyVerifiedBot(t *testing.T) {
 	tests := []struct {

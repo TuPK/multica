@@ -40,7 +40,7 @@ update runtimes, or check out arbitrary repos just to test.
 
 `runtime usage` reports what the provider CLI reported. Claude and CodeBuddy
 usage prefers the CLI's final per-model totals. If a run ends without usable
-final usage, Multica can recover only main-loop input and cache tokens: split
+final usage, Delegora can recover only main-loop input and cache tokens: split
 assistant events with the same response ID count once. Output tokens stay zero
 when no final count is available; that does not establish that the model
 produced no output. Subagent totals require final per-model usage. Streams that
@@ -105,14 +105,14 @@ ref by default for the current task; an explicit
 
 ## Task CLI boundary
 
-The daemon injects a task-scoped `mat_` credential for Multica API commands and
-a private task-local Multica configuration root. Inside that managed task
+The daemon injects a task-scoped `mat_` credential for Delegora API commands and
+a private task-local Delegora configuration root. Inside that managed task
 context:
 
 - API commands such as `issue list`, `issue get`, and `issue runs` use the
-  injected task identity and never fall back to the daemon Owner's saved Multica
+  injected task identity and never fall back to the daemon Owner's saved Delegora
   profile.
-- `config show` and `config set` operate only on task-local Multica state. A
+- `config show` and `config set` operate only on task-local Delegora state. A
   missing task config root fails closed.
 - `auth status` may verify the task identity but omits all token material from
   its output.
@@ -178,21 +178,21 @@ checkout.
 ## Qoder Cloud Agents bridge (PoC)
 
 A server-hosted `qoder-runtime` service can register the `qoder_cloud` provider.
-Bind a Multica agent to the runtime and set its `runtime_config.qoder_agent_id` to the ID of the selected agent in Qoder Cloud Agents. The Web/Desktop agent creation form and runtime configuration tab provide a name-based agent picker.
+Bind a Delegora agent to the runtime and set its `runtime_config.qoder_agent_id` to the ID of the selected agent in Qoder Cloud Agents. The Web/Desktop agent creation form and runtime configuration tab provide a name-based agent picker.
 The bridge executes issue runs through Qoder's managed session API; it does not
 run a local coding-agent CLI. Model, tools, skills and credentials are configured
-on Qoder. Local-directory resources and Multica execution overrides are rejected.
+on Qoder. Local-directory resources and Delegora execution overrides are rejected.
 
-Each run's session ID is pinned to the Multica run. A follow-up run on the same
+Each run's session ID is pinned to the Delegora run. A follow-up run on the same
 issue continues the agent's previous session when it is idle; otherwise a fresh
 session starts. The prompt asks the agent to push a `multica/<identifier>-<slug>`
 branch and prefix the pull request title with the issue identifier, so the GitHub
 integration links the pull request. The service needs persistent state for
-restart recovery. Cancel from Multica to stop remote
+restart recovery. Cancel from Delegora to stop remote
 work; stopping the bridge process alone leaves remote execution running. Do not
 use `runtime update` to upgrade the bridge: deploy its binary through its service
 manager. For setup and recovery, consult the Qoder Cloud Agents section of the
-Multica runtime documentation or ask the deployment administrator.
+Delegora runtime documentation or ask the deployment administrator.
 
 The bridge registers `runtime_mode=cloud`. Other daemons may omit
 `runtimes[].runtime_mode` to retain local registration; custom CLI profiles
@@ -215,7 +215,7 @@ changes. `GET/PUT /api/workspaces/{id}/qoder`, `POST .../qoder/check`, and
 `POST .../qoder/stop` expose this flow; writes/checks are admin-only and no
 credential plaintext is returned. Blank secrets retain saved values; an empty
 `github_tokens` object removes all repository credentials. `max_concurrency`
-(1–10, default 3) bounds simultaneous runs, with extra tasks queued in Multica;
+(1–10, default 3) bounds simultaneous runs, with extra tasks queued in Delegora;
 `run_timeout_minutes` (5–240, default 60) bounds each run. `GET` also reports
 `active_runs` and `queued_runs`.
 
@@ -224,7 +224,7 @@ Managed runtimes store a Qoder personal access token (PAT) and the selected envi
 available environments automatically; a single environment is selected by default.
 `POST .../qoder/environments` lists environments using an entered or saved PAT
 (admin-only). `GET .../qoder/agents` lists names and IDs using the saved PAT for
-workspace members. Lists exclude archived resources. Each Multica agent stores its
+workspace members. Lists exclude archived resources. Each Delegora agent stores its
 own `runtime_config.qoder_agent_id`; each run uses that association and the
 shared runtime's environment. An optional `runtime_config.repository`
 (`{"url": "https://github.com/owner/repo", "ref": "main"}`) is mounted when the

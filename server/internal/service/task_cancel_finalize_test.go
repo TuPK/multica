@@ -606,7 +606,7 @@ func (f cancelFinalizeFixture) unbindChannelSession(t *testing.T, ctx context.Co
 }
 
 // Channel-ingested user messages are the durable record of what the platform
-// sender wrote — the sender has no Multica composer to restore a draft into.
+// sender wrote — the sender has no Delegora composer to restore a draft into.
 // The gate is the immutable per-message channel_ingested stamp, so it must
 // hold even after archiving/rebinding deleted the session binding: cancelling
 // the sealed queued task keeps the messages and settles as "Stopped.".

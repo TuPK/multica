@@ -5,7 +5,7 @@ package wecom
 // that answered.
 //
 // The engine makes the INSTALLER the creator of a group's chat_session, so
-// that session appears in their own Multica chat list. They can open it in a
+// that session appears in their own Delegora chat list. They can open it in a
 // browser and ask the agent something. Both runs die the same way — one
 // task:failed on the shared bus, carrying the same chat_session_id — and
 // nothing in the event says which surface asked. Without the question,
@@ -213,7 +213,7 @@ func TestAnUnreadableOriginRefusesTheFailure(t *testing.T) {
 //
 // Binding off task:queued separates those two facts. The BUBBLE is still
 // proof — OnIngested only ever runs for a WeCom turn. The RUN is not: a
-// question typed in Multica on the same session publishes an event with the
+// question typed in Delegora on the same session publishes an event with the
 // same chat_session_id and the same NULL issue_id, and can bind it. So the
 // ending has to be attributed from the database, and when the database cannot
 // answer, the honest outcome is silence.
@@ -314,7 +314,7 @@ func TestAnotherChannelsFailureNeverReachesTheTaskRow(t *testing.T) {
 // the gate has to survive a bubble that is already bound
 // ---------------------------------------------------------------------------
 
-// A question typed in Multica on a WeCom-bound session produces a task:queued
+// A question typed in Delegora on a WeCom-bound session produces a task:queued
 // that is byte-identical to the room's own: CreateChatTask inserts issue_id as
 // NULL for EVERY chat task — WeCom, web, desktop, mobile — and taskEvent
 // stamps the same chat_session_id. So the browser's run can bind the room's

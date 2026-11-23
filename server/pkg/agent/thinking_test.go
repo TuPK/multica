@@ -631,7 +631,7 @@ func TestValidateServiceTierStandardUsesCLICapabilityOnFallback(t *testing.T) {
 }
 
 // TestParseCodexModelCatalog_PreservesFutureEfforts pins the dynamic-catalog
-// contract: a future Codex effort should reach the picker without a Multica
+// contract: a future Codex effort should reach the picker without a Delegora
 // code update, pass the server's safe-token gate, and remain scoped to the
 // model that advertised it.
 func TestParseCodexModelCatalog_PreservesFutureEfforts(t *testing.T) {
@@ -739,7 +739,7 @@ func TestIsKnownThinkingValue(t *testing.T) {
 		{"omp", "minimal", true},
 		{"omp", "max", true},
 		// omp's --thinking accepts `auto`, but it picks an effort rather than
-		// being one, so Multica deliberately does not expose it (MUL-7412).
+		// being one, so Delegora deliberately does not expose it (MUL-7412).
 		{"omp", "auto", false},
 		{"omp", "future-level", false},
 		{"kimi", "", true},
@@ -778,7 +778,7 @@ func TestIsKnownThinkingValue(t *testing.T) {
 	}
 }
 
-// TestThinkingControlSupported pins which runtimes Multica can actually hand a
+// TestThinkingControlSupported pins which runtimes Delegora can actually hand a
 // per-agent effort to. The distinction drives the API's rejection copy, so a
 // provider must not drift into "supported" without a real injection path.
 func TestThinkingControlSupported(t *testing.T) {

@@ -191,7 +191,7 @@ type Cache struct {
 var ErrRepoBusy = errors.New("repository is busy")
 
 // ErrCheckoutPathTaken means the checkout's target path already holds a
-// Multica checkout of a different repository with the same directory name.
+// Delegora checkout of a different repository with the same directory name.
 // CreateWorktree reports it before touching that checkout.
 var ErrCheckoutPathTaken = errors.New("checkout path holds another repository")
 
@@ -1223,7 +1223,7 @@ func (c *Cache) createOrUpdateIsolatedCheckoutContext(ctx context.Context, bareP
 		}
 	}
 	if _, err := os.Stat(checkoutPath); err == nil {
-		return nil, fmt.Errorf("checkout path already exists and is not a Multica isolated checkout: %s", checkoutPath)
+		return nil, fmt.Errorf("checkout path already exists and is not a Delegora isolated checkout: %s", checkoutPath)
 	} else if !os.IsNotExist(err) {
 		return nil, fmt.Errorf("stat checkout path: %w", err)
 	}
@@ -1235,7 +1235,7 @@ func (c *Cache) createOrUpdateIsolatedCheckoutContext(ctx context.Context, bareP
 	return &WorktreeResult{Path: checkoutPath, BranchName: actualBranch}, nil
 }
 
-// CheckoutBelongsTo reports whether path holds a Multica checkout of the
+// CheckoutBelongsTo reports whether path holds a Delegora checkout of the
 // repository cached at barePath: a linked worktree of that cache, or an
 // isolated checkout whose origin is cached there.
 func CheckoutBelongsTo(ctx context.Context, barePath, path string) bool {
@@ -1250,9 +1250,9 @@ func CheckoutBelongsTo(ctx context.Context, barePath, path string) bool {
 	return false
 }
 
-// otherRepoCheckout describes the repository a Multica checkout at path
+// otherRepoCheckout describes the repository a Delegora checkout at path
 // belongs to when that is not the one cached at barePath. It returns "" when
-// the checkout is this repository's, when path holds no Multica checkout, or
+// the checkout is this repository's, when path holds no Delegora checkout, or
 // when its owner cannot be read — the update path then fails on its own.
 func otherRepoCheckout(ctx context.Context, barePath, path string) string {
 	if isGitWorktree(path) {
@@ -2056,7 +2056,7 @@ const multicaHookMarker = "# multica:prepare-commit-msg:co-authored-by"
 // prepareCommitMsgHook keep recognizing every previously-shipped variant.
 var daemonInstalledHookSignatures = []string{
 	multicaHookMarker,
-	"# Installed by the Multica daemon.",
+	"# Installed by the Delegora daemon.",
 }
 
 // coAuthoredByStateFile records the workspace's current Co-authored-by setting
@@ -2279,7 +2279,7 @@ func (c *Cache) reconcileHookAt(hooksDir, workspaceID string, enabled bool) erro
 }
 
 // prepareCommitMsgHook builds the prepare-commit-msg hook script that appends
-// a Co-authored-by trailer for the Multica Agent to every commit message.
+// a Co-authored-by trailer for the Delegora Agent to every commit message.
 //
 // The script re-reads statePath on every commit instead of trusting its own
 // presence on disk: the hook is installed in the git common directory and
@@ -2307,8 +2307,8 @@ fi
 	}
 	return `#!/bin/sh
 # multica:prepare-commit-msg:co-authored-by
-# Multica: add Co-authored-by trailer for the Multica Agent.
-# Installed by the Multica daemon. Do not edit — it will be overwritten.
+# Delegora: add Co-authored-by trailer for the Delegora Agent.
+# Installed by the Delegora daemon. Do not edit — it will be overwritten.
 
 COMMIT_MSG_FILE="$1"
 COMMIT_SOURCE="$2"
@@ -2389,7 +2389,7 @@ func writeHookFile(hookPath, contents string) error {
 }
 
 // isDaemonInstalledHook reports whether a prepare-commit-msg hook on disk was
-// installed by the Multica daemon (current or any previously released
+// installed by the Delegora daemon (current or any previously released
 // version). It returns false for hooks that don't carry any known daemon
 // signature, so a user-installed hook at the same path is left alone.
 func isDaemonInstalledHook(contents []byte) bool {

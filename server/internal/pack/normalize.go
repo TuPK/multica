@@ -20,7 +20,7 @@ const (
 	maxReferenceBytes = 200 << 10
 )
 
-// settingKeys are the settings of an agent or a skill that a bundle may carry and Multica does not apply
+// settingKeys are the settings of an agent or a skill that a bundle may carry and Delegora does not apply
 // (spec 16.1). They are listed, in this order, so that the person who imports configures the agent.
 // Any other frontmatter key is dropped without a word.
 var settingKeys = []string{"tools", "model", "allowed-tools", "env", "mcpServers"}
@@ -164,7 +164,7 @@ func normalizeNative(b *hub.Bundle, p *Pack) error {
 	return nil
 }
 
-// packFile is pack.json of an agent pack of Multica (catalog/packs/<id>/).
+// packFile is pack.json of an agent pack of Delegora (catalog/packs/<id>/).
 type packFile struct {
 	ID      string `json:"id"`
 	Version string `json:"version"`

@@ -20,7 +20,7 @@ import (
 // is. This synthesises the protocol from the manifest — the hook description
 // becomes the tool description, the hook's input_schema becomes the tool's.
 //
-// A tool call does NOT go to the plugin from here. It goes back to Multica,
+// A tool call does NOT go to the plugin from here. It goes back to Delegora,
 // which makes the signed request. The daemon runs on someone's laptop; putting
 // the signing secret there would mean every machine running an agent holds a
 // credential that can impersonate the server to every plugin backend. Routing
@@ -33,7 +33,7 @@ const (
 	pluginHookMCPCallTimeout     = 60 * time.Second
 )
 
-// pluginHookInvoker performs one hook call against the Multica server.
+// pluginHookInvoker performs one hook call against the Delegora server.
 type pluginHookInvoker func(ctx context.Context, taskID, installationID, hookKey string, input json.RawMessage) (json.RawMessage, error)
 
 type pluginHookMCPServer struct {

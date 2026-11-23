@@ -9,7 +9,7 @@ import (
 // DingTalk's built-in emoji reactions are addressed by their platform-defined
 // names, not by installation-specific IDs. The Chinese acknowledgement below
 // is therefore an OpenAPI enum value (emotion_167), not user-facing copy owned
-// by Multica. Done is emotion_193.
+// by Delegora. Done is emotion_193.
 const (
 	emotionAcknowledged = "收到"
 	emotionDone         = "Done"

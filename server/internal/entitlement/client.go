@@ -424,7 +424,7 @@ func normalizePolicy(wire wirePolicy) (fetchedPolicy, error) {
 	}
 	// Gates added after autopilot_runs by upstream are read on their own, like
 	// features: a missing or malformed one is off for that gate alone, so Cloud
-	// and Multica can deploy in either order and a bad value cannot turn the
+	// and Delegora can deploy in either order and a bad value cannot turn the
 	// autopilot quota off.
 	gateReasons := make(map[GateName]Reason)
 	for _, name := range leniantGates {

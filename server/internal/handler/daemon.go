@@ -3943,7 +3943,7 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 		// A task-level delivery snapshot, not the Chat's historical binding,
 		// decides whether this run is operating for an external audience.
 		// Web/Desktop/Mobile turns in an old channel-originated Chat have no
-		// snapshot and remain private to Multica after /new rotates the route.
+		// snapshot and remain private to Delegora after /new rotates the route.
 		delivery, deliveryErr := h.Queries.GetChannelTaskDelivery(r.Context(), task.ID)
 		if deliveryErr == nil {
 			resp.ChatChannelType = delivery.ChannelType
@@ -4615,8 +4615,8 @@ func worktreeClaimBlockReason(resources []ProjectResourceData, runtime db.AgentR
 			continue
 		}
 		return fmt.Sprintf(
-			"This machine's Multica runtime does not support parallel (worktree) mode, which %q is set to use. "+
-				"Update the Multica app on that machine to the latest version, then re-run this task. "+
+			"This machine's Delegora runtime does not support parallel (worktree) mode, which %q is set to use. "+
+				"Update the Delegora app on that machine to the latest version, then re-run this task. "+
 				"Refusing to run rather than falling back to editing the directory directly, which is what this mode exists to prevent.",
 			ref.LocalPath)
 	}

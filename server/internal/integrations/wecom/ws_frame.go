@@ -961,7 +961,7 @@ func stripLeadingMentions(s, botName string) string {
 			return trimmed
 		}
 		// Our own name first, matched whole. A display name may contain
-		// spaces — "Multica Bot" is the obvious one — and cutting at the
+		// spaces — "Delegora Bot" is the obvious one — and cutting at the
 		// first space would leave "Bot /clear 重新分析", which is not a command,
 		// so every slash command in that group would still be dropped.
 		//

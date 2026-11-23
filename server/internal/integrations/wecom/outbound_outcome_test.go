@@ -5,7 +5,7 @@ package wecom
 //
 // The point is not that these branches exist; most of them are correct. It is
 // that they used to be indistinguishable from outside. One symptom — the answer
-// is in the Multica transcript, the WeCom chat stayed quiet — with five
+// is in the Delegora transcript, the WeCom chat stayed quiet — with five
 // different causes and no way to tell which fired, is a report that can be
 // argued about but not settled.
 
@@ -160,7 +160,7 @@ func TestDeliveredIsCounted(t *testing.T) {
 // to answer and must not inflate the drop rate.
 //
 // The three of them leave by three different exits, and which one fired is the
-// whole question an operator brings here: "the answer is in Multica and the
+// whole question an operator brings here: "the answer is in Delegora and the
 // chat stayed quiet" is a report about somebody waiting when the turn had a
 // route and nobody can name it, and a non-event when it was Slack's turn all
 // along.
@@ -215,13 +215,13 @@ func TestNonWecomSessionIsNotADrop(t *testing.T) {
 			setup: func(_ *testing.T, q *fakeOutboundQueries) { q.sessionChannelType = "slack" },
 		},
 		{
-			// Asked in the Multica web UI on a session that originated in a
+			// Asked in the Delegora web UI on a session that originated in a
 			// room. There is no room waiting.
 			name: "asked in the web UI", reason: skipOriginNotChannel, notOwed: true,
 			setup: func(_ *testing.T, q *fakeOutboundQueries) { q.channelIngested = askedInTheWebUI() },
 		},
 		{
-			// Asked in the Multica web UI on a session that never touched a
+			// Asked in the Delegora web UI on a session that never touched a
 			// channel, which is every ordinary turn in the deployment: no
 			// delivery row, and none was ever owed. It has to leave by the web
 			// UI's exit and not the missing-route one, or the loudest line in
@@ -629,7 +629,7 @@ func TestTheOriginGateCostsOneReadPerCompletion(t *testing.T) {
 }
 
 // And the path that DOES pay for it, with the price written down. Every
-// completion of a question typed in the Multica web UI arrives in the
+// completion of a question typed in the Delegora web UI arrives in the
 // no-delivery-row branch — EnqueueChatTask writes no delivery row, only
 // EnqueueChannelChatTask does — so on a deployment running WeCom this branch,
 // not the one with a row, carries most of the traffic.

@@ -89,7 +89,7 @@ func (h *Handler) GetChatChannelHistory(w http.ResponseWriter, r *http.Request) 
 // as a channel.HistoryPage, oldest-first, honoring the shared ?limit / ?before
 // paging contract. It backs `multica chat history` for sessions with no IM
 // channel (web chat, Feishu, WeCom, DingTalk), whose history lives only in
-// Multica — there is no platform to read back. It pages through the same
+// Delegora — there is no platform to read back. It pages through the same
 // (created_at, id) cursor the frontend's message list uses, so an agent can walk
 // a long session back without re-reading the recent window each time.
 func (h *Handler) chatMessageHistory(r *http.Request, scope chatHistoryScope) (channel.HistoryPage, error) {

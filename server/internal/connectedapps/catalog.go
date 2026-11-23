@@ -2,7 +2,7 @@
 // account a run acts as and what each tool call is allowed to do.
 //
 // Agents never see a provider credential. A run reaches its apps through the
-// Multica MCP gateway, which resolves the account, classifies the tool, applies
+// Delegora MCP gateway, which resolves the account, classifies the tool, applies
 // the workspace and personal rules, and only then executes through the
 // provider.
 package connectedapps
@@ -29,7 +29,7 @@ const (
 	CatalogCustom  = "custom"
 )
 
-// CuratedApp is an app Multica has tested end to end. Curated apps carry a
+// CuratedApp is an app Delegora has tested end to end. Curated apps carry a
 // badge in the catalog, a recommended account type, and hand-checked tool
 // classes; every other app works through automatic classification.
 type CuratedApp struct {

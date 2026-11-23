@@ -270,7 +270,7 @@ func TestKnowledgeEnableAdoptsWhatACrashLeftBehind(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	// A crash after WeKnora created a base but before Multica recorded it, and
+	// A crash after WeKnora created a base but before Delegora recorded it, and
 	// after the endpoint was created but before the library entry was.
 	if _, err := e.pool.Exec(ctx, `DELETE FROM knowledge_base WHERE workspace_id = $1 AND key = 'market'`, e.wsID); err != nil {
 		t.Fatal(err)

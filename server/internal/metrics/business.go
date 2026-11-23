@@ -279,7 +279,7 @@ func NewBusinessMetrics() *BusinessMetrics {
 		}, metricLabels("multica_runtime_gc_skipped_total")),
 		entitlementConfigError: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "multica", Subsystem: "entitlement", Name: "config_error_total",
-			Help: "Total startup failures caused by a malformed Multica Cloud URL for entitlement policy.",
+			Help: "Total startup failures caused by a malformed Delegora Cloud URL for entitlement policy.",
 		}),
 		entitlementCache: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "multica", Subsystem: "entitlement", Name: "cache_total",

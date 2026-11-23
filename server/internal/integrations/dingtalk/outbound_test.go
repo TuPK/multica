@@ -83,7 +83,7 @@ func TestOutboundFailsClosedWithoutTaskDeliverySnapshot(t *testing.T) {
 		Type:          protocol.EventChatDone,
 		TaskID:        "11111111-1111-1111-1111-111111111111",
 		ChatSessionID: "22222222-2222-2222-2222-222222222222",
-		Payload:       protocol.ChatDonePayload{Content: "must stay in Multica"},
+		Payload:       protocol.ChatDonePayload{Content: "must stay in Delegora"},
 	}
 	if err := o.processEvent(context.Background(), event); err != nil {
 		t.Fatalf("processEvent: %v", err)

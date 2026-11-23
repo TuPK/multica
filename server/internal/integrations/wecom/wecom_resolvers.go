@@ -145,7 +145,7 @@ func (r *installationResolver) ResolveInstallation(ctx context.Context, msg chan
 type identityResolver struct{ store *Store }
 
 // ResolveSender maps the WeCom smart-bot userid (the anonymized "T"-prefixed
-// id the aibot API assigns per bot, from Source.SenderID) to a Multica user
+// id the aibot API assigns per bot, from Source.SenderID) to a Delegora user
 // via the channel_user_binding table. First-time senders have no row and
 // return engine.ErrSenderUnbound, which the Router pairs with the outbound
 // binding prompt (see OutboundReplier.sendBindingPrompt).

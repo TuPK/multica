@@ -107,12 +107,12 @@ type PrepareParams struct {
 	// HermesMemoryStore is the agent's persistent Hermes memory store
 	// (HermesMemoryStorePath) the overlay links memories/ to, so memory outlives
 	// the task. Empty keeps memories/ task-local — no agent to key on, or the
-	// Multica profile dir could not be resolved.
+	// Delegora profile dir could not be resolved.
 	HermesMemoryStore string
 	// HermesSessionStore is the conversation's persistent Hermes session store
 	// (HermesSessionStorePath) used as HERMES_HOME, so the transcript
 	// outlives the task and a follow-up turn can actually resume it. Empty keeps
-	// state.db task-local — no agent or conversation to key on, or the Multica
+	// state.db task-local — no agent or conversation to key on, or the Delegora
 	// profile dir could not be resolved.
 	HermesSessionStore string
 	// HermesEnv is the sanitized effective env (agent custom_env minus the daemon
@@ -542,10 +542,10 @@ func Prepare(params PrepareParams, logger *slog.Logger) (*Environment, error) {
 	}
 	multicaConfigRoot := filepath.Join(envRoot, "multica-config")
 	if err := os.MkdirAll(multicaConfigRoot, 0o700); err != nil {
-		return nil, fmt.Errorf("execenv: create task-local Multica config directory: %w", err)
+		return nil, fmt.Errorf("execenv: create task-local Delegora config directory: %w", err)
 	}
 	if err := os.Chmod(multicaConfigRoot, 0o700); err != nil {
-		return nil, fmt.Errorf("execenv: restrict task-local Multica config directory: %w", err)
+		return nil, fmt.Errorf("execenv: restrict task-local Delegora config directory: %w", err)
 	}
 
 	// Worktree mode: build the task's own checkout of the user's repo inside
@@ -893,11 +893,11 @@ func Reuse(params ReuseParams, logger *slog.Logger) *Environment {
 	if env.RootDir != "" {
 		env.MulticaConfigRoot = filepath.Join(env.RootDir, "multica-config")
 		if err := os.MkdirAll(env.MulticaConfigRoot, 0o700); err != nil {
-			logger.Warn("execenv: restore task-local Multica config directory failed; forcing fresh prepare", "error", err)
+			logger.Warn("execenv: restore task-local Delegora config directory failed; forcing fresh prepare", "error", err)
 			return nil
 		}
 		if err := os.Chmod(env.MulticaConfigRoot, 0o700); err != nil {
-			logger.Warn("execenv: restrict task-local Multica config directory failed; forcing fresh prepare", "error", err)
+			logger.Warn("execenv: restrict task-local Delegora config directory failed; forcing fresh prepare", "error", err)
 			return nil
 		}
 	}

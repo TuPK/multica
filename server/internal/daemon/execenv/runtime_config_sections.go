@@ -42,8 +42,8 @@ import (
 
 // writeHeader emits the brief's leading title and one-line elevator pitch.
 func writeHeader(b *strings.Builder) {
-	b.WriteString("# Multica Agent Runtime\n\n")
-	b.WriteString("You are a coding agent in the Multica platform. Use the `multica` CLI to interact with the platform.\n\n")
+	b.WriteString("# Delegora Agent Runtime\n\n")
+	b.WriteString("You are a coding agent in the Delegora platform. Use the `multica` CLI to interact with the platform.\n\n")
 	fmt.Fprintf(b, "The daemon sets `MULTICA_CLI_PATH` to its own CLI executable. For every `multica ...` command shown in this brief, user messages, or skills, invoke `%s ...` instead. This keeps CLI features aligned with the daemon even when a login shell reorders PATH to an older installed CLI. Keep the executable path quoted; do not resolve `multica` through PATH.\n\n", multicaCLICommand())
 	if runtimeGOOS == "windows" {
 		b.WriteString("The invocation above uses PowerShell. In Git Bash, use `\"$MULTICA_CLI_PATH\" ...`.\n\n")
@@ -68,9 +68,9 @@ func multicaCLICommand() string {
 func writeBackgroundTaskSafetySlim(b *strings.Builder, provider string) {
 	b.WriteString("## Background Task Safety\n\n")
 	if provider == "antigravity" {
-		b.WriteString("Multica marks the task terminal when the `agy -p` process exits — any run-owned work still active is orphaned, its result lost, and the final comment you meant to post never sends. Non-daemon `task-XXX` commands and subagents managed by agy keep `agy -p` alive and deliver completion notifications in the same process. Stop calling tools and yield the model subturn while waiting, without polling `manage_task` or task logs. Processes detached from agy (such as `&` or `nohup`) have no such wakeup; an issue or chat wakeup (`multica issue wakeup create` / `multica chat wakeup create`) is different — the platform stores it and starts a new run later. For detached work, never background-and-yield: collect required results inside foreground tool calls that block to completion, run unobservable work synchronously, and never end a turn \"standing by\" for something to finish — that message becomes your final output.\n\n")
+		b.WriteString("Delegora marks the task terminal when the `agy -p` process exits — any run-owned work still active is orphaned, its result lost, and the final comment you meant to post never sends. Non-daemon `task-XXX` commands and subagents managed by agy keep `agy -p` alive and deliver completion notifications in the same process. Stop calling tools and yield the model subturn while waiting, without polling `manage_task` or task logs. Processes detached from agy (such as `&` or `nohup`) have no such wakeup; an issue or chat wakeup (`multica issue wakeup create` / `multica chat wakeup create`) is different — the platform stores it and starts a new run later. For detached work, never background-and-yield: collect required results inside foreground tool calls that block to completion, run unobservable work synchronously, and never end a turn \"standing by\" for something to finish — that message becomes your final output.\n\n")
 	} else {
-		b.WriteString("Multica marks the task terminal the moment your top-level turn exits — any run-owned work still active is orphaned, its result lost, and the final comment you meant to post never sends. There is no background-completion wakeup, whatever a tool response promises; an issue or chat wakeup (`multica issue wakeup create` / `multica chat wakeup create`) is different — the platform stores it and starts a new run later. Never background-and-yield: collect required results inside foreground tool calls that block to completion, run unobservable work synchronously, and never end a turn \"standing by\" for something to finish — that message becomes your final output.\n\n")
+		b.WriteString("Delegora marks the task terminal the moment your top-level turn exits — any run-owned work still active is orphaned, its result lost, and the final comment you meant to post never sends. There is no background-completion wakeup, whatever a tool response promises; an issue or chat wakeup (`multica issue wakeup create` / `multica chat wakeup create`) is different — the platform stores it and starts a new run later. Never background-and-yield: collect required results inside foreground tool calls that block to completion, run unobservable work synchronously, and never end a turn \"standing by\" for something to finish — that message becomes your final output.\n\n")
 	}
 	b.WriteString("External systems triggered by your completed actions — CI, GitHub Actions after a successful push — are not run-owned: do not wait for them, and do not run `gh pr checks --watch`, `gh run watch`, or sleep/retry polls. A repo's merge gate (\"CI must be green before merge\") is NOT your delivery acceptance criteria. Deliver what you have — \"Local tests pass; CI running: <PR link>\" is a complete hand-off. The one exception: when the trigger comment or the issue's acceptance criteria explicitly ask for the CI result, collect it as ONE foreground blocking call (`gh pr checks <pr> --watch`) inside this same turn.\n\n")
 	b.WriteString("A user explicitly asking for a local service to stay available after the turn is a persistent service handoff, not background-and-yield — allowed only when the running service itself is the requested deliverable. Detach its lifecycle from this run first (durable logs, a recorded cleanup handle such as PID/profile), verify readiness, and reply with the URL, logs, and stop instructions. Without a supervisor, describe survival as best-effort, not guaranteed. When the repository declares the service in `.multica/environments.toml`, start it with `multica env start <name>` instead: the daemon supervises it, keeps its log, stops it at its TTL, and shows it in the issue sidebar.\n\n")
@@ -156,7 +156,7 @@ func BuildOnBehalfOfBlock(name, email string) string {
 	} else {
 		fmt.Fprintf(&b, "You are acting on behalf of **%s**. ", safeName)
 	}
-	b.WriteString("Apply any person-specific privacy or access rules in your instructions to this person. Your Multica credentials and access remain scoped to the runtime owner; do not assume this person can access everything you can.\n\n")
+	b.WriteString("Apply any person-specific privacy or access rules in your instructions to this person. Your Delegora credentials and access remain scoped to the runtime owner; do not assume this person can access everything you can.\n\n")
 	return b.String()
 }
 
@@ -204,7 +204,7 @@ func BuildConnectedAppsBlock(apps []runtimeapps.ConnectedApp) string {
 			continue
 		}
 		if app.Provider == "multica_remote" {
-			// Served by Multica under the app's own server name: its tools
+			// Served by Delegora under the app's own server name: its tools
 			// are called directly, not through the apps_* meta tools.
 			remote = true
 			fmt.Fprintf(&lines, "- %s (`%s`) via MCP server `%s`%s\n", name, toolkitSlug, serverName, gatewayAppDetail(app))
@@ -610,10 +610,10 @@ const SessionContinuityNoticeChannelHistory = "## Session Continuity Notice\n\n"
 	"This run was meant to continue an earlier conversation, but that provider session could not be restored, and this run does not continue it. The channel conversation itself is unaffected — read it back with `multica chat history` / `multica chat thread` before acting, and treat what you find there as the authoritative version. What is gone is your own working memory from the turns that did not come back: what you already tried, what you ruled out, and how far you had got. Re-derive what you need instead of assuming it. Do not open your reply by announcing this — raise it only where it actually matters.\n\n"
 
 const SessionContinuityNoticeChatTranscript = "## Session Continuity Notice\n\n" +
-	"This run was meant to continue an earlier conversation, but that provider session could not be restored, and this run does not continue it. The conversation itself is unaffected — Multica stored it, and you can read it back with `multica chat history` before acting; treat what you find there as the authoritative version. What is gone is your own working memory from the turns that did not come back: what you already tried, what you ruled out, and how far you had got. Re-derive what you need instead of assuming it. Do not open your reply by announcing this — raise it only where it actually matters.\n\n"
+	"This run was meant to continue an earlier conversation, but that provider session could not be restored, and this run does not continue it. The conversation itself is unaffected — Delegora stored it, and you can read it back with `multica chat history` before acting; treat what you find there as the authoritative version. What is gone is your own working memory from the turns that did not come back: what you already tried, what you ruled out, and how far you had got. Re-derive what you need instead of assuming it. Do not open your reply by announcing this — raise it only where it actually matters.\n\n"
 
 // SessionContinuityNoticeUnrecoverable is the defensive fallback for a surface
-// whose conversation Multica never stored and cannot read back. Every current
+// whose conversation Delegora never stored and cannot read back. Every current
 // chat surface (web chat, Feishu, WeCom, DingTalk, Slack) persists a transcript
 // that `multica chat history` can fetch, so no surface routes here today — it
 // exists so a future channel that stores no transcript degrades to an honest
@@ -652,7 +652,7 @@ func writeWorkflowChat(b *strings.Builder) {
 // writeWorkflowQuickCreate emits the quick-create workflow's hard
 // guardrails.
 func writeWorkflowQuickCreate(b *strings.Builder) {
-	b.WriteString("**This task was triggered by quick-create.** There is NO existing Multica issue. The per-turn user message carries this run's field values — what to put in the title, description, assignee, project and parent. It does not restate the rules below; they hold for the run whatever that message says, and they still hold if it never arrived.\n\n")
+	b.WriteString("**This task was triggered by quick-create.** There is NO existing Delegora issue. The per-turn user message carries this run's field values — what to put in the title, description, assignee, project and parent. It does not restate the rules below; they hold for the run whatever that message says, and they still hold if it never arrived.\n\n")
 	b.WriteString("Hard guardrails:\n")
 	fmt.Fprintf(b, "- Run exactly one `%s issue create --output json` invocation, then exit. Do not retry for any reason, even on a non-zero exit — the issue may already exist, and a second attempt would create a duplicate.\n", multicaCLICommand())
 	b.WriteString("- Do NOT call `multica issue get`, `multica issue status`, or `multica issue comment add` for this task — there is no issue to query, transition, or comment on. The platform writes the user's success/failure inbox notification automatically based on whether `multica issue create` succeeded.\n")
@@ -678,7 +678,7 @@ const AutopilotIssueCommandsGuard = "Do not run `multica issue get`, `multica is
 // copies drifting on the issue-command guard and fixed that one sentence with
 // the shared constant below; MUL-6984 removed the duplicated data itself.
 func writeWorkflowAutopilot(b *strings.Builder) {
-	b.WriteString("**This task was triggered by an Autopilot in run-only mode.** There is no assigned Multica issue for this run.\n\n")
+	b.WriteString("**This task was triggered by an Autopilot in run-only mode.** There is no assigned Delegora issue for this run.\n\n")
 	b.WriteString("- The per-turn user message carries this run's autopilot instructions and its identifiers. Complete those instructions directly.\n")
 	b.WriteString("- " + AutopilotIssueCommandsGuard + "\n\n")
 }
@@ -777,7 +777,7 @@ func writeSubIssueCreation(b *strings.Builder, ctx TaskContextForEnv) {
 	b.WriteString("\n\n")
 }
 
-// platformSkillName is the built-in skill that holds Multica's platform
+// platformSkillName is the built-in skill that holds Delegora's platform
 // contracts. It mirrors service.PlatformSkillName, which the daemon must not
 // import; the brief's rendered-output tests pin the two together.
 const platformSkillName = "multica-platform"
@@ -839,11 +839,11 @@ func writeSkills(b *strings.Builder, provider string, ctx TaskContextForEnv) {
 	// skill whose trigger is "the platform itself" rather than a task the
 	// agent already knows it is doing. Its single description now covers eight
 	// domains that used to advertise one apiece, so an agent reaching for a
-	// Multica contract has one name to guess instead of eight — this line is
+	// Delegora contract has one name to guess instead of eight — this line is
 	// what keeps that consolidation from costing recall, and it must therefore
 	// name the skill that actually holds those contracts.
 	if platformSlug != "" {
-		b.WriteString("For a Multica platform action this brief does not fully cover — " + platformSkillDomains + " — load the `" + platformSlug + "` skill and open the reference(s) its routing table names for the domains your task touches.\n\n")
+		b.WriteString("For a Delegora platform action this brief does not fully cover — " + platformSkillDomains + " — load the `" + platformSlug + "` skill and open the reference(s) its routing table names for the domains your task touches.\n\n")
 	}
 }
 
@@ -869,7 +869,7 @@ func writeTraecliSkills(b *strings.Builder, skills []SkillContextForEnv) {
 	}
 	b.WriteString("\n")
 	if platformSlug != "" {
-		b.WriteString("For a Multica platform action this brief does not fully cover — " + platformSkillDomains + " — read `" + skillPath(platformSlug) + "` and open the reference(s) its routing table names for the domains your task touches.\n\n")
+		b.WriteString("For a Delegora platform action this brief does not fully cover — " + platformSkillDomains + " — read `" + skillPath(platformSlug) + "` and open the reference(s) its routing table names for the domains your task touches.\n\n")
 	}
 }
 
@@ -908,7 +908,7 @@ func writeMentions(b *strings.Builder, docsEnabled bool) {
 // writeAttachments emits the Attachments pointer.
 func writeAttachments(b *strings.Builder) {
 	b.WriteString("## Attachments\n\n")
-	b.WriteString("Fetch issue/comment attachments via the authenticated CLI (`multica attachment --help`); never open Multica resource URLs directly.\n")
+	b.WriteString("Fetch issue/comment attachments via the authenticated CLI (`multica attachment --help`); never open Delegora resource URLs directly.\n")
 	// Closes the inbound half of the MUL-4899 loop: an attachment the agent
 	// just downloaded is the most tempting local path to echo back, because it
 	// came from the conversation and *feels* shared. It is not — the download
@@ -920,7 +920,7 @@ func writeAttachments(b *strings.Builder) {
 // (compressed).
 func writeAlwaysUseCLI(b *strings.Builder) {
 	b.WriteString("## Important: Always Use the `multica` CLI\n\n")
-	b.WriteString("Access Multica platform resources only through the `multica` CLI — never `curl` / `wget`. If no command or documented platform mechanism covers what you need, report the gap in your result instead of working around it.\n\n")
+	b.WriteString("Access Delegora platform resources only through the `multica` CLI — never `curl` / `wget`. If no command or documented platform mechanism covers what you need, report the gap in your result instead of working around it.\n\n")
 }
 
 // writeDeliveryInvariant emits the always-on delivery contract, shared by every
@@ -973,7 +973,7 @@ func writeOutput(b *strings.Builder, kind taskKind, ctx TaskContextForEnv) {
 		// Two-layer channel policy (MUL-4899). This is the DELIVERY layer, and
 		// the brief answers only the half that is stable for the whole session.
 		//
-		// `attachment upload` binds a file to the Multica chat reply whatever
+		// `attachment upload` binds a file to the Delegora chat reply whatever
 		// the surface; whether anything carries it the last hop is a property
 		// of the deployment — its object storage, and whether the server is new
 		// enough to report the hop at all. Both change under a session that
@@ -991,7 +991,7 @@ func writeOutput(b *strings.Builder, kind taskKind, ctx TaskContextForEnv) {
 		// Slack-only and also lives in the per-turn chat prompt — do not
 		// collapse the two.
 		if ctx.ChatChannelType != "" {
-			fmt.Fprintf(b, "**Delivering files here:** whether Multica can push a file you produce into this %s conversation depends on how this deployment is configured, so it is stated per turn rather than here: the per-turn user message tells you, every turn. Follow what it says about files, and never report a file as delivered unless it told you how to deliver one.\n", ChannelDisplayName(ctx.ChatChannelType))
+			fmt.Fprintf(b, "**Delivering files here:** whether Delegora can push a file you produce into this %s conversation depends on how this deployment is configured, so it is stated per turn rather than here: the per-turn user message tells you, every turn. Follow what it says about files, and never report a file as delivered unless it told you how to deliver one.\n", ChannelDisplayName(ctx.ChatChannelType))
 		} else {
 			b.WriteString("**Delivering files here:** run `multica attachment upload <local-path>` — it binds the file to your reply and it renders as an attachment card. That command is the ONLY way a file reaches the user; a path written into your reply text is not.\n")
 			writeInlineBlocksPolicy(b)

@@ -1341,7 +1341,7 @@ func writePiMcpExtension(raw json.RawMessage) (string, error) {
 	script := "const servers = JSON.parse(" + string(literal) + ");\n" +
 		"export default function (pi) {\n" +
 		"  if (typeof pi.registerMcpServer !== \"function\") {\n" +
-		"    throw new Error(\"Multica MCP delivery requires Pi " + piMcpMinVersion + " or newer\");\n" +
+		"    throw new Error(\"Delegora MCP delivery requires Pi " + piMcpMinVersion + " or newer\");\n" +
 		"  }\n" +
 		"  for (const [name, config] of Object.entries(servers)) {\n" +
 		"    try {\n" +

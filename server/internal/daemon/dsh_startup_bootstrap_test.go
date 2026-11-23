@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// A host whose only provider is a dsh without the Multica runtime profile is
+// A host whose only provider is a dsh without the Delegora runtime profile is
 // the exact host the automatic install exists for, and it is the one host on
 // which the install could never once finish.
 //

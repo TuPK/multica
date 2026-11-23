@@ -1,6 +1,6 @@
 # Agents
 
-The contract for Multica's agent-creation path: what the create entry points
+The contract for Delegora's agent-creation path: what the create entry points
 accept, what the server validates and rejects, how each field is persisted, and
 which fields the daemon actually reads at claim time. This is not a
 parameter manual.

@@ -96,7 +96,7 @@ type ChatQuickActionsLLM interface {
 //
 // The rules are deliberately prescriptive about WHO the suggestions are for.
 // The retired daemon pass ran as a resumed turn inside the agent's own session,
-// so it inherited the Multica runtime brief's identity and drifted toward
+// so it inherited the Delegora runtime brief's identity and drifted toward
 // agent-operations actions; this pass has no such context and must be told the
 // frame explicitly.
 //

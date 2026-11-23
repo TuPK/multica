@@ -1,5 +1,5 @@
 // Package legalhold is the server's view of a legal hold (spec R6 section 3c.7,
-// D104). The platform places and releases a hold; Multica refuses every deletion
+// D104). The platform places and releases a hold; Delegora refuses every deletion
 // it covers. A held object keeps its data, and ordinary operation is unaffected.
 package legalhold
 

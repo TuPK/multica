@@ -95,14 +95,14 @@ const traceHeaderRunes = 2048
 // the cut is on a rune boundary.
 //
 // The redaction is not optional. OutboundReplier.sendBindingPrompt builds
-// "👋 请先绑定你的 Multica 账号，才能与我对话：\n" + appURL + "/wecom/bind?token=" +
+// "👋 请先绑定你的 Delegora 账号，才能与我对话：\n" + appURL + "/wecom/bind?token=" +
 // a 43-character token, and with a normal MULTICA_APP_URL the token's last
 // character lands at rune 107-112 — inside the cap. Without this, turning
 // tracing on for a debugging session would log live binding credentials in
 // full. A binding token is a bearer credential (RedeemAndBind checks only
 // that the redeemer belongs to the token's workspace, and the bind page
 // redeems on load as whoever is signed in), so whoever could read the log
-// could bind that sender's WeCom identity to their own Multica account before
+// could bind that sender's WeCom identity to their own Delegora account before
 // the user clicked their own link — the same hijack replier.go:150 already
 // guards against by refusing to post the link into a room.
 //

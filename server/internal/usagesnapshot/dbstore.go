@@ -18,7 +18,7 @@ type Beginner interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
-// DBStore is Store over the Multica database.
+// DBStore is Store over the Delegora database.
 type DBStore struct {
 	pool Beginner
 	q    *db.Queries

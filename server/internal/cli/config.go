@@ -13,7 +13,7 @@ const (
 	defaultCLIConfigPath = ".multica/config.json"
 
 	// TaskConfigRootEnv points daemon-managed CLI invocations at a private,
-	// per-task Multica config directory. It is deliberately Multica-specific:
+	// per-task Delegora config directory. It is deliberately Multica-specific:
 	// phase-one hardening keeps the real HOME/XDG environment available to
 	// provider tooling while preventing implicit Owner-profile discovery.
 	TaskConfigRootEnv = "MULTICA_TASK_CONFIG_ROOT"
@@ -129,7 +129,7 @@ type CLIConfig struct {
 	// DisableAutoUpdate, when true, turns off the daemon's periodic CLI
 	// self-update poll. Only a single direction is persistable — the
 	// --no-auto-update flag is likewise one-way — because the env/default
-	// already resolves to enabled on Multica Cloud. Absent / false means
+	// already resolves to enabled on Delegora Cloud. Absent / false means
 	// "let env/default decide". Resolution precedence:
 	// --no-auto-update flag, MULTICA_DAEMON_AUTO_UPDATE=false env, this
 	// field, cloud/self-host default.
@@ -304,7 +304,7 @@ func validateTaskLocalProfile(profile string) error {
 		return nil
 	}
 	if profile == "." || profile == ".." || filepath.IsAbs(profile) || strings.ContainsAny(profile, `/\\`) || filepath.Clean(profile) != profile {
-		return fmt.Errorf("invalid task-local Multica profile name %q", profile)
+		return fmt.Errorf("invalid task-local Delegora profile name %q", profile)
 	}
 	return nil
 }

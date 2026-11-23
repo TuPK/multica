@@ -43,7 +43,7 @@ func normalizeGOOS(goos string) string {
 	}
 }
 
-// APIClient is a REST client for the Multica server API.
+// APIClient is a REST client for the Delegora server API.
 // Used by ctrl subcommands (agent, runtime, status, etc.). Requests
 // automatically include auth and execution context headers when configured.
 type APIClient struct {
@@ -99,7 +99,7 @@ func (e *HTTPError) Error() string {
 const maxErrorBodyBytes = 64 << 10
 
 // newHTTPError builds a *HTTPError from an error response (status >= 400),
-// reading a capped slice of the body. Every Multica API helper funnels its
+// reading a capped slice of the body. Every Delegora API helper funnels its
 // >= 400 responses through this so the top-level FormatError / ExitCodeFor can
 // classify the failure via errors.As(err, **HTTPError) regardless of which
 // HTTP verb the command used.

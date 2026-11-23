@@ -2253,7 +2253,7 @@ func TestHermesProviderErrorSnifferBoundedBuffer(t *testing.T) {
 // Pollution failure ≠ real provider failure:
 //   - real failure: Hermes/provider crashes; no successful final reply.
 //   - pollution failure: Hermes already produced a correct final reply /
-//     completed the requested work, then Multica suddenly flips the same
+//     completed the requested work, then Delegora suddenly flips the same
 //     run to failed because an `[INFO] root:` conversation/tool echo on
 //     stderr embedded error-looking tokens (Error:, KeyError:, ❌, ...).
 //

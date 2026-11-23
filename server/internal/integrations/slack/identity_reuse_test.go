@@ -50,7 +50,7 @@ func (f *fakeIdentityQueries) CreateChannelUserBinding(_ context.Context, arg db
 }
 
 // TestResolveSenderReuse covers the identity resolver's decision to reuse an
-// existing account link across installations of the same Slack team + Multica
+// existing account link across installations of the same Slack team + Delegora
 // workspace, instead of re-prompting the user for every new Slack app.
 func TestResolveSenderReuse(t *testing.T) {
 	const senderID = "U123"

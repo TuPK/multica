@@ -98,7 +98,7 @@ func kimiSmokeModel() string {
 // through this package's own backend with a Multica-shaped agent.mcp_config
 // and asserts the server is actually connected and callable.
 //
-// Users reported that MCP configured in Multica "never reaches kimi", pointing
+// Users reported that MCP configured in Delegora "never reaches kimi", pointing
 // at the bare `kimi acp` launch line as evidence (MUL-5846). That line carries
 // no MCP flags because the CLI has none — kimi takes MCP over ACP session/new
 // instead — so only an end-to-end run against the real binary can settle it.

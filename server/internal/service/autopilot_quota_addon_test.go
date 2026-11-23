@@ -112,7 +112,7 @@ func scheduleRun(ctx context.Context, svc *AutopilotService, f *autopilotQuotaFi
 }
 
 // Stripe's webhook confirmed the add-on to Cloud while the payer has not
-// returned to the app, so no Multica instance has heard of it. Instance B
+// returned to the app, so no Delegora instance has heard of it. Instance B
 // cached the old limit a moment ago (well inside RefreshGate's 5 s reuse
 // window); its very next scheduled run must still start, without a "limit
 // reached" notice.
@@ -138,7 +138,7 @@ func TestAutopilotQuotaWebhookConfirmedAddonAdmitsNextRunBeforeReturn(t *testing
 	cleanupNotices(t, fixture)
 	fetchesBefore := cloud.fetches.Load()
 
-	// Webhook settles the add-on in Cloud. Nothing happens in Multica.
+	// Webhook settles the add-on in Cloud. Nothing happens in Delegora.
 	cloud.limit.Store(1001)
 
 	if err := scheduleRun(ctx, instanceB, fixture, "after-addon-on-b"); err != nil {

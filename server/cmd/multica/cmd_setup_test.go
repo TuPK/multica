@@ -113,8 +113,8 @@ func TestSetupSelfHostProbeFailure(t *testing.T) {
 		wantMessage     string
 		wantGatewayHint bool
 	}{
-		{name: "invalid health preserves profile", existing: true, wantMessage: "did not return a healthy Multica backend response", wantGatewayHint: true},
-		{name: "invalid health creates no profile", wantMessage: "did not return a healthy Multica backend response", wantGatewayHint: true},
+		{name: "invalid health preserves profile", existing: true, wantMessage: "did not return a healthy Delegora backend response", wantGatewayHint: true},
+		{name: "invalid health creates no profile", wantMessage: "did not return a healthy Delegora backend response", wantGatewayHint: true},
 		{name: "connection failure preserves profile", existing: true, unreachable: true, wantMessage: "is not reachable"},
 		{name: "unauthorized response", existing: true, status: http.StatusUnauthorized, wantMessage: "returned HTTP 401 (Unauthorized) from /health"},
 		{name: "bad gateway response", existing: true, status: http.StatusBadGateway, wantMessage: "returned HTTP 502 (Bad Gateway) from /health"},

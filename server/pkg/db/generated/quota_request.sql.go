@@ -45,7 +45,7 @@ type InsertQuotaRequestParams struct {
 
 // quota_request: an owner's request to raise one plan gate of their workspace
 // (spec R6 section 3c.5, D102). The platform owns the table, decides the requests
-// and writes limit_overrides; Multica writes a row when an owner asks, and reads
+// and writes limit_overrides; Delegora writes a row when an owner asks, and reads
 // the workspace's own requests back.
 // Files a pending request. A pending request on the same gate makes the insert
 // return no row (one pending per workspace and gate).

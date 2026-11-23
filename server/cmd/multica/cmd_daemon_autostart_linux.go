@@ -21,7 +21,7 @@ var procSelfCgroupPath = "/proc/self/cgroup"
 // platformAutostartRefreshAllowed gates the silent heal on `daemon start`.
 // Outside systemd it is always fine. Under systemd, a daemon launched by an
 // external unit (a hand-written service with its own EnvironmentFile=, a
-// container manager that happens to run under systemd) must not let Multica
+// container manager that happens to run under systemd) must not let Delegora
 // rewrite anything: only our own unit gets to refresh its own file.
 func platformAutostartRefreshAllowed(profile string) bool {
 	if os.Getenv("INVOCATION_ID") == "" {
@@ -31,7 +31,7 @@ func platformAutostartRefreshAllowed(profile string) bool {
 }
 
 // platformDaemonUnderOwnSystemdUnit reports whether THIS process was started
-// by the user unit Multica itself generates. Used by the foreground daemon's
+// by the user unit Delegora itself generates. Used by the foreground daemon's
 // binary-update handoff: under our unit it exits with
 // daemonSystemdHandoffExitStatus instead of spawning a successor, because
 // systemd's cgroup cleanup would kill a successor spawned before a clean
@@ -124,7 +124,7 @@ func writeSystemdAutostart(profile string, spec autostartSpec) (autostartState, 
 	}
 	previous, readErr := os.ReadFile(path)
 	// Second line of defense behind the shared guard: never overwrite a unit
-	// at our path that lacks the Multica marker — a user's hand-written unit
+	// at our path that lacks the Delegora marker — a user's hand-written unit
 	// (e.g. one with an EnvironmentFile=) lives at this exact name.
 	if readErr == nil && !autostartCommentMarked(string(previous)) {
 		return autostartState{

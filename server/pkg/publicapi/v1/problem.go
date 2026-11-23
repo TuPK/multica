@@ -76,7 +76,7 @@ func requestID(r *http.Request) string {
 	return uuid.NewString()
 }
 
-// WriteProblem writes an RFC 9457-style problem with Multica's stable code and
+// WriteProblem writes an RFC 9457-style problem with Delegora's stable code and
 // the legacy `error` alias. It is shared by auth middleware and handlers so a
 // failure before routing has the same contract as one inside a resource.
 func WriteProblem(w http.ResponseWriter, r *http.Request, status int, code, detail string) {

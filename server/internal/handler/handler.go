@@ -98,7 +98,7 @@ type Config struct {
 	// VCSIntegrationEnabled gates the self-hosted Git provider integration
 	// (Forgejo / Gitea / GitLab) at the deployment level, independent of whether
 	// MULTICA_VCS_SECRET_KEY is set. It is the product boundary: the feature is
-	// intended for self-hosted Multica only (where Multica and the Git instance
+	// intended for self-hosted Delegora only (where Delegora and the Git instance
 	// can share a network), and is left off on the managed cloud — connect,
 	// rotate, and webhook handlers reject when it is false, and /api/config
 	// omits it so the UI hides the whole section rather than showing a
@@ -423,7 +423,7 @@ type Handler struct {
 	// main.go starts it as an independent worker.
 	WecomInstallWorker *wecom.InstallWorker
 	// WecomBindingTokens mints/redeems the user-binding tokens behind the
-	// "link your Multica account" prompt sent to first-time WeCom users
+	// "link your Delegora account" prompt sent to first-time WeCom users
 	// (their aibot userid is a "T"-prefixed anonymized id with no relation
 	// to their real userid or email, so an explicit binding is required —
 	// see wecom/binding.go). Nil disables the redeem endpoint (returns 403)

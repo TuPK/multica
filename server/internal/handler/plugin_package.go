@@ -12,7 +12,7 @@ import (
 
 // Publishing endpoints.
 //
-// An author uploads an artifact bundle and Multica stores it. There is no
+// An author uploads an artifact bundle and Delegora stores it. There is no
 // install-by-URL any more, and no second way for plugin code to reach a reader's
 // browser: the settings page publishes here, and installing names a version this
 // endpoint created.

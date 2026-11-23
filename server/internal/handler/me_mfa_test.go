@@ -48,7 +48,7 @@ func totpAt(t *testing.T, secret string, steps int) string {
 // and recovery codes, the way enrol and confirm would have left it.
 func confirmedMFA(t *testing.T, u mfaUser) (secret string, recovery []string) {
 	t.Helper()
-	secret, _, err := mfa.NewSecret("Multica", u.Email)
+	secret, _, err := mfa.NewSecret("Delegora", u.Email)
 	if err != nil {
 		t.Fatal(err)
 	}

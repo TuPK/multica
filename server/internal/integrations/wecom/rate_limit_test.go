@@ -290,7 +290,7 @@ func TestARequestThatLosesItsContextAfterTheWriteSaysTheFrameWentOut(t *testing.
 // A throttle is the platform saying "not now". Everything downstream reads a
 // stated refusal as final — provablyNotSent releases nothing, classifyDrop
 // files platform_refused — so without a retry here, one 45009 is one answer
-// that exists in the Multica transcript and nowhere on the person's screen.
+// that exists in the Delegora transcript and nowhere on the person's screen.
 //
 // REVERSE VERIFICATION: delete the retry loop from sendMsgFrame (call
 // s.request once and return) and this fails on the returned error, with the

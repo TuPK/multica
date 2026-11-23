@@ -24,7 +24,7 @@ var errChatSessionGone = errors.New("chat session no longer exists")
 // thread, quoted message), so the report lands in the same place even after
 // the person started a new topic with /new; its row is marked
 // channel_ingested, which also makes an empty reply silent and a cancelled
-// turn settle as "Stopped." A wakeup created from Web stays in Multica, like
+// turn settle as "Stopped." A wakeup created from Web stays in Delegora, like
 // any Web turn, even when the conversation also has an IM route.
 func (s *TaskService) enqueueChatWakeupTaskTx(
 	ctx context.Context,

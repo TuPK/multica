@@ -16,7 +16,7 @@ func TestAmpRuntimeBriefAndSkills(t *testing.T) {
 	if _, err := InjectRuntimeConfig(dir, "amp", task); err != nil {
 		t.Fatal(err)
 	}
-	for path, want := range map[string]string{"AGENTS.md": "Multica Agent Runtime", ".agents/skills/review/SKILL.md": "Review carefully."} {
+	for path, want := range map[string]string{"AGENTS.md": "Delegora Agent Runtime", ".agents/skills/review/SKILL.md": "Review carefully."} {
 		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
 		if err != nil || !strings.Contains(string(data), want) {
 			t.Fatalf("%s = %q, %v", path, data, err)

@@ -47,9 +47,9 @@ func TestReplyFileNoticeLocaleSurvivesClaimAndJournal(t *testing.T) {
 				"not attached because Qoder did not offer the file for download",
 				"not attached because access to the file could not be verified",
 				"not attached because the download was refused",
-				"not attached because Multica refused the upload",
+				"not attached because Delegora refused the upload",
 				"delivery could not be confirmed; check the attachments before retrying",
-				"not attached because Multica could not save the attachment",
+				"not attached because Delegora could not save the attachment",
 				"not attached because the file transfer failed after 3 attempts",
 			}
 			for _, reason := range reasons {

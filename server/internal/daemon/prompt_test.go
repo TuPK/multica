@@ -482,7 +482,7 @@ func TestBuildChatPromptChannelAwareness(t *testing.T) {
 			ChatChannelType: "slack",
 			ChatMessage:     "你刚刚和 xxx 聊了什么",
 		})
-		for _, want := range []string{"Slack", "NOT in Multica", "multica chat history", "multica chat thread", "Do NOT narrate"} {
+		for _, want := range []string{"Slack", "NOT in Delegora", "multica chat history", "multica chat thread", "Do NOT narrate"} {
 			if !strings.Contains(out, want) {
 				t.Fatalf("slack-backed prompt missing %q\n--- output ---\n%s", want, out)
 			}
@@ -513,8 +513,8 @@ func TestBuildChatPromptChannelAwareness(t *testing.T) {
 		}
 	})
 
-	// A transcript surface must not be told its history is "NOT in Multica" and
-	// then handed a Multica command to read that history. The claim used to be
+	// A transcript surface must not be told its history is "NOT in Delegora" and
+	// then handed a Delegora command to read that history. The claim used to be
 	// unconditional, so every Feishu/WeCom/DingTalk prompt carried both halves;
 	// an agent that believes the first one has no reason to run the second.
 	for _, channelType := range []string{
@@ -531,12 +531,12 @@ func TestBuildChatPromptChannelAwareness(t *testing.T) {
 			if !strings.Contains(out, "multica chat history") {
 				t.Fatalf("transcript surface lost its read-back command\n--- output ---\n%s", out)
 			}
-			if strings.Contains(out, "NOT in Multica") {
-				t.Errorf("transcript surface told its history is NOT in Multica, then told to read it from Multica\n--- output ---\n%s", out)
+			if strings.Contains(out, "NOT in Delegora") {
+				t.Errorf("transcript surface told its history is NOT in Delegora, then told to read it from Multica\n--- output ---\n%s", out)
 			}
 			// The useful half of the original sentence must survive: the agent
 			// still must not go hunting through issues and comments.
-			if !strings.Contains(out, "Never look in Multica issues or comments") {
+			if !strings.Contains(out, "Never look in Delegora issues or comments") {
 				t.Errorf("lost the issues/comments prohibition\n--- output ---\n%s", out)
 			}
 		})
@@ -2218,7 +2218,7 @@ func TestPromptPointsSubIssueRunsAtTheirParent(t *testing.T) {
 	var decoded Task
 	if err := json.Unmarshal([]byte(`{
 		"issue_id":"issue-1",
-		"parent_issue":{"id":"parent-uuid","identifier":"MUL-9","title":"Merge PRs from Multica","status":"in_progress"}
+		"parent_issue":{"id":"parent-uuid","identifier":"MUL-9","title":"Merge PRs from Delegora","status":"in_progress"}
 	}`), &decoded); err != nil {
 		t.Fatal(err)
 	}

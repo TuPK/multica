@@ -673,7 +673,7 @@ func portFree(port int) bool {
 	return true
 }
 
-// childEnv is the daemon's environment without the Multica identity a task
+// childEnv is the daemon's environment without the Delegora identity a task
 // carries, plus the caller's PATH so the repository's toolchain resolves.
 func childEnv(pathEnv string, port int, name string) []string {
 	env := make([]string, 0, len(os.Environ())+3)

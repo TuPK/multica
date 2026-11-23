@@ -293,11 +293,11 @@ func RuntimeUnusableNotice(agentName string, verdict AgentVerdict) string {
 }
 
 // runtimeProfileMissingNotice explains a runtime whose CLI runs but whose
-// Multica runtime profile is absent or needs manual migration.
+// Delegora runtime profile is absent or needs manual migration.
 //
 // No fenced command, deliberately. The install is `dsh plugin --profile multica
 // add <bundle>`, and <bundle> is the operator's own choice of package,
-// directory or tarball — Multica's bridge is not on a public registry yet
+// directory or tarball — Delegora's bridge is not on a public registry yet
 // (multica#6936). Rendering that line in a code block presents a placeholder as
 // something to copy and run, which is the shape of instruction people paste
 // verbatim and then report as broken. Naming the two ways to supply a real

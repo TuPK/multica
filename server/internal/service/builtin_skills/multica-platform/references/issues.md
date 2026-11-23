@@ -45,7 +45,7 @@ reported issue ID with `issue update`; do not retry `issue create`.
 ### Default for code-changing issue work
 
 When an issue run changes code in a checked-out GitHub repo, the default handoff
-is to open or update a PR before posting the final Multica issue comment, unless
+is to open or update a PR before posting the final Delegora issue comment, unless
 the user explicitly asked for a local-only change or no PR. This is a default, not
 an unconditional command: if no code changed, say no PR is needed; if PR creation
 is blocked by auth, failing tests, or missing remote state, report that blocker
@@ -66,7 +66,7 @@ that explicitly.
 
 ## Reading a linked PR's real state
 
-When a step depends on PR state, query Multica's link table — do not infer it
+When a step depends on PR state, query Delegora's link table — do not infer it
 from branch names, GitHub search, memory, or stale values left on the issue by
 an earlier run.
 

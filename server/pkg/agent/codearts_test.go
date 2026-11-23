@@ -67,7 +67,7 @@ func TestCodeArtsExecuteUsesNativeRunFlagsAndStdin(t *testing.T) {
 		ResumeSessionID: "ses_existing",
 		CustomArgs: []string{
 			"--dangerously-skip-permissions", "--auto", "--sandbox",
-			"--dir", "wrong", "--variant", "high", "--title", "Multica task",
+			"--dir", "wrong", "--variant", "high", "--title", "Delegora task",
 		},
 	})
 	if err != nil {
@@ -87,7 +87,7 @@ func TestCodeArtsExecuteUsesNativeRunFlagsAndStdin(t *testing.T) {
 		t.Fatal(err)
 	}
 	args := strings.Split(string(argvRaw), "\n")
-	want := []string{"wrapper", "run", "--format", "json", "--auto", "--model", "huaweicloud-maas/deepseek-v3.2", "--session", "ses_existing", "--title", "Multica task"}
+	want := []string{"wrapper", "run", "--format", "json", "--auto", "--model", "huaweicloud-maas/deepseek-v3.2", "--session", "ses_existing", "--title", "Delegora task"}
 	if strings.Join(args, "\x00") != strings.Join(want, "\x00") {
 		t.Fatalf("argv = %#v, want %#v", args, want)
 	}

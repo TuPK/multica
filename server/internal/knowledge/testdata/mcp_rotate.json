@@ -2,7 +2,7 @@
   "data": {
     "created_at": "2026-11-01T18:52:17.983235+08:00",
     "default_agent_id": "",
-    "description": "Read-only company knowledge for Multica agents",
+    "description": "Read-only company knowledge for Delegora agents",
     "enabled": true,
     "id": "11a56d5f-13c7-40c0-b683-e8bc44742e34",
     "knowledge_base_ids": [

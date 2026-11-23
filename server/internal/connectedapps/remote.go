@@ -21,7 +21,7 @@ import (
 	"github.com/multica-ai/multica/server/pkg/remotemcp"
 )
 
-// RemoteApp is an app whose own MCP server Multica connects to as an OAuth
+// RemoteApp is an app whose own MCP server Delegora connects to as an OAuth
 // client, instead of through Composio. Adding one is configuration only: the
 // server must publish OAuth discovery metadata (RFC 9728 / RFC 8414) and
 // accept dynamic client registration.

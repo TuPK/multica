@@ -134,7 +134,7 @@ func writeAutostartFixture(t *testing.T, path, content string) {
 	}
 }
 
-// unmarkedUnitFixture is a plausible hand-written unit at Multica's own name —
+// unmarkedUnitFixture is a plausible hand-written unit at Delegora's own name —
 // no marker, and WantedBy a target other than default, exactly the shape the
 // review found deletable.
 const unmarkedUnitFixture = `[Unit]
@@ -259,7 +259,7 @@ func TestPlatformRemoveAutostartRefusesUnmarkedUnit(t *testing.T) {
 
 // TestPlatformRemoveAutostartKeepsUnmarkedXdgAlongsideManagedUnit is the
 // review's coexistence scenario: a Multica-created unit plus a hand-written
-// .desktop at our XDG name. Disabling Multica's registration must leave the
+// .desktop at our XDG name. Disabling Delegora's registration must leave the
 // user's .desktop alone — the sweep funnels through the marker-checked
 // removeXdgAutostartFile, which enable and the `daemon start` refresh use as
 // well, so this covers all three call sites. Per round 5's keep-the-unit

@@ -30,7 +30,7 @@ const defaultAPIBase = "https://api.telegram.org"
 const longPollTimeoutSecs = 50
 
 // ErrConflict surfaces a 409 from getUpdates: the same bot token is being
-// polled by another consumer (a second Multica instance, another worktree, or
+// polled by another consumer (a second Delegora instance, another worktree, or
 // a foreign process). The polling loop treats it as fatal for the attempt and
 // reports a precise message so the operator sees "bot polled elsewhere"
 // instead of a silent message tug-of-war.

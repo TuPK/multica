@@ -18,7 +18,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/cloudruntime"
 )
 
-// These tests are Multica's half of the contract with the platform service
+// These tests are Delegora's half of the contract with the platform service
 // (platform-management). The platform writes its real responses to
 // platform-management/contract/testdata with `go test ./contract -update`; here
 // the unchanged client reads the same files from an httptest server. No database

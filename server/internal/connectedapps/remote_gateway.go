@@ -15,7 +15,7 @@ import (
 // ServeRemoteApp is the MCP server a run sees for one remote app, under the
 // app's own name. Tools keep the names and schemas the app's server gives
 // them; every call still goes through the account, rules, rate limit and
-// activity log of the meta gateway before Multica forwards it with the
+// activity log of the meta gateway before Delegora forwards it with the
 // account's token.
 func (s *Service) ServeRemoteApp(w http.ResponseWriter, r *http.Request, slug string) {
 	app, ok := s.RemoteApp(slug)
@@ -45,7 +45,7 @@ func (s *Service) dispatchRemote(ctx context.Context, rn *run, app RemoteApp, re
 			"protocolVersion": version,
 			"capabilities":    map[string]any{"tools": map[string]any{}},
 			"serverInfo":      map[string]any{"name": app.Slug, "version": "1"},
-			"instructions": fmt.Sprintf("%s tools, run through Multica with the account and permissions set there. "+
+			"instructions": fmt.Sprintf("%s tools, run through Delegora with the account and permissions set there. "+
 				"If a call says the account is not connected, call %s on the %s server and end your turn.",
 				app.Name, toolRequestConnection, GatewayServerName),
 		}

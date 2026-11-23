@@ -596,7 +596,7 @@ func TestLarkOutcomeReplierNeedsBindingDoesNotFallbackForNonAvailabilityError(t 
 // blocker on PR #3277 review. Fix: OutcomeIngested with IssueID.Valid
 // triggers a plain text confirmation send via SendTextMessage,
 // composing the workspace-qualified identifier with the title and a
-// deep link back to Multica.
+// deep link back to Delegora.
 func TestLarkOutcomeReplierIssueCreatedSendsConfirmation(t *testing.T) {
 	t.Parallel()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -638,7 +638,7 @@ func TestLarkOutcomeReplierIssueCreatedSendsConfirmation(t *testing.T) {
 		t.Errorf("text should embed the issue title; got %q", got.Text)
 	}
 	if !strings.Contains(got.Text, "https://multica.test/demo-web/issues/MUL-42") {
-		t.Errorf("text should embed the workspace issue deep link back to Multica; got %q", got.Text)
+		t.Errorf("text should embed the workspace issue deep link back to Delegora; got %q", got.Text)
 	}
 	// No interactive card on this path — the confirmation must be
 	// plain text, matching how chat replies render.
