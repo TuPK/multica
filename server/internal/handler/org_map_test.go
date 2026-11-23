@@ -23,7 +23,7 @@ func TestGetCompanyOrgMap_FloorFilterAndRows(t *testing.T) {
 	dbfx.Exec(t, `INSERT INTO floor_chief (workspace_id, floor_id, agent_id) VALUES ($1, $2, $3)`, testWorkspaceID, floor, chief)
 	onFloor := dbfx.Squad(t, "On floor "+uuid.NewString(), leader, testutil.Cols{"floor_id": floor})
 	dbfx.SquadMember(t, onFloor, "agent", leader)
-	loose := dbfx.Squad(t, "Loose "+uuid.NewString(), leader)
+	loose := dbfx.Squad(t, "Loose "+uuid.NewString(), freshSquadLeader(t, "org map"))
 
 	var all service.OrgMap
 	testutil.Call(t, testHandler.GetCompanyOrgMap, newRequest("GET", "/api/company/org-map", nil)).Want(http.StatusOK).JSON(&all)

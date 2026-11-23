@@ -288,7 +288,7 @@ func TestCompanyFloors_DeleteUnseatsSquadsAndClearsChief(t *testing.T) {
 	busy := createFloor(t, "", testWorkspaceID, "Busy")
 	other := createFloor(t, "", testWorkspaceID, "Other")
 	seated := seedCompanySquad(t, "Company delete squad", leader)
-	elsewhere := seedCompanySquad(t, "Company elsewhere squad", leader)
+	elsewhere := seedCompanySquad(t, "Company elsewhere squad", freshSquadLeader(t, "squad"))
 
 	wantStatus(t, putSeats("", testWorkspaceID, []map[string]any{
 		{"squad_id": seated, "floor_id": busy.ID, "slot": 3},
@@ -416,7 +416,7 @@ func TestCompanySeats_ConflictNamesTheHolder(t *testing.T) {
 	leader := createHandlerTestAgent(t, "company-conflict-leader", nil)
 	floor := createFloor(t, "", testWorkspaceID, "Conflict")
 	holder := seedCompanySquad(t, "Holder squad", leader)
-	other := seedCompanySquad(t, "Other squad", leader)
+	other := seedCompanySquad(t, "Other squad", freshSquadLeader(t, "squad"))
 
 	wantStatus(t, putSeats("", testWorkspaceID, []map[string]any{{"squad_id": holder, "floor_id": floor.ID, "slot": 2}}), http.StatusOK)
 
@@ -441,7 +441,7 @@ func TestCompanySeats_UniqueIndexBacksUpTheCheck(t *testing.T) {
 	leader := createHandlerTestAgent(t, "company-uidx-leader", nil)
 	floor := createFloor(t, "", testWorkspaceID, "Index")
 	a := seedCompanySquad(t, "Index A", leader)
-	b := seedCompanySquad(t, "Index B", leader)
+	b := seedCompanySquad(t, "Index B", freshSquadLeader(t, "squad"))
 	ctx := context.Background()
 
 	if _, err := testPool.Exec(ctx, `UPDATE squad SET floor_id = $2, company_slot = 1 WHERE id = $1`, a, floor.ID); err != nil {
@@ -469,8 +469,8 @@ func TestCompanySeats_SwapIsOneTransaction(t *testing.T) {
 	floor := createFloor(t, "", testWorkspaceID, "Swap")
 	floor2 := createFloor(t, "", testWorkspaceID, "Swap 2")
 	a := seedCompanySquad(t, "Swap A", leader)
-	b := seedCompanySquad(t, "Swap B", leader)
-	c := seedCompanySquad(t, "Swap C", leader)
+	b := seedCompanySquad(t, "Swap B", freshSquadLeader(t, "squad"))
+	c := seedCompanySquad(t, "Swap C", freshSquadLeader(t, "squad"))
 
 	wantStatus(t, putSeats("", testWorkspaceID, []map[string]any{
 		{"squad_id": a, "floor_id": floor.ID, "slot": 0},
@@ -513,8 +513,8 @@ func TestCompanySeats_FailedRequestChangesNothing(t *testing.T) {
 	leader := createHandlerTestAgent(t, "company-atomic-leader", nil)
 	floor := createFloor(t, "", testWorkspaceID, "Atomic")
 	a := seedCompanySquad(t, "Atomic A", leader)
-	b := seedCompanySquad(t, "Atomic B", leader)
-	blocker := seedCompanySquad(t, "Atomic blocker", leader)
+	b := seedCompanySquad(t, "Atomic B", freshSquadLeader(t, "squad"))
+	blocker := seedCompanySquad(t, "Atomic blocker", freshSquadLeader(t, "squad"))
 
 	wantStatus(t, putSeats("", testWorkspaceID, []map[string]any{
 		{"squad_id": a, "floor_id": floor.ID, "slot": 0},
@@ -542,7 +542,7 @@ func TestCompanySeats_TwoSquadsOnOneSeatInOneRequest(t *testing.T) {
 	leader := createHandlerTestAgent(t, "company-dupseat-leader", nil)
 	floor := createFloor(t, "", testWorkspaceID, "Dup")
 	a := seedCompanySquad(t, "Dup A", leader)
-	b := seedCompanySquad(t, "Dup B", leader)
+	b := seedCompanySquad(t, "Dup B", freshSquadLeader(t, "squad"))
 
 	w := putSeats("", testWorkspaceID, []map[string]any{
 		{"squad_id": a, "floor_id": floor.ID, "slot": 0},
@@ -560,7 +560,7 @@ func TestCompanySeats_Validation(t *testing.T) {
 	leader := createHandlerTestAgent(t, "company-valid-leader", nil)
 	floor := createFloor(t, "", testWorkspaceID, "Valid")
 	squadID := seedCompanySquad(t, "Valid squad", leader)
-	archived := seedCompanySquad(t, "Archived squad", leader)
+	archived := seedCompanySquad(t, "Archived squad", freshSquadLeader(t, "squad"))
 	if _, err := testPool.Exec(context.Background(), `UPDATE squad SET archived_at = now() WHERE id = $1`, archived); err != nil {
 		t.Fatalf("archive: %v", err)
 	}
@@ -607,7 +607,7 @@ func TestCompanySeats_NonAdminNeedsToBeTheCreator(t *testing.T) {
 	floor := createFloor(t, "", testWorkspaceID, "Perms")
 
 	mine := createSquadAs(t, creatorID, "Mine", leader)
-	theirs := seedCompanySquad(t, "Not mine", leader) // created by the owner fixture user
+	theirs := seedCompanySquad(t, "Not mine", freshSquadLeader(t, "squad")) // created by the owner fixture user
 	// Free every auto-seat so the test chooses seats itself.
 	wantStatus(t, putSeats("", testWorkspaceID, []map[string]any{{"squad_id": mine.ID, "floor_id": nil, "slot": nil}}), http.StatusOK)
 
@@ -640,11 +640,9 @@ func TestCompanySeats_NonAdminNeedsToBeTheCreator(t *testing.T) {
 func TestCreateSquad_AutoSeatsLowestFreeSlotAndOverflowsToNewFloor(t *testing.T) {
 	requireCompanyDB(t)
 	resetCompany(t)
-	leader := createHandlerTestAgent(t, "company-auto-leader", nil)
-
 	var squads []SquadResponse
 	for i := 0; i < companySlotsPerFloor; i++ {
-		s := createSquadAs(t, "", fmt.Sprintf("Auto %d", i), leader)
+		s := createSquadAs(t, "", fmt.Sprintf("Auto %d", i), freshSquadLeader(t, "auto"))
 		squads = append(squads, s)
 		if s.FloorID == nil || s.CompanySlot == nil || int(*s.CompanySlot) != i {
 			t.Fatalf("squad %d should take slot %d of the first floor, got %v/%v", i, i, s.FloorID, s.CompanySlot)
@@ -659,7 +657,7 @@ func TestCreateSquad_AutoSeatsLowestFreeSlotAndOverflowsToNewFloor(t *testing.T)
 	}
 
 	// The seventh squad overflows onto a new floor.
-	seventh := createSquadAs(t, "", "Auto 6", leader)
+	seventh := createSquadAs(t, "", "Auto 6", freshSquadLeader(t, "auto"))
 	floors = listFloors(t, testWorkspaceID)
 	if len(floors) != 2 || floors[1].Name != "Floor 2" {
 		t.Fatalf("expected a new Floor 2, got %+v", floors)
@@ -671,7 +669,7 @@ func TestCreateSquad_AutoSeatsLowestFreeSlotAndOverflowsToNewFloor(t *testing.T)
 	// A freed seat is reused before anything on a later floor.
 	w := floorCall(testHandler.DeleteSquad, squadScopeReq("", "DELETE", "/api/squads", nil, map[string]string{"id": squads[2].ID}))
 	wantStatus(t, w, http.StatusNoContent)
-	reuse := createSquadAs(t, "", "Auto reuse", leader)
+	reuse := createSquadAs(t, "", "Auto reuse", freshSquadLeader(t, "squad"))
 	if *reuse.FloorID != *squads[0].FloorID || *reuse.CompanySlot != 2 {
 		t.Fatalf("freed slot 2 of floor 1 should be reused, got %v/%v", *reuse.FloorID, *reuse.CompanySlot)
 	}
@@ -680,11 +678,9 @@ func TestCreateSquad_AutoSeatsLowestFreeSlotAndOverflowsToNewFloor(t *testing.T)
 func TestCreateSquad_FloorNameOnlyWhenANewFloorIsNeeded(t *testing.T) {
 	requireCompanyDB(t)
 	resetCompany(t)
-	leader := createHandlerTestAgent(t, "company-floorname-leader", nil)
-
 	create := func(name, floorName string) (*httptest.ResponseRecorder, SquadResponse) {
 		w := floorCall(testHandler.CreateSquad, squadScopeReq("", "POST", "/api/squads", map[string]any{
-			"name": name, "leader_id": leader, "floor_name": floorName,
+			"name": name, "leader_id": freshSquadLeader(t, "floorname"), "floor_name": floorName,
 		}, nil))
 		if w.Code != http.StatusCreated {
 			return w, SquadResponse{}
@@ -720,24 +716,44 @@ func TestCreateSquad_FloorNameOnlyWhenANewFloorIsNeeded(t *testing.T) {
 func TestCreateSquad_StaysUnseatedWhenEveryFloorIsFull(t *testing.T) {
 	requireCompanyDB(t)
 	resetCompany(t)
-	leader := createHandlerTestAgent(t, "company-full-leader", nil)
 	ctx := context.Background()
 
 	for i := 0; i < companyMaxFloors; i++ {
 		createFloor(t, "", testWorkspaceID, fmt.Sprintf("Full %d", i))
 	}
-	if _, err := testPool.Exec(ctx, `
-		INSERT INTO squad (workspace_id, name, description, leader_id, creator_id, floor_id, company_slot)
-		SELECT $1, 'seedfull-' || f.position || '-' || s, '', $2, $3, f.id, s
-		FROM company_floor f, generate_series(0, 5) AS s
-		WHERE f.workspace_id = $1`, testWorkspaceID, leader, testUserID); err != nil {
-		t.Fatalf("fill the company: %v", err)
+	// Every seat is full. Each seeded squad leads itself: an agent leads one live squad at a time.
+	rows, err := testPool.Query(ctx, `SELECT id::text, position FROM company_floor WHERE workspace_id = $1`, testWorkspaceID)
+	if err != nil {
+		t.Fatalf("list floors: %v", err)
+	}
+	type floorSeat struct {
+		id       string
+		position int
+	}
+	var floors []floorSeat
+	for rows.Next() {
+		var f floorSeat
+		if err := rows.Scan(&f.id, &f.position); err != nil {
+			t.Fatalf("scan floor: %v", err)
+		}
+		floors = append(floors, f)
+	}
+	rows.Close()
+	for _, f := range floors {
+		for slot := 0; slot < companySlotsPerFloor; slot++ {
+			if _, err := testPool.Exec(ctx, `
+				INSERT INTO squad (workspace_id, name, description, leader_id, creator_id, floor_id, company_slot)
+				VALUES ($1, $2, '', $3, $4, $5, $6)`,
+				testWorkspaceID, fmt.Sprintf("seedfull-%d-%d", f.position, slot), freshSquadLeader(t, "seedfull"), testUserID, f.id, slot); err != nil {
+				t.Fatalf("fill the company: %v", err)
+			}
+		}
 	}
 	t.Cleanup(func() {
 		testPool.Exec(ctx, `DELETE FROM squad WHERE workspace_id = $1 AND name LIKE 'seedfull-%'`, testWorkspaceID)
 	})
 
-	squad := createSquadAs(t, "", "Overflow of overflow", leader)
+	squad := createSquadAs(t, "", "Overflow of overflow", freshSquadLeader(t, "overflow"))
 	if squad.FloorID != nil || squad.CompanySlot != nil {
 		t.Fatalf("a full company leaves the squad unseated, got %v/%v", squad.FloorID, squad.CompanySlot)
 	}
@@ -785,7 +801,7 @@ func TestSquadResponsesCarryTheSeat(t *testing.T) {
 	}
 
 	// The wire keys exist (as null) for an unseated squad.
-	unseated := seedCompanySquad(t, "Unseated wire", leader)
+	unseated := seedCompanySquad(t, "Unseated wire", freshSquadLeader(t, "squad"))
 	w = floorCall(testHandler.GetSquad, squadScopeReq("", "GET", "/api/squads/"+unseated, nil, map[string]string{"id": unseated}))
 	wantStatus(t, w, http.StatusOK)
 	raw := decodeBody[map[string]any](t, w)
@@ -832,7 +848,7 @@ func TestHomeSquad_SetOnFirstMembership(t *testing.T) {
 	}
 
 	// A second squad does not move the home.
-	b := createSquadAs(t, "", "Home B", leader)
+	b := createSquadAs(t, "", "Home B", freshSquadLeader(t, "squad"))
 	addMemberAs(t, b.ID, worker)
 	if got := homeOf(t, worker); got != a.ID {
 		t.Fatalf("the home must not move when joining another squad, got %q", got)
@@ -852,7 +868,7 @@ func TestHomeSquad_NotClaimedByAgentsAlreadyInASquad(t *testing.T) {
 	old := seedCompanySquad(t, "Legacy squad", leader)
 	dbfx.SquadMember(t, old, "agent", legacy)
 
-	fresh := createSquadAs(t, "", "Fresh squad", leader)
+	fresh := createSquadAs(t, "", "Fresh squad", freshSquadLeader(t, "squad"))
 	addMemberAs(t, fresh.ID, legacy)
 	if got := homeOf(t, legacy); got != "" {
 		t.Fatalf("only a first membership claims a home; got %q", got)
@@ -866,8 +882,8 @@ func TestHomeSquad_MovesOrClearsWhenRemovedFromHome(t *testing.T) {
 	worker := createHandlerTestAgent(t, "home-move-worker", nil)
 
 	a := createSquadAs(t, "", "Move A", leader)
-	b := createSquadAs(t, "", "Move B", leader)
-	c := createSquadAs(t, "", "Move C", leader)
+	b := createSquadAs(t, "", "Move B", freshSquadLeader(t, "squad"))
+	c := createSquadAs(t, "", "Move C", freshSquadLeader(t, "squad"))
 	addMemberAs(t, a.ID, worker)
 	addMemberAs(t, b.ID, worker)
 	addMemberAs(t, c.ID, worker)
@@ -950,8 +966,8 @@ func TestUpdateAgent_HomeSquad(t *testing.T) {
 	worker := createHandlerTestAgent(t, "home-upd-worker", nil)
 
 	a := createSquadAs(t, "", "Upd A", leader)
-	b := createSquadAs(t, "", "Upd B", leader)
-	c := createSquadAs(t, "", "Upd C", leader) // the worker is not a member
+	b := createSquadAs(t, "", "Upd B", freshSquadLeader(t, "squad"))
+	c := createSquadAs(t, "", "Upd C", freshSquadLeader(t, "squad")) // the worker is not a member
 	addMemberAs(t, a.ID, worker)
 	addMemberAs(t, b.ID, worker)
 	if got := homeOf(t, worker); got != a.ID {
@@ -1079,7 +1095,7 @@ func TestCompanyEvents(t *testing.T) {
 	}
 
 	// Only changed squads publish squad:updated.
-	other := seedCompanySquad(t, "Events other", leader)
+	other := seedCompanySquad(t, "Events other", freshSquadLeader(t, "squad"))
 	updatedBefore := count(protocol.EventSquadUpdated)
 	wantStatus(t, putSeats("", testWorkspaceID, []map[string]any{
 		{"squad_id": squad.ID, "floor_id": *squad.FloorID, "slot": *squad.CompanySlot}, // unchanged

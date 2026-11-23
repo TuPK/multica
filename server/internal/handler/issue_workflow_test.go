@@ -1333,7 +1333,7 @@ func TestHandoffStopsPreviousSquadRuns(t *testing.T) {
 	running := dbfx.Task(t, agentID, testutil.Cols{
 		"issue_id": issueID, "squad_id": squadID, "runtime_id": runtimeID, "status": "running", "started_at": time.Now(),
 	})
-	otherSquad := dbfx.Squad(t, "Another squad sharing the leader "+workflowTestSuffix(), agentID)
+	otherSquad := dbfx.Squad(t, "Another squad "+workflowTestSuffix(), freshSquadLeader(t, "other squad"))
 	unrelated := dbfx.Task(t, agentID, testutil.Cols{
 		"issue_id": issueID, "squad_id": otherSquad, "runtime_id": runtimeID, "status": "deferred", "fire_at": time.Now(),
 	})

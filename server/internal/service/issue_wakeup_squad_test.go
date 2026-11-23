@@ -32,11 +32,13 @@ func TestIssueWakeupSquadLeaderAttribution(t *testing.T) {
 			if tc.otherLead {
 				leader = f.privateAgentOwnedBy(t, f.UserID, "other leader")
 			}
-			squad := f.Squad(t, "Wakeup squad", leader)
-			f.SquadMember(t, squad, "agent", agent)
+			var squad string
 			if tc.foreign {
 				other, _ := newPrincipalFixture(t)
 				squad = other.Squad(t, "Foreign squad", agent)
+			} else {
+				squad = f.Squad(t, "Wakeup squad", leader)
+				f.SquadMember(t, squad, "agent", agent)
 			}
 			assignee := squad
 			if tc.assignee == "agent" {

@@ -397,13 +397,6 @@ func TestChildDoneWakesAssigneeWhoeverOwnedTheChild(t *testing.T) {
 			setIssueAssigneeDirect(t, fx.child.ID, "squad", sq.SquadID)
 			return sq.LeaderID
 		},
-		"two squads share a leader": func(t *testing.T, fx childDoneFixture) string {
-			sq := newSquadCommentTriggerFixture(t)
-			other := dbfx.Squad(t, "Child Done Shared Leader Squad", sq.LeaderID)
-			setIssueAssigneeDirect(t, fx.parent.ID, "squad", sq.SquadID)
-			setIssueAssigneeDirect(t, fx.child.ID, "squad", other)
-			return sq.LeaderID
-		},
 		"same squad owns the child": func(t *testing.T, fx childDoneFixture) string {
 			sq := newSquadCommentTriggerFixture(t)
 			setIssueAssigneeDirect(t, fx.parent.ID, "squad", sq.SquadID)

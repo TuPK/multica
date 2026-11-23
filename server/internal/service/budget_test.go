@@ -289,8 +289,8 @@ func TestBudgetAttributionFollowsSquadFloorAndInitiative(t *testing.T) {
 	ctx := context.Background()
 	floor := newUUIDText()
 	squad := f.Squad(t, "attr squad", f.agent, testutil.Cols{"floor_id": floor})
-	homeSquad := f.Squad(t, "home squad", f.agent, testutil.Cols{"floor_id": floor})
-	other := f.Squad(t, "other squad", f.agent)
+	homeSquad := f.Squad(t, "home squad", freshSquadLeader(t, f.Fixture, "home"), testutil.Cols{"floor_id": floor})
+	other := f.Squad(t, "other squad", freshSquadLeader(t, f.Fixture, "other"))
 	homed := f.Agent(t, "homed agent", f.rt, testutil.Cols{"home_squad_id": homeSquad})
 
 	// A task with its own squad, and one that falls back to its agent's home.

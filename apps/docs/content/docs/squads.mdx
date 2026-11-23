@@ -27,6 +27,8 @@ When the scope is clear, assign directly to the matching [agent](/agents).
 
 Creating a squad requires a name and a leader. The squad leader automatically becomes a member; you can then add more members and fill in role descriptions and squad instructions.
 
+An agent can lead only one squad at a time. Assigning an issue to that agent is recorded as assigning it to the squad, so the squad's routing and handoff rules apply.
+
 ## Execution flow after assignment
 
 When a non-Backlog issue is assigned to a squad, Delegora immediately enqueues a run for the **leader agent** (not for every member). The flow then looks like this:

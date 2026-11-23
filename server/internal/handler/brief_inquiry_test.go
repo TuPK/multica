@@ -27,7 +27,7 @@ func newInquiryEnv(t *testing.T) inquiryEnv {
 	e := newDigestEnv(t)
 	secretary := e.otherAgent(t)
 	e.setSecretary(t, secretary)
-	squad := e.squad(t, "Research "+uuid.NewString()[:8])
+	squad := e.squadLedBy(t, "Research "+uuid.NewString()[:8], e.AgentID)
 	dbfx.SquadMember(t, squad, "agent", e.AgentID, testutil.Cols{"role": "leader"})
 	worker := e.otherAgent(t)
 	dbfx.SquadMember(t, squad, "agent", worker, testutil.Cols{"role": "member"})

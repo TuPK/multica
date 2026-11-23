@@ -26,7 +26,7 @@ func TestPromoteQueuedIssuesRoomsRunSideBySideOnOneProject(t *testing.T) {
 
 	project := dbfx.Project(t, "lane project "+suffix, testutil.Cols{"workspace_id": ws})
 	roomA := dbfx.Squad(t, "room a "+suffix, leader, testutil.Cols{"workspace_id": ws})
-	roomB := dbfx.Squad(t, "room b "+suffix, leader, testutil.Cols{"workspace_id": ws})
+	roomB := dbfx.Squad(t, "room b "+suffix, freshSquadLeader(t, "lane"), testutil.Cols{"workspace_id": ws})
 	agentInB := dbfx.Agent(t, "lane agent "+suffix, runtimeID, testutil.Cols{
 		"workspace_id": ws, "home_squad_id": roomB,
 	})

@@ -1,106 +1,128 @@
 package handler
 
 import (
-	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/multica-ai/multica/server/internal/testutil"
 )
 
-// createLeaderAssignRequest builds a CreateIssue request made by agentID while
-// its running task taskID is the actor, the way a squad leader calls the CLI.
-// The task carries a human originator, so the invoke gate sees a real chain.
-func createLeaderAssignRequest(t *testing.T, agentID, taskID, assigneeID string) *httptest.ResponseRecorder {
-	t.Helper()
-	req := newRequest("POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
-		"title":         "Sub-issue from " + agentID + " to " + assigneeID,
-		"assignee_type": "agent",
-		"assignee_id":   assigneeID,
-	})
-	req.Header.Set("X-Actor-Source", "task_token")
-	req.Header.Set("X-Agent-ID", agentID)
-	req.Header.Set("X-Task-ID", taskID)
-	w := httptest.NewRecorder()
-	testHandler.CreateIssue(w, req)
-	if w.Code == http.StatusCreated {
-		var created IssueResponse
-		if err := json.NewDecoder(w.Body).Decode(&created); err != nil {
-			t.Fatalf("decode issue: %v", err)
-		}
-		t.Cleanup(func() {
-			cleanup := withURLParam(newRequest("DELETE", "/api/issues/"+created.ID, nil), "id", created.ID)
-			testHandler.DeleteIssue(httptest.NewRecorder(), cleanup)
-		})
-	}
-	return w
-}
+// An issue assigned to an agent that leads a live squad is held by that squad: the assignment is stored as
+// the squad, so the squad's handoff and leader runs follow it.
 
-// TestSquadLeaderAssignsOnlyWithinItsSquad pins the boundary: a leader agent
-// may assign an issue to a member of its squad, to itself, but not to an
-// agent outside the squads it leads. An agent that leads no squad is not
-// limited by this gate.
-func TestSquadLeaderAssignsOnlyWithinItsSquad(t *testing.T) {
-	if testHandler == nil || testPool == nil {
-		t.Skip("database not available")
-	}
-	ctx := context.Background()
-	runtimeID := createClaimReclaimRuntime(t, ctx, "Leader assign runtime")
-	leaderID := seedAgentOnRuntime(t, runtimeID, "Leader assign lead", false)
-	memberID := seedAgentOnRuntime(t, runtimeID, "Leader assign member", false)
-	outsiderID := seedAgentOnRuntime(t, runtimeID, "Leader assign outsider", false)
+func TestAssignIssueToLeaderAgentStoresSquad(t *testing.T) {
+	fx := newIniWorkspace(t)
+	squad, lead := planningSquad(t, fx, "Leader squad")
+	issue := dbfx.Issue(t, "Assign to the leader", testutil.Cols{"workspace_id": fx.ID})
 
-	var squadID string
-	if err := testPool.QueryRow(ctx, `
-		INSERT INTO squad (workspace_id, name, description, leader_id, creator_id)
-		VALUES ($1, 'Leader assign squad', '', $2, $3)
-		RETURNING id
-	`, testWorkspaceID, leaderID, testUserID).Scan(&squadID); err != nil {
-		t.Fatalf("create squad: %v", err)
-	}
-	t.Cleanup(func() { testPool.Exec(context.Background(), `DELETE FROM squad WHERE id = $1`, squadID) })
-	if _, err := testPool.Exec(ctx, `
-		INSERT INTO squad_member (squad_id, member_type, member_id, role)
-		VALUES ($1, 'agent', $2, 'member')
-	`, squadID, memberID); err != nil {
-		t.Fatalf("add squad member: %v", err)
-	}
+	req := fx.as(newRequest("PUT", "/api/issues/"+issue, map[string]any{
+		"assignee_type": "agent", "assignee_id": lead,
+	}), fx.AdminID)
+	resp := testutil.Call(t, testHandler.UpdateIssue, withURLParams(req, "id", issue)).Want(200)
 
-	// Each actor runs a task whose originator is the workspace's test user, so
-	// the existing invoke gate admits the assignment and only the squad check
-	// decides the outcome.
-	leaderTaskID := seedLeaderRunningTask(t, ctx, leaderID, runtimeID)
-	outsiderTaskID := seedLeaderRunningTask(t, ctx, outsiderID, runtimeID)
-
-	if w := createLeaderAssignRequest(t, leaderID, leaderTaskID, outsiderID); w.Code != http.StatusForbidden ||
-		!strings.Contains(w.Body.String(), "only to agents in its squad") {
-		t.Fatalf("leader assigning to an agent outside its squad: want 403 from the squad gate, got %d: %s", w.Code, w.Body.String())
-	}
-	if w := createLeaderAssignRequest(t, leaderID, leaderTaskID, memberID); w.Code != http.StatusCreated {
-		t.Fatalf("leader assigning to a squad member: want 201, got %d: %s", w.Code, w.Body.String())
-	}
-	if w := createLeaderAssignRequest(t, leaderID, leaderTaskID, leaderID); w.Code != http.StatusCreated {
-		t.Fatalf("leader assigning to itself: want 201, got %d: %s", w.Code, w.Body.String())
-	}
-	// The outsider leads no squad, so the squad gate does not limit it.
-	if w := createLeaderAssignRequest(t, outsiderID, outsiderTaskID, leaderID); w.Code != http.StatusCreated {
-		t.Fatalf("agent that leads no squad: want 201, got %d: %s", w.Code, w.Body.String())
+	got := resp.Map()
+	if got["assignee_type"] != "squad" || got["assignee_id"] != squad {
+		t.Fatalf("assignee = %v/%v, want squad/%s", got["assignee_type"], got["assignee_id"], squad)
 	}
 }
 
-// seedLeaderRunningTask inserts a running task for agentID with the test user
-// as originator, and returns its id.
-func seedLeaderRunningTask(t *testing.T, ctx context.Context, agentID, runtimeID string) string {
-	t.Helper()
-	var taskID string
-	if err := testPool.QueryRow(ctx, `
-		INSERT INTO agent_task_queue (agent_id, runtime_id, status, priority,
-			originator_user_id, accountable_user_id, originator_source)
-		VALUES ($1, $2, 'running', 0, $3, $3, 'trigger_owner') RETURNING id
-	`, agentID, runtimeID, testUserID).Scan(&taskID); err != nil {
-		t.Fatalf("seed running task: %v", err)
+func TestCreateIssueAssignedToLeaderAgentStoresSquad(t *testing.T) {
+	fx := newIniWorkspace(t)
+	squad, lead := planningSquad(t, fx, "Leader squad")
+
+	req := fx.as(newRequest("POST", "/api/issues", map[string]any{
+		"title": "Created for the leader", "assignee_type": "agent", "assignee_id": lead,
+	}), fx.AdminID)
+	got := testutil.Call(t, testHandler.CreateIssue, req).Want(201).Map()
+	if got["assignee_type"] != "squad" || got["assignee_id"] != squad {
+		t.Fatalf("assignee = %v/%v, want squad/%s", got["assignee_type"], got["assignee_id"], squad)
 	}
-	t.Cleanup(func() { testPool.Exec(context.Background(), `DELETE FROM agent_task_queue WHERE id = $1`, taskID) })
-	return taskID
+}
+
+func TestAssignIssueToAgentWithoutSquadStaysAgent(t *testing.T) {
+	fx := newIniWorkspace(t)
+	plain := iniAgent(t, fx.ID, "Plain agent")
+	issue := dbfx.Issue(t, "Personal work", testutil.Cols{"workspace_id": fx.ID})
+
+	req := fx.as(newRequest("PUT", "/api/issues/"+issue, map[string]any{
+		"assignee_type": "agent", "assignee_id": plain,
+	}), fx.AdminID)
+	got := testutil.Call(t, testHandler.UpdateIssue, withURLParams(req, "id", issue)).Want(200).Map()
+	if got["assignee_type"] != "agent" || got["assignee_id"] != plain {
+		t.Fatalf("assignee = %v/%v, want agent/%s", got["assignee_type"], got["assignee_id"], plain)
+	}
+}
+
+func TestAssignIssueToLeaderOfArchivedSquadStaysAgent(t *testing.T) {
+	fx := newIniWorkspace(t)
+	squad, lead := planningSquad(t, fx, "Archived squad")
+	dbfx.Exec(t, `UPDATE squad SET archived_at = now() WHERE id = $1`, squad)
+	issue := dbfx.Issue(t, "Leader of an archived squad", testutil.Cols{"workspace_id": fx.ID})
+
+	req := fx.as(newRequest("PUT", "/api/issues/"+issue, map[string]any{
+		"assignee_type": "agent", "assignee_id": lead,
+	}), fx.AdminID)
+	got := testutil.Call(t, testHandler.UpdateIssue, withURLParams(req, "id", issue)).Want(200).Map()
+	if got["assignee_type"] != "agent" || got["assignee_id"] != lead {
+		t.Fatalf("assignee = %v/%v, want agent/%s", got["assignee_type"], got["assignee_id"], lead)
+	}
+}
+
+// An agent leads at most one live squad. The partial unique index is the backstop; the handlers return 409 first.
+func TestAgentCannotLeadTwoLiveSquads(t *testing.T) {
+	fx := newIniWorkspace(t)
+	_, lead := planningSquad(t, fx, "First squad")
+
+	_, err := testPool.Exec(t.Context(), `
+		INSERT INTO squad (workspace_id, name, leader_id, creator_id) VALUES ($1, 'Second squad', $2, $3)`,
+		fx.ID, lead, fx.AdminID)
+	if err == nil {
+		t.Fatal("a second live squad for the same leader was accepted")
+	}
+	if !isUniqueViolationOn(err, squadLiveLeaderIndex) {
+		t.Fatalf("insert error = %v, want a violation of %s", err, squadLiveLeaderIndex)
+	}
+}
+
+func TestCreateSquadRejectsLeaderOfLiveSquad(t *testing.T) {
+	fx := newIniWorkspace(t)
+	_, lead := planningSquad(t, fx, "First squad")
+
+	req := fx.as(newRequest("POST", "/api/squads", map[string]any{
+		"name": "Second squad", "leader_id": lead,
+	}), fx.AdminID)
+	req = withURLParams(req, "workspaceId", fx.ID)
+	testutil.Call(t, testHandler.CreateSquad, req).Want(409)
+}
+
+func TestBatchAssignIssuesToLeaderAgentStoresSquad(t *testing.T) {
+	fx := newIniWorkspace(t)
+	squad, lead := planningSquad(t, fx, "Leader squad")
+	issue := dbfx.Issue(t, "Batch to the leader", testutil.Cols{"workspace_id": fx.ID})
+
+	req := fx.as(newRequest("POST", "/api/issues/batch-update", map[string]any{
+		"issue_ids": []string{issue},
+		"updates":   map[string]any{"assignee_type": "agent", "assignee_id": lead},
+	}), fx.AdminID)
+	testutil.Call(t, testHandler.BatchUpdateIssues, req).Want(200)
+
+	var assigneeType, assigneeID string
+	dbfx.QueryRow(t, `SELECT assignee_type, assignee_id::text FROM issue WHERE id = $1`, issue).Scan(&assigneeType, &assigneeID)
+	if assigneeType != "squad" || assigneeID != squad {
+		t.Fatalf("assignee = %s/%s, want squad/%s", assigneeType, assigneeID, squad)
+	}
+}
+
+// freshSquadLeader makes an agent that leads a squad of its own. An agent leads one live squad at a time, so
+// each squad in a fixture needs a leader that no other squad has.
+func freshSquadLeader(t *testing.T, label string) string {
+	t.Helper()
+	return createHandlerTestAgent(t, label+" leader "+uuid.NewString(), nil)
+}
+
+// freshLeaderIn makes an agent in ws that leads a squad of its own (see freshSquadLeader).
+func freshLeaderIn(t *testing.T, ws, label string) string {
+	t.Helper()
+	runtime := dbfx.Runtime(t, label+" runtime "+uuid.NewString(), testutil.Cols{"workspace_id": ws})
+	return dbfx.Agent(t, label+" leader "+uuid.NewString(), runtime, testutil.Cols{"workspace_id": ws})
 }

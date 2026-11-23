@@ -203,59 +203,6 @@ func TestCreateComment_AgentAndSameLeaderSquad(t *testing.T) {
 	}
 }
 
-// TestCreateComment_TwoSquadsSharingLeaderCoalescesNonWinner is Elon's round-3
-// must-fix 1 (multi-squad case): two DIFFERENT squads share the same leader and
-// both are @mentioned. The single leader agent runs ONCE carrying one squad's
-// context; the other squad's mention folds into that run and is reported
-// coalesced — never a second task, and never both reported queued (MUL-4525).
-func TestCreateComment_TwoSquadsSharingLeaderCoalescesNonWinner(t *testing.T) {
-	if testHandler == nil || testPool == nil {
-		t.Skip("database not available")
-	}
-
-	leaderID := createHandlerTestAgent(t, "Two-Squad Shared Leader", nil)
-	squad1 := createCommentTriggerPreviewSquad(t, "Two-Squad S1", leaderID)
-	squad2 := createCommentTriggerPreviewSquad(t, "Two-Squad S2", leaderID)
-	issueID := createCommentTriggerPreviewIssue(t, "two squads sharing leader", "", "")
-	content := fmt.Sprintf("[@S1](mention://squad/%s) [@S2](mention://squad/%s) please", squad1, squad2)
-
-	w := httptest.NewRecorder()
-	r := withURLParam(newRequest(http.MethodPost, "/api/issues/"+issueID+"/comments", map[string]any{"content": content}), "id", issueID)
-	testHandler.CreateComment(w, r)
-	if w.Code != http.StatusCreated {
-		t.Fatalf("CreateComment: expected 201, got %d: %s", w.Code, w.Body.String())
-	}
-	var resp CommentResponse
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode comment: %v", err)
-	}
-
-	// Exactly one queued task (a single leader agent can only run once).
-	if got := countQueuedCommentTriggerTasks(t, issueID, leaderID); got != 1 {
-		t.Fatalf("queued tasks = %d, want 1", got)
-	}
-	// Two squad outcomes; exactly one queued (the executed squad) and one
-	// coalesced (the folded squad) — never both queued.
-	if len(resp.TriggerOutcomes) != 2 {
-		t.Fatalf("trigger_outcomes = %+v, want 2", resp.TriggerOutcomes)
-	}
-	statuses := map[DispatchStatus]int{}
-	for _, o := range resp.TriggerOutcomes {
-		if o.TargetType != "squad" {
-			t.Errorf("outcome %+v: want squad target", o)
-		}
-		statuses[o.Status]++
-	}
-	if statuses[DispatchQueued] != 1 || statuses[DispatchCoalesced] != 1 {
-		t.Errorf("outcome statuses = %v, want exactly 1 queued + 1 coalesced (not both queued)", statuses)
-	}
-}
-
-// TestCreateComment_SquadLeaderSelfMentionCompletedTaskDoesNotFakeSuccess is
-// Elon's round-3 must-fix 2: a squad leader's own @mention of its squad is
-// suppressed by the self-trigger guard, but when its latest task is already
-// TERMINAL (no active run), the outcome must NOT be a success-shaped `deferred`
-// — it is a non-success `blocked/self_trigger_suppressed`, and no new task runs.
 func TestCreateComment_SquadLeaderSelfMentionCompletedTaskDoesNotFakeSuccess(t *testing.T) {
 	if testHandler == nil || testPool == nil {
 		t.Skip("database not available")

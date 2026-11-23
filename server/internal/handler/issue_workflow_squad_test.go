@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/pkg/protocol"
@@ -132,13 +133,15 @@ func TestWorkflowSquadHandoffReplayDoesNotDuplicate(t *testing.T) {
 
 func TestWorkflowSquadHandoffPreservesPendingStages(t *testing.T) {
 	seedTestCatalog(t)
-	for _, sharedLeader := range []bool{false, true} {
+	for _, otherSquad := range []bool{false, true} {
 		for _, oldStatus := range []string{"queued", "dispatched", "running"} {
-			t.Run(fmt.Sprintf("sharedLeader=%v/old=%s", sharedLeader, oldStatus), func(t *testing.T) {
+			t.Run(fmt.Sprintf("otherSquad=%v/old=%s", otherSquad, oldStatus), func(t *testing.T) {
 				fx := newSquadBriefingClaimFixture(t, t.Context(), "Pending stage handoff")
 				nextSquad := fx.SquadID
-				if sharedLeader {
-					nextSquad = dbfx.Squad(t, "Next stage squad", fx.AgentID)
+				if otherSquad {
+					// The next stage's leader runs on the same runtime, so the claim below can deliver it.
+					nextLeader := dbfx.Agent(t, "Next stage leader "+uuid.NewString(), fx.RuntimeID, testutil.Cols{"workspace_id": testWorkspaceID})
+					nextSquad = dbfx.Squad(t, "Next stage squad", nextLeader)
 				}
 				wf := createTestWorkflow(t, "Pending squad flow "+workflowTestSuffix(), "in_progress", "in_review")
 				projectID := createWorkflowTestProject(t, "Pending squad project")

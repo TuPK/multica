@@ -66,7 +66,7 @@ func TestConversationRootOwnersReadOnlyRoutingData(t *testing.T) {
 	rootID := dbfx.Comment(t, issueID, "No explicit owner")
 	otherRootID := dbfx.Comment(t, issueID, "Another root")
 	oldSquad := dbfx.Squad(t, "Old root squad", agentA)
-	newSquad := dbfx.Squad(t, "New root squad", agentA)
+	newSquad := dbfx.Squad(t, "New root squad", freshSquadLeader(t, "root"))
 	for i := 0; i < 96; i++ {
 		squad := any(nil)
 		if i == 0 {

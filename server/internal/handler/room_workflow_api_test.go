@@ -244,7 +244,7 @@ func useAsWorkspaceDefault(t *testing.T, workflowID string) {
 // workflowID: a room of its own, which is what the room rules read.
 func roomWithWorkflow(t *testing.T, label, workflowID string) string {
 	t.Helper()
-	squadID := dbfx.Squad(t, label+" "+workflowTestSuffix(), seededReadyAgentID(t))
+	squadID := dbfx.Squad(t, label+" "+workflowTestSuffix(), freshSquadLeader(t, "room"))
 	giveSquadWorkflow(t, squadID, workflowID)
 	return squadID
 }

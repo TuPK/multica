@@ -296,8 +296,9 @@ func TestCompanyRoundTripCarriesEverySquadGoalInitiativeScopeRevocationAndArchiv
 	src.SquadMember(t, squadID, "agent", leader, testutil.Cols{"role": "leader"})
 	src.SquadMember(t, squadID, "agent", worker, testutil.Cols{"role": "member"})
 	src.Exec(t, `UPDATE squad SET floor_id = $1, company_slot = 0 WHERE id = $2`, floorID, squadID)
-	archivedID := src.Squad(t, "RT2 Archived", leader)
-	src.SquadMember(t, archivedID, "agent", leader, testutil.Cols{"role": "leader"})
+	archivedLeader := freshSquadLeader(t, src.Fixture, "archived")
+	archivedID := src.Squad(t, "RT2 Archived", archivedLeader)
+	src.SquadMember(t, archivedID, "agent", archivedLeader, testutil.Cols{"role": "leader"})
 	src.SquadMember(t, archivedID, "agent", worker, testutil.Cols{"role": "member"})
 	routineAP, err := CreateSquadScheduledAutopilot(ctx, src.q, SquadScheduledAutopilot{
 		WorkspaceID: srcWS, SquadID: util.MustParseUUID(archivedID), ActorUserID: srcActor.ID, Title: "RT2 Archived routine",

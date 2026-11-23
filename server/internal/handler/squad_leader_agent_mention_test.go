@@ -78,7 +78,7 @@ func TestLeaderAgentMentionMergesOnlyCompatibleTaskRoles(t *testing.T) {
 			case "same-leader", "worker":
 				dbfx.Exec(t, `UPDATE agent_task_queue SET is_leader_task = $2, squad_id = $3 WHERE id = $1`, f.taskID, role == "same-leader", squadID)
 			case "different-squad-leader":
-				otherSquad := dbfx.Squad(t, "Other leader context", f.agentID)
+				otherSquad := dbfx.Squad(t, "Other leader context", freshSquadLeader(t, "mention"))
 				dbfx.Exec(t, `UPDATE agent_task_queue SET is_leader_task = TRUE, squad_id = $2 WHERE id = $1`, f.taskID, otherSquad)
 			}
 			before, err := testHandler.Queries.GetAgentTask(context.Background(), parseUUID(f.taskID))
@@ -139,7 +139,7 @@ func TestLeaderAgentMentionSteersOnlyMatchingLeaderRole(t *testing.T) {
 				squadID := assignMentionFixtureSquad(t, f)
 				taskSquad := squadID
 				if role == "different-squad-leader" {
-					taskSquad = dbfx.Squad(t, "Other steering context", f.agentID)
+					taskSquad = dbfx.Squad(t, "Other steering context", freshSquadLeader(t, "steering"))
 				}
 				dbfx.Exec(t, `UPDATE agent_task_queue SET is_leader_task = $2, squad_id = $3 WHERE id = $1`, f.taskID, role != "worker", taskSquad)
 				body := map[string]any{"content": agentMention("Leader", f.agentID) + " evaluate this", "parent_id": f.triggerID}

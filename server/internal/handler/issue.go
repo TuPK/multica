@@ -3583,6 +3583,11 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	assigneeType, assigneeID, err := h.leaderAssigneeAsSquad(r.Context(), wsUUID, assigneeType, assigneeID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create issue")
+		return
+	}
 	if status, msg := h.validateAssigneePair(r.Context(), r, workspaceID, assigneeType, assigneeID); status != 0 {
 		writeError(w, status, msg)
 		return
@@ -4550,6 +4555,13 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// the identical lineage was accepted on the create path.
 	_, touchedType := rawFields["assignee_type"]
 	_, touchedID := rawFields["assignee_id"]
+	if touchedType || touchedID {
+		params.AssigneeType, params.AssigneeID, err = h.leaderAssigneeAsSquad(r.Context(), prevIssue.WorkspaceID, params.AssigneeType, params.AssigneeID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to update issue")
+			return
+		}
+	}
 
 	// Project workflow (MUL-7420): keep the status inside the project's
 	// workflow, and hand the issue off when it enters a step with a handler.
@@ -5468,6 +5480,13 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
+			if batchTouchesAssignee {
+				check.AssigneeType, check.AssigneeID, err = h.leaderAssigneeAsSquad(r.Context(), wsUUID, check.AssigneeType, check.AssigneeID)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "failed to check flow rules")
+					return
+				}
+			}
 			if err := h.checkFlowWrite(r.Context(), prevIssue, check, batchOutcome, batchActor); err != nil {
 				if writeFlowRejection(w, err) {
 					return
@@ -5651,6 +5670,13 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			// resolveActor still classifies the caller as an agent (MUL-6691).
 			_, batchTouchedType := rawUpdates["assignee_type"]
 			_, batchTouchedID := rawUpdates["assignee_id"]
+			if batchTouchedType || batchTouchedID {
+				params.AssigneeType, params.AssigneeID, err = h.leaderAssigneeAsSquad(r.Context(), wsUUID, params.AssigneeType, params.AssigneeID)
+				if err != nil {
+					skip(issueID, identifier, "internal", "failed to resolve the assignee")
+					continue
+				}
+			}
 			// Project workflow (MUL-7420), per issue: an issue whose workflow does
 			// not list the batch status is skipped like the other per-item guards;
 			// entering a handoff step reassigns this issue to the step's handler.

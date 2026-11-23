@@ -1235,6 +1235,10 @@ func (h *Handler) installPack(w http.ResponseWriter, r *http.Request, in install
 			WorkspaceID: in.ws, CreatorID: in.member.UserID, Name: plan.squadName, Description: p.Name,
 			LeaderID: leaderID, FloorName: "",
 		})
+		if errors.Is(err, errAgentLeadsLiveSquad) {
+			writeError(w, http.StatusConflict, "this agent already leads another squad; choose another leader")
+			return
+		}
 		if err != nil {
 			fail(err)
 			return

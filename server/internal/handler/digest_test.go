@@ -34,8 +34,14 @@ func newDigestEnv(t *testing.T) digestEnv {
 	return digestEnv{WorkspaceID: ws, RuntimeID: runtimeID, AgentID: agentID}
 }
 
-// squad inserts a seated squad (floor and slot set) unless over says otherwise.
+// squad inserts a seated squad (floor and slot set) led by an agent of its own.
 func (e digestEnv) squad(t *testing.T, name string, over ...testutil.Cols) string {
+	t.Helper()
+	return e.squadLedBy(t, name, freshLeaderIn(t, e.WorkspaceID, "digest"), over...)
+}
+
+// squadLedBy inserts a seated squad led by leader (floor and slot set) unless over says otherwise.
+func (e digestEnv) squadLedBy(t *testing.T, name, leader string, over ...testutil.Cols) string {
 	t.Helper()
 	floorID := dbfx.Insert(t, "company_floor", testutil.Cols{"workspace_id": e.WorkspaceID, "name": "F " + uuid.NewString()[:8], "position": 0})
 	cols := testutil.Cols{"workspace_id": e.WorkspaceID, "floor_id": floorID, "company_slot": 0}
@@ -44,7 +50,7 @@ func (e digestEnv) squad(t *testing.T, name string, over ...testutil.Cols) strin
 			cols[k] = v
 		}
 	}
-	return dbfx.Squad(t, name, e.AgentID, cols)
+	return dbfx.Squad(t, name, leader, cols)
 }
 
 // issue inserts an issue assigned to the squad.

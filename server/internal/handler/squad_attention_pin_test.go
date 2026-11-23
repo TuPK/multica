@@ -110,7 +110,7 @@ func TestPinSquadAttention_DoesNotMoveTheWorkspaceCap(t *testing.T) {
 
 	// Fill the workspace's queue from a neighbouring squad, so only the
 	// workspace cap is in play for the pinned squad.
-	neighbour := dbfx.Squad(t, "Cap neighbour "+fx.Prefix, fx.LeaderID)
+	neighbour := dbfx.Squad(t, "Cap neighbour "+fx.Prefix, freshSquadLeader(t, "neighbour"))
 	registerProposalCleanup(t, fx.Prefix, neighbour)
 	pending := dbfx.Count(t, `SELECT count(*) FROM proposal WHERE workspace_id = $1 AND state = 'pending'`, testWorkspaceID)
 	for i := pending; i < service.ProposalMaxPendingPerWorkspace; i++ {

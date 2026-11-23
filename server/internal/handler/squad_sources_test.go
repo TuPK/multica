@@ -13,7 +13,7 @@ func TestSquadSources_SalesSquadWritesADocumentAndARequest(t *testing.T) {
 	wsfx := testutil.New(testPool, testWorkspaceID, testUserID)
 	leader := wsfx.Agent(t, "sales lead "+t.Name(), "")
 	sales := wsfx.Squad(t, "Sales "+t.Name(), leader, testutil.Cols{"template_key": "sales_loop"})
-	plain := wsfx.Squad(t, "Plain "+t.Name(), leader)
+	plain := wsfx.Squad(t, "Plain "+t.Name(), freshSquadLeader(t, "sources"))
 
 	var out SalesSourceIntakeResponse
 	testutil.Call(t, testHandler.CreateSquadSource,

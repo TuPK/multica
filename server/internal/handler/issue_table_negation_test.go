@@ -41,9 +41,9 @@ func TestIssueTableRowsNegationAndRelations(t *testing.T) {
 	ledByMyAgent := dbfx.Squad(t, fmt.Sprintf("negate my squad %d", suffix), myAgent)
 	withMe := dbfx.Squad(t, fmt.Sprintf("negate squad with me %d", suffix), otherAgent)
 	dbfx.SquadMember(t, withMe, "member", testUserID)
-	withMyAgent := dbfx.Squad(t, fmt.Sprintf("negate squad with my agent %d", suffix), otherAgent)
+	withMyAgent := dbfx.Squad(t, fmt.Sprintf("negate squad with my agent %d", suffix), dbfx.Agent(t, fmt.Sprintf("negate other leader %d", suffix), "", testutil.Cols{"owner_id": otherUser}))
 	dbfx.SquadMember(t, withMyAgent, "agent", myAgent)
-	notMine := dbfx.Squad(t, fmt.Sprintf("negate their squad %d", suffix), otherAgent)
+	notMine := dbfx.Squad(t, fmt.Sprintf("negate their squad %d", suffix), dbfx.Agent(t, fmt.Sprintf("negate their leader %d", suffix), "", testutil.Cols{"owner_id": otherUser}))
 	mySquad := issue("my agent's squad", testutil.Cols{
 		"assignee_type": "squad", "assignee_id": ledByMyAgent, "creator_id": otherUser,
 	})

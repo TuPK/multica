@@ -3,12 +3,15 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/dispatch"
@@ -297,6 +300,9 @@ func createSquadTx(ctx context.Context, qtx *db.Queries, in newSquad) (db.Squad,
 	if err := qtx.LockCompanyLayout(ctx, in.WorkspaceID); err != nil {
 		return db.Squad{}, nil, nil, err
 	}
+	if err := checkLeaderFree(ctx, qtx, in.WorkspaceID, in.LeaderID, pgtype.UUID{}); err != nil {
+		return db.Squad{}, nil, nil, err
+	}
 	squad, err := qtx.CreateSquad(ctx, db.CreateSquadParams{
 		WorkspaceID: in.WorkspaceID,
 		Name:        in.Name,
@@ -307,6 +313,9 @@ func createSquadTx(ctx context.Context, qtx *db.Queries, in newSquad) (db.Squad,
 		TemplateKey: pgtype.Text{String: in.TemplateKey, Valid: in.TemplateKey != ""},
 	})
 	if err != nil {
+		if isUniqueViolationOn(err, squadLiveLeaderIndex) {
+			return db.Squad{}, nil, nil, errAgentLeadsLiveSquad
+		}
 		return db.Squad{}, nil, nil, err
 	}
 
@@ -344,6 +353,49 @@ func createSquadTx(ctx context.Context, qtx *db.Queries, in newSquad) (db.Squad,
 		}
 	}
 	return squad, seat, changedAgents, nil
+}
+
+// squadLiveLeaderIndex is the unique index that allows an agent to lead one live squad at most.
+const squadLiveLeaderIndex = "squad_live_leader_uidx"
+
+// errAgentLeadsLiveSquad means the agent already leads another live squad: an agent leads one squad at a time.
+var errAgentLeadsLiveSquad = errors.New("agent already leads another live squad")
+
+// checkLeaderFree rejects a leader that already leads a live squad other than squadID (a zero squadID means a new squad).
+func checkLeaderFree(ctx context.Context, q *db.Queries, ws, leader, squadID pgtype.UUID) error {
+	other, err := q.GetLiveSquadByLeader(ctx, db.GetLiveSquadByLeaderParams{WorkspaceID: ws, LeaderID: leader})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if other.ID != squadID {
+		return errAgentLeadsLiveSquad
+	}
+	return nil
+}
+
+// isUniqueViolationOn reports whether err is a unique violation of the named constraint or index.
+func isUniqueViolationOn(err error, name string) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == name
+}
+
+// leaderAssigneeAsSquad maps an assignment to an agent that leads a live squad onto that squad: the squad is
+// the assignee, so its handoff and squad-leader runs follow it. Any other assignment passes through unchanged.
+func (h *Handler) leaderAssigneeAsSquad(ctx context.Context, ws pgtype.UUID, assigneeType pgtype.Text, assigneeID pgtype.UUID) (pgtype.Text, pgtype.UUID, error) {
+	if !assigneeType.Valid || assigneeType.String != "agent" || !assigneeID.Valid {
+		return assigneeType, assigneeID, nil
+	}
+	squad, err := h.Queries.GetLiveSquadByLeader(ctx, db.GetLiveSquadByLeaderParams{WorkspaceID: ws, LeaderID: assigneeID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return assigneeType, assigneeID, nil
+	}
+	if err != nil {
+		return pgtype.Text{}, pgtype.UUID{}, err
+	}
+	return pgtype.Text{String: "squad", Valid: true}, squad.ID, nil
 }
 
 // ListInvolvedSquadIDs returns the ids of the squads whose issues count as the
@@ -466,6 +518,10 @@ func (h *Handler) CreateSquad(w http.ResponseWriter, r *http.Request) {
 		WorkspaceID: wsUUID, CreatorID: member.UserID, Name: req.Name, Description: req.Description,
 		LeaderID: leaderUUID, AvatarURL: avatarURL, TemplateKey: req.TemplateKey, FloorName: floorName,
 	})
+	if errors.Is(err, errAgentLeadsLiveSquad) {
+		writeError(w, http.StatusConflict, "this agent already leads another squad; an agent can lead only one squad")
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create squad")
 		return
@@ -601,6 +657,13 @@ func (h *Handler) UpdateSquad(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusForbidden, "you can only use an agent you have access to as leader")
 			return
 		}
+		if err := checkLeaderFree(r.Context(), qtx, wsUUID, lid, squad.ID); errors.Is(err, errAgentLeadsLiveSquad) {
+			writeError(w, http.StatusConflict, "this agent already leads another squad; an agent can lead only one squad")
+			return
+		} else if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to update squad")
+			return
+		}
 		// Ensure new leader is a squad member; auto-add if not.
 		isMember, err := qtx.IsSquadMember(r.Context(), db.IsSquadMemberParams{
 			SquadID: squad.ID, MemberType: "agent", MemberID: lid,
@@ -630,6 +693,10 @@ func (h *Handler) UpdateSquad(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updated, err := qtx.UpdateSquad(r.Context(), params)
+	if isUniqueViolationOn(err, squadLiveLeaderIndex) {
+		writeError(w, http.StatusConflict, "this agent already leads another squad; an agent can lead only one squad")
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update squad")
 		return

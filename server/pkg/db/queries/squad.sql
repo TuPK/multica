@@ -241,6 +241,13 @@ SELECT EXISTS (
     WHERE workspace_id = $1 AND leader_id = $2 AND archived_at IS NULL
 ) AS is_leader;
 
+-- name: GetLiveSquadByLeader :one
+-- The live squad an agent leads. An agent leads at most one live squad (enforced
+-- by squad_live_leader_uidx), so an assignment to that agent is an assignment to
+-- this squad.
+SELECT * FROM squad
+WHERE workspace_id = $1 AND leader_id = $2 AND archived_at IS NULL;
+
 -- name: ListSquadWorkflowSummaries :many
 -- What the squad list shows about each squad's workflows: the active workflow,
 -- whether it is a flow (enforced), and the size of the squad's library.

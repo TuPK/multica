@@ -645,12 +645,12 @@ func TestPackCommit_SameDigestIsNoop_OtherDigestConflicts(t *testing.T) {
 	}
 	sameCounts(t, "after the conflict", afterFirst, packCounts(t, w.ID))
 
-	// Choosing a new install makes a new squad; the agents that exist are used, not rewritten.
+	// A new install would make a second squad under planner, the bundle's lead, who already leads the first
+	// squad. An agent leads one live squad at a time, so the install is refused and nothing is written.
 	existing := map[string]string{}
 	for _, a := range first.Agents {
 		existing[a.Key] = a.AgentID
 	}
-	var second PackCommitResponse
 	w.commit(t, w.AdminID, map[string]any{
 		"digest": newer.Digest, "new_install": true, "squad": map[string]any{"name": "Newsletter desk 2"},
 		"agents": []map[string]any{
@@ -659,18 +659,12 @@ func TestPackCommit_SameDigestIsNoop_OtherDigestConflicts(t *testing.T) {
 		},
 		"leader": map[string]any{"agent": "planner"},
 		"skills": map[string]any{"outline": "keep_existing", "tone-check": "keep_existing"},
-	}).Want(http.StatusCreated).JSON(&second)
-	if second.SquadID == nil || *second.SquadID == *first.SquadID || second.InstallID == first.InstallID {
-		t.Fatalf("second = %+v", second)
-	}
+	}).Want(http.StatusConflict)
+	sameCounts(t, "after the refused install", afterFirst, packCounts(t, w.ID))
 	var writerInstructions string
 	dbfx.QueryRow(t, `SELECT instructions FROM agent WHERE id = $1`, existing["writer"]).Scan(&writerInstructions)
 	if strings.Contains(writerInstructions, "A new version") {
 		t.Error("an agent that exists was overwritten by a new version of the pack")
-	}
-	got := packCounts(t, w.ID)
-	if got["agent"] != 2 || got["skill"] != 2 || got["squad"] != 2 || got["install"] != 2 {
-		t.Errorf("rows after the second install = %v", got)
 	}
 }
 

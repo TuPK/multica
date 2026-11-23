@@ -10,6 +10,10 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/multica-ai/multica/server/internal/testutil"
 )
 
 // TestListWorkspaceAgentTaskSnapshot covers the agent presence snapshot endpoint:
@@ -253,9 +257,13 @@ func TestListWorkspaceWorkingAgents(t *testing.T) {
 		"working-agents-owned-leader-squad",
 		workingAgentID,
 	)
+	// Led by an agent of the outsider, so the squad is not the test user's own.
+	ownedMemberLeader := dbfx.Agent(t, "working-agents member squad leader "+uuid.NewString(), testRuntimeID, testutil.Cols{
+		"workspace_id": testWorkspaceID, "owner_id": outsiderUserID,
+	})
 	ownedMemberSquadID := insertSquad(
 		"working-agents-owned-member-squad",
-		outsiderAgentID,
+		ownedMemberLeader,
 	)
 	if _, err := testPool.Exec(ctx, `
 		INSERT INTO squad_member (squad_id, member_type, member_id)

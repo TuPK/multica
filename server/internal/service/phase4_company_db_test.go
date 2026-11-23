@@ -146,12 +146,12 @@ func TestDigestAutoModeSwitchesAtThirtyOneSquadsAndFloorFilterScopesTheDigest(t 
 	f, _ := companyWorkspace(t)
 	ctx := context.Background()
 	ws := util.MustParseUUID(f.WorkspaceID)
-	_, leader := ownerAndLeader(t, f, "Floor Lead")
+	ownerAndLeader(t, f, "Floor Lead")
 
 	floorID := f.Insert(t, "company_floor", testutil.Cols{"workspace_id": f.WorkspaceID, "name": "Research", "position": 0})
 	var onFloor []string
 	for i := 0; i < 30; i++ {
-		id := f.Squad(t, fmt.Sprintf("Squad %02d", i), leader)
+		id := f.Squad(t, fmt.Sprintf("Squad %02d", i), freshSquadLeader(t, f.Fixture, "squad"))
 		if i < 2 {
 			f.Exec(t, `UPDATE squad SET floor_id = $1, company_slot = $2 WHERE id = $3`, floorID, i, id)
 			onFloor = append(onFloor, id)
@@ -165,7 +165,7 @@ func TestDigestAutoModeSwitchesAtThirtyOneSquadsAndFloorFilterScopesTheDigest(t 
 	if got := ResolveDigestMode(DigestModeAuto, int(n)); got != DigestModeSquads {
 		t.Fatalf("30 active squads read squads, got %q (count %d)", got, n)
 	}
-	f.Squad(t, "Squad 31", leader)
+	f.Squad(t, "Squad 31", freshSquadLeader(t, f.Fixture, "squad"))
 	n, _ = f.q.CountLiveSquads(ctx, ws)
 	if got := ResolveDigestMode(DigestModeAuto, int(n)); got != DigestModeFloors {
 		t.Fatalf("31 active squads read floor briefs, got %q (count %d)", got, n)

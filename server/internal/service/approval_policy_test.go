@@ -226,7 +226,7 @@ func newPolicyEnv(t *testing.T) *policyEnv {
 
 // squad makes a squad at the given level.
 func (e *policyEnv) squad(name string, level int) pgtype.UUID {
-	id := e.fx.Squad(e.t, name, util.UUIDToString(e.agent))
+	id := e.fx.Squad(e.t, name, freshSquadLeader(e.t, e.fx, name))
 	e.fx.Exec(e.t, `UPDATE squad SET autonomy_level = $2 WHERE id = $1`, id, level)
 	return mustUUID(e.t, id)
 }

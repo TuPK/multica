@@ -240,7 +240,7 @@ func TestPlanningCycleOpensOneIssuePerSquadAndPeriod(t *testing.T) {
 	f.Exec(t, `INSERT INTO squad_charter (squad_id, workspace_id, mission, responsibilities)
 		VALUES ($1, $2, 'Keep the research queue honest', '[{"key":"triage","text":"Triage inbound requests"}]')`, f.squad, f.wsText)
 	// A second squad with no charter gets no planning issue.
-	f.Squad(t, "uncharted squad", f.agent)
+	f.Squad(t, "uncharted squad", freshSquadLeader(t, f.Fixture, "uncharted"))
 
 	goals := f.goalService()
 	inWorkspace := func(issues []PlanningIssue) []PlanningIssue {

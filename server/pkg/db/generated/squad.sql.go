@@ -178,6 +178,44 @@ func (q *Queries) GetLiveSquadAtSeat(ctx context.Context, arg GetLiveSquadAtSeat
 	return i, err
 }
 
+const getLiveSquadByLeader = `-- name: GetLiveSquadByLeader :one
+SELECT id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, autonomy_level, template_key, active_workflow_id FROM squad
+WHERE workspace_id = $1 AND leader_id = $2 AND archived_at IS NULL
+`
+
+type GetLiveSquadByLeaderParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	LeaderID    pgtype.UUID `json:"leader_id"`
+}
+
+// The live squad an agent leads. An agent leads at most one live squad (enforced
+// by squad_live_leader_uidx), so an assignment to that agent is an assignment to
+// this squad.
+func (q *Queries) GetLiveSquadByLeader(ctx context.Context, arg GetLiveSquadByLeaderParams) (Squad, error) {
+	row := q.db.QueryRow(ctx, getLiveSquadByLeader, arg.WorkspaceID, arg.LeaderID)
+	var i Squad
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Description,
+		&i.LeaderID,
+		&i.CreatorID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.ArchivedBy,
+		&i.AvatarUrl,
+		&i.Instructions,
+		&i.FloorID,
+		&i.CompanySlot,
+		&i.AutonomyLevel,
+		&i.TemplateKey,
+		&i.ActiveWorkflowID,
+	)
+	return i, err
+}
+
 const getSquad = `-- name: GetSquad :one
 SELECT id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, autonomy_level, template_key, active_workflow_id FROM squad WHERE id = $1
 `

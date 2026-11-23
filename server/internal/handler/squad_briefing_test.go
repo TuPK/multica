@@ -742,7 +742,7 @@ func TestBuildSquadLeaderBriefing_InitiativesBlock(t *testing.T) {
 	ctx := context.Background()
 	leaderID, _ := seededLeaderAgent(t)
 	squad := seedSquadForBriefing(t, leaderID, "Initiative Owner Squad", "")
-	other := seedSquadForBriefing(t, leaderID, "Initiative Other Squad", "")
+	other := seedSquadForBriefing(t, freshSquadLeader(t, "briefing"), "Initiative Other Squad", "")
 
 	stages := fmt.Sprintf(`[{"key":"define","name":"Define","owner_squad_id":"%s"},{"key":"build","name":"Build","owner_squad_id":"%s"}]`,
 		util.UUIDToString(squad.ID), util.UUIDToString(other.ID))
