@@ -23,7 +23,7 @@ import { ProjectIcon } from "../../projects/components/project-icon";
  * 280px each, so every status shows without a sideways scroll and only the
  * cards scroll, down. The overrides win over the column's inline width.
  */
-const FIT_COLUMNS = "[&_.group\\/column]:w-0! [&_.group\\/column]:min-w-0! [&_.group\\/column]:flex-1!";
+const FIT_COLUMNS = "[&_[data-mc=board-column]]:w-0! [&_[data-mc=board-column]]:min-w-0! [&_[data-mc=board-column]]:flex-1!";
 
 /**
  * The kanban board in a dialog, for one project or for every issue. It opens on
