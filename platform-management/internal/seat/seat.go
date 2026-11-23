@@ -1,4 +1,4 @@
-// Package seat serves the seat protocol that Multica's seat client
+// Package seat serves the seat protocol that Delegora's seat client
 // (server/internal/seatcapacity) calls: reserve, claim, consume, confirm and
 // release of a member seat, counted against the seats a workspace bought
 // (spec 5.6, Appendix B).

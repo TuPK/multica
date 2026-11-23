@@ -58,7 +58,7 @@ const (
 
 // Staff add-member actions (spec R6 section 4.5). member.staff_added has
 // actor_type staff: the actor is the staff member who made the request, written
-// by Multica's member_provisioning job. All four carry the workspace_id and the
+// by Delegora's member_provisioning job. All four carry the workspace_id and the
 // tenant_id of the workspace's tenant.
 const (
 	ActionMemberStaffAddRequested = "member.staff_add_requested"
@@ -70,7 +70,7 @@ const (
 // Staff immediate deletion actions (spec R6 section 6.6). The requested actions
 // are written in phase 1 by staff and carry the tenant_id of the target's tenant,
 // so an admin still reads them after the workspace is gone. tenant.deleted is
-// written by Multica's staff_deletion job when the last workspace of the tenant
+// written by Delegora's staff_deletion job when the last workspace of the tenant
 // has gone. deletion.request_failed has actor_type system; the other two staff.
 const (
 	ActionWorkspaceImmediateDeletionRequested = "workspace.immediate_deletion_requested"
@@ -132,7 +132,7 @@ const (
 	ActionBillingUsageWrittenOff         = "billing.usage_written_off"
 )
 
-// R2 actions (spec 5.14), written by Multica in the transaction of the change.
+// R2 actions (spec 5.14), written by Delegora in the transaction of the change.
 // Details name fields and ids, never a token, an environment value or an MCP
 // configuration.
 const (
@@ -171,7 +171,7 @@ const (
 )
 
 // Catalog lists every action name this package defines. The audit log filters
-// of Multica and of the platform console read it, so a new action is listed
+// of Delegora and of the platform console read it, so a new action is listed
 // here and nowhere else; a test fails when a constant is missing from it.
 var Catalog = []string{
 	ActionMemberRoleChanged,
@@ -387,7 +387,7 @@ const (
 	ActionPlanDeactivated    = "plan.deactivated"
 )
 
-// R5 account group actions (spec 7b.2, rule 13): written by Multica in the
+// R5 account group actions (spec 7b.2, rule 13): written by Delegora in the
 // transaction of the change. group.updated records only the names of the fields
 // that changed; group.permissions_changed records the old and new key arrays.
 const (

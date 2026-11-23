@@ -33,7 +33,7 @@
       "other_machine_hint": "在那臺機器上執行兩條命令",
       "cloud_services": "雲服務",
       "qoder_manage_hint": "已連線 · 管理連線",
-      "cloud_runtime_hint": "建立一臺 Multica 託管的雲節點"
+      "cloud_runtime_hint": "建立一臺 Delegora 託管的雲節點"
     },
     "columns": {
       "name": "名稱",
@@ -259,7 +259,7 @@
   "connect": {
     "title": "新增機器",
     "description": "在要新增的機器上執行這兩條命令。守護程序一上線，這裡就會自動識別。",
-    "step1_label": "安裝 Multica CLI",
+    "step1_label": "安裝 Delegora CLI",
     "platform_group": "選擇你的系統",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -323,11 +323,11 @@
     "cli_version_label": "CLI 版本：",
     "version_unknown": "未知",
     "managed_by_desktop": "由桌面端管理",
-    "managed_by_desktop_title": "CLI 二進位制由 Multica 桌面端管理——升級桌面端即可升級 CLI。",
+    "managed_by_desktop_title": "CLI 二進位制由 Delegora 桌面端管理——升級桌面端即可升級 CLI。",
     "read_only": "只讀",
     "read_only_title": "只有執行時所有者和工作區管理員可以更新 CLI。",
     "local_build": "本地構建",
-    "local_build_title": "該執行時報告的不是釋出版本，Multica 無法判斷是否有可升級的版本。請在這臺機器上自行更新。",
+    "local_build_title": "該執行時報告的不是釋出版本，Delegora 無法判斷是否有可升級的版本。請在這臺機器上自行更新。",
     "latest": "最新",
     "available": "可用",
     "action": "更新",
@@ -428,7 +428,7 @@
     "builtin_section_aria": "支援的內建協議族",
     "builtin_reference": "參考",
     "empty_title": "建立第一個自定義執行時",
-    "empty_description": "選擇一個相容的基礎執行時，再指定 Multica 要執行的命令。",
+    "empty_description": "選擇一個相容的基礎執行時，再指定 Delegora 要執行的命令。",
     "badge_builtin": "內建",
     "badge_custom": "自定義",
     "badge_disabled": "已禁用",
@@ -553,7 +553,7 @@
   },
   "qoder": {
     "title": "Qoder Cloud Agents 執行時",
-    "description": "連線 Qoder Cloud Agents，由 Multica 管理執行並加密儲存憑證。工作區管理員可修改配置。",
+    "description": "連線 Qoder Cloud Agents，由 Delegora 管理執行並加密儲存憑證。工作區管理員可修改配置。",
     "loading": "載入中...",
     "unavailable": "此伺服器尚未啟用 Qoder Cloud Agents。需要伺服器管理員先設定憑證加密金鑰（MULTICA_VCS_SECRET_KEY）。",
     "online": "線上",
@@ -596,7 +596,7 @@
     "cloud_description": "使用共享連線在 Qoder 雲端執行 AI 代理，無需維護本地主機。",
     "configure_credentials": "配置憑證",
     "add_agent": "新增 AI 代理",
-    "add_agent_description": "建立 Multica AI 代理並關聯已有的 Qoder Cloud Agents AI 代理，使用 Qoder 雲端已配置的環境和憑證。",
+    "add_agent_description": "建立 Delegora AI 代理並關聯已有的 Qoder Cloud Agents AI 代理，使用 Qoder 雲端已配置的環境和憑證。",
     "agent_name": "AI 代理名稱",
     "cancel": "取消",
     "shared_credentials_hint": "憑證在當前工作區內共享，PAT 加密儲存後不再顯示。",
@@ -608,7 +608,7 @@
     "concurrency_hint": "超過上限的任務會排隊等待。",
     "run_timeout": "單次執行超時（分鐘）",
     "run_timeout_hint": "超過該時長仍未結束的執行會被取消並標記為失敗。",
-    "data_disclosure_title": "Multica 會傳送給 Qoder 的內容",
+    "data_disclosure_title": "Delegora 會傳送給 Qoder 的內容",
     "data_disclosure": "任務標題與描述、相關評論、專案上下文和 AI 代理指令。GitHub 憑證僅用於在執行時掛載倉庫。",
     "usage": "執行中 {{active}}/{{limit}} · 排隊 {{queued}}",
     "open_settings": "檢視設定",
@@ -638,7 +638,7 @@
       "description_agents_other": "下面 {{count}} 個 AI 代理會保留指令和歷史，但在恢復 Qoder 或更換執行時之前無法接新任務。"
     },
     "connect_title": "連線 Qoder Cloud Agents",
-    "connect_description": "Multica 會在 Qoder 的沙箱裡執行任務。",
+    "connect_description": "Delegora 會在 Qoder 的沙箱裡執行任務。",
     "page": {
       "configuration": "配置",
       "agents_title": "AI 代理",
@@ -698,14 +698,14 @@
       },
       "cloud": {
         "title": "或者用雲端節點",
-        "description": "不想自己管機器？建立一臺 Multica 託管的雲節點。"
+        "description": "不想自己管機器？建立一臺 Delegora 託管的雲節點。"
       }
     },
     "art": {
       "this_computer": "這臺電腦 · 桌面端",
       "detected": "偵測到的執行時",
       "run_there": "在那臺機器上執行",
-      "connected": "{{name}} 已連接到 Multica"
+      "connected": "{{name}} 已連接到 Delegora"
     }
   },
   "rate_limits": {

@@ -172,7 +172,7 @@
     "mode_auto_merge_label": "完了した実行を現在のブランチにマージ",
     "mode_auto_merge_description": "実行が完了すると、そのブランチをこのリポジトリで checkout 中のブランチにマージし、ブランチを削除します。未コミットの変更がある場合や detached HEAD の場合はスキップされます。コンフリクトは手動で解決してください。",
     "mode_worktree_needs_git": "このフォルダは git リポジトリではないため、並行実行できません。",
-    "mode_worktree_needs_server_upgrade": "Multica サーバーが古いため、並行実行はこのフォルダでの直接実行になってしまいます。先にサーバーを更新してください。",
+    "mode_worktree_needs_server_upgrade": "Delegora サーバーが古いため、並行実行はこのフォルダでの直接実行になってしまいます。先にサーバーを更新してください。",
     "mode_cancel": "キャンセル",
     "mode_add": "フォルダを追加",
     "mode_edit_tooltip": "実行モードを変更",

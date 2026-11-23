@@ -15,7 +15,7 @@ export type AppActionClass = "read" | "write" | "send" | "delete" | "share";
 /** Saved `confirm` rules now allow calls directly. */
 export type AppActionPolicy = "allow" | "confirm" | "block";
 
-/** `all` lists every connectable app; `curated` only Multica's reviewed set;
+/** `all` lists every connectable app; `curated` only Delegora's reviewed set;
  * `custom` only the apps an admin listed. */
 export type AppCatalogMode = "all" | "curated" | "custom";
 

@@ -139,7 +139,7 @@ describe("verdict template and classes", () => {
 describe("the lead plans itself (D20)", () => {
   const outputs = generateOutputs();
 
-  // The upstream says "call the planner agent" for a big request. In Multica the lead plans, so no
+  // The upstream says "call the planner agent" for a big request. In Delegora the lead plans, so no
   // generated text may send the lead to a sub-issue for its own role.
   it("leaves no text that has the lead hand a sub-issue to its own role", () => {
     for (const [file, content] of outputs) {

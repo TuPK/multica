@@ -319,7 +319,7 @@ What is here: the \`claude-code/kv/skills\` and \`claude-code/kv/agents\` folder
 sit under their trade folder (${vendor.files} files in total). Nothing else is copied (no \`codex/\`, \`claude-web/\`,
 \`brand/\`, zip archives or plugin metadata). Text files are stored with LF line endings.
 
-Changes: none to the vendored files. Every change Multica applies lives in the generator
+Changes: none to the vendored files. Every change Delegora applies lives in the generator
 (\`scripts/generate-kitviet-pack.mjs\`), in \`catalog/_sources/kitviet/rewrites.json\`, in
 \`catalog/_sources/kitviet/patches/\` and in the squad configs.
 

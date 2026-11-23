@@ -893,7 +893,7 @@ describe("McpConfigTab effective set", () => {
     renderTab({ mcp_config: null }, vi.fn(), onlineRuntime);
 
     expect(
-      await screen.findByText("Overridden by Multica"),
+      await screen.findByText("Overridden by Delegora"),
     ).toBeInTheDocument();
   });
 
@@ -909,7 +909,7 @@ describe("McpConfigTab effective set", () => {
     // "fetch" renders twice — once as the (disabled) assignment, once as the
     // runtime's own server — which is exactly the state under test.
     await waitFor(() => expect(screen.getAllByText("fetch")).toHaveLength(2));
-    expect(screen.queryByText("Overridden by Multica")).toBeNull();
+    expect(screen.queryByText("Overridden by Delegora")).toBeNull();
   });
 
   // Same transport hazard as before, reached through the SAVED config: the

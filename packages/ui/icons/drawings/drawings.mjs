@@ -1,4 +1,4 @@
-// Every Multica glyph, as inner SVG markup on the 24px grid. Run
+// Every Delegora glyph, as inner SVG markup on the 24px grid. Run
 // `pnpm --filter @multica/ui icons` after editing to regenerate ../glyphs.ts
 // and ../index.ts.
 

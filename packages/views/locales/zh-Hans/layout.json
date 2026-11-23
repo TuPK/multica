@@ -269,9 +269,9 @@
   },
   "star_prompt": {
     "title_other": "{{agent}} 已经完成了 {{count}} 个任务",
-    "body": "如果 Multica 帮上了忙，在 GitHub 上点个 Star，能让更多团队发现它。",
+    "body": "如果 Delegora 帮上了忙，在 GitHub 上点个 Star，能让更多团队发现它。",
     "star": "Star",
-    "star_label": "在 GitHub 上给 Multica 点 Star",
+    "star_label": "在 GitHub 上给 Delegora 点 Star",
     "later": "以后再说",
     "close": "关闭"
   },

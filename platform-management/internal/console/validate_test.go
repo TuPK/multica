@@ -214,7 +214,7 @@ func TestAuditActionFilterAcceptsEveryActionTheConsoleWrites(t *testing.T) {
 }
 
 // The filter also takes the actions the other staff routes write (plan,
-// subscription and billing) and the R2 actions Multica writes, so a staff
+// subscription and billing) and the R2 actions Delegora writes, so a staff
 // member can find them in the cross-workspace log. The names come from the
 // audit package: a literal such as an agent action would read as a table name
 // to the isolation scan.

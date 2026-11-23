@@ -22,7 +22,7 @@ function encodeUTF8(value: string): string {
 }
 
 export interface SurfaceFrameDocumentInput {
-  /** Short-lived URL on Multica's dedicated, cookie-free content origin. */
+  /** Short-lived URL on Delegora's dedicated, cookie-free content origin. */
   url: string;
   /** Single-use proof embedded in both trusted documents, never plugin code. */
   bridgeToken: string;
@@ -35,7 +35,7 @@ export interface SurfaceFrameDocumentInput {
  * page-wide policy would also have to allow every attachment preview origin;
  * that wider list would let a hostile surface navigate to those origins. Here
  * the only network navigation an inner frame may make is back to the exact
- * Multica content origin that served it.
+ * Delegora content origin that served it.
  *
  * The outer frame is host-authored and same-origin with the app. The INNER
  * frame is still `sandbox="allow-scripts"` without `allow-same-origin`, so two

@@ -265,7 +265,7 @@ export function Staff() {
       >
 
           <form onSubmit={handleAddSubmit} className="space-y-4">
-            <DialogHeader title={t("Add staff member")} subtitle={t("Grant platform console access to an existing Multica account.")} />
+            <DialogHeader title={t("Add staff member")} subtitle={t("Grant platform console access to an existing Delegora account.")} />
 
             <TextInput
               id="staff-email-input"

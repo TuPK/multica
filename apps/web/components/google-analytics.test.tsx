@@ -66,7 +66,7 @@ const pageTitles = () =>
   );
 
 it("pins page_title to route labels instead of the workspace document title", () => {
-  document.title = "Fix the secret launch · Multica";
+  document.title = "Fix the secret launch · Delegora";
   start("/acme/issues/MUL-1");
   window.history.pushState(null, "", "/acme/projects");
   window.history.replaceState(null, "", "/changelog");

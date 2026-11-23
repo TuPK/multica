@@ -1,5 +1,5 @@
 /**
- * RNR template config (verbatim) + Multica custom token mappings appended.
+ * RNR template config (verbatim) + Delegora custom token mappings appended.
  *
  * Colors map to CSS variables in apps/mobile/global.css. When changing a
  * variable name there, mirror the change here AND in apps/mobile/lib/theme.ts.
@@ -55,7 +55,7 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
 
-        // Multica custom tokens
+        // Delegora custom tokens
         brand: {
           DEFAULT: "hsl(var(--brand))",
           foreground: "hsl(var(--brand-foreground))",

@@ -255,7 +255,7 @@ services:
       MULTICA_WECOM_TRACE: ${MULTICA_WECOM_TRACE:-}
       # Which language the bot's own copy is written in for readers whose
       # language cannot be looked up — a group chat, or anyone not linked to a
-      # Multica account yet. A linked person reads their own profile language
+      # Delegora account yet. A linked person reads their own profile language
       # instead. zh-Hans (default) or en; an unrecognised value leaves the
       # default in place and the resolved one is logged at boot.
       MULTICA_WECOM_DEFAULT_LOCALE: ${MULTICA_WECOM_DEFAULT_LOCALE:-}
@@ -563,7 +563,7 @@ services:
       JWT_SECRET: ${KNOWLEDGE_JWT_SECRET:-}
       SYSTEM_AES_KEY: ${KNOWLEDGE_SYSTEM_AES_KEY:-}
       SYSTEM_SIGNING_KEY: ${KNOWLEDGE_SYSTEM_SIGNING_KEY:-}
-      # Multica provisions one WeKnora workspace (tenant) per Multica workspace
+      # Delegora provisions one WeKnora workspace (tenant) per Delegora workspace
       # through a single service user. WeKnora's default cap of 10 tenants per
       # user is too low for that, so it is raised (KNOWLEDGE_TENANT_MAX_OWNED_PER_USER).
       # Self-service tenant creation stays on. Registration can be closed once

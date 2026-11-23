@@ -1,7 +1,7 @@
 // Package usage reads the usage numbers the console shows (platform spec 5.13):
 // the newest row of platform_usage_daily for each workspace, their totals for
 // the overview, and the current counts of one workspace for its detail page.
-// Multica's nightly job writes the table; this package only reads it.
+// Delegora's nightly job writes the table; this package only reads it.
 package usage
 
 import (

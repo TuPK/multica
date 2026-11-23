@@ -54,7 +54,7 @@ func noticeText(c lifecycle.Contact, appURL, currency string, accrued, limit int
 	name := oneLine(c.Name)
 	code := strings.ToUpper(currency)
 	settings := strings.TrimRight(appURL, "/") + "/" + url.PathEscape(c.Slug) + "/settings"
-	subject = fmt.Sprintf("[Multica] %s: usage reached 80%% of the credit limit / Mức dùng đạt 80%% hạn mức công nợ", name)
+	subject = fmt.Sprintf("[Delegora] %s: usage reached 80%% of the credit limit / Mức dùng đạt 80%% hạn mức công nợ", name)
 	body = fmt.Sprintf(`Xin chào,
 
 Mức dùng chưa lập hóa đơn của workspace "%s" là %d %s, đã đạt 80%% hạn mức công nợ %d %s.
@@ -64,7 +64,7 @@ Khi đạt hạn mức, hệ thống lập ngay một hóa đơn tạm cho phầ
 Xem mức dùng tại: %s
 
 Bạn nhận thư này vì bạn là chủ sở hữu hoặc quản trị viên của workspace.
-Multica
+Delegora
 `, name, accrued, code, limit, code, settings)
 	return subject, body
 }

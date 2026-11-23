@@ -29,7 +29,7 @@ Each skill's `template.json` declares its source. This file records the upstream
 
 ## Local changes
 
-In accordance with Multica's unattended automation principles (`AGENTS.md` Automation First), vendored skills must not stop unattended execution to ask a human when data is not connected. Only two lines across all 11 vendored skills are modified:
+In accordance with Delegora's unattended automation principles (`AGENTS.md` Automation First), vendored skills must not stop unattended execution to ask a human when data is not connected. Only two lines across all 11 vendored skills are modified:
 
 ### `analyze`
 
@@ -46,9 +46,9 @@ All other lines and files in the 11 Group A skills are byte-for-byte identical t
 The upstream repository contains 16 plugins with 252 skills, 174 MCP server declarations, and 5 slash commands. The bulk of upstream content is excluded for the following reasons (see `docs/engineering/knowledge-work-plugins-disposition.md` for full per-file analysis):
 
 1. **Human-in-the-loop and interactive commands**: Skills that assume an interactive user sitting next to the agent, asking questions, prompting for file uploads interactively, or using slash commands (`/lead-score`, `/pipeline-review`, etc.).
-2. **External connectors and SaaS integrations**: Upstream heavily depends on live connectors for CRM (Salesforce, HubSpot), email (Gmail, Outlook), calendar, Slack, and external ticketing tools. Multica executes inside the workspace without external API credentials or writeouts.
-3. **Existing Multica coverage**: Multica already has specialized squads and skills for SDLC (`sdlc-*`, `superpowers:*`, `bmad-*`), marketing (51 vendored skills), sales loops, and Kit Viet domains. Upstream skills in these areas are redundant or lower fidelity.
-4. **Outbound actions / external mutations**: Skills sending emails, signing documents (DocuSign), scheduling meetings, or creating accounts violate Multica's boundary rules.
+2. **External connectors and SaaS integrations**: Upstream heavily depends on live connectors for CRM (Salesforce, HubSpot), email (Gmail, Outlook), calendar, Slack, and external ticketing tools. Delegora executes inside the workspace without external API credentials or writeouts.
+3. **Existing Delegora coverage**: Delegora already has specialized squads and skills for SDLC (`sdlc-*`, `superpowers:*`, `bmad-*`), marketing (51 vendored skills), sales loops, and Kit Viet domains. Upstream skills in these areas are redundant or lower fidelity.
+4. **Outbound actions / external mutations**: Skills sending emails, signing documents (DocuSign), scheduling meetings, or creating accounts violate Delegora's boundary rules.
 5. **Upstream test data and evaluation files**: Upstream `evals/`, sample fixtures, and plugin setup scripts are omitted.
 
 ## Upgrading a vendored skill

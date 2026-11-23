@@ -279,7 +279,7 @@
     "type_webhook": "Webhook",
     "label_field": "Label (optional)",
     "label_placeholder": "e.g. Weekday morning",
-    "webhook_help": "Multica will generate a webhook URL after you save. POST any JSON to it to fire this autopilot.",
+    "webhook_help": "Delegora will generate a webhook URL after you save. POST any JSON to it to fire this autopilot.",
     "submit": "Add trigger",
     "submitting": "Adding...",
     "toast_added_schedule": "Schedule trigger added",
@@ -349,7 +349,7 @@
     "trigger_kind_schedule": "Schedule",
     "trigger_kind_webhook": "Webhook",
     "section_webhook": "Webhook",
-    "webhook_help_create": "Multica will generate a webhook URL after this autopilot is created. POST any JSON to that URL to fire it.",
+    "webhook_help_create": "Delegora will generate a webhook URL after this autopilot is created. POST any JSON to that URL to fire it.",
     "webhook_help_edit": "This autopilot is fired by webhook. Manage the URL (copy / rotate) on the autopilot's detail page.",
     "webhook_created_title": "Webhook autopilot ready",
     "webhook_created_description": "POST any JSON to the URL below and the autopilot will fire. Copy it now — you can also find and rotate it on the autopilot's detail page.",
@@ -589,7 +589,7 @@
       "slides": {
         "event": {
           "title": "Wait for something to happen",
-          "description": "No need to keep an agent spinning while it waits. When the condition is met, Multica wakes it up."
+          "description": "No need to keep an agent spinning while it waits. When the condition is met, Delegora wakes it up."
         },
         "time": {
           "title": "Or pick a time",
@@ -633,7 +633,7 @@
   "intro": {
     "label": "Autopilot",
     "title": "Let agents start work on their own",
-    "description": "Set a schedule or a webhook. Each time it fires, Multica creates an issue for an agent, or runs the agent directly. Pick a template and adjust it.",
+    "description": "Set a schedule or a webhook. Each time it fires, Delegora creates an issue for an agent, or runs the agent directly. Pick a template and adjust it.",
     "templates": "Start from a template"
   }
 }

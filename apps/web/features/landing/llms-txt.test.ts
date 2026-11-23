@@ -9,7 +9,7 @@ describe("buildLlmsTxt", () => {
   const text = buildLlmsTxt();
 
   it("follows the llms.txt shape: title, summary, then sections", () => {
-    expect(text.startsWith(`# Multica\n\n> ${dict.meta.home.description}\n`)).toBe(true);
+    expect(text.startsWith(`# Delegora\n\n> ${dict.meta.home.description}\n`)).toBe(true);
     for (const section of ["Core capabilities", "Get started", "Documentation", "FAQ", "Pages"]) {
       expect(text).toContain(`\n## ${section}\n`);
     }
@@ -19,7 +19,7 @@ describe("buildLlmsTxt", () => {
     for (const item of dict.faq.items) expect(text).toContain(`### ${item.question}`);
     for (const feature of Object.values(dict.home.features.items)) expect(text).toContain(feature.body);
     expect(text).toMatch(/supports \d+ coding tools/);
-    expect(text).toContain("Using Multica inside your own organization is free");
+    expect(text).toContain("Using Delegora inside your own organization is free");
   });
 
   it("links the docs Markdown and the agent install guide", () => {

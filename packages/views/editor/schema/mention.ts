@@ -81,7 +81,7 @@ export const MentionSchema = Mention.extend({
     name: "mention",
     level: "inline" as const,
     start(src: string) {
-      // Anchor on Multica's mention href first. Scanning forward from every
+      // Anchor on Delegora's mention href first. Scanning forward from every
       // "[" backtracks badly on escaped stacktrace markers like \~\[...\].
       return findMentionStart(src);
     },

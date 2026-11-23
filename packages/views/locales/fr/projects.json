@@ -176,7 +176,7 @@
     "mode_auto_merge_label": "Fusionner les exécutions terminées dans la branche active",
     "mode_auto_merge_description": "Une fois une exécution terminée, sa branche est fusionnée dans la branche active de ce dépôt, puis supprimée. Ignoré si le dépôt a des modifications non commitées ou un HEAD détaché ; un conflit reste à résoudre par vous.",
     "mode_worktree_needs_git": "Ce dossier n'est pas un dépôt git, il ne peut donc pas être exécuté en parallèle.",
-    "mode_worktree_needs_server_upgrade": "Votre serveur Multica est trop ancien pour les exécutions en parallèle et les lancerait dans ce dossier. Mettez d'abord le serveur à jour.",
+    "mode_worktree_needs_server_upgrade": "Votre serveur Delegora est trop ancien pour les exécutions en parallèle et les lancerait dans ce dossier. Mettez d'abord le serveur à jour.",
     "mode_cancel": "Annuler",
     "mode_add": "Ajouter le dossier",
     "mode_edit_tooltip": "Changer le mode d'exécution",

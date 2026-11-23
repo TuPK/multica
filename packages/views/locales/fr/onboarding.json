@@ -1,6 +1,6 @@
 {
   "step_nav": {
-    "wordmark": "Multica",
+    "wordmark": "Delegora",
     "label": "Étapes de prise en main",
     "about_you": {
       "label": "À propos de vous"
@@ -13,7 +13,7 @@
     }
   },
   "welcome": {
-    "wordmark": "Bienvenue sur Multica",
+    "wordmark": "Bienvenue sur Delegora",
     "headline_line1": "Vos coéquipiers IA,",
     "headline_line2": "dans",
     "headline_emphasis": "un seul espace de travail.",
@@ -54,7 +54,7 @@
   },
   "source_backfill": {
     "eyebrow": "Une question rapide",
-    "lede": "Aidez-nous à comprendre comment vous avez découvert Multica.",
+    "lede": "Aidez-nous à comprendre comment vous avez découvert Delegora.",
     "submit": "Envoyer",
     "save_failed_toast": "Échec de l'enregistrement"
   },
@@ -63,7 +63,7 @@
       "question": "Parlez-nous un peu de vous."
     },
     "source": {
-      "question": "Comment avez-vous connu Multica ?",
+      "question": "Comment avez-vous connu Delegora ?",
       "friends_colleagues": "Amis ou collègues",
       "search": "Google / moteur de recherche",
       "social_x": "X / Twitter",
@@ -94,7 +94,7 @@
       "other_placeholder": "ex. enseignant, responsable support"
     },
     "use_case": {
-      "question": "Pour quoi voulez-vous utiliser Multica ?",
+      "question": "Pour quoi voulez-vous utiliser Delegora ?",
       "ship_code": "Livrer du code avec des agents IA",
       "manage_team": "Gérer les tâches de mon équipe",
       "personal_tasks": "Organiser mes propres tâches",
@@ -112,7 +112,7 @@
   "cli_install": {
     "copy_aria": "Copier",
     "intro": "Il vous faut un runtime d'agent sur cet ordinateur (Claude Code, Codex, Cursor, …) pour qu'il exécute votre agent. Fonctionne aussi sur des serveurs et des machines de développement distantes.",
-    "step1_label": "Installer le CLI Multica",
+    "step1_label": "Installer le CLI Delegora",
     "platform_group": "Choisissez votre système",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -164,7 +164,7 @@
     "same_tenant_label": "Même tenant que {{name}}",
     "workspace_limit_toast": "Ce tenant a atteint sa limite d'espaces de travail",
     "creation_disabled_headline": "Demandez une invitation à votre administrateur.",
-    "creation_disabled_lede": "Cette instance Multica n'autorise pas la création de nouveaux espaces de travail. Dès qu'un administrateur vous invite, acceptez l'invitation et actualisez pour continuer.",
+    "creation_disabled_lede": "Cette instance Delegora n'autorise pas la création de nouveaux espaces de travail. Dès qu'un administrateur vous invite, acceptez l'invitation et actualisez pour continuer.",
     "creation_disabled_logout": "Se déconnecter",
     "creation_disabled_headline_resume": "Continuez avec {{name}}.",
     "creation_disabled_lede_resume": "La création d'espaces de travail est désactivée sur cette instance : vous continuerez donc dans votre espace existant."
@@ -201,7 +201,7 @@
     "lede": "Connectez un ordinateur pour que Mika puisse travailler.",
     "hint_default": "Vous pouvez vous connecter plus tard.",
     "download_title": "Utiliser cet ordinateur",
-    "download_subtitle": "Installez Multica Desktop pour connecter cet ordinateur.",
+    "download_subtitle": "Installez Delegora Desktop pour connecter cet ordinateur.",
     "download_button": "Télécharger",
     "cli_title": "Connecter depuis le terminal",
     "cli_subtitle": "Connectez un serveur, une machine de développement distante, ou tout ordinateur sans interface graphique. Terminal requis.",

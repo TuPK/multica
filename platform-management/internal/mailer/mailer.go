@@ -1,5 +1,5 @@
 // Package mailer sends the sign-in code by email. It duplicates the transport
-// choices of the Multica server's email service (spec 15.3): SMTP when
+// choices of the Delegora server's email service (spec 15.3): SMTP when
 // SMTP_HOST is set, otherwise Resend. The code is never logged or placed in an
 // error; logs carry the email hash only.
 package mailer
@@ -24,8 +24,8 @@ import (
 
 const (
 	resendURL       = "https://api.resend.com/emails"
-	subject         = "Your Multica platform sign-in code"
-	mfaResetSubject = "Two-step sign-in was turned off on your Multica account"
+	subject         = "Your Delegora platform sign-in code"
+	mfaResetSubject = "Two-step sign-in was turned off on your Delegora account"
 )
 
 // HTTPClient is the part of *http.Client the Resend path uses.
@@ -96,8 +96,8 @@ func (m *Mailer) SendCode(ctx context.Context, to, code string) error {
 func (m *Mailer) SendMFAReset(ctx context.Context, to string) error {
 	body := `<div style="font-family: sans-serif; max-width: 400px; margin: 0 auto;">
 <h2>Two-step sign-in was turned off</h2>
-<p>A staff member turned off two-step sign-in on your Multica account. Your sign-in no longer asks for a second code.</p>
-<p>To turn it on again, open security settings in the Multica web app. If you are a staff member of the platform console, you cannot sign in there until you do.</p>
+<p>A staff member turned off two-step sign-in on your Delegora account. Your sign-in no longer asks for a second code.</p>
+<p>To turn it on again, open security settings in the Delegora web app. If you are a staff member of the platform console, you cannot sign in there until you do.</p>
 <p style="color: #666; font-size: 14px;">If you did not expect this, tell your administrator.</p>
 </div>`
 	return m.deliver(ctx, to, mfaResetSubject, body, "two-step sign-in reset notice")

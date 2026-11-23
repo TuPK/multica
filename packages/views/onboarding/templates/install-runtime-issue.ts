@@ -24,11 +24,11 @@ export const INSTALL_RUNTIME_ISSUE_TITLE = {
   ja: "runtime を接続して Mika と始める",
 } as const;
 
-const en = `Welcome to Multica.
+const en = `Welcome to Delegora.
 
-Agents need a runtime before they can execute work. You can still use Multica as a lightweight project-management workspace while you install one.
+Agents need a runtime before they can execute work. You can still use Delegora as a lightweight project-management workspace while you install one.
 
-## Try Multica first
+## Try Delegora first
 
 Before the runtime is ready, you can:
 
@@ -53,7 +53,7 @@ For English users, the fastest first path is Codex:
 4. Confirm your terminal can find it:
    which codex
    codex --version
-5. Wait for Multica to pick it up. A running daemon re-checks for newly
+5. Wait for Delegora to pick it up. A running daemon re-checks for newly
    installed CLIs every couple of minutes, so no restart is normally needed.
    To apply it immediately:
    multica daemon restart
@@ -66,9 +66,9 @@ Codex reference: https://developers.openai.com/codex/cli
 
 Mika will turn one real goal into an issue, start it with the right agent, and suggest reusable specialists when your workflow needs them.`;
 
-const zh = `欢迎来到 Multica。
+const zh = `欢迎来到 Delegora。
 
-智能体需要先连上运行时才能执行工作。运行时还没准备好时,你也可以先把 Multica 当作轻量项目管理工具体验起来。
+智能体需要先连上运行时才能执行工作。运行时还没准备好时,你也可以先把 Delegora 当作轻量项目管理工具体验起来。
 
 ## 先体验项目管理功能
 
@@ -99,7 +99,7 @@ Windows 用户请先安装 [Git for Windows](https://gitforwindows.org/)，Kimi 
 3. 在你想让 Kimi 工作的项目目录里启动一次:
    kimi
 4. 首次启动后输入 /login，按提示完成 Kimi Code 或 API key 配置。
-5. 等 Multica 识别到它。运行中的守护进程每隔几分钟会重新检查一次新装的 CLI，通常不需要重启。
+5. 等 Delegora 识别到它。运行中的守护进程每隔几分钟会重新检查一次新装的 CLI，通常不需要重启。
    想立刻生效:
    multica daemon restart
    桌面端请打开任意一个本机 runtime 并点 Restart。退出再打开 app 是不够的 —— 守护进程会继续在后台运行。
@@ -110,11 +110,11 @@ Kimi CLI 官方文档:https://moonshotai.github.io/kimi-cli/zh/guides/getting-st
 
 Mika 会把一个真实目标转化为任务，交给合适的智能体启动执行，并在工作流需要时建议添加可复用的 specialist。`;
 
-const ko = `Multica에 오신 것을 환영합니다.
+const ko = `Delegora에 오신 것을 환영합니다.
 
-agent가 작업을 실행하려면 먼저 runtime이 필요합니다. runtime을 설치하는 동안에도 Multica를 가벼운 프로젝트 관리 워크스페이스로 먼저 사용할 수 있습니다.
+agent가 작업을 실행하려면 먼저 runtime이 필요합니다. runtime을 설치하는 동안에도 Delegora를 가벼운 프로젝트 관리 워크스페이스로 먼저 사용할 수 있습니다.
 
-## 먼저 Multica를 사용해 보기
+## 먼저 Delegora를 사용해 보기
 
 runtime이 준비되기 전에는 다음을 해볼 수 있습니다:
 
@@ -139,7 +139,7 @@ runtime이 준비되기 전에는 다음을 해볼 수 있습니다:
 4. 터미널에서 찾을 수 있는지 확인합니다:
    which codex
    codex --version
-5. Multica가 인식할 때까지 기다립니다. 실행 중인 daemon은 몇 분마다 새로 설치된 CLI를
+5. Delegora가 인식할 때까지 기다립니다. 실행 중인 daemon은 몇 분마다 새로 설치된 CLI를
    다시 확인하므로 보통 재시작이 필요하지 않습니다.
    바로 적용하려면:
    multica daemon restart
@@ -152,11 +152,11 @@ Codex 참고 문서: https://developers.openai.com/codex/cli
 
 Mika가 실제 목표 하나를 태스크로 만들고 적합한 에이전트와 실행을 시작하며, 워크플로에 필요할 때 재사용 가능한 specialist를 제안합니다.`;
 
-const ja = `Multica へようこそ。
+const ja = `Delegora へようこそ。
 
-agent が作業を実行するには、まず runtime が必要です。runtime をインストールしている間も、Multica を軽量なプロジェクト管理ワークスペースとして先に使うことができます。
+agent が作業を実行するには、まず runtime が必要です。runtime をインストールしている間も、Delegora を軽量なプロジェクト管理ワークスペースとして先に使うことができます。
 
-## まず Multica を使ってみる
+## まず Delegora を使ってみる
 
 runtime が準備できる前に、次のことを試せます:
 
@@ -181,7 +181,7 @@ runtime が準備できる前に、次のことを試せます:
 4. ターミナルから見つけられるか確認します:
    which codex
    codex --version
-5. Multica が認識するまで待ちます。動作中の daemon は数分ごとに新しくインストールされた
+5. Delegora が認識するまで待ちます。動作中の daemon は数分ごとに新しくインストールされた
    CLI を再チェックするため、通常は再起動は不要です。
    すぐに反映したい場合:
    multica daemon restart

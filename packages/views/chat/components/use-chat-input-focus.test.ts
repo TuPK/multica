@@ -56,7 +56,7 @@ describe("useChatInputFocus", () => {
     expect(result.current.focusRequest).toBe(2);
   });
 
-  it("requests focus for each new Ask Multica chat, even in a window already open", () => {
+  it("requests focus for each new Ask Delegora chat, even in a window already open", () => {
     // Mounting with an earlier bump must not count as a new one.
     const { result, rerender } = renderHook(
       ({ request }: { request: number }) => useChatInputFocus(true, undefined, request),

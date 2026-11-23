@@ -278,9 +278,9 @@
   "star_prompt": {
     "title_one": "{{agent}} ha completado {{count}} tarea",
     "title_other": "{{agent}} ha completado {{count}} tareas",
-    "body": "Si Multica te resulta útil, una estrella en GitHub ayuda a que otros equipos lo descubran.",
+    "body": "Si Delegora te resulta útil, una estrella en GitHub ayuda a que otros equipos lo descubran.",
     "star": "Star",
-    "star_label": "Dar una Star a Multica en GitHub",
+    "star_label": "Dar una Star a Delegora en GitHub",
     "later": "Ahora no",
     "close": "Cerrar"
   },

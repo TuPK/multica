@@ -33,7 +33,7 @@ func IdentityFrom(ctx context.Context) (Identity, bool) {
 // RequirePlatformStaff admits a request only when every check passes: the
 // client IP is inside AdminCIDRs when they are set; the mpa_session cookie
 // holds a valid token no older than 12 hours whose amr includes mfa; the user has an active staff row
-// whose role is one of roles (any role when roles is empty); and the Multica
+// whose role is one of roles (any role when roles is empty); and the Delegora
 // account is active with no session revocation after the sign-in. The checks
 // read the staff row and the account on every request, so a revocation applies
 // to the next request.
@@ -100,7 +100,7 @@ func (h *Handler) authenticate(r *http.Request, roles []staff.Role) (Identity, s
 	if rec.Status != accountguard.Active {
 		return Identity{}, "account not active"
 	}
-	// Same rule as the Multica server: whole seconds, strict.
+	// Same rule as the Delegora server: whole seconds, strict.
 	if !rec.SessionsValidAfter.IsZero() && claims.AuthUnix < rec.SessionsValidAfter.Unix() {
 		return Identity{}, "sessions revoked"
 	}

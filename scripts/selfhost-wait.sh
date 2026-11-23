@@ -78,7 +78,7 @@ if ! health_ok; then
 fi
 
 echo ""
-echo "✓ Multica is running!"
+echo "✓ Delegora is running!"
 echo "  Frontend: ${frontend_url}"
 echo "  Landing:  ${landing_url}"
 echo "  Backend:  ${backend_url}"

@@ -206,7 +206,7 @@ export function UserAccountMenu({
         }
         description={
           statusDialogTarget === "suspended"
-            ? t("Suspending this account will block the user from accessing Multica.")
+            ? t("Suspending this account will block the user from accessing Delegora.")
             : t("Reinstating this account will allow the user to sign in again.")
         }
         confirmLabel={

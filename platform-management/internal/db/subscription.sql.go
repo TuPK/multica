@@ -80,7 +80,7 @@ WHERE workspace_id = $1
 `
 
 // Workspace subscriptions (spec 5.5), and the reads the billing routes make on
-// the shared Multica tables: member (role and head count) and workspace.
+// the shared Delegora tables: member (role and head count) and workspace.
 func (q *Queries) GetWorkspaceSubscription(ctx context.Context, workspaceID pgtype.UUID) (WorkspaceSubscription, error) {
 	row := q.db.QueryRow(ctx, getWorkspaceSubscription, workspaceID)
 	var i WorkspaceSubscription

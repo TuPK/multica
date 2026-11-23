@@ -15,7 +15,7 @@ import (
 // account to be deleted now. The platform checks the rules of section 7.3, writes
 // the account request with its audit row and the pending_deletion status in one
 // transaction, and requests the immediate deletion of the workspaces the staff
-// member chose to delete. Multica's staff_deletion job (phase 2) does the rest.
+// member chose to delete. Delegora's staff_deletion job (phase 2) does the rest.
 
 // Resolution actions of spec R6 section 7.3.
 const (
@@ -388,7 +388,7 @@ func resolutionDetail(res []Resolution) []map[string]string {
 	return out
 }
 
-// notifyAccount drops the account's cached state and tells the Multica server
+// notifyAccount drops the account's cached state and tells the Delegora server
 // the account changed, after the commit. A failure is logged; the cache entry
 // expires within its TTL.
 func (s *Service) notifyAccount(ctx context.Context, userID string) {

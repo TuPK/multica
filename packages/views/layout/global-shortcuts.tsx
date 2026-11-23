@@ -115,7 +115,7 @@ export function GlobalShortcuts() {
         return;
       }
       if (actionId === "newChat") {
-        // Like pressing Ask Multica: a second press closes the new chat it opened.
+        // Like pressing Ask Delegora: a second press closes the new chat it opened.
         const chat = useChatStore.getState();
         if (chat.isOpen && chat.activeSessionId === null) chat.setOpen(false);
         else chat.startNewChat();

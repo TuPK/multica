@@ -11,7 +11,7 @@ import (
 const targetRuntime = "runtime"
 
 // RequestRuntime asks for a runtime to be unregistered (spec R6 section 3b.5, rule 5).
-// The confirmation is the runtime's name. The Multica staff_deletion job runs
+// The confirmation is the runtime's name. The Delegora staff_deletion job runs
 // DeleteAgentRuntime; this package deletes nothing. It returns the live request
 // and created == false when one exists.
 func (s *Service) RequestRuntime(ctx context.Context, by Actor, runtimeID string, in Input) (Request, bool, error) {

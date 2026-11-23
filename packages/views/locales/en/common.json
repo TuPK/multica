@@ -61,7 +61,7 @@
   "lark_bind": {
     "page_title": "Link your Feishu / Lark account",
     "redeeming": "Linking your account...",
-    "needs_auth_description": "Sign in to connect your Feishu / Lark account to your Multica account.",
+    "needs_auth_description": "Sign in to connect your Feishu / Lark account to your Delegora account.",
     "sign_in": "Sign in",
     "done_title": "Account linked",
     "done_description": "Your next message to the bot in Feishu / Lark will go straight to the agent. You can close this tab.",
@@ -69,14 +69,14 @@
     "error_admin_hint": "If this keeps happening, ask the workspace admin to re-send the binding link from Lark.",
     "error_missing_token": "The link is missing its binding token. Ask the bot to send a new one in Lark.",
     "error_expired": "This binding link is invalid or expired (links are valid for 15 minutes). Ask the bot to send a new one.",
-    "error_already_bound": "This Feishu / Lark account is already linked to another Multica account. Unlink it from that account first before linking it here.",
-    "error_not_member": "You're signed in to a Multica account that isn't a member of this workspace.",
+    "error_already_bound": "This Feishu / Lark account is already linked to another Delegora account. Unlink it from that account first before linking it here.",
+    "error_not_member": "You're signed in to a Delegora account that isn't a member of this workspace.",
     "error_unknown": "Something went wrong. Try again, and if the problem persists, contact the workspace admin."
   },
   "slack_bind": {
     "page_title": "Link your Slack account",
     "redeeming": "Linking your account...",
-    "needs_auth_description": "Sign in to connect your Slack account to your Multica account.",
+    "needs_auth_description": "Sign in to connect your Slack account to your Delegora account.",
     "sign_in": "Sign in",
     "done_title": "Account linked",
     "done_description": "Your next message to the bot in Slack will go straight to the agent. You can close this tab.",
@@ -84,14 +84,14 @@
     "error_admin_hint": "If this keeps happening, message the bot again in Slack to get a fresh link.",
     "error_missing_token": "The link is missing its token. Message the bot again in Slack to get a new one.",
     "error_expired": "This link is invalid or expired (links are valid for 15 minutes). Message the bot again to get a new one.",
-    "error_already_bound": "This Slack account is already linked to another Multica account. Unlink it from that account first before linking it here.",
-    "error_not_member": "You're signed in to a Multica account that isn't a member of this workspace.",
+    "error_already_bound": "This Slack account is already linked to another Delegora account. Unlink it from that account first before linking it here.",
+    "error_not_member": "You're signed in to a Delegora account that isn't a member of this workspace.",
     "error_unknown": "Something went wrong. Try again, and if the problem persists, contact the workspace admin."
   },
   "dingtalk_bind": {
     "page_title": "Link your DingTalk account",
     "redeeming": "Linking your account...",
-    "needs_auth_description": "Sign in to connect your DingTalk account to your Multica account.",
+    "needs_auth_description": "Sign in to connect your DingTalk account to your Delegora account.",
     "sign_in": "Sign in",
     "done_title": "Account linked",
     "done_description": "Your next message to the bot in DingTalk will go straight to the agent. You can close this tab.",
@@ -99,14 +99,14 @@
     "error_admin_hint": "If this keeps happening, message the bot again in DingTalk to get a fresh link.",
     "error_missing_token": "The link is missing its token. Message the bot again in DingTalk to get a new one.",
     "error_expired": "This link is invalid or expired (links are valid for 15 minutes). Message the bot again to get a new one.",
-    "error_already_bound": "This DingTalk account is already linked to another Multica account. Unlink it from that account first before linking it here.",
-    "error_not_member": "You're signed in to a Multica account that isn't a member of this workspace.",
+    "error_already_bound": "This DingTalk account is already linked to another Delegora account. Unlink it from that account first before linking it here.",
+    "error_not_member": "You're signed in to a Delegora account that isn't a member of this workspace.",
     "error_unknown": "Something went wrong. Try again, and if the problem persists, contact the workspace admin."
   },
   "telegram_bind": {
     "page_title": "Link your Telegram account",
     "redeeming": "Linking your account...",
-    "needs_auth_description": "Sign in to connect your Telegram account to your Multica account.",
+    "needs_auth_description": "Sign in to connect your Telegram account to your Delegora account.",
     "sign_in": "Sign in",
     "done_title": "Account linked",
     "done_description": "Your next message to the bot in Telegram will go straight to the agent. You can close this tab.",
@@ -114,8 +114,8 @@
     "error_admin_hint": "If this keeps happening, message the bot again in Telegram to get a fresh link.",
     "error_missing_token": "The link is missing its token. Message the bot again in Telegram to get a new one.",
     "error_expired": "This link is invalid or expired (links are valid for 15 minutes). Message the bot again to get a new one.",
-    "error_already_bound": "This Telegram account is already linked to another Multica account. Unlink it from that account first before linking it here.",
-    "error_not_member": "You're signed in to a Multica account that isn't a member of this workspace.",
+    "error_already_bound": "This Telegram account is already linked to another Delegora account. Unlink it from that account first before linking it here.",
+    "error_not_member": "You're signed in to a Delegora account that isn't a member of this workspace.",
     "error_unknown": "Something went wrong. Try again, and if the problem persists, contact the workspace admin."
   },
   "expandable_description": {
@@ -125,7 +125,7 @@
   "wecom_bind": {
     "page_title": "Link your WeCom account",
     "redeeming": "Linking your account...",
-    "needs_auth_description": "Sign in to connect your WeCom account to your Multica account.",
+    "needs_auth_description": "Sign in to connect your WeCom account to your Delegora account.",
     "sign_in": "Sign in",
     "done_title": "Account linked",
     "done_description": "Your next message to the bot in WeCom will go straight to the agent. You can close this tab.",
@@ -133,14 +133,14 @@
     "error_admin_hint": "If this keeps happening, message the bot again in WeCom to get a fresh link.",
     "error_missing_token": "The link is missing its token. Message the bot again in WeCom to get a new one.",
     "error_expired": "This link is invalid or expired (links are valid for 15 minutes). Message the bot again to get a new one.",
-    "error_already_bound": "This WeCom account is already linked to another Multica account. Unlink it from that account first before linking it here.",
-    "error_not_member": "You're signed in to a Multica account that isn't a member of this workspace.",
+    "error_already_bound": "This WeCom account is already linked to another Delegora account. Unlink it from that account first before linking it here.",
+    "error_not_member": "You're signed in to a Delegora account that isn't a member of this workspace.",
     "error_unknown": "Something went wrong. Try again, and if the problem persists, contact the workspace admin."
   },
   "not_found": {
     "title": "Page not found",
     "description": "The page you are looking for doesn't exist or has been moved.",
-    "back_to_multica": "Back to Multica"
+    "back_to_multica": "Back to Delegora"
   },
   "navigation": {
     "open_in_new_tab": "Open in new tab"

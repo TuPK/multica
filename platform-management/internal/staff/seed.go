@@ -34,7 +34,7 @@ func NewSeeder(q Queries, emails []string, log *slog.Logger) *Seeder {
 	return &Seeder{q: q, emails: emails, log: log}
 }
 
-// SeedAll seeds every configured email. An email with no Multica account is
+// SeedAll seeds every configured email. An email with no Delegora account is
 // logged and skipped. It returns the first database error.
 func (s *Seeder) SeedAll(ctx context.Context) error {
 	for _, email := range s.emails {
@@ -51,7 +51,7 @@ func (s *Seeder) SeedEmail(ctx context.Context, email string) error {
 	hash := emailhash.Of(email)
 	userID, err := s.q.GetUserIDByEmail(ctx, email)
 	if errors.Is(err, pgx.ErrNoRows) {
-		s.log.Info("platform admin has no Multica account yet; skipped", "email_hash", hash)
+		s.log.Info("platform admin has no Delegora account yet; skipped", "email_hash", hash)
 		return nil
 	}
 	if err != nil {

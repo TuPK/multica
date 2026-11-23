@@ -80,7 +80,7 @@ describe("WebNavigationProvider internal link bridge", () => {
 
 /**
  * `canGoBack` decides whether a page whose subject was just deleted steps back
- * or replaces with a fallback. A wrong `true` walks the user out of Multica,
+ * or replaces with a fallback. A wrong `true` walks the user out of Delegora,
  * so the adapter must expose the browser's own answer and nothing derived.
  */
 describe("WebNavigationProvider canGoBack", () => {

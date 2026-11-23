@@ -312,7 +312,7 @@ describe("chat store — bottom bar chips", () => {
   });
 });
 
-describe("chat store — Ask Multica agent", () => {
+describe("chat store — Ask Delegora agent", () => {
   it("has no preference by default, and persists one until it is cleared", () => {
     const storage = memStorage();
     const store = createChatStore({ storage });

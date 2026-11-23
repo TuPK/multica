@@ -1,6 +1,6 @@
 # @multica/plugin-sdk
 
-What a Multica plugin surface imports.
+What a Delegora plugin surface imports.
 
 ```js
 import { multica } from "@multica/plugin-sdk";
@@ -17,7 +17,7 @@ multica.ui.resize(320);
 **One** script in a sandboxed iframe.
 
 Bundle this SDK and everything else your surface needs into a single file. There
-is no module graph: you publish an artifact, Multica stores it and serves your
+is no module graph: you publish an artifact, Delegora stores it and serves your
 entry inside a generated document on its dedicated plugin-content origin. There
 is no path back to the author's server and no top-level module graph for a bare
 `import` to resolve against. Publishing refuses an entry that has one rather
@@ -32,11 +32,11 @@ before you write one:
   or per member, and survives the frame.
 - **`Origin: null` on your own requests.** If your surface calls your backend
   directly, that backend must accept a null origin in CORS.
-- **A CSP you did not write.** Multica generates the response and derives
+- **A CSP you did not write.** Delegora generates the response and derives
   `connect-src` from the `net:` scopes in your manifest. Declare every host you
   intend to reach; with no `net:` scope your surface cannot issue a network
   request at all, including back to your own origin, which is no longer in the
-  policy now that Multica serves your code. `net:` is an exact host, so declare
+  policy now that Delegora serves your code. `net:` is an exact host, so declare
   `net:api.example.com` separately from `net:example.com`.
 
 ## Publishing

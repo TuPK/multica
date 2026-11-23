@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const deletionNoticeSubject = "A Multica workspace is scheduled for deletion"
+const deletionNoticeSubject = "A Delegora workspace is scheduled for deletion"
 
 // deletionNoticeBody is the HTML of the notice to an owner (spec R6 section 3c.9, rule 4).
 // It names the workspace and the day deletion starts, and says where an export

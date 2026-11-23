@@ -393,7 +393,7 @@ func TestMemberRequestCancelReleasesSeatAndAudits(t *testing.T) {
 	if _, err := f.svc.Cancel(context.Background(), other, "99999999-0000-4000-8000-0000000000bb"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("cancel of a missing request = %v, want ErrNotFound", err)
 	}
-	// A request Multica has finished is not cancelable.
+	// A request Delegora has finished is not cancelable.
 	done, _, _ := f.svc.Create(context.Background(), f.staff, ws, Input{Email: "done@example.test", Role: "member"})
 	f.exec(`UPDATE platform_member_request SET state = 'completed' WHERE id = $1`, done.ID)
 	if _, err := f.svc.Cancel(context.Background(), other, done.ID); err == nil {

@@ -1,5 +1,5 @@
 /* =============================================================================
- * Multica shared base styles — imported by all apps
+ * Delegora shared base styles — imported by all apps
  * ============================================================================= */
 
 /* The UI locale is Chinese, Japanese or Korean. Han, kana and Hangul fill the
@@ -75,7 +75,7 @@
   color: var(--shiki-dark) !important;
 }
 
-/* Multica brand motion — brand guidelines v5 §08. One move: a 45° turn, which
+/* Delegora brand motion — brand guidelines v5 §08. One move: a 45° turn, which
  * lands the eight-armed star back on itself. Only the tile and the star
  * overshoot (pop); nothing else does. Delays are set inline by the components
  * so a sequence stays readable in one place. */

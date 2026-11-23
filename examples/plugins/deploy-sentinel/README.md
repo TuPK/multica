@@ -41,7 +41,7 @@ says what order to use them in. Neither half works as well alone.
 
 ## Running it locally
 
-Two servers, both the plugin author's own. Multica never runs either.
+Two servers, both the plugin author's own. Delegora never runs either.
 
 Both serve HTTPS, because a hook's transport URL must be an `https://` URL or
 the manifest will not install. Make a certificate once:
@@ -64,7 +64,7 @@ METRICS_TOKEN=metrics-dev-token node server/metrics-mcp.mjs   # :8789
 Both read `TLS_CERT` / `TLS_KEY`, defaulting to `dev-cert.pem` / `dev-key.pem`
 in the working directory.
 
-Then point Multica at them. Both endpoints are on loopback, which the outbound
+Then point Delegora at them. Both endpoints are on loopback, which the outbound
 guard refuses by design, so name them explicitly:
 
 ```bash

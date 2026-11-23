@@ -710,7 +710,7 @@ describe("build lock", () => {
 });
 
 describe("knowledge work plugins (KWP) skills", () => {
-  it("enforces Multica runtime rules and forbids interactive or external steps in authored KWP skills", () => {
+  it("enforces Delegora runtime rules and forbids interactive or external steps in authored KWP skills", () => {
     const { entries } = load();
     const kwpAuthored = entries.filter((e) => e.kind === "skill" && e.manifest.id.startsWith("kwp-") && e.manifest.source?.type === "authored");
     assert.equal(kwpAuthored.length, 15, "all 15 authored KWP skills must be present");
@@ -740,8 +740,8 @@ describe("knowledge work plugins (KWP) skills", () => {
         `${entry.manifest.id} description must start with "Use when you are "`,
       );
       assert.ok(
-        content.includes("## Multica runtime rules"),
-        `${entry.manifest.id} must include '## Multica runtime rules'`,
+        content.includes("## Delegora runtime rules"),
+        `${entry.manifest.id} must include '## Delegora runtime rules'`,
       );
       for (const phrase of forbidden) {
         assert.ok(

@@ -1,4 +1,4 @@
-// Package entitlement serves the entitlement policy that Multica's existing
+// Package entitlement serves the entitlement policy that Delegora's existing
 // client reads (spec 5.5). The wire format is the client's wirePolicy in
 // server/internal/entitlement/client.go; the contract tests in
 // platform-management/contract feed this package's output through that code.

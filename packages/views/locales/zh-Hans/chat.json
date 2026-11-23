@@ -8,9 +8,9 @@
     "agent_link_no_access": "你没有权限与该智能体聊天。"
   },
   "fab": {
-    "running": "Multica 正在工作...",
+    "running": "Delegora 正在工作...",
     "unread_other": "{{count}} 条未读对话",
-    "default": "问 Multica"
+    "default": "问 Delegora"
   },
   "bar": {
     "history": "对话历史",
@@ -167,7 +167,7 @@
     "first_time_pillars_suffix": "。",
     "first_time_actions": "让它做一份总结、规划你的一天，或交给它一个小任务。",
     "returning_title_named": "你好，我是 {{name}}",
-    "returning_title_default": "欢迎使用 Multica",
+    "returning_title_default": "欢迎使用 Delegora",
     "returning_subtitle": "试试问",
     "chat_with_named": "与 {{name}} 对话"
   },

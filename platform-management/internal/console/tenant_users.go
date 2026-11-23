@@ -13,7 +13,7 @@ import (
 // Users of a tenant and member removal or role change through staff requests
 // (spec R6 section 3b.3, QT3). A user belongs to a tenant when it is a member
 // of one of the tenant's workspaces (D92). Removal and role change are requests
-// on platform_member_request; Multica's member_provisioning job runs them (D94).
+// on platform_member_request; Delegora's member_provisioning job runs them (D94).
 
 // MemberChange is a remove or change_role request to insert.
 type MemberChange struct {

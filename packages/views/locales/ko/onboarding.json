@@ -1,6 +1,6 @@
 {
   "step_nav": {
-    "wordmark": "Multica",
+    "wordmark": "Delegora",
     "label": "온보딩 단계",
     "about_you": {
       "label": "당신에 대해"
@@ -13,7 +13,7 @@
     }
   },
   "welcome": {
-    "wordmark": "Multica에 오신 것을 환영합니다",
+    "wordmark": "Delegora에 오신 것을 환영합니다",
     "headline_line1": "AI 팀원과",
     "headline_line2": "하나의",
     "headline_emphasis": "워크스페이스에서.",
@@ -54,7 +54,7 @@
   },
   "source_backfill": {
     "eyebrow": "간단한 질문 하나",
-    "lede": "Multica를 알게 된 경로를 알려주세요.",
+    "lede": "Delegora를 알게 된 경로를 알려주세요.",
     "submit": "제출",
     "save_failed_toast": "저장하지 못했습니다"
   },
@@ -63,7 +63,7 @@
       "question": "당신에 대해 간단히 알려주세요."
     },
     "source": {
-      "question": "Multica를 어디서 알게 되셨나요?",
+      "question": "Delegora를 어디서 알게 되셨나요?",
       "friends_colleagues": "친구 또는 동료",
       "search": "Google / 검색",
       "social_x": "X / Twitter",
@@ -94,7 +94,7 @@
       "other_placeholder": "예: 교사, 지원팀 리드"
     },
     "use_case": {
-      "question": "Multica를 무엇에 쓰고 싶으신가요?",
+      "question": "Delegora를 무엇에 쓰고 싶으신가요?",
       "ship_code": "AI 에이전트와 코드 배포",
       "manage_team": "팀 태스크 관리",
       "personal_tasks": "개인 태스크 정리",
@@ -112,7 +112,7 @@
   "cli_install": {
     "copy_aria": "복사",
     "intro": "이 컴퓨터에서 에이전트를 실행하려면 에이전트 런타임(Claude Code, Codex, Cursor 등)이 필요합니다. 서버와 원격 개발 환경에서도 사용할 수 있습니다.",
-    "step1_label": "Multica CLI 설치",
+    "step1_label": "Delegora CLI 설치",
     "platform_group": "플랫폼 선택",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -164,7 +164,7 @@
     "same_tenant_label": "{{name}}과(와) 같은 테넌트",
     "workspace_limit_toast": "이 테넌트의 워크스페이스 한도에 도달했습니다",
     "creation_disabled_headline": "관리자에게 초대를 요청하세요.",
-    "creation_disabled_lede": "이 Multica instance에서는 새 워크스페이스를 만들 수 없습니다. 관리자가 기존 워크스페이스로 초대하면 초대를 수락한 뒤 새로고침해 계속하세요.",
+    "creation_disabled_lede": "이 Delegora instance에서는 새 워크스페이스를 만들 수 없습니다. 관리자가 기존 워크스페이스로 초대하면 초대를 수락한 뒤 새로고침해 계속하세요.",
     "creation_disabled_logout": "로그아웃",
     "creation_disabled_headline_resume": "{{name}}에서 계속하세요.",
     "creation_disabled_lede_resume": "이 instance에서는 워크스페이스 생성이 비활성화되어 있으므로 기존 워크스페이스로 계속 이동합니다."

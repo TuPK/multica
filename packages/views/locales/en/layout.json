@@ -278,9 +278,9 @@
   "star_prompt": {
     "title_one": "{{agent}} has completed {{count}} issue",
     "title_other": "{{agent}} has completed {{count}} issues",
-    "body": "If Multica has been useful, a star on GitHub helps other teams find it.",
+    "body": "If Delegora has been useful, a star on GitHub helps other teams find it.",
     "star": "Star",
-    "star_label": "Star Multica on GitHub",
+    "star_label": "Star Delegora on GitHub",
     "later": "Not now",
     "close": "Close"
   },

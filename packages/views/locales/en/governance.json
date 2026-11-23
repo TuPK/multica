@@ -12,7 +12,7 @@
     "title": "Nothing to show yet"
   },
   "autonomy": {
-    "note": "The honest limit: Multica cannot inspect what a runtime does inside a run, so a level cannot stop an agent from calling an external API its credentials allow. Multica controls what passes through it: which routines run, what is published into the shared record, which proposals are decided without you, which initiatives are created, how much is spent, and the boundaries in each charter. Anything with outside effects stays behind a gate the platform owns, such as the Launch gate, or behind the agent's own permission settings. L3 does not mean unsupervised.",
+    "note": "The honest limit: Delegora cannot inspect what a runtime does inside a run, so a level cannot stop an agent from calling an external API its credentials allow. Delegora controls what passes through it: which routines run, what is published into the shared record, which proposals are decided without you, which initiatives are created, how much is spent, and the boundaries in each charter. Anything with outside effects stays behind a gate the platform owns, such as the Launch gate, or behind the agent's own permission settings. L3 does not mean unsupervised.",
     "levels_heading": "What each level allows",
     "levels": {
       "suggest": {

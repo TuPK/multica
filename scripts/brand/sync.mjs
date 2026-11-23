@@ -26,7 +26,7 @@ export function svgs(brand) {
     return `<path ${attrs} transform="${iconStarTransform(scale)}" d="${starPath(stroke)}"/>`;
   };
   const wordmark = (color, extra = "") =>
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${WORDMARK.viewBox}" role="img" aria-label="Multica"${extra}><g fill="none" stroke="${color}" stroke-width="${WORDMARK_STROKE}">${WORDMARK.letters.map((l) => `<path d="${l.d}"/>${l.star ? `<path d="${l.star}" fill="${color}" stroke="none"/>` : ""}`).join("")}</g></svg>`;
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${WORDMARK.viewBox}" role="img" aria-label="Delegora"${extra}><g fill="none" stroke="${color}" stroke-width="${WORDMARK_STROKE}">${WORDMARK.letters.map((l) => `<path d="${l.d}"/>${l.star ? `<path d="${l.star}" fill="${color}" stroke="none"/>` : ""}`).join("")}</g></svg>`;
   const tile = (px, { bleed = false, bg = INK, fg = PAPER } = {}) =>
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${px}" height="${px}"><rect width="100" height="100"${bleed ? "" : ` rx="${ICON_TILE_RADIUS}"`} fill="${bg}"/>${star(px, `fill="${fg}"`)}</svg>`;
 
@@ -34,8 +34,8 @@ export function svgs(brand) {
   return {
     tile,
     wordmark,
-    favicon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Multica"><style>.t{fill:${INK}}.m{fill:${PAPER}}@media (prefers-color-scheme:dark){.t{fill:${PAPER}}.m{fill:${INK}}}</style><rect class="t" width="100" height="100" rx="${ICON_TILE_RADIUS}"/>${star(16, `class="m"`)}</svg>\n`,
-    pwaIcon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Multica">
+    favicon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Delegora"><style>.t{fill:${INK}}.m{fill:${PAPER}}@media (prefers-color-scheme:dark){.t{fill:${PAPER}}.m{fill:${INK}}}</style><rect class="t" width="100" height="100" rx="${ICON_TILE_RADIUS}"/>${star(16, `class="m"`)}</svg>\n`,
+    pwaIcon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Delegora">
   <!--
     Full-bleed source for the generated home-screen icons (apple-touch-icon.png,
     icon-maskable-512.png). Full-bleed because both surfaces mask the artwork

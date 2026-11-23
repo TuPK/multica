@@ -54,7 +54,7 @@
   "lark_bind": {
     "page_title": "Vincula tu cuenta de Feishu / Lark",
     "redeeming": "Vinculando tu cuenta...",
-    "needs_auth_description": "Inicia sesión para conectar tu cuenta de Feishu / Lark con tu cuenta de Multica.",
+    "needs_auth_description": "Inicia sesión para conectar tu cuenta de Feishu / Lark con tu cuenta de Delegora.",
     "sign_in": "Iniciar sesión",
     "done_title": "Cuenta vinculada",
     "done_description": "Tu próximo mensaje al bot en Feishu / Lark irá directamente al agente. Puedes cerrar esta pestaña.",
@@ -62,14 +62,14 @@
     "error_admin_hint": "Si esto sigue ocurriendo, pide al administrador del espacio de trabajo que reenvíe el enlace de vinculación desde Lark.",
     "error_missing_token": "Al enlace le falta el token de vinculación. Pide al bot que envíe uno nuevo en Lark.",
     "error_expired": "Este enlace de vinculación no es válido o ha caducado (los enlaces son válidos durante 15 minutos). Pide al bot que envíe uno nuevo.",
-    "error_already_bound": "Esta cuenta de Feishu / Lark ya está vinculada a otra cuenta de Multica. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
-    "error_not_member": "Has iniciado sesión en una cuenta de Multica que no es miembro de este espacio de trabajo.",
+    "error_already_bound": "Esta cuenta de Feishu / Lark ya está vinculada a otra cuenta de Delegora. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
+    "error_not_member": "Has iniciado sesión en una cuenta de Delegora que no es miembro de este espacio de trabajo.",
     "error_unknown": "Algo ha ido mal. Inténtalo de nuevo y, si el problema persiste, contacta con el administrador del espacio de trabajo."
   },
   "slack_bind": {
     "page_title": "Vincula tu cuenta de Slack",
     "redeeming": "Vinculando tu cuenta…",
-    "needs_auth_description": "Inicia sesión para conectar tu cuenta de Slack con tu cuenta de Multica.",
+    "needs_auth_description": "Inicia sesión para conectar tu cuenta de Slack con tu cuenta de Delegora.",
     "sign_in": "Iniciar sesión",
     "done_title": "Cuenta vinculada",
     "done_description": "Tu próximo mensaje al bot en Slack irá directamente al agente. Puedes cerrar esta pestaña.",
@@ -77,14 +77,14 @@
     "error_admin_hint": "Si esto sigue ocurriendo, envía un mensaje de nuevo al bot en Slack para obtener un enlace nuevo.",
     "error_missing_token": "Al enlace le falta el token. Envía un mensaje de nuevo al bot en Slack para obtener uno nuevo.",
     "error_expired": "Este enlace no es válido o ha caducado (los enlaces son válidos durante 15 minutos). Envía un mensaje de nuevo para obtener uno nuevo.",
-    "error_already_bound": "Esta cuenta de Slack ya está vinculada a otra cuenta de Multica. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
-    "error_not_member": "Has iniciado sesión en una cuenta de Multica que no es miembro de este espacio de trabajo.",
+    "error_already_bound": "Esta cuenta de Slack ya está vinculada a otra cuenta de Delegora. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
+    "error_not_member": "Has iniciado sesión en una cuenta de Delegora que no es miembro de este espacio de trabajo.",
     "error_unknown": "Algo ha ido mal. Inténtalo de nuevo y, si el problema persiste, contacta con el administrador del espacio de trabajo."
   },
   "dingtalk_bind": {
     "page_title": "Vincula tu cuenta de DingTalk",
     "redeeming": "Vinculando tu cuenta…",
-    "needs_auth_description": "Inicia sesión para conectar tu cuenta de DingTalk con tu cuenta de Multica.",
+    "needs_auth_description": "Inicia sesión para conectar tu cuenta de DingTalk con tu cuenta de Delegora.",
     "sign_in": "Iniciar sesión",
     "done_title": "Cuenta vinculada",
     "done_description": "Tu próximo mensaje al bot en DingTalk irá directamente al agente. Puedes cerrar esta pestaña.",
@@ -92,14 +92,14 @@
     "error_admin_hint": "Si esto sigue ocurriendo, envía un mensaje de nuevo al bot en DingTalk para obtener un enlace nuevo.",
     "error_missing_token": "Al enlace le falta el token. Envía un mensaje de nuevo al bot en DingTalk para obtener uno nuevo.",
     "error_expired": "Este enlace no es válido o ha caducado (los enlaces son válidos durante 15 minutos). Envía un mensaje de nuevo para obtener uno nuevo.",
-    "error_already_bound": "Esta cuenta de DingTalk ya está vinculada a otra cuenta de Multica. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
-    "error_not_member": "Has iniciado sesión en una cuenta de Multica que no es miembro de este espacio de trabajo.",
+    "error_already_bound": "Esta cuenta de DingTalk ya está vinculada a otra cuenta de Delegora. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
+    "error_not_member": "Has iniciado sesión en una cuenta de Delegora que no es miembro de este espacio de trabajo.",
     "error_unknown": "Algo ha ido mal. Inténtalo de nuevo y, si el problema persiste, contacta con el administrador del espacio de trabajo."
   },
   "telegram_bind": {
     "page_title": "Vincula tu cuenta de Telegram",
     "redeeming": "Vinculando tu cuenta…",
-    "needs_auth_description": "Inicia sesión para conectar tu cuenta de Telegram con tu cuenta de Multica.",
+    "needs_auth_description": "Inicia sesión para conectar tu cuenta de Telegram con tu cuenta de Delegora.",
     "sign_in": "Iniciar sesión",
     "done_title": "Cuenta vinculada",
     "done_description": "Tu próximo mensaje al bot en Telegram irá directamente al agente. Puedes cerrar esta pestaña.",
@@ -107,8 +107,8 @@
     "error_admin_hint": "Si esto sigue ocurriendo, envía un mensaje de nuevo al bot en Telegram para obtener un enlace nuevo.",
     "error_missing_token": "Al enlace le falta el token. Envía un mensaje de nuevo al bot en Telegram para obtener uno nuevo.",
     "error_expired": "Este enlace no es válido o ha caducado (los enlaces son válidos durante 15 minutos). Envía un mensaje de nuevo para obtener uno nuevo.",
-    "error_already_bound": "Esta cuenta de Telegram ya está vinculada a otra cuenta de Multica. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
-    "error_not_member": "Has iniciado sesión en una cuenta de Multica que no es miembro de este espacio de trabajo.",
+    "error_already_bound": "Esta cuenta de Telegram ya está vinculada a otra cuenta de Delegora. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
+    "error_not_member": "Has iniciado sesión en una cuenta de Delegora que no es miembro de este espacio de trabajo.",
     "error_unknown": "Algo ha ido mal. Inténtalo de nuevo y, si el problema persiste, contacta con el administrador del espacio de trabajo."
   },
   "expandable_description": {
@@ -118,7 +118,7 @@
   "wecom_bind": {
     "page_title": "Vincular cuenta de WeCom",
     "redeeming": "Vinculando tu cuenta…",
-    "needs_auth_description": "Inicia sesión para conectar tu cuenta de WeCom con tu cuenta de Multica.",
+    "needs_auth_description": "Inicia sesión para conectar tu cuenta de WeCom con tu cuenta de Delegora.",
     "sign_in": "Iniciar sesión",
     "done_title": "Cuenta vinculada",
     "done_description": "Tu próximo mensaje al bot en WeCom irá directamente al agente. Puedes cerrar esta pestaña.",
@@ -126,14 +126,14 @@
     "error_admin_hint": "Si esto sigue ocurriendo, envía un mensaje de nuevo al bot en WeCom para obtener un enlace nuevo.",
     "error_missing_token": "Al enlace le falta el token. Envía un mensaje de nuevo al bot en WeCom para obtener uno nuevo.",
     "error_expired": "Este enlace no es válido o ha caducado (los enlaces son válidos durante 15 minutos). Envía un mensaje de nuevo para obtener uno nuevo.",
-    "error_already_bound": "Esta cuenta de WeCom ya está vinculada a otra cuenta de Multica. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
-    "error_not_member": "Has iniciado sesión en una cuenta de Multica que no es miembro de este espacio de trabajo.",
+    "error_already_bound": "Esta cuenta de WeCom ya está vinculada a otra cuenta de Delegora. Desvincúlala primero de esa cuenta antes de vincularla aquí.",
+    "error_not_member": "Has iniciado sesión en una cuenta de Delegora que no es miembro de este espacio de trabajo.",
     "error_unknown": "Algo ha ido mal. Inténtalo de nuevo y, si el problema persiste, contacta con el administrador del espacio de trabajo."
   },
   "not_found": {
     "title": "Página no encontrada",
     "description": "La página que buscas no existe o se ha movido.",
-    "back_to_multica": "Volver a Multica"
+    "back_to_multica": "Volver a Delegora"
   },
   "navigation": {
     "open_in_new_tab": "Abrir en una pestaña nueva"

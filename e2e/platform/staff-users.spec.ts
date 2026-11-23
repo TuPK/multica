@@ -43,7 +43,7 @@ test.afterAll(async () => {
   await stopPlatform(seed ?? null);
 });
 
-/** Inserts a Multica account the console can act on. Returns its id and email. */
+/** Inserts a Delegora account the console can act on. Returns its id and email. */
 async function seedUser(withMfa = false): Promise<{ id: string; email: string }> {
   const id = randomUUID();
   const email = `e2e-target-${id.slice(0, 8)}@example.test`;
@@ -137,7 +137,7 @@ test.describe("sessions and two-step sign-in", () => {
     expect(res.status()).toBe(200);
     const sent = mail.sent.slice(before).filter((m) => m.to === target.email);
     expect(sent.length, "no reset notice reached the user").toBe(1);
-    expect(sent[0].data).toContain("Subject: Two-step sign-in was turned off on your Multica account");
+    expect(sent[0].data).toContain("Subject: Two-step sign-in was turned off on your Delegora account");
   });
 });
 

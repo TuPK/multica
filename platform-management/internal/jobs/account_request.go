@@ -7,7 +7,7 @@ import (
 
 // AccountRequestFinalizeJob is the name of step 3 of an account request (spec
 // 7b.5, rule 7): the platform writes the billing profile and the subscription
-// of each request that Multica has provisioned, then sends the welcome.
+// of each request that Delegora has provisioned, then sends the welcome.
 const AccountRequestFinalizeJob = "account_request_finalize"
 
 // AccountRequestFinalizeEvery is the job's interval. A failed request is tried

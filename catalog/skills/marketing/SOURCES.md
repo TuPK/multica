@@ -1,8 +1,8 @@
 # Sources: marketing skills
 
-This folder holds every skill of the marketing domain that Multica can load (51 skills in `catalog/skills/marketing/`). Each skill's `template.json` names its source. This file records the sources, each local change made to a vendored skill, what was left out, and how to update.
+This folder holds every skill of the marketing domain that Delegora can load (51 skills in `catalog/skills/marketing/`). Each skill's `template.json` names its source. This file records the sources, each local change made to a vendored skill, what was left out, and how to update.
 
-Rule (`docs/specs/marketing-domain/spec.md`, section 5.5): a vendored skill is never edited to fit Multica. The only changes allowed are the ones under *Local changes*: removing advertising for the maintainer's own product or for a listed partner, and removing links into the upstream `tools/` folder, which is not copied here. Each change is listed with its file.
+Rule (`docs/specs/marketing-domain/spec.md`, section 5.5): a vendored skill is never edited to fit Delegora. The only changes allowed are the ones under *Local changes*: removing advertising for the maintainer's own product or for a listed partner, and removing links into the upstream `tools/` folder, which is not copied here. Each change is listed with its file.
 
 ## Sources
 

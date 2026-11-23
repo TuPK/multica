@@ -49,7 +49,7 @@ export interface AttachmentLinkContext {
  * anything else.
  *
  * The `/api/attachments/<id>/download` and `/uploads/workspaces/...` path
- * shapes alone do not establish which deployment owns a link: another Multica
+ * shapes alone do not establish which deployment owns a link: another Delegora
  * instance uses the same shapes with unrelated ids. They count only when
  * site-relative or on one of this deployment's own origins. A storage URL is
  * recognized by the configured CDN hostname. A record of the surrounding

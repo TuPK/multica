@@ -246,7 +246,7 @@ func (h *Handler) notifyRequester(r *http.Request, req quota.Request, decision s
 		}
 		return
 	}
-	subject := fmt.Sprintf("Multica: your %s increase request was %s", req.Gate, decision)
+	subject := fmt.Sprintf("Delegora: your %s increase request was %s", req.Gate, decision)
 	body := fmt.Sprintf("Your request to raise %s to %d in workspace %s was %s.\n", req.Gate, req.RequestedValue, req.WorkspaceID, decision)
 	if req.DecisionReason != "" {
 		body += "\nReason: " + req.DecisionReason + "\n"

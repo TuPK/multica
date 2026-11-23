@@ -565,7 +565,7 @@ test_cli_lookup_failure_does_not_claim_up_to_date() {
 
   # The curl stub answers nothing, so the latest release cannot be determined.
   # The installed CLI still works: the installer must say so instead of the old
-  # "Multica CLI is up to date (<old version>)".
+  # "Delegora CLI is up to date (<old version>)".
   _run_with_server "$tmp" || return 1
 
   if grep -q "is up to date" "$tmp/install.out"; then
@@ -573,12 +573,12 @@ test_cli_lookup_failure_does_not_claim_up_to_date() {
     cat "$tmp/install.out" >&2 || true
     return 1
   fi
-  if ! grep -q "Could not determine the latest Multica CLI release" "$tmp/install.out" "$tmp/install.err"; then
+  if ! grep -q "Could not determine the latest Delegora CLI release" "$tmp/install.out" "$tmp/install.err"; then
     echo "expected an explicit note that the latest CLI release could not be determined" >&2
     cat "$tmp/install.out" >&2 || true
     return 1
   fi
-  if ! grep -q "Multica server is running and CLI is ready" "$tmp/install.out"; then
+  if ! grep -q "Delegora server is running and CLI is ready" "$tmp/install.out"; then
     echo "installer should still finish successfully with the installed CLI" >&2
     cat "$tmp/install.out" >&2 || true
     return 1

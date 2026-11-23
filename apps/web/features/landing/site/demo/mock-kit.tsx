@@ -256,7 +256,7 @@ export const APP_CARD =
   "relative flex min-w-0 flex-1 overflow-hidden rounded-xl bg-page-canvas shadow-[var(--surface-shadow)] ring-1 ring-surface-border";
 
 /**
- * The Multica app as a window: the rail on the grey app shell, and the page
+ * The Delegora app as a window: the rail on the grey app shell, and the page
  * on the content card with the space panel collapsed. A window that runs off
  * the right and bottom of its frame passes `bleed` (in px), and the page keeps
  * its content out of the cropped strip so nothing is cut mid-word.

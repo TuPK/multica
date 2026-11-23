@@ -14,7 +14,7 @@ import { Avatar, BACKEND, FLOATING, LEAD, LEO, MIA, SAM, TRIAGE, ZoomCanvas, typ
 
 /*
  * Mockups for the Chat integrations page: a team chat where people talk to a
- * Multica agent through its Bot, and the Messaging settings where each Bot is
+ * Delegora agent through its Bot, and the Messaging settings where each Bot is
  * bound to one agent. The chat client is drawn plain so it reads as any of the
  * supported platforms; the Bot's replies follow the product's own copy. Data
  * is fictional.
@@ -30,7 +30,7 @@ export const CHANNELS: { id: ChannelId; name: string; Mark: ComponentType<{ clas
   { id: "telegram", name: "Telegram", Mark: TelegramMark },
 ];
 
-const BOT = { name: "Multica", agent: BACKEND };
+const BOT = { name: "Delegora", agent: BACKEND };
 
 function Message({ actor, bot, time, children }: { actor: Actor; bot?: boolean; time: string; children: ReactNode }) {
   return (
@@ -205,7 +205,7 @@ const PANEL = "h-[300px] w-[340px]";
 
 export function DirectMessageVisual() {
   return (
-    <ChatWindow title="Multica" icon={MessageSquare} composer="Message Multica" className={PANEL}>
+    <ChatWindow title="Delegora" icon={MessageSquare} composer="Message Delegora" className={PANEL}>
       <Message actor={LEO} time="10:02">
         What changed in the billing API this week?
       </Message>
@@ -234,7 +234,7 @@ export function MentionVisual() {
 
 export function IssueCommandVisual() {
   return (
-    <ChatWindow title="Multica" icon={MessageSquare} composer="Message Multica" className={PANEL}>
+    <ChatWindow title="Delegora" icon={MessageSquare} composer="Message Delegora" className={PANEL}>
       <Message actor={MIA} time="9:43">
         <Slash>/issue</Slash> Batch the nightly export job
       </Message>

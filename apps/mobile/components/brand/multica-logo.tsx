@@ -1,5 +1,5 @@
 /**
- * Multica wordmark. Vector copy of WORDMARK in packages/ui/lib/multica-brand.ts
+ * Delegora wordmark. Vector copy of WORDMARK in packages/ui/lib/multica-brand.ts
  * (mobile does not depend on @multica/ui), written by `node scripts/brand/sync.mjs`;
  * CI fails when the two drift.
  *
@@ -45,7 +45,7 @@ export function MulticaLogo({ size = 24, color }: MulticaLogoProps) {
       height={size}
       viewBox={`${VIEW_BOX.x} ${VIEW_BOX.y} ${VIEW_BOX.w} ${VIEW_BOX.h}`}
       // eslint-disable-next-line no-restricted-syntax -- brand proper noun
-      accessibilityLabel="Multica"
+      accessibilityLabel="Delegora"
     >
       <G fill="none" stroke={resolvedColor} strokeWidth={STROKE}>
         {LETTERS.map((d) => (

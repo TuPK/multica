@@ -95,7 +95,7 @@ export function ChatWindow() {
   useQuickActionsFailureToast(activeSessionId ?? null);
   const wakeups = useChatWakeups(activeSessionId);
 
-  // The window adds its own focus moments — opening it, and Ask Multica starting
+  // The window adds its own focus moments — opening it, and Ask Delegora starting
   // a new chat — on top of the controller's new-chat nonce. Both counters only
   // grow, so their sum changes whenever either one does.
   const windowRef = useRef<HTMLDivElement>(null);

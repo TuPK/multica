@@ -1,4 +1,4 @@
-// Package billingapi serves the Cloud billing routes that Multica's checkout
+// Package billingapi serves the Cloud billing routes that Delegora's checkout
 // and seat-purchase handlers forward (server/internal/handler/cloud_billing.go),
 // so the existing billing page works with the manual payment provider (spec 5.8,
 // Appendix A). Summary and prices are served by package subscription.
@@ -25,7 +25,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
-// The routes of Multica's billing proxy. Checkout carries the workspace in its
+// The routes of Delegora's billing proxy. Checkout carries the workspace in its
 // body, so its path has no workspace segment; the others carry it in the path.
 const (
 	CheckoutPattern  = "POST /api/v1/subscriptions/checkout-sessions"
@@ -118,7 +118,7 @@ type Deps struct {
 	ChangeOrders ChangeOrderCreator
 	// IndividualMaxSeats is PLATFORM_INDIVIDUAL_MAX_SEATS (spec 7b.1, rule 4).
 	IndividualMaxSeats int
-	// AppURL is the origin of the Multica web app, PLATFORM_APP_URL.
+	// AppURL is the origin of the Delegora web app, PLATFORM_APP_URL.
 	AppURL string
 	Now    func() time.Time
 	Log    *slog.Logger
@@ -264,7 +264,7 @@ func (h *Handler) subscriptionOf(w http.ResponseWriter, r *http.Request, ws stri
 
 // --- checkout-sessions
 
-// checkoutRequest is what Multica's checkout handler forwards, plus the
+// checkoutRequest is what Delegora's checkout handler forwards, plus the
 // platform's optional plan_key and seats. Other fields, such as the payer's
 // email, are ignored.
 type checkoutRequest struct {

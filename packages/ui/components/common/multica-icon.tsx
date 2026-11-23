@@ -42,7 +42,7 @@ const THINK_LAP_MS = 800;
 const THINK_HOLE = 15;
 
 /**
- * The Multica icon: the star from the wordmark's i on a rounded tile. Black
+ * The Delegora icon: the star from the wordmark's i on a rounded tile. Black
  * tile with a white star in light mode, inverted in dark mode.
  */
 export function MulticaIcon({

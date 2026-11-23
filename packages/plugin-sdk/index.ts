@@ -2,7 +2,7 @@
  * @multica/plugin-sdk — what a plugin surface imports.
  *
  * A surface is an ordinary script running in a sandboxed iframe. It holds no
- * credential and cannot reach Multica's API directly: every call here becomes a
+ * credential and cannot reach Delegora's API directly: every call here becomes a
  * message to the host page, which performs the call on the signed-in user's own
  * session and sends the result back. That indirection is the whole security
  * story — a plugin can never do more than the person looking at it, and there
@@ -164,7 +164,7 @@ class Bridge {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new MulticaPluginError(408, `Multica did not answer ${method} ${path} in time`));
+        reject(new MulticaPluginError(408, `Delegora did not answer ${method} ${path} in time`));
       }, DEFAULT_TIMEOUT_MS);
       this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject, timer });
       this.port?.postMessage(request);

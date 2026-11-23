@@ -50,7 +50,7 @@ import { CompanyProjectBacklogDialog } from "./company-project-backlog-dialog";
 import { CompanyDecisionsDialog } from "./company-decisions-dialog";
 import { CompanyFirstRun } from "./company-first-run";
 import { CompanyFloorTabs } from "./company-floor-tabs";
-import { useCompanyHeaderSlot } from "./company-header-slot";
+import { useCompanyHeaderSlot, useCompanyToolbarSlot } from "./company-header-slot";
 import { ownedOpenCount } from "../../pipeline/pipeline-filters";
 import { useCompanyAdmin } from "../lib/use-company-admin";
 import { useDecisionQueue } from "../lib/decision-queue";
@@ -192,6 +192,7 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
     enabled: !!wsId && !!decisionFocus && !linkedInBook,
   });
   const headerSlot = useCompanyHeaderSlot();
+  const toolbarSlot = useCompanyToolbarSlot();
   const decisionProposals = useMemo(
     () => (linkedProposal && !linkedInBook ? [...decisionBook, linkedProposal] : decisionBook),
     [decisionBook, linkedProposal, linkedInBook],
@@ -325,12 +326,16 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
     </CompanyFloorTabs>
   );
 
+  // The seat banner sits on the toolbar row when it has a slot, and in the body otherwise.
+  const seatBanner =
+    canManage && layout.unseatedSquads.length > 0 ? (
+      <CompanySeatBanner count={layout.unseatedSquads.length} pending={seating} onSeatAll={seatAll} />
+    ) : null;
+
   return (
     <>
       {headerSlot ? createPortal(floorTabs, headerSlot) : floorTabs}
-      {canManage && layout.unseatedSquads.length > 0 ? (
-        <CompanySeatBanner count={layout.unseatedSquads.length} pending={seating} onSeatAll={seatAll} />
-      ) : null}
+      {seatBanner ? (toolbarSlot ? createPortal(seatBanner, toolbarSlot) : seatBanner) : null}
       {firstRun ? (
         <CompanyFirstRun />
       ) : (

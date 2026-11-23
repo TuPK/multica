@@ -12,3 +12,13 @@ export const CompanyHeaderSlotContext = createContext<HTMLElement | null>(null);
 export function useCompanyHeaderSlot() {
   return useContext(CompanyHeaderSlotContext);
 }
+
+/**
+ * The floor plan toolbar's leading slot, on the same row as the filters. The seat
+ * banner renders into it. Null outside the toolbar, where the banner stays in place.
+ */
+export const CompanyToolbarSlotContext = createContext<HTMLElement | null>(null);
+
+export function useCompanyToolbarSlot() {
+  return useContext(CompanyToolbarSlotContext);
+}

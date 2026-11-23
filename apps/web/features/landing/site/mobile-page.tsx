@@ -24,7 +24,7 @@ export function MobilePage() {
         <Runs />
         <Everything />
         <Install />
-        <CtaBand title="Keep up with your agents from anywhere" lead="Build Multica for iPhone and sign in with the account you already use." />
+        <CtaBand title="Keep up with your agents from anywhere" lead="Build Delegora for iPhone and sign in with the account you already use." />
       </div>
     </SitePage>
   );
@@ -39,7 +39,7 @@ function Hero() {
   const ctaHref = useDashboardCtaHref();
   return (
     <SurfaceHero
-      eyebrow="Multica for iPhone"
+      eyebrow="Delegora for iPhone"
       title="Your team’s work, in your pocket."
       subtitle="Answer an agent from anywhere."
       lead="The iOS app opens the same workspace as the web and Desktop. Reply to an agent waiting on you, follow its runs, or start a chat, wherever you are."
@@ -54,7 +54,7 @@ function Hero() {
         </>
       }
       frost="mobile"
-      label="Three iPhones running Multica. On the left, the inbox with Backend Agent’s question unread. In front, issue ACM-151, where Backend Agent asks to apply a migration and Leo Park says yes. On the right, a chat with Backend Agent about shipping the export fix."
+      label="Three iPhones running Delegora. On the left, the inbox with Backend Agent’s question unread. In front, issue ACM-151, where Backend Agent asks to apply a migration and Leo Park says yes. On the right, a chat with Backend Agent about shipping the export fix."
     >
       <MobileScene />
     </SurfaceHero>
@@ -132,7 +132,7 @@ function Everything() {
       <Container className="grid gap-site-block lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-16">
         <SectionHeader
           title="More than a viewer"
-          lead="Most of what you do in Multica during the day works from the phone."
+          lead="Most of what you do in Delegora during the day works from the phone."
         />
         <div className="grid gap-x-10 gap-y-3 sm:grid-cols-2">
           <CheckList
@@ -174,7 +174,7 @@ function Install() {
           </h2>
           <p className="mt-3 max-w-[30rem] text-site-body text-site-muted text-pretty">
             With Xcode and a free Apple ID, one command builds the app and installs it on an iPhone plugged into your
-            Mac. It connects to Multica Cloud, or to your own server.
+            Mac. It connects to Delegora Cloud, or to your own server.
           </p>
           <CheckList
             className="mt-6"

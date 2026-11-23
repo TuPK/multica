@@ -32,7 +32,7 @@ func TestConsoleRoutesDoNotReadWorkspaceContent(t *testing.T) {
 		"status": true, "usage": true, "audit-events": true, "notes": true,
 		"subscription": true, "billing-profile": true,
 		// POST /tenants/{id}/delete-now (spec R6 section 6.5) deletes the tenant's
-		// workspaces through Multica's deletion path; it reads no workspace content.
+		// workspaces through Delegora's deletion path; it reads no workspace content.
 		"delete-now": true,
 		// Tenant users (spec R6 section 3b.3) show membership and account status,
 		// not workspace content; limit overrides (section 3b.4) write a subscription field.

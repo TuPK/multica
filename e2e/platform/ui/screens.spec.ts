@@ -166,7 +166,7 @@ test.describe("accounts", () => {
     await expect(dialog).toBeVisible();
   });
 
-  test("flow 246: an email that already has a Multica user is refused in the dialog", async ({ page }) => {
+  test("flow 246: an email that already has a Delegora user is refused in the dialog", async ({ page }) => {
     const dialog = await openCreateAccountDialog(page);
     await fillAccountForm(dialog, existing.email);
     await dialog.getByRole("button", { name: "Submit request" }).click();

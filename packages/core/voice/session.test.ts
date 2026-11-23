@@ -322,7 +322,7 @@ describe("voice session", () => {
   });
 
   it("offers vocabulary and workspace names to the model as hotwords", async () => {
-    useVoiceSettingsStore.getState().update({ vocabulary: ["Multica"], language: "zh" });
+    useVoiceSettingsStore.getState().update({ vocabulary: ["Delegora"], language: "zh" });
     setVoiceContextWords(["Lambda", "multica", "Jiayuan"]);
     target("chat");
     pressVoice("chat");
@@ -330,7 +330,7 @@ describe("voice session", () => {
     await untilPhase("recording");
     pressVoice("chat");
     await untilPhase("idle");
-    const options = { language: "zh", hotwords: ["Multica", "Lambda", "Jiayuan"] };
+    const options = { language: "zh", hotwords: ["Delegora", "Lambda", "Jiayuan"] };
     expect(engine.prepare).toHaveBeenCalledWith(MODEL, options);
     expect(engine.transcribe).toHaveBeenCalledWith(expect.any(Blob), MODEL, options);
     setVoiceContextWords([]);

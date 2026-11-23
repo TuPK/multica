@@ -3,8 +3,8 @@ SELECT * FROM platform_staff
 WHERE user_id = $1 AND revoked_at IS NULL;
 
 -- name: GetUserIDByEmail :one
--- Multica's user table is the only table of Multica's that the platform reads
--- for sign-in. The caller passes the email lower-cased, as Multica stores it.
+-- Delegora's user table is the only table of Delegora's that the platform reads
+-- for sign-in. The caller passes the email lower-cased, as Delegora stores it.
 SELECT id FROM "user"
 WHERE email = $1;
 

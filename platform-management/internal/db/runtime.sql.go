@@ -268,7 +268,7 @@ type SearchRuntimesRow struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
-// Runtimes of the Multica daemons, read for the staff console (spec R6 section
+// Runtimes of the Delegora daemons, read for the staff console (spec R6 section
 // 3b.5, QT5). The platform reads agent_runtime and agent_task_queue and writes
 // only platform_runtime (the disable switch, migration 1031).
 // The runtimes of the staff list, newest first. A scoped caller (admin) reads

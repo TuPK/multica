@@ -37,7 +37,7 @@ type AccountCache interface {
 	Invalidate(ctx context.Context, userID string) error
 }
 
-// AccountNotifier tells the Multica server that an account changed.
+// AccountNotifier tells the Delegora server that an account changed.
 // *accountcache.Publisher is one.
 type AccountNotifier interface {
 	Publish(ctx context.Context, userID, kind string) error

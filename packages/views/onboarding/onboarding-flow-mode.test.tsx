@@ -65,7 +65,7 @@ describe("OnboardingFlow — new-workspace mode", () => {
   it("starts at the workspace step instead of the product intro", () => {
     renderFlow({ mode: "new_workspace", onCancel: vi.fn() });
 
-    // The welcome screen teaches what Multica is; someone creating a second
+    // The welcome screen teaches what Delegora is; someone creating a second
     // workspace already knows, so the flow opens on naming it.
     expect(
       screen.getByRole("heading", { name: /Name your workspace/i }),

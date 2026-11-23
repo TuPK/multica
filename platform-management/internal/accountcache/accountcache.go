@@ -1,5 +1,5 @@
 // Package accountcache is the platform's Redis side of account changes: the
-// cache behind accountguard.Guard, and the message that tells the Multica
+// cache behind accountguard.Guard, and the message that tells the Delegora
 // server to close a user's open sockets.
 package accountcache
 
@@ -13,7 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Channel is the pub/sub channel the Multica server subscribes to. The server
+// Channel is the pub/sub channel the Delegora server subscribes to. The server
 // declares the same name in server/internal/realtime/account_changes.go; the
 // two modules cannot share a constant because this package is internal.
 const Channel = "mul:acct:changed"
@@ -40,7 +40,7 @@ type Commands interface {
 	Del(ctx context.Context, keys ...string) *redis.IntCmd
 }
 
-// Cache is the accountguard.Cache on Redis. It uses the keys the Multica
+// Cache is the accountguard.Cache on Redis. It uses the keys the Delegora
 // server reads, so a write on either side invalidates both.
 type Cache struct{ rdb Commands }
 
@@ -78,7 +78,7 @@ type Publisher struct{ rdb Client }
 // NewPublisher returns a Publisher on rdb.
 func NewPublisher(rdb Client) *Publisher { return &Publisher{rdb: rdb} }
 
-// Publish tells every Multica server node that the user's account changed. It
+// Publish tells every Delegora server node that the user's account changed. It
 // returns an error for an empty user id or an unknown kind, and when Redis
 // refuses the message.
 func (p *Publisher) Publish(ctx context.Context, userID, kind string) error {

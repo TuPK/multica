@@ -72,7 +72,7 @@ export interface VoiceSettings {
   platform: Platform;
   shortcut: string[];
   activation: Activation;
-  /** Also answer the shortcut while Multica is in the background (desktop). */
+  /** Also answer the shortcut while Delegora is in the background (desktop). */
   globalShortcut: boolean;
   engine: Engine;
   model: string;
@@ -104,7 +104,7 @@ export const DEFAULT_SETTINGS: VoiceSettings = {
   muteOthers: false,
   removeFillers: true,
   polish: "offer",
-  vocabulary: ["Multica", "Lambda", "Tiptap", "workspace ID"],
+  vocabulary: ["Delegora", "Lambda", "Tiptap", "workspace ID"],
   keepRecordings: "off",
   micPermission: "granted",
   models: {

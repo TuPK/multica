@@ -103,7 +103,7 @@ func TestWarningAtEightyThenOneHundredOncePerMonth(t *testing.T) {
 	if len(mail.sent) != 4 {
 		t.Fatalf("emails = %d, want 4", len(mail.sent))
 	}
-	if want := "Multica: acme reached 80% of its agents limit"; mail.sent[0].Subject != want {
+	if want := "Delegora: acme reached 80% of its agents limit"; mail.sent[0].Subject != want {
 		t.Fatalf("first subject = %q, want %q", mail.sent[0].Subject, want)
 	}
 }
@@ -123,7 +123,7 @@ func TestAutopilotRunsWarnAtEighty(t *testing.T) {
 	if n, err := job.Run(context.Background(), june); err != nil || n != 1 {
 		t.Fatalf("at 8 of 10 autopilot runs: sent %d, err %v; want 1", n, err)
 	}
-	if want := "Multica: acme reached 80% of its autopilot_runs limit"; len(mail.sent) != 1 || mail.sent[0].Subject != want {
+	if want := "Delegora: acme reached 80% of its autopilot_runs limit"; len(mail.sent) != 1 || mail.sent[0].Subject != want {
 		t.Fatalf("mail = %+v, want subject %q", mail.sent, want)
 	}
 }

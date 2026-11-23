@@ -75,7 +75,7 @@ const OPEN_KEY = "multica:chat:isOpen";
  */
 const FLOATING_KEY = "multica:chat:floatingChatEnabled";
 /**
- * The agent Ask Multica starts a new chat with, per workspace. Missing key =
+ * The agent Ask Delegora starts a new chat with, per workspace. Missing key =
  * no preference: a new chat goes to the agent last chatted with.
  */
 const QUICK_CHAT_AGENT_KEY = "multica:chat:quickChatAgentId";
@@ -359,7 +359,7 @@ export interface ChatState {
   /** Project context for the next session. Existing sessions remain bound to
    *  their server-persisted project_id. */
   selectedProjectId: string | null;
-  /** Settings preference: the agent Ask Multica starts a new chat with. */
+  /** Settings preference: the agent Ask Delegora starts a new chat with. */
   quickChatAgentId: string | null;
   /** Bumped by `startNewChat`; the window focuses its composer on each bump. */
   newChatRequest: number;
@@ -387,7 +387,7 @@ export interface ChatState {
   setSelectedAgentId: (id: string) => void;
   setSelectedProjectId: (id: string | null) => void;
   setQuickChatAgentId: (id: string | null) => void;
-  /** Ask Multica: open the window on a new chat with the quick-chat agent and no project. */
+  /** Ask Delegora: open the window on a new chat with the quick-chat agent and no project. */
   startNewChat: () => void;
   /** Give a chat a chip in the bottom bar. No-op when it already has one. */
   keepChatInBar: (sessionId: string) => void;

@@ -13,7 +13,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
  * Opening the window is one of those moments (MUL-5522): the whole point of the
  * toggle shortcut is reaching chat without a mouse, so landing in a window you
  * still have to click into would defeat it — and the same courtesy applies to
- * opening it from the FAB. So is Ask Multica (`newChatRequest`, bumped by the
+ * opening it from the FAB. So is Ask Delegora (`newChatRequest`, bumped by the
  * store's `startNewChat`), which can start a new chat in a window already open.
  *
  * The refs are seeded with mount-time values so only a real closed → open

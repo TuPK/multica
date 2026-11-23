@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { TestApiClient } from "./fixtures";
 
-// Real Multica login and workspace with a fixture agent and channel responses.
+// Real Delegora login and workspace with a fixture agent and channel responses.
 // Never needs a WeChat account or launches an agent CLI.
 test("An agent owner can connect and disconnect WeChat as a workspace member", async ({
   page,

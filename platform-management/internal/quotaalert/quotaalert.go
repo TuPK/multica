@@ -156,7 +156,7 @@ func (j Job) notify(ctx context.Context, ws, kind, gate, period string, pct, use
 
 // text is a first draft of the warning, for the owner to review.
 func text(c lifecycle.Contact, appURL, gate string, pct, used, limit int64) (subject, body string) {
-	subject = fmt.Sprintf("Multica: %s reached %d%% of its %s limit", c.Slug, pct, gate)
+	subject = fmt.Sprintf("Delegora: %s reached %d%% of its %s limit", c.Slug, pct, gate)
 	body = fmt.Sprintf("Workspace %s has used %d of %d (%s), %d%% of its limit.\n\nManage the plan: %s\n",
 		c.Slug, used, limit, gate, pct, appURL)
 	return subject, body

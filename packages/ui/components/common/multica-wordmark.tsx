@@ -15,13 +15,13 @@ const LETTER_MS = 150;
 const STAR_AFTER_MS = 6 * LETTER_MS + 420;
 
 /**
- * The Multica wordmark (G2 with the star on the i). Drawn, not typed — never
+ * The Delegora wordmark (G2 with the star on the i). Drawn, not typed — never
  * substitute a font. Colour follows `currentColor`; height follows `className`
  * (1em default), measured from the top of the star to the baseline.
  */
 export function MulticaWordmark({
   writeDelayMs,
-  title = "Multica",
+  title = "Delegora",
   className,
   ...props
 }: MulticaWordmarkProps) {

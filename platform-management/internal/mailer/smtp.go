@@ -25,7 +25,7 @@ func (d netDialer) Dial(ctx context.Context) (SMTPSession, error) {
 	addr := net.JoinHostPort(d.cfg.SMTPHost, d.cfg.SMTPPort)
 	tlsCfg := &tls.Config{
 		ServerName:         d.cfg.SMTPHost,
-		InsecureSkipVerify: d.cfg.SMTPTLSInsecure, //nolint:gosec // opt-in through SMTP_TLS_INSECURE, as in the Multica server
+		InsecureSkipVerify: d.cfg.SMTPTLSInsecure, //nolint:gosec // opt-in through SMTP_TLS_INSECURE, as in the Delegora server
 	}
 
 	var conn net.Conn

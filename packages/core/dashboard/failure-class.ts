@@ -62,7 +62,7 @@ const REASON_CLASS: Record<string, FailureClass> = {
   "agent_error.runtime_version_unsupported": "runtime",
   // The daemon could not fetch the agent's skills from the control plane, so
   // the run never started. Grouped with runtime rather than provider: the
-  // operator response is "check the daemon's link to Multica", the same as a
+  // operator response is "check the daemon's link to Delegora", the same as a
   // daemon that went offline — the model provider is not involved.
   skill_bundle_unavailable: "runtime",
   // The local runtime CLI (OpenClaw config discovery today) missed its

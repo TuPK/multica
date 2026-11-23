@@ -108,7 +108,7 @@ export function McpRemoveButton({
 }
 
 /**
- * Shared MCP inventory row used wherever Multica owns the server entry.
+ * Shared MCP inventory row used wherever Delegora owns the server entry.
  *
  * Data writes remain the caller's responsibility: workspace settings replaces
  * a write-only config, while an agent edits its readable local config. Keeping

@@ -243,7 +243,7 @@
         "description": "フローティングチャットを開閉します。開いたときは入力欄にフォーカスします。"
       },
       "newChat": {
-        "label": "Multica に質問",
+        "label": "Delegora に質問",
         "description": "フローティングチャットで新しいチャットを始めます。"
       },
       "findInIssue": {
@@ -347,7 +347,7 @@
   "chat": {
     "floating_label": "フローティングチャット",
     "floating_hint": "すべてのページにフローティングチャットボタンを表示します。",
-    "ask_agent_label": "「Multica に聞く」のエージェント",
+    "ask_agent_label": "「Delegora に聞く」のエージェント",
     "ask_agent_hint": "このワークスペースで、下部バーから始める新しいチャットの相手になるエージェント。",
     "ask_agent_last_used": "最後に使用したエージェント"
   },
@@ -802,7 +802,7 @@
     },
     "system": {
       "title": "システム通知",
-      "label": "Multica がバックグラウンドにあるときにシステム通知を表示"
+      "label": "Delegora がバックグラウンドにあるときにシステム通知を表示"
     },
     "browser": {
       "label": "ブラウザ通知",
@@ -975,13 +975,13 @@
     "add_account": "アカウントまたは組織を追加",
     "disconnect_account": "{{login}} の接続を解除",
     "errors": {
-      "missing_authorization": "GitHub からユーザー認証が返されませんでした。再接続して認証を完了してください。既存のインストールで繰り返す場合は、Multica の運用担当者に連絡してください。",
+      "missing_authorization": "GitHub からユーザー認証が返されませんでした。再接続して認証を完了してください。既存のインストールで繰り返す場合は、Delegora の運用担当者に連絡してください。",
       "installation_not_authorized": "個人のインストールには所有者の GitHub アカウントを使用してください。組織の場合は、承認された全リポジトリの管理権限を持つアカウントを使用し、少なくとも 1 つのリポジトリを選択してください。",
       "invalid_state": "GitHub 接続リクエストの期限が切れているか、無効です。設定 → コードから再接続してください。",
       "incomplete_callback": "GitHub の接続応答が不完全です。設定 → コードから再接続してください。",
       "bad_workspace": "接続先のワークスペースが見つかりません。対象のワークスペースを開き、設定 → コードから再試行してください。",
-      "verification_failed": "GitHub インストールへの管理権限を確認できませんでした。再接続し、繰り返す場合は Multica の運用担当者に GitHub App の設定確認を依頼してください。",
-      "persist_failed": "GitHub 接続を保存できませんでした。設定 → コードから再試行し、繰り返す場合は Multica の運用担当者に連絡してください。"
+      "verification_failed": "GitHub インストールへの管理権限を確認できませんでした。再接続し、繰り返す場合は Delegora の運用担当者に GitHub App の設定確認を依頼してください。",
+      "persist_failed": "GitHub 接続を保存できませんでした。設定 → コードから再試行し、繰り返す場合は Delegora の運用担当者に連絡してください。"
     }
   },
   "vcs": {
@@ -1095,7 +1095,7 @@
     "install_error_expired": "承認前に QR が期限切れになりました。もう一度スキャンしてください。",
     "install_error_access_denied": "Lark で設置がキャンセルされました。",
     "install_error_protocol": "Lark が設置を拒否しました — もう一度お試しください。",
-    "install_error_bot_info": "承認はされましたが、Multica がボットの識別子を取得できませんでした。もう一度お試しください。",
+    "install_error_bot_info": "承認はされましたが、Delegora がボットの識別子を取得できませんでした。もう一度お試しください。",
     "install_error_conflict": "設置を保存できませんでした。別のボットがすでにこのエージェントに接続されている可能性があります。",
     "install_error_installer_bind": "ボットは設置されましたが、Lark の身元情報を連携できませんでした。もう一度お試しいただくか、サポートにお問い合わせください。",
     "install_error_session_lost": "設置セッションが期限切れまたは失われました。もう一度スキャンしてやり直してください。",
@@ -1141,7 +1141,7 @@
     "agent_bot_manage_tooltip": "このボットの Slack ワークスペースを開きます。",
     "byo_dialog_title": "Slack ボットを接続",
     "byo_video_cta": "セットアップ手順の動画を見る",
-    "byo_docs_link": "Step-by-step：Multica エージェントを Slack に接続する",
+    "byo_docs_link": "Step-by-step：Delegora エージェントを Slack に接続する",
     "byo_bot_token_label": "Bot トークン（xoxb-）",
     "byo_app_token_label": "App レベルトークン（xapp-）",
     "byo_submit": "接続",
@@ -1170,7 +1170,7 @@
     "group_mentions_other": "{{count}} 件のメンション",
     "group_forget": "一覧から削除",
     "group_forget_title": "このグループを一覧から削除しますか？",
-    "group_forget_description": "DingTalk 内のメッセージを削除せずに、このグループを Multica の一覧から削除します。",
+    "group_forget_description": "DingTalk 内のメッセージを削除せずに、このグループを Delegora の一覧から削除します。",
     "group_forget_cancel": "キャンセル",
     "group_forget_confirm": "一覧から削除",
     "group_forget_success": "グループを一覧から削除しました",
@@ -1204,7 +1204,7 @@
     "agent_bot_connected_label": "DingTalk に接続済み",
     "agent_bot_disconnect_tooltip": "この DingTalk ボットをエージェントから解除します。ボットは DingTalk メッセージを受信しなくなります。",
     "byo_dialog_title": "DingTalk ボットを接続",
-    "byo_docs_link": "Step-by-step：Multica エージェントを DingTalk に接続する",
+    "byo_docs_link": "Step-by-step：Delegora エージェントを DingTalk に接続する",
     "byo_appkey_label": "AppKey（client id）",
     "byo_appsecret_label": "AppSecret（client secret）",
     "byo_submit": "接続",
@@ -1248,7 +1248,7 @@
     "byo_secret_label": "ロングコネクション Secret",
     "byo_secret_placeholder": "管理コンソールに一度だけ表示される Secret を貼り付けます",
     "byo_bot_name_label": "チャットでのボット名（任意）",
-    "byo_bot_name_placeholder": "例: Multica Bot",
+    "byo_bot_name_placeholder": "例: Delegora Bot",
     "byo_bot_name_hint": "名前にスペースが含まれる場合のみ必要です。自分宛ての @ メンションと、その後に入力されたコマンドを区別するために使います。あとから変更するとき（WeCom 管理コンソールで改名した場合を含む）は、いったん接続を解除してから接続し直してください。",
     "byo_submit": "接続",
     "byo_submitting": "接続中…",
@@ -1256,7 +1256,7 @@
     "byo_success_toast": "WeCom ボットを接続しました",
     "byo_conflict_same_workspace": "このボットはこのワークスペースの別のエージェントに接続済みです。先にそちらで切断してから、ここに接続してください。",
     "byo_conflict_archived_agent": "このボットはこのワークスペースのアーカイブ済みエージェントに接続されています。そのエージェントを復元するか、ボットを切断してから接続してください。",
-    "byo_conflict_other_workspace": "このボットは別の Multica ワークスペースに接続済みです。先にそちらで切断してから接続してください。",
+    "byo_conflict_other_workspace": "このボットは別の Delegora ワークスペースに接続済みです。先にそちらで切断してから接続してください。",
     "byo_rejected": "ボットを接続できませんでした。WeCom 管理コンソールの Bot ID とシークレット、および長時間接続が有効なスマートボットであることを確認してください。",
     "byo_credentials_rejected": "WeCom がこの Bot ID とシークレットを拒否しました。WeCom 管理コンソールで両方を確認し、長時間接続が有効なスマートボットであることもご確認ください。",
     "byo_credentials_unverifiable": "WeCom に接続できず、このボットを検証できませんでした。認証情報は変更されていません。少し時間をおいてもう一度お試しください。",
@@ -1305,7 +1305,7 @@
     "disconnect": "切断",
     "disconnecting": "切断中…",
     "disconnect_confirm_title": "この Telegram ボットを切断しますか？",
-    "disconnect_confirm_description": "このボットはこのワークスペースの Telegram メッセージを受信しなくなります。Multica 内のチャット履歴は保持され、あとから同じエージェントから再接続できます。",
+    "disconnect_confirm_description": "このボットはこのワークスペースの Telegram メッセージを受信しなくなります。Delegora 内のチャット履歴は保持され、あとから同じエージェントから再接続できます。",
     "disconnect_confirm_cancel": "キャンセル",
     "toast_disconnected": "Telegram ボットを切断しました",
     "toast_disconnect_failed": "切断に失敗しました",
@@ -1317,7 +1317,7 @@
     "agent_bot_manage_tooltip": "Telegram でこのボットとのチャットを開きます。",
     "connect_dialog_title": "Telegram ボットを接続",
     "connect_dialog_description": "Telegram の @BotFather でボットを作成し、そのトークンを以下に貼り付けてください。トークンは即時検証され、暗号化して保存されます。",
-    "connect_docs_link": "手順ガイド：Multica エージェントを Telegram に接続する",
+    "connect_docs_link": "手順ガイド：Delegora エージェントを Telegram に接続する",
     "bot_token_label": "ボットトークン",
     "connect_submit": "接続",
     "connect_submitting": "接続中…",
@@ -1423,7 +1423,7 @@
       "external_description_before": "このデバイスのデーモンはアプリの外部（WSL2 など）で実行されているため、アプリから起動や停止はできません。その環境で次を実行してください：",
       "external_description_after": "。",
       "auto_start_title": "起動時に自動開始",
-      "auto_start_description": "Multica Desktop の起動時にローカルデーモンを自動起動します",
+      "auto_start_description": "Delegora Desktop の起動時にローカルデーモンを自動起動します",
       "auto_stop_title": "終了時に自動停止",
       "auto_stop_description": "デスクトップ版を閉じるとデーモンを停止します。",
       "cli_status": "CLI の状態",
@@ -1724,7 +1724,7 @@
     "title": "エージェントにツールを与える方法",
     "current": "このページ",
     "mcp": "管理者が追加してワークスペースで共有し、エージェントごとに割り当てます。",
-    "apps": "Multica で接続したチームまたは個人のアカウントを、各エージェントに追加します。",
+    "apps": "Delegora で接続したチームまたは個人のアカウントを、各エージェントに追加します。",
     "plugins": "インストールするとツール、定期フック、ストレージを追加でき、プラグインごとに権限を付与します。"
   },
   "publish_channels": {
@@ -1744,7 +1744,7 @@
     "dry_run": "テスト実行",
     "delete": "削除",
     "delete_title": "公開チャンネルを削除しますか？",
-    "delete_description": "Multica からチャンネルを削除します。アカウントの連携は各サービス側で解除するまで残ります。",
+    "delete_description": "Delegora からチャンネルを削除します。アカウントの連携は各サービス側で解除するまで残ります。",
     "delete_confirm": "チャンネルを削除",
     "empty_title": "公開チャンネルがありません",
     "empty_description": "Content Studio用のソーシャルアカウントを接続します。",
@@ -2322,7 +2322,7 @@
     "disconnect": "接続を解除",
     "catalog_title": "利用できるアプリ",
     "catalog_label": "メンバーが追加できるアプリ",
-    "catalog_description": "厳選アプリにはレビュー済みの既定ルールがあります。「すべてのアプリ」は Multica で接続できるすべてを含み、Multica が分類できない操作は必ず確認を求めます。カスタムリストでは選んだアプリだけを許可します。",
+    "catalog_description": "厳選アプリにはレビュー済みの既定ルールがあります。「すべてのアプリ」は Delegora で接続できるすべてを含み、Delegora が分類できない操作は必ず確認を求めます。カスタムリストでは選んだアプリだけを許可します。",
     "catalog_all": "すべてのアプリ",
     "catalog_curated": "厳選のみ",
     "catalog_custom": "カスタムリスト",

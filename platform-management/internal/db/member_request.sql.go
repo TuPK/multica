@@ -167,7 +167,7 @@ type InsertMemberRequestParams struct {
 
 // Staff add-member requests (spec R6 section 4): a staff member asks for a person
 // to be added to a workspace. The platform writes the request and cancels it;
-// Multica's member_provisioning job moves it on.
+// Delegora's member_provisioning job moves it on.
 // Inserts a pending request unless one is already live for the workspace, kind
 // and email. The conflict target is the partial unique index of migration 1024;
 // a lost race returns no row, and the caller reads the winner.

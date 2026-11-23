@@ -141,7 +141,7 @@
   }
 }
 
-/* Target comment flash pulse matching Multica's deep-link landing highlight */
+/* Target comment flash pulse matching Delegora's deep-link landing highlight */
 .inbox-comment-flash {
   animation: inbox-comment-pulse calc(1600ms * var(--inbox-motion-scale, 1)) ease-out;
 }

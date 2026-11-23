@@ -27,7 +27,7 @@ type statusBody struct {
 
 // setWorkspaceStatus moves a workspace to a state through workspacestatus.Set,
 // which writes the platform row and its audit row in one transaction and drops
-// the cache key the Multica server reads.
+// the cache key the Delegora server reads.
 func (h *Handler) setWorkspaceStatus(w http.ResponseWriter, r *http.Request) {
 	scope, ok := h.scopeFor(w, r, staff.ActionWorkspacesLock)
 	if !ok {
@@ -176,7 +176,7 @@ func (h *Handler) addNote(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, toNoteJSON(note))
 }
 
-// afterAccountChange drops the guard cache and tells the Multica server to
+// afterAccountChange drops the guard cache and tells the Delegora server to
 // close the user's sockets. The change is committed by now, so a failure is
 // logged and the request still succeeds: the cache entry expires within
 // accountguard.TTL, and a socket is closed by the next change notice or the
@@ -196,7 +196,7 @@ func (h *Handler) afterAccountChange(ctx context.Context, userID, kind string) {
 	}
 }
 
-// setUserStatus suspends or re-activates a Multica account. An account that is
+// setUserStatus suspends or re-activates a Delegora account. An account that is
 // pending deletion or deleted is not the console's to change.
 func (h *Handler) setUserStatus(w http.ResponseWriter, r *http.Request) {
 	id, perr := pathID(r, "id")
@@ -404,7 +404,7 @@ type addStaffBody struct {
 	TenantID string `json:"tenant_id"`
 }
 
-// addStaff gives an existing Multica account a staff role, and re-activates
+// addStaff gives an existing Delegora account a staff role, and re-activates
 // the account's revoked row when it has one.
 func (h *Handler) addStaff(w http.ResponseWriter, r *http.Request) {
 	if !h.requireStaffManager(w, r) {
@@ -441,7 +441,7 @@ func (h *Handler) addStaff(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		if !found {
-			return &apiError{Status: http.StatusNotFound, Code: "no_such_account", Message: "no Multica account has this email"}
+			return &apiError{Status: http.StatusNotFound, Code: "no_such_account", Message: "no Delegora account has this email"}
 		}
 		userID = id
 		if _, _, active, err := tx.ActiveStaffRole(r.Context(), id); err != nil {

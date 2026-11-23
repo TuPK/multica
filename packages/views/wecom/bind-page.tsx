@@ -15,10 +15,10 @@ type RedeemState =
   | { kind: "needs-auth" }
   | { kind: "error"; reason: string };
 
-// WecomBindPage is the destination the WeCom smart-bot's "link your Multica
+// WecomBindPage is the destination the WeCom smart-bot's "link your Delegora
 // account" prompt points at. Same shape as SlackBindPage — the user lands
 // here logged out OR logged in; we require auth before redeeming because
-// the redeemer's Multica identity is taken from the session (the token
+// the redeemer's Delegora identity is taken from the session (the token
 // alone never proves who is binding — see wecom.BindingTokenService.
 // RedeemAndBind).
 //

@@ -81,8 +81,8 @@ describe("malformed subscription management responses", () => {
   });
 });
 
-describe("responses without the management fields (Multica Cloud, older backends)", () => {
-  // Multica Cloud sends none of pending_change, scheduled_price_change,
+describe("responses without the management fields (Delegora Cloud, older backends)", () => {
+  // Delegora Cloud sends none of pending_change, scheduled_price_change,
   // payment_provider, billing_model, usage, or the three new actions. The page
   // must still read the summary, with those actions off and null/defaulted values.
   function legacySummary() {

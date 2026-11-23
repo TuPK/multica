@@ -2,7 +2,7 @@ import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import importPlugin from "eslint-plugin-import-x";
 
-// Multica draws its own icons: every glyph comes from @multica/ui/icons, and a
+// Delegora draws its own icons: every glyph comes from @multica/ui/icons, and a
 // missing one is drawn in packages/ui/icons/drawings. The pattern covers each
 // library's root and its subpaths (`react-icons/fa`, `@heroicons/react/24/outline`).
 // Exported because flat config replaces a rule's options wholesale: a package

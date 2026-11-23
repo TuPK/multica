@@ -1,4 +1,4 @@
-/** A Lark Bot installation bound to a single Multica agent.
+/** A Lark Bot installation bound to a single Delegora agent.
  *
  * Wire shape mirrors `LarkInstallationResponse` in
  * `server/internal/handler/lark.go`. New fields the backend adds in the

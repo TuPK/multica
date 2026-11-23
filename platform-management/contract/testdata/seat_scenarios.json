@@ -1,5 +1,5 @@
 {
- "_comment": "Hand-written. The seat protocol scenarios of spec Appendix B. The platform's test (internal/seat) runs them on its HTTP handler and checks every expect; Multica's test (server/internal/seatcapacity) runs the same calls with its client on the recorded responses in seat_transcript.json and checks the same expect. 'world' resets the workspace, 'members' sets its member count, 'clock' sets the platform's time. Absent expect fields are not checked.",
+ "_comment": "Hand-written. The seat protocol scenarios of spec Appendix B. The platform's test (internal/seat) runs them on its HTTP handler and checks every expect; Delegora's test (server/internal/seatcapacity) runs the same calls with its client on the recorded responses in seat_transcript.json and checks the same expect. 'world' resets the workspace, 'members' sets its member count, 'clock' sets the platform's time. Absent expect fields are not checked.",
  "workspace": "11111111-aaaa-4aaa-8aaa-111111111111",
  "member_id": "00000000-0000-4000-8000-000000000901",
  "scenarios": [

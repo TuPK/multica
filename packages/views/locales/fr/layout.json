@@ -278,9 +278,9 @@
   "star_prompt": {
     "title_one": "{{agent}} a terminé {{count}} tâche",
     "title_other": "{{agent}} a terminé {{count}} tâches",
-    "body": "Si Multica vous est utile, une étoile sur GitHub aide d'autres équipes à le découvrir.",
+    "body": "Si Delegora vous est utile, une étoile sur GitHub aide d'autres équipes à le découvrir.",
     "star": "Star",
-    "star_label": "Mettre une Star à Multica sur GitHub",
+    "star_label": "Mettre une Star à Delegora sur GitHub",
     "later": "Plus tard",
     "close": "Fermer"
   },

@@ -154,7 +154,7 @@ type ListTenantUserRowsRow struct {
 
 // Users of a tenant (spec R6 section 3b.3, QT3). A user belongs to a tenant
 // when it is a member of at least one of the tenant's workspaces (D92). The
-// platform reads the Multica member and user tables and writes only its own
+// platform reads the Delegora member and user tables and writes only its own
 // request table (through InsertMemberRequest).
 // The memberships of the tenant's users, one row per (user, workspace), for
 // the caller to group. Users are keyset-paged by id: the page is the first

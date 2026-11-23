@@ -20,7 +20,7 @@ import { SettingsRow } from "./settings-layout";
 const LAST_USED_AGENT = "last-used";
 
 /**
- * The agent Ask Multica starts a new chat with. Unset, a new chat goes to the
+ * The agent Ask Delegora starts a new chat with. Unset, a new chat goes to the
  * agent last chatted with. Stored on this device per workspace, like the
  * chat's other selections.
  */

@@ -13,9 +13,9 @@ import (
 	"time"
 )
 
-// The fixture was made by the Multica server's own code
+// The fixture was made by the Delegora server's own code
 // (server/internal/mfa: LoadCrypto, Seal, and the pquerna TOTP library) with
-// the key below, so the platform is shown to read what Multica writes.
+// the key below, so the platform is shown to read what Delegora writes.
 const (
 	fixtureKey    = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
 	fixtureSecret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"

@@ -110,7 +110,7 @@ vi.mock("./use-prefetch-doc", () => ({
 vi.mock("../../common/actor-avatar", () => ({ ActorAvatar: () => null }));
 
 const LONG_TITLE =
-  "Multica 2026 Q4 跨团队知识库架构设计方案与实时协作编辑系统迁移路线图（含多端离线同步与权限模型评审记录）";
+  "Delegora 2026 Q4 跨团队知识库架构设计方案与实时协作编辑系统迁移路线图（含多端离线同步与权限模型评审记录）";
 const LONG_FOLDER_TITLE =
   "产品研发与基础设施架构设计文档归档目录（2026 年度跨团队协作规范）";
 

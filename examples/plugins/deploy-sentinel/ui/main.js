@@ -7,7 +7,7 @@
 // call below goes over the bridge, where the host re-issues it as the signed-in
 // user and checks the scopes this plugin was granted.
 //
-// A surface entry is ONE script with no module graph. Multica stores and serves
+// A surface entry is ONE script with no module graph. Delegora stores and serves
 // the published artifact and serves it in a generated content document, so
 // there is no module graph for a static `import` to resolve against — and that is the
 // point: a surface cannot reach its author's server just by loading. In a real
@@ -18,7 +18,7 @@ const pending = new Map();
 const port = globalThis.__multicaPluginBridgePortV2;
 let sequence = 0;
 
-if (!(port instanceof MessagePort)) throw new Error("Multica surface bridge is unavailable");
+if (!(port instanceof MessagePort)) throw new Error("Delegora surface bridge is unavailable");
 delete globalThis.__multicaPluginBridgePortV2;
 port.onmessage = (message) => {
   const payload = message.data;

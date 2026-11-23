@@ -3,7 +3,7 @@ import { i18n } from "@/lib/i18n/singleton";
 /**
  * Mobile time-ago formatter. Uses the app UI locale so relative timestamps
  * never disagree with surrounding strings, even when the device locale is
- * different from the user's explicit Multica language choice.
+ * different from the user's explicit Delegora language choice.
  */
 export function timeAgo(dateStr: string): string {
   const t = i18n.t.bind(i18n);

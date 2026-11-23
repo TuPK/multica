@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stops every local process of this checkout's Multica stack, so the next make dev-full starts clean:
+# Stops every local process of this checkout's Delegora stack, so the next make dev-full starts clean:
 #   - anything listening on the given app ports,
 #   - any process started from this checkout (go run, next, turbo, server/bin/multica),
 #   - the installed daemon binary (<install-path> daemon ...).

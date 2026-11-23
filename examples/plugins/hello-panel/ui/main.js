@@ -1,4 +1,4 @@
-// Hello Panel — the reference Multica surface.
+// Hello Panel — the reference Delegora surface.
 //
 // Plain ES module, no build step: the point is to show the contract, not a
 // toolchain. It runs in a sandboxed iframe with an opaque origin, so there is
@@ -13,7 +13,7 @@ const pending = new Map();
 const port = globalThis.__multicaPluginBridgePortV2;
 let sequence = 0;
 
-if (!(port instanceof MessagePort)) throw new Error("Multica surface bridge is unavailable");
+if (!(port instanceof MessagePort)) throw new Error("Delegora surface bridge is unavailable");
 delete globalThis.__multicaPluginBridgePortV2;
 port.onmessage = (message) => {
   const payload = message.data;

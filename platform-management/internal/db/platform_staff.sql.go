@@ -64,8 +64,8 @@ SELECT id FROM "user"
 WHERE email = $1
 `
 
-// Multica's user table is the only table of Multica's that the platform reads
-// for sign-in. The caller passes the email lower-cased, as Multica stores it.
+// Delegora's user table is the only table of Delegora's that the platform reads
+// for sign-in. The caller passes the email lower-cased, as Delegora stores it.
 func (q *Queries) GetUserIDByEmail(ctx context.Context, email string) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, getUserIDByEmail, email)
 	var id pgtype.UUID

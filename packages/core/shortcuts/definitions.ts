@@ -98,7 +98,7 @@ export const SHORTCUT_ACTIONS: readonly ShortcutActionDefinition[] = [
   // the binding is reaching — and dismissing — chat without a mouse, which has
   // to keep working while the caret sits in the chat composer itself.
   { id: "toggleChat", category: "general", defaultShortcut: primary("J"), allowInEditable: true },
-  // Ask Multica from the keyboard: Shift on the chat toggle, so the two chat
+  // Ask Delegora from the keyboard: Shift on the chat toggle, so the two chat
   // chords sit together. Shift+J is outside every reserved set, as is Mod+J.
   {
     id: "newChat",

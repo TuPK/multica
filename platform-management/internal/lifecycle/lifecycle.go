@@ -170,7 +170,7 @@ type Deps struct {
 	Workspaces workspacestatus.Invalidator
 	// Entitlements drops the cached policy after a subscription moves.
 	Entitlements EntitlementCache
-	// AppURL is the origin of the Multica web app. The emails link to the
+	// AppURL is the origin of the Delegora web app. The emails link to the
 	// workspace's settings page on it.
 	AppURL string
 	// UsageDueDays is PLATFORM_USAGE_DUE_DAYS: how long a usage invoice may stay

@@ -31,8 +31,8 @@ const C = {
     local: "On this device",
     localBody: "Works offline and audio never leaves this computer.",
     localNeeds: "Downloads",
-    cloud: "Multica Cloud",
-    cloudBody: "Ready right away. Audio is sent to Multica and deleted after.",
+    cloud: "Delegora Cloud",
+    cloudBody: "Ready right away. Audio is sent to Delegora and deleted after.",
     recommended: "Recommended",
     continue: "Continue",
     downloading: "Downloading",
@@ -60,8 +60,8 @@ const C = {
     local: "本机",
     localBody: "离线可用，音频不会离开这台电脑。",
     localNeeds: "需要下载",
-    cloud: "Multica 云端",
-    cloudBody: "马上能用。音频发送到 Multica 识别，识别完即删除。",
+    cloud: "Delegora 云端",
+    cloudBody: "马上能用。音频发送到 Delegora 识别，识别完即删除。",
     recommended: "推荐",
     continue: "继续",
     downloading: "正在下载",
@@ -184,7 +184,7 @@ function TryPad({ session, lang, onPress, onRelease }: { session: VoiceSession; 
 
 /**
  * First-use setup, shown the first time someone presses the mic. Modeled on
- * Handy's onboarding (permissions → model → try it), trimmed to what Multica
+ * Handy's onboarding (permissions → model → try it), trimmed to what Delegora
  * needs before the first dictation.
  */
 export function FirstUseDialog({

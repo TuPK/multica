@@ -1,6 +1,6 @@
 -- Staff add-member requests (spec R6 section 4): a staff member asks for a person
 -- to be added to a workspace. The platform writes the request and cancels it;
--- Multica's member_provisioning job moves it on.
+-- Delegora's member_provisioning job moves it on.
 
 -- name: InsertMemberRequest :one
 -- Inserts a pending request unless one is already live for the workspace, kind

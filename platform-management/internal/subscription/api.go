@@ -11,7 +11,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
-// The Cloud routes Multica's billing proxy forwards (server/internal/handler/
+// The Cloud routes Delegora's billing proxy forwards (server/internal/handler/
 // cloud_billing.go). They carry X-User-ID and no credential, so the caller wraps
 // them in trust.Peers.RequireUser.
 const (

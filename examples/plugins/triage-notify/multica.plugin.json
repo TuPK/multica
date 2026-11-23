@@ -2,7 +2,7 @@
   "manifest_version": 1,
   "key": "ai.multica.triage-notify",
   "name": "Triage Notify",
-  "description": "Sends an issue to an external triage service and writes its answer back as a comment. Also demonstrates a no-side-effect Hook that Multica wakes every five minutes.",
+  "description": "Sends an issue to an external triage service and writes its answer back as a comment. Also demonstrates a no-side-effect Hook that Delegora wakes every five minutes.",
   "version": "1.1.0",
   "author": {
     "name": "multica",
@@ -66,7 +66,7 @@
       {
         "key": "scheduled_heartbeat",
         "name": "Scheduled heartbeat",
-        "description": "Acknowledges a durable scheduled delivery without writing to Multica or another service.",
+        "description": "Acknowledges a durable scheduled delivery without writing to Delegora or another service.",
         "triggers": [
           "schedule"
         ],

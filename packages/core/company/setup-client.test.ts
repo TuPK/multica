@@ -78,7 +78,7 @@ describe("ApiClient Secretary setup", () => {
       {
         error: "an online Hermes runtime is required before the Secretary can be set up",
         code: "runtime_required",
-        hint: "Install Hermes on the machine that runs the Multica daemon.",
+        hint: "Install Hermes on the machine that runs the Delegora daemon.",
         docs_path: "/install-agent-runtime",
       },
       409,

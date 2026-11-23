@@ -100,7 +100,7 @@ const WORKSPACE_SECTIONS = new Set([
  *
  * GA4 sends `document.title` as page_title on every event by default, and in
  * a workspace that title is user content (Issue titles, project names, agent
- * names). This returns a fixed label built only from route names Multica
+ * names). This returns a fixed label built only from route names Delegora
  * defines — never from IDs, slugs, or the live title — so the reported title
  * carries nothing a workspace member wrote. The path itself is still reported
  * via page_location.
@@ -110,7 +110,7 @@ export function analyticsPageTitle(raw: string | undefined | null): string {
   try {
     pathname = new URL(raw ?? "").pathname;
   } catch {
-    return "Multica";
+    return "Delegora";
   }
   const segments = pathname.split("/").filter(Boolean);
   const first = segments[0]?.toLowerCase();

@@ -170,7 +170,7 @@ func TestATOTPStepCannotBeUsedTwice(t *testing.T) {
 
 func TestAnEarlierStepThanTheLastUsedIsRefused(t *testing.T) {
 	e := newEnv(t)
-	// The user signed in to Multica with a code from the step after now.
+	// The user signed in to Delegora with a code from the step after now.
 	step, _ := mfa.MatchStep(mfaSecret, e.totp(), e.now)
 	e.mfa.rows[staffUserID].lastStep = step + 1
 	assertInvalidCode(t, e.verify(staffEmail, e.signedIn(t)))

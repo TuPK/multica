@@ -6,7 +6,7 @@ import { getHomeDownload } from "@/features/landing/utils/home-download";
 export const metadata: Metadata = {
   title: "Homepage",
   description:
-    "Multica — source-available platform that turns coding agents into real teammates. Assign tasks, track progress, compound skills.",
+    "Delegora — source-available platform that turns coding agents into real teammates. Assign tasks, track progress, compound skills.",
   openGraph: {
     title: "Delegora: AI Agent Company",
     description:

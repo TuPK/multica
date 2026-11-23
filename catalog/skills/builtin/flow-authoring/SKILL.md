@@ -1,6 +1,6 @@
 ---
 name: flow-authoring
-description: "Use when an issue asks you to turn a written procedure into a Multica workflow: read the procedure as steps, roles, gates and loops, write one flow.json (manifest multica.flow-manifest/v1, document schema 2), check it with `multica flow validate` until it has no errors, and attach it to the issue. You propose; the server checks and a person imports and publishes."
+description: "Use when an issue asks you to turn a written procedure into a Delegora workflow: read the procedure as steps, roles, gates and loops, write one flow.json (manifest multica.flow-manifest/v1, document schema 2), check it with `multica flow validate` until it has no errors, and attach it to the issue. You propose; the server checks and a person imports and publishes."
 ---
 
 # Flow authoring

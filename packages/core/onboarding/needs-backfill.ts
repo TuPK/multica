@@ -18,7 +18,7 @@ export const SOURCE_BACKFILL_MAX_DISMISSALS = 3;
  * squad) in the current workspace before the source prompt may open.
  *
  * Source is not asked during onboarding at all — attribution is a
- * zero-payoff question for the user, so we wait until Multica has
+ * zero-payoff question for the user, so we wait until Delegora has
  * demonstrably delivered value (agents finished real work) before
  * spending goodwill on it. Answer rates for "how did you hear about
  * us" prompts are also materially better after an activation moment
@@ -32,7 +32,7 @@ export const SOURCE_BACKFILL_MIN_AGENT_DONE_ISSUES = 3;
 
 /**
  * Should we ask this already-onboarded user where they heard about
- * Multica?
+ * Delegora?
  *
  * Returns true for users who:
  *  - have completed onboarding (`onboarded_at` set), and

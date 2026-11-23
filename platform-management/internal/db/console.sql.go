@@ -323,7 +323,7 @@ type GetWorkspaceRow struct {
 }
 
 // The staff console's reads and writes. They touch only the tables below:
-// the Multica account and workspace tables, the audit log, and the platform's
+// the Delegora account and workspace tables, the audit log, and the platform's
 // own tables. A scan test (internal/console) fails when this file names any
 // other table.
 //

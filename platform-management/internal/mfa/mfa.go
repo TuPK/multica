@@ -1,9 +1,9 @@
-// Package mfa reads the TOTP secrets that the Multica server seals. The format
+// Package mfa reads the TOTP secrets that the Delegora server seals. The format
 // is the one in server/internal/mfa and server/internal/util/secretbox:
 // AES-256-GCM with the 12-byte nonce in front, under the key in EnvKey, and
 // standard six-digit SHA-1 codes with a 30-second step. The platform lives in
 // its own module and cannot import that code, so only the decryption and the
-// code check are here; a test opens a value that Multica's code sealed.
+// code check are here; a test opens a value that Delegora's code sealed.
 package mfa
 
 import (
@@ -24,7 +24,7 @@ import (
 
 const (
 	// EnvKey names the variable holding the base64 32-byte key. It is the
-	// variable the Multica server uses, so one key serves both services.
+	// variable the Delegora server uses, so one key serves both services.
 	EnvKey = "MULTICA_MFA_SECRET_KEY"
 
 	// Period is the TOTP time step in seconds.
@@ -69,7 +69,7 @@ func NewCrypto(key []byte) (*Crypto, error) {
 	return &Crypto{aead: aead}, nil
 }
 
-// Open returns the base32 secret that Multica sealed.
+// Open returns the base32 secret that Delegora sealed.
 func (c *Crypto) Open(sealed []byte) (string, error) {
 	ns := c.aead.NonceSize()
 	if len(sealed) < ns+c.aead.Overhead() {
@@ -128,7 +128,7 @@ type Sampler interface {
 	AnyConfirmedSecret(ctx context.Context) (sealed []byte, found bool, err error)
 }
 
-// CheckKey proves that c opens what Multica sealed, by opening one confirmed
+// CheckKey proves that c opens what Delegora sealed, by opening one confirmed
 // row. With no row there is nothing to prove and it passes. A mismatch names
 // EnvKey, never the key or the secret.
 func CheckKey(ctx context.Context, c *Crypto, s Sampler) error {
@@ -140,7 +140,7 @@ func CheckKey(ctx context.Context, c *Crypto, s Sampler) error {
 		return nil
 	}
 	if _, err := c.Open(sealed); err != nil {
-		return fmt.Errorf("%s does not open the second-factor secrets Multica stored; it must be the same value as in the Multica server", EnvKey)
+		return fmt.Errorf("%s does not open the second-factor secrets Delegora stored; it must be the same value as in the Delegora server", EnvKey)
 	}
 	return nil
 }

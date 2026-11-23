@@ -12,7 +12,7 @@
     "title": "Aún no hay nada que mostrar"
   },
   "autonomy": {
-    "note": "El límite honesto: Multica no puede inspeccionar lo que hace un runtime dentro de una ejecución, así que un nivel no puede impedir que un agente llame a una API externa que sus credenciales permiten. Multica controla lo que pasa por ella: qué rutinas se ejecutan, qué se publica en el registro compartido, qué propuestas se deciden sin ti, qué iniciativas se crean, cuánto se gasta y los límites de cada carta. Todo lo que tenga efectos externos queda tras una puerta que controla la plataforma, como la puerta de lanzamiento, o tras los ajustes de permisos del propio agente. L3 no significa sin supervisión.",
+    "note": "El límite honesto: Delegora no puede inspeccionar lo que hace un runtime dentro de una ejecución, así que un nivel no puede impedir que un agente llame a una API externa que sus credenciales permiten. Delegora controla lo que pasa por ella: qué rutinas se ejecutan, qué se publica en el registro compartido, qué propuestas se deciden sin ti, qué iniciativas se crean, cuánto se gasta y los límites de cada carta. Todo lo que tenga efectos externos queda tras una puerta que controla la plataforma, como la puerta de lanzamiento, o tras los ajustes de permisos del propio agente. L3 no significa sin supervisión.",
     "levels_heading": "Qué permite cada nivel",
     "levels": {
       "suggest": {

@@ -8,10 +8,10 @@
     "no_agent_action": "Nuevo agente"
   },
   "fab": {
-    "running": "Multica está trabajando...",
+    "running": "Delegora está trabajando...",
     "unread_one": "{{count}} chat sin leer",
     "unread_other": "{{count}} chats sin leer",
-    "default": "Pregunta a Multica"
+    "default": "Pregunta a Delegora"
   },
   "bar": {
     "history": "Historial de chats",
@@ -172,7 +172,7 @@
     "first_time_pillars_suffix": ".",
     "first_time_actions": "Pide un resumen, planifica tu día o encarga una tarea rápida.",
     "returning_title_named": "Hola, soy {{name}}",
-    "returning_title_default": "Bienvenido a Multica",
+    "returning_title_default": "Bienvenido a Delegora",
     "returning_subtitle": "Prueba a preguntar",
     "chat_with_named": "Chatear con {{name}}"
   },

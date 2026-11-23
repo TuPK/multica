@@ -246,7 +246,7 @@ test.describe("staff list", () => {
 
     await dialog.getByPlaceholder("user@example.com").fill(`nobody-${Date.now()}@example.test`);
     await dialog.getByRole("button", { name: "Add staff" }).click();
-    await expect(dialog.getByRole("alert")).toContainText("no Multica account");
+    await expect(dialog.getByRole("alert")).toContainText("no Delegora account");
   });
 
   test("flow 14: an active staff member cannot be added twice", async ({ page }) => {

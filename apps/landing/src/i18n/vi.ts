@@ -267,7 +267,7 @@ export const vi = {
     ],
     packs: {
       title: "Có sẵn bộ agent và skill? Nhập cả bộ.",
-      text: "Ở trang Squads, bấm Import a pack. Dán link GitHub hoặc tải tệp .zip, rồi đọc bản xem trước. Nhận các định dạng: bó squad-bundle.json, agent pack pack.json của Multica, thư mục agents/*.md kiểu Claude Code, hoặc thư mục skill có SKILL.md theo chuẩn Agent Skills.",
+      text: "Ở trang Squads, bấm Import a pack. Dán link GitHub hoặc tải tệp .zip, rồi đọc bản xem trước. Nhận các định dạng: bó squad-bundle.json, agent pack pack.json của Delegora, thư mục agents/*.md kiểu Claude Code, hoặc thư mục skill có SKILL.md theo chuẩn Agent Skills.",
       items: [
         "Agents: mỗi agent tạo mới, dùng agent đang có, hoặc bỏ qua. Chọn runtime cho agent mới.",
         "Skills: skill trùng tên giữ bản cũ hoặc nhập thành bản mới. Không ghi đè bản đang có.",

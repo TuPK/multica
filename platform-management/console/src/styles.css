@@ -68,9 +68,9 @@
     --destructive: var(--color-text-error);
   }
 
-  /* Blue-and-white palette (default) matching the Multica web app: the Astryx
+  /* Blue-and-white palette (default) matching the Delegora web app: the Astryx
      neutral theme keeps its black accent, so the accent tokens are redirected to
-     the Multica info blue. Surfaces stay white; the page body gets a faint blue tint.
+     the Delegora info blue. Surfaces stay white; the page body gets a faint blue tint.
      The :not() guards keep this palette from overriding the light and dark palettes below.
      The data-theme attribute lives on <html> while data-astryx-theme is on a descendant,
      so the palette selectors use a descendant combinator. */
@@ -84,7 +84,7 @@
 
     /* Sidebar: the Astryx SideNav reads these --sidebar* tokens, not the
        color-* ones above, so they are set to the same blue-white palette. */
-    /* Multica web blue-white: a solid blue rail with white text beside white content.
+    /* Delegora web blue-white: a solid blue rail with white text beside white content.
        The content area keeps --app-shell white; the rail is painted by the rule below. */
     --app-shell: #ffffff;
     --sidebar: #0054a6;
@@ -171,7 +171,7 @@
   }
 
   /* Blue-white rail: the navigation panel is solid blue with white text, as in the
-     Multica web app. Text tokens are remapped inside the panel so labels, icons and
+     Delegora web app. Text tokens are remapped inside the panel so labels, icons and
      hover states read on blue. */
   :root:not([data-theme="light"]):not([data-theme="dark"]) [data-astryx-theme="neutral"] .astryx-layout-panel:has(> .astryx-side-nav) {
     background-color: var(--sidebar);

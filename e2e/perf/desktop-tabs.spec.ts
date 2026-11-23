@@ -92,7 +92,7 @@ let launches = 0;
 /**
  * Launches a signed-in Desktop on the perf workspace. Each launch gets its own
  * app-data directory (DESKTOP_APP_SUFFIX) and HOME, so it never shares a
- * single-instance lock, CLI profile or daemon with an installed Multica or an
+ * single-instance lock, CLI profile or daemon with an installed Delegora or an
  * earlier launch still shutting down, and daemon auto-start is off: no agent
  * daemon runs during a sample.
  */

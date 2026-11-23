@@ -1,6 +1,6 @@
 // Package workspacestatus is the platform's write path for a workspace's
 // state. Set writes the platform_workspace row and its audit row in one
-// transaction, then deletes the cache key that the Multica server reads, so the
+// transaction, then deletes the cache key that the Delegora server reads, so the
 // server sees the change at once instead of after the cache TTL.
 package workspacestatus
 

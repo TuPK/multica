@@ -8,10 +8,10 @@
     "no_agent_action": "Новый агент"
   },
   "fab": {
-    "running": "Multica работает...",
+    "running": "Delegora работает...",
     "unread_one": "{{count}} непрочитанный чат",
     "unread_other": "{{count}} непрочитанных чата",
-    "default": "Спросить Multica",
+    "default": "Спросить Delegora",
     "unread_few": "{{count}} непрочитанных чата",
     "unread_many": "{{count}} непрочитанных чатов"
   },
@@ -182,7 +182,7 @@
     "first_time_pillars_suffix": ".",
     "first_time_actions": "Попросите сводку, спланируйте день или передайте быструю задачу.",
     "returning_title_named": "Привет, я {{name}}",
-    "returning_title_default": "Добро пожаловать в Multica",
+    "returning_title_default": "Добро пожаловать в Delegora",
     "returning_subtitle": "Попробуйте спросить",
     "chat_with_named": "Чат с {{name}}"
   },

@@ -23,7 +23,7 @@ const features = (days: number | null): WorkspaceFeatures => ({
 
 /**
  * A server whose plan can change between reads: features and every dashboard
- * response report the same current limit, like one Multica instance would.
+ * response report the same current limit, like one Delegora instance would.
  */
 function setup(initialLimit: number | null) {
   let limit = initialLimit;

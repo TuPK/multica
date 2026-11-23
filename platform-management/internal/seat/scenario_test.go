@@ -20,10 +20,10 @@ import (
 )
 
 // The scenarios are the contract suite of Appendix B. They are data, in
-// contract/testdata/seat_scenarios.json, so Multica's seat client runs the same
+// contract/testdata/seat_scenarios.json, so Delegora's seat client runs the same
 // calls and checks the same expectations (server/internal/seatcapacity/
 // contract_test.go). This file runs them on the HTTP handler over a fake store
-// and records the responses in seat_transcript.json, which Multica's test
+// and records the responses in seat_transcript.json, which Delegora's test
 // replays.
 //
 //	go test ./internal/seat -update
@@ -103,7 +103,7 @@ func loadScenarios(t *testing.T) scenarioFile {
 	return f
 }
 
-// call returns the request the Multica client makes for a call step: the
+// call returns the request the Delegora client makes for a call step: the
 // method, the path after /capacity/, and the body.
 func (s step) request(memberID string) (method, suffix string, body map[string]any) {
 	switch s.Call {

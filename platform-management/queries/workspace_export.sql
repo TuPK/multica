@@ -1,5 +1,5 @@
 -- Workspace exports requested by staff (spec R6 section 3b.2, rule 3). The
--- platform inserts a queued row; Multica's workspace_export job runs it. The
+-- platform inserts a queued row; Delegora's workspace_export job runs it. The
 -- unique index of migration 687 allows one queued or running export per workspace.
 
 -- name: WorkspaceExportInFlight :one

@@ -58,7 +58,7 @@ export async function useSignedIn(page: Page, name: string): Promise<void> {
   await page.context().addCookies(state.cookies);
 }
 
-/** Inserts a Multica workspace the Tenants screen lists. The schema has no foreign keys, so none are needed. */
+/** Inserts a Delegora workspace the Tenants screen lists. The schema has no foreign keys, so none are needed. */
 export async function seedWorkspace(name: string): Promise<{ id: string; slug: string }> {
   const id = randomUUID();
   const slug = `e2e-ws-${id.slice(0, 8)}`;
@@ -71,7 +71,7 @@ export async function seedWorkspace(name: string): Promise<{ id: string; slug: s
   return { id, slug };
 }
 
-/** Inserts a Multica account the Users screen lists. Returns its id and email. */
+/** Inserts a Delegora account the Users screen lists. Returns its id and email. */
 export async function seedAccount(name: string): Promise<{ id: string; email: string }> {
   const id = randomUUID();
   const email = `e2e-ui-${id.slice(0, 8)}@example.test`;

@@ -270,7 +270,7 @@
   "connect": {
     "title": "Add a machine",
     "description": "Run these two commands on the machine you want to add. We'll detect it the moment the daemon comes online.",
-    "step1_label": "Install the Multica CLI",
+    "step1_label": "Install the Delegora CLI",
     "platform_group": "Choose your platform",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -334,11 +334,11 @@
     "cli_version_label": "CLI Version:",
     "version_unknown": "unknown",
     "managed_by_desktop": "Managed by Desktop",
-    "managed_by_desktop_title": "The CLI binary is managed by Multica Desktop — update Desktop to upgrade the CLI.",
+    "managed_by_desktop_title": "The CLI binary is managed by Delegora Desktop — update Desktop to upgrade the CLI.",
     "read_only": "Read-only",
     "read_only_title": "Only runtime owners and workspace admins can update the CLI.",
     "local_build": "Local build",
-    "local_build_title": "This runtime reports a non-release version, so Multica cannot tell whether an upgrade is available. Update it from the machine itself.",
+    "local_build_title": "This runtime reports a non-release version, so Delegora cannot tell whether an upgrade is available. Update it from the machine itself.",
     "latest": "Latest",
     "available": "available",
     "action": "Update",
@@ -440,7 +440,7 @@
     "builtin_section_aria": "Supported built-in protocol families",
     "builtin_reference": "Reference",
     "empty_title": "Create your first custom runtime",
-    "empty_description": "Pick a compatible base runtime, then point Multica to the command to run.",
+    "empty_description": "Pick a compatible base runtime, then point Delegora to the command to run.",
     "badge_builtin": "Built-in",
     "badge_custom": "Custom",
     "badge_disabled": "Disabled",
@@ -568,7 +568,7 @@
   },
   "qoder": {
     "title": "Qoder Cloud Agents runtime",
-    "description": "Connect Qoder Cloud Agents. Multica manages execution and stores credentials encrypted. Workspace administrators can change this configuration.",
+    "description": "Connect Qoder Cloud Agents. Delegora manages execution and stores credentials encrypted. Workspace administrators can change this configuration.",
     "loading": "Loading...",
     "unavailable": "Qoder Cloud Agents isn't enabled on this server yet. A server administrator needs to configure credential encryption (MULTICA_VCS_SECRET_KEY).",
     "online": "Online",
@@ -611,7 +611,7 @@
     "cloud_description": "Run agents in Qoder Cloud using a shared connection, without maintaining a local host.",
     "configure_credentials": "Configure credentials",
     "add_agent": "Add agent",
-    "add_agent_description": "Create a Multica agent linked to an existing agent in Qoder Cloud Agents. It will use the environment and credentials configured for Qoder Cloud.",
+    "add_agent_description": "Create a Delegora agent linked to an existing agent in Qoder Cloud Agents. It will use the environment and credentials configured for Qoder Cloud.",
     "agent_name": "Agent name",
     "cancel": "Cancel",
     "shared_credentials_hint": "Credentials are shared within this workspace. PATs are encrypted and never displayed after saving.",
@@ -624,7 +624,7 @@
     "concurrency_hint": "Runs beyond this limit wait in the queue.",
     "run_timeout": "Run timeout (minutes)",
     "run_timeout_hint": "A run still going after this long is cancelled and marked failed.",
-    "data_disclosure_title": "What Multica sends to Qoder",
+    "data_disclosure_title": "What Delegora sends to Qoder",
     "data_disclosure": "The issue title and description, relevant comments, project context and the agent's instructions. GitHub tokens are only used to mount the repository for a run.",
     "usage": "{{active}} of {{limit}} running · {{queued}} queued",
     "open_settings": "Open settings",
@@ -656,7 +656,7 @@
       "description_agents_other": "These {{count}} agents keep their instructions and history but cannot take new tasks until Qoder is resumed or they move to another runtime."
     },
     "connect_title": "Connect Qoder Cloud Agents",
-    "connect_description": "Multica runs tasks in Qoder's sandboxes.",
+    "connect_description": "Delegora runs tasks in Qoder's sandboxes.",
     "page": {
       "configuration": "Configuration",
       "agents_title": "Agents",
@@ -718,14 +718,14 @@
       },
       "cloud": {
         "title": "Or use a cloud node",
-        "description": "Rather not manage machines? Create a cloud node hosted by Multica."
+        "description": "Rather not manage machines? Create a cloud node hosted by Delegora."
       }
     },
     "art": {
       "this_computer": "This computer · Desktop",
       "detected": "Detected runtimes",
       "run_there": "Run on that machine",
-      "connected": "{{name}} connected to Multica"
+      "connected": "{{name}} connected to Delegora"
     }
   },
   "rate_limits": {

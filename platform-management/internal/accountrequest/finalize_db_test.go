@@ -14,7 +14,7 @@ import (
 )
 
 // Database tests of step 3 and of the welcome (spec 7b.5, rules 7 and 9). Step 2
-// is Multica's job; provisioned writes the rows it writes: the user, the
+// is Delegora's job; provisioned writes the rows it writes: the user, the
 // workspace, its owner, and the request moved to provisioned.
 
 const finalizeAppURL = "https://app.example.test"
@@ -98,7 +98,7 @@ func (e *finEnv) businessInput(n, planKey string) Input {
 	return in
 }
 
-// provisioned creates the request through the service, then does what Multica's
+// provisioned creates the request through the service, then does what Delegora's
 // step 2 does: a user, a workspace with the user as owner, and the state.
 func (e *finEnv) provisioned(in Input) Request {
 	e.t.Helper()
@@ -109,7 +109,7 @@ func (e *finEnv) provisioned(in Input) Request {
 	return e.step2(r)
 }
 
-// step2 does what Multica's account_provisioning job does to a pending request.
+// step2 does what Delegora's account_provisioning job does to a pending request.
 func (e *finEnv) step2(r Request) Request {
 	e.t.Helper()
 	ctx := context.Background()
@@ -858,7 +858,7 @@ func TestWelcomeResendSendFailureIs502(t *testing.T) {
 	}
 }
 
-// Spec 13, group 14, in one run: the request is made, Multica's step 2 creates
+// Spec 13, group 14, in one run: the request is made, Delegora's step 2 creates
 // the user and the workspace, the platform's job finishes the account and sends
 // the welcome, and the person has everything they need to sign in by email code.
 func TestAccountEndToEnd(t *testing.T) {
@@ -880,7 +880,7 @@ func TestAccountEndToEnd(t *testing.T) {
 		t.Fatalf("the job moved a pending request: %s", got.State)
 	}
 
-	// Step 2, Multica, a minute later.
+	// Step 2, Delegora, a minute later.
 	clock = clock.Add(time.Minute)
 	prov := e.step2(req)
 	if prov.UserID == "" || prov.WorkspaceID == "" {

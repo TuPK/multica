@@ -61,7 +61,7 @@ body:
     attributes:
       label: Area
       description: >-
-        Which part of Multica is this about? Areas marked community-maintained are
+        Which part of Delegora is this about? Areas marked community-maintained are
         looked after by volunteer maintainers — see
         https://multica.ai/docs/community-maintained. Please do not @-mention a
         maintainer directly; we route reports from here.

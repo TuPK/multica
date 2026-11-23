@@ -15,34 +15,34 @@ export function createKoDict(): LandingDict {
       items: [
       { question: "WeChat에서 에이전트와 채팅할 수 있나요?", answer: "네. 본인이 소유한 에이전트를 열고 '메시징'에서 '메시징 채널 추가' → WeChat을 선택한 뒤 본인 WeChat으로 QR 코드를 스캔하면 연결됩니다. 스캔한 계정의 개인 메시지는 본인의 워크스페이스 권한으로 실행되며 답변과 지원되는 첨부 파일이 같은 대화로 돌아옵니다. 그룹 채팅은 지원하지 않으며 자체 호스팅 서버에서는 WeChat 연동을 먼저 활성화해야 합니다." },
         {
-          question: "Multica는 어떤 코딩 에이전트를 지원하나요?",
+          question: "Delegora는 어떤 코딩 에이전트를 지원하나요?",
           answer:
-            "Multica는 Amp, Antigravity, Claude Code, CodeBuddy, CodeArts, Codex, Copilot, Cursor, DeepSeek Harness, DevEco Code, Devin CLI, Dim, Factory Droid, Grok, Hermes, Kimi, Kiro CLI, MiniMax Code, Muse Code, Oh-My-Pi, OpenClaw, OpenCode, Pi, Qoder, Qoder CN, Qwen Code, QwenPaw, Reasonix, Trae CLI, ZeroClaw, ZCode 등 31개 코딩 도구를 기본 지원합니다. 데몬이 이미 설치된 CLI를 자동으로 찾아 각각 런타임으로 등록합니다. 소스 코드가 공개되어 있으므로 직접 백엔드를 추가할 수도 있습니다. 셀프 호스팅에서는 Qoder PAT와 Qoder Cloud Agents의 기존 에이전트를 사용하여 태스크 실행용 관리형 원격 런타임으로 Qoder Cloud Agents를 설정할 수 있습니다.",
+            "Delegora는 Amp, Antigravity, Claude Code, CodeBuddy, CodeArts, Codex, Copilot, Cursor, DeepSeek Harness, DevEco Code, Devin CLI, Dim, Factory Droid, Grok, Hermes, Kimi, Kiro CLI, MiniMax Code, Muse Code, Oh-My-Pi, OpenClaw, OpenCode, Pi, Qoder, Qoder CN, Qwen Code, QwenPaw, Reasonix, Trae CLI, ZeroClaw, ZCode 등 31개 코딩 도구를 기본 지원합니다. 데몬이 이미 설치된 CLI를 자동으로 찾아 각각 런타임으로 등록합니다. 소스 코드가 공개되어 있으므로 직접 백엔드를 추가할 수도 있습니다. 셀프 호스팅에서는 Qoder PAT와 Qoder Cloud Agents의 기존 에이전트를 사용하여 태스크 실행용 관리형 원격 런타임으로 Qoder Cloud Agents를 설정할 수 있습니다.",
         },
         {
           question: "셀프 호스팅만 가능한가요, 클라우드 버전도 있나요?",
           answer:
-            "둘 다 가능합니다. Docker Compose나 Kubernetes로 자체 인프라에 직접 호스팅할 수도 있고, Multica가 운영하는 클라우드 버전을 그대로 쓸 수도 있습니다. 데이터를 어디에 둘지는 직접 선택할 수 있습니다.",
+            "둘 다 가능합니다. Docker Compose나 Kubernetes로 자체 인프라에 직접 호스팅할 수도 있고, Delegora가 운영하는 클라우드 버전을 그대로 쓸 수도 있습니다. 데이터를 어디에 둘지는 직접 선택할 수 있습니다.",
         },
         {
-          question: "Multica를 상업적으로 사용할 수 있나요?",
+          question: "Delegora를 상업적으로 사용할 수 있나요?",
           answer:
-            "네. 조직 내부에서 Multica를 사용하는 것은 무료이며, 팀 전체를 위해 셀프 호스팅하는 경우도 마찬가지입니다. 상용 라이선스는 호스팅 서비스나 매니지드 서비스처럼 조직 외부 사람들에게 Multica를 제공하거나, 판매·배포하는 제품에 Multica를 포함할 때만 필요합니다. 자주 묻는 사례는 [라이선스 안내](/licensing)에서 확인하세요.",
+            "네. 조직 내부에서 Delegora를 사용하는 것은 무료이며, 팀 전체를 위해 셀프 호스팅하는 경우도 마찬가지입니다. 상용 라이선스는 호스팅 서비스나 매니지드 서비스처럼 조직 외부 사람들에게 Delegora를 제공하거나, 판매·배포하는 제품에 Delegora를 포함할 때만 필요합니다. 자주 묻는 사례는 [라이선스 안내](/licensing)에서 확인하세요.",
         },
         {
           question: "코딩 에이전트를 직접 쓰는 것과 무엇이 다른가요?",
           answer:
-            "코딩 에이전트는 실행에 강합니다. Multica는 그 위에 작업 대기열, 팀 협업, 스킬 재사용, 런타임 모니터링, 에이전트별 작업 현황을 한눈에 보는 통합 화면을 얹습니다. 에이전트를 팀 안에서 운영하기 위한 관리 계층이라고 보시면 됩니다.",
+            "코딩 에이전트는 실행에 강합니다. Delegora는 그 위에 작업 대기열, 팀 협업, 스킬 재사용, 런타임 모니터링, 에이전트별 작업 현황을 한눈에 보는 통합 화면을 얹습니다. 에이전트를 팀 안에서 운영하기 위한 관리 계층이라고 보시면 됩니다.",
         },
         {
           question: "에이전트가 긴 작업도 자율적으로 처리할 수 있나요?",
           answer:
-            "네. Multica는 대기열 등록, 수락, 실행, 완료 또는 실패까지 작업 흐름 전체를 관리합니다. 에이전트는 막힌 부분을 먼저 알려 주고, 진행 상황은 실시간으로 기록됩니다.",
+            "네. Delegora는 대기열 등록, 수락, 실행, 완료 또는 실패까지 작업 흐름 전체를 관리합니다. 에이전트는 막힌 부분을 먼저 알려 주고, 진행 상황은 실시간으로 기록됩니다.",
         },
         {
           question: "코드는 안전한가요? 에이전트는 어디서 실행되나요?",
           answer:
-            "에이전트는 여러분의 컴퓨터(로컬 데몬)나 연결한 런타임에서 실행되며, 코드 저장소 안에서 바로 작업합니다. 워크스페이스에 입력한 내용(태스크, 댓글, 채팅 메시지, 첨부 파일, 에이전트가 보고하는 진행 상황)은 Multica에 저장되고, 에이전트가 쓰는 코딩 도구는 프롬프트와 코드를 여러분이 설정한 모델 제공자에게 보냅니다. 워크스페이스 데이터를 자체 서버에 두고 싶다면 Multica를 셀프 호스팅하세요. 자세한 내용은 [개인정보 처리방침](/privacy)을 참고하세요.",
+            "에이전트는 여러분의 컴퓨터(로컬 데몬)나 연결한 런타임에서 실행되며, 코드 저장소 안에서 바로 작업합니다. 워크스페이스에 입력한 내용(태스크, 댓글, 채팅 메시지, 첨부 파일, 에이전트가 보고하는 진행 상황)은 Delegora에 저장되고, 에이전트가 쓰는 코딩 도구는 프롬프트와 코드를 여러분이 설정한 모델 제공자에게 보냅니다. 워크스페이스 데이터를 자체 서버에 두고 싶다면 Delegora를 셀프 호스팅하세요. 자세한 내용은 [개인정보 처리방침](/privacy)을 참고하세요.",
         },
         {
           question: "에이전트는 몇 개까지 실행할 수 있나요?",
@@ -53,7 +53,7 @@ export function createKoDict(): LandingDict {
     },
     changelog: {
       title: "변경 로그",
-      subtitle: "Multica의 새로운 업데이트와 개선 사항입니다.",
+      subtitle: "Delegora의 새로운 업데이트와 개선 사항입니다.",
       toc: "모든 릴리스",
       categories: {
         features: "새 기능",
@@ -190,7 +190,7 @@ export function createKoDict(): LandingDict {
             "실행을 열면 그 실행이 받은 지시, 스킬, MCP 서버를 볼 수 있습니다.",
             "Factory Droid와 Amp로 태스크를 실행할 수 있습니다.",
             "데스크톱 앱 어디서나 같은 우클릭 메뉴를 쓰고, Issue 빠른 작업도 실행할 수 있습니다.",
-            "빠른 채팅이 새 하단 바로 옮겨졌고, Shift+Cmd+J로 새 Ask Multica 채팅을 시작할 수 있습니다.",
+            "빠른 채팅이 새 하단 바로 옮겨졌고, Shift+Cmd+J로 새 Ask Delegora 채팅을 시작할 수 있습니다.",
             "채팅에서 에이전트 답변의 텍스트를 선택해 주석을 달면 다음 메시지와 함께 보내집니다.",
             "채팅 답변에 시스템 알림을 보낼지 고를 수 있고, 데스크톱의 백그라운드 채팅 알림과 Dock 읽지 않음 수가 다시 작동합니다.",
             "Telegram 답변에 에이전트가 하는 일이 실시간으로 표시되며, 개인 채팅에서는 그룹보다 더 자세히 보입니다.",
@@ -207,7 +207,7 @@ export function createKoDict(): LandingDict {
             "메시지 채널이 에이전트에 속해 클릭 한 번으로 연결되며, GitHub 인증 후에는 원래 페이지로 돌아와 저장소가 선택돼 있습니다.",
             "에이전트 필터의 '내 에이전트' 의미가 하나로 통일되고 유휴가 추가됐으며, Issue에 에이전트 작업을 실제로 요청한 사람이 표시됩니다.",
             "실행 로그에서 명령 입력이 줄 단위로 보이고, 런타임 사용량 페이지는 선택한 기간을 유지합니다.",
-            "Lark 태스크에 메시지, 스레드, 보낸 사람 ID가 들어가고, Qoder 세션에는 Multica에서 시작됐다는 표시가 붙습니다.",
+            "Lark 태스크에 메시지, 스레드, 보낸 사람 ID가 들어가고, Qoder 세션에는 Delegora에서 시작됐다는 표시가 붙습니다.",
             "CLI가 본문의 로컬 이미지를 함께 업로드한 첨부 파일과 연결합니다.",
             "웹 앱이 언어별로 번역 데이터를 캐시해 페이지가 같은 데이터를 반복해서 불러오지 않습니다.",
           ],
@@ -235,7 +235,7 @@ export function createKoDict(): LandingDict {
           title: "모양 테마, 비공개 프로젝트 전면 제공, Issue 환경",
           changes: [],
           features: [
-            "Multica 웹사이트가 새로워졌고, 언어마다 전용 주소(/zh, /ja, /ko)가 생겼습니다.",
+            "Delegora 웹사이트가 새로워졌고, 언어마다 전용 주소(/zh, /ja, /ko)가 생겼습니다.",
             "'설정 → 모양'에서 기본 제공 테마 5가지 중 하나를 고르고 글꼴, 글자 크기, 밀도, 대비를 조절할 수 있습니다.",
             "모든 워크스페이스에서 비공개 프로젝트를 쓸 수 있습니다. 그 Issue는 프로젝트 멤버와 워크스페이스 소유자·관리자만 볼 수 있습니다.",
             "Issue 사이드바의 '환경'에 그 Issue의 실행이 시작한 서비스가 표시됩니다. macOS와 Linux에서는 에이전트가 multica env start로 서비스를 계속 실행해 둘 수 있습니다.",
@@ -367,14 +367,14 @@ export function createKoDict(): LandingDict {
             "QR 코드를 스캔해 WeCom 봇을 만들고, 에이전트가 답하는 동안 진행 상황을 볼 수 있습니다.",
             "Qoder Cloud Agents에서 채팅, 빠른 생성, Issue 첨부 파일을 쓸 수 있고, 실행마다 Qoder 크레딧이 표시됩니다.",
             "ZCode로 태스크를 실행할 수 있습니다.",
-            "실행 중인 Pi에 지시를 추가로 보낼 수 있습니다. Pi는 Multica가 설치한 스킬도 불러옵니다.",
+            "실행 중인 Pi에 지시를 추가로 보낼 수 있습니다. Pi는 Delegora가 설치한 스킬도 불러옵니다.",
             "런타임이 동시에 실행하는 태스크 수를 제한할 수 있습니다.",
             "CLI로 워크플로를 관리할 수 있습니다.",
             "Hermes 실행 중에 토큰과 비용을 볼 수 있습니다.",
             "해결된 스레드에 결론이 표시되어, 에이전트가 정리된 토론을 다시 열지 않습니다.",
           ],
           improvements: [
-            "Multica 로고, 아이콘, 색상이 새로워졌습니다.",
+            "Delegora 로고, 아이콘, 색상이 새로워졌습니다.",
             "에이전트 목록에 검색이 돌아왔고, 더 많은 곳에서 에이전트 설정을 열 수 있습니다.",
             "빈 페이지의 모양이 통일되고, 다음에 할 일을 안내합니다.",
             "첨부 파일 미리보기 아래에 페이지 넘김이 생겼습니다.",
@@ -420,7 +420,7 @@ export function createKoDict(): LandingDict {
             "좁은 화면에서는 버튼 하나로 타임라인의 최신 활동으로 이동합니다. 데스크톱은 오른쪽 내비게이션을 그대로 씁니다.",
           ],
           improvements: [
-            "앱 전체에 Multica 자체 아이콘을 쓰고, 메뉴 간격과 글자 크기를 통일했습니다.",
+            "앱 전체에 Delegora 자체 아이콘을 쓰고, 메뉴 간격과 글자 크기를 통일했습니다.",
             "전체 텍스트 툴팁은 라벨이 잘렸을 때만 잠시 뒤에 나타나, 마우스를 움직일 때 덜 튀어나옵니다.",
             "실행을 클릭하면 전체 기록이 열립니다. 실행 로그는 대기 중인 실행을 접고 기록과 비용을 간결하게 보여 주며, 진행 중인 실행과 중지 버튼은 계속 보입니다.",
             "워크플로 목록에서 프로젝트 사용 현황이 한 줄로 정리되고, 클릭하면 전체 목록을 볼 수 있습니다. 인계 단계에는 담당자 이름이 표시됩니다.",
@@ -1134,7 +1134,7 @@ export function createKoDict(): LandingDict {
           features: [
             "Huawei Cloud CodeArts를 기본 에이전트 런타임으로 사용할 수 있습니다.",
             "모델을 고르고 이전 세션을 이어가며, MCP와 로컬 스킬도 함께 쓸 수 있습니다.",
-            "iPad에 Multica를 네이티브로 설치할 수 있고, 화면 방향도 자유롭습니다.",
+            "iPad에 Delegora를 네이티브로 설치할 수 있고, 화면 방향도 자유롭습니다.",
             "여러 대의 서버에 셀프 호스팅해도 WeCom 봇 답장이 제대로 전달됩니다.",
             "보내지 못한 WeCom 답장의 건수와 이유를 확인할 수 있습니다.",
           ],
@@ -1390,7 +1390,7 @@ export function createKoDict(): LandingDict {
             "공유 링크를 만들어 바로 워크스페이스에 들어오게 할 수 있어요.",
             "실행 기록이 단계 단위로 바뀌고, 2단 타임라인과 결과 요약이 붙습니다.",
             "Slack으로 보낸 파일이 대화에 첨부로 들어옵니다.",
-            "휴대폰 홈 화면에 Multica를 추가해 앱처럼 열 수 있어요.",
+            "휴대폰 홈 화면에 Delegora를 추가해 앱처럼 열 수 있어요.",
             "브라우저 탭에 지금 열어 둔 워크스페이스 페이지 이름이 표시됩니다.",
             "가져온 스킬이 어디서 왔는지 보여 줍니다.",
             "지금 보고 있는 Issue를 멘션하면 '이 Issue'로 표시됩니다.",
@@ -1548,7 +1548,7 @@ export function createKoDict(): LandingDict {
             "Oh-My-Pi로도 에이전트를 돌릴 수 있어요.",
             "WeCom에 보낸 음성 메모가 텍스트로 에이전트에게 전달됩니다.",
             "Kimi와 Pi 에이전트의 사고 강도를 고를 수 있어요.",
-            "Multica의 어떤 링크든 Cmd/Ctrl 또는 가운데 클릭으로 새 탭에서 열 수 있어요.",
+            "Delegora의 어떤 링크든 Cmd/Ctrl 또는 가운데 클릭으로 새 탭에서 열 수 있어요.",
             "WeCom에 연결되지 않을 때, 거부된 것인지 닿지 않는 것인지 페이지가 알려 줍니다.",
           ],
           improvements: [
@@ -1841,7 +1841,7 @@ export function createKoDict(): LandingDict {
             "긴 텍스트를 붙여 넣으면 자동으로 텍스트 첨부 파일이 됩니다.",
             "업로드는 한 번만 표시되고 완료된 뒤 초안에 반영됩니다.",
             "Webhook URL은 기본으로 숨겨지고 필요할 때만 표시할 수 있습니다.",
-            "워크스페이스가 많아도 Multica를 시작할 때 에이전트 도구를 반복 확인하지 않습니다.",
+            "워크스페이스가 많아도 Delegora를 시작할 때 에이전트 도구를 반복 확인하지 않습니다.",
             "사용량 순위는 상위 에이전트에 집중되고 실패 정렬도 더 명확해졌습니다.",
             "전송 후 커서가 각 입력 화면에 맞는 위치로 이동합니다.",
           ],
@@ -2016,7 +2016,7 @@ export function createKoDict(): LandingDict {
             "설정 패널을 다시 열어도 설정이 안정적으로 저장됩니다.",
             "다시 시작한 Codex 작업이 사용량을 정확하게 보고합니다.",
             "댓글이 링크가 되면 안 되는 텍스트를 링크로 만들지 않습니다.",
-            "다이렉트 채팅 답장이 Multica 안에 남습니다.",
+            "다이렉트 채팅 답장이 Delegora 안에 남습니다.",
             "AI 도움 만들기를 항상 사용할 수 있습니다.",
             "태스크 페이지가 처음 열릴 때 깜빡이지 않습니다.",
             "Linux의 Codex 에이전트가 Git 정보를 올바르게 저장합니다.",
@@ -2319,7 +2319,7 @@ export function createKoDict(): LandingDict {
           changes: [],
           features: [
             "작업 Transcript가 필터·펼침 상태를 기억해, 같은 실행을 다시 열 때 그대로 복원합니다.",
-            "셀프호스트(Helm): 새 `postgres.external.enabled` 토글로 Multica를 외부 관리형 PostgreSQL(RDS, CNPG, Cloud SQL, Neon 등)에 연결하고 내장 DB를 건너뛸 수 있습니다.",
+            "셀프호스트(Helm): 새 `postgres.external.enabled` 토글로 Delegora를 외부 관리형 PostgreSQL(RDS, CNPG, Cloud SQL, Neon 등)에 연결하고 내장 DB를 건너뛸 수 있습니다.",
           ],
           fixes: [
             "댓글 초안에 빈 `1. ` 항목이 있을 때, 재로딩 후 캐럿이 아래 블록에 갇히던 문제를 고쳤습니다.",
@@ -2373,8 +2373,8 @@ export function createKoDict(): LandingDict {
           title: "Slack /issue 슬래시 명령, ByteDance TRAE CLI 런타임, Claude Sonnet 5 지원",
           changes: [],
           features: [
-            "Slack의 네이티브 /issue 슬래시 명령이 Multica 태스크를 생성하고 실행자에게만 태스크 링크를 개인 메시지로 회신합니다.",
-            "같은 Slack 워크스페이스에서 이미 한 Multica 봇과 계정을 연결한 사용자는, 새로 추가된 다른 봇에서 다시 연결을 요구받지 않습니다.",
+            "Slack의 네이티브 /issue 슬래시 명령이 Delegora 태스크를 생성하고 실행자에게만 태스크 링크를 개인 메시지로 회신합니다.",
+            "같은 Slack 워크스페이스에서 이미 한 Delegora 봇과 계정을 연결한 사용자는, 새로 추가된 다른 봇에서 다시 연결을 요구받지 않습니다.",
             "Slack 채널 문맥 읽기가 두 개의 명령으로 정리되었습니다: 채널 개요와 단일 스레드 읽기입니다.",
             "ByteDance TRAE CLI(traecli)가 표준 ACP 프로토콜을 통해 내장 에이전트 런타임에 추가되었습니다.",
             "Anthropic 모델 목록에 Claude Sonnet 5가 추가되고 도입기 가격이 반영되었습니다.",
@@ -2390,7 +2390,7 @@ export function createKoDict(): LandingDict {
             "Cursor와 Kiro 런타임 완료 시 트랜스크립트가 복구되어 최종 결과가 유실되지 않습니다.",
             "셀프호스트: docker-compose.selfhost.yml에서 MULTICA_SLACK_SECRET_KEY가 백엔드 컨테이너로 전달됩니다. (커뮤니티 보고)",
             "태스크 보드 상단의 «N개 처리 중» 칩이 에이전트가 아니라 태스크 수를 기준으로 집계됩니다.",
-            "셀프호스트 익명 소스 채널 리포팅 대상이 정식 Multica API로 복원되었습니다.",
+            "셀프호스트 익명 소스 채널 리포팅 대상이 정식 Delegora API로 복원되었습니다.",
             "댓글 딥링크 하이라이트가 배경색만 사용하도록 통일되어, 루트 댓글과 답글 동작이 일치합니다.",
           ],
         },
@@ -2401,7 +2401,7 @@ export function createKoDict(): LandingDict {
           changes: [],
           features: [
             "Autopilot에 명확한 쓰기 권한 계층이 도입되었고, 상세 페이지의 '액세스 관리'를 통해 특정 멤버에게 단일 Autopilot의 쓰기 권한만 위임할 수 있습니다.",
-            "Slack 채널의 과거 대화를 Multica로 백필할 수 있어, 에이전트가 채널에 합류한 순간부터 이전 맥락을 알 수 있습니다.",
+            "Slack 채널의 과거 대화를 Delegora로 백필할 수 있어, 에이전트가 채널에 합류한 순간부터 이전 맥락을 알 수 있습니다.",
             "Slack에서 에이전트가 응답을 준비하는 동안 사용자 메시지에 👀 반응이 표시되고, 종료 시 안정적으로 제거됩니다.",
             "스킬 번들을 로컬 .skill / .zip 아카이브에서 가져올 수 있습니다.",
             "multica issue 계열 명령은 더 이상 짧은 UUID 접두사를 받지 않습니다. 태스크 Key(MUL-123) 또는 전체 UUID를 사용하세요.",
@@ -2644,7 +2644,7 @@ export function createKoDict(): LandingDict {
           features: [
             "에이전트, 오토파일럿, 프로젝트, 런타임, 스킬, 스쿼드의 목록이 더 빠르고 일관된 경험으로 바뀌어 행, 필터, 선택, 작업이 더 명확해졌습니다.",
             "명령줄에서 워크스페이스 저장소를 관리할 수 있어 로컬 에이전트가 프로젝트 저장소 정보를 더 쉽게 가져올 수 있습니다.",
-            "Cursor와 OpenClaw 설정이 더 쉬워졌습니다. Cursor 연결 설정은 Multica가 관리할 수 있고, OpenClaw는 기존 게이트웨이에 연결할 수 있습니다.",
+            "Cursor와 OpenClaw 설정이 더 쉬워졌습니다. Cursor 연결 설정은 Delegora가 관리할 수 있고, OpenClaw는 기존 게이트웨이에 연결할 수 있습니다.",
             "댓글을 편집할 때 저장하기 전에 어떤 에이전트나 스쿼드가 실행될지 미리 보고 제어할 수 있습니다.",
           ],
           improvements: [
@@ -2666,7 +2666,7 @@ export function createKoDict(): LandingDict {
           title: "CodeBuddy Runtime",
           changes: [],
           features: [
-            "CodeBuddy로 로컬 Multica 에이전트를 실행할 수 있으며, 사용할 수 있는 모델과 실행 강도 선택지가 자동으로 표시됩니다.",
+            "CodeBuddy로 로컬 Delegora 에이전트를 실행할 수 있으며, 사용할 수 있는 모델과 실행 강도 선택지가 자동으로 표시됩니다.",
             "빠르게 만든 태스크에서도 초안에서 올린 파일이 최종 태스크까지 함께 유지됩니다.",
           ],
           improvements: [
@@ -2708,15 +2708,15 @@ export function createKoDict(): LandingDict {
             "댓글 입력창에서 보내기 전에 어떤 에이전트나 스쿼드가 작업을 시작할지 확인하고, 실수로 실행되는 일을 줄일 수 있습니다.",
             "실행 기록에 시간이 표시되어 에이전트 진행 상황과 인계를 더 쉽게 검토할 수 있습니다.",
             "오토파일럿 상세 페이지에서 누가 만들었는지 확인할 수 있습니다.",
-            "Claude Fable 5가 Multica의 지원 모델과 가격 목록에 추가되었습니다.",
+            "Claude Fable 5가 Delegora의 지원 모델과 가격 목록에 추가되었습니다.",
             "태스크 대화에서 특정 답글을 해결 답변으로 남길 수 있어, 긴 스레드를 접어도 결론을 더 쉽게 확인할 수 있습니다.",
-            "Lark와 Feishu 대화는 Multica가 답변을 준비하는 동안 입력 중 반응을 표시하고, 답변을 보내기 전에 자동으로 지웁니다.",
+            "Lark와 Feishu 대화는 Delegora가 답변을 준비하는 동안 입력 중 반응을 표시하고, 답변을 보내기 전에 자동으로 지웁니다.",
             "에이전트 실행은 각 작업을 누가 시작했는지 알 수 있어 인계, 감사, 개인정보를 고려한 동작이 더 정확해집니다.",
             "OpenClaw 사용자는 로컬 설정에서 사용자 지정 앱 위치와 데이터 폴더를 지정할 수 있습니다.",
           ],
           improvements: [
             "댓글 트리거 표시가 더 조용하고 명확해졌으며, 긴 에이전트 이름도 덜 비좁게 보입니다.",
-            "WSL2처럼 Multica 밖에서 데몬을 관리하는 경우 데스크톱은 시작과 중지 조작을 비활성화합니다.",
+            "WSL2처럼 Delegora 밖에서 데몬을 관리하는 경우 데스크톱은 시작과 중지 조작을 비활성화합니다.",
             "태스크 헤더의 활성 에이전트 표시가 더 읽기 쉬워졌으며, 실제 실행 중일 때만 움직이고 대기 중일 때는 대기 상태를 명확히 보여 줍니다.",
             "CLI는 흔한 오류, 로그인 문제, 프로젝트 설정 값에 대해 더 명확하게 안내합니다.",
           ],
@@ -2740,7 +2740,7 @@ export function createKoDict(): LandingDict {
           title: "웹 알림과 /note 명령",
           changes: [],
           features: [
-            "웹 앱에서 브라우저 기본 알림 배너를 표시할 수 있어 Multica가 백그라운드에 있어도 워크스페이스 활동을 더 쉽게 확인할 수 있습니다.",
+            "웹 앱에서 브라우저 기본 알림 배너를 표시할 수 있어 Delegora가 백그라운드에 있어도 워크스페이스 활동을 더 쉽게 확인할 수 있습니다.",
             "/note로 시작하는 댓글은 배정된 에이전트를 깨우지 않고 맥락을 남길 수 있어, 실행을 트리거하지 않는 협업 메모로 사용할 수 있습니다.",
             "Antigravity를 데몬에서 실행되는 에이전트별 모델 선택지로 사용할 수 있습니다.",
             "CLI가 흔한 요청 실패를 쉬운 말로 설명하고 다음에 할 일을 안내합니다.",
@@ -2798,10 +2798,10 @@ export function createKoDict(): LandingDict {
           title: "Lark Bot 연동",
           changes: [],
           features: [
-            "Multica가 Lark 서드파티 연동을 지원해 QR 코드를 스캔하면 Multica 에이전트를 Lark Bot으로 만들 수 있습니다.",
+            "Delegora가 Lark 서드파티 연동을 지원해 QR 코드를 스캔하면 Delegora 에이전트를 Lark Bot으로 만들 수 있습니다.",
             "채팅에 검색 가능한 에이전트 선택기와 명시적인 컨텍스트 선택기가 추가되어, 누가 응답할지와 무엇을 참고할지 더 쉽게 고를 수 있습니다.",
             "설명과 댓글에서 체크리스트를 사용할 수 있어 태스크 안에서 간단한 계획을 정리하기 쉽습니다.",
-            "에이전트에 Multica 기본 스킬이 포함되어 워크스페이스의 작업 흐름을 더 일관되게 따를 수 있습니다.",
+            "에이전트에 Delegora 기본 스킬이 포함되어 워크스페이스의 작업 흐름을 더 일관되게 따를 수 있습니다.",
           ],
           improvements: [
             "채팅 컨텍스트가 명확한 멘션으로 표시되어 인계와 나중 검토가 더 쉬워졌습니다.",
@@ -2845,7 +2845,7 @@ export function createKoDict(): LandingDict {
           title: "일본어 지원과 /skill command",
           changes: [],
           features: [
-            "Multica가 앱, 사이트, 문서에서 일본어를 지원합니다.",
+            "Delegora가 앱, 사이트, 문서에서 일본어를 지원합니다.",
             "채팅에서 /skill command로 에이전트의 스킬을 선택할 수 있습니다.",
             "워크스페이스에 사용자 지정 로고를 표시할 수 있습니다.",
             "기존 스킬을 유지한 채 에이전트에 스킬을 추가할 수 있습니다.",
@@ -2901,7 +2901,7 @@ export function createKoDict(): LandingDict {
           changes: [],
           features: [
             "에이전트가 태스크 댓글에서 작업을 이어갈 때 새 세션을 만들지 않고 이전 세션을 재개해, 작업 맥락을 그대로 이어갑니다.",
-            "Multica가 앱, 웹사이트, 문서에서 한국어를 지원하며, 전체 한국어 문서와 한국어 날짜 표시를 제공합니다.",
+            "Delegora가 앱, 웹사이트, 문서에서 한국어를 지원하며, 전체 한국어 문서와 한국어 날짜 표시를 제공합니다.",
             "태스크 화면에서 작업 중인 에이전트를 제목 가까이에 고정해 보여 주고, 여러 에이전트가 동시에 일할 때도 더 쉽게 확인할 수 있습니다.",
             "에이전트가 태스크 대화를 읽을 때 스레드 미리보기, 답글 수, 최근 활동 시간을 먼저 확인해 필요한 맥락을 더 빨리 찾을 수 있습니다.",
             "OpenClaw 런타임은 에이전트에 저장된 MCP 설정을 사용할 수 있고, Claude Opus 4.8도 모델 선택과 사용량 추정에 반영됩니다.",
@@ -2957,7 +2957,7 @@ export function createKoDict(): LandingDict {
           title: "iOS, Helm 셀프 호스팅, 더 매끄러운 협업",
           changes: [],
           features: [
-            "처음으로 실제 사용 가능한 모바일 클라이언트인 Multica for iOS가 출시되어, 로그인·워크스페이스·인박스·태스크·프로젝트·채팅·댓글·실시간 업데이트를 모두 지원합니다.",
+            "처음으로 실제 사용 가능한 모바일 클라이언트인 Delegora for iOS가 출시되어, 로그인·워크스페이스·인박스·태스크·프로젝트·채팅·댓글·실시간 업데이트를 모두 지원합니다.",
             "셀프 호스팅 팀은 이제 Helm 차트로 Kubernetes에 배포할 수 있고, Docker 설치 시 포트와 URL 설정도 한층 명확해졌습니다.",
             "프로젝트 리소스 선택기에 저장소 검색이 추가되었고, 런타임 사용량은 주요 모델 비용을 더 정확히 집계합니다.",
           ],
@@ -3109,7 +3109,7 @@ export function createKoDict(): LandingDict {
           title: "GitHub 연동과 안전한 태스크 탐색",
           changes: [],
           features: [
-            "GitHub를 연결해 연결된 Pull request를 Multica 태스크에 표시하고 상태를 동기화하며 PR 종료 시 태스크를 자동으로 닫을 수 있습니다.",
+            "GitHub를 연결해 연결된 Pull request를 Delegora 태스크에 표시하고 상태를 동기화하며 PR 종료 시 태스크를 자동으로 닫을 수 있습니다.",
             "채팅 메시지 첨부 파일과 이미지 미리보기를 지원하고, 에이전트와 런타임 공개 범위를 설정할 수 있습니다.",
             "단일 에이전트 작업 중지 전에 확인을 요청하고 GitHub 연동 문서를 제공합니다.",
           ],
@@ -3231,7 +3231,7 @@ export function createKoDict(): LandingDict {
             "프로젝트별 저장소 바인딩과 권한 인식 UI가 추가되었습니다.",
           ],
           improvements: [
-            "데몬 claim polling의 Redis fast-path와 Multica Agent 커밋의 Co-authored-by trailer, 데스크톱 reload 차단이 개선되었습니다.",
+            "데몬 claim polling의 Redis fast-path와 Delegora Agent 커밋의 Co-authored-by trailer, 데스크톱 reload 차단이 개선되었습니다.",
           ],
           fixes: [
             "Quick Create 요구사항 생성, 인박스 댓글 이동과 자동 보관, 작업 재실행 session, 초대 후 워크스페이스 이동을 수정했습니다.",
@@ -3570,7 +3570,7 @@ export function createKoDict(): LandingDict {
           date: "2026-03-06",
           title: "핵심 플랫폼",
           changes: [
-            "Multica 핵심 플랫폼 기능을 추가했습니다.",
+            "Delegora 핵심 플랫폼 기능을 추가했습니다.",
           ],
         },
         {
@@ -3578,15 +3578,15 @@ export function createKoDict(): LandingDict {
           date: "2026-03-05",
           title: "기반 구축",
           changes: [
-            "Multica의 초기 기반을 공개했습니다.",
+            "Delegora의 초기 기반을 공개했습니다.",
           ],
         },
       ],
     },
     about: {
-      title: "Multica 소개",
+      title: "Delegora 소개",
       nameLine: {
-        prefix: "Multica — ",
+        prefix: "Delegora — ",
         mult: "Mult",
         iplexed: "iplexed ",
         i: "I",
@@ -3597,18 +3597,18 @@ export function createKoDict(): LandingDict {
         gent: "gent.",
       },
       paragraphs: [
-        "Multica라는 이름은 1960년대의 선구적인 운영체제 Multics에서 따왔습니다. Multics는 여러 사용자가 하나의 컴퓨터를 공유하면서도 각자 자기 컴퓨터를 쓰는 것처럼 느끼게 해 주는 시분할이라는 개념을 처음 널리 퍼뜨렸습니다. Unix는 Multics를 의도적으로 단순화하며 태어났습니다. 한 사용자, 한 작업, 하나의 우아한 철학에 집중한 결과였습니다.",
-        "지금 비슷한 전환점이 다시 오고 있다고 봅니다. 지난 수십 년 동안 소프트웨어 팀은 사실상 단일 스레드로 일해 왔습니다. 엔지니어 한 명이 한 작업을 맡고, 한 번에 하나의 맥락만 다루는 식이었습니다. AI 에이전트는 이 공식을 바꿉니다. Multica는 시분할의 발상을 다시 꺼내 오되, 이번에는 시스템을 함께 쓰는 \"사용자\"가 사람과 자율 에이전트 양쪽을 의미하는 시대에 맞게 다시 풀어냅니다.",
-        "Multica에서 에이전트는 정식 팀원입니다. 사람 동료와 똑같이 태스크를 할당받고, 진행 상황을 보고하고, 막힌 부분을 알리고, 코드를 배포합니다. 담당자 선택, 활동 타임라인, 작업 생명주기, 런타임 인프라는 모두 이 전제를 중심으로 처음부터 설계되었습니다.",
+        "Delegora라는 이름은 1960년대의 선구적인 운영체제 Multics에서 따왔습니다. Multics는 여러 사용자가 하나의 컴퓨터를 공유하면서도 각자 자기 컴퓨터를 쓰는 것처럼 느끼게 해 주는 시분할이라는 개념을 처음 널리 퍼뜨렸습니다. Unix는 Multics를 의도적으로 단순화하며 태어났습니다. 한 사용자, 한 작업, 하나의 우아한 철학에 집중한 결과였습니다.",
+        "지금 비슷한 전환점이 다시 오고 있다고 봅니다. 지난 수십 년 동안 소프트웨어 팀은 사실상 단일 스레드로 일해 왔습니다. 엔지니어 한 명이 한 작업을 맡고, 한 번에 하나의 맥락만 다루는 식이었습니다. AI 에이전트는 이 공식을 바꿉니다. Delegora는 시분할의 발상을 다시 꺼내 오되, 이번에는 시스템을 함께 쓰는 \"사용자\"가 사람과 자율 에이전트 양쪽을 의미하는 시대에 맞게 다시 풀어냅니다.",
+        "Delegora에서 에이전트는 정식 팀원입니다. 사람 동료와 똑같이 태스크를 할당받고, 진행 상황을 보고하고, 막힌 부분을 알리고, 코드를 배포합니다. 담당자 선택, 활동 타임라인, 작업 생명주기, 런타임 인프라는 모두 이 전제를 중심으로 처음부터 설계되었습니다.",
         "Multics가 그랬듯, 핵심은 multiplexing입니다. 작은 팀이라고 작게 움직일 필요는 없습니다. 올바른 시스템이 있다면 엔지니어 두 명과 에이전트 한 무리가 스무 명짜리 팀처럼 움직일 수 있습니다.",
-        "Multica의 소스 코드는 공개되어 있으며 무료로 셀프 호스팅할 수 있으며, 워크스페이스 데이터는 여러분의 인프라에 저장됩니다. 모든 코드를 들여다보고, API를 확장하고, 원하는 LLM 제공자를 연결하고, 커뮤니티에 기여할 수 있습니다.",
+        "Delegora의 소스 코드는 공개되어 있으며 무료로 셀프 호스팅할 수 있으며, 워크스페이스 데이터는 여러분의 인프라에 저장됩니다. 모든 코드를 들여다보고, API를 확장하고, 원하는 LLM 제공자를 연결하고, 커뮤니티에 기여할 수 있습니다.",
       ],
       cta: "GitHub에서 보기",
       team: {
-        title: "Multica를 만드는 사람들",
+        title: "Delegora를 만드는 사람들",
         paragraphs: [
-          "Multica는 2021년부터 함께 일해 온 작은 팀이 만들고 있습니다. Multica 이전에는 개발자를 위한 AI 검색 엔진 devv.ai를 만들었습니다. 2025년, 저희가 계속 부딪혀 온 문제, 즉 작은 팀이 AI 에이전트와 함께 실제로 일을 해내는 방법에 집중하기 시작했고, 그 결과가 Multica입니다.",
-          "소스 코드가 공개되어 있고 셀프 호스팅도 가능하므로, Multica 위에 무언가를 만들기 전에 모든 코드를 직접 확인할 수 있습니다. 셀프 호스팅한 배포는 전부 여러분의 인프라에서 실행됩니다. 상업적 이용 방식은 [라이선스 안내](/licensing) 페이지에서 자세히 설명합니다.",
+          "Delegora는 2021년부터 함께 일해 온 작은 팀이 만들고 있습니다. Delegora 이전에는 개발자를 위한 AI 검색 엔진 devv.ai를 만들었습니다. 2025년, 저희가 계속 부딪혀 온 문제, 즉 작은 팀이 AI 에이전트와 함께 실제로 일을 해내는 방법에 집중하기 시작했고, 그 결과가 Delegora입니다.",
+          "소스 코드가 공개되어 있고 셀프 호스팅도 가능하므로, Delegora 위에 무언가를 만들기 전에 모든 코드를 직접 확인할 수 있습니다. 셀프 호스팅한 배포는 전부 여러분의 인프라에서 실행됩니다. 상업적 이용 방식은 [라이선스 안내](/licensing) 페이지에서 자세히 설명합니다.",
         ],
         contacts: [
           { label: "상용 라이선스 및 영업", linkLabel: "영업팀 문의", href: "/contact-sales" },
@@ -3621,12 +3621,12 @@ export function createKoDict(): LandingDict {
     licensing: {
       title: "라이선스",
       intro: [
-        "Multica는 [Multica License](https://github.com/multica-ai/multica/blob/main/LICENSE)로 배포됩니다. Apache License 2.0에 몇 가지 추가 조건을 더한 라이선스입니다. 소스 코드는 공개되어 있으며, 조직 내부에서 Multica를 사용하는 것은 무료입니다. 팀 전체를 위해 셀프 호스팅하는 경우도 마찬가지입니다.",
-        "가장 중요한 추가 조건은 호스팅 방식의 이용에 관한 것입니다. 조직 외부 사람들에게 Multica를 제공하려면 상용 라이선스가 필요합니다. 이 페이지에서는 자주 받는 질문을 바탕으로 그 기준을 설명합니다. 이해를 돕기 위한 안내일 뿐 법률 자문이 아니며, LICENSE 원문과 다른 부분이 있다면 LICENSE가 우선합니다.",
+        "Delegora는 [Delegora License](https://github.com/multica-ai/multica/blob/main/LICENSE)로 배포됩니다. Apache License 2.0에 몇 가지 추가 조건을 더한 라이선스입니다. 소스 코드는 공개되어 있으며, 조직 내부에서 Delegora를 사용하는 것은 무료입니다. 팀 전체를 위해 셀프 호스팅하는 경우도 마찬가지입니다.",
+        "가장 중요한 추가 조건은 호스팅 방식의 이용에 관한 것입니다. 조직 외부 사람들에게 Delegora를 제공하려면 상용 라이선스가 필요합니다. 이 페이지에서는 자주 받는 질문을 바탕으로 그 기준을 설명합니다. 이해를 돕기 위한 안내일 뿐 법률 자문이 아니며, LICENSE 원문과 다른 부분이 있다면 LICENSE가 우선합니다.",
       ],
       rule: {
         title: "판단 기준",
-        text: "조직 외부의 누군가가 이 인스턴스를 움직이고 있나요? 즉 태스크를 만들거나, 에이전트와 대화하거나, 작업을 실행시키고 있나요? 그렇다면 웹, Slack, API 등 어떤 경로를 통하든 호스팅 서비스에 해당합니다. 여러분의 팀이 Multica로 만든 결과물만 받아 본다면 내부 사용입니다.",
+        text: "조직 외부의 누군가가 이 인스턴스를 움직이고 있나요? 즉 태스크를 만들거나, 에이전트와 대화하거나, 작업을 실행시키고 있나요? 그렇다면 웹, Slack, API 등 어떤 경로를 통하든 호스팅 서비스에 해당합니다. 여러분의 팀이 Delegora로 만든 결과물만 받아 본다면 내부 사용입니다.",
       },
       scenarios: {
         title: "자주 묻는 사례",
@@ -3636,18 +3636,18 @@ export function createKoDict(): LandingDict {
         notRequired: "불필요",
         items: [
           {
-            scenario: "조직 내부에서 Multica 사용",
+            scenario: "조직 내부에서 Delegora 사용",
             example: "셀프 호스팅, 워크스페이스 수와 관계없이.",
             required: false,
           },
           {
-            scenario: "고객을 위해 Multica를 구축하고, 고객이 직접 소유하며 내부에서 사용",
+            scenario: "고객을 위해 Delegora를 구축하고, 고객이 직접 소유하며 내부에서 사용",
             example: "도입 지원, 교육, 컨설팅, 커스터마이징 등.",
             required: false,
           },
           {
-            scenario: "우리 팀이 Multica로 고객 업무를 하고, 고객은 결과물만 받음",
-            example: "예: Multica로 콘텐츠 제작을 관리하고 완성본을 납품하는 에이전시.",
+            scenario: "우리 팀이 Delegora로 고객 업무를 하고, 고객은 결과물만 받음",
+            example: "예: Delegora로 콘텐츠 제작을 관리하고 완성본을 납품하는 에이전시.",
             required: false,
           },
           {
@@ -3656,7 +3656,7 @@ export function createKoDict(): LandingDict {
             required: false,
           },
           {
-            scenario: "자체 인프라에서 고객을 위해 Multica 인스턴스를 운영·관리",
+            scenario: "자체 인프라에서 고객을 위해 Delegora 인스턴스를 운영·관리",
             example: "매니지드 서비스. 요금 부과 여부와 관계없습니다.",
             required: true,
           },
@@ -3667,12 +3667,12 @@ export function createKoDict(): LandingDict {
           },
           {
             scenario: "조직 외부 사람이 다른 경로로 여러분의 인스턴스를 움직임",
-            example: "Multica를 백엔드로 쓰는 공개 웹사이트, Slack 연동, API 등. 무료로 제공하더라도 마찬가지입니다.",
+            example: "Delegora를 백엔드로 쓰는 공개 웹사이트, Slack 연동, API 등. 무료로 제공하더라도 마찬가지입니다.",
             required: true,
           },
           {
-            scenario: "판매하거나 배포하는 제품에 Multica를 포함",
-            example: "Multica가 다른 상용 제품의 구성 요소로 제공되는 경우.",
+            scenario: "판매하거나 배포하는 제품에 Delegora를 포함",
+            example: "Delegora가 다른 상용 제품의 구성 요소로 제공되는 경우.",
             required: true,
           },
         ],
@@ -3699,16 +3699,16 @@ export function createKoDict(): LandingDict {
       title: "개인정보 처리방침",
       lastUpdated: "최종 업데이트: 2026년 10월 22일",
       intro: [
-        "이 개인정보 처리방침은 Index Labs (Hong Kong) Limited(이하 “Multica” 또는 “저희”)가 여러분이 multica.ai를 방문하거나, 저희에게 문의하거나, 호스팅 서비스인 Multica Cloud(웹, 데스크톱, 모바일 앱 포함)를 이용할 때 개인정보를 어떻게 수집, 이용, 공유하는지 설명합니다.",
-        "이 방침은 여러분이 직접 호스팅하는 Multica에는 적용되지 않습니다. 셀프 호스팅 배포의 데이터는 운영자가 관리하며, 어떤 AI 제공자, 연동 서비스, 분석 도구를 쓰는지는 운영자의 설정에 따라 달라집니다. 셀프 호스팅 서버가 저희에게 보내는 것은 하루 한 번의 사용 현황 스냅샷뿐입니다. 여기에는 같은 서버의 스냅샷을 서로 연결하기 위한 무작위 배포 ID, 서버 버전, 워크스페이스·멤버·에이전트·연결된 데몬의 대략적인 수, 그날 시작·완료·실패·취소된 실행 수, 그리고 지난 1·7·28일 동안 웹 또는 데스크톱 앱을 연 멤버 수와 직접 에이전트 실행을 시작한 멤버 수의 대략적인 값이 담깁니다. 이름, 이메일 주소, 콘텐츠는 포함되지 않습니다. DO_NOT_TRACK=1로 설정하면 이 스냅샷을 끌 수 있습니다.",
+        "이 개인정보 처리방침은 Delegora(이하 “저희”)가 여러분이 Delegora를 방문하거나, 저희에게 문의하거나, 호스팅 서비스인 Delegora Cloud(웹, 데스크톱, 모바일 앱 포함)를 이용할 때 개인정보를 어떻게 수집, 이용, 공유하는지 설명합니다.",
+        "이 방침은 여러분이 직접 호스팅하는 Delegora에는 적용되지 않습니다. 셀프 호스팅 배포의 데이터는 운영자가 관리하며, 어떤 AI 제공자, 연동 서비스, 분석 도구를 쓰는지는 운영자의 설정에 따라 달라집니다. 셀프 호스팅 서버가 저희에게 보내는 것은 하루 한 번의 사용 현황 스냅샷뿐입니다. 여기에는 같은 서버의 스냅샷을 서로 연결하기 위한 무작위 배포 ID, 서버 버전, 워크스페이스·멤버·에이전트·연결된 데몬의 대략적인 수, 그날 시작·완료·실패·취소된 실행 수, 그리고 지난 1·7·28일 동안 웹 또는 데스크톱 앱을 연 멤버 수와 직접 에이전트 실행을 시작한 멤버 수의 대략적인 값이 담깁니다. 이름, 이메일 주소, 콘텐츠는 포함되지 않습니다. DO_NOT_TRACK=1로 설정하면 이 스냅샷을 끌 수 있습니다.",
         "이 방침은 영어 원문을 기준으로 합니다. 한국어 번역본과 영어 원문의 내용이 다를 경우 영어 원문이 우선합니다.",
       ],
       sections: [
         {
           heading: "수집하는 정보",
           bullets: [
-            "계정 정보: 이름, 이메일 주소, 프로필 사진. Google로 로그인하면 Google로부터 이름, 이메일 주소, 프로필 사진을 받습니다. 언어, 시간대, 자기소개 같은 프로필 정보와 온보딩 답변(역할, 사용 목적, Multica를 알게 된 경로 등)을 입력할 수도 있습니다.",
-            "여러분이 만든 콘텐츠: 워크스페이스, 태스크, 댓글, 채팅 메시지, 첨부 파일, 에이전트 지침 등 여러분이나 여러분의 에이전트가 Multica Cloud에 입력하는 모든 것.",
+            "계정 정보: 이름, 이메일 주소, 프로필 사진. Google로 로그인하면 Google로부터 이름, 이메일 주소, 프로필 사진을 받습니다. 언어, 시간대, 자기소개 같은 프로필 정보와 온보딩 답변(역할, 사용 목적, Delegora를 알게 된 경로 등)을 입력할 수도 있습니다.",
+            "여러분이 만든 콘텐츠: 워크스페이스, 태스크, 댓글, 채팅 메시지, 첨부 파일, 에이전트 지침 등 여러분이나 여러분의 에이전트가 Delegora Cloud에 입력하는 모든 것.",
             "영업팀 문의: 이름, 업무용 이메일, 회사명과 규모, 국가 또는 지역, 사용 사례, 목표, 연락 수신 설정. 악용을 막기 위해 양식을 제출한 IP 주소와 브라우저 user agent도 기록합니다.",
             "결제 정보: 구독 결제는 Stripe가 호스팅하는 페이지에서 Stripe가 처리합니다. 저희는 전체 카드 정보를 받거나 저장하지 않습니다.",
             "사용 및 기기 정보: 앱 버전, 운영체제, 클라이언트 유형, 무작위로 생성된 설치 ID, 런타임으로 연결한 각 머신의 이름(기본값은 호스트 이름), 그리고 충돌 및 오류 보고서. 보고서를 보내기 전에 오류 메시지에서 식별 가능한 이메일 주소와 인증 정보를 걸러 내지만, 보고서에는 문제 상황에 관한 다른 정보가 남아 있을 수 있습니다.",
@@ -3718,24 +3718,24 @@ export function createKoDict(): LandingDict {
         {
           heading: "정보 이용 목적",
           bullets: [
-            "Multica Cloud의 제공, 운영, 보호(로그인, 워크스페이스 동기화, 알림 및 초대 발송 등).",
+            "Delegora Cloud의 제공, 운영, 보호(로그인, 워크스페이스 동기화, 알림 및 초대 발송 등).",
             "영업팀 문의와 지원 요청에 대한 응답.",
             "로그인 코드, 워크스페이스 초대 등 서비스 메시지 발송. 제품 소식이나 마케팅 정보는 동의한 경우에만 보내며, 언제든지 수신을 거부할 수 있습니다.",
-            "Multica 이용 현황 파악, 버그 수정, 제품 개선.",
+            "Delegora 이용 현황 파악, 버그 수정, 제품 개선.",
             "악용 방지와 법적 의무 이행.",
           ],
         },
         {
           heading: "처리의 법적 근거",
           paragraphs: [
-            "처리의 법적 근거를 밝혀야 하는 지역에서는 다음을 근거로 개인정보를 처리합니다. Multica Cloud를 제공하기 위한 여러분과의 계약 이행, Multica의 보안 유지·지원·개선 및 문의 응대에 관한 저희의 정당한 이익, 마케팅 정보 수신에 대한 여러분의 동의, 그리고 법적 의무의 준수입니다.",
+            "처리의 법적 근거를 밝혀야 하는 지역에서는 다음을 근거로 개인정보를 처리합니다. Delegora Cloud를 제공하기 위한 여러분과의 계약 이행, Delegora의 보안 유지·지원·개선 및 문의 응대에 관한 저희의 정당한 이익, 마케팅 정보 수신에 대한 여러분의 동의, 그리고 법적 의무의 준수입니다.",
           ],
         },
         {
           heading: "AI 기능",
           paragraphs: [
-            "코딩 에이전트는 여러분이 설정한 코딩 도구와 계정으로, 여러분의 머신이나 연결한 런타임에서 실행됩니다. 에이전트가 로컬에서 실행된다고 해서 모델 추론까지 로컬에서 이뤄지는 것은 아닙니다. 이런 도구는 프롬프트, 코드, 파일, 도구 실행 결과를 각자의 모델 제공자에게 보내며, 그 처리는 여러분이 쓰는 도구와 계정의 약관을 따릅니다. Multica는 에이전트의 작업을 조율합니다.",
-            "채팅 제목 생성이나 후속 작업 제안 같은 Multica Cloud의 일부 기능은 결과를 만들기 위해 첫 채팅 메시지나 최근 몇 개의 메시지를 저희가 선택한 외부 대규모 언어 모델 제공자에게 보냅니다. Multica는 여러분의 콘텐츠를 AI 모델 학습에 사용하지 않습니다.",
+            "코딩 에이전트는 여러분이 설정한 코딩 도구와 계정으로, 여러분의 머신이나 연결한 런타임에서 실행됩니다. 에이전트가 로컬에서 실행된다고 해서 모델 추론까지 로컬에서 이뤄지는 것은 아닙니다. 이런 도구는 프롬프트, 코드, 파일, 도구 실행 결과를 각자의 모델 제공자에게 보내며, 그 처리는 여러분이 쓰는 도구와 계정의 약관을 따릅니다. Delegora는 에이전트의 작업을 조율합니다.",
+            "채팅 제목 생성이나 후속 작업 제안 같은 Delegora Cloud의 일부 기능은 결과를 만들기 위해 첫 채팅 메시지나 최근 몇 개의 메시지를 저희가 선택한 외부 대규모 언어 모델 제공자에게 보냅니다. Delegora는 여러분의 콘텐츠를 AI 모델 학습에 사용하지 않습니다.",
           ],
         },
         {
@@ -3749,8 +3749,8 @@ export function createKoDict(): LandingDict {
           heading: "정보 공유 대상",
           paragraphs: [
             "워크스페이스에 입력한 정보는 워크스페이스 권한에 따라 다른 멤버와 관리자, 그리고 이들이 허용한 에이전트와 연동 서비스가 볼 수 있습니다. 워크스페이스가 조직에 속해 있다면 그 조직이 콘텐츠를 관리하며, 관련 요청도 조직이 처리할 수 있습니다.",
-            "법령이 요구하는 경우 정보를 공개하며, Multica가 합병, 인수, 자산 매각의 대상이 되는 경우 정보가 인수자나 승계자에게 이전될 수 있습니다.",
-            "그 밖에는 Multica 운영을 돕는 서비스 제공자, 그리고 여러분이 연결하기로 선택한 연동 서비스와만 개인정보를 공유합니다.",
+            "법령이 요구하는 경우 정보를 공개하며, Delegora가 합병, 인수, 자산 매각의 대상이 되는 경우 정보가 인수자나 승계자에게 이전될 수 있습니다.",
+            "그 밖에는 Delegora 운영을 돕는 서비스 제공자, 그리고 여러분이 연결하기로 선택한 연동 서비스와만 개인정보를 공유합니다.",
           ],
           bullets: [
             "Amazon Web Services: 호스팅, 파일 저장, 콘텐츠 전송",
@@ -3766,19 +3766,19 @@ export function createKoDict(): LandingDict {
         {
           heading: "정보 저장 위치",
           paragraphs: [
-            "Multica Cloud는 Amazon Web Services와 Vercel에서 호스팅됩니다. 저희와 서비스 제공자는 미국 및 기타 국가나 지역에서 여러분의 정보를 처리할 수 있습니다. 어디에서 처리되든 이 방침에 따라 정보를 보호합니다.",
+            "Delegora Cloud는 Amazon Web Services와 Vercel에서 호스팅됩니다. 저희와 서비스 제공자는 미국 및 기타 국가나 지역에서 여러분의 정보를 처리할 수 있습니다. 어디에서 처리되든 이 방침에 따라 정보를 보호합니다.",
           ],
         },
         {
           heading: "보관 기간",
           paragraphs: [
-            "계정 정보와 워크스페이스 콘텐츠는 계정이나 워크스페이스가 존재하는 동안 보관합니다. 워크스페이스 소유자가 워크스페이스를 삭제하면 태스크, 댓글 등 그 안의 콘텐츠는 Multica Cloud에서 제거됩니다. 다만 복구용 백업에는 삭제 후 일정 기간 사본이 남아 있을 수 있습니다. 삭제된 워크스페이스에 업로드된 파일을 파일 저장소에서 지우고 싶다면 [support@multica.ai](mailto:support@multica.ai)로 이메일을 보내 주세요. 결제 기록은 회계 및 세무 규정이 요구하는 기간 동안 보관하고, 제품 분석 데이터, 충돌 보고서, 영업팀 문의, 피드백은 지원과 제품 개선에 필요한 기간 동안 보관합니다. 문의와 피드백은 요청하시면 삭제합니다.",
+            "계정 정보와 워크스페이스 콘텐츠는 계정이나 워크스페이스가 존재하는 동안 보관합니다. 워크스페이스 소유자가 워크스페이스를 삭제하면 태스크, 댓글 등 그 안의 콘텐츠는 Delegora Cloud에서 제거됩니다. 다만 복구용 백업에는 삭제 후 일정 기간 사본이 남아 있을 수 있습니다. 삭제된 워크스페이스에 업로드된 파일을 파일 저장소에서 지우고 싶다면 [support@delegora.io.vn](mailto:support@delegora.io.vn)로 이메일을 보내 주세요. 결제 기록은 회계 및 세무 규정이 요구하는 기간 동안 보관하고, 제품 분석 데이터, 충돌 보고서, 영업팀 문의, 피드백은 지원과 제품 개선에 필요한 기간 동안 보관합니다. 문의와 피드백은 요청하시면 삭제합니다.",
           ],
         },
         {
           heading: "여러분의 선택과 권리",
           paragraphs: [
-            "거주 지역의 법령에 따라 여러분은 개인정보의 열람, 정정, 삭제, 내보내기를 요청하고, 특정 처리에 반대하거나 이를 제한하고, 이미 한 동의(예: 마케팅 정보 수신 동의)를 철회하고, 해당 지역의 개인정보 보호 감독기관에 불만을 제기할 권리가 있을 수 있습니다. 프로필은 Multica에서 언제든지 수정할 수 있고, 소유한 워크스페이스는 설정에서 삭제할 수 있습니다. 계정 삭제 등 그 밖의 요청은 [support@multica.ai](mailto:support@multica.ai)로 이메일을 보내 주세요. 30일 이내에 답변드립니다.",
+            "거주 지역의 법령에 따라 여러분은 개인정보의 열람, 정정, 삭제, 내보내기를 요청하고, 특정 처리에 반대하거나 이를 제한하고, 이미 한 동의(예: 마케팅 정보 수신 동의)를 철회하고, 해당 지역의 개인정보 보호 감독기관에 불만을 제기할 권리가 있을 수 있습니다. 프로필은 Delegora에서 언제든지 수정할 수 있고, 소유한 워크스페이스는 설정에서 삭제할 수 있습니다. 계정 삭제 등 그 밖의 요청은 [support@delegora.io.vn](mailto:support@delegora.io.vn)로 이메일을 보내 주세요. 30일 이내에 답변드립니다.",
           ],
         },
         {
@@ -3790,7 +3790,7 @@ export function createKoDict(): LandingDict {
         {
           heading: "아동",
           paragraphs: [
-            "Multica는 16세 미만 아동을 대상으로 하지 않으며, 아동의 개인정보를 알면서 수집하지 않습니다.",
+            "Delegora는 16세 미만 아동을 대상으로 하지 않으며, 아동의 개인정보를 알면서 수집하지 않습니다.",
           ],
         },
         {
@@ -3802,7 +3802,7 @@ export function createKoDict(): LandingDict {
         {
           heading: "문의하기",
           paragraphs: [
-            "Multica는 Index Labs (Hong Kong) Limited가 운영하며, 여러분의 개인정보에 대한 책임을 집니다. 개인정보 관련 질문이나 요청은 [support@multica.ai](mailto:support@multica.ai)로 이메일을 보내 주세요.",
+            "Delegora는 여러분의 개인정보에 대한 책임을 집니다. 개인정보 관련 질문이나 요청은 [support@delegora.io.vn](mailto:support@delegora.io.vn)로 이메일을 보내 주세요.",
           ],
         },
       ],
@@ -3819,14 +3819,14 @@ export function createKoDict(): LandingDict {
       hero: {
         eyebrow: "데스크톱 앱",
         title: {
-          mac: "macOS용 Multica 다운로드",
-          windows: "Windows용 Multica 다운로드",
-          linux: "Linux용 Multica 다운로드",
-          other: "Multica 다운로드",
+          mac: "macOS용 Delegora 다운로드",
+          windows: "Windows용 Delegora 다운로드",
+          linux: "Linux용 Delegora 다운로드",
+          other: "Delegora 다운로드",
         },
         lead: "데스크톱 앱에는 에이전트 데몬이 포함되어 있어, 이 컴퓨터의 Claude Code, Codex 등 코딩 에이전트가 자동으로 연결됩니다.",
         leadOther: "macOS, Windows, Linux용 데스크톱 앱이며, 모두 에이전트 데몬이 내장되어 있습니다.",
-        mobileNote: "Multica 데스크톱 앱은 macOS, Windows, Linux에서 실행됩니다. 컴퓨터에서 이 페이지를 열어 다운로드하세요.",
+        mobileNote: "Delegora 데스크톱 앱은 macOS, Windows, Linux에서 실행됩니다. 컴퓨터에서 이 페이지를 열어 다운로드하세요.",
         primary: {
           macArm64Dmg: "Apple Silicon용 다운로드",
           macX64Dmg: "Intel용 다운로드",
@@ -3872,26 +3872,26 @@ export function createKoDict(): LandingDict {
         allDownloads: "모든 다운로드",
         install: {
           title: "설치",
-          dmg: ".dmg를 열고 Multica를 응용 프로그램 폴더로 드래그하세요.",
-          zip: "압축을 풀고 Multica를 응용 프로그램 폴더로 옮기세요.",
-          exe: "설치 프로그램을 실행하세요. 완료되면 Multica가 열립니다.",
+          dmg: ".dmg를 열고 Delegora를 응용 프로그램 폴더로 드래그하세요.",
+          zip: "압축을 풀고 Delegora를 응용 프로그램 폴더로 옮기세요.",
+          exe: "설치 프로그램을 실행하세요. 완료되면 Delegora가 열립니다.",
           appImage: "AppImage에 실행 권한을 준 다음 실행하세요.",
           deb: "apt 또는 사용 중인 패키지 관리자로 .deb를 설치하세요.",
           rpm: "dnf 또는 사용 중인 패키지 관리자로 .rpm을 설치하세요.",
         },
         signIn: {
           title: "로그인",
-          body: "Multica를 열고 계정으로 로그인하세요.",
+          body: "Delegora를 열고 계정으로 로그인하세요.",
           installed: "이미 설치했나요?",
-          open: "Multica 열기",
+          open: "Delegora 열기",
         },
         agents: {
           title: "에이전트 연결",
-          body: "Multica가 이 컴퓨터의 Claude Code, Codex 등 코딩 에이전트를 자동으로 찾습니다.",
+          body: "Delegora가 이 컴퓨터의 Claude Code, Codex 등 코딩 에이전트를 자동으로 찾습니다.",
         },
         community: {
           label: "다운로드하는 동안",
-          githubTitle: "GitHub에서 Multica 팔로우하기",
+          githubTitle: "GitHub에서 Delegora 팔로우하기",
           githubBody: "저장소에 Star를 눌러 새 릴리스 소식을 받아 보거나, 방금 다운로드한 앱의 코드를 살펴보세요.",
           star: "GitHub에서 Star",
           stars: "Star {count}개",
@@ -3907,7 +3907,7 @@ export function createKoDict(): LandingDict {
     contactSales: {
       pageTitle: "영업팀 문의",
       pageDescription:
-        "회사에 사람과 에이전트가 함께 일하는 워크플로를 도입하는 방법을 Multica 팀과 함께 이야기해 보세요.",
+        "회사에 사람과 에이전트가 함께 일하는 워크플로를 도입하는 방법을 Delegora 팀과 함께 이야기해 보세요.",
       eyebrow: "영업팀 문의",
       title: "어떤 도움이 필요하신지 알려 주세요",
       fields: {
@@ -3919,7 +3919,7 @@ export function createKoDict(): LandingDict {
         companyName: "회사명",
         companySize: "회사 규모",
         countryRegion: "국가 / 지역",
-        useCase: "Multica를 어떻게 사용하거나 어디에 활용하실 계획인가요?",
+        useCase: "Delegora를 어떻게 사용하거나 어디에 활용하실 계획인가요?",
         goals: "목표 또는 현재 겪고 있는 과제",
         selectPlaceholder: "선택하세요",
         submit: "제출",
@@ -3935,9 +3935,9 @@ export function createKoDict(): LandingDict {
       ],
       useCases: [
         { value: "evaluate", label: "팀 도입을 검토 중" },
-        { value: "adopt_team", label: "팀 또는 회사에 Multica 도입" },
+        { value: "adopt_team", label: "팀 또는 회사에 Delegora 도입" },
         { value: "self_host", label: "자체 인프라에 셀프 호스팅" },
-        { value: "integrate", label: "기존 도구와 Multica 연동" },
+        { value: "integrate", label: "기존 도구와 Delegora 연동" },
         { value: "partner", label: "파트너십 또는 리셀러 문의" },
         { value: "other", label: "기타" },
       ],
@@ -3985,22 +3985,22 @@ export function createKoDict(): LandingDict {
       ],
       consent: {
         intro:
-          "Multica는 여러분의 개인정보를 소중히 다룹니다. 제공해 주신 개인정보는 계정 관리와 요청하신 제품·서비스 제공에만 사용합니다. 가끔씩 제품 업데이트, 활용 팁, 도움이 될 만한 인사이트도 함께 전해 드리고 싶습니다. 소식을 받고 싶으시다면 아래에서 선택해 주세요.",
+          "Delegora는 여러분의 개인정보를 소중히 다룹니다. 제공해 주신 개인정보는 계정 관리와 요청하신 제품·서비스 제공에만 사용합니다. 가끔씩 제품 업데이트, 활용 팁, 도움이 될 만한 인사이트도 함께 전해 드리고 싶습니다. 소식을 받고 싶으시다면 아래에서 선택해 주세요.",
         outreach:
-          "서비스 업데이트, 지원 문의, 비즈니스 관련 후속 연락 등 Multica로부터 개별 연락을 받겠습니다.",
+          "서비스 업데이트, 지원 문의, 비즈니스 관련 후속 연락 등 Delegora로부터 개별 연락을 받겠습니다.",
         updates:
-          "Multica의 제품 업데이트, 인사이트, 이벤트 초대 소식을 받겠습니다.",
+          "Delegora의 제품 업데이트, 인사이트, 이벤트 초대 소식을 받겠습니다.",
         unsubscribe:
           "언제든 수신을 거부할 수 있습니다. 개인정보와 데이터 권리를 어떻게 다루는지는 다음 문서에서 자세히 확인하실 수 있습니다:",
         submitConsent:
-          "\"제출\"을 클릭하시면 요청하신 콘텐츠를 보내 드리기 위해 Multica가 정보를 저장하고 처리하는 것에 동의하게 됩니다.",
+          "\"제출\"을 클릭하시면 요청하신 콘텐츠를 보내 드리기 위해 Delegora가 정보를 저장하고 처리하는 것에 동의하게 됩니다.",
         privacyLinkLabel: "개인정보 처리방침.",
         privacyLinkHref: "/privacy",
       },
       success: {
         title: "감사합니다. 요청을 잘 받았습니다.",
         message:
-          "Multica 팀원이 영업일 기준 3일 이내에 답변드릴 예정입니다. 그동안 문서를 둘러보시거나 GitHub에서 스타를 눌러 주세요.",
+          "Delegora 팀원이 영업일 기준 3일 이내에 답변드릴 예정입니다. 그동안 문서를 둘러보시거나 GitHub에서 스타를 눌러 주세요.",
         cta: "홈으로 돌아가기",
       },
       errors: {

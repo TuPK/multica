@@ -204,7 +204,7 @@ describe("ModelDropdown", () => {
   });
 
   // MUL-6961: Claude Code reports a model its own version cannot run in a
-  // separate list. It must be visible — a missing row reads as "Multica doesn't
+  // separate list. It must be visible — a missing row reads as "Delegora doesn't
   // support Fable 5.1" when the truth is the user's CLI is behind — and it must
   // be impossible to pick, because picking one is a guaranteed 400.
   describe("models the runtime cannot run", () => {

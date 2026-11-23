@@ -1081,7 +1081,7 @@ export const WHATS_NEW_RELEASES: CompleteWhatsNewRelease[] = [
         action: { kind: "route", to: (p) => `${p.settings()}?tab=preferences` },
         copy: {
           en: {
-            title: "Multica in Traditional Chinese",
+            title: "Delegora in Traditional Chinese",
             body: "Switch the app language in Settings → Preferences.",
           },
           "zh-Hans": {
@@ -1101,15 +1101,15 @@ export const WHATS_NEW_RELEASES: CompleteWhatsNewRelease[] = [
             body: "설정 → 환경설정에서 앱 언어를 바꿀 수 있습니다.",
           },
           fr: {
-            title: "Multica en chinois traditionnel",
+            title: "Delegora en chinois traditionnel",
             body: "Changez la langue de l'application dans Paramètres → Préférences.",
           },
           es: {
-            title: "Multica en chino tradicional",
+            title: "Delegora en chino tradicional",
             body: "Cambia el idioma de la aplicación en Ajustes → Preferencias.",
           },
           ru: {
-            title: "Multica на традиционном китайском",
+            title: "Delegora на традиционном китайском",
             body: "Переключить язык интерфейса можно в разделе «Настройки» → «Язык».",
           },
         },

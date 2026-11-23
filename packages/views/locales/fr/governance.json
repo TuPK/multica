@@ -12,7 +12,7 @@
     "title": "Rien à afficher pour l'instant"
   },
   "autonomy": {
-    "note": "La limite honnête : Multica ne peut pas inspecter ce qu'un environnement d'exécution fait pendant une exécution, donc un niveau ne peut pas empêcher un agent d'appeler une API externe que ses identifiants autorisent. Multica contrôle ce qui passe par elle : les routines exécutées, ce qui est publié dans la mémoire partagée, les propositions décidées sans vous, les initiatives créées, les dépenses et les limites de chaque charte. Tout ce qui a des effets externes reste derrière une porte que la plateforme contrôle, comme la porte de lancement, ou derrière les réglages de permission de l'agent. L3 ne signifie pas sans supervision.",
+    "note": "La limite honnête : Delegora ne peut pas inspecter ce qu'un environnement d'exécution fait pendant une exécution, donc un niveau ne peut pas empêcher un agent d'appeler une API externe que ses identifiants autorisent. Delegora contrôle ce qui passe par elle : les routines exécutées, ce qui est publié dans la mémoire partagée, les propositions décidées sans vous, les initiatives créées, les dépenses et les limites de chaque charte. Tout ce qui a des effets externes reste derrière une porte que la plateforme contrôle, comme la porte de lancement, ou derrière les réglages de permission de l'agent. L3 ne signifie pas sans supervision.",
     "levels_heading": "Ce que permet chaque niveau",
     "levels": {
       "suggest": {

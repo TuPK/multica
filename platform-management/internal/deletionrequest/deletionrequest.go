@@ -1,7 +1,7 @@
 // Package deletionrequest is phase 1 of an immediate deletion of a workspace or
 // a tenant (spec R6 section 6.3). It checks the input, writes the request with
 // its audit rows and the pending_deletion status in one transaction, and cancels
-// or retries a request. Multica's staff_deletion job (phase 2) deletes the data
+// or retries a request. Delegora's staff_deletion job (phase 2) deletes the data
 // through the existing deletion path; this package deletes nothing.
 package deletionrequest
 
@@ -234,7 +234,7 @@ type DeletionMailer interface {
 }
 
 // AccountNotifier drops the cached state of an account (Invalidate) and publishes
-// a change of kind to the Multica server (Publish), as the console does after a
+// a change of kind to the Delegora server (Publish), as the console does after a
 // status change. Both run after the commit.
 type AccountNotifier interface {
 	Invalidate(ctx context.Context, userID string) error

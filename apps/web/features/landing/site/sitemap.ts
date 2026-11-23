@@ -25,9 +25,9 @@ export const PRODUCT_GROUPS: PageGroup[] = [
   {
     title: "Surfaces",
     pages: [
-      { slug: "cloud", title: "Multica Cloud", summary: "Run agents on cloud agent services, with no computer of yours left on." },
-      { slug: "desktop", title: "Multica Desktop", summary: "A native app for macOS, Windows, and Linux that turns your computer into a runtime." },
-      { slug: "cli", title: "Multica CLI", summary: "Connect a computer as a runtime and work with Multica from the shell." },
+      { slug: "cloud", title: "Delegora Cloud", summary: "Run agents on cloud agent services, with no computer of yours left on." },
+      { slug: "desktop", title: "Delegora Desktop", summary: "A native app for macOS, Windows, and Linux that turns your computer into a runtime." },
+      { slug: "cli", title: "Delegora CLI", summary: "Connect a computer as a runtime and work with Delegora from the shell." },
       { slug: "chat", title: "Chat integrations", summary: "Work with agents from Slack, Lark, DingTalk, WeCom, Telegram, and WeChat." },
       { slug: "mobile", title: "Mobile", summary: "Your inbox, issues, and agent chats on iPhone." },
     ],
@@ -47,10 +47,10 @@ export const PRODUCT_GROUPS: PageGroup[] = [
     pages: [
       { slug: "issues", title: "Issues & Projects", summary: "One board for work done by people and agents." },
       { slug: "runtimes", title: "Runtimes", summary: "Local and cloud compute for your agents, in one panel." },
-      { slug: "self-hosting", title: "Self-hosting", summary: "Run Multica on infrastructure you control." },
+      { slug: "self-hosting", title: "Self-hosting", summary: "Run Delegora on infrastructure you control." },
       { slug: "integrations", title: "Integrations", summary: "GitHub, GitLab, and the tools your team already uses." },
       { slug: "analytics", title: "Analytics", summary: "See what your agents shipped and what it cost." },
-      { slug: "api", title: "API & SDK", summary: "Build on Multica from your own code." },
+      { slug: "api", title: "API & SDK", summary: "Build on Delegora from your own code." },
     ],
   },
 ];
@@ -84,8 +84,8 @@ export const SOLUTION_GROUPS: PageGroup[] = [
   {
     title: "Programs",
     pages: [
-      { slug: "open-source", title: "Open source", summary: "Multica for open-source maintainers." },
-      { slug: "partners", title: "Partners", summary: "Build, resell, or implement Multica with us." },
+      { slug: "open-source", title: "Open source", summary: "Delegora for open-source maintainers." },
+      { slug: "partners", title: "Partners", summary: "Build, resell, or implement Delegora with us." },
     ],
   },
 ];
@@ -93,11 +93,11 @@ export const SOLUTION_GROUPS: PageGroup[] = [
 /** Single pages that exist only as placeholders so far. */
 export const PLACEHOLDER_PAGES = {
   pricing: { slug: "pricing", title: "Pricing", summary: "Plans for teams of every size." },
-  customers: { slug: "customers", title: "Customers", summary: "Teams shipping with Multica." },
+  customers: { slug: "customers", title: "Customers", summary: "Teams shipping with Delegora." },
   blog: { slug: "blog", title: "Blog", summary: "Notes on building with human and agent teams." },
   careers: { slug: "careers", title: "Careers", summary: "Help us build the workspace for human and agent teams." },
   press: { slug: "press", title: "Press & brand", summary: "Logos, product imagery, and press contacts." },
-  security: { slug: "security", title: "Security", summary: "How Multica protects your code and data." },
+  security: { slug: "security", title: "Security", summary: "How Delegora protects your code and data." },
 } satisfies Record<string, SitePage>;
 
 /** Pages that already have real content and keep their existing routes. */

@@ -277,7 +277,7 @@ func TestHandlerServesThePolicy(t *testing.T) {
 	}
 }
 
-// The workspace in the path is the key, in the form Multica sends it.
+// The workspace in the path is the key, in the form Delegora sends it.
 func TestHandlerNormalisesTheWorkspaceID(t *testing.T) {
 	src := newFakeSource(map[string]Inputs{wsA: freeInputs(t, 1)})
 	svc, _ := newService(t, src)
@@ -382,7 +382,7 @@ func TestLoaderReadsThePlanOverridesVersionAndWorkspaceState(t *testing.T) {
 }
 
 // A subscription naming a plan that is gone is a data error. The caller gets an
-// error, not a made-up plan: Multica treats the failure as "platform
+// error, not a made-up plan: Delegora treats the failure as "platform
 // unavailable" and does not enforce.
 func TestLoaderFailsWhenThePlanIsMissing(t *testing.T) {
 	l := Loader{

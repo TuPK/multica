@@ -3,7 +3,7 @@
 // own charge where it reported one, plus the rate-table estimate for the tokens
 // it did not price (pricing.EstimateCostUSD).
 //
-// It reads task_usage_hourly, the rollup Multica writes, so the newest hour can
+// It reads task_usage_hourly, the rollup Delegora writes, so the newest hour can
 // lag the live task rows, the same lag the dashboard has.
 package aicost
 

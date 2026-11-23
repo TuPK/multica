@@ -94,7 +94,7 @@ func billingMux(t *testing.T) http.Handler {
 	return mux
 }
 
-// call sends one request as Multica's proxy would: from a trusted peer, with
+// call sends one request as Delegora's proxy would: from a trusted peer, with
 // X-User-ID.
 func call(t *testing.T, method, path string, body any) *httptest.ResponseRecorder {
 	t.Helper()

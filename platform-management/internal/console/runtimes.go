@@ -10,10 +10,10 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
 
-// Runtimes of the Multica daemons for staff (spec R6 section 3b.5, QT5). The
+// Runtimes of the Delegora daemons for staff (spec R6 section 3b.5, QT5). The
 // list and detail show status and versions, never the device details, metadata
 // or addresses (rule 2). Disable and enable write platform_runtime; unregister
-// is a deletion request that Multica's staff_deletion job runs (rule 5).
+// is a deletion request that Delegora's staff_deletion job runs (rule 5).
 
 // targetRuntime is the audit target type of a runtime.
 const targetRuntime = "runtime"

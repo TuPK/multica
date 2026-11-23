@@ -26,7 +26,7 @@ export function CompanySeatBanner({
 }) {
   const { t } = useT("issues");
   return (
-    <div className="mx-4 mb-2 flex shrink-0 items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5 text-caption text-muted-foreground">
+    <div className="flex min-w-0 items-center gap-2 rounded-lg bg-muted/50 px-3 py-1 text-caption text-muted-foreground">
       <span className="min-w-0 flex-1">{t(($) => $.company.seat_banner, { count })}</span>
       <Button type="button" variant="outline" size="xs" disabled={pending} aria-busy={pending} onClick={onSeatAll}>
         {t(($) => $.company.seat_all)}

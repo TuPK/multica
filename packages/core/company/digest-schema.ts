@@ -110,7 +110,7 @@ export interface DigestKnowledgeDocument {
   published_at: string;
 }
 
-/** A document Multica published without a person pressing publish (spec 3.3). */
+/** A document Delegora published without a person pressing publish (spec 3.3). */
 export interface DigestAutoPublish {
   link_id: string;
   title: string;

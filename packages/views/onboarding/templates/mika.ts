@@ -17,7 +17,7 @@ export interface MikaOnboardingDefinition {
 /**
  * Mika's name, description, avatar, permissions, and system instructions are
  * NOT here — they are server constants delivered by `POST /api/agents/mika`.
- * Keeping them out of the client is what lets Multica update Mika's prompt by
+ * Keeping them out of the client is what lets Delegora update Mika's prompt by
  * deploying, and stops a client from minting an agent that claims Mika's
  * identity.
  *

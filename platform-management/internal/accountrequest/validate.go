@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	// A slug is lower-case words joined by single hyphens. Multica decides at
+	// A slug is lower-case words joined by single hyphens. Delegora decides at
 	// step 2 whether it is taken or reserved.
 	slugPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 	// A tax code is 10 digits, or 10 digits and a 3 digit branch with an optional

@@ -11,7 +11,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
-// PolicyPattern is the route Multica's client calls (client.go: fetch).
+// PolicyPattern is the route Delegora's client calls (client.go: fetch).
 const PolicyPattern = "GET /api/v1/internal/entitlement-policies/{workspaceId}"
 
 const defaultMaxEntries = 10_000

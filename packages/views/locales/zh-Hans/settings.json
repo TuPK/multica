@@ -243,7 +243,7 @@
         "description": "打开或关闭悬浮聊天窗，打开时自动聚焦输入框。"
       },
       "newChat": {
-        "label": "问 Multica",
+        "label": "问 Delegora",
         "description": "在悬浮聊天窗里开始新对话。"
       },
       "findInIssue": {
@@ -802,7 +802,7 @@
     },
     "system": {
       "title": "系统通知",
-      "label": "Multica 在后台时显示系统通知"
+      "label": "Delegora 在后台时显示系统通知"
     },
     "browser": {
       "label": "浏览器通知",
@@ -975,13 +975,13 @@
     "add_account": "添加账号或组织",
     "disconnect_account": "断开 {{login}}",
     "errors": {
-      "missing_authorization": "GitHub 未返回用户授权。请重新连接并完成授权。如果已有安装反复出现此问题，请联系 Multica 运维人员。",
+      "missing_authorization": "GitHub 未返回用户授权。请重新连接并完成授权。如果已有安装反复出现此问题，请联系 Delegora 运维人员。",
       "installation_not_authorized": "个人安装请使用所属的 GitHub 账号；组织安装请使用对所有已授权仓库都有管理员权限的账号，并至少选择一个仓库。",
       "invalid_state": "GitHub 连接请求已过期或无效。请从设置 → 代码重新连接。",
       "incomplete_callback": "GitHub 返回的连接信息不完整。请从设置 → 代码重新连接。",
       "bad_workspace": "找不到此次连接的工作区。请打开目标工作区，从设置 → 代码重试。",
-      "verification_failed": "无法验证你对 GitHub 安装的管理权限。请重新连接；若仍失败，请联系 Multica 运维人员检查 GitHub App 配置。",
-      "persist_failed": "无法保存 GitHub 连接。请从设置 → 代码重试；若仍失败，请联系 Multica 运维人员。"
+      "verification_failed": "无法验证你对 GitHub 安装的管理权限。请重新连接；若仍失败，请联系 Delegora 运维人员检查 GitHub App 配置。",
+      "persist_failed": "无法保存 GitHub 连接。请从设置 → 代码重试；若仍失败，请联系 Delegora 运维人员。"
     }
   },
   "vcs": {
@@ -1095,7 +1095,7 @@
     "install_error_expired": "二维码过期，请重新扫码。",
     "install_error_access_denied": "已在飞书内取消安装。",
     "install_error_protocol": "飞书拒绝了安装请求，请重试。",
-    "install_error_bot_info": "授权完成，但 Multica 无法获取 Bot 身份信息，请重试。",
+    "install_error_bot_info": "授权完成，但 Delegora 无法获取 Bot 身份信息，请重试。",
     "install_error_conflict": "未能保存安装信息：该智能体可能已绑定其他 Bot。",
     "install_error_installer_bind": "已安装 Bot，但未能绑定你的飞书身份。请重试或联系管理员。",
     "install_error_session_lost": "安装会话已失效或丢失，请重新扫码。",
@@ -1141,7 +1141,7 @@
     "agent_bot_manage_tooltip": "打开此机器人所在的 Slack 工作区。",
     "byo_dialog_title": "连接 Slack 机器人",
     "byo_video_cta": "观看配置教程视频",
-    "byo_docs_link": "分步指南：将 Multica 智能体连接到 Slack",
+    "byo_docs_link": "分步指南：将 Delegora 智能体连接到 Slack",
     "byo_bot_token_label": "Bot token（xoxb-）",
     "byo_app_token_label": "App-level token（xapp-）",
     "byo_submit": "连接",
@@ -1170,7 +1170,7 @@
     "group_mentions_other": "被 @ {{count}} 次",
     "group_forget": "忘记",
     "group_forget_title": "忘记这个群？",
-    "group_forget_description": "该群会从 Multica 的群列表中移除，对话和消息记录不会删除。以后再次 @ 机器人时，群会重新出现。",
+    "group_forget_description": "该群会从 Delegora 的群列表中移除，对话和消息记录不会删除。以后再次 @ 机器人时，群会重新出现。",
     "group_forget_cancel": "取消",
     "group_forget_confirm": "忘记群",
     "group_forget_success": "已从群列表移除",
@@ -1204,7 +1204,7 @@
     "agent_bot_connected_label": "已连接到钉钉",
     "agent_bot_disconnect_tooltip": "将此钉钉机器人从智能体解绑。机器人将停止接收钉钉消息。",
     "byo_dialog_title": "连接钉钉机器人",
-    "byo_docs_link": "分步指南：将 Multica 智能体连接到钉钉",
+    "byo_docs_link": "分步指南：将 Delegora 智能体连接到钉钉",
     "byo_appkey_label": "AppKey（client id）",
     "byo_appsecret_label": "AppSecret（client secret）",
     "byo_submit": "连接",
@@ -1248,7 +1248,7 @@
     "byo_secret_label": "长连接 Secret",
     "byo_secret_placeholder": "粘贴在管理后台仅显示一次的 Secret",
     "byo_bot_name_label": "机器人在聊天里的名字（可选）",
-    "byo_bot_name_placeholder": "例如 Multica Bot",
+    "byo_bot_name_placeholder": "例如 Delegora Bot",
     "byo_bot_name_hint": "名字里有空格时才需要填，机器人靠它把自己的 @ 和后面的命令分开。之后想改（包括在企业微信后台改名后），要先断开这个机器人再重新连接。",
     "byo_submit": "连接",
     "byo_submitting": "连接中...",
@@ -1256,7 +1256,7 @@
     "byo_success_toast": "企业微信机器人已连接",
     "byo_conflict_same_workspace": "该机器人已连接到本工作区的另一个智能体。请先在那里断开，再连接到这里。",
     "byo_conflict_archived_agent": "该机器人连接在本工作区一个已归档的智能体上。请先恢复那个智能体，或断开它的机器人，再连接到这里。",
-    "byo_conflict_other_workspace": "该机器人已连接到另一个 Multica 工作区。请先在那边断开，再连接到这里。",
+    "byo_conflict_other_workspace": "该机器人已连接到另一个 Delegora 工作区。请先在那边断开，再连接到这里。",
     "byo_rejected": "无法连接机器人。请核对企业微信管理后台的 Bot ID 与密钥，并确认它是已开启长连接的智能机器人。",
     "byo_credentials_rejected": "企业微信拒绝了这组 Bot ID 和密钥。请在企业微信管理后台核对这两项，并确认它是已开启长连接的智能机器人。",
     "byo_credentials_unverifiable": "没能连上企业微信来校验这个机器人。你的凭据没有被改动，请稍后重试。",
@@ -1305,7 +1305,7 @@
     "disconnect": "断开连接",
     "disconnecting": "正在断开...",
     "disconnect_confirm_title": "断开此 Telegram 机器人？",
-    "disconnect_confirm_description": "机器人将停止接收本工作区的 Telegram 消息。Multica 中的会话记录会保留；之后可在同一智能体上重新连接。",
+    "disconnect_confirm_description": "机器人将停止接收本工作区的 Telegram 消息。Delegora 中的会话记录会保留；之后可在同一智能体上重新连接。",
     "disconnect_confirm_cancel": "取消",
     "toast_disconnected": "已断开 Telegram 机器人",
     "toast_disconnect_failed": "断开失败",
@@ -1317,7 +1317,7 @@
     "agent_bot_manage_tooltip": "在 Telegram 中打开与该机器人的对话。",
     "connect_dialog_title": "连接 Telegram 机器人",
     "connect_dialog_description": "在 Telegram 中通过 @BotFather 创建机器人，然后在下方粘贴它的 token。token 会实时校验并加密存储。",
-    "connect_docs_link": "分步指南：将 Multica 智能体连接到 Telegram",
+    "connect_docs_link": "分步指南：将 Delegora 智能体连接到 Telegram",
     "bot_token_label": "机器人 token",
     "connect_submit": "连接",
     "connect_submitting": "正在连接...",
@@ -1724,7 +1724,7 @@
     "title": "为智能体接入工具的方式",
     "current": "当前页面",
     "mcp": "由管理员添加、在工作区内共享，再按智能体分配。",
-    "apps": "通过 Multica 连接团队或个人账号，再将应用添加到智能体。",
+    "apps": "通过 Delegora 连接团队或个人账号，再将应用添加到智能体。",
     "plugins": "安装后可提供工具、定时 hook 和存储，每个插件单独授权。"
   },
   "publish_channels": {
@@ -1744,7 +1744,7 @@
     "dry_run": "演练测试",
     "delete": "删除",
     "delete_title": "删除发布渠道？",
-    "delete_description": "从 Multica 移除该渠道。账号在其平台上的授权仍然有效，需要到平台上解除。",
+    "delete_description": "从 Delegora 移除该渠道。账号在其平台上的授权仍然有效，需要到平台上解除。",
     "delete_confirm": "删除渠道",
     "empty_title": "暂无发布渠道",
     "empty_description": "连接社交渠道以供内容工作室使用。",
@@ -2322,7 +2322,7 @@
     "disconnect": "断开",
     "catalog_title": "可用应用",
     "catalog_label": "成员可添加的应用",
-    "catalog_description": "精选应用带有审核过的默认规则。\"全部应用\"包含 Multica 支持的所有应用，无法自动分类的操作会先征得同意。\"指定名单\"只允许你选中的应用。",
+    "catalog_description": "精选应用带有审核过的默认规则。\"全部应用\"包含 Delegora 支持的所有应用，无法自动分类的操作会先征得同意。\"指定名单\"只允许你选中的应用。",
     "catalog_all": "全部应用",
     "catalog_curated": "仅精选",
     "catalog_custom": "指定名单",

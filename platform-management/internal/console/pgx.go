@@ -60,7 +60,7 @@ func NewPgxReader(pool db.DBTX) *PgxReader {
 }
 
 // groupCount counts a workspace's account groups. member_group belongs to
-// Multica, and a platform database may not have the table yet, so a missing
+// Delegora, and a platform database may not have the table yet, so a missing
 // table reads as zero rather than failing the tenant page.
 func (r *PgxReader) groupCount(ctx context.Context, id pgtype.UUID) (int64, error) {
 	var exists bool
@@ -1564,7 +1564,7 @@ func (r *PgxReader) Flows(ctx context.Context, workspaceID string, since time.Ti
 
 // WorkspaceLimits builds the workspace's entitlement policy and returns the
 // limit of each gate. The loader reads the subscription, the plan and the
-// tenant, the same way the Multica policy does.
+// tenant, the same way the Delegora policy does.
 func (r *PgxReader) WorkspaceLimits(ctx context.Context, workspaceID string, now time.Time) (map[string]*int64, error) {
 	in, err := entitlement.NewPgxLoader(r.pool).Inputs(ctx, workspaceID)
 	if err != nil {

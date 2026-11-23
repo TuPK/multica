@@ -17,13 +17,13 @@
   "new_page": {
     "back": "返回",
     "log_out": "退出登入",
-    "title": "歡迎使用 Multica",
+    "title": "歡迎使用 Delegora",
     "description": "一個工作區，讓你和 AI 隊友並肩協作——一起處理任務、留下評論、共享同一份上下文。",
     "invite_hint": "工作區建立後可邀請隊友加入。"
   },
   "creation_disabled": {
     "title": "已禁用建立工作區",
-    "description": "該 Multica 例項不允許建立新的工作區，請聯絡管理員邀請你加入已有工作區。"
+    "description": "該 Delegora 例項不允許建立新的工作區，請聯絡管理員邀請你加入已有工作區。"
   },
   "no_access": {
     "title": "工作區不可用",

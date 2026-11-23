@@ -995,7 +995,7 @@ export function InboxWorkbench({
         </div>
       </div>
 
-      {/* Main Multica desktop shell */}
+      {/* Main Delegora desktop shell */}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Left Work Panel */}
         <aside className="flex w-[268px] shrink-0 flex-col border-r border-border bg-app-shell">
@@ -1013,7 +1013,7 @@ export function InboxWorkbench({
               <div className="space-y-0.5">
                 <div className="flex h-7 items-center gap-2 rounded-md px-2 text-caption text-muted-foreground">
                   <Pin className="size-3.5 shrink-0 text-faint-foreground" />
-                  <span className="truncate">Q4 Roadmap · Multica 0.13</span>
+                  <span className="truncate">Q4 Roadmap · Delegora 0.13</span>
                 </div>
               </div>
             </section>

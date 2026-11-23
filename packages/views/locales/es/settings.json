@@ -244,7 +244,7 @@
         "description": "Abre o cierra la ventana de chat flotante. Al abrirla, el foco va al campo de mensaje."
       },
       "newChat": {
-        "label": "Pregunta a Multica",
+        "label": "Pregunta a Delegora",
         "description": "Inicia un chat nuevo en la ventana de chat flotante."
       },
       "findInIssue": {
@@ -348,7 +348,7 @@
   "chat": {
     "floating_label": "Ventana de chat flotante",
     "floating_hint": "Muestra el botón de chat flotante en todas las páginas.",
-    "ask_agent_label": "Agente de Preguntar a Multica",
+    "ask_agent_label": "Agente de Preguntar a Delegora",
     "ask_agent_hint": "El agente con el que empieza un chat nuevo desde la barra inferior, en este espacio de trabajo.",
     "ask_agent_last_used": "El último usado"
   },
@@ -980,13 +980,13 @@
     "add_account": "Añadir cuenta u organización",
     "disconnect_account": "Desconectar {{login}}",
     "errors": {
-      "missing_authorization": "GitHub no devolvió la autorización del usuario. Vuelve a conectar y completa la autorización. Si se repite con una instalación existente, contacta con tu operador de Multica.",
+      "missing_authorization": "GitHub no devolvió la autorización del usuario. Vuelve a conectar y completa la autorización. Si se repite con una instalación existente, contacta con tu operador de Delegora.",
       "installation_not_authorized": "Para una instalación personal, usa la cuenta de GitHub propietaria. Para una organización, usa una cuenta con permisos de administrador en todos los repositorios autorizados y selecciona al menos uno.",
       "invalid_state": "Esta solicitud de conexión de GitHub ha caducado o no es válida. Reinicia la conexión desde Configuración → Código.",
       "incomplete_callback": "GitHub devolvió una respuesta de conexión incompleta. Reinicia la conexión desde Configuración → Código.",
       "bad_workspace": "No se encontró el espacio de trabajo de esta conexión. Abre el espacio deseado y reintenta desde Configuración → Código.",
-      "verification_failed": "No se pudo verificar tu acceso a la instalación de GitHub. Reintenta; si se repite, pide a tu operador de Multica que revise la configuración de la GitHub App.",
-      "persist_failed": "No se pudo guardar la conexión de GitHub. Reintenta desde Configuración → Código; si se repite, contacta con tu operador de Multica."
+      "verification_failed": "No se pudo verificar tu acceso a la instalación de GitHub. Reintenta; si se repite, pide a tu operador de Delegora que revise la configuración de la GitHub App.",
+      "persist_failed": "No se pudo guardar la conexión de GitHub. Reintenta desde Configuración → Código; si se repite, contacta con tu operador de Delegora."
     }
   },
   "vcs": {
@@ -1100,7 +1100,7 @@
     "install_error_expired": "El QR caducó antes de la autorización. Escanea de nuevo.",
     "install_error_access_denied": "Instalación cancelada en Lark.",
     "install_error_protocol": "Lark rechazó la instalación: inténtalo de nuevo.",
-    "install_error_bot_info": "Autorizado, pero Multica no pudo obtener la identidad del Bot. Inténtalo de nuevo.",
+    "install_error_bot_info": "Autorizado, pero Delegora no pudo obtener la identidad del Bot. Inténtalo de nuevo.",
     "install_error_conflict": "No se ha podido guardar la instalación. Puede que otro bot ya esté vinculado a este agente.",
     "install_error_installer_bind": "Bot instalado, pero no se ha podido vincular tu identidad de Lark. Inténtalo de nuevo o contacta con soporte.",
     "install_error_session_lost": "La sesión de instalación caducó o se perdió. Escanea de nuevo para empezar de cero.",
@@ -1146,7 +1146,7 @@
     "agent_bot_manage_tooltip": "Abre el espacio de trabajo de Slack de este bot.",
     "byo_dialog_title": "Conectar un bot de Slack",
     "byo_video_cta": "Ver la guía de configuración en vídeo",
-    "byo_docs_link": "Paso a paso: conecta tu agente de Multica a Slack",
+    "byo_docs_link": "Paso a paso: conecta tu agente de Delegora a Slack",
     "byo_bot_token_label": "Bot token (xoxb-)",
     "byo_app_token_label": "Token de app (xapp-)",
     "byo_submit": "Conectar",
@@ -1176,7 +1176,7 @@
     "group_mentions_other": "{{count}} menciones",
     "group_forget": "Olvidar",
     "group_forget_title": "¿Olvidar este grupo?",
-    "group_forget_description": "Elimina este grupo de la lista de Multica sin borrar ningún mensaje en DingTalk.",
+    "group_forget_description": "Elimina este grupo de la lista de Delegora sin borrar ningún mensaje en DingTalk.",
     "group_forget_cancel": "Cancelar",
     "group_forget_confirm": "Olvidar grupo",
     "group_forget_success": "Grupo eliminado del inventario",
@@ -1210,7 +1210,7 @@
     "agent_bot_connected_label": "Conectado a DingTalk",
     "agent_bot_disconnect_tooltip": "Desvincula este bot de DingTalk del agente. El bot dejará de recibir mensajes de DingTalk.",
     "byo_dialog_title": "Conectar un bot de DingTalk",
-    "byo_docs_link": "Paso a paso: conecta tu agente de Multica a DingTalk",
+    "byo_docs_link": "Paso a paso: conecta tu agente de Delegora a DingTalk",
     "byo_appkey_label": "AppKey (client id)",
     "byo_appsecret_label": "AppSecret (client secret)",
     "byo_submit": "Conectar",
@@ -1254,7 +1254,7 @@
     "byo_secret_label": "Secreto de conexión larga",
     "byo_secret_placeholder": "Pega el secreto que se muestra una sola vez en la consola",
     "byo_bot_name_label": "Nombre del bot en el chat (opcional)",
-    "byo_bot_name_placeholder": "p. ej. Multica Bot",
+    "byo_bot_name_placeholder": "p. ej. Delegora Bot",
     "byo_bot_name_hint": "Solo es necesario si el nombre tiene un espacio, para que el bot distinga su propia @mención del comando escrito después. Para cambiarlo más tarde, incluso tras renombrar el bot en la consola de WeCom, desconecta este bot y vuelve a conectarlo.",
     "byo_submit": "Conectar",
     "byo_submitting": "Conectando…",
@@ -1262,7 +1262,7 @@
     "byo_success_toast": "Bot de WeCom conectado",
     "byo_conflict_same_workspace": "Este bot ya está conectado a otro Agente de este espacio de trabajo. Desconéctalo allí primero y luego conéctalo aquí.",
     "byo_conflict_archived_agent": "Este bot está conectado a un agente archivado de este espacio de trabajo. Restaura ese agente, o desconecta su bot, antes de conectarlo aquí.",
-    "byo_conflict_other_workspace": "Este bot ya está conectado a otro espacio de trabajo de Multica. Desconéctalo allí antes de conectarlo aquí.",
+    "byo_conflict_other_workspace": "Este bot ya está conectado a otro espacio de trabajo de Delegora. Desconéctalo allí antes de conectarlo aquí.",
     "byo_rejected": "No se ha podido conectar el bot. Comprueba el Bot ID y el secreto en la consola de administración de WeCom, y que sea un smart bot con la conexión larga activada.",
     "byo_credentials_rejected": "WeCom rechazó este Bot ID y secreto. Comprueba ambos en la consola de administración de WeCom, y que sea un smart bot con la conexión larga activada.",
     "byo_credentials_unverifiable": "No se ha podido contactar con WeCom para verificar este bot. Tus credenciales no se modificaron: inténtalo de nuevo en un momento.",
@@ -1311,7 +1311,7 @@
     "disconnect": "Desconectar",
     "disconnecting": "Desconectando…",
     "disconnect_confirm_title": "¿Desconectar este bot de Telegram?",
-    "disconnect_confirm_description": "El bot dejará de recibir mensajes de Telegram para este espacio de trabajo. El historial de chat en Multica se conserva; puedes volver a conectarlo más adelante desde el mismo agente.",
+    "disconnect_confirm_description": "El bot dejará de recibir mensajes de Telegram para este espacio de trabajo. El historial de chat en Delegora se conserva; puedes volver a conectarlo más adelante desde el mismo agente.",
     "disconnect_confirm_cancel": "Cancelar",
     "toast_disconnected": "Bot de Telegram desconectado",
     "toast_disconnect_failed": "Error al desconectar",
@@ -1323,7 +1323,7 @@
     "agent_bot_manage_tooltip": "Abre un chat con este bot en Telegram.",
     "connect_dialog_title": "Conectar un bot de Telegram",
     "connect_dialog_description": "Crea un bot con @BotFather en Telegram y pega su token abajo. El token se verifica en directo y se guarda cifrado.",
-    "connect_docs_link": "Paso a paso: conecta tu agente de Multica a Telegram",
+    "connect_docs_link": "Paso a paso: conecta tu agente de Delegora a Telegram",
     "bot_token_label": "Bot token",
     "connect_submit": "Conectar",
     "connect_submitting": "Conectando…",
@@ -1430,7 +1430,7 @@
       "external_description_before": "El daemon de este dispositivo se ejecuta fuera de la app (por ejemplo, dentro de WSL2), así que la app no puede iniciarlo ni detenerlo. Inícialo o detenlo desde ese entorno con",
       "external_description_after": ".",
       "auto_start_title": "Inicio automático al arrancar",
-      "auto_start_description": "Inicia automáticamente el daemon local al abrir Multica Desktop",
+      "auto_start_description": "Inicia automáticamente el daemon local al abrir Delegora Desktop",
       "auto_stop_title": "Detención automática al salir",
       "auto_stop_description": "Detiene el daemon cuando se cierra la app de escritorio.",
       "cli_status": "Estado de la CLI",
@@ -1736,7 +1736,7 @@
     "title": "Formas de dar herramientas a los agentes",
     "current": "Esta página",
     "mcp": "Añadidas por administradores y compartidas en todo el espacio de trabajo, y luego asignadas por agente.",
-    "apps": "Cuentas del equipo o personales conectadas a través de Multica y añadidas a cada agente.",
+    "apps": "Cuentas del equipo o personales conectadas a través de Delegora y añadidas a cada agente.",
     "plugins": "Paquetes instalados que pueden añadir herramientas, ganchos programados y almacenamiento, cada uno con sus propios permisos."
   },
   "publish_channels": {
@@ -1756,7 +1756,7 @@
     "dry_run": "Prueba técnica",
     "delete": "Eliminar",
     "delete_title": "¿Eliminar canal de publicación?",
-    "delete_description": "Quita el canal de Multica. La cuenta sigue vinculada en su red hasta que la desvincules allí.",
+    "delete_description": "Quita el canal de Delegora. La cuenta sigue vinculada en su red hasta que la desvincules allí.",
     "delete_confirm": "Eliminar canal",
     "empty_title": "Sin canales de publicación",
     "empty_description": "Conecta canales sociales para el equipo de Content Studio.",
@@ -2340,7 +2340,7 @@
     "disconnect": "Desconectar",
     "catalog_title": "Aplicaciones disponibles",
     "catalog_label": "Aplicaciones que pueden añadir los miembros",
-    "catalog_description": "Las aplicaciones seleccionadas incluyen reglas predeterminadas revisadas. Todas las aplicaciones incluye todo lo que Multica puede conectar; las acciones que Multica no puede clasificar siempre piden confirmación. Una lista personalizada permite solo las aplicaciones que elijas.",
+    "catalog_description": "Las aplicaciones seleccionadas incluyen reglas predeterminadas revisadas. Todas las aplicaciones incluye todo lo que Delegora puede conectar; las acciones que Delegora no puede clasificar siempre piden confirmación. Una lista personalizada permite solo las aplicaciones que elijas.",
     "catalog_all": "Todas las aplicaciones",
     "catalog_curated": "Solo seleccionadas",
     "catalog_custom": "Lista personalizada",

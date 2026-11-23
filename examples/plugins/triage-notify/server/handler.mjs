@@ -2,8 +2,8 @@
 /**
  * A reference hook handler — the plugin author's side of the contract.
  *
- * This is the half that does NOT run in Multica. It is an ordinary HTTP server
- * the author operates; Multica only ever sends it a signed POST. Everything
+ * This is the half that does NOT run in Delegora. It is an ordinary HTTP server
+ * the author operates; Delegora only ever sends it a signed POST. Everything
  * security-relevant here is on this side of the wire, which is the point: the
  * host cannot make a handler safe, it can only give it what it needs to be.
  *
@@ -24,7 +24,7 @@ const SIGNING_SECRET = process.env.MULTICA_SIGNING_SECRET ?? "";
 const TOLERANCE_SECONDS = 5 * 60;
 
 if (!SIGNING_SECRET) {
-  console.error("MULTICA_SIGNING_SECRET is required. Rotate the plugin token in Multica to obtain it.");
+  console.error("MULTICA_SIGNING_SECRET is required. Rotate the plugin token in Delegora to obtain it.");
   process.exit(1);
 }
 
@@ -74,7 +74,7 @@ function verify(rawBody, headers) {
 }
 
 /**
- * Calls Multica back using the one-shot token that arrived with the request.
+ * Calls Delegora back using the one-shot token that arrived with the request.
  *
  * The token is scoped to this invocation and expires in minutes, so it is worth
  * spending on the work at hand rather than storing. It is good for as many calls
@@ -93,7 +93,7 @@ async function callback(body, method, path, payload) {
     body: payload === undefined ? undefined : JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error(`Multica answered ${response.status}: ${await response.text()}`);
+    throw new Error(`Delegora answered ${response.status}: ${await response.text()}`);
   }
   return response.json();
 }

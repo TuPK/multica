@@ -5,7 +5,7 @@ description: "Load first, before any marketing skill, to find this workspace's m
 
 # Marketing context (mkt-context)
 
-Most marketing skills in this domain read a file called `.agents/product-marketing.md` first. Multica has no such file. This skill says where the context lives here and what to do when it is missing.
+Most marketing skills in this domain read a file called `.agents/product-marketing.md` first. Delegora has no such file. This skill says where the context lives here and what to do when it is missing.
 
 ## 1. Read the context
 

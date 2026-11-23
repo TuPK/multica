@@ -1142,7 +1142,7 @@
       "remove_item": "Quitar {{value}}",
       "archived_hint": "Propiedad archivada; el valor es de solo lectura",
       "unknown_value": "No disponible",
-      "unknown_value_hint": "Este valor lo estableció una versión más reciente de Multica y no se puede editar aquí; actualiza la app o bórralo"
+      "unknown_value_hint": "Este valor lo estableció una versión más reciente de Delegora y no se puede editar aquí; actualiza la app o bórralo"
     },
     "filter_options_aria": "Opciones de filtro",
     "no_results": "Sin resultados",
@@ -1633,7 +1633,7 @@
     "link_placeholder": "Pega la URL de un pull request",
     "link_hint": "Los PR con {{identifier}} en el título o el nombre de la rama se enlazan automáticamente.",
     "link_submit": "Enlazar",
-    "link_not_found": "Multica aún no ha recibido este PR. Comprueba que su repositorio esté conectado.",
+    "link_not_found": "Delegora aún no ha recibido este PR. Comprueba que su repositorio esté conectado.",
     "link_failed": "No se ha podido enlazar el pull request.",
     "row_menu": "Acciones del pull request",
     "section_menu": "Automatización de pull request",
@@ -2125,7 +2125,7 @@
     "setup_check_daily": "Brief diario",
     "setup_check_weekly": "Revisión semanal en pausa",
     "setup_check_done": "Hecho",
-    "setup_runtime_missing": "Instala Hermes en la máquina que ejecuta el daemon de Multica y vuelve a intentarlo.",
+    "setup_runtime_missing": "Instala Hermes en la máquina que ejecuta el daemon de Delegora y vuelve a intentarlo.",
     "setup_install_guide": "Guía de instalación",
     "setup_retry": "Reintentar",
     "setup_read_only": "Un propietario o administrador termina la configuración",
@@ -2551,7 +2551,7 @@
     "open_in_desktop": "Abrir en la aplicación de escritorio"
   },
   "desktop": {
-    "link_other_instance": "La aplicación de escritorio está conectada a otra instancia de Multica.",
+    "link_other_instance": "La aplicación de escritorio está conectada a otra instancia de Delegora.",
     "link_workspace_unavailable": "Este espacio de trabajo no está disponible en la aplicación de escritorio."
   },
   "app_calls": {
@@ -2628,7 +2628,7 @@
     "detected_label": "Servicio detectado · {{name}}",
     "detected_no_logs": "Este servicio no se inició desde la configuración de entornos, así que no tiene registros ni se puede reiniciar.",
     "offline_hint": "Disponible cuando este equipo vuelva a estar en línea.",
-    "outdated_hint": "Actualiza Multica en este equipo para gestionarlo desde aquí.",
+    "outdated_hint": "Actualiza Delegora en este equipo para gestionarlo desde aquí.",
     "no_permission_hint": "Solo los miembros que pueden usar este equipo pueden detenerlo o reiniciarlo.",
     "waiting_machine": "Esperando al equipo",
     "waiting_ready": "Esperando a que esté listo",
@@ -2679,12 +2679,12 @@
       "exit_divider_code": "Terminó a las {{time}} · código de salida {{code}}",
       "stopped_divider": "Detenido a las {{time}}"
     },
-    "app_desktop_hint": "Una app de escritorio. Cambia a su ventana desde Multica Desktop en la máquina que la ejecuta.",
-    "app_remote_hint": "Se ejecuta en {{machine}}. Cambia a su ventana desde Multica Desktop en esa máquina.",
+    "app_desktop_hint": "Una app de escritorio. Cambia a su ventana desde Delegora Desktop en la máquina que la ejecuta.",
+    "app_remote_hint": "Se ejecuta en {{machine}}. Cambia a su ventana desde Delegora Desktop en esa máquina.",
     "focus": "Ir a la ventana",
     "focus_gone": "{{name}} ya no se está ejecutando",
-    "focus_unsupported": "Multica en esta máquina aún no puede cambiar a ventanas de aplicaciones. Actualiza Multica e inténtalo de nuevo.",
-    "focus_unavailable": "El servicio local de Multica no está en ejecución",
+    "focus_unsupported": "Delegora en esta máquina aún no puede cambiar a ventanas de aplicaciones. Actualiza Delegora e inténtalo de nuevo.",
+    "focus_unavailable": "El servicio local de Delegora no está en ejecución",
     "focus_failed": "No se pudo cambiar a {{name}}",
     "retry": "Reintentar",
     "dismiss": "Descartar"

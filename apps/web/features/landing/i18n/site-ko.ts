@@ -5,47 +5,47 @@ export const koSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
   demo: koDemoCopy,
   meta: {
     home: {
-      title: "Multica — 사람과 에이전트 팀을 위한 프로젝트 관리",
+      title: "Delegora — 사람과 에이전트 팀을 위한 프로젝트 관리",
       description: "코딩 에이전트를 진짜 팀원으로 만드는 소스 공개 플랫폼. 일을 맡기고, 진행을 추적하고, 스킬을 쌓으세요.",
-      ogTitle: "Multica — 사람과 에이전트 팀을 위한 프로젝트 관리",
+      ogTitle: "Delegora — 사람과 에이전트 팀을 위한 프로젝트 관리",
       ogDescription: "사람과 에이전트로 이루어진 팀을 한곳에서 관리하세요.",
     },
     about: {
       title: "회사 소개",
       description:
-        "Multica(Multiplexed Information and Computing Agent)를 소개합니다. 사람과 에이전트 팀을 위한 소스 공개 프로젝트 관리 플랫폼입니다.",
-      ogTitle: "Multica 소개",
-      ogDescription: "Multica를 만든 이야기, 그리고 사람과 에이전트 팀을 위한 프로젝트 관리를 만드는 이유.",
+        "Delegora(Multiplexed Information and Computing Agent)를 소개합니다. 사람과 에이전트 팀을 위한 소스 공개 프로젝트 관리 플랫폼입니다.",
+      ogTitle: "Delegora 소개",
+      ogDescription: "Delegora를 만든 이야기, 그리고 사람과 에이전트 팀을 위한 프로젝트 관리를 만드는 이유.",
     },
     changelog: {
       title: "변경 로그",
-      description: "Multica의 새로운 소식. 최신 기능, 개선 사항, 수정 사항을 확인하세요.",
-      ogTitle: "변경 로그 | Multica",
-      ogDescription: "Multica의 최신 업데이트와 릴리스.",
+      description: "Delegora의 새로운 소식. 최신 기능, 개선 사항, 수정 사항을 확인하세요.",
+      ogTitle: "변경 로그 | Delegora",
+      ogDescription: "Delegora의 최신 업데이트와 릴리스.",
     },
     contactSales: {
       title: "영업팀 문의",
-      description: "회사에 사람과 에이전트가 함께하는 워크플로를 도입하는 방법을 Multica 팀과 상의하세요.",
-      ogTitle: "영업팀 문의 — Multica",
+      description: "회사에 사람과 에이전트가 함께하는 워크플로를 도입하는 방법을 Delegora 팀과 상의하세요.",
+      ogTitle: "영업팀 문의 — Delegora",
       ogDescription: "팀에 대해 알려 주세요. 영업일 기준 3일 안에 답변드립니다.",
     },
     download: {
-      title: "Multica 다운로드",
-      description: "macOS, Windows, Linux용 Multica를 다운로드하거나, 서버와 원격 개발 환경에 CLI를 설치하세요.",
-      ogTitle: "Multica 다운로드",
-      ogDescription: "데몬이 포함된 Multica 데스크톱 앱을 받거나, 서버와 원격 개발 환경에 CLI를 설치하세요.",
+      title: "Delegora 다운로드",
+      description: "macOS, Windows, Linux용 Delegora를 다운로드하거나, 서버와 원격 개발 환경에 CLI를 설치하세요.",
+      ogTitle: "Delegora 다운로드",
+      ogDescription: "데몬이 포함된 Delegora 데스크톱 앱을 받거나, 서버와 원격 개발 환경에 CLI를 설치하세요.",
     },
     licensing: {
       title: "라이선스",
-      description: "Multica를 무료로 쓸 수 있는 경우와 상용 라이선스가 필요한 경우를 흔한 사례로 설명합니다.",
-      ogTitle: "라이선스 — Multica",
-      ogDescription: "조직 내부에서 자체 호스팅하는 것은 무료입니다. Multica를 다른 사람에게 호스팅 서비스로 제공하려면 상용 라이선스가 필요합니다.",
+      description: "Delegora를 무료로 쓸 수 있는 경우와 상용 라이선스가 필요한 경우를 흔한 사례로 설명합니다.",
+      ogTitle: "라이선스 — Delegora",
+      ogDescription: "조직 내부에서 자체 호스팅하는 것은 무료입니다. Delegora를 다른 사람에게 호스팅 서비스로 제공하려면 상용 라이선스가 필요합니다.",
     },
     privacy: {
       title: "개인정보 처리방침",
-      description: "Multica가 multica.ai와 Multica Cloud에서 개인정보를 수집, 이용, 보호하는 방법.",
-      ogTitle: "개인정보 처리방침 — Multica",
-      ogDescription: "Multica가 개인정보를 수집, 이용, 보호하는 방법.",
+      description: "Delegora가 Delegora와 Delegora Cloud에서 개인정보를 수집, 이용, 보호하는 방법.",
+      ogTitle: "개인정보 처리방침 — Delegora",
+      ogDescription: "Delegora가 개인정보를 수집, 이용, 보호하는 방법.",
     },
   },
   site: {
@@ -71,7 +71,7 @@ export const koSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
       privacy: "개인정보 처리방침",
     },
     header: {
-      home: "Multica 홈",
+      home: "Delegora 홈",
       githubStars: "GitHub, 스타 {count}개",
       logIn: "로그인",
       getStarted: "시작하기",
@@ -85,7 +85,7 @@ export const koSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
       starTurns: "모두 함께 이 별을 {count}바퀴 돌렸어요",
     },
     localeSuggestion: {
-      message: "Multica를 한국어로 볼 수 있어요.",
+      message: "Delegora를 한국어로 볼 수 있어요.",
       action: "한국어로 보기",
       dismiss: "닫기",
     },
@@ -111,7 +111,7 @@ export const koSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
           label: "기능 출시",
           short: "출시",
           description:
-            "워크플로로 움직이는 Multica 프로젝트 보드. Issue가 기획, 개발, 코드 리뷰, 승인, 출시됨 순으로 진행되며 기획 에이전트, 코딩 에이전트, 리뷰 에이전트, 팀원에게 차례로 넘어갑니다",
+            "워크플로로 움직이는 Delegora 프로젝트 보드. Issue가 기획, 개발, 코드 리뷰, 승인, 출시됨 순으로 진행되며 기획 에이전트, 코딩 에이전트, 리뷰 에이전트, 팀원에게 차례로 넘어갑니다",
         },
         launch: {
           label: "콘텐츠 발행",
@@ -127,14 +127,14 @@ export const koSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
         },
       },
     },
-    logoWall: { title: "이런 기업과 대학의 사람들이 Multica를 사용합니다" },
+    logoWall: { title: "이런 기업과 대학의 사람들이 Delegora를 사용합니다" },
     features: {
       title: "사람과 에이전트로 이루어진 팀을 위해",
       items: {
         runtimes: {
           title: "내 컴퓨터에서도, 클라우드에서도",
-          body: "명령어 하나로 노트북이나 서버를 연결하면, Multica가 설치된 코딩 에이전트를 찾아냅니다. 관리형 클라우드 샌드박스에서 실행할 수도 있습니다.",
-          alt: "런타임 페이지. 컴퓨터 두 대와 Multica Cloud, 그리고 각각에서 찾은 코딩 도구가 표시되어 있다",
+          body: "명령어 하나로 노트북이나 서버를 연결하면, Delegora가 설치된 코딩 에이전트를 찾아냅니다. 관리형 클라우드 샌드박스에서 실행할 수도 있습니다.",
+          alt: "런타임 페이지. 컴퓨터 두 대와 Delegora Cloud, 그리고 각각에서 찾은 코딩 도구가 표시되어 있다",
         },
         workflows: {
           title: "워크플로가 단계마다 일을 넘겨줍니다",
@@ -144,7 +144,7 @@ export const koSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
         chat: {
           title: "채팅에서 에이전트를 멘션하세요",
           body: "Slack, Lark, DingTalk, WeCom, WeChat, Telegram에서. 에이전트가 스레드를 읽고, Issue를 만들고, 작업을 시작합니다.",
-          alt: "팀 채팅 채널. Mia가 내보내기 실패 건으로 Backend Agent를 멘션하고, 에이전트가 직접 만들어 처리 중인 Multica 태스크 링크와 함께 답한다",
+          alt: "팀 채팅 채널. Mia가 내보내기 실패 건으로 Backend Agent를 멘션하고, 에이전트가 직접 만들어 처리 중인 Delegora 태스크 링크와 함께 답한다",
         },
         autopilots: {
           title: "오토파일럿이 일정에 맞춰 실행됩니다",

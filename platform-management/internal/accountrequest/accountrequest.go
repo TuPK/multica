@@ -1,7 +1,7 @@
 // Package accountrequest holds the account requests of spec 7b.5: an admin asks
 // for an account to be created for a person. This package checks the input,
 // stores the request as pending, counts the staff member's requests and cancels
-// a pending one. Multica's job then creates the user and workspace; the
+// a pending one. Delegora's job then creates the user and workspace; the
 // platform's finalize job (Finalizer) writes the billing profile, the
 // subscription and the zero-amount grant order, and sends the welcome email,
 // which staff can send again.
@@ -51,7 +51,7 @@ const (
 )
 
 // ErrorCodeFinalizeFailed is the error_code of a request whose step 3 failed
-// after Multica had created the user and the workspace (spec 7b.5, rule 7).
+// after Delegora had created the user and the workspace (spec 7b.5, rule 7).
 const ErrorCodeFinalizeFailed = "finalize_failed"
 
 // BillingProfile is the buyer's identity a business account needs (spec 7b.1,
@@ -80,7 +80,7 @@ type Input struct {
 }
 
 // Request is one row of platform_account_request. UserID and WorkspaceID are
-// empty until Multica's job has created them.
+// empty until Delegora's job has created them.
 type Request struct {
 	ID              string
 	Kind            string

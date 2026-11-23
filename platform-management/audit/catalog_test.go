@@ -200,7 +200,7 @@ func TestBillingCatalogActionsAreDefined(t *testing.T) {
 	}
 }
 
-// The R2 actions written by Multica (spec 5.14). Their names are stored in
+// The R2 actions written by Delegora (spec 5.14). Their names are stored in
 // audit_event.action, so a rename is a data change.
 func TestR2CatalogActionsAreDefined(t *testing.T) {
 	cases := map[string]string{

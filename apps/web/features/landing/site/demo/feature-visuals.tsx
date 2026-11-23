@@ -51,7 +51,7 @@ import {
 } from "./mock-kit";
 
 /*
- * Product screens for the feature cards. Each one is the Multica app (see
+ * Product screens for the feature cards. Each one is the Delegora app (see
  * AppWindow) opened on the page the card is about, starting just inside the
  * card's top-left corner and running off the right and bottom edges like a
  * cropped screenshot. The canvas zooms with the card (see ZoomCanvas): keep
@@ -107,7 +107,7 @@ export function RuntimesVisual() {
     { name: "build-02", icon: Server, detail: copy.server, tools: ["Claude Code", "Codex", "OpenCode"], fresh: true },
     { name: copy.laptop, icon: Laptop, detail: copy.thisDevice, tools: ["Claude Code", "Cursor"] },
   ];
-  const cloud: Runtime[] = [{ name: "Multica Cloud", icon: Cloud, detail: copy.sandboxes, tools: ["Claude Code", "Codex"] }];
+  const cloud: Runtime[] = [{ name: "Delegora Cloud", icon: Cloud, detail: copy.sandboxes, tools: ["Claude Code", "Codex"] }];
   return (
     <Screen active="team">
       <PageHeader icon={Server} title={copy.title} filter={false}>
@@ -225,9 +225,9 @@ export function WorkflowVisual() {
 // --- Chat -------------------------------------------------------------------
 
 /*
- * The chat card is the team's own chat app, not Multica: a Slack-style
+ * The chat card is the team's own chat app, not Delegora: a Slack-style
  * workspace where the agent is an installed app, so the frame stays generic
- * (no vendor logo) and only Multica's link preview is ours.
+ * (no vendor logo) and only Delegora's link preview is ours.
  */
 
 const CHANNELS = ["general", "eng-support", "releases", "random"];
@@ -299,7 +299,7 @@ export function ChatVisual() {
               <span className="flex size-3.5 shrink-0 items-center justify-center rounded-sm bg-white text-[#3f0e40]">
                 <MulticaIcon className="size-2.5" />
               </span>
-              Multica
+              Delegora
             </p>
           </div>
         </div>
@@ -318,7 +318,7 @@ export function ChatVisual() {
               {copy.reply}
               <div className="mt-1.5 border-l-4 border-border pl-2.5">
                 <p className="flex items-center gap-1 text-micro text-muted-foreground">
-                  <MulticaIcon className="size-2.5" /> Multica
+                  <MulticaIcon className="size-2.5" /> Delegora
                 </p>
                 <p className="mt-0.5 truncate font-bold text-[#1264a3]">ACM-151 {copy.issue}</p>
                 <p className="mt-0.5 flex items-center gap-1.5 text-caption text-muted-foreground">

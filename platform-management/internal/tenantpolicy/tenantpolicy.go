@@ -1,6 +1,6 @@
 // Package tenantpolicy holds the tenant policy floor (spec R6 section 3c.4,
 // D101): the limits a tenant's policy sets, and the checks that run before a
-// write. Multica reads the stored floor and merges it with each workspace's
+// write. Delegora reads the stored floor and merges it with each workspace's
 // policy; this package does not merge.
 package tenantpolicy
 

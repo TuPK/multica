@@ -1,7 +1,7 @@
 import { THEME_API_VERSION, themeTokensCss, type BuiltInTheme, type ThemeTokens } from "./themes";
 
 /**
- * The themes Multica ships. Each is a token table (read by the contrast test
+ * The themes Delegora ships. Each is a token table (read by the contrast test
  * in apps/web) plus CSS for what variables can't express, compiled to the same
  * CSS an installed theme ships.
  */

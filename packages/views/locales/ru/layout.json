@@ -303,9 +303,9 @@
     "title_few": "{{agent}}: {{count}} задачи выполнены",
     "title_many": "{{agent}}: {{count}} задач выполнено",
     "title_other": "{{agent}}: выполнено задач — {{count}}",
-    "body": "Если Multica оказалась полезной, поставьте звезду на GitHub — так её найдут другие команды.",
+    "body": "Если Delegora оказалась полезной, поставьте звезду на GitHub — так её найдут другие команды.",
     "star": "Star",
-    "star_label": "Поставить звезду Multica на GitHub",
+    "star_label": "Поставить звезду Delegora на GitHub",
     "later": "Не сейчас",
     "close": "Закрыть"
   },

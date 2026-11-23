@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// Notes live in platform_note and are read by the console only. The Multica
+// Notes live in platform_note and are read by the console only. The Delegora
 // server, whose routes workspace members reach, must not name the table. This
 // is a source scan; the database test covers the stored rows.
 const serverDir = "../../../server"

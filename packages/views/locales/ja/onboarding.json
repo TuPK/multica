@@ -1,6 +1,6 @@
 {
   "step_nav": {
-    "wordmark": "Multica",
+    "wordmark": "Delegora",
     "label": "オンボーディングの手順",
     "about_you": {
       "label": "あなたについて"
@@ -13,7 +13,7 @@
     }
   },
   "welcome": {
-    "wordmark": "Multica へようこそ",
+    "wordmark": "Delegora へようこそ",
     "headline_line1": "あなたの AI チームメイトを、",
     "headline_line2": "ひとつの",
     "headline_emphasis": "ワークスペースに。",
@@ -54,7 +54,7 @@
   },
   "source_backfill": {
     "eyebrow": "ちょっと質問",
-    "lede": "Multica を知ったきっかけを教えてください。",
+    "lede": "Delegora を知ったきっかけを教えてください。",
     "submit": "送信",
     "save_failed_toast": "保存できませんでした"
   },
@@ -63,7 +63,7 @@
       "question": "あなたについて少し教えてください。"
     },
     "source": {
-      "question": "Multica をどこで知りましたか?",
+      "question": "Delegora をどこで知りましたか?",
       "friends_colleagues": "友人または同僚",
       "search": "Google / 検索",
       "social_x": "X / Twitter",
@@ -94,7 +94,7 @@
       "other_placeholder": "例: 教師、サポートリード"
     },
     "use_case": {
-      "question": "Multica を何に使いたいですか?",
+      "question": "Delegora を何に使いたいですか?",
       "ship_code": "AI エージェントとコードをリリース",
       "manage_team": "チームのタスクを管理",
       "personal_tasks": "自分のタスクを整理",
@@ -112,7 +112,7 @@
   "cli_install": {
     "copy_aria": "コピー",
     "intro": "エージェントを実行するには、このコンピュータにエージェントランタイム(Claude Code、Codex、Cursor など)が必要です。サーバーやリモート開発環境でも動作します。",
-    "step1_label": "Multica CLI をインストール",
+    "step1_label": "Delegora CLI をインストール",
     "platform_group": "プラットフォームを選択",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -164,7 +164,7 @@
     "same_tenant_label": "{{name}} と同じテナント",
     "workspace_limit_toast": "このテナントのワークスペース上限に達しています",
     "creation_disabled_headline": "管理者に招待を依頼してください。",
-    "creation_disabled_lede": "この Multica インスタンスでは新しいワークスペースを作成できません。管理者からワークスペースに招待されたら、招待を承諾して更新し、続けてください。",
+    "creation_disabled_lede": "この Delegora インスタンスでは新しいワークスペースを作成できません。管理者からワークスペースに招待されたら、招待を承諾して更新し、続けてください。",
     "creation_disabled_logout": "ログアウト",
     "creation_disabled_headline_resume": "{{name}} で続けましょう。",
     "creation_disabled_lede_resume": "このインスタンスではワークスペースの作成が無効になっているため、既存のワークスペースへ続けて移動します。"

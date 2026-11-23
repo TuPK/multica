@@ -1,5 +1,5 @@
 -- Workspace subscriptions (spec 5.5), and the reads the billing routes make on
--- the shared Multica tables: member (role and head count) and workspace.
+-- the shared Delegora tables: member (role and head count) and workspace.
 
 -- name: GetWorkspaceSubscription :one
 SELECT * FROM workspace_subscription

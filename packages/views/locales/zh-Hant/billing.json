@@ -365,7 +365,7 @@
     "workspace_missing_title": "找不到該工作區",
     "workspace_missing_description": "你已從 Stripe 返回，但該工作區對你已不可用——可能已被刪除，或你的訪問權限發生了變化。請到你預期的那個工作區的帳單頁確認當前狀態。",
     "retry": "重試",
-    "go_to_app": "前往 Multica"
+    "go_to_app": "前往 Delegora"
   },
   "order": {
     "title": "訂單詳情",

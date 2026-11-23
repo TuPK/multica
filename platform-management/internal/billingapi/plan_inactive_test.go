@@ -28,7 +28,7 @@ func TestDeactivatedPlanIsPlanInactive(t *testing.T) {
 
 // Spec R6 section 3b.1 rule 5: a checkout that names a deactivated plan is refused
 // as plan_inactive and creates no order. The hiding from the workspace's own plan
-// list is served by Multica (server/), not by this module.
+// list is served by Delegora (server/), not by this module.
 func TestInactivePlanIsHiddenFromWorkspacePlansAndRefusedAtCheckout(t *testing.T) {
 	e := newEnv(t)
 	at := time.Now()

@@ -372,7 +372,7 @@
     "workspace_missing_title": "No se ha podido encontrar ese espacio de trabajo",
     "workspace_missing_description": "Has vuelto de Stripe, pero este espacio de trabajo ya no está disponible para ti: puede que se haya eliminado o que tu acceso haya cambiado. Abre Facturación en el espacio de trabajo que esperabas para comprobar el estado actual.",
     "retry": "Reintentar",
-    "go_to_app": "Ir a Multica"
+    "go_to_app": "Ir a Delegora"
   },
   "order": {
     "title": "Detalles del pedido",

@@ -1,6 +1,6 @@
 /**
- * A plugin relates to Multica in exactly three ways: Action (plugin calls
- * Multica), Hook (Multica calls plugin), and Resource (a static contribution
+ * A plugin relates to Delegora in exactly three ways: Action (plugin calls
+ * Delegora), Hook (Delegora calls plugin), and Resource (a static contribution
  * with no call at all). These types mirror the manifest contract the server
  * parses; the client never re-derives them from anything else.
  */
@@ -160,7 +160,7 @@ export interface PluginPackageListResponse {
 
 /** One short-lived, installation-bound launch of a hosted surface. */
 export interface PluginSurfaceLaunch {
-  /** Multica's cookie-free content URL, never the plugin author's server. */
+  /** Delegora's cookie-free content URL, never the plugin author's server. */
   url: string;
   /** Single-use proof the generated document must present to this frame. */
   bridge_token: string;

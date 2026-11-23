@@ -2,7 +2,7 @@
 // 4: a system_admin, or an admin inside their tenant, asks for a person to be
 // added to a workspace without waiting for an invitation to be accepted. This
 // package checks the input, stores the request as pending with its audit row,
-// and cancels a pending one. Multica's member_provisioning job then finds or
+// and cancels a pending one. Delegora's member_provisioning job then finds or
 // creates the user and the member row.
 package memberrequest
 

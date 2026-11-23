@@ -575,11 +575,11 @@ func TestMiddlewareFailuresAreAll404(t *testing.T) {
 			e.dir.addUser(otherEmail, otherUserID)
 			return request{cookies: []*http.Cookie{sessionCookie(e.token(otherUserID, e.now))}}
 		}},
-		{"a suspended Multica account", func(e *env) request {
+		{"a suspended Delegora account", func(e *env) request {
 			e.guard.recs[staffUserID] = accountguard.Record{Status: accountguard.Suspended}
 			return request{cookies: []*http.Cookie{sessionCookie(good(e))}}
 		}},
-		{"a deleted Multica account", func(e *env) request {
+		{"a deleted Delegora account", func(e *env) request {
 			e.guard.recs[staffUserID] = accountguard.Record{Status: accountguard.Deleted}
 			return request{cookies: []*http.Cookie{sessionCookie(good(e))}}
 		}},
@@ -722,7 +722,7 @@ func TestRevocationTakesEffectOnTheNextRequest(t *testing.T) {
 }
 
 func TestSessionsValidAfterAtAuthTimeStillPasses(t *testing.T) {
-	// Multica's rule: a token issued at the mark survives it (whole seconds, strict <).
+	// Delegora's rule: a token issued at the mark survives it (whole seconds, strict <).
 	e := newEnv(t)
 	auth := e.now.Add(-time.Minute)
 	e.guard.recs[staffUserID] = accountguard.Record{Status: accountguard.Active, SessionsValidAfter: auth}

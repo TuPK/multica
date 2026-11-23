@@ -15,7 +15,7 @@ type RateCounter interface {
 	RateCurrent(ctx context.Context, workspaceID string, now time.Time) (int64, error)
 }
 
-// RedisRateCounter reads the minute counters the Multica API increments.
+// RedisRateCounter reads the minute counters the Delegora API increments.
 type RedisRateCounter struct{ RDB redis.UniversalClient }
 
 // RateCurrent returns the requests of the workspace this minute; a minute with no
@@ -32,7 +32,7 @@ func (c RedisRateCounter) RateCurrent(ctx context.Context, workspaceID string, n
 }
 
 // rateKey is the key of the workspace's counter for the minute of now. It must
-// match the key the Multica API increments.
+// match the key the Delegora API increments.
 func rateKey(workspaceID string, now time.Time) string {
 	return fmt.Sprintf("mul:rl:ws:%s:%d", workspaceID, now.Unix()/60)
 }

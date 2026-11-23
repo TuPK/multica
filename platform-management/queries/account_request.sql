@@ -1,5 +1,5 @@
 -- Account requests (spec 7b.5): an admin's request to create an account for a
--- person. The platform writes the request and cancels it; Multica's
+-- person. The platform writes the request and cancels it; Delegora's
 -- account_provisioning job moves it on.
 
 -- name: InsertAccountRequest :one
@@ -43,13 +43,13 @@ ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg(row_limit);
 
 -- name: GetUserIDByEmailIgnoringCase :one
--- Multica's user table, read to refuse an email that already has an account.
+-- Delegora's user table, read to refuse an email that already has an account.
 SELECT id FROM "user"
 WHERE lower(email) = $1
 LIMIT 1;
 
 -- Step 3 of spec 7b.5, rule 7 (the finalize job), and the welcome email of rule 9.
--- Multica's step 2 owns state, user_id, workspace_id, error_code, attempts and
+-- Delegora's step 2 owns state, user_id, workspace_id, error_code, attempts and
 -- updated_at up to 'provisioned'; the platform moves a provisioned request on.
 
 -- name: ListProvisionedAccountRequestIDs :many

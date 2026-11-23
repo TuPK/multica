@@ -75,7 +75,7 @@ export const zhDemoCopy: DemoDict = {
       statuses: { brief: "需求", research: "调研", draft: "撰写", edit: "编辑", published: "已发布" },
       cards: {
         "ACM-213": "6 月线上研讨会邀请邮件",
-        "ACM-211": "对比页：Multica 和电子表格",
+        "ACM-211": "对比页：Delegora 和电子表格",
         "ACM-210": "日本发布的落地页",
         "ACM-208": "合作伙伴联合营销素材包",
         "ACM-207": "新用户第一周的引导邮件",

@@ -13,5 +13,5 @@ export const metadata: Metadata = liveMetadata("/security", {
 
 export default function Page() {
   requireLiveRoute("/security");
-  return <PlaceholderPage eyebrow="Multica" page={page} />;
+  return <PlaceholderPage eyebrow="Delegora" page={page} />;
 }

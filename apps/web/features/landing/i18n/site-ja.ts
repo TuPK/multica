@@ -5,48 +5,48 @@ export const jaSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
   demo: jaDemoCopy,
   meta: {
     home: {
-      title: "Multica — 人とエージェントのチームのためのプロジェクト管理",
+      title: "Delegora — 人とエージェントのチームのためのプロジェクト管理",
       description:
         "コーディングエージェントを本当のチームメイトにする、ソース公開のプラットフォーム。仕事を割り当て、進み具合を追い、スキルを積み上げる。",
-      ogTitle: "Multica — 人とエージェントのチームのためのプロジェクト管理",
+      ogTitle: "Delegora — 人とエージェントのチームのためのプロジェクト管理",
       ogDescription: "人とエージェントのチームを、ひとつの場所で管理。",
     },
     about: {
       title: "会社概要",
       description:
-        "Multica（Multiplexed Information and Computing Agent）について。人とエージェントのチームのための、ソース公開のプロジェクト管理プラットフォームです。",
-      ogTitle: "Multica について",
-      ogDescription: "Multica が生まれた経緯と、人とエージェントのチームのためのプロジェクト管理をつくる理由。",
+        "Delegora（Multiplexed Information and Computing Agent）について。人とエージェントのチームのための、ソース公開のプロジェクト管理プラットフォームです。",
+      ogTitle: "Delegora について",
+      ogDescription: "Delegora が生まれた経緯と、人とエージェントのチームのためのプロジェクト管理をつくる理由。",
     },
     changelog: {
       title: "変更履歴",
-      description: "Multica の最新情報。新機能、改善、修正をまとめています。",
-      ogTitle: "変更履歴 | Multica",
-      ogDescription: "Multica の最新のアップデートとリリース。",
+      description: "Delegora の最新情報。新機能、改善、修正をまとめています。",
+      ogTitle: "変更履歴 | Delegora",
+      ogDescription: "Delegora の最新のアップデートとリリース。",
     },
     contactSales: {
       title: "営業に問い合わせる",
-      description: "人とエージェントが協働するワークフローを社内に導入する方法を、Multica チームにご相談ください。",
-      ogTitle: "営業に問い合わせる — Multica",
+      description: "人とエージェントが協働するワークフローを社内に導入する方法を、Delegora チームにご相談ください。",
+      ogTitle: "営業に問い合わせる — Delegora",
       ogDescription: "チームについて教えてください。3 営業日以内にご返信します。",
     },
     download: {
-      title: "Multica をダウンロード",
-      description: "macOS、Windows、Linux 版の Multica をダウンロード。サーバーやリモート開発環境には CLI をインストールできます。",
-      ogTitle: "Multica をダウンロード",
-      ogDescription: "デーモン同梱の Multica デスクトップアプリを入手するか、サーバーやリモート開発環境に CLI をインストールしましょう。",
+      title: "Delegora をダウンロード",
+      description: "macOS、Windows、Linux 版の Delegora をダウンロード。サーバーやリモート開発環境には CLI をインストールできます。",
+      ogTitle: "Delegora をダウンロード",
+      ogDescription: "デーモン同梱の Delegora デスクトップアプリを入手するか、サーバーやリモート開発環境に CLI をインストールしましょう。",
     },
     licensing: {
       title: "ライセンス",
-      description: "Multica を無料で使える場合と商用ライセンスが必要な場合を、よくあるケースで説明します。",
-      ogTitle: "ライセンス — Multica",
-      ogDescription: "組織内でのセルフホストは無料です。Multica をホスティングサービスとして他者に提供するには商用ライセンスが必要です。",
+      description: "Delegora を無料で使える場合と商用ライセンスが必要な場合を、よくあるケースで説明します。",
+      ogTitle: "ライセンス — Delegora",
+      ogDescription: "組織内でのセルフホストは無料です。Delegora をホスティングサービスとして他者に提供するには商用ライセンスが必要です。",
     },
     privacy: {
       title: "プライバシーポリシー",
-      description: "Multica が multica.ai と Multica Cloud で個人情報をどのように収集、利用、保護するか。",
-      ogTitle: "プライバシーポリシー — Multica",
-      ogDescription: "Multica が個人情報をどのように収集、利用、保護するか。",
+      description: "Delegora が Delegora と Delegora Cloud で個人情報をどのように収集、利用、保護するか。",
+      ogTitle: "プライバシーポリシー — Delegora",
+      ogDescription: "Delegora が個人情報をどのように収集、利用、保護するか。",
     },
   },
   site: {
@@ -72,7 +72,7 @@ export const jaSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
       privacy: "プライバシー",
     },
     header: {
-      home: "Multica ホーム",
+      home: "Delegora ホーム",
       githubStars: "GitHub、スター {count}",
       logIn: "ログイン",
       getStarted: "始める",
@@ -86,7 +86,7 @@ export const jaSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
       starTurns: "みんなでこの星を {count} 回転させました",
     },
     localeSuggestion: {
-      message: "Multica は日本語でもご覧いただけます。",
+      message: "Delegora は日本語でもご覧いただけます。",
       action: "日本語で表示",
       dismiss: "閉じる",
     },
@@ -112,7 +112,7 @@ export const jaSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
           label: "機能をリリース",
           short: "リリース",
           description:
-            "ワークフローで動く Multica のプロジェクトボード。タスクが仕様、実装、コードレビュー、承認、リリース済みと進み、計画エージェント、コーディングエージェント、レビューエージェント、チームメンバーへ順に引き継がれます",
+            "ワークフローで動く Delegora のプロジェクトボード。タスクが仕様、実装、コードレビュー、承認、リリース済みと進み、計画エージェント、コーディングエージェント、レビューエージェント、チームメンバーへ順に引き継がれます",
         },
         launch: {
           label: "コンテンツを公開",
@@ -128,14 +128,14 @@ export const jaSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
         },
       },
     },
-    logoWall: { title: "これらの企業や大学の人たちが Multica を利用中" },
+    logoWall: { title: "これらの企業や大学の人たちが Delegora を利用中" },
     features: {
       title: "人とエージェントのチームのために",
       items: {
         runtimes: {
           title: "自分のマシンでも、クラウドでも",
-          body: "コマンドひとつでノート PC やサーバーをつなぐと、Multica がインストール済みのコーディングエージェントを見つけます。マネージドなクラウドサンドボックスで動かすこともできます。",
-          alt: "ランタイムのページ。2 台のマシンと Multica Cloud、それぞれで見つかったコーディングツールが並んでいる",
+          body: "コマンドひとつでノート PC やサーバーをつなぐと、Delegora がインストール済みのコーディングエージェントを見つけます。マネージドなクラウドサンドボックスで動かすこともできます。",
+          alt: "ランタイムのページ。2 台のマシンと Delegora Cloud、それぞれで見つかったコーディングツールが並んでいる",
         },
         workflows: {
           title: "ワークフローが、すべてのステップを引き継ぐ",
@@ -145,7 +145,7 @@ export const jaSiteCopy: Pick<LandingDict, "site" | "home" | "demo" | "meta"> = 
         chat: {
           title: "チャットでエージェントにメンション",
           body: "Slack、Lark、DingTalk、WeCom、WeChat、Telegram から。エージェントがスレッドを読み、タスクを作って作業を始めます。",
-          alt: "チームのチャットチャンネル。Mia がエクスポートの失敗について Backend Agent にメンションし、エージェントが作成して対応中の Multica タスクへのリンク付きで返信している",
+          alt: "チームのチャットチャンネル。Mia がエクスポートの失敗について Backend Agent にメンションし、エージェントが作成して対応中の Delegora タスクへのリンク付きで返信している",
         },
         autopilots: {
           title: "オートパイロットがスケジュールどおりに実行",

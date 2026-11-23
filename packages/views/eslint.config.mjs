@@ -62,7 +62,7 @@ export default [
   },
   {
     // The dev toolbar only exists in development builds and speaks to the
-    // people building Multica, so its copy is not translated. Features declare
+    // people building Delegora, so its copy is not translated. Features declare
     // their toolbar actions in a `dev-actions.ts` beside their own code.
     files: ["dev-toolbar/**/*.{ts,tsx}", "**/dev-actions.ts"],
     rules: {

@@ -173,7 +173,7 @@ WHERE lower(email) = $1
 LIMIT 1
 `
 
-// Multica's user table, read to refuse an email that already has an account.
+// Delegora's user table, read to refuse an email that already has an account.
 func (q *Queries) GetUserIDByEmailIgnoringCase(ctx context.Context, email string) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, getUserIDByEmailIgnoringCase, email)
 	var id pgtype.UUID
@@ -209,7 +209,7 @@ type InsertAccountRequestParams struct {
 }
 
 // Account requests (spec 7b.5): an admin's request to create an account for a
-// person. The platform writes the request and cancels it; Multica's
+// person. The platform writes the request and cancels it; Delegora's
 // account_provisioning job moves it on.
 // Inserts a pending request unless a live one (pending or provisioned) holds the
 // email. The conflict target is the partial unique index of migration 968; a
@@ -325,7 +325,7 @@ LIMIT $1
 `
 
 // Step 3 of spec 7b.5, rule 7 (the finalize job), and the welcome email of rule 9.
-// Multica's step 2 owns state, user_id, workspace_id, error_code, attempts and
+// Delegora's step 2 owns state, user_id, workspace_id, error_code, attempts and
 // updated_at up to 'provisioned'; the platform moves a provisioned request on.
 // A request without a user or a workspace is not ready: step 2 writes both with
 // the state, so none should exist; it is skipped rather than half finished.

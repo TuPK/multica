@@ -7,5 +7,5 @@ export const SHARE_IMAGE = {
   url: "/opengraph-image.png",
   width: 1200,
   height: 630,
-  alt: "Multica — People and agents, working as one team.",
+  alt: "Delegora — People and agents, working as one team.",
 } as const;

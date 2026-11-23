@@ -1,6 +1,6 @@
 {
   "step_nav": {
-    "wordmark": "Multica",
+    "wordmark": "Delegora",
     "label": "引導步驟",
     "about_you": {
       "label": "關於你"
@@ -13,7 +13,7 @@
     }
   },
   "welcome": {
-    "wordmark": "歡迎使用 Multica",
+    "wordmark": "歡迎使用 Delegora",
     "headline_line1": "你的 AI 隊友，",
     "headline_line2": "在",
     "headline_emphasis": "同一個工作區。",
@@ -54,7 +54,7 @@
   },
   "source_backfill": {
     "eyebrow": "順便問一句",
-    "lede": "幫助我們瞭解你從哪裡知道 Multica。",
+    "lede": "幫助我們瞭解你從哪裡知道 Delegora。",
     "submit": "提交",
     "save_failed_toast": "儲存失敗"
   },
@@ -63,7 +63,7 @@
       "question": "簡單介紹一下你自己。"
     },
     "source": {
-      "question": "你是從哪裡瞭解到 Multica 的？",
+      "question": "你是從哪裡瞭解到 Delegora 的？",
       "friends_colleagues": "朋友或同事",
       "search": "Google / 搜尋",
       "social_x": "X / Twitter",
@@ -94,7 +94,7 @@
       "other_placeholder": "例如：教師、支援負責人"
     },
     "use_case": {
-      "question": "你打算用 Multica 做什麼？",
+      "question": "你打算用 Delegora 做什麼？",
       "ship_code": "讓 AI 代理幫我寫程式碼",
       "manage_team": "給團隊做任務管理",
       "personal_tasks": "管理我自己的任務",
@@ -112,7 +112,7 @@
   "cli_install": {
     "copy_aria": "複製",
     "intro": "這臺電腦上需要安裝一個 AI 代理執行時（Claude Code、Codex、Cursor 等）才能執行你的 AI 代理。也支援伺服器和遠端開發機。",
-    "step1_label": "安裝 Multica CLI",
+    "step1_label": "安裝 Delegora CLI",
     "platform_group": "選擇你的系統",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -164,7 +164,7 @@
     "same_tenant_label": "與 {{name}} 同一租戶",
     "workspace_limit_toast": "此租戶已達到工作區數量上限",
     "creation_disabled_headline": "請聯絡管理員邀請你加入工作區。",
-    "creation_disabled_lede": "該 Multica 例項不允許建立新的工作區。等管理員把你邀請到某個工作區後，接受邀請並重新整理即可繼續。",
+    "creation_disabled_lede": "該 Delegora 例項不允許建立新的工作區。等管理員把你邀請到某個工作區後，接受邀請並重新整理即可繼續。",
     "creation_disabled_logout": "退出登入",
     "creation_disabled_headline_resume": "繼續使用 {{name}}。",
     "creation_disabled_lede_resume": "該例項已禁用建立工作區，繼續進入你已有的工作區即可。"

@@ -396,7 +396,7 @@ describe("IssueEnvironmentsSection", () => {
 
       const row = await screen.findByTestId("environment-row");
       expect(within(row).queryByRole("button")).not.toBeInTheDocument();
-      expect(row).toHaveAttribute("title", expect.stringContaining("Runs on build-02. Switch to its window from Multica Desktop on that machine."));
+      expect(row).toHaveAttribute("title", expect.stringContaining("Runs on build-02. Switch to its window from Delegora Desktop on that machine."));
     });
 
     it("cannot be switched to on web", async () => {
@@ -410,8 +410,8 @@ describe("IssueEnvironmentsSection", () => {
         expect(within(row).queryByRole("link")).not.toBeInTheDocument();
       }
       const row = (name: string) => rows.find((r) => within(r).queryByText(name))!;
-      expect(row("Multica Canary multica-501")).toHaveAttribute("title", expect.stringContaining("Runs on studio.local. Switch to its window from Multica Desktop on that machine."));
-      expect(row("Other App")).toHaveAttribute("title", expect.stringContaining("Switch to its window from Multica Desktop on the machine running it."));
+      expect(row("Multica Canary multica-501")).toHaveAttribute("title", expect.stringContaining("Runs on studio.local. Switch to its window from Delegora Desktop on that machine."));
+      expect(row("Other App")).toHaveAttribute("title", expect.stringContaining("Switch to its window from Delegora Desktop on the machine running it."));
       expect(focusEnvironment).not.toHaveBeenCalled();
     });
 

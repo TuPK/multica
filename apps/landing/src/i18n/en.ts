@@ -269,7 +269,7 @@ export const en: Dict = {
     ],
     packs: {
       title: "Already have a bundle of agents and skills? Import the whole bundle.",
-      text: "On the Squads page, click Import a pack. Paste a GitHub link or upload a .zip, then read the preview. Accepted formats: a squad-bundle.json bundle, a Multica pack.json agent pack, an agents/*.md folder in the Claude Code style, or skill folders with SKILL.md in the Agent Skills format.",
+      text: "On the Squads page, click Import a pack. Paste a GitHub link or upload a .zip, then read the preview. Accepted formats: a squad-bundle.json bundle, a Delegora pack.json agent pack, an agents/*.md folder in the Claude Code style, or skill folders with SKILL.md in the Agent Skills format.",
       items: [
         "Agents: each agent is created, reuses an existing one, or is skipped. Pick a runtime for new agents.",
         "Skills: a skill with the same name keeps the existing copy or is imported as new. Nothing is overwritten.",

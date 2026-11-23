@@ -17,7 +17,7 @@ type RedeemState =
 
 // TelegramBindPage is the destination the bot's "link your account" prompt
 // points at, mirroring SlackBindPage. Auth is required before redeeming: the
-// redeemer's Multica identity comes from the session, never the token.
+// redeemer's Delegora identity comes from the session, never the token.
 export function TelegramBindPage({ token }: { token: string | null }) {
   const { t } = useT("common");
   const user = useAuthStore((s) => s.user);

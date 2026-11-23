@@ -1,4 +1,4 @@
-// Shared construction for Multica glyphs: a 24px grid, continuous-curvature
+// Shared construction for Delegora glyphs: a 24px grid, continuous-curvature
 // (squircle) corners and soft stroke ends. Drawings are inner SVG markup;
 // `class="b"` marks the body silhouette and `class="k"` a detail cut into it.
 

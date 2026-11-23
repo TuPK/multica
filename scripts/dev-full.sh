@@ -2,11 +2,11 @@
 # Fresh-machine bootstrap: installs and configures Hermes, starts the WeKnora
 # knowledge services and the SeaweedFS Hub object store, fills in the secrets that
 # are still empty, then runs `make dev` (migrations, API, web) and starts the daemon
-# when a Multica login exists. Re-running is safe: values already in the env file are
+# when a Delegora login exists. Re-running is safe: values already in the env file are
 # kept, existing config files are backed up before they are changed, and containers
 # that already exist are not stopped.
 #
-# The Multica account, the first workspace and the CLI login are browser steps.
+# The Delegora account, the first workspace and the CLI login are browser steps.
 # They are described in docs/engineering/runbooks/fresh-machine-install.md.
 set -euo pipefail
 
@@ -126,7 +126,7 @@ set_if_empty() {
 # Every compose call goes through here. Compose refuses to parse the file unless the
 # backend's JWT_SECRET is set (a `:?` check), even though the backend never starts
 # here. When the env file has no JWT_SECRET, a throwaway value is passed to this one
-# compose process; it is not written to the env file, because Multica's own secret
+# compose process; it is not written to the env file, because Delegora's own secret
 # must not change on a machine that already runs.
 compose() {
   local jwt
@@ -180,7 +180,7 @@ sync_knowledge_db_password() {
 # ---------- Values this script cannot invent ----------
 explain_knowledge_key() {
   case "$1" in
-    KNOWLEDGE_SERVICE_EMAIL) echo "WeKnora login that Multica signs in as to create one WeKnora workspace per Multica workspace" ;;
+    KNOWLEDGE_SERVICE_EMAIL) echo "WeKnora login that Delegora signs in as to create one WeKnora workspace per Delegora workspace" ;;
     KNOWLEDGE_SERVICE_PASSWORD) echo "Password for that WeKnora login (8 to 32 letters and digits)" ;;
     KNOWLEDGE_LLM_BASE_URL) echo "OpenAI-compatible chat endpoint for summaries, Wiki and reranking, such as the 9router gateway" ;;
     KNOWLEDGE_LLM_API_KEY) echo "Key for the chat endpoint" ;;
@@ -227,7 +227,7 @@ resolve_knowledge_urls() {
   url=$(env_value "$ENV_FILE" KNOWLEDGE_URL)
   case "$url" in
     *knowledge-app*)
-      fail "KNOWLEDGE_URL=$url uses the Docker network name. make dev runs Multica on this machine, so set KNOWLEDGE_URL=http://localhost:${api_port:-8090} in $ENV_FILE and run make dev-full again."
+      fail "KNOWLEDGE_URL=$url uses the Docker network name. make dev runs Delegora on this machine, so set KNOWLEDGE_URL=http://localhost:${api_port:-8090} in $ENV_FILE and run make dev-full again."
       ;;
   esac
 }
@@ -265,7 +265,7 @@ json_string() {
   printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
 }
 
-# Registers the WeKnora login that Multica signs in as. WeKnora answers 201 for a new user
+# Registers the WeKnora login that Delegora signs in as. WeKnora answers 201 for a new user
 # and 400 "user with this email already exists" for one that is already there. A new
 # user becomes a system administrator only when knowledge-app starts (the bootstrap reads
 # WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL then), so a new user is followed by one restart.
@@ -433,7 +433,7 @@ resolve_hub_ports() {
   fi
 }
 
-# The endpoint the host-run backend uses. Multica runs on this machine, where the compose
+# The endpoint the host-run backend uses. Delegora runs on this machine, where the compose
 # service name does not resolve, so the published port is used (the same rule as
 # KNOWLEDGE_URL). A value that names the compose service is refused. A loopback value on
 # another port is moved to the published port, because the store may have been recreated
@@ -445,7 +445,7 @@ resolve_hub_urls() {
   endpoint=$(env_value "$ENV_FILE" HUB_S3_ENDPOINT)
   case "$endpoint" in
     http://seaweedfs|http://seaweedfs:*|http://seaweedfs/*)
-      fail "HUB_S3_ENDPOINT=$endpoint uses the Docker network name. make dev runs Multica on this machine, so set HUB_S3_ENDPOINT=http://localhost:${api} in $ENV_FILE and run make dev-full again."
+      fail "HUB_S3_ENDPOINT=$endpoint uses the Docker network name. make dev runs Delegora on this machine, so set HUB_S3_ENDPOINT=http://localhost:${api} in $ENV_FILE and run make dev-full again."
       ;;
     http://localhost:"$api"|http://127.0.0.1:"$api")
       ;;
@@ -472,7 +472,7 @@ hub_s3_status() {
 }
 
 # Confirms that the backend's bucket exists, and creates it when it does not. The backend
-# creates the bucket at startup too; this check says so before Multica starts.
+# creates the bucket at startup too; this check says so before Delegora starts.
 ensure_hub_bucket() {
   local bucket endpoint code i
   bucket=$(env_value "$ENV_FILE" HUB_S3_BUCKET)
@@ -519,7 +519,7 @@ start_hub_store() {
   ensure_hub_bucket
 }
 
-### Hermes: the agent CLI that Multica's Hermes runtime runs. Installed only when it is
+### Hermes: the agent CLI that Delegora's Hermes runtime runs. Installed only when it is
 ### missing from PATH; configured from HERMES_* in the env file.
 
 # Makes the installer's target directory visible to this run, so a Hermes installed
@@ -715,7 +715,7 @@ daemon_identity() {
 
 start_daemon() {
   if ! multica_logged_in; then
-    DAEMON_STATUS="not started: no Multica login yet (see the next steps)"
+    DAEMON_STATUS="not started: no Delegora login yet (see the next steps)"
     return 0
   fi
   local before after
@@ -739,10 +739,10 @@ start_daemon() {
 
 print_summary() {
   echo ""
-  echo "Multica, WeKnora and the Hub store are up."
+  echo "Delegora, WeKnora and the Hub store are up."
   echo ""
   echo "  Web app       http://localhost:${FRONTEND_PORT}"
-  echo "  Multica API   http://localhost:${PORT}  (health: /health)"
+  echo "  Delegora API   http://localhost:${PORT}  (health: /health)"
   echo "  WeKnora API   ${KNOWLEDGE_URL}  (health: /health)"
   echo "  WeKnora UI    ${KNOWLEDGE_UI_URL}"
   echo "  Hub store     ${HUB_S3_ENDPOINT}  (S3 API, bucket ${HUB_S3_BUCKET})"
@@ -751,7 +751,7 @@ print_summary() {
   echo "  Platform API  http://localhost:${PLATFORM_API_PORT:-8095}  (health: /healthz)"
   echo "  Platform sign-in  $DEV_ADMIN_EMAIL, with the development code in MULTICA_DEV_VERIFICATION_CODE"
   echo ""
-  echo "  Running       Multica API, Multica web, platform console and API, WeKnora (${KNOWLEDGE_SERVICES[*]}), SeaweedFS (${HUB_SERVICES[*]})"
+  echo "  Running       Delegora API, Delegora web, platform console and API, WeKnora (${KNOWLEDGE_SERVICES[*]}), SeaweedFS (${HUB_SERVICES[*]})"
   echo "  Hub store     $HUB_STORE_STATUS"
   echo "  Hermes        $HERMES_STATUS"
   echo "  Daemon        $DAEMON_STATUS"
@@ -767,23 +767,23 @@ print_summary() {
     echo "  4. Office: Set up your company, then Build your company."
     echo ""
   fi
-  echo "Ctrl-C stops Multica and the platform. The daemon, WeKnora and the Hub store keep running. To stop them:"
+  echo "Ctrl-C stops Delegora and the platform. The daemon, WeKnora and the Hub store keep running. To stop them:"
   echo "  make cli ARGS=\"daemon stop\""
   echo "  $(compose_cli_hint) stop ${KNOWLEDGE_SERVICES[*]} ${HUB_SERVICES[*]}"
   echo ""
 }
 
 PLATFORM_DIR="$REPO_ROOT/platform-management"
-# The development system admin. Its Multica account is created on this machine's first run,
+# The development system admin. Its Delegora account is created on this machine's first run,
 # and the platform makes it the platform admin when it starts.
 DEV_ADMIN_EMAIL="system@admin.com"
 
 # The platform's session secret is written once and kept. The public address is the
-# Multica web app, because the order page lives there, so it follows FRONTEND_PORT. The
-# development sign-in code is Multica's own, so both accept the same code here.
+# Delegora web app, because the order page lives there, so it follows FRONTEND_PORT. The
+# development sign-in code is Delegora's own, so both accept the same code here.
 fill_platform_secrets() {
   set_if_empty PLATFORM_SESSION_SECRET "$(openssl rand -hex 32)"
-  # The platform refuses to start without these two; Multica itself runs without MFA when the
+  # The platform refuses to start without these two; Delegora itself runs without MFA when the
   # key is unset, so generating it here only turns the platform's staff sign-in on.
   set_if_empty MULTICA_MFA_SECRET_KEY "$(openssl rand -base64 32)"
   set_if_empty REDIS_URL "redis://127.0.0.1:6379/0"
@@ -797,7 +797,7 @@ fill_platform_secrets() {
   fi
 }
 
-# Creates the Multica account of the platform admin with Multica's development sign-in code,
+# Creates the Delegora account of the platform admin with Delegora's development sign-in code,
 # so the platform can make it an admin when it starts. Without that code there is nothing to
 # sign in with, so the account is not created and the script says so.
 seed_system_admin() {
@@ -808,14 +808,14 @@ seed_system_admin() {
     return 0
   fi
   body="{\"email\":\"$DEV_ADMIN_EMAIL\"}"
-  # Multica limits send-code per IP, so a rerun can be refused here. The verify step below
+  # Delegora limits send-code per IP, so a rerun can be refused here. The verify step below
   # still needs a code row, which an earlier run left behind, so a refusal is not fatal.
   curl -fsS -o /dev/null -H 'Content-Type: application/json' -d "$body" "http://localhost:${PORT}/auth/send-code" \
-    || echo "! Multica refused a new sign-in code for $DEV_ADMIN_EMAIL; trying the existing one." >&2
+    || echo "! Delegora refused a new sign-in code for $DEV_ADMIN_EMAIL; trying the existing one." >&2
   body="{\"email\":\"$DEV_ADMIN_EMAIL\",\"code\":\"$dev_code\"}"
   curl -fsS -o /dev/null -H 'Content-Type: application/json' -d "$body" "http://localhost:${PORT}/auth/verify-code" \
-    || fail "Multica did not accept the development code for $DEV_ADMIN_EMAIL."
-  ok "Multica account $DEV_ADMIN_EMAIL is ready"
+    || fail "Delegora did not accept the development code for $DEV_ADMIN_EMAIL."
+  ok "Delegora account $DEV_ADMIN_EMAIL is ready"
   seed_system_admin_mfa
 }
 
@@ -842,7 +842,7 @@ process.stdout.write(String(code).padStart(6, "0"));
 # same code. Development only: this value is published in this file, so never reuse it elsewhere.
 DEV_ADMIN_TOTP_SECRET_DEFAULT="3W2GCFUWYRKKLRADVF5SFWKM3EAHPQYO"
 
-# Writes the system admin's confirmed second factor into Multica's user_mfa, sealed the way Multica
+# Writes the system admin's confirmed second factor into Delegora's user_mfa, sealed the way Delegora
 # seals its own secrets (AES-256-GCM under MULTICA_MFA_SECRET_KEY, laid out nonce||ciphertext||tag,
 # see server/internal/util/secretbox). The platform reads that row when the admin signs in. Node
 # does the sealing, so the script needs no Go toolchain step for it.
@@ -860,7 +860,7 @@ const body = Buffer.concat([cipher.update(process.argv[2], "utf8"), cipher.final
 process.stdout.write(Buffer.concat([nonce, body, cipher.getAuthTag()]).toString("hex"));
 ' "$key" "$secret") || fail "Could not seal the system admin's second factor."
   docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -q <<SQL \
-    || fail "Could not write the system admin's second factor to Multica's database."
+    || fail "Could not write the system admin's second factor to Delegora's database."
 DELETE FROM user_mfa WHERE user_id = (SELECT id FROM "user" WHERE email = '$DEV_ADMIN_EMAIL');
 INSERT INTO user_mfa (user_id, secret_enc, confirmed_at)
   SELECT id, decode('$sealed', 'hex'), now() FROM "user" WHERE email = '$DEV_ADMIN_EMAIL';
@@ -895,7 +895,7 @@ start_platform_redis() {
 }
 
 # Starts the platform's API and staff console. It needs the database that make dev has
-# migrated, so it starts after the Multica API answers. The console is built if it is missing.
+# migrated, so it starts after the Delegora API answers. The console is built if it is missing.
 start_platform() {
   info "Starting the platform console and API (platform-management)"
   start_platform_redis
@@ -918,19 +918,19 @@ start_platform() {
 }
 
 start_multica() {
-  info "Starting Multica: make dev (migrations, API, web)"
+  info "Starting Delegora: make dev (migrations, API, web)"
   make dev &
   DEV_PID=$!
   PLATFORM_PID=""
   trap 'kill "$DEV_PID" 2>/dev/null || true; [ -n "$PLATFORM_PID" ] && kill "$PLATFORM_PID" 2>/dev/null || true' EXIT
-  # The platform needs only the Multica API: the migrated database and the system admin's
+  # The platform needs only the Delegora API: the migrated database and the system admin's
   # sign-in. The web app is awaited after it, so a slow web dev server does not hold it back.
-  wait_for_url "Multica API" "http://localhost:${PORT}/health" "$DEV_PID" \
-    || fail "Multica API did not answer. Read the make dev output above."
+  wait_for_url "Delegora API" "http://localhost:${PORT}/health" "$DEV_PID" \
+    || fail "Delegora API did not answer. Read the make dev output above."
   seed_system_admin
   start_platform
-  wait_for_url "Multica web" "http://localhost:${FRONTEND_PORT}/" "$DEV_PID" \
-    || fail "Multica web did not answer. Read the make dev output above."
+  wait_for_url "Delegora web" "http://localhost:${FRONTEND_PORT}/" "$DEV_PID" \
+    || fail "Delegora web did not answer. Read the make dev output above."
   setup_multica_profile
   start_daemon
   print_summary

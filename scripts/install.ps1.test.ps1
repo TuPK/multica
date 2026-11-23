@@ -374,7 +374,7 @@ try {
             Write-Host $result.Output
             Fail-Test "[$($case.Label)] expected an actionable occupied-port error naming $held and $($case.Setting)"
         }
-        if ($result.Probes.Count -gt 0 -or $result.Output -match "Starting Multica services") {
+        if ($result.Probes.Count -gt 0 -or $result.Output -match "Starting Delegora services") {
             Write-Host $result.Output
             Fail-Test "[$($case.Label)] installer started the stack despite the occupied port"
         }

@@ -129,7 +129,7 @@ selfhost: ## Create .env if needed, then pull and start the official self-hosted
 # is included before Compose reads POSTGRES_PASSWORD from the environment.
 # ENV_FILE is pinned because Compose reads .env even when .env.worktree exists.
 selfhost-start:
-	@echo "==> Pulling official Multica images..."
+	@echo "==> Pulling official Delegora images..."
 	@if ! $(COMPOSE) -f docker-compose.selfhost.yml pull; then \
 		echo ""; \
 		echo "Official images for tag '$${MULTICA_IMAGE_TAG:-latest}' are not published yet."; \
@@ -137,7 +137,7 @@ selfhost-start:
 		echo "  make selfhost-build"; \
 		exit 1; \
 	fi
-	@echo "==> Starting Multica via Docker Compose..."
+	@echo "==> Starting Delegora via Docker Compose..."
 	$(COMPOSE) -f docker-compose.selfhost.yml up -d
 	@bash scripts/selfhost-wait.sh official
 
@@ -166,13 +166,13 @@ selfhost-build: ## Build backend/web from the current checkout and start the sel
 
 # Internal: see selfhost-start.
 selfhost-build-start:
-	@echo "==> Building Multica from the current checkout..."
+	@echo "==> Building Delegora from the current checkout..."
 	$(COMPOSE) -f docker-compose.selfhost.yml -f docker-compose.selfhost.build.yml up -d --build
 	@bash scripts/selfhost-wait.sh build
 
 selfhost-stop: ## Stop the self-hosted Docker Compose stack
 	$(REQUIRE_COMPOSE)
-	@echo "==> Stopping Multica services..."
+	@echo "==> Stopping Delegora services..."
 	$(COMPOSE) -f docker-compose.selfhost.yml down
 	@echo "✓ All services stopped."
 

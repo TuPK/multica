@@ -94,7 +94,7 @@ type Route struct {
 }
 
 // NewAPIHandler returns the API listener's handler: /healthz, every path under
-// /api/platform/, which belongs to platform, and the internal routes Multica's
+// /api/platform/, which belongs to platform, and the internal routes Delegora's
 // clients call. Any other path is a 404.
 //
 // The whole handler sits behind peers.Guard, so a request that carries

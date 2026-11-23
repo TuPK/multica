@@ -33,7 +33,7 @@ const (
 	EmailVariable = "RESEND_API_KEY or SMTP_HOST"
 )
 
-// Email providers. SMTP wins when both are configured, as in the Multica
+// Email providers. SMTP wins when both are configured, as in the Delegora
 // server's email service.
 const (
 	ProviderResend = "resend"
@@ -170,7 +170,7 @@ type Config struct {
 	RedisURL      string
 	AdminEmails   []string
 	SessionSecret string
-	// MFASecretKey is MULTICA_MFA_SECRET_KEY decoded: the key Multica seals
+	// MFASecretKey is MULTICA_MFA_SECRET_KEY decoded: the key Delegora seals
 	// TOTP secrets with, shared so the console can check staff codes.
 	MFASecretKey []byte
 	APIPort      string
@@ -180,7 +180,7 @@ type Config struct {
 	// digits that staff sign in with in development. Never set in production.
 	DevVerificationCode string
 	FrontendOrigin      string
-	// AppURL is the origin of the Multica web app, as scheme://host[:port],
+	// AppURL is the origin of the Delegora web app, as scheme://host[:port],
 	// lower case and without a trailing slash. The billing routes build the
 	// address of an order page from it.
 	AppURL string
@@ -258,8 +258,8 @@ func Load(getenv func(string) string) (Config, error) {
 		fail("PLATFORM_SESSION_SECRET", "must be at least "+strconv.Itoa(minSessionSecretBytes)+" bytes")
 	}
 
-	// The same variable and value as the Multica server's, so the console can
-	// open the TOTP secrets that Multica sealed.
+	// The same variable and value as the Delegora server's, so the console can
+	// open the TOTP secrets that Delegora sealed.
 	if raw := get(mfa.EnvKey); raw == "" {
 		fail(mfa.EnvKey, "is required")
 	} else if key, err := mfa.ParseKey(raw); err != nil {

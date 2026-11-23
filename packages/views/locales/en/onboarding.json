@@ -1,6 +1,6 @@
 {
   "step_nav": {
-    "wordmark": "Multica",
+    "wordmark": "Delegora",
     "label": "Onboarding steps",
     "about_you": {
       "label": "About you"
@@ -13,7 +13,7 @@
     }
   },
   "welcome": {
-    "wordmark": "Welcome to Multica",
+    "wordmark": "Welcome to Delegora",
     "headline_line1": "Your AI teammates,",
     "headline_line2": "in",
     "headline_emphasis": "one workspace.",
@@ -54,7 +54,7 @@
   },
   "source_backfill": {
     "eyebrow": "Quick question",
-    "lede": "Help us understand how you found Multica.",
+    "lede": "Help us understand how you found Delegora.",
     "submit": "Submit",
     "save_failed_toast": "Failed to save"
   },
@@ -63,7 +63,7 @@
       "question": "Tell us a bit about you."
     },
     "source": {
-      "question": "How did you hear about Multica?",
+      "question": "How did you hear about Delegora?",
       "friends_colleagues": "Friends or colleagues",
       "search": "Google / search",
       "social_x": "X / Twitter",
@@ -94,7 +94,7 @@
       "other_placeholder": "e.g. teacher, support lead"
     },
     "use_case": {
-      "question": "What do you want to use Multica for?",
+      "question": "What do you want to use Delegora for?",
       "ship_code": "Ship code with AI agents",
       "manage_team": "Manage tasks for my team",
       "personal_tasks": "Organize my own tasks",
@@ -112,7 +112,7 @@
   "cli_install": {
     "copy_aria": "Copy",
     "intro": "You'll need an agent runtime on this computer (Claude Code, Codex, Cursor, ...) for it to run your agent. Also works on servers and remote dev boxes.",
-    "step1_label": "Install the Multica CLI",
+    "step1_label": "Install the Delegora CLI",
     "platform_group": "Choose your platform",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -164,7 +164,7 @@
     "same_tenant_label": "Same tenant as {{name}}",
     "workspace_limit_toast": "This tenant reached its workspace limit",
     "creation_disabled_headline": "Ask your administrator for an invitation.",
-    "creation_disabled_lede": "This Multica instance does not allow new workspaces to be created. Once an administrator invites you to a workspace, accept the invitation and refresh to continue.",
+    "creation_disabled_lede": "This Delegora instance does not allow new workspaces to be created. Once an administrator invites you to a workspace, accept the invitation and refresh to continue.",
     "creation_disabled_logout": "Sign out",
     "creation_disabled_headline_resume": "Continue with {{name}}.",
     "creation_disabled_lede_resume": "Workspace creation is disabled on this instance, so you'll continue into your existing workspace."

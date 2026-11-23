@@ -56,14 +56,14 @@ function makePublishProposal(extra: Partial<Proposal> = {}): Proposal {
           channel_id: "ch-x",
           platform: "x",
           account_name: "@multica_hq",
-          text: "Excited to introduce Multica Content Studio with autonomous agents!",
+          text: "Excited to introduce Delegora Content Studio with autonomous agents!",
           media_url: "https://example.com/banner.png",
           hashtags: ["multica", "ai"],
         },
         {
           channel_id: "ch-li",
           platform: "linkedin",
-          account_name: "Multica Official",
+          account_name: "Delegora Official",
           text: "Today we are launching the Content Studio squad to automate publishing workflows.",
           media_url: null,
           hashtags: ["ContentMarketing", "Automation"],
@@ -164,9 +164,9 @@ describe("PublishProposalView and publishPayload", () => {
 
       // Channel texts & accounts
       expect(screen.getByText("@multica_hq")).toBeInTheDocument();
-      expect(screen.getByText("Multica Official")).toBeInTheDocument();
+      expect(screen.getByText("Delegora Official")).toBeInTheDocument();
       expect(
-        screen.getByText("Excited to introduce Multica Content Studio with autonomous agents!"),
+        screen.getByText("Excited to introduce Delegora Content Studio with autonomous agents!"),
       ).toBeInTheDocument();
       expect(
         screen.getByText("Today we are launching the Content Studio squad to automate publishing workflows."),
@@ -195,7 +195,7 @@ describe("PublishProposalView and publishPayload", () => {
             {
               channel_id: "ch-fb",
               platform: "facebook",
-              account_name: "Multica Vietnam",
+              account_name: "Delegora Vietnam",
               text: "Ngày mai ra mắt.",
               media_url: null,
               hashtags: [],

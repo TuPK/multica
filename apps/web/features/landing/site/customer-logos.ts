@@ -1,6 +1,6 @@
 /*
  * The logo wall: companies and universities whose people have signed up for
- * Multica, from email domains. One list for every locale. Each logo is the
+ * Delegora, from email domains. One list for every locale. Each logo is the
  * organization's official artwork, flattened to a one-colour alpha mask in
  * `public/images/logos` so the wall can tint it; `ratio` is the mask's
  * width / height.

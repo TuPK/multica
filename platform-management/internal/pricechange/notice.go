@@ -61,7 +61,7 @@ func (s *Service) compose(kind string, ct lifecycle.Contact, c Change) (subject,
 	settings := strings.TrimRight(s.d.AppURL, "/") + "/" + url.PathEscape(ct.Slug) + "/settings"
 	date := formatDate(c.EffectiveFrom)
 	if kind == KindPriceChangeCanceled {
-		return fmt.Sprintf("[Multica] Price change of the %s plan canceled / Hủy thay đổi giá gói %s", plan, plan),
+		return fmt.Sprintf("[Delegora] Price change of the %s plan canceled / Hủy thay đổi giá gói %s", plan, plan),
 			fmt.Sprintf(`Xin chào,
 
 Thay đổi giá của gói %s dự kiến từ ngày %s đã bị hủy. Giá hiện tại của workspace "%s" giữ nguyên.
@@ -69,10 +69,10 @@ Thay đổi giá của gói %s dự kiến từ ngày %s đã bị hủy. Giá h
 Xem gói tại: %s
 
 Bạn nhận thư này vì bạn là chủ sở hữu của workspace.
-Multica
+Delegora
 `, plan, date, name, settings)
 	}
-	return fmt.Sprintf("[Multica] Price change of the %s plan from %s / Gói %s đổi giá từ %s", plan, date, plan, date),
+	return fmt.Sprintf("[Delegora] Price change of the %s plan from %s / Gói %s đổi giá từ %s", plan, date, plan, date),
 		fmt.Sprintf(`Xin chào,
 
 Giá gói %s của workspace "%s" sẽ thay đổi từ ngày %s:
@@ -82,7 +82,7 @@ Giá mới áp dụng cho các đơn tạo từ ngày đó. Đơn đã tạo và
 Xem gói tại: %s
 
 Bạn nhận thư này vì bạn là chủ sở hữu của workspace.
-Multica
+Delegora
 `, plan, name, date, priceLines(c), settings)
 }
 

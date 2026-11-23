@@ -1,6 +1,6 @@
 # Marketing
 
-Marketing in Multica: one front door, the squads that do the work, and the skills they load. Vietnam comes first; international markets are an expansion, and each squad and skill says which market it serves.
+Marketing in Delegora: one front door, the squads that do the work, and the skills they load. Vietnam comes first; international markets are an expansion, and each squad and skill says which market it serves.
 
 Design and decisions: [docs/specs/marketing-domain/spec.md](../../../docs/specs/marketing-domain/spec.md). Work plan: [plan.md](../../../docs/specs/marketing-domain/plan.md).
 
@@ -34,7 +34,7 @@ The domain holds 51 skills in `catalog/skills/marketing/`, in eight groups: `fou
 pnpm catalog:map marketing
 ```
 
-Three of them are written for this workspace rather than vendored: `mkt-context` (where the marketing context lives and what the runtime can do), `mkt-market-vn` and `mkt-market-intl` (the market layer; both are beta until the legal owner reviews them). The rest come from the sources listed in [catalog/skills/marketing/SOURCES.md](../../skills/marketing/SOURCES.md), pinned to a commit. Their text is not changed to fit Multica; the few local changes are listed there.
+Three of them are written for this workspace rather than vendored: `mkt-context` (where the marketing context lives and what the runtime can do), `mkt-market-vn` and `mkt-market-intl` (the market layer; both are beta until the legal owner reviews them). The rest come from the sources listed in [catalog/skills/marketing/SOURCES.md](../../skills/marketing/SOURCES.md), pinned to a commit. Their text is not changed to fit Delegora; the few local changes are listed there.
 
 Skills do not carry the market. A squad loads `mkt-context` and the market skill for the brief's market, then the method skills of its role.
 

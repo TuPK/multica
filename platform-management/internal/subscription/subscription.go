@@ -1,5 +1,5 @@
 // Package subscription owns a workspace's subscription: the stored row, the
-// staff write that changes it, and the two Cloud routes Multica's billing page
+// staff write that changes it, and the two Cloud routes Delegora's billing page
 // reads (summary and prices).
 package subscription
 

@@ -9,7 +9,7 @@ import {
 } from "@multica/ui/components/ui/tabs";
 
 /**
- * The Multica CLI install commands, one per platform family.
+ * The Delegora CLI install commands, one per platform family.
  *
  * Three surfaces render install instructions — the runtimes "add computer"
  * dialog, onboarding's CLI card, and the landing download page. They read the

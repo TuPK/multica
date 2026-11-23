@@ -243,7 +243,7 @@
         "description": "開啟或關閉懸浮聊天窗，開啟時自動聚焦輸入框。"
       },
       "newChat": {
-        "label": "問 Multica",
+        "label": "問 Delegora",
         "description": "在懸浮聊天窗裡開始新對話。"
       },
       "findInIssue": {
@@ -347,7 +347,7 @@
   "chat": {
     "floating_label": "懸浮聊天窗",
     "floating_hint": "在每個頁面顯示懸浮聊天按鈕。",
-    "ask_agent_label": "「問 Multica」的 AI 代理",
+    "ask_agent_label": "「問 Delegora」的 AI 代理",
     "ask_agent_hint": "在此工作區從底部列發起新對話時使用的 AI 代理。",
     "ask_agent_last_used": "上次使用的"
   },
@@ -802,7 +802,7 @@
     },
     "system": {
       "title": "系統通知",
-      "label": "Multica 在背景時顯示系統通知"
+      "label": "Delegora 在背景時顯示系統通知"
     },
     "browser": {
       "label": "瀏覽器通知",
@@ -975,13 +975,13 @@
     "add_account": "新增帳號或組織",
     "disconnect_account": "斷開 {{login}}",
     "errors": {
-      "missing_authorization": "GitHub 未傳回使用者授權。請重新連線並完成授權。如果已有安裝反覆出現此問題，請聯絡 Multica 維運人員。",
+      "missing_authorization": "GitHub 未傳回使用者授權。請重新連線並完成授權。如果已有安裝反覆出現此問題，請聯絡 Delegora 維運人員。",
       "installation_not_authorized": "個人安裝請使用所屬的 GitHub 帳號；組織安裝請使用對所有已授權倉庫都有管理員權限的帳號，並至少選取一個倉庫。",
       "invalid_state": "GitHub 連線請求已過期或無效。請從設定 → 程式碼重新連線。",
       "incomplete_callback": "GitHub 傳回的連線資訊不完整。請從設定 → 程式碼重新連線。",
       "bad_workspace": "找不到此次連線的工作區。請開啟目標工作區，從設定 → 程式碼重試。",
-      "verification_failed": "無法驗證你對 GitHub 安裝的管理權限。請重新連線；若仍失敗，請聯絡 Multica 維運人員檢查 GitHub App 設定。",
-      "persist_failed": "無法儲存 GitHub 連線。請從設定 → 程式碼重試；若仍失敗，請聯絡 Multica 維運人員。"
+      "verification_failed": "無法驗證你對 GitHub 安裝的管理權限。請重新連線；若仍失敗，請聯絡 Delegora 維運人員檢查 GitHub App 設定。",
+      "persist_failed": "無法儲存 GitHub 連線。請從設定 → 程式碼重試；若仍失敗，請聯絡 Delegora 維運人員。"
     }
   },
   "vcs": {
@@ -1095,7 +1095,7 @@
     "install_error_expired": "二維碼過期，請重新掃碼。",
     "install_error_access_denied": "已在飛書內取消安裝。",
     "install_error_protocol": "飛書拒絕了安裝請求，請重試。",
-    "install_error_bot_info": "授權完成，但 Multica 無法獲取 Bot 身份資訊，請重試。",
+    "install_error_bot_info": "授權完成，但 Delegora 無法獲取 Bot 身份資訊，請重試。",
     "install_error_conflict": "未能儲存安裝資訊：該 AI 代理可能已繫結其他 Bot。",
     "install_error_installer_bind": "已安裝 Bot，但未能繫結你的飛書身份。請重試或聯絡管理員。",
     "install_error_session_lost": "安裝會話已失效或丟失，請重新掃碼。",
@@ -1141,7 +1141,7 @@
     "agent_bot_manage_tooltip": "開啟此機器人所在的 Slack 工作區。",
     "byo_dialog_title": "連線 Slack 機器人",
     "byo_video_cta": "觀看配置教程影片",
-    "byo_docs_link": "Step-by-step：把你的 Multica AI 代理連線到 Slack",
+    "byo_docs_link": "Step-by-step：把你的 Delegora AI 代理連線到 Slack",
     "byo_bot_token_label": "Bot token（xoxb-）",
     "byo_app_token_label": "App-level token（xapp-）",
     "byo_submit": "連線",
@@ -1170,7 +1170,7 @@
     "group_mentions_other": "被 @ {{count}} 次",
     "group_forget": "忘記",
     "group_forget_title": "忘記這個群？",
-    "group_forget_description": "將此群組從 Multica 清單中移除，不會刪除釘釘中的任何訊息。",
+    "group_forget_description": "將此群組從 Delegora 清單中移除，不會刪除釘釘中的任何訊息。",
     "group_forget_cancel": "取消",
     "group_forget_confirm": "忘記群",
     "group_forget_success": "已從群列表移除",
@@ -1204,7 +1204,7 @@
     "agent_bot_connected_label": "已連線至釘釘",
     "agent_bot_disconnect_tooltip": "將此釘釘機器人從 AI 代理解綁。機器人將停止接收釘釘訊息。",
     "byo_dialog_title": "連線釘釘機器人",
-    "byo_docs_link": "Step-by-step：把你的 Multica AI 代理連線到釘釘",
+    "byo_docs_link": "Step-by-step：把你的 Delegora AI 代理連線到釘釘",
     "byo_appkey_label": "AppKey（client id）",
     "byo_appsecret_label": "AppSecret（client secret）",
     "byo_submit": "連線",
@@ -1248,7 +1248,7 @@
     "byo_secret_label": "長連線 Secret",
     "byo_secret_placeholder": "貼上在管理後臺僅顯示一次的 Secret",
     "byo_bot_name_label": "機器人在聊天裡的名字（可選）",
-    "byo_bot_name_placeholder": "例如 Multica Bot",
+    "byo_bot_name_placeholder": "例如 Delegora Bot",
     "byo_bot_name_hint": "名字裡有空格時才需要填，機器人靠它把自己的 @ 和後面的命令分開。之後想改（包括在企業微信後臺改名後），要先斷開這個機器人再重新連線。",
     "byo_submit": "連線",
     "byo_submitting": "連線中…",
@@ -1256,7 +1256,7 @@
     "byo_success_toast": "企業微信機器人已連線",
     "byo_conflict_same_workspace": "該機器人已連線到本工作區的另一個 AI 代理。請先在那裡斷開，再連線到這裡。",
     "byo_conflict_archived_agent": "該機器人連線在本工作區一個已歸檔的 AI 代理上。請先恢復那個 AI 代理，或斷開它的機器人，再連線到這裡。",
-    "byo_conflict_other_workspace": "該機器人已連線到另一個 Multica 工作區。請先在那邊斷開，再連線到這裡。",
+    "byo_conflict_other_workspace": "該機器人已連線到另一個 Delegora 工作區。請先在那邊斷開，再連線到這裡。",
     "byo_rejected": "無法連線機器人。請核對企業微信管理後臺的 Bot ID 與金鑰，並確認它是已開啟長連線的智慧機器人。",
     "byo_credentials_rejected": "企業微信拒絕了這組 Bot ID 和金鑰。請在企業微信管理後臺核對這兩項，並確認它是已開啟長連線的智慧機器人。",
     "byo_credentials_unverifiable": "沒能連上企業微信來校驗這個機器人。你的憑據沒有被改動，請稍後重試。",
@@ -1305,7 +1305,7 @@
     "disconnect": "斷開連線",
     "disconnecting": "正在斷開…",
     "disconnect_confirm_title": "斷開此 Telegram 機器人？",
-    "disconnect_confirm_description": "該機器人將停止接收此工作區的 Telegram 訊息。Multica 中的對話記錄會保留；你之後可以從同一個 AI 代理重新連線。",
+    "disconnect_confirm_description": "該機器人將停止接收此工作區的 Telegram 訊息。Delegora 中的對話記錄會保留；你之後可以從同一個 AI 代理重新連線。",
     "disconnect_confirm_cancel": "取消",
     "toast_disconnected": "已斷開 Telegram 機器人",
     "toast_disconnect_failed": "斷開失敗",
@@ -1317,7 +1317,7 @@
     "agent_bot_manage_tooltip": "在 Telegram 中開啟與該機器人的對話。",
     "connect_dialog_title": "連線 Telegram 機器人",
     "connect_dialog_description": "在 Telegram 中透過 @BotFather 建立機器人，然後在下方貼上它的 token。token 會實時校驗並加密儲存。",
-    "connect_docs_link": "分步指南：將 Multica AI 代理連線到 Telegram",
+    "connect_docs_link": "分步指南：將 Delegora AI 代理連線到 Telegram",
     "bot_token_label": "機器人 token",
     "connect_submit": "連線",
     "connect_submitting": "正在連線…",
@@ -1423,7 +1423,7 @@
       "external_description_before": "此裝置的守護程序在應用之外執行（例如 WSL2 中），因此應用無法啟動或停止它。請在相應環境中執行",
       "external_description_after": "。",
       "auto_start_title": "啟動應用時自動執行",
-      "auto_start_description": "開啟 Multica 桌面端時自動啟動本機守護程序",
+      "auto_start_description": "開啟 Delegora 桌面端時自動啟動本機守護程序",
       "auto_stop_title": "退出應用時自動停止",
       "auto_stop_description": "關閉桌面端時停止守護程序。",
       "cli_status": "CLI 狀態",
@@ -1724,7 +1724,7 @@
     "title": "為 AI 代理接入工具的方式",
     "current": "當前頁面",
     "mcp": "由管理員新增、在工作區內共享，再按 AI 代理分配。",
-    "apps": "透過 Multica 連線團隊或個人帳號，再將應用新增至 AI 代理。",
+    "apps": "透過 Delegora 連線團隊或個人帳號，再將應用新增至 AI 代理。",
     "plugins": "安裝後可提供工具、定時 hook 和儲存，每個外掛單獨授權。"
   },
   "publish_channels": {
@@ -1744,7 +1744,7 @@
     "dry_run": "演練測試",
     "delete": "刪除",
     "delete_title": "刪除發布渠道？",
-    "delete_description": "從 Multica 移除該頻道。帳號在其平台上的授權仍然有效，需要到平台上解除。",
+    "delete_description": "從 Delegora 移除該頻道。帳號在其平台上的授權仍然有效，需要到平台上解除。",
     "delete_confirm": "刪除渠道",
     "empty_title": "暫無發布渠道",
     "empty_description": "連接社交渠道以供內容工作室使用。",
@@ -2322,7 +2322,7 @@
     "disconnect": "中斷連線",
     "catalog_title": "可用應用",
     "catalog_label": "成員可新增的應用",
-    "catalog_description": "精選應用附有審核過的預設規則。「全部應用」包含 Multica 能連線的所有應用；Multica 無法辨識的操作一律先徵得同意。「指定名單」只允許你選中的應用。",
+    "catalog_description": "精選應用附有審核過的預設規則。「全部應用」包含 Delegora 能連線的所有應用；Delegora 無法辨識的操作一律先徵得同意。「指定名單」只允許你選中的應用。",
     "catalog_all": "全部應用",
     "catalog_curated": "僅精選",
     "catalog_custom": "指定名單",

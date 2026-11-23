@@ -55,7 +55,7 @@ type orderJSON struct {
 }
 
 func toOrderJSON(o OrderRow) orderJSON {
-	// The buyer is a snapshot written by the Multica server. A snapshot that is
+	// The buyer is a snapshot written by the Delegora server. A snapshot that is
 	// not an object with these string fields reads as an empty buyer rather
 	// than failing the whole list.
 	var buyer buyerJSON

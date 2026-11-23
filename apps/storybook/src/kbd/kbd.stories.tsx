@@ -687,8 +687,8 @@ function RealSurfacesPage() {
           </h1>
           <p className="mt-1.5 text-body text-muted-foreground">
             {zh
-              ? "把现状（左）和 Step 2 方案（右：高密度场景用单胶囊 C，设置页保留拆键 C′，反色用正式 tone 变体）放进 Multica 真实容器里直接对比。"
-              : "Side-by-side in real Multica chrome: Current (left) vs Step 2 (right: pill C in dense surfaces, split C′ in Settings, formal inverted tones)."}
+              ? "把现状（左）和 Step 2 方案（右：高密度场景用单胶囊 C，设置页保留拆键 C′，反色用正式 tone 变体）放进 Delegora 真实容器里直接对比。"
+              : "Side-by-side in real Delegora chrome: Current (left) vs Step 2 (right: pill C in dense surfaces, split C′ in Settings, formal inverted tones)."}
           </p>
         </header>
 

@@ -11,34 +11,34 @@ export function createZhDict(): LandingDict {
     items: [
       { question: "可以在微信里与智能体聊天吗？", answer: "可以。打开你拥有的智能体，在「消息渠道」中选择「添加消息渠道」→「微信」，用你自己的微信扫码连接。扫码账号的私聊消息会按你的工作区权限执行，回复和支持的附件会返回同一对话。暂不支持群聊；自托管服务需先启用微信集成。" },
       {
-        question: "Multica 支持哪些编码智能体？",
+        question: "Delegora 支持哪些编码智能体？",
         answer:
-          "Multica 开箱即用支持 31 款 AI 编程工具：Amp、Antigravity、Claude Code、CodeBuddy、CodeArts、Codex、Copilot、Cursor、DeepSeek Harness、DevEco Code、Devin CLI、Dim、Factory Droid、Grok、Hermes、Kimi、Kiro CLI、MiniMax Code、Muse Code、Oh-My-Pi、OpenClaw、OpenCode、Pi、Qoder、Qoder CN、Qwen Code、QwenPaw、Reasonix、Trae CLI、ZeroClaw、ZCode。守护进程会自动检测本机已安装的 CLI 并为每款注册一个运行时。因为源码公开，你也可以自己添加后端。自托管部署还可以使用 Qoder PAT 和 Qoder Cloud Agents 中已有的智能体，将 Qoder Cloud Agents 配置为执行任务的托管远程运行时。",
+          "Delegora 开箱即用支持 31 款 AI 编程工具：Amp、Antigravity、Claude Code、CodeBuddy、CodeArts、Codex、Copilot、Cursor、DeepSeek Harness、DevEco Code、Devin CLI、Dim、Factory Droid、Grok、Hermes、Kimi、Kiro CLI、MiniMax Code、Muse Code、Oh-My-Pi、OpenClaw、OpenCode、Pi、Qoder、Qoder CN、Qwen Code、QwenPaw、Reasonix、Trae CLI、ZeroClaw、ZCode。守护进程会自动检测本机已安装的 CLI 并为每款注册一个运行时。因为源码公开，你也可以自己添加后端。自托管部署还可以使用 Qoder PAT 和 Qoder Cloud Agents 中已有的智能体，将 Qoder Cloud Agents 配置为执行任务的托管远程运行时。",
       },
       {
         question: "需要自托管吗，还是有云版本？",
         answer:
-          "两者都有。你可以用 Docker Compose 或 Kubernetes 在自己的基础设施上自托管 Multica，也可以使用我们的托管云版本。你的数据，你选择。",
+          "两者都有。你可以用 Docker Compose 或 Kubernetes 在自己的基础设施上自托管 Delegora，也可以使用我们的托管云版本。你的数据，你选择。",
       },
       {
         question: "可以商用吗？",
         answer:
-          "可以。在你自己的组织内部使用 Multica 是免费的，包括为整个团队自托管。只有两种情况需要商业授权：把 Multica 提供给组织外部的人使用（比如作为托管服务或代运维服务），或者把它嵌入你销售或分发的产品中。常见场景见[许可协议](/licensing)。",
+          "可以。在你自己的组织内部使用 Delegora 是免费的，包括为整个团队自托管。只有两种情况需要商业授权：把 Delegora 提供给组织外部的人使用（比如作为托管服务或代运维服务），或者把它嵌入你销售或分发的产品中。常见场景见[许可协议](/licensing)。",
       },
       {
         question: "这和直接用编码智能体有什么区别？",
         answer:
-          "编码智能体擅长执行。Multica 添加的是管理层：任务队列、团队协作、技能复用、运行时监控，以及每个智能体在做什么的统一视图。把它想象成你的智能体的项目经理。",
+          "编码智能体擅长执行。Delegora 添加的是管理层：任务队列、团队协作、技能复用、运行时监控，以及每个智能体在做什么的统一视图。把它想象成你的智能体的项目经理。",
       },
       {
         question: "智能体能自主处理长时间任务吗？",
         answer:
-          "可以。Multica 管理完整的任务生命周期——入队、领取、执行、完成或失败。智能体主动报告阻塞并实时推送进度。你可以随时查看，也可以让它们运行整晚。",
+          "可以。Delegora 管理完整的任务生命周期——入队、领取、执行、完成或失败。智能体主动报告阻塞并实时推送进度。你可以随时查看，也可以让它们运行整晚。",
       },
       {
         question: "我的代码安全吗？智能体在哪里执行？",
         answer:
-          "智能体在你的机器（通过本地守护进程）或你连接的运行时上运行，直接在你的代码仓库里工作。工作区里的内容——任务、评论、聊天消息、附件，以及智能体上报的进度——由 Multica 存储；智能体所用的编码工具会把提示词和代码发送给你配置的模型提供方。想让工作区数据留在自己的服务器上，可以自托管 Multica。详见[隐私政策](/privacy)。",
+          "智能体在你的机器（通过本地守护进程）或你连接的运行时上运行，直接在你的代码仓库里工作。工作区里的内容——任务、评论、聊天消息、附件，以及智能体上报的进度——由 Delegora 存储；智能体所用的编码工具会把提示词和代码发送给你配置的模型提供方。想让工作区数据留在自己的服务器上，可以自托管 Delegora。详见[隐私政策](/privacy)。",
       },
       {
         question: "我可以运行多少个智能体？",
@@ -49,9 +49,9 @@ export function createZhDict(): LandingDict {
   },
 
   about: {
-    title: "关于 Multica",
+    title: "关于 Delegora",
     nameLine: {
-      prefix: "Multica——",
+      prefix: "Delegora——",
       mult: "Mult",
       iplexed: "iplexed ",
       i: "I",
@@ -63,17 +63,17 @@ export function createZhDict(): LandingDict {
     },
     paragraphs: [
       "这个名字是在向 20 世纪 60 年代具有开创意义的操作系统 Multics 致敬。Multics 首创了分时系统，让多个用户能够共享同一台机器，同时又像各自独占它一样使用。Unix 则是在有意简化 Multics 的基础上诞生的，强调一个用户、一个任务、一种优雅的哲学。",
-      "我们认为，类似的转折点正在再次出现。几十年来，软件团队一直处于一种单线程的工作模式，一个工程师处理一个任务，一次只专注于一个上下文。AI 智能体改变了这个等式。Multica 将「分时」重新带回这个时代，只不过今天在系统中进行多路复用的「用户」，既包括人类，也包括自主智能体。",
-      "在 Multica 中，智能体是一级团队成员。它们会被指派任务，汇报进展，提出阻塞，并交付代码，就像人类同事一样。任务指派、活动时间线、任务生命周期，以及运行时基础设施，Multica 从第一天起就是围绕这一理念构建的。",
+      "我们认为，类似的转折点正在再次出现。几十年来，软件团队一直处于一种单线程的工作模式，一个工程师处理一个任务，一次只专注于一个上下文。AI 智能体改变了这个等式。Delegora 将「分时」重新带回这个时代，只不过今天在系统中进行多路复用的「用户」，既包括人类，也包括自主智能体。",
+      "在 Delegora 中，智能体是一级团队成员。它们会被指派任务，汇报进展，提出阻塞，并交付代码，就像人类同事一样。任务指派、活动时间线、任务生命周期，以及运行时基础设施，Delegora 从第一天起就是围绕这一理念构建的。",
       "和当年的 Multics 一样，这一判断建立在「多路复用」之上。一个小团队不该因为人数少就显得能力有限。有了合适的系统，两名工程师加上一组智能体，就能发挥出二十人团队的推进速度。",
-      "Multica 的源代码公开，并且可以免费自托管，工作区数据始终保存在你自己的基础设施中。你可以审查每一行代码，扩展 API，接入自己的模型提供方，也可以向社区贡献代码。",
+      "Delegora 的源代码公开，并且可以免费自托管，工作区数据始终保存在你自己的基础设施中。你可以审查每一行代码，扩展 API，接入自己的模型提供方，也可以向社区贡献代码。",
     ],
     cta: "在 GitHub 上查看",
     team: {
-      title: "Multica 背后的团队",
+      title: "Delegora 背后的团队",
       paragraphs: [
-        "Multica 由一支从 2021 年起就一起工作的小团队打造。在 Multica 之前，我们做过面向开发者的 AI 搜索引擎 devv.ai。2025 年，我们开始解决自己反复遇到的问题：一个小团队到底该怎样和 AI 智能体一起把事情做完。这就是 Multica。",
-        "Multica 的源代码公开，也可以自托管：在基于它构建之前，你可以读完每一行代码；自托管的部署完全运行在你自己的基础设施上。商业使用的规则，我们在[许可协议](/licensing)里写清楚了。",
+        "Delegora 由一支从 2021 年起就一起工作的小团队打造。在 Delegora 之前，我们做过面向开发者的 AI 搜索引擎 devv.ai。2025 年，我们开始解决自己反复遇到的问题：一个小团队到底该怎样和 AI 智能体一起把事情做完。这就是 Delegora。",
+        "Delegora 的源代码公开，也可以自托管：在基于它构建之前，你可以读完每一行代码；自托管的部署完全运行在你自己的基础设施上。商业使用的规则，我们在[许可协议](/licensing)里写清楚了。",
       ],
       contacts: [
         { label: "商业授权与合作", linkLabel: "联系销售", href: "/contact-sales" },
@@ -87,12 +87,12 @@ export function createZhDict(): LandingDict {
   licensing: {
     title: "许可协议",
     intro: [
-      "Multica 采用 [Multica License](https://github.com/multica-ai/multica/blob/main/LICENSE) 发布：在 Apache License 2.0 的基础上附加了几项条件。源代码公开，在你自己的组织内部使用 Multica 是免费的，包括为整个团队自托管。",
-      "最主要的附加条件针对托管使用：把 Multica 提供给组织外部的人使用，需要商业授权。这一页用大家最常问的问题，说明这条线划在哪里。这是一份通俗说明，不构成法律意见；如与 LICENSE 原文不一致，以 LICENSE 为准。",
+      "Delegora 采用 [Delegora License](https://github.com/multica-ai/multica/blob/main/LICENSE) 发布：在 Apache License 2.0 的基础上附加了几项条件。源代码公开，在你自己的组织内部使用 Delegora 是免费的，包括为整个团队自托管。",
+      "最主要的附加条件针对托管使用：把 Delegora 提供给组织外部的人使用，需要商业授权。这一页用大家最常问的问题，说明这条线划在哪里。这是一份通俗说明，不构成法律意见；如与 LICENSE 原文不一致，以 LICENSE 为准。",
     ],
     rule: {
       title: "一条判断标准",
-      text: "看组织外部的人有没有在驱动这个实例——创建任务、和智能体对话、触发工作。只要有，不管通过什么界面（Web、Slack 还是 API），都算托管服务；如果他们只是收到你的团队用 Multica 做出来的成果，就属于内部使用。",
+      text: "看组织外部的人有没有在驱动这个实例——创建任务、和智能体对话、触发工作。只要有，不管通过什么界面（Web、Slack 还是 API），都算托管服务；如果他们只是收到你的团队用 Delegora 做出来的成果，就属于内部使用。",
     },
     scenarios: {
       title: "常见场景",
@@ -102,18 +102,18 @@ export function createZhDict(): LandingDict {
       notRequired: "不需要",
       items: [
         {
-          scenario: "你的组织内部使用 Multica",
+          scenario: "你的组织内部使用 Delegora",
           example: "自托管，不限工作区数量。",
           required: false,
         },
         {
-          scenario: "你帮客户部署 Multica，由客户自己拥有、在其组织内部使用",
+          scenario: "你帮客户部署 Delegora，由客户自己拥有、在其组织内部使用",
           example: "实施、培训、咨询或定制开发。",
           required: false,
         },
         {
-          scenario: "你的团队用 Multica 为客户干活，客户只收到交付物",
-          example: "例如 agency 在 Multica 里管理内容生产，向客户交付成品。",
+          scenario: "你的团队用 Delegora 为客户干活，客户只收到交付物",
+          example: "例如 agency 在 Delegora 里管理内容生产，向客户交付成品。",
           required: false,
         },
         {
@@ -122,7 +122,7 @@ export function createZhDict(): LandingDict {
           required: false,
         },
         {
-          scenario: "你在自己的基础设施上替客户运行和管理 Multica 实例",
+          scenario: "你在自己的基础设施上替客户运行和管理 Delegora 实例",
           example: "即代运维服务（managed service），无论是否收费。",
           required: true,
         },
@@ -133,12 +133,12 @@ export function createZhDict(): LandingDict {
         },
         {
           scenario: "组织外部的人通过其他入口驱动你的实例",
-          example: "例如接入 Multica 后端的公开网站、Slack 集成或 API，免费提供也一样。",
+          example: "例如接入 Delegora 后端的公开网站、Slack 集成或 API，免费提供也一样。",
           required: true,
         },
         {
-          scenario: "你把 Multica 嵌入到你销售或分发的产品中",
-          example: "Multica 作为另一个商业产品的组件一起交付。",
+          scenario: "你把 Delegora 嵌入到你销售或分发的产品中",
+          example: "Delegora 作为另一个商业产品的组件一起交付。",
           required: true,
         },
       ],
@@ -166,16 +166,16 @@ export function createZhDict(): LandingDict {
     title: "隐私政策",
     lastUpdated: "最后更新：2026 年 10 月 22 日",
     intro: [
-      "本隐私政策说明 Index Labs (Hong Kong) Limited（下称「Multica」或「我们」）在你访问 multica.ai、联系我们或使用我们的托管服务 Multica Cloud（包括网页端、桌面端和移动端）时，如何收集、使用和共享个人信息。",
-      "本政策不适用于你自行部署的 Multica。自托管部署的数据由部署方控制，它使用哪些 AI 服务商、集成或分析工具，取决于部署方的配置。自托管服务器唯一会发送给我们的是每天一次的使用快照，内容包括：一个随机生成的部署 ID（用于关联同一台服务器的历次快照）、服务器版本、工作区、成员、智能体和已连接守护进程的大致数量，当天开始、完成、失败和取消的运行次数，以及过去 1、7、28 天内打开过网页端或桌面端的成员、亲自发起过智能体运行的成员的大致人数。快照不含任何姓名、邮箱或内容。设置 DO_NOT_TRACK=1 即可关闭这份快照。",
+      "本隐私政策说明 Delegora（下称「我们」）在你访问 Delegora、联系我们或使用我们的托管服务 Delegora Cloud（包括网页端、桌面端和移动端）时，如何收集、使用和共享个人信息。",
+      "本政策不适用于你自行部署的 Delegora。自托管部署的数据由部署方控制，它使用哪些 AI 服务商、集成或分析工具，取决于部署方的配置。自托管服务器唯一会发送给我们的是每天一次的使用快照，内容包括：一个随机生成的部署 ID（用于关联同一台服务器的历次快照）、服务器版本、工作区、成员、智能体和已连接守护进程的大致数量，当天开始、完成、失败和取消的运行次数，以及过去 1、7、28 天内打开过网页端或桌面端的成员、亲自发起过智能体运行的成员的大致人数。快照不含任何姓名、邮箱或内容。设置 DO_NOT_TRACK=1 即可关闭这份快照。",
       "本政策以英文版本为准。如中文版本与英文版本不一致，以英文版本为准。",
     ],
     sections: [
       {
         heading: "我们收集的信息",
         bullets: [
-          "账户信息：你的姓名、邮箱地址和头像。如果你使用 Google 登录，我们会从 Google 获得你的姓名、邮箱地址和头像。你也可以填写语言、时区、个人简介等资料，以及回答上手引导中的问题，例如你的角色、使用场景、从哪里了解到 Multica。",
-          "你创建的内容：工作区、任务、评论、聊天消息、附件、智能体指令，以及你或你的智能体放进 Multica Cloud 的其他内容。",
+          "账户信息：你的姓名、邮箱地址和头像。如果你使用 Google 登录，我们会从 Google 获得你的姓名、邮箱地址和头像。你也可以填写语言、时区、个人简介等资料，以及回答上手引导中的问题，例如你的角色、使用场景、从哪里了解到 Delegora。",
+          "你创建的内容：工作区、任务、评论、聊天消息、附件、智能体指令，以及你或你的智能体放进 Delegora Cloud 的其他内容。",
           "联系销售表单：你的姓名、工作邮箱、公司名称和规模、国家或地区、使用场景、目标，以及你的沟通偏好。为了防止滥用，我们还会记录提交表单时的 IP 地址和浏览器 user agent。",
           "账单信息：订阅付款由 Stripe 在其托管的页面上处理，我们不会接收或存储你的完整银行卡信息。",
           "使用和设备信息：应用版本、操作系统、客户端类型和一个随机生成的安装 ID；你连接为运行时的每台机器的名称（默认是其主机名）；以及崩溃和错误报告。报告发送前，我们会从错误信息中过滤掉能识别出的邮箱地址和凭据，但报告仍可能包含与出错情况相关的其他细节。",
@@ -185,24 +185,24 @@ export function createZhDict(): LandingDict {
       {
         heading: "我们如何使用信息",
         bullets: [
-          "提供、运营和保护 Multica Cloud，包括登录、同步工作区、发送通知和邀请。",
+          "提供、运营和保护 Delegora Cloud，包括登录、同步工作区、发送通知和邀请。",
           "回复联系销售表单和支持请求。",
           "发送服务消息，例如登录验证码和工作区邀请。只有在你主动同意后，我们才会发送产品动态或营销信息，你可以随时退订。",
-          "了解 Multica 的使用情况、修复问题并改进产品。",
+          "了解 Delegora 的使用情况、修复问题并改进产品。",
           "防止滥用，并履行法律义务。",
         ],
       },
       {
         heading: "法律依据",
         paragraphs: [
-          "在法律要求说明处理依据的地区，我们依据以下几点处理个人信息：履行与你之间的合同，以提供 Multica Cloud；我们在保障安全、提供支持、改进 Multica 和回复咨询方面的正当利益；你对接收营销信息的同意；以及履行我们的法律义务。",
+          "在法律要求说明处理依据的地区，我们依据以下几点处理个人信息：履行与你之间的合同，以提供 Delegora Cloud；我们在保障安全、提供支持、改进 Delegora 和回复咨询方面的正当利益；你对接收营销信息的同意；以及履行我们的法律义务。",
         ],
       },
       {
         heading: "AI 功能",
         paragraphs: [
-          "你的编码智能体运行在你自己的机器或你连接的运行时上，使用的是你配置的编码工具和账户。智能体在本机运行，不代表模型也在本机推理：这些工具会把提示词、代码、文件和工具调用结果发送给各自的模型服务商，并受你所用工具和账户的条款约束。Multica 负责协调智能体的工作。",
-          "Multica Cloud 的部分功能（如生成聊天标题和推荐后续操作）会把你的第一条聊天消息或最近几条消息，发送给我们选用的第三方大语言模型服务商来生成结果。Multica 不会用你的内容训练 AI 模型。",
+          "你的编码智能体运行在你自己的机器或你连接的运行时上，使用的是你配置的编码工具和账户。智能体在本机运行，不代表模型也在本机推理：这些工具会把提示词、代码、文件和工具调用结果发送给各自的模型服务商，并受你所用工具和账户的条款约束。Delegora 负责协调智能体的工作。",
+          "Delegora Cloud 的部分功能（如生成聊天标题和推荐后续操作）会把你的第一条聊天消息或最近几条消息，发送给我们选用的第三方大语言模型服务商来生成结果。Delegora 不会用你的内容训练 AI 模型。",
         ],
       },
       {
@@ -216,8 +216,8 @@ export function createZhDict(): LandingDict {
         heading: "我们与谁共享信息",
         paragraphs: [
           "你放进工作区的信息，会按工作区的权限设置，被其他成员和管理员，以及他们授权的智能体和集成看到。如果你的工作区属于某个组织，其中的内容由该组织管理，相关请求也可能由该组织处理。",
-          "在法律要求时，我们会披露相关信息；如果 Multica 发生合并、收购或资产出售，相关信息也可能转移给买方或继任方。",
-          "除此之外，我们只会与帮助我们运营 Multica 的服务商，以及你选择连接的集成共享个人信息：",
+          "在法律要求时，我们会披露相关信息；如果 Delegora 发生合并、收购或资产出售，相关信息也可能转移给买方或继任方。",
+          "除此之外，我们只会与帮助我们运营 Delegora 的服务商，以及你选择连接的集成共享个人信息：",
         ],
         bullets: [
           "Amazon Web Services：托管、文件存储和内容分发",
@@ -233,19 +233,19 @@ export function createZhDict(): LandingDict {
       {
         heading: "信息的存储位置",
         paragraphs: [
-          "Multica Cloud 托管在 Amazon Web Services 和 Vercel 上。我们和我们的服务商可能会在美国及其他国家或地区处理你的信息。无论在哪里处理，我们都会按照本政策保护这些信息。",
+          "Delegora Cloud 托管在 Amazon Web Services 和 Vercel 上。我们和我们的服务商可能会在美国及其他国家或地区处理你的信息。无论在哪里处理，我们都会按照本政策保护这些信息。",
         ],
       },
       {
         heading: "信息的保留期限",
         paragraphs: [
-          "账户信息和工作区内容会在你的账户或工作区存在期间一直保留。工作区所有者删除工作区后，其中的任务、评论等内容会从 Multica Cloud 中移除，但用于恢复的备份在之后一段时间内仍可能包含副本。如需从我们的文件存储中清除已删除工作区里上传的文件，请发邮件至 [support@multica.ai](mailto:support@multica.ai)。账单记录按会计和税务规定要求的期限保留；产品分析数据、崩溃报告、联系销售表单和反馈，会在为你提供支持和改进 Multica 所需的期间内保留。你可以要求我们删除联系销售表单和反馈。",
+          "账户信息和工作区内容会在你的账户或工作区存在期间一直保留。工作区所有者删除工作区后，其中的任务、评论等内容会从 Delegora Cloud 中移除，但用于恢复的备份在之后一段时间内仍可能包含副本。如需从我们的文件存储中清除已删除工作区里上传的文件，请发邮件至 [support@delegora.io.vn](mailto:support@delegora.io.vn)。账单记录按会计和税务规定要求的期限保留；产品分析数据、崩溃报告、联系销售表单和反馈，会在为你提供支持和改进 Delegora 所需的期间内保留。你可以要求我们删除联系销售表单和反馈。",
         ],
       },
       {
         heading: "你的选择和权利",
         paragraphs: [
-          "根据你所在地的法律，你可能有权访问、更正、删除或导出你的个人信息，反对或限制某些处理，撤回你已给出的同意（例如接收营销信息的同意），以及向当地的数据保护机构投诉。你可以随时在 Multica 中更新个人资料，也可以在设置中删除你拥有的工作区。其他请求（包括删除账户），请发邮件至 [support@multica.ai](mailto:support@multica.ai)，我们会在 30 天内回复。",
+          "根据你所在地的法律，你可能有权访问、更正、删除或导出你的个人信息，反对或限制某些处理，撤回你已给出的同意（例如接收营销信息的同意），以及向当地的数据保护机构投诉。你可以随时在 Delegora 中更新个人资料，也可以在设置中删除你拥有的工作区。其他请求（包括删除账户），请发邮件至 [support@delegora.io.vn](mailto:support@delegora.io.vn)，我们会在 30 天内回复。",
         ],
       },
       {
@@ -257,7 +257,7 @@ export function createZhDict(): LandingDict {
       {
         heading: "儿童",
         paragraphs: [
-          "Multica 并非面向 16 岁以下的儿童，我们也不会在知情的情况下收集他们的个人信息。",
+          "Delegora 并非面向 16 岁以下的儿童，我们也不会在知情的情况下收集他们的个人信息。",
         ],
       },
       {
@@ -269,7 +269,7 @@ export function createZhDict(): LandingDict {
       {
         heading: "联系我们",
         paragraphs: [
-          "Multica 由 Index Labs (Hong Kong) Limited 运营，并由其负责你的个人信息。如有隐私相关的问题或请求，请发邮件至 [support@multica.ai](mailto:support@multica.ai)。",
+          "Delegora 负责你的个人信息。如有隐私相关的问题或请求，请发邮件至 [support@delegora.io.vn](mailto:support@delegora.io.vn)。",
         ],
       },
     ],
@@ -277,7 +277,7 @@ export function createZhDict(): LandingDict {
 
   changelog: {
     title: "\u66f4\u65b0\u65e5\u5fd7",
-    subtitle: "Multica \u7684\u6700\u65b0\u66f4\u65b0\u548c\u6539\u8fdb\u3002",
+    subtitle: "Delegora \u7684\u6700\u65b0\u66f4\u65b0\u548c\u6539\u8fdb\u3002",
     toc: "\u5386\u53f2\u7248\u672c",
     categories: {
       features: "新功能",
@@ -414,7 +414,7 @@ export function createZhDict(): LandingDict {
           "打开一次运行，即可查看它收到的指令、技能和 MCP 服务器。",
           "可以用 Factory Droid 和 Amp 运行任务。",
           "桌面端各处使用统一的右键菜单，并可直接对任务执行快捷操作。",
-          "快捷聊天移入新的底栏，按 Shift+Cmd+J 即可新建 Ask Multica 聊天。",
+          "快捷聊天移入新的底栏，按 Shift+Cmd+J 即可新建 Ask Delegora 聊天。",
           "选中智能体聊天回复里的文字即可批注，批注会随下一条消息一起发送。",
           "可以选择聊天回复是否发送系统通知，桌面端的后台聊天提醒和 Dock 未读数恢复正常。",
           "Telegram 回复会实时显示智能体正在做什么，私聊比群聊显示更多细节。",
@@ -431,7 +431,7 @@ export function createZhDict(): LandingDict {
           "消息渠道统一归属智能体，点击平台即可连接；GitHub 授权后会回到原页面并预选仓库。",
           "智能体筛选里的「我的智能体」只有一种含义，新增「空闲」，任务会显示真正发起智能体工作的人。",
           "执行日志按行显示命令输入，运行时用量页会保留所选的时间范围。",
-          "飞书任务会带上消息、话题和发送者 ID，Qoder 会话会标注来自 Multica。",
+          "飞书任务会带上消息、话题和发送者 ID，Qoder 会话会标注来自 Delegora。",
           "CLI 会把正文里的本地图片链接关联到同次上传的附件。",
           "网页版按语言缓存翻译词库，页面重复加载的数据更少。",
         ],
@@ -459,7 +459,7 @@ export function createZhDict(): LandingDict {
         title: "外观主题、私有项目全面开放、任务环境",
         changes: [],
         features: [
-          "Multica 官网改版，每种语言都有自己的地址（/zh、/ja、/ko）。",
+          "Delegora 官网改版，每种语言都有自己的地址（/zh、/ja、/ko）。",
           "「设置 → 外观」可以从 5 套内置主题中选择，并设置字体、字号、信息密度和对比度。",
           "所有工作区都可以使用私有项目，其中的任务只对项目成员以及工作区所有者和管理员可见。",
           "任务侧栏的「环境」会列出它的运行启动的服务。在 macOS 和 Linux 上，智能体可以用 multica env start 让服务持续运行。",
@@ -591,14 +591,14 @@ export function createZhDict(): LandingDict {
           "扫码即可创建企业微信机器人，智能体回复时能看到进度。",
           "Qoder Cloud Agents 支持聊天、快速创建和任务附件，并按运行显示 Qoder credits。",
           "可以用 ZCode 运行任务。",
-          "Pi 运行中可以补充指令，并会加载 Multica 安装的技能。",
+          "Pi 运行中可以补充指令，并会加载 Delegora 安装的技能。",
           "可以限制一个运行时同时执行的任务数。",
           "可以用 CLI 管理工作流。",
           "Hermes 运行中可以看到 token 和费用。",
           "已解决的讨论会显示结论，智能体不用再重复展开。",
         ],
         improvements: [
-          "Multica 的标识、图标和配色全面更新。",
+          "Delegora 的标识、图标和配色全面更新。",
           "智能体列表恢复搜索，更多位置可以打开智能体设置。",
           "空页面样式统一，并提示下一步。",
           "附件预览下方新增翻页器。",
@@ -644,7 +644,7 @@ export function createZhDict(): LandingDict {
           "窄屏上可一键跳到时间线最新动态；桌面端仍使用右侧导航轨。",
         ],
         improvements: [
-          "全站改用 Multica 自绘图标，菜单间距和字号统一。",
+          "全站改用 Delegora 自绘图标，菜单间距和字号统一。",
           "文字被截断时才显示完整内容的提示，并稍作延迟，鼠标经过时更少误弹。",
           "点击运行即可打开完整记录；执行记录折叠排队中的运行，压缩历史和费用，进行中的运行和停止按钮始终可见。",
           "工作流列表把项目使用情况收为一行，点击可看完整清单；交接步骤显示接手者姓名。",
@@ -992,7 +992,7 @@ export function createZhDict(): LandingDict {
           "Grok Build 的任务在运行过程中也能补充新的指导。",
           "任务的附件可以在全屏视图里逐个翻看。",
           "文档站现在有完整的法语内容。",
-          "官网可以查到许可说明、隐私政策，以及 Multica 背后的团队。",
+          "官网可以查到许可说明、隐私政策，以及 Delegora 背后的团队。",
           "自托管的管理员可以让自动标题和快捷操作响应更快。",
         ],
         improvements: [
@@ -1358,7 +1358,7 @@ export function createZhDict(): LandingDict {
         features: [
           "华为云 CodeArts 现已成为内置的智能体运行时。",
           "可以选它的模型、续接之前的会话，并使用 MCP 和本地技能。",
-          "iPad 上可以原生安装 Multica，横屏竖屏都能用。",
+          "iPad 上可以原生安装 Delegora，横屏竖屏都能用。",
           "自托管部署在多台服务器上时，企业微信机器人的回复也能送达。",
           "可以查看有多少条企业微信回复没有发出，以及原因。",
         ],
@@ -1614,7 +1614,7 @@ export function createZhDict(): LandingDict {
           "你可以生成一个分享链接，让别人直接加入工作区。",
           "运行记录改成按步骤看，配双轨时间线和结果概览。",
           "Slack 消息里发的文件现在会作为附件出现在对话里。",
-          "手机上可以把 Multica 添加到主屏幕，像应用一样打开。",
+          "手机上可以把 Delegora 添加到主屏幕，像应用一样打开。",
           "浏览器标签页会显示你正打开的工作区页面名。",
           "导入的技能现在会显示它来自哪里。",
           "提到你正在看的这个任务时，会显示成「本任务」。",
@@ -1772,7 +1772,7 @@ export function createZhDict(): LandingDict {
           "Oh-My-Pi 现在也能跑你的智能体了。",
           "企业微信里的语音留言，智能体现在也听得懂。",
           "Kimi 和 Pi 的智能体现在可以选思考强度了。",
-          "Multica 里的任意链接，Cmd/Ctrl 或中键点击就能在新标签页打开。",
+          "Delegora 里的任意链接，Cmd/Ctrl 或中键点击就能在新标签页打开。",
           "企业微信连不上时，页面会说清是被拒绝还是根本连不通。",
         ],
         improvements: [
@@ -2065,7 +2065,7 @@ export function createZhDict(): LandingDict {
           "粘贴超长文本时，现在会自动变成文本附件。",
           "每个上传只显示一次，完成后才会写入草稿。",
           "Webhook URL 现在默认隐藏，可按需显示。",
-          "工作区很多时，Multica 启动不再反复检查智能体工具。",
+          "工作区很多时，Delegora 启动不再反复检查智能体工具。",
           "用量排名现在先聚焦前十名，失败排序也更清楚。",
           "发送后，光标现在会停在各编辑器预期的位置。",
         ],
@@ -2240,7 +2240,7 @@ export function createZhDict(): LandingDict {
           "重新打开设置面板后，你的设置现在能可靠保存。",
           "恢复的 Codex task 现在会准确报告用量。",
           "评论不再把不该变成链接的文字变成链接。",
-          "私聊的回复现在会留在 Multica 里。",
+          "私聊的回复现在会留在 Delegora 里。",
           "AI 辅助创建现在始终可用。",
           "任务页面首次打开时不再卡顿。",
           "Linux 上的 Codex 智能体现在能正确保存 Git 信息。",
@@ -2544,7 +2544,7 @@ export function createZhDict(): LandingDict {
         changes: [],
         features: [
           "task 日志（Transcript）会记住你的过滤条件与展开状态，下次打开同一次运行时自动恢复。",
-          "自托管（Helm）：新增 `postgres.external.enabled` 开关，可将 Multica 指向外部托管的 PostgreSQL（RDS、CNPG、Cloud SQL、Neon 等），跳过内置数据库。",
+          "自托管（Helm）：新增 `postgres.external.enabled` 开关，可将 Delegora 指向外部托管的 PostgreSQL（RDS、CNPG、Cloud SQL、Neon 等），跳过内置数据库。",
         ],
         fixes: [
           "评论草稿里有空的 `1. ` 列表项时，重新加载后光标不再卡在下方块。",
@@ -2598,8 +2598,8 @@ export function createZhDict(): LandingDict {
         title: "Slack /issue 斜杠命令、字节跳动 TRAE CLI 智能体运行时、接入 Claude Sonnet 5",
         changes: [],
         features: [
-          "Slack 里可以直接用原生 /issue 斜杠命令创建 Multica 任务，机器人只会向你私发一条包含任务链接的确认消息。",
-          "同一 Slack 工作区里已经和某个 Multica 机器人绑定过的用户，遇到新加入的第二个机器人时无需再走一次绑定流程。",
+          "Slack 里可以直接用原生 /issue 斜杠命令创建 Delegora 任务，机器人只会向你私发一条包含任务链接的确认消息。",
+          "同一 Slack 工作区里已经和某个 Delegora 机器人绑定过的用户，遇到新加入的第二个机器人时无需再走一次绑定流程。",
           "Slack 频道场景的上下文阅读拆成两条命令：一条查看频道概览，一条精读单个线程。",
           "字节跳动 TRAE CLI（traecli）通过标准 ACP 协议接入为内置智能体运行时之一。",
           "Anthropic 模型清单接入 Claude Sonnet 5，并已挂上介绍期价格。",
@@ -2615,7 +2615,7 @@ export function createZhDict(): LandingDict {
           "修复了 Cursor 与 Kiro 运行时结束时 task 结果不入库的问题，最终回复不再丢失。",
           "自托管的 docker-compose.selfhost.yml 现在会把 MULTICA_SLACK_SECRET_KEY 透传到后端容器。（社区反馈）",
           "任务面板顶部「N 个任务正在处理中」的胶囊改为按任务数去重。",
-          "自托管匿名来源统计的上报地址恢复到正式的 Multica API。",
+          "自托管匿名来源统计的上报地址恢复到正式的 Delegora API。",
           "评论的定位高亮改为纯背景色，根评论和回复的行为保持一致。",
         ],
       },
@@ -2626,7 +2626,7 @@ export function createZhDict(): LandingDict {
         changes: [],
         features: [
           "自动化新增清晰的写权限分层，详情页提供「管理协作者」入口，可把单个自动化的写权限授予指定成员。",
-          "Slack 频道可以把过往对话回灌到 Multica，智能体一进入频道即拥有完整上下文。",
+          "Slack 频道可以把过往对话回灌到 Delegora，智能体一进入频道即拥有完整上下文。",
           "Slack 智能体处理消息期间会在用户消息上加 👀 反应表情，处理结束后稳定清除，不再出现卡死。",
           "技能包支持从本地 .skill / .zip 归档导入。",
           "multica issue 命令不再接受短 UUID 前缀，请使用任务 Key（MUL-123）或完整 UUID。",
@@ -2869,7 +2869,7 @@ export function createZhDict(): LandingDict {
         features: [
           "智能体、自动任务、项目、运行环境、技能和小队的列表体验更快也更一致，行内容、筛选、选择和操作都更清楚",
           "命令行现在可以管理工作区仓库，本地智能体更容易拿到项目仓库上下文",
-          "Cursor 和 OpenClaw 更容易配置：Cursor 连接设置可以由 Multica 托管，OpenClaw 也可以连接已有网关",
+          "Cursor 和 OpenClaw 更容易配置：Cursor 连接设置可以由 Delegora 托管，OpenClaw 也可以连接已有网关",
           "编辑评论时，可以在保存前预览并控制哪些智能体或小队会开始运行",
         ],
         improvements: [
@@ -2891,7 +2891,7 @@ export function createZhDict(): LandingDict {
         title: "CodeBuddy Runtime",
         changes: [],
         features: [
-          "CodeBuddy 现在可以驱动本地 Multica 智能体，并会自动显示可用的模型和投入强度选项",
+          "CodeBuddy 现在可以驱动本地 Delegora 智能体，并会自动显示可用的模型和投入强度选项",
           "快速创建任务时上传的文件现在会从草稿一直带到最终创建的任务里",
         ],
         improvements: [
@@ -2933,15 +2933,15 @@ export function createZhDict(): LandingDict {
           "评论输入框现在会在发送前显示哪些智能体或小队会开始工作，也可以避免误触发运行",
           "智能体运行记录现在会显示时间点，回看进度和交接信息更清楚",
           "自动任务详情页现在会显示创建人",
-          "Claude Fable 5 现在已加入 Multica 支持的模型和价格列表",
+          "Claude Fable 5 现在已加入 Delegora 支持的模型和价格列表",
           "任务讨论可以把某一条回复设为解决结论，长讨论收起后也能直接看到最终答案",
-          "在 Lark 和飞书里和 Multica 对话时，会显示等待中的输入状态，回复发出后自动清除",
+          "在 Lark 和飞书里和 Delegora 对话时，会显示等待中的输入状态，回复发出后自动清除",
           "每次智能体 task 都会带上真实发起人信息，交接、审计和权限判断更准确",
           "OpenClaw 可以从本地配置中读取自定义程序位置和数据目录",
         ],
         improvements: [
           "评论触发提示更安静、更清楚，遇到较长的智能体名称时也不容易拥挤",
-          "桌面端在守护进程由 Multica 之外的环境管理时，会禁用启动和停止控制，例如 WSL2 场景",
+          "桌面端在守护进程由 Delegora 之外的环境管理时，会禁用启动和停止控制，例如 WSL2 场景",
           "任务顶部的智能体状态更容易区分：运行中才显示动效，等待中会明确显示排队状态",
           "命令行会直接说明常见错误、登录问题和项目配置问题的处理方式",
         ],
@@ -2965,7 +2965,7 @@ export function createZhDict(): LandingDict {
         title: "网页版消息通知和 /note 指令",
         changes: [],
         features: [
-          "网页端现在可以显示浏览器原生通知横幅，即使 Multica 在后台，也更容易及时看到工作区动态",
+          "网页端现在可以显示浏览器原生通知横幅，即使 Delegora 在后台，也更容易及时看到工作区动态",
           "以 /note 开头的评论现在可以记录上下文，但不会唤醒已分配的智能体，团队可以留下协作备注而不触发运行",
           "Antigravity 现在可以作为每个智能体单独选择的模型",
           "命令行现在会用更容易理解的语言解释常见请求失败，并提示下一步该怎么处理",
@@ -3023,10 +3023,10 @@ export function createZhDict(): LandingDict {
         title: "Lark Bot 集成",
         changes: [],
         features: [
-          "支持 Lark 第三方集成，扫码就能把 Multica 智能体创建成一个 Lark Bot",
+          "支持 Lark 第三方集成，扫码就能把 Delegora 智能体创建成一个 Lark Bot",
           "聊天现在支持可搜索的智能体选择器和明确的上下文选择器，更容易指定谁来回复、需要看哪些内容",
           "描述和评论现在支持勾选式待办清单，任务里的轻量计划更好整理",
-          "智能体现在内置 Multica 技能，可以更稳定地遵循工作区工作流",
+          "智能体现在内置 Delegora 技能，可以更稳定地遵循工作区工作流",
         ],
         improvements: [
           "聊天上下文会以清晰的提及形式呈现，交接和后续回看更容易理解",
@@ -3070,7 +3070,7 @@ export function createZhDict(): LandingDict {
         title: "日语支持和 /skill command",
         changes: [],
         features: [
-          "Multica 现在支持日语界面、官网和文档",
+          "Delegora 现在支持日语界面、官网和文档",
           "聊天现在支持 /skill command，用来选择智能体技能",
           "工作区现在可以显示自定义 Logo",
           "可以给智能体追加技能，不会覆盖已有技能",
@@ -3126,7 +3126,7 @@ export function createZhDict(): LandingDict {
         changes: [],
         features: [
           "智能体在任务评论区继续工作时，会接着之前的会话继续，不再新开会话，task 上下文可以保留下来",
-          "Multica 现在支持韩语界面、官网和文档，包含完整韩语文档与本地化日期显示",
+          "Delegora 现在支持韩语界面、官网和文档，包含完整韩语文档与本地化日期显示",
           "任务页面会在标题附近固定显示正在工作的智能体，多智能体同时工作时也能更清楚地查看",
           "智能体读取任务讨论时可以先看到线程摘要、回复数量和最近活跃时间，更快找到需要跟进的上下文",
           "OpenClaw 运行环境现在可以使用智能体里保存的 MCP 设置，Claude Opus 4.8 也可用于模型选择和用量估算",
@@ -3224,8 +3224,8 @@ export function createZhDict(): LandingDict {
         title: "iOS 客户端、Helm 自托管与更顺畅的协作体验",
         changes: [],
         features: [
-          "Multica iOS 客户端发布官方首个可用版本，覆盖登录、工作区、收件箱、任务、项目、聊天、评论、表情回应、在线状态和实时更新；目前暂未上架 App Store，需要用户自行打包安装",
-          "自托管团队现在可以通过 Helm 将 Multica 部署到 Kubernetes，Docker 安装也有更清晰的端口和 URL 配置",
+          "Delegora iOS 客户端发布官方首个可用版本，覆盖登录、工作区、收件箱、任务、项目、聊天、评论、表情回应、在线状态和实时更新；目前暂未上架 App Store，需要用户自行打包安装",
+          "自托管团队现在可以通过 Helm 将 Delegora 部署到 Kubernetes，Docker 安装也有更清晰的端口和 URL 配置",
           "项目资源选择器新增仓库搜索，工作区仓库设置也可以保存描述，帮助智能体理解每个代码库",
           "运行时用量现在可以更准确识别 DeepSeek、Kimi K2.6、Zhipu GLM 和长上下文 Claude Opus 的费用",
           "官网新增使用场景页面能力，并让文档、更新日志和开始使用入口更清晰",
@@ -3368,7 +3368,7 @@ export function createZhDict(): LandingDict {
         ],
         improvements: [
           "任务操作失败时会显示更明确的错误原因，团队不用翻日志也能理解发生了什么",
-          "关联 GitHub 的 Pull Request 会在 Multica 内展示 CI 和合并冲突状态",
+          "关联 GitHub 的 Pull Request 会在 Delegora 内展示 CI 和合并冲突状态",
           "自托管部署获得更安全的默认配置，并补充反向代理、登录限制和本地服务的说明",
           "搜索结果排序更准确，也会展示更有帮助的摘要片段",
         ],
@@ -3460,7 +3460,7 @@ export function createZhDict(): LandingDict {
         title: "GitHub 集成、聊天附件与任务定位优化",
         changes: [],
         features: [
-          "接入 GitHub 后，关联的 Pull Request 会显示在 Multica 任务中，状态会同步到 Multica，关闭 PR 后会自动关闭对应任务",
+          "接入 GitHub 后，关联的 Pull Request 会显示在 Delegora 任务中，状态会同步到 Delegora，关闭 PR 后会自动关闭对应任务",
           "聊天消息支持添加文件附件和图片预览",
           "Agent 和 runtime 可以设置公开或私有，方便控制团队可见范围",
           "停止单个 agent task 前会先弹出确认，避免误操作",
@@ -3471,7 +3471,7 @@ export function createZhDict(): LandingDict {
           "很长的任务时间线滚动更顺畅",
           "反馈入口更明确地引导用户到 GitHub 参与讨论和反馈",
           "自托管 Caddy 配置文档补充实时连接要求",
-          "Linux 桌面端安装包恢复显示 Multica 应用图标",
+          "Linux 桌面端安装包恢复显示 Delegora 应用图标",
         ],
         fixes: [
           "下载附件时保留原始文件名",
@@ -3573,7 +3573,7 @@ export function createZhDict(): LandingDict {
           "Linux 上 daemon self-restart 改走 `brew prefix` 软链，Homebrew Cellar 删除后不再让 runtime 失联",
           "CLI 短 ID 现在可以正确路由，复制粘贴的短前缀不再 404",
           "Windows 上非 ASCII 字符评论 / 描述输入新增 `--content-file` / `--description-file`",
-          "Windows / Linux 桌面端用 Multica asterisk 替换 Electron 默认占位图标",
+          "Windows / Linux 桌面端用 Delegora asterisk 替换 Electron 默认占位图标",
           "Timeline 中孤立的 reply 现在会被正确捞回展示",
           "Timeline 评论分页预算不再把 activity 算进去，避免活动多时挤掉真实评论",
         ],
@@ -3677,7 +3677,7 @@ export function createZhDict(): LandingDict {
         ],
         improvements: [
           "Daemon `/tasks/claim` 轮询走 Redis 空认领 fast-path，空闲态 DB 压力下降，长期 open 的任务自动回收磁盘",
-          "Multica Agent 的 Git 提交自动追加 `Co-authored-by` trailer，归属更清晰",
+          "Delegora Agent 的 Git 提交自动追加 `Co-authored-by` trailer，归属更清晰",
           "Desktop 拦截 Cmd+R / Ctrl+R / F5 防止意外刷新，开发模式与 Updates 设置中均展示真实版本号",
         ],
         fixes: [
@@ -4289,14 +4289,14 @@ export function createZhDict(): LandingDict {
     hero: {
       eyebrow: "桌面端",
       title: {
-        mac: "下载 Multica macOS 版",
-        windows: "下载 Multica Windows 版",
-        linux: "下载 Multica Linux 版",
-        other: "下载 Multica",
+        mac: "下载 Delegora macOS 版",
+        windows: "下载 Delegora Windows 版",
+        linux: "下载 Delegora Linux 版",
+        other: "下载 Delegora",
       },
       lead: "桌面端自带智能体守护进程，这台电脑上的 Claude Code、Codex 等编程智能体会自动接入。",
       leadOther: "支持 macOS、Windows 和 Linux，每个版本都内置智能体守护进程。",
-      mobileNote: "Multica 桌面端支持 macOS、Windows 和 Linux。请在电脑上打开这个页面下载。",
+      mobileNote: "Delegora 桌面端支持 macOS、Windows 和 Linux。请在电脑上打开这个页面下载。",
       primary: {
         macArm64Dmg: "下载 Apple 芯片版",
         macX64Dmg: "下载 Intel 版",
@@ -4342,26 +4342,26 @@ export function createZhDict(): LandingDict {
       allDownloads: "全部下载",
       install: {
         title: "安装",
-        dmg: "打开 .dmg，把 Multica 拖进「应用程序」。",
-        zip: "解压后，把 Multica 移到「应用程序」。",
-        exe: "运行安装程序，完成后 Multica 会自动打开。",
+        dmg: "打开 .dmg，把 Delegora 拖进「应用程序」。",
+        zip: "解压后，把 Delegora 移到「应用程序」。",
+        exe: "运行安装程序，完成后 Delegora 会自动打开。",
         appImage: "给 AppImage 加上可执行权限，然后运行。",
         deb: "用 apt 或你的包管理器安装 .deb。",
         rpm: "用 dnf 或你的包管理器安装 .rpm。",
       },
       signIn: {
         title: "登录",
-        body: "打开 Multica，用你的账号登录。",
+        body: "打开 Delegora，用你的账号登录。",
         installed: "已经装好了？",
-        open: "打开 Multica",
+        open: "打开 Delegora",
       },
       agents: {
         title: "接入智能体",
-        body: "Multica 会自动找到这台电脑上的 Claude Code、Codex 等编程智能体。",
+        body: "Delegora 会自动找到这台电脑上的 Claude Code、Codex 等编程智能体。",
       },
       community: {
         label: "下载的同时",
-        githubTitle: "在 GitHub 上关注 Multica",
+        githubTitle: "在 GitHub 上关注 Delegora",
         githubBody: "给仓库点个 Star，第一时间收到新版本；也可以看看你刚下载的应用背后的代码。",
         star: "在 GitHub 上 Star",
         stars: "{count} Star",
@@ -4377,7 +4377,7 @@ export function createZhDict(): LandingDict {
   contactSales: {
     pageTitle: "联系销售",
     pageDescription:
-      "了解如何在你的团队中落地 Multica 的人类 + 智能体协作工作流。",
+      "了解如何在你的团队中落地 Delegora 的人类 + 智能体协作工作流。",
     eyebrow: "联系销售",
     title: "先了解你的需求",
     fields: {
@@ -4389,7 +4389,7 @@ export function createZhDict(): LandingDict {
       companyName: "公司名称",
       companySize: "公司规模",
       countryRegion: "国家 / 地区",
-      useCase: "你打算如何使用 Multica 或与我们合作？",
+      useCase: "你打算如何使用 Delegora 或与我们合作？",
       goals: "你的目标或挑战",
       selectPlaceholder: "请选择",
       submit: "提交",
@@ -4404,7 +4404,7 @@ export function createZhDict(): LandingDict {
       { value: "1000+", label: "1,000 人以上" },
     ],
     useCases: [
-      { value: "evaluate", label: "正在为团队评估 Multica" },
+      { value: "evaluate", label: "正在为团队评估 Delegora" },
       { value: "adopt_team", label: "希望在团队 / 公司内推广使用" },
       { value: "self_host", label: "需要在自有基础设施上自托管" },
       { value: "integrate", label: "希望与现有工具集成" },
@@ -4456,22 +4456,22 @@ export function createZhDict(): LandingDict {
     ],
     consent: {
       intro:
-        "Multica 尊重你的隐私。我们仅会将你的个人信息用于管理账户，以及提供你所请求的产品或服务。我们偶尔也希望与你分享产品更新、最佳实践或行业洞察，如果你愿意接收，请在下方勾选。",
+        "Delegora 尊重你的隐私。我们仅会将你的个人信息用于管理账户，以及提供你所请求的产品或服务。我们偶尔也希望与你分享产品更新、最佳实践或行业洞察，如果你愿意接收，请在下方勾选。",
       outreach:
-        "我希望接收来自 Multica 的一对一沟通，包括服务更新、支持咨询以及业务相关的跟进。",
+        "我希望接收来自 Delegora 的一对一沟通，包括服务更新、支持咨询以及业务相关的跟进。",
       updates:
-        "我希望接收 Multica 的产品更新、洞察以及活动邀请。",
+        "我希望接收 Delegora 的产品更新、洞察以及活动邀请。",
       unsubscribe:
         "你可以随时取消订阅我们的邮件。关于我们如何处理你的数据以及隐私权利，请参阅",
       submitConsent:
-        "点击「提交」即表示你同意 Multica 存储并处理你提交的信息，以便交付你请求的内容。",
+        "点击「提交」即表示你同意 Delegora 存储并处理你提交的信息，以便交付你请求的内容。",
       privacyLinkLabel: "隐私政策。",
       privacyLinkHref: "/privacy",
     },
     success: {
       title: "已收到，谢谢！",
       message:
-        "Multica 团队会在三个工作日内回复你。在此期间，欢迎查看我们的文档，或在 GitHub 上为我们点个 Star。",
+        "Delegora 团队会在三个工作日内回复你。在此期间，欢迎查看我们的文档，或在 GitHub 上为我们点个 Star。",
       cta: "返回首页",
     },
     errors: {

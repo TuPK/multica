@@ -17,7 +17,7 @@ describe("@multica/ui/icons", () => {
     expect(readFileSync(join(__dirname, "index.ts"), "utf8")).not.toMatch(/from "(?!\.\/)/);
   });
 
-  it.each(Object.keys(exportNames()))("%s renders a Multica glyph", (name) => {
+  it.each(Object.keys(exportNames()))("%s renders a Delegora glyph", (name) => {
     const Icon = icons[name as keyof typeof icons] as icons.IconComponent;
     const markup = renderToStaticMarkup(createElement(Icon));
     expect(markup).toMatch(/^<svg [^>]*class="icon icon-[a-z0-9-]+"/);

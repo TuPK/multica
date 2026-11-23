@@ -76,7 +76,7 @@ export const enDemoCopy: DemoDict = {
       statuses: { brief: "Brief", research: "Research", draft: "Draft", edit: "Edit", published: "Published" },
       cards: {
         "ACM-213": "Webinar invite email for June",
-        "ACM-211": "Comparison page: Multica vs. spreadsheets",
+        "ACM-211": "Comparison page: Delegora vs. spreadsheets",
         "ACM-210": "Landing page for the Japan launch",
         "ACM-208": "Co-marketing kit for partners",
         "ACM-207": "Onboarding emails for week one",

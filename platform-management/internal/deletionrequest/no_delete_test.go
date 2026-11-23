@@ -8,7 +8,7 @@ import (
 )
 
 // TestNoDeleteStatementsOnWorkspaceContentInPlatformCode checks that phase 1 deletes
-// no workspace content: the data is removed by Multica's existing deletion path
+// no workspace content: the data is removed by Delegora's existing deletion path
 // (spec R6 section 6.2, rule 4). It scans this package and its own queries file.
 func TestNoDeleteStatementsOnWorkspaceContentInPlatformCode(t *testing.T) {
 	var files []string
@@ -31,7 +31,7 @@ func TestNoDeleteStatementsOnWorkspaceContentInPlatformCode(t *testing.T) {
 			t.Fatal(err)
 		}
 		if strings.Contains(strings.ToUpper(string(raw)), "DELETE FROM") {
-			t.Errorf("%s contains a DELETE statement; the deletion path is Multica's", f)
+			t.Errorf("%s contains a DELETE statement; the deletion path is Delegora's", f)
 		}
 	}
 }

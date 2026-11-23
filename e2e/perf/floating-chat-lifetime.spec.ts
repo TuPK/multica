@@ -193,7 +193,7 @@ test("closing floating chat releases its list and preserves the live composer", 
     };
     requestAnimationFrame(sample);
   });
-  await page.getByRole("button", { name: "Multica is working...", exact: true }).click();
+  await page.getByRole("button", { name: "Delegora is working...", exact: true }).click();
   await expect(page.getByText("Arrived while closed", { exact: true })).toBeVisible();
   const reopenFrames = () => page.evaluate(() =>
     (window as unknown as { __reopenFrames: Array<{ opacity: number; listVisible: boolean }> }).__reopenFrames);
@@ -210,7 +210,7 @@ test("closing floating chat releases its list and preserves the live composer", 
 
   // Reopening inside the exit animation must cancel removal of the same list.
   await reopened.locator('button:has(svg.icon-minus)').evaluate(button => (button as HTMLButtonElement).click());
-  await page.getByRole("button", { name: "Multica is working...", exact: true }).evaluate(button => (button as HTMLButtonElement).click());
+  await page.getByRole("button", { name: "Delegora is working...", exact: true }).evaluate(button => (button as HTMLButtonElement).click());
   // Let the interrupted 150ms exit finish before checking that it cannot remove the reopened list.
   await page.waitForTimeout(250);
   await expect(page.getByText("Arrived while closed", { exact: true })).toBeVisible();

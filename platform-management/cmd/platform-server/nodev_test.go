@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// forbidden is Multica's own development code variable. The platform reads only
+// forbidden is Delegora's own development code variable. The platform reads only
 // its own gated PLATFORM_DEV_VERIFICATION_CODE; make dev-full copies the value.
 // The string is split so that this file does not contain it.
 var forbidden = strings.ToLower("multica" + "_dev_verification")
@@ -75,9 +75,9 @@ func TestScannerSkipsInstalledPackages(t *testing.T) {
 	}
 }
 
-// The platform never reads Multica's development code variable.
+// The platform never reads Delegora's development code variable.
 func TestPlatformDoesNotReadMulticaDevCodeVariable(t *testing.T) {
 	if hits := filesWithForbidden(t, "../.."); len(hits) > 0 {
-		t.Fatalf("files mention the Multica development code variable: %v", hits)
+		t.Fatalf("files mention the Delegora development code variable: %v", hits)
 	}
 }

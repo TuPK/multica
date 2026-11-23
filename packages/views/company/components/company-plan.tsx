@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { IssueSurface } from "../../issues/surface/issue-surface";
 import { CompanyHeader } from "./company-header";
+import { CompanyToolbarSlotContext } from "./company-header-slot";
 import { CompanyView } from "./company-view";
 
 /**
@@ -10,18 +12,21 @@ import { CompanyView } from "./company-view";
  * display state and stays out of the saved views of /issues.
  */
 export function CompanyFloorPlan() {
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <IssueSurface
-        scope={{ type: "workspace" }}
-        modes={["board"]}
-        surfaceKey="company"
-        savedViews={false}
-        batchToolbar="never"
-        keepBoardWhenEmpty
-        renderHeader={({ controller }) => <CompanyHeader controller={controller} />}
-        renderBoard={(props) => <CompanyView {...props} />}
-      />
+      <CompanyToolbarSlotContext.Provider value={toolbarSlot}>
+        <IssueSurface
+          scope={{ type: "workspace" }}
+          modes={["board"]}
+          surfaceKey="company"
+          savedViews={false}
+          batchToolbar="never"
+          keepBoardWhenEmpty
+          renderHeader={({ controller }) => <CompanyHeader controller={controller} slotRef={setToolbarSlot} />}
+          renderBoard={(props) => <CompanyView {...props} />}
+        />
+      </CompanyToolbarSlotContext.Provider>
     </div>
   );
 }

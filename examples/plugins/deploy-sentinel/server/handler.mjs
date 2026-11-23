@@ -1,4 +1,4 @@
-// Deploy Sentinel's own server. Multica never runs this — the plugin author does.
+// Deploy Sentinel's own server. Delegora never runs this — the plugin author does.
 //
 // Everything a real hook backend has to get right is here and nowhere else:
 // verifying the signature, refusing a replay, applying the team's own rules, and
@@ -15,7 +15,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 // HTTPS, not HTTP. A hook's transport URL must be an https:// URL or the
 // manifest will not install, and MULTICA_PLUGIN_DEV_CA only changes WHICH
-// certificate Multica trusts — it never turns verification off. Generate one:
+// certificate Delegora trusts — it never turns verification off. Generate one:
 //
 //   openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
 //     -keyout dev-key.pem -out dev-cert.pem \
@@ -53,7 +53,7 @@ function verifySignature(rawBody, signature, timestamp) {
   if (!SIGNING_SECRET) return { ok: false, reason: "server has no signing secret configured" };
   if (!signature || !timestamp) return { ok: false, reason: "missing signature headers" };
 
-  // Reject a replay before spending time on the comparison. Multica signs
+  // Reject a replay before spending time on the comparison. Delegora signs
   // timestamp + body precisely so an old, validly-signed request cannot be
   // resent later.
   const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
@@ -217,7 +217,7 @@ const server = createServer(tlsOptions(), async (req, res) => {
     case "page_oncall": {
       // An event hook's response is discarded, so there is nothing to return
       // that anybody reads. Acknowledge fast and do the work; blocking here
-      // would hold a Multica worker for no benefit.
+      // would hold a Delegora worker for no benefit.
       const issue = payload.event?.issue ?? {};
       console.log(`paging on-call for ${payload.event?.type}: ${issue.title ?? issueId}`);
       return reply(202, { acknowledged: true });

@@ -609,7 +609,7 @@ export async function handleInboxNew(
   // row still lands in the inbox; it just doesn't interrupt with a banner.
   if (item.type === "status_changed" && item.details?.to === "in_progress") return;
   // Fire a native OS notification only when the app isn't focused. When
-  // the user is already looking at Multica, the inbox sidebar's unread
+  // the user is already looking at Delegora, the inbox sidebar's unread
   // styling is enough — no need to interrupt with a banner. `desktopAPI`
   // is injected by the preload script; its absence (web app) skips silently.
   if (systemNotificationSuppressedByFocus()) return;

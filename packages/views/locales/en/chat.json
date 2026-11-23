@@ -8,10 +8,10 @@
     "agent_link_no_access": "You don't have access to chat with this agent."
   },
   "fab": {
-    "running": "Multica is working...",
+    "running": "Delegora is working...",
     "unread_one": "{{count}} unread chat",
     "unread_other": "{{count}} unread chats",
-    "default": "Ask Multica"
+    "default": "Ask Delegora"
   },
   "bar": {
     "history": "Chat history",
@@ -172,7 +172,7 @@
     "first_time_pillars_suffix": ".",
     "first_time_actions": "Ask for a summary, plan your day, or hand off a quick task.",
     "returning_title_named": "Hi, I'm {{name}}",
-    "returning_title_default": "Welcome to Multica",
+    "returning_title_default": "Welcome to Delegora",
     "returning_subtitle": "Try asking",
     "chat_with_named": "Chat with {{name}}"
   },

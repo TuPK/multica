@@ -17,13 +17,13 @@
   "new_page": {
     "back": "Retour",
     "log_out": "Se déconnecter",
-    "title": "Bienvenue sur Multica",
+    "title": "Bienvenue sur Delegora",
     "description": "Un espace de travail unique où vos coéquipiers IA et vous travaillez côte à côte — ils prennent des tâches, laissent des commentaires et partagent le même contexte.",
     "invite_hint": "Vous pourrez inviter des coéquipiers une fois votre espace de travail prêt."
   },
   "creation_disabled": {
     "title": "La création d'espaces de travail est désactivée",
-    "description": "Cette instance Multica n'autorise pas la création de nouveaux espaces de travail. Demandez à votre administrateur une invitation à un espace de travail existant."
+    "description": "Cette instance Delegora n'autorise pas la création de nouveaux espaces de travail. Demandez à votre administrateur une invitation à un espace de travail existant."
   },
   "no_access": {
     "title": "Espace de travail indisponible",

@@ -172,7 +172,7 @@
     "mode_auto_merge_label": "將完成的執行合併到目前簽出的分支",
     "mode_auto_merge_description": "執行完成後，其分支會合併到這個儲存庫目前簽出的分支，並刪除該分支。若儲存庫有未提交的修改或處於分離的 HEAD，則略過；發生衝突時需要你自行解決。",
     "mode_worktree_needs_git": "這個資料夾不是 git 倉庫，無法並行執行。",
-    "mode_worktree_needs_server_upgrade": "Multica 服務端版本過舊，並行執行會退回到直接修改這個資料夾。請先升級服務端。",
+    "mode_worktree_needs_server_upgrade": "Delegora 服務端版本過舊，並行執行會退回到直接修改這個資料夾。請先升級服務端。",
     "mode_cancel": "取消",
     "mode_add": "新增資料夾",
     "mode_edit_tooltip": "修改執行方式",

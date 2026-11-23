@@ -163,7 +163,7 @@ describe("PluginPanelSection", () => {
     expect(screen.getByText(/could not load its interface/i)).toBeInTheDocument();
   });
 
-  it("loads only Multica's dedicated content origin", () => {
+  it("loads only Delegora's dedicated content origin", () => {
     data.installed.plugins = [installation()];
     render(<PluginPanelSection issueId="issue-1" />, { wrapper: Wrapper });
 

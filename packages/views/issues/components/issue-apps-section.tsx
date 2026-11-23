@@ -21,7 +21,7 @@ const NOTABLE = ["pending", "blocked", "rejected", "error", "rate_limited"] as c
 /**
  * "Apps" in the issue sidebar: which apps, through which account, this
  * issue's runs called, so a reader sees what an agent touched outside
- * Multica without opening every run. Renders nothing until a call is made.
+ * Delegora without opening every run. Renders nothing until a call is made.
  */
 export function IssueAppsSection({ issueId }: { issueId: string }) {
   const { t } = useT("issues");

@@ -162,7 +162,7 @@ test.describe("staff rules on the admin's own account", () => {
 });
 
 test.describe("staff membership checks", () => {
-  test("flow 255: adding an email with no Multica account is refused with no_such_account", async () => {
+  test("flow 255: adding an email with no Delegora account is refused with no_such_account", async () => {
     await expectCode(
       await post("/api/platform/staff", { email: `nobody-${Date.now()}@example.test`, role: "support" }),
       404,

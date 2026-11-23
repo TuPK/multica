@@ -31,7 +31,7 @@ func newDBFixture(t *testing.T) *dbFixture {
 	return &dbFixture{t: t, pool: pool, q: db.New(pool)}
 }
 
-// user creates a Multica user with a random email and returns its id and email.
+// user creates a Delegora user with a random email and returns its id and email.
 func (f *dbFixture) user() (pgtype.UUID, string) {
 	f.t.Helper()
 	b := make([]byte, 8)

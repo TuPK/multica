@@ -365,7 +365,7 @@
     "workspace_missing_title": "ワークスペースが見つかりません",
     "workspace_missing_description": "Stripe から戻りましたが、このワークスペースは利用できません。削除されたか、アクセス権が変更された可能性があります。対象のワークスペースの請求ページで現在の状態を確認してください。",
     "retry": "再試行",
-    "go_to_app": "Multica を開く"
+    "go_to_app": "Delegora を開く"
   },
   "order": {
     "title": "注文の詳細",

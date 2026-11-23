@@ -1,6 +1,6 @@
 -- Locking a whole tenant (spec R6 section 3c.9, rule 1). The platform writes the
 -- tenant's status columns (migration 1016) and each workspace's platform status
--- through workspacestatus; Multica reads both.
+-- through workspacestatus; Delegora reads both.
 
 -- name: LockTenantForStatus :one
 SELECT id, status FROM tenant

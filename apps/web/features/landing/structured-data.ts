@@ -10,13 +10,13 @@ export const siteJsonLd = {
   "@graph": [
     {
       "@type": "Organization",
-      name: "Multica",
+      name: "Delegora",
       url: SITE_ORIGIN,
       sameAs: [githubUrl, twitterUrl, discordUrl],
     },
     {
       "@type": "SoftwareApplication",
-      name: "Multica",
+      name: "Delegora",
       applicationCategory: "ProjectManagement",
       operatingSystem: "Web, macOS, Windows, Linux, iOS",
       description:

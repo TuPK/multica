@@ -1,6 +1,6 @@
 // Package schemacheck stops the platform service at start when the database
 // lacks a migration the service needs. The service runs no migrations itself;
-// the Multica server's migrate command owns the schema.
+// the Delegora server's migrate command owns the schema.
 package schemacheck
 
 import (
@@ -117,7 +117,7 @@ type MissingError struct {
 }
 
 func (e *MissingError) Error() string {
-	return fmt.Sprintf("database schema is missing required migrations: %s (run the Multica server's migrate command)", strings.Join(e.Versions, ", "))
+	return fmt.Sprintf("database schema is missing required migrations: %s (run the Delegora server's migrate command)", strings.Join(e.Versions, ", "))
 }
 
 // Check returns a *MissingError when any of required is not recorded in

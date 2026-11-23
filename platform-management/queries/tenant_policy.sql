@@ -1,5 +1,5 @@
 -- The tenant policy floor (spec R6 section 3c.4, D101). The platform writes
--- tenant_policy (migration 1033, unique index 1034); Multica reads it. The
+-- tenant_policy (migration 1033, unique index 1034); Delegora reads it. The
 -- feature check reads the workspaces' subscriptions and the plan catalogue.
 
 -- name: GetTenantPolicy :one

@@ -121,7 +121,7 @@ func run() error {
 	queries := db.New(pool)
 	store := staff.NewStore(queries)
 
-	// The key must open what Multica sealed, or no staff member can sign in.
+	// The key must open what Delegora sealed, or no staff member can sign in.
 	mfaCrypto, err := mfa.NewCrypto(cfg.MFASecretKey)
 	if err != nil {
 		return &config.Error{Variable: mfa.EnvKey, Reason: "is not a usable key"}
@@ -132,7 +132,7 @@ func run() error {
 	}
 
 	seeder := staff.NewSeeder(queries, cfg.AdminEmails, slog.Default())
-	// An administrator without a Multica account is logged and skipped; only a
+	// An administrator without a Delegora account is logged and skipped; only a
 	// database error stops the start.
 	if err := seeder.SeedAll(startCtx); err != nil {
 		return err
@@ -201,7 +201,7 @@ func run() error {
 		Log:               slog.Default(),
 	})
 
-	// The routes Multica's clients call. The billing routes carry X-User-ID and
+	// The routes Delegora's clients call. The billing routes carry X-User-ID and
 	// no credential, so they run behind the trusted-peer rule.
 	peers := trust.New(cfg.TrustedCIDRs)
 	billingReads := subscription.NewAPI(subscription.APIDeps{
@@ -338,7 +338,7 @@ func run() error {
 	for _, pattern := range billingapi.Patterns {
 		routes = append(routes, server.Route{Pattern: pattern, Handler: billingWritesHandler})
 	}
-	// The seat protocol of Multica's seat client. It takes no credential, like
+	// The seat protocol of Delegora's seat client. It takes no credential, like
 	// the entitlement policy route.
 	seatAPI := seat.NewHandler(seat.NewService(seat.NewPgxRunner(pool), time.Now), slog.Default()).Mux()
 	for _, pattern := range seat.Patterns {
@@ -526,7 +526,7 @@ func (m memberSeats) Release(ctx context.Context, workspaceID, token string) err
 }
 
 // accountChanges is the deletionrequest.AccountNotifier: it drops the cached account
-// state and publishes the change to the Multica server, as the console does.
+// state and publishes the change to the Delegora server, as the console does.
 type accountChanges struct {
 	cache interface {
 		Invalidate(ctx context.Context, userID string) error

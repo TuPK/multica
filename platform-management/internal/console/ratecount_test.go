@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// TestRateKeyIsTheAPIMinuteCounter pins the key the Multica API increments once
+// TestRateKeyIsTheAPIMinuteCounter pins the key the Delegora API increments once
 // per workspace and minute (server/internal/middleware/workspace_rate_limit.go).
 func TestRateKeyIsTheAPIMinuteCounter(t *testing.T) {
 	now := time.Date(2030, 5, 6, 7, 8, 59, 0, time.UTC)

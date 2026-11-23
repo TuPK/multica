@@ -17,7 +17,7 @@ const TOLERANCE_SECONDS = 5 * 60;
 const PULSE_KEY = "last_pulse";
 
 if (!SIGNING_SECRET) {
-  console.error("MULTICA_SIGNING_SECRET is required. Rotate the plugin token in Multica to obtain it.");
+  console.error("MULTICA_SIGNING_SECRET is required. Rotate the plugin token in Delegora to obtain it.");
   process.exit(1);
 }
 
@@ -67,7 +67,7 @@ async function callback(body, method, path, payload) {
   const text = await response.text();
   if (response.status === 404) return null;
   if (!response.ok) {
-    throw new Error(`Multica answered ${response.status}: ${text}`);
+    throw new Error(`Delegora answered ${response.status}: ${text}`);
   }
   return text ? JSON.parse(text) : null;
 }

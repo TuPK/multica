@@ -37,7 +37,7 @@ type WorkspaceDetail struct {
 	DeletionScheduledAt *time.Time
 	NotesCount          int64
 	// GroupCount counts the workspace's account groups (spec 7b.2). Only the
-	// count is read: names, members and keys stay in Multica (isolation rule I6).
+	// count is read: names, members and keys stay in Delegora (isolation rule I6).
 	GroupCount int64
 	OwnerID    string
 	OwnerEmail string

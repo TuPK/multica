@@ -100,7 +100,7 @@ type DemoWorkflow<S extends string> = {
 };
 
 /**
- * Text inside the product mockups. `app` is the Multica interface itself and
+ * Text inside the product mockups. `app` is the Delegora interface itself and
  * follows the product's own translations; the rest is the fictional Acme Labs
  * team's work. People's and agents' names stay as they are, like any name.
  */

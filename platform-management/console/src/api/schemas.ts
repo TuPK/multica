@@ -664,7 +664,7 @@ export type User = z.output<typeof UserSchema>;
 const MembershipSchema = z.object({
   workspace_id: z.string(),
   name: text,
-  // The workspace role is Multica's, not the console's; shown as it comes.
+  // The workspace role is Delegora's, not the console's; shown as it comes.
   role: text,
 });
 export type Membership = z.output<typeof MembershipSchema>;

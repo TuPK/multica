@@ -161,7 +161,7 @@ func TestDBPreexistingMembersAreCounted(t *testing.T) {
 	}
 }
 
-// Multica's handler holds WorkspaceLocker (a session advisory lock on one
+// Delegora's handler holds WorkspaceLocker (a session advisory lock on one
 // connection) while it calls the platform. The call must not wait for it.
 func TestDBDoesNotWaitForTheHandlersWorkspaceLock(t *testing.T) {
 	f := newDBFixture(t, 3, 1)
@@ -171,7 +171,7 @@ func TestDBDoesNotWaitForTheHandlersWorkspaceLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Release()
-	// The key Multica's locker derives (workspace_locker.go, workspaceAdvisoryLockKey).
+	// The key Delegora's locker derives (workspace_locker.go, workspaceAdvisoryLockKey).
 	sum := sha256.Sum256(append([]byte("multica-seat-capacity:"), uuidBytes(f.ws)...))
 	key := int64(binary.BigEndian.Uint64(sum[:8]))
 	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock($1)`, key); err != nil {

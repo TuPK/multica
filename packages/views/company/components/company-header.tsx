@@ -14,7 +14,14 @@ import type { IssueSurfaceController } from "../../issues/surface/use-issue-surf
  * The floor plan's toolbar: filters and display options of the board. The page
  * header above it, shared with the overview, carries the title and the tabs.
  */
-export function CompanyHeader({ controller }: { controller: IssueSurfaceController }) {
+export function CompanyHeader({
+  controller,
+  slotRef,
+}: {
+  controller: IssueSurfaceController;
+  /** Receives the leading slot the seat banner portals into. */
+  slotRef: (el: HTMLDivElement | null) => void;
+}) {
   const dateFilter = useViewStore((s) => s.dateFilter);
   const setDateFilter = useViewStore((s) => s.setDateFilter);
   const agentRunningFilter = useViewStore((s) => s.agentRunningFilter);
@@ -22,7 +29,8 @@ export function CompanyHeader({ controller }: { controller: IssueSurfaceControll
 
   return (
     <>
-      <div className={cn("flex min-h-12 shrink-0 items-center justify-end gap-1 py-2", PAGE_GUTTER)}>
+      <div className={cn("flex min-h-12 shrink-0 items-center gap-1 py-2", PAGE_GUTTER)}>
+        <div ref={slotRef} className="flex min-w-0 flex-1 items-center" />
         <CompanyPulseStrip />
         <CompanyState />
         <WorkspaceAgentWorkingChip

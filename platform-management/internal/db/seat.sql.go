@@ -116,7 +116,7 @@ type LockSeatWorkspaceParams struct {
 // operations, and the reads of the shared member and subscription tables the
 // capacity decision needs.
 // A transaction-scoped advisory lock in the two-key form, namespace first. It
-// cannot collide with Multica's WorkspaceLocker, which takes a one-key bigint
+// cannot collide with Delegora's WorkspaceLocker, which takes a one-key bigint
 // session lock (Appendix B rule 6).
 func (q *Queries) LockSeatWorkspace(ctx context.Context, arg LockSeatWorkspaceParams) error {
 	_, err := q.db.Exec(ctx, lockSeatWorkspace, arg.Column1, arg.Column2)

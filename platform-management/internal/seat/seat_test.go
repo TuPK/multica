@@ -122,8 +122,8 @@ func TestARefusedReservationHoldsNothing(t *testing.T) {
 	}
 }
 
-// Rule 6: the platform's lock key space differs from Multica's WorkspaceLocker.
-// The test reads both: Multica's from its source, which cannot be imported from
+// Rule 6: the platform's lock key space differs from Delegora's WorkspaceLocker.
+// The test reads both: Delegora's from its source, which cannot be imported from
 // this module, and the platform's from LockKey and its query.
 func TestLockKeySpaceDiffersFromWorkspaceLocker(t *testing.T) {
 	src, err := os.ReadFile("../../../server/internal/seatcapacity/workspace_locker.go")
@@ -132,10 +132,10 @@ func TestLockKeySpaceDiffersFromWorkspaceLocker(t *testing.T) {
 	}
 	prefix := regexp.MustCompile(`append\(\[\]byte\("([^"]+)"\), workspaceID\[:\]\.\.\.\)`).FindSubmatch(src)
 	if prefix == nil {
-		t.Fatal("Multica's lock key derivation was not found in workspace_locker.go; update this test with it")
+		t.Fatal("Delegora's lock key derivation was not found in workspace_locker.go; update this test with it")
 	}
 	if !bytes.Contains(src, []byte("pg_try_advisory_lock($1)")) {
-		t.Fatal("Multica's lock is no longer the one-key session lock; recheck rule 6")
+		t.Fatal("Delegora's lock is no longer the one-key session lock; recheck rule 6")
 	}
 	query, err := os.ReadFile("../../queries/seat.sql")
 	if err != nil {
@@ -148,7 +148,7 @@ func TestLockKeySpaceDiffersFromWorkspaceLocker(t *testing.T) {
 		t.Error("LockNamespace is 0")
 	}
 	if lockKeyPrefix == string(prefix[1]) {
-		t.Errorf("the hash prefix equals Multica's %q", prefix[1])
+		t.Errorf("the hash prefix equals Delegora's %q", prefix[1])
 	}
 	for _, id := range []string{ws, tok, other} {
 		raw := uuidBytes(id)
@@ -156,7 +156,7 @@ func TestLockKeySpaceDiffersFromWorkspaceLocker(t *testing.T) {
 		multica := int64(binary.BigEndian.Uint64(sum[:8]))
 		ns, key := LockKey(id)
 		if packed := int64(ns)<<32 | int64(uint32(key)); packed == multica {
-			t.Errorf("the platform's lock for %s equals Multica's %d", id, multica)
+			t.Errorf("the platform's lock for %s equals Delegora's %d", id, multica)
 		}
 		if ns2, key2 := LockKey(id); ns2 != ns || key2 != key {
 			t.Error("LockKey is not deterministic")

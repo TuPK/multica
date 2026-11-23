@@ -109,7 +109,7 @@ func policyBody(t *testing.T, ws string) []byte {
 	return rec.Body.Bytes()
 }
 
-// pricesBody returns the platform's prices response, as Multica's proxy would
+// pricesBody returns the platform's prices response, as Delegora's proxy would
 // ask for it: from a trusted peer, with X-User-ID.
 func pricesBody(t *testing.T) []byte {
 	t.Helper()
@@ -169,7 +169,7 @@ func TestFixturesMatchThePlatformsResponses(t *testing.T) {
 	}
 }
 
-// The three policies tell the story the Multica side asserts, so a fixture that
+// The three policies tell the story the Delegora side asserts, so a fixture that
 // was regenerated into something else is noticed here.
 func TestFixturesCarryTheirScenario(t *testing.T) {
 	type gate struct {
@@ -277,7 +277,7 @@ func usageBody(t *testing.T, path string) []byte {
 }
 
 // The usage block of a pay as you go workspace, as the summary and GET /usage
-// carry it. The Multica client's schemas read these two files.
+// carry it. The Delegora client's schemas read these two files.
 func TestFixturesUsageSummaryAndUsage(t *testing.T) {
 	for _, tc := range []struct{ file, path string }{
 		{"usage.json", "/usage"},

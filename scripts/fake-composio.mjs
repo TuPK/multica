@@ -21,7 +21,7 @@
 // manifest disappears). `down` stops it and removes the block; values the file
 // had before the block apply again. State lives in memory, so accounts
 // connected before a restart of the fake are unknown to it afterwards, while
-// Multica keeps its own rows for them.
+// Delegora keeps its own rows for them.
 //
 // `serve [--port N]` runs it in the foreground without touching any
 // environment, for setups other than `make up`.
@@ -227,7 +227,7 @@ h1{font-size:20px;margin:0 0 8px}p{color:#555;font-size:14px;line-height:1.5}
 .ok{background:#111;color:#fff}.no{background:#eee;color:#333}</style></head><body><div class="card">
 <div class="tag">Local stand-in for Composio's hosted connect page</div><br/>
 <img class="logo" alt="" src="https://logos.composio.dev/api/${link.slug}"/>
-<h1>Multica wants to access your ${name} account</h1>
+<h1>Delegora wants to access your ${name} account</h1>
 <p>In production this step is ${name}'s own consent screen, reached through Composio's connect link.</p>
 <div class="row"><a class="no" id="deny" href="${finish(0)}">Cancel</a><a class="ok" id="allow" href="${finish(1)}">Allow</a></div>
 </div></body></html>`;
@@ -361,7 +361,7 @@ h1{font-size:20px;margin:0 0 8px}p{color:#555;font-size:14px;line-height:1.5}
       const body = await readBody(req);
       if (!findTool(toolSlug)) return send(res, 404, { error: { message: "tool not found" } });
       // Accounts issued before a restart are unknown here but still live in
-      // Multica's database; only an account revoked since is refused.
+      // Delegora's database; only an account revoked since is refused.
       const account = accounts.get(body.connected_account_id);
       if (account && account.status !== "ACTIVE") {
         return send(res, 200, { successful: false, error: "connected account is not active", data: {} });
@@ -373,7 +373,7 @@ h1{font-size:20px;margin:0 0 8px}p{color:#555;font-size:14px;line-height:1.5}
       const tool = findTool(decodeURIComponent(api.slice("/tools/".length)));
       return tool ? send(res, 200, tool) : send(res, 404, { error: { message: "tool not found" } });
     }
-    // An empty MCP URL tells Multica there is no session to attach.
+    // An empty MCP URL tells Delegora there is no session to attach.
     if (method === "POST" && api === "/tool_router/session") {
       await readBody(req);
       return send(res, 200, { session_id: `trs_${seq++}`, mcp: { type: "http", url: "" } });

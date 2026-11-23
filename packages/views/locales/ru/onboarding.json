@@ -1,6 +1,6 @@
 {
   "step_nav": {
-    "wordmark": "Multica",
+    "wordmark": "Delegora",
     "label": "Шаги настройки",
     "about_you": {
       "label": "О вас"
@@ -13,7 +13,7 @@
     }
   },
   "welcome": {
-    "wordmark": "Добро пожаловать в Multica",
+    "wordmark": "Добро пожаловать в Delegora",
     "headline_line1": "Ваши AI-напарники",
     "headline_line2": "в",
     "headline_emphasis": "одном рабочем пространстве.",
@@ -54,7 +54,7 @@
   },
   "source_backfill": {
     "eyebrow": "Быстрый вопрос",
-    "lede": "Помогите нам понять, как вы узнали о Multica.",
+    "lede": "Помогите нам понять, как вы узнали о Delegora.",
     "submit": "Отправить",
     "save_failed_toast": "Не удалось сохранить"
   },
@@ -63,7 +63,7 @@
       "question": "Расскажите немного о себе."
     },
     "source": {
-      "question": "Как вы узнали о Multica?",
+      "question": "Как вы узнали о Delegora?",
       "friends_colleagues": "От друзей или коллег",
       "search": "Google / поиск",
       "social_x": "X / Twitter",
@@ -94,7 +94,7 @@
       "other_placeholder": "например, преподаватель, руководитель поддержки"
     },
     "use_case": {
-      "question": "Для чего вы хотите использовать Multica?",
+      "question": "Для чего вы хотите использовать Delegora?",
       "ship_code": "Выпускать код вместе с AI-агентами",
       "manage_team": "Управлять задачами команды",
       "personal_tasks": "Организовывать собственные задачи",
@@ -112,7 +112,7 @@
   "cli_install": {
     "copy_aria": "Скопировать",
     "intro": "Вам понадобится среда выполнения агента на этом компьютере (Claude Code, Codex, Cursor и др.), чтобы запускать агента. Также работает на серверах и удалённых dev-машинах.",
-    "step1_label": "Установите CLI Multica",
+    "step1_label": "Установите CLI Delegora",
     "platform_group": "Выберите вашу платформу",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -162,7 +162,7 @@
     "slug_conflict_toast": "Выберите другой URL рабочего пространства",
     "create_failed_toast": "Не удалось создать рабочее пространство",
     "creation_disabled_headline": "Попросите администратора отправить вам приглашение.",
-    "creation_disabled_lede": "Этот экземпляр Multica не позволяет создавать новые рабочие пространства. Как только администратор пригласит вас в рабочее пространство, примите приглашение и обновите страницу, чтобы продолжить.",
+    "creation_disabled_lede": "Этот экземпляр Delegora не позволяет создавать новые рабочие пространства. Как только администратор пригласит вас в рабочее пространство, примите приглашение и обновите страницу, чтобы продолжить.",
     "creation_disabled_logout": "Выйти",
     "creation_disabled_headline_resume": "Продолжить с {{name}}.",
     "creation_disabled_lede_resume": "Создание рабочих пространств отключено в этом экземпляре, поэтому вы продолжите в уже существующем рабочем пространстве.",

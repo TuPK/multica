@@ -1,5 +1,5 @@
--- The second factor Multica stores for a user (table user_mfa, enrolled in the
--- Multica web app). The platform reads a confirmed row to check the staff
+-- The second factor Delegora stores for a user (table user_mfa, enrolled in the
+-- Delegora web app). The platform reads a confirmed row to check the staff
 -- sign-in and deletes a row when staff reset a user's second factor.
 
 -- name: GetConfirmedUserMFA :one
@@ -7,7 +7,7 @@ SELECT secret_enc, last_used_step FROM user_mfa
 WHERE user_id = $1 AND confirmed_at IS NOT NULL;
 
 -- name: GetAnyConfirmedUserMFA :one
--- One confirmed row, for the start check that the key opens Multica's values.
+-- One confirmed row, for the start check that the key opens Delegora's values.
 SELECT secret_enc FROM user_mfa
 WHERE confirmed_at IS NOT NULL
 LIMIT 1;

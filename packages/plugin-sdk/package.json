@@ -1,7 +1,7 @@
 {
   "name": "@multica/plugin-sdk",
   "version": "0.1.0",
-  "description": "Client SDK for Multica plugin surfaces.",
+  "description": "Client SDK for Delegora plugin surfaces.",
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {

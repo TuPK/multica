@@ -279,7 +279,7 @@
     "type_webhook": "Webhook",
     "label_field": "Etiqueta (opcional)",
     "label_placeholder": "p. ej., Mañana entre semana",
-    "webhook_help": "Multica generará una URL de webhook después de que guardes. Envía cualquier JSON por POST para disparar esta automatización.",
+    "webhook_help": "Delegora generará una URL de webhook después de que guardes. Envía cualquier JSON por POST para disparar esta automatización.",
     "submit": "Añadir disparador",
     "submitting": "Añadiendo...",
     "toast_added_schedule": "Disparador de programación añadido",
@@ -343,7 +343,7 @@
     "trigger_kind_schedule": "Programación",
     "trigger_kind_webhook": "Webhook",
     "section_webhook": "Webhook",
-    "webhook_help_create": "Multica generará una URL de webhook después de crear esta automatización. Envía cualquier JSON por POST a esa URL para dispararla.",
+    "webhook_help_create": "Delegora generará una URL de webhook después de crear esta automatización. Envía cualquier JSON por POST a esa URL para dispararla.",
     "webhook_help_edit": "Esta automatización se dispara por webhook. Gestiona la URL (copiar / rotar) en la página de detalle de la automatización.",
     "webhook_created_title": "Automatización por webhook lista",
     "webhook_created_description": "Envía cualquier JSON por POST a la URL de abajo y la automatización se disparará. Cópiala ahora; también puedes encontrarla y rotarla en la página de detalle de la automatización.",
@@ -583,7 +583,7 @@
       "slides": {
         "event": {
           "title": "Espera a que ocurra algo",
-          "description": "No hace falta mantener un agente ejecutándose mientras espera. Cuando se cumple la condición, Multica lo reactiva."
+          "description": "No hace falta mantener un agente ejecutándose mientras espera. Cuando se cumple la condición, Delegora lo reactiva."
         },
         "time": {
           "title": "O elige una hora",
@@ -627,7 +627,7 @@
   "intro": {
     "label": "Automatizaciones",
     "title": "Deja que los agentes empiecen a trabajar por su cuenta",
-    "description": "Configura una programación o un webhook. Cada vez que se active, Multica crea una tarea para un agente o ejecuta el agente directamente. Elige una plantilla y ajústala.",
+    "description": "Configura una programación o un webhook. Cada vez que se active, Delegora crea una tarea para un agente o ejecuta el agente directamente. Elige una plantilla y ajústala.",
     "templates": "Empezar con una plantilla"
   },
   "edit_webhook_dialog": {

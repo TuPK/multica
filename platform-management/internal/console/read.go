@@ -506,7 +506,7 @@ func (h *Handler) listStaff(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"staff": out})
 }
 
-// auditEventJSON is the wire shape of the workspace log in Multica.
+// auditEventJSON is the wire shape of the workspace log in Delegora.
 type auditEventJSON struct {
 	ID          string          `json:"id"`
 	WorkspaceID *string         `json:"workspace_id"`

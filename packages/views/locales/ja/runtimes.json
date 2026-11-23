@@ -33,7 +33,7 @@
       "other_machine_hint": "そのマシンで 2 つのコマンドを実行",
       "cloud_services": "クラウドサービス",
       "qoder_manage_hint": "接続済み · 接続を管理",
-      "cloud_runtime_hint": "Multica がホストするクラウドノードを作成"
+      "cloud_runtime_hint": "Delegora がホストするクラウドノードを作成"
     },
     "columns": {
       "name": "名前",
@@ -259,7 +259,7 @@
   "connect": {
     "title": "マシンを追加",
     "description": "追加したいマシンで、この 2 つのコマンドを実行してください。デーモンがオンラインになった瞬間に検出します。",
-    "step1_label": "Multica CLI をインストール",
+    "step1_label": "Delegora CLI をインストール",
     "platform_group": "プラットフォームを選択",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -323,11 +323,11 @@
     "cli_version_label": "CLI バージョン:",
     "version_unknown": "不明",
     "managed_by_desktop": "デスクトップで管理",
-    "managed_by_desktop_title": "CLI バイナリは Multica Desktop で管理されています。CLI をアップグレードするには Desktop を更新してください。",
+    "managed_by_desktop_title": "CLI バイナリは Delegora Desktop で管理されています。CLI をアップグレードするには Desktop を更新してください。",
     "read_only": "読み取り専用",
     "read_only_title": "CLI を更新できるのは、ランタイムの所有者とワークスペース管理者のみです。",
     "local_build": "ローカルビルド",
-    "local_build_title": "このランタイムはリリース版ではないバージョンを報告しているため、Multica はアップグレードの有無を判断できません。マシン上で直接更新してください。",
+    "local_build_title": "このランタイムはリリース版ではないバージョンを報告しているため、Delegora はアップグレードの有無を判断できません。マシン上で直接更新してください。",
     "latest": "最新",
     "available": "利用可能",
     "action": "更新",
@@ -428,7 +428,7 @@
     "builtin_section_aria": "サポートされている組み込みプロトコルファミリー",
     "builtin_reference": "参考",
     "empty_title": "最初のカスタムランタイムを作成",
-    "empty_description": "互換性のあるベースランタイムを選択し、Multica が実行するコマンドを指定してください。",
+    "empty_description": "互換性のあるベースランタイムを選択し、Delegora が実行するコマンドを指定してください。",
     "badge_builtin": "組み込み",
     "badge_custom": "カスタム",
     "badge_disabled": "無効",
@@ -553,7 +553,7 @@
   },
   "qoder": {
     "title": "Qoder Cloud Agents runtime",
-    "description": "Connect Qoder Cloud Agents. Multica manages execution and stores credentials encrypted. Workspace administrators can change this configuration.",
+    "description": "Connect Qoder Cloud Agents. Delegora manages execution and stores credentials encrypted. Workspace administrators can change this configuration.",
     "loading": "Loading…",
     "unavailable": "このサーバーでは Qoder Cloud Agents がまだ有効になっていません。サーバー管理者が認証情報の暗号化（MULTICA_VCS_SECRET_KEY）を設定する必要があります。",
     "online": "Online",
@@ -596,7 +596,7 @@
     "cloud_description": "共有接続を使って Qoder クラウドでエージェントを実行します。ローカルホストの管理は不要です。",
     "configure_credentials": "認証情報を設定",
     "add_agent": "エージェントを追加",
-    "add_agent_description": "既存の Qoder Cloud Agents エージェントに関連付ける Multica エージェントを作成します。Qoder クラウドに設定した環境と認証情報を使用します。",
+    "add_agent_description": "既存の Qoder Cloud Agents エージェントに関連付ける Delegora エージェントを作成します。Qoder クラウドに設定した環境と認証情報を使用します。",
     "agent_name": "エージェント名",
     "cancel": "キャンセル",
     "shared_credentials_hint": "認証情報はこのワークスペース内で共有します。PAT は暗号化して保存し、再表示しません。",
@@ -608,7 +608,7 @@
     "concurrency_hint": "上限を超えたタスクはキューで待機します。",
     "run_timeout": "実行タイムアウト（分）",
     "run_timeout_hint": "この時間を過ぎても終わらない実行はキャンセルされ、失敗として記録されます。",
-    "data_disclosure_title": "Multica が Qoder に送信する内容",
+    "data_disclosure_title": "Delegora が Qoder に送信する内容",
     "data_disclosure": "Issue のタイトルと説明、関連コメント、プロジェクトのコンテキスト、エージェントの指示。GitHub トークンは実行時のリポジトリのマウントにのみ使われます。",
     "usage": "実行中 {{active}}/{{limit}} · 待機 {{queued}}",
     "open_settings": "設定を開く",
@@ -638,7 +638,7 @@
       "description_agents_other": "次の {{count}} 件のエージェントは指示と履歴を保持しますが、Qoder を再開するか別のランタイムに移すまで新しいタスクを受けられません。"
     },
     "connect_title": "Qoder Cloud Agents を接続",
-    "connect_description": "Multica は Qoder のサンドボックスでタスクを実行します。",
+    "connect_description": "Delegora は Qoder のサンドボックスでタスクを実行します。",
     "page": {
       "configuration": "設定",
       "agents_title": "エージェント",
@@ -698,14 +698,14 @@
       },
       "cloud": {
         "title": "クラウドノードも使える",
-        "description": "マシンを自分で管理したくないなら、Multica がホストするクラウドノードを作成できます。"
+        "description": "マシンを自分で管理したくないなら、Delegora がホストするクラウドノードを作成できます。"
       }
     },
     "art": {
       "this_computer": "このコンピューター · デスクトップ",
       "detected": "検出されたランタイム",
       "run_there": "そのマシンで実行",
-      "connected": "{{name}} が Multica に接続されました"
+      "connected": "{{name}} が Delegora に接続されました"
     }
   },
   "rate_limits": {

@@ -41,9 +41,9 @@
     "billing_disabled": "Billing changes are unavailable for this workspace. Contact your workspace administrator for help.",
     "contact_admin": "Ask a workspace owner or admin to upgrade the plan or buy more runs.",
     "review_billing": "Review billing options",
-    "review_billing_web": "Open Multica on the web to review billing options.",
+    "review_billing_web": "Open Delegora on the web to review billing options.",
     "buy_runs": "Buy more runs",
-    "buy_runs_web": "Open Multica on the web to buy more runs."
+    "buy_runs_web": "Open Delegora on the web to buy more runs."
   },
   "type": {
     "assigned": "Assigned",

@@ -8,7 +8,7 @@ import {
 } from "./parse-release-assets";
 
 /**
- * Server-side fetcher for the latest downloadable Multica release,
+ * Server-side fetcher for the latest downloadable Delegora release,
  * designed to run inside a Next.js server component. Response is cached
  * by the Next.js fetch cache for 5 minutes (Vercel ISR) so hitting
  * /download costs at most one GitHub API call per region per 5 minutes.
@@ -91,7 +91,7 @@ export async function fetchLatestRelease(): Promise<LatestRelease> {
     }
     const data = (await res.json()) as GitHubReleasePayload[];
 
-    // Defensive filter — Multica doesn't publish prereleases or drafts
+    // Defensive filter — Delegora doesn't publish prereleases or drafts
     // today, but the endpoint returns them if that ever changes. A
     // prerelease shadowing a stable version on /download would be a
     // regression.

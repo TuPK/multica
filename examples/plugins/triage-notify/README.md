@@ -1,6 +1,6 @@
 # Triage Notify
 
-Demonstrates the hook engine: Multica calling **out** to a plugin's own server,
+Demonstrates the hook engine: Delegora calling **out** to a plugin's own server,
 and that server calling back in.
 
 The three previous examples only ever ran inbound — a sandboxed panel asking the
@@ -61,7 +61,7 @@ handler cannot elect to write as somebody else, which is the reason the callback
 token exists instead of just handing out the install token.
 
 The callback token is revoked when this HTTP request returns and is held by one
-Multica server instance. Use it only for work completed before responding. A
+Delegora server instance. Use it only for work completed before responding. A
 scheduled integration that needs to continue asynchronously or reconcile a
 large external backlog should store the `mpi_` install token shown to the admin
 at token rotation and use that standing credential instead.

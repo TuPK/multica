@@ -86,7 +86,7 @@ describe("GovernanceAutonomyTab", () => {
   it("keeps the honest-limit note that stops L3 reading as unsupervised, and explains each level", async () => {
     renderTab();
     expect(
-      await screen.findByText(/The honest limit: Multica cannot inspect what a runtime does/),
+      await screen.findByText(/The honest limit: Delegora cannot inspect what a runtime does/),
     ).toBeTruthy();
     expect(screen.getByText("L2 Trusted")).toBeTruthy();
     expect(screen.getByText("L0 Suggest")).toBeTruthy();

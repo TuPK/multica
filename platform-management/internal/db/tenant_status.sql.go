@@ -25,7 +25,7 @@ type LockTenantForStatusRow struct {
 
 // Locking a whole tenant (spec R6 section 3c.9, rule 1). The platform writes the
 // tenant's status columns (migration 1016) and each workspace's platform status
-// through workspacestatus; Multica reads both.
+// through workspacestatus; Delegora reads both.
 func (q *Queries) LockTenantForStatus(ctx context.Context, id pgtype.UUID) (LockTenantForStatusRow, error) {
 	row := q.db.QueryRow(ctx, lockTenantForStatus, id)
 	var i LockTenantForStatusRow

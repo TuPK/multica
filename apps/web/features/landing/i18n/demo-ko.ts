@@ -76,7 +76,7 @@ export const koDemoCopy: DemoDict = {
       statuses: { brief: "브리프", research: "리서치", draft: "초안", edit: "편집", published: "게시됨" },
       cards: {
         "ACM-213": "6월 웨비나 초대 이메일",
-        "ACM-211": "비교 페이지: Multica vs. 스프레드시트",
+        "ACM-211": "비교 페이지: Delegora vs. 스프레드시트",
         "ACM-210": "일본 출시 랜딩 페이지",
         "ACM-208": "파트너 공동 마케팅 키트",
         "ACM-207": "첫 주 온보딩 이메일",

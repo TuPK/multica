@@ -116,7 +116,7 @@ function BareAvatar({
       : null
     : avatarUrl;
   const displayName =
-    name ?? (type === "system" ? "Multica" : getName(type, id));
+    name ?? (type === "system" ? "Delegora" : getName(type, id));
   const emoji = rawUrl?.startsWith("emoji:")
     ? rawUrl.slice("emoji:".length).trim() || null
     : null;

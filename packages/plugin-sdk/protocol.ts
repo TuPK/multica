@@ -20,7 +20,7 @@
 export const BRIDGE_PROTOCOL_VERSION = 2;
 
 /**
- * Installed by Multica's bootstrap before any plugin code executes. The guest
+ * Installed by Delegora's bootstrap before any plugin code executes. The guest
  * creates this port; the trusted wrapper transfers its peer to the host only
  * after the launch challenge and navigation policy have passed.
  */

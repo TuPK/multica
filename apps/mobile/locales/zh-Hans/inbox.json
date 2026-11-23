@@ -41,9 +41,9 @@
     "billing_disabled": "该工作区无法修改账单设置。请联系工作区管理员。",
     "contact_admin": "请让工作区所有者或管理员升级套餐或加购执行次数。",
     "review_billing": "查看账单选项",
-    "review_billing_web": "在网页端打开 Multica 查看账单选项。",
+    "review_billing_web": "在网页端打开 Delegora 查看账单选项。",
     "buy_runs": "加购执行次数",
-    "buy_runs_web": "在网页端打开 Multica 加购执行次数。"
+    "buy_runs_web": "在网页端打开 Delegora 加购执行次数。"
   },
   "type": {
     "assigned": "已分配",

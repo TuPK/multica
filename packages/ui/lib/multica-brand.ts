@@ -1,5 +1,5 @@
 /**
- * Multica brand geometry — brand guidelines v5 (MUL-8687).
+ * Delegora brand geometry — brand guidelines v5 (MUL-8687).
  *
  * Two shapes. The star: four straight strokes through one centre, 45° apart,
  * eight equal arms with flat ends cut on one circle. The wordmark (G2): drawn

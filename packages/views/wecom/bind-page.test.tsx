@@ -103,8 +103,8 @@ describe("WecomBindPage", () => {
   it.each([
     ["410", /invalid or expired/i],
     ["expired", /invalid or expired/i],
-    ["409", /already linked to another Multica account/i],
-    ["already bound", /already linked to another Multica account/i],
+    ["409", /already linked to another Delegora account/i],
+    ["already bound", /already linked to another Delegora account/i],
     ["403", /isn't a member of this workspace/i],
     ["workspace member", /isn't a member of this workspace/i],
     ["something exploded", /something went wrong/i],

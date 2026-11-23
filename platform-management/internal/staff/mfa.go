@@ -17,7 +17,7 @@ type MFAQueries interface {
 	UseUserMFAStep(ctx context.Context, arg db.UseUserMFAStepParams) (int64, error)
 }
 
-// MFAStore reads the second factor that Multica stores for a user, and takes a
+// MFAStore reads the second factor that Delegora stores for a user, and takes a
 // TOTP step once. It is the platformauth MFAStore and the mfa.Sampler.
 type MFAStore struct{ q MFAQueries }
 

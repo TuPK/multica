@@ -412,7 +412,7 @@ type InsertDeletionRequestParams struct {
 }
 
 // Staff deletion requests (spec R6 section 6). The platform writes the request
-// and cancels or retries it; Multica's staff_deletion job moves it on and writes
+// and cancels or retries it; Delegora's staff_deletion job moves it on and writes
 // state, error_code, attempts, target_label, updated_at and completed_at.
 // Inserts a pending request. A live request for the same target makes the
 // insert return no row (partial unique index of migration 1027); the caller

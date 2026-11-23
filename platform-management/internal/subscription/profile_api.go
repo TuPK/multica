@@ -15,13 +15,13 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
-// ProfilePattern is the route Multica's billing proxy forwards
+// ProfilePattern is the route Delegora's billing proxy forwards
 // PUT /api/cloud-subscriptions/billing-profile to. Like the other Cloud routes
 // it carries X-User-ID and no credential.
 const ProfilePattern = "PUT /api/v1/subscriptions/{ws}/billing-profile"
 
 // ProfileReadPattern is the route GET /api/cloud-subscriptions/billing-profile
-// is forwarded to. Any member of the workspace may read; Multica's billing.view
+// is forwarded to. Any member of the workspace may read; Delegora's billing.view
 // check runs before the call.
 const ProfileReadPattern = "GET /api/v1/subscriptions/{ws}/billing-profile"
 

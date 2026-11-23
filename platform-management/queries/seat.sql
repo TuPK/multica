@@ -4,7 +4,7 @@
 
 -- name: LockSeatWorkspace :exec
 -- A transaction-scoped advisory lock in the two-key form, namespace first. It
--- cannot collide with Multica's WorkspaceLocker, which takes a one-key bigint
+-- cannot collide with Delegora's WorkspaceLocker, which takes a one-key bigint
 -- session lock (Appendix B rule 6).
 SELECT pg_advisory_xact_lock($1::int, $2::int);
 

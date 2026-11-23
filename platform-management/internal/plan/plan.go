@@ -18,7 +18,7 @@ import (
 )
 
 // The gates a plan carries a limit for. The entitlement policy serves the first
-// seven (spec 5.7); Multica enforces the first five and reads the next two for
+// seven (spec 5.7); Delegora enforces the first five and reads the next two for
 // the API rate limit and the audit retention job. GateMemberGroups is read by
 // the member-group feature (spec 7b.2) and is not served by the policy yet.
 const (

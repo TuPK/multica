@@ -1,7 +1,7 @@
 import type { HubItemKind, HubSourceType } from "../hub/items";
 
 /**
- * A place Multica imports hub items from. Sources are workspace-scoped; the
+ * A place Delegora imports hub items from. Sources are workspace-scoped; the
  * items they bring in are ordinary skills or plugin packages afterwards.
  */
 export interface HubSource {

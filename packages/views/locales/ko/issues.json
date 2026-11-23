@@ -1083,7 +1083,7 @@
       "remove_item": "{{value}} 제거",
       "archived_hint": "보관된 속성 — 값은 읽기 전용입니다",
       "unknown_value": "표시할 수 없음",
-      "unknown_value_hint": "이 값은 최신 버전의 Multica에서 설정되어 여기서는 편집할 수 없습니다. 앱을 업데이트하거나 값을 지우세요"
+      "unknown_value_hint": "이 값은 최신 버전의 Delegora에서 설정되어 여기서는 편집할 수 없습니다. 앱을 업데이트하거나 값을 지우세요"
     },
     "filter_options_aria": "필터 옵션",
     "no_results": "결과 없음",
@@ -1568,7 +1568,7 @@
     "link_placeholder": "PR URL 붙여넣기",
     "link_hint": "제목이나 브랜치 이름에 {{identifier}}가 있는 PR은 자동으로 연결됩니다.",
     "link_submit": "연결",
-    "link_not_found": "Multica가 아직 이 PR을 받지 못했습니다. 저장소가 연결되어 있는지 확인하세요.",
+    "link_not_found": "Delegora가 아직 이 PR을 받지 못했습니다. 저장소가 연결되어 있는지 확인하세요.",
     "link_failed": "PR을 연결하지 못했습니다.",
     "row_menu": "PR 작업",
     "section_menu": "PR 자동화",
@@ -2036,7 +2036,7 @@
     "setup_check_daily": "일일 브리프",
     "setup_check_weekly": "주간 리뷰 일시 중지됨",
     "setup_check_done": "완료",
-    "setup_runtime_missing": "Multica 데몬이 실행되는 컴퓨터에 Hermes를 설치한 뒤 다시 시도하세요.",
+    "setup_runtime_missing": "Delegora 데몬이 실행되는 컴퓨터에 Hermes를 설치한 뒤 다시 시도하세요.",
     "setup_install_guide": "설치 가이드",
     "setup_retry": "다시 시도",
     "setup_read_only": "설정은 소유자나 관리자가 완료합니다",
@@ -2460,7 +2460,7 @@
     "open_in_desktop": "데스크톱에서 열기"
   },
   "desktop": {
-    "link_other_instance": "데스크톱 앱이 다른 Multica 인스턴스에 연결되어 있습니다.",
+    "link_other_instance": "데스크톱 앱이 다른 Delegora 인스턴스에 연결되어 있습니다.",
     "link_workspace_unavailable": "데스크톱 앱에서 이 워크스페이스를 사용할 수 없습니다."
   },
   "app_calls": {
@@ -2530,7 +2530,7 @@
     "detected_label": "자동 감지된 서비스 · {{name}}",
     "detected_no_logs": "이 서비스는 환경 설정으로 시작되지 않아 로그를 볼 수 없고 재시작할 수도 없습니다.",
     "offline_hint": "이 기기가 다시 온라인이 되면 사용할 수 있습니다.",
-    "outdated_hint": "이 기기의 Multica를 업데이트하면 여기서 관리할 수 있습니다.",
+    "outdated_hint": "이 기기의 Delegora를 업데이트하면 여기서 관리할 수 있습니다.",
     "no_permission_hint": "이 기기를 사용할 수 있는 멤버만 중지하거나 재시작할 수 있습니다.",
     "waiting_machine": "기기 응답 대기 중",
     "waiting_ready": "서비스 준비 대기 중",
@@ -2580,12 +2580,12 @@
       "exit_divider_code": "{{time}} 종료 · 종료 코드 {{code}}",
       "stopped_divider": "{{time}} 중지"
     },
-    "app_desktop_hint": "데스크톱 앱입니다. 실행 중인 머신의 Multica Desktop에서 창으로 전환할 수 있습니다.",
-    "app_remote_hint": "{{machine}}에서 실행 중입니다. 해당 머신의 Multica Desktop에서 창으로 전환할 수 있습니다.",
+    "app_desktop_hint": "데스크톱 앱입니다. 실행 중인 머신의 Delegora Desktop에서 창으로 전환할 수 있습니다.",
+    "app_remote_hint": "{{machine}}에서 실행 중입니다. 해당 머신의 Delegora Desktop에서 창으로 전환할 수 있습니다.",
     "focus": "창으로 전환",
     "focus_gone": "{{name}}이(가) 더 이상 실행되고 있지 않습니다",
-    "focus_unsupported": "이 머신의 Multica는 아직 앱 창 전환을 지원하지 않습니다. Multica를 업데이트한 뒤 다시 시도하세요.",
-    "focus_unavailable": "Multica 로컬 서비스가 실행되고 있지 않습니다",
+    "focus_unsupported": "이 머신의 Delegora는 아직 앱 창 전환을 지원하지 않습니다. Delegora를 업데이트한 뒤 다시 시도하세요.",
+    "focus_unavailable": "Delegora 로컬 서비스가 실행되고 있지 않습니다",
     "focus_failed": "{{name}}(으)로 전환할 수 없습니다",
     "retry": "다시 시도",
     "dismiss": "닫기"

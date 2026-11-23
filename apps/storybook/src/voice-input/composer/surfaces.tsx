@@ -250,7 +250,7 @@ export function IssuePage({ width = 720, height = 760, className }: { width?: nu
       style={{ width, height }}
     >
       <div className="flex items-center gap-1.5 border-b px-6 py-2.5 text-caption text-muted-foreground">
-        <span>Multica</span>
+        <span>Delegora</span>
         <ChevronRight className="size-3" />
         <span className="font-medium text-foreground">{copy.issueKey}</span>
       </div>

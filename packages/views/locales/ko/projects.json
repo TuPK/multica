@@ -172,7 +172,7 @@
     "mode_auto_merge_label": "완료된 실행을 체크아웃된 브랜치에 병합",
     "mode_auto_merge_description": "실행이 완료되면 해당 브랜치를 이 저장소에서 체크아웃된 브랜치에 병합하고 브랜치를 삭제합니다. 커밋되지 않은 변경 사항이 있거나 detached HEAD이면 건너뜁니다. 충돌은 직접 해결해 주세요.",
     "mode_worktree_needs_git": "이 폴더는 git 저장소가 아니어서 병렬로 실행할 수 없습니다.",
-    "mode_worktree_needs_server_upgrade": "Multica 서버가 오래되어 병렬 실행이 이 폴더에서 직접 실행됩니다. 먼저 서버를 업데이트하세요.",
+    "mode_worktree_needs_server_upgrade": "Delegora 서버가 오래되어 병렬 실행이 이 폴더에서 직접 실행됩니다. 먼저 서버를 업데이트하세요.",
     "mode_cancel": "취소",
     "mode_add": "폴더 추가",
     "mode_edit_tooltip": "실행 모드 변경",

@@ -383,7 +383,7 @@ function renderInput(props: Partial<React.ComponentProps<typeof ChatInput>> = {}
   const onSend = props.onSend ?? vi.fn();
   const view = render(
     <I18nProvider locale="en" resources={TEST_RESOURCES}>
-      <ChatInput onSend={onSend} uploadEnabled agentName="Multica" {...props} />
+      <ChatInput onSend={onSend} uploadEnabled agentName="Delegora" {...props} />
     </I18nProvider>,
   );
   return { onSend, ...view };
@@ -392,7 +392,7 @@ function renderInput(props: Partial<React.ComponentProps<typeof ChatInput>> = {}
 function element(props: Partial<React.ComponentProps<typeof ChatInput>>) {
   return (
     <I18nProvider locale="en" resources={TEST_RESOURCES}>
-      <ChatInput onSend={vi.fn()} uploadEnabled agentName="Multica" {...props} />
+      <ChatInput onSend={vi.fn()} uploadEnabled agentName="Delegora" {...props} />
     </I18nProvider>
   );
 }
@@ -400,7 +400,7 @@ function element(props: Partial<React.ComponentProps<typeof ChatInput>>) {
 describe("ChatInput annotations", () => {
   const key = "chat:session-1" as const;
   const annotation = {
-    id: "ann-1", sourceCommentId: "msg-1", sourceActorName: "Multica",
+    id: "ann-1", sourceCommentId: "msg-1", sourceActorName: "Delegora",
     quote: "Use the cache.", note: "Why not the DB?", start: 0, prefix: "", suffix: "",
   };
   const slot = { draftKey: key, composer: undefined, editAnnotation: () => true };
@@ -591,7 +591,7 @@ describe("ChatInput focusRequest", () => {
   it("focuses the editor when focusRequest becomes a non-zero value (new chat)", () => {
     const { rerender } = render(
       <I18nProvider locale="en" resources={TEST_RESOURCES}>
-        <ChatInput onSend={vi.fn()} agentName="Multica" focusRequest={0} />
+        <ChatInput onSend={vi.fn()} agentName="Delegora" focusRequest={0} />
       </I18nProvider>,
     );
     // The inert initial value must not steal focus (e.g. a plain deep-link open).
@@ -600,7 +600,7 @@ describe("ChatInput focusRequest", () => {
     // Starting a new chat bumps the nonce — the compose box grabs focus.
     rerender(
       <I18nProvider locale="en" resources={TEST_RESOURCES}>
-        <ChatInput onSend={vi.fn()} agentName="Multica" focusRequest={1} />
+        <ChatInput onSend={vi.fn()} agentName="Delegora" focusRequest={1} />
       </I18nProvider>,
     );
     expect(editorState.focused).toBe(1);
@@ -608,7 +608,7 @@ describe("ChatInput focusRequest", () => {
     // Each subsequent new chat re-focuses.
     rerender(
       <I18nProvider locale="en" resources={TEST_RESOURCES}>
-        <ChatInput onSend={vi.fn()} agentName="Multica" focusRequest={2} />
+        <ChatInput onSend={vi.fn()} agentName="Delegora" focusRequest={2} />
       </I18nProvider>,
     );
     expect(editorState.focused).toBe(2);
@@ -1938,9 +1938,9 @@ describe("ChatInput revoked-access placeholder", () => {
   });
 
   it("leaves the normal placeholder alone when access is intact", () => {
-    renderInput({ agentName: "Multica" });
+    renderInput({ agentName: "Delegora" });
 
-    expect(editorProps.last?.placeholder).toBe("Message Multica...");
+    expect(editorProps.last?.placeholder).toBe("Message Delegora...");
   });
 });
 
@@ -1965,7 +1965,7 @@ describe("ChatInput send disabled reason", () => {
   });
 
   it("stays natively disabled when the composer is only empty", () => {
-    renderInput({ agentName: "Multica" });
+    renderInput({ agentName: "Delegora" });
 
     expect(sendButton()).toBeDisabled();
     expect(sendButton()).not.toHaveAttribute("aria-disabled");

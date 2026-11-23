@@ -61,7 +61,7 @@ export const ACTORS = {
 /**
  * Generates realistic multi-comment history (12–16 comments per issue, ~3,000–4,500px tall)
  * with embedded screenshots placed BOTH above and inside the target comment so scroll
- * landing, async image CLS, and network request latency behave like real Multica issues.
+ * landing, async image CLS, and network request latency behave like real Delegora issues.
  */
 function buildLongTimeline(opts: {
   issueTag: string;
@@ -243,7 +243,7 @@ export function createSeedIssues(): DemoInboxIssue[] {
           "这版 Storybook 原型为每条任务构造了 12–16 条长评论（3,500px+ 高度）和 3 张异步加载图片，并在顶部提供 0ms / 250ms / 600ms 三档真实请求延迟与实时预热状态——既可以体验正常阅读节奏下的预取命中，也可以狂按 E 冲出预取窗口看真实加载态的表现。",
         ],
         en: [
-          "Real Multica issues have 12–20+ long agent comments, multiple embedded screenshots, and 200–600ms network requests. Today's transition stacks a 40px InboxBar drop, cold Skeleton flash, right-sidebar blanking, top-of-page scroll teleport, and late image CLS.",
+          "Real Delegora issues have 12–20+ long agent comments, multiple embedded screenshots, and 200–600ms network requests. Today's transition stacks a 40px InboxBar drop, cold Skeleton flash, right-sidebar blanking, top-of-page scroll teleport, and late image CLS.",
           "This upgraded Storybook workbench gives every issue 12–16 long comments (3,500px+ tall), 3 async-loading screenshots above the target comment, and selectable 0ms / 250ms / 600ms network latency with live anchor prefetch.",
         ],
       },

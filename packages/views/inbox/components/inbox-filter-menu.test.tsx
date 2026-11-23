@@ -30,7 +30,7 @@ vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("@multica/core/workspace/hooks", () => ({
   useActorName: () => ({
     getActorName: (type: string, id: string) =>
-      type === "system" ? "Multica" : (ACTOR_NAMES[id] ?? "Unknown"),
+      type === "system" ? "Delegora" : (ACTOR_NAMES[id] ?? "Unknown"),
     getActorInitials: () => "??",
     getActorAvatarUrl: () => null,
   }),

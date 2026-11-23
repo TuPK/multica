@@ -1,5 +1,5 @@
 -- Usage numbers for the console (platform spec 5.13). The platform reads the
--- table that Multica's nightly job writes; it never computes the daily numbers.
+-- table that Delegora's nightly job writes; it never computes the daily numbers.
 --
 -- GetCurrentWorkspaceCounts reads the content tables to count them, and only to
 -- count them: each subquery is a bare count or sum filtered by the workspace id.

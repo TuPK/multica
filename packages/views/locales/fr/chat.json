@@ -8,10 +8,10 @@
     "agent_link_no_access": "Vous n'avez pas accès à la discussion avec cet agent."
   },
   "fab": {
-    "running": "Multica travaille...",
+    "running": "Delegora travaille...",
     "unread_one": "{{count}} discussion non lue",
     "unread_other": "{{count}} discussions non lues",
-    "default": "Demander à Multica"
+    "default": "Demander à Delegora"
   },
   "bar": {
     "history": "Historique des discussions",
@@ -172,7 +172,7 @@
     "first_time_pillars_suffix": ".",
     "first_time_actions": "Demandez un résumé, planifiez votre journée, ou confiez une tâche rapide.",
     "returning_title_named": "Bonjour, je suis {{name}}",
-    "returning_title_default": "Bienvenue sur Multica",
+    "returning_title_default": "Bienvenue sur Delegora",
     "returning_subtitle": "Essayez de demander",
     "chat_with_named": "Discuter avec {{name}}"
   },

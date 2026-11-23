@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ==========================================================================
-# Install an agent pack into the current Multica workspace: import its skills,
+# Install an agent pack into the current Delegora workspace: import its skills,
 # create its agent, and attach the skills to the agent.
 #
 # Usage: bash scripts/install-agent-pack.sh <pack-dir> [options]

@@ -107,7 +107,7 @@ func parseStaffRole(s string) (staff.Role, *apiError) {
 	return r, nil
 }
 
-// parseEmail lower-cases and trims an address, as Multica stores them, and
+// parseEmail lower-cases and trims an address, as Delegora stores them, and
 // accepts a bare address only.
 func parseEmail(s string) (string, *apiError) {
 	s = strings.ToLower(strings.TrimSpace(s))
@@ -193,7 +193,7 @@ func parseListParams(q url.Values) (listParams, *apiError) {
 }
 
 // auditActions are the names the action filter accepts: every action of the
-// audit package's catalogue, the one list that the workspace log of Multica
+// audit package's catalogue, the one list that the workspace log of Delegora
 // reads too.
 var auditActions = func() map[string]bool {
 	m := make(map[string]bool, len(audit.Catalog))
@@ -214,7 +214,7 @@ type auditParams struct {
 }
 
 // parseAuditParams reads the audit list filters with the rules of the
-// workspace log in Multica: limit, cursor, action, actor_id, from (inclusive)
+// workspace log in Delegora: limit, cursor, action, actor_id, from (inclusive)
 // and to (exclusive).
 func parseAuditParams(q url.Values) (auditParams, *apiError) {
 	var p auditParams

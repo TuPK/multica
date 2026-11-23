@@ -1,4 +1,4 @@
-// Brand host shown as the workspace URL prefix on the managed Multica Cloud,
+// Brand host shown as the workspace URL prefix on the managed Delegora Cloud,
 // and the fallback whenever the deployment exposes no app URL. `/api/config`
 // deliberately omits `daemon_app_url` for the managed cloud (and for any
 // self-hosted server that has not set MULTICA_APP_URL / FRONTEND_ORIGIN), so

@@ -39,7 +39,7 @@ function Hero() {
     <SurfaceHero
       eyebrow="Chat integrations"
       title="Your agents, in your team chat."
-      subtitle="No need to open Multica."
+      subtitle="No need to open Delegora."
       lead="Connect an agent to a bot in Slack, Lark, DingTalk, WeCom, Telegram, or WeChat. Message it directly, mention it in a group, or turn a message into an issue."
       actions={
         <>
@@ -73,7 +73,7 @@ const WAYS: Walkthrough[] = [
   },
   {
     title: "Turn it into an issue",
-    body: "Type /issue and a title. The issue lands in Multica, ready to assign to an agent or a teammate.",
+    body: "Type /issue and a title. The issue lands in Delegora, ready to assign to an agent or a teammate.",
     visual: IssueCommandVisual,
   },
 ];
@@ -93,9 +93,9 @@ function WaysIn() {
 
 const JOURNEY: { title: string; body: string }[] = [
   { title: "You message the Bot", body: "In a direct message, or with an @-mention in a group." },
-  { title: "Multica finds the agent", body: "Each Bot belongs to one agent in one workspace." },
+  { title: "Delegora finds the agent", body: "Each Bot belongs to one agent in one workspace." },
   { title: "It checks who you are", body: "Your chat account must be linked to a member of that workspace." },
-  { title: "The agent runs", body: "The message joins an agent chat, the same as one sent in Multica." },
+  { title: "The agent runs", body: "The message joins an agent chat, the same as one sent in Delegora." },
   { title: "The reply comes back", body: "In the same direct message or thread you wrote in." },
 ];
 
@@ -140,7 +140,7 @@ function Journey() {
 
 const COMMANDS: { command: string; body: string }[] = [
   { command: "/issue <title>", body: "Create an issue in the agent’s workspace." },
-  { command: "/new [message]", body: "Start a fresh Multica chat. The old one stays in Multica." },
+  { command: "/new [message]", body: "Start a fresh Delegora chat. The old one stays in Delegora." },
   { command: "/clear [message]", body: "Keep the chat, but start the agent on a clean context." },
 ];
 
@@ -181,7 +181,7 @@ function Commands() {
 
 const PLATFORMS: { id: ChannelId; setup: string; groups: string; connection: string; community?: boolean }[] = [
   { id: "slack", setup: "Create a Slack app and paste two tokens", groups: "@-mention the Bot", connection: "Socket Mode" },
-  { id: "lark", setup: "Scan a QR code from Multica", groups: "@-mention the Bot", connection: "Long connection" },
+  { id: "lark", setup: "Scan a QR code from Delegora", groups: "@-mention the Bot", connection: "Long connection" },
   {
     id: "dingtalk",
     setup: "Create a Stream-mode robot and paste its AppKey and AppSecret",
@@ -211,7 +211,7 @@ function Platforms() {
       <Container>
         <SectionHeader
           title="Pick your platform"
-          lead="Each one installs a little differently, but none needs a public webhook: Multica keeps the connection open itself."
+          lead="Each one installs a little differently, but none needs a public webhook: Delegora keeps the connection open itself."
         />
         <div className="mt-site-block">
           <div className="grid grid-cols-[minmax(0,12rem)_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,9rem)] gap-x-6 border-b border-site-ink pb-3 text-site-small text-site-ink max-lg:hidden">
@@ -264,7 +264,7 @@ const ACCESS: Feature[] = [
   {
     icon: Link2,
     title: "Linked accounts only",
-    body: "The first time someone messages a Bot, they get a link to sign in and connect their chat account to Multica.",
+    body: "The first time someone messages a Bot, they get a link to sign in and connect their chat account to Delegora.",
   },
   {
     icon: ShieldCheck,

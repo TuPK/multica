@@ -130,7 +130,7 @@ describe("PublishChannelsTab", () => {
         id: "pc-not-connected",
         platform: "linkedin",
         market: "intl",
-        account_name: "Multica Inc",
+        account_name: "Delegora Inc",
         status: "not_connected",
         status_detail: "",
         last_checked_at: null,
@@ -140,7 +140,7 @@ describe("PublishChannelsTab", () => {
         id: "pc-error",
         platform: "facebook",
         market: "vn",
-        account_name: "Multica Vietnam",
+        account_name: "Delegora Vietnam",
         status: "error",
         status_detail: "Token revoked or permissions changed",
         last_checked_at: "2026-11-12T07:00:00Z",
@@ -162,8 +162,8 @@ describe("PublishChannelsTab", () => {
 
     // Check account names
     expect(screen.getByText("@multica_hq")).toBeInTheDocument();
-    expect(screen.getByText("Multica Inc")).toBeInTheDocument();
-    expect(screen.getByText("Multica Vietnam")).toBeInTheDocument();
+    expect(screen.getByText("Delegora Inc")).toBeInTheDocument();
+    expect(screen.getByText("Delegora Vietnam")).toBeInTheDocument();
     expect(screen.getByText("multica_vn")).toBeInTheDocument();
 
     // Check state badges
@@ -223,7 +223,7 @@ describe("PublishChannelsTab", () => {
       id: "pc-li",
       platform: "linkedin",
       market: "vn",
-      account_name: "Multica VN",
+      account_name: "Delegora VN",
       status: "not_connected",
     });
 
@@ -236,14 +236,14 @@ describe("PublishChannelsTab", () => {
     await user.click(screen.getByRole("combobox", { name: "Market" }));
     await user.click(await screen.findByRole("option", { name: "Vietnam (vn)" }));
 
-    await user.type(screen.getByPlaceholderText("@username or page name"), "Multica VN");
+    await user.type(screen.getByPlaceholderText("@username or page name"), "Delegora VN");
     await user.click(screen.getByRole("button", { name: "Add channel" }));
 
     await waitFor(() => {
       expect(mockCreate).toHaveBeenCalledWith({
         platform: "linkedin",
         market: "vn",
-        account_name: "Multica VN",
+        account_name: "Delegora VN",
       });
     });
   });
@@ -254,7 +254,7 @@ describe("PublishChannelsTab", () => {
         id: "pc-1",
         platform: "linkedin",
         market: "intl",
-        account_name: "Multica Inc",
+        account_name: "Delegora Inc",
         status: "not_connected",
         status_detail: "",
         last_checked_at: null,
@@ -327,7 +327,7 @@ describe("PublishChannelsTab", () => {
     ];
 
     mockDryRun.mockResolvedValueOnce({
-      post: "Multica dry-run test body",
+      post: "Delegora dry-run test body",
       platforms: ["x"],
     });
 
@@ -352,7 +352,7 @@ describe("PublishChannelsTab", () => {
       });
       const output = screen.getByTestId("dry-run-json-output");
       expect(output).toBeInTheDocument();
-      expect(output.textContent).toContain("Multica dry-run test body");
+      expect(output.textContent).toContain("Delegora dry-run test body");
     });
   });
 
@@ -384,7 +384,7 @@ describe("PublishChannelsTab", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Removes the channel from Multica. The account stays linked on its network until you unlink it there.",
+        "Removes the channel from Delegora. The account stays linked on its network until you unlink it there.",
       ),
     ).toBeInTheDocument();
 

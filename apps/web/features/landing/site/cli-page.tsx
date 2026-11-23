@@ -32,8 +32,8 @@ function Hero() {
   const docsHref = useCliDocsHref();
   return (
     <SurfaceHero
-      eyebrow="Multica CLI"
-      title="Multica from your terminal."
+      eyebrow="Delegora CLI"
+      title="Delegora from your terminal."
       subtitle="And from every agent you run."
       lead="The multica command connects a computer as a runtime, then lets you, a script, or another coding agent work with issues, comments, and agents from the shell."
       actions={
@@ -67,9 +67,9 @@ const INSTALL: { title: string; body: string; code: CodeVariant[] }[] = [
   },
   {
     title: "Connect the computer",
-    body: "Setup saves the server, signs you in through the browser, and starts the daemon. Running your own Multica? Give it your server’s addresses.",
+    body: "Setup saves the server, signs you in through the browser, and starts the daemon. Running your own Delegora? Give it your server’s addresses.",
     code: [
-      { label: "Multica Cloud", code: "multica setup" },
+      { label: "Delegora Cloud", code: "multica setup" },
       {
         label: "Self-hosted",
         code: "multica setup self-host \\\n  --server-url https://api.example.com \\\n  --app-url https://app.example.com",
@@ -168,7 +168,7 @@ function AgentDriven() {
             <span className="block text-site-muted">Without leaving its session.</span>
           </h2>
           <p className="mt-3 max-w-[30rem] text-site-body text-site-muted text-pretty">
-            The Multica CLI skill teaches Codex, Claude Code, Cursor, and other agents to work with Multica through the
+            The Delegora CLI skill teaches Codex, Claude Code, Cursor, and other agents to work with Delegora through the
             commands on this page.
           </p>
           <CheckList

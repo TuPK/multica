@@ -27,7 +27,7 @@ type Loader struct {
 
 // Inputs implements Source. A workspace with no subscription row is on the free
 // plan at version 0. A subscription on a plan that no longer exists is an
-// error: the caller answers 5xx, which Multica reads as "platform unavailable",
+// error: the caller answers 5xx, which Delegora reads as "platform unavailable",
 // rather than guessing a plan.
 func (l Loader) Inputs(ctx context.Context, workspaceID string) (Inputs, error) {
 	sub, found, err := l.Subscriptions.Get(ctx, workspaceID)

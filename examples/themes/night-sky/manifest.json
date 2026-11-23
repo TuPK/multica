@@ -3,7 +3,7 @@
   "id": "night-sky",
   "name": "Night Sky",
   "version": "1.0.0",
-  "author": "Multica",
+  "author": "Delegora",
   "description": "A slowly drifting sky behind a frosted page: night in dark mode, dawn in light mode.",
   "options": [
     { "id": "glass", "type": "heading", "label": "Glass" },

@@ -59,7 +59,7 @@ type Directory interface {
 	EmailByUserID(ctx context.Context, userID string) (string, error)
 }
 
-// MFAStore reads the second factor a staff member enrolled in the Multica web
+// MFAStore reads the second factor a staff member enrolled in the Delegora web
 // app (the user_mfa table).
 type MFAStore interface {
 	// ConfirmedMFA returns the sealed secret and the last used time step of the
@@ -75,7 +75,7 @@ type Seeder interface {
 	SeedEmail(ctx context.Context, email string) error
 }
 
-// Guard reads a Multica account's state. *accountguard.Guard satisfies it.
+// Guard reads a Delegora account's state. *accountguard.Guard satisfies it.
 type Guard interface {
 	State(ctx context.Context, userID string) (accountguard.Record, error)
 }
@@ -245,7 +245,7 @@ func (h *Handler) allow(ctx context.Context, key string, limit int) bool {
 }
 
 // eligible reports whether the user may sign in: an active staff row and an
-// active Multica account.
+// active Delegora account.
 func (h *Handler) eligible(ctx context.Context, userID string) (staff.Role, bool, error) {
 	role, _, found, err := h.Directory.ActiveStaff(ctx, userID)
 	if err != nil || !found {
@@ -468,7 +468,7 @@ func (h *Handler) devSignIn(ctx context.Context, email string) (string, staff.Ro
 }
 
 // checkSecondFactor finds the staff member and checks their TOTP code against
-// the secret they enrolled in Multica. It refuses a staff member with no
+// the secret they enrolled in Delegora. It refuses a staff member with no
 // confirmed second factor, and whenever the secret cannot be read or opened.
 func (h *Handler) checkSecondFactor(ctx context.Context, hash, email, totp string) (string, staff.Role, int64, verifyResult) {
 	userID, found, err := h.Directory.UserIDByEmail(ctx, email)

@@ -8,10 +8,10 @@ import type { RuntimeUnavailableModel } from "@multica/core/types";
  *
  * These rows exist so a missing model reads as what it is. Claude Code stops
  * offering a model its own version cannot run, and simply dropping it from the
- * list would tell the user Multica does not support the model when the truth is
+ * list would tell the user Delegora does not support the model when the truth is
  * that their CLI does not yet — with the fix one `claude update` away. The
  * reason is the runtime's own copy ("Update to 2.1.255+ to use Fable 5.1"), so
- * the guidance stays correct without Multica tracking version floors (MUL-6961).
+ * the guidance stays correct without Delegora tracking version floors (MUL-6961).
  *
  * Rendered as plain text, never as a control: nothing here is selectable, and
  * the component takes no click handler so no caller can make it one. That is

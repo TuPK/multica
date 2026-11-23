@@ -176,7 +176,7 @@ export function formatCredits(n: number): string {
  * A run's spend for display. Credits have no USD rate, so a credit-billed run
  * shows its credits and a mix shows both; `creditsLabel` supplies the
  * translated unit and provider name. Different providers' credits cannot
- * be added together or combined with Multica's own billing credits.
+ * be added together or combined with Delegora's own billing credits.
  */
 export function formatSpend(
   usage: Pick<TaskUsageSummary, "cost" | "credits">,

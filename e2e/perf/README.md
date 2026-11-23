@@ -244,7 +244,7 @@ Each step reports the time from the click until the content is in view, the
 next paint (Event Timing), main-thread task time and Long Animation Frames,
 plus mounted DOM nodes. Every launch gets a fresh app-data directory and a
 temporary HOME with daemon auto-start off, so it never touches an installed
-Multica, its CLI profiles or its daemon, and hands the `multica://` handler
+Delegora, its CLI profiles or its daemon, and hands the `multica://` handler
 back on exit.
 
 ```bash

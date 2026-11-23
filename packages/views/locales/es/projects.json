@@ -176,7 +176,7 @@
     "mode_auto_merge_label": "Fusionar las ejecuciones terminadas en la rama activa",
     "mode_auto_merge_description": "Cuando una ejecución termina, su rama se fusiona en la rama activa de este repositorio y se elimina. Se omite si el repositorio tiene cambios sin confirmar o un HEAD desacoplado; los conflictos quedan para que los resuelvas.",
     "mode_worktree_needs_git": "Esta carpeta no es un repositorio git, así que no puede ejecutarse en paralelo.",
-    "mode_worktree_needs_server_upgrade": "Tu servidor de Multica es demasiado antiguo para ejecuciones en paralelo y las haría en esta carpeta. Actualiza primero el servidor.",
+    "mode_worktree_needs_server_upgrade": "Tu servidor de Delegora es demasiado antiguo para ejecuciones en paralelo y las haría en esta carpeta. Actualiza primero el servidor.",
     "mode_cancel": "Cancelar",
     "mode_add": "Añadir carpeta",
     "mode_edit_tooltip": "Cambiar modo de ejecución",

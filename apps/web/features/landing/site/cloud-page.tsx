@@ -49,7 +49,7 @@ function Hero() {
   const guideHref = useSetupGuideHref();
   return (
     <SurfaceHero
-      eyebrow="Multica Cloud"
+      eyebrow="Delegora Cloud"
       title="Agents that run in the cloud."
       subtitle="Assigned like any teammate."
       lead="Connect a cloud agent service as a runtime, and your agents take issues without a computer of yours staying on. Qoder Cloud Agents works today, with Cursor and Claude next."
@@ -80,7 +80,7 @@ const STEPS: Walkthrough[] = [
   },
   {
     title: "Link an agent",
-    body: "Create a Multica agent and choose the QCA Agent it runs as. Its model, tools, and skills stay set up in Qoder.",
+    body: "Create a Delegora agent and choose the QCA Agent it runs as. Its model, tools, and skills stay set up in Qoder.",
     visual: LinkAgentVisual,
   },
   {
@@ -243,7 +243,7 @@ function Availability({ available }: { available: boolean }) {
 
 const COMPARE: CompareRow[] = [
   { label: "A computer left on", values: ["Not needed", "Needed while agents run"] },
-  { label: "Model, tools, and skills", values: ["Set up in the cloud service", "Set on the agent in Multica"] },
+  { label: "Model, tools, and skills", values: ["Set up in the cloud service", "Set on the agent in Delegora"] },
   { label: "Code it can reach", values: ["GitHub repositories you authorize", "Anything on that computer"] },
   { label: "Chat with the agent", values: ["Not yet", "Supported"] },
   { label: "Local files and attachments", values: ["Not supported", "Supported"] },

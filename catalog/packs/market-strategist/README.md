@@ -17,7 +17,7 @@ The command is safe to repeat. It imports the skills, creates the agent on your 
 | Option | Use |
 |---|---|
 | `ARGS=--dry-run` | Show what would change; change nothing |
-| `ARGS=--update` | Overwrite the skills and the agent's instructions with this pack's version (this discards edits made in Multica) |
+| `ARGS=--update` | Overwrite the skills and the agent's instructions with this pack's version (this discards edits made in Delegora) |
 | `ARGS="--runtime-id <id>"` | Create the agent on a specific runtime |
 | `MULTICA_WORKSPACE_ID=<id>` | Install into another workspace |
 

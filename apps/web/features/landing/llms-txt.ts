@@ -29,7 +29,7 @@ function markdownText(text: string): string {
 }
 
 /**
- * `/llms.txt` for the marketing site (llmstxt.org): what Multica is, how to
+ * `/llms.txt` for the marketing site (llmstxt.org): what Delegora is, how to
  * start, and where the Markdown docs live. Every product fact comes from the
  * English dictionary the pages render, so the two cannot drift apart.
  */
@@ -48,7 +48,7 @@ export function buildLlmsTxt(
   const questions = faq.items.flatMap((item) => [`### ${item.question}`, "", markdownText(item.answer), ""]);
 
   return [
-    "# Multica",
+    "# Delegora",
     "",
     `> ${meta.home.description}`,
     "",
@@ -60,16 +60,16 @@ export function buildLlmsTxt(
     "",
     "## Get started",
     "",
-    `- **Multica Cloud**: Hosted by Multica. Sign in at ${SITE_ORIGIN} and follow the [Quickstart](${DOCS_URL}/cloud-quickstart.md).`,
+    `- **Delegora Cloud**: Hosted by Delegora. Sign in at ${SITE_ORIGIN} and follow the [Quickstart](${DOCS_URL}/cloud-quickstart.md).`,
     `- **Desktop app**: ${meta.download.description} [Download](${SITE_ORIGIN}/download) · [Desktop docs](${DOCS_URL}/desktop-app.md)`,
-    `- **Self-host**: Run Multica on your own infrastructure with Docker Compose or Kubernetes. [Self-host quickstart](${DOCS_URL}/self-host-quickstart.md)`,
-    `- **For AI agents installing Multica**: [Self-hosting setup for AI agents](${DOCS_URL}/self-hosting-ai.md) lists the exact commands to run.`,
+    `- **Self-host**: Run Delegora on your own infrastructure with Docker Compose or Kubernetes. [Self-host quickstart](${DOCS_URL}/self-host-quickstart.md)`,
+    `- **For AI agents installing Delegora**: [Self-hosting setup for AI agents](${DOCS_URL}/self-hosting-ai.md) lists the exact commands to run.`,
     "",
     "## Documentation",
     "",
     `- [Docs index](${DOCS_URL}/llms.txt): Every documentation page, as Markdown.`,
     `- [Full documentation](${DOCS_URL}/llms-full.txt): All English docs in one Markdown file.`,
-    `- [Supported AI coding tools](${DOCS_URL}/providers.md): The coding tools Multica runs and what each supports.`,
+    `- [Supported AI coding tools](${DOCS_URL}/providers.md): The coding tools Delegora runs and what each supports.`,
     `- [Source code](${githubUrl}): The public repository.`,
     "",
     "## FAQ",

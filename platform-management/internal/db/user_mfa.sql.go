@@ -30,7 +30,7 @@ WHERE confirmed_at IS NOT NULL
 LIMIT 1
 `
 
-// One confirmed row, for the start check that the key opens Multica's values.
+// One confirmed row, for the start check that the key opens Delegora's values.
 func (q *Queries) GetAnyConfirmedUserMFA(ctx context.Context) ([]byte, error) {
 	row := q.db.QueryRow(ctx, getAnyConfirmedUserMFA)
 	var secret_enc []byte
@@ -49,8 +49,8 @@ type GetConfirmedUserMFARow struct {
 	LastUsedStep int64  `json:"last_used_step"`
 }
 
-// The second factor Multica stores for a user (table user_mfa, enrolled in the
-// Multica web app). The platform reads a confirmed row to check the staff
+// The second factor Delegora stores for a user (table user_mfa, enrolled in the
+// Delegora web app). The platform reads a confirmed row to check the staff
 // sign-in and deletes a row when staff reset a user's second factor.
 func (q *Queries) GetConfirmedUserMFA(ctx context.Context, userID pgtype.UUID) (GetConfirmedUserMFARow, error) {
 	row := q.db.QueryRow(ctx, getConfirmedUserMFA, userID)

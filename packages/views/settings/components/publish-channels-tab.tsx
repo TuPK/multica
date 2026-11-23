@@ -181,7 +181,7 @@ export function PublishChannelsTab() {
   const [connectingId, setConnectingId] = useState<string | null>(null);
 
   const [dryRunTarget, setDryRunTarget] = useState<PublishChannel | null>(null);
-  const [dryRunText, setDryRunText] = useState("Multica Content Studio publish test");
+  const [dryRunText, setDryRunText] = useState("Delegora Content Studio publish test");
   const [dryRunMedia, setDryRunMedia] = useState("");
   const [dryRunResult, setDryRunResult] = useState<Record<string, unknown> | null>(null);
 
@@ -257,7 +257,7 @@ export function PublishChannelsTab() {
 
   const handleOpenDryRun = (channel: PublishChannel) => {
     setDryRunTarget(channel);
-    setDryRunText("Multica Content Studio publish preview");
+    setDryRunText("Delegora Content Studio publish preview");
     setDryRunMedia("");
     setDryRunResult(null);
   };

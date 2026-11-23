@@ -61,7 +61,7 @@ export function mapAuthError(err: unknown, fallback: string, t?: Translate): str
     ) {
       return translate(
         "verify.network",
-        "Can't reach Multica. Check your connection and retry.",
+        "Can't reach Delegora. Check your connection and retry.",
       );
     }
   }

@@ -457,7 +457,7 @@ export function AgentDetailPage({ agentId, onArchived }: AgentDetailPageProps) {
   const runningCount = presence?.runningCount ?? 0;
   const queuedCount = presence?.queuedCount ?? 0;
   const hasActiveWork = runningCount + queuedCount > 0;
-  // Multica's built-in agents cannot be archived — the server refuses it.
+  // Delegora's built-in agents cannot be archived — the server refuses it.
   const canArchive = canEdit.allowed && !isArchived && !agent.system_key;
 
   // Chat shares the invocation gate with assignment (MUL-3963): starting a

@@ -61,7 +61,7 @@
   "lark_bind": {
     "page_title": "Feishu / Lark アカウントを連携",
     "redeeming": "アカウントを連携しています...",
-    "needs_auth_description": "サインインして Feishu / Lark アカウントを Multica アカウントに連携してください。",
+    "needs_auth_description": "サインインして Feishu / Lark アカウントを Delegora アカウントに連携してください。",
     "sign_in": "ログイン",
     "done_title": "アカウントを連携しました",
     "done_description": "次回 Feishu / Lark でボットに送ったメッセージは、そのままエージェントに届きます。このタブは閉じて構いません。",
@@ -69,14 +69,14 @@
     "error_admin_hint": "問題が続く場合は、ワークスペース管理者に Lark から連携リンクを再送してもらってください。",
     "error_missing_token": "リンクにバインディングトークンが含まれていません。Lark のボットに新しいリンクを送ってもらってください。",
     "error_expired": "この連携リンクは無効か期限切れです（有効期間は 15 分）。ボットに新しいリンクを送ってもらってください。",
-    "error_already_bound": "この Feishu / Lark アカウントはすでに別の Multica アカウントに連携されています。先に元のアカウントで連携を解除してから、もう一度連携してください。",
-    "error_not_member": "現在ログイン中の Multica アカウントは、このワークスペースのメンバーではありません。",
+    "error_already_bound": "この Feishu / Lark アカウントはすでに別の Delegora アカウントに連携されています。先に元のアカウントで連携を解除してから、もう一度連携してください。",
+    "error_not_member": "現在ログイン中の Delegora アカウントは、このワークスペースのメンバーではありません。",
     "error_unknown": "問題が発生しました。もう一度試し、それでも解決しない場合はワークスペース管理者にお問い合わせください。"
   },
   "slack_bind": {
     "page_title": "Slack アカウントを連携",
     "redeeming": "アカウントを連携しています…",
-    "needs_auth_description": "サインインして Slack アカウントを Multica アカウントに連携してください。",
+    "needs_auth_description": "サインインして Slack アカウントを Delegora アカウントに連携してください。",
     "sign_in": "サインイン",
     "done_title": "アカウントを連携しました",
     "done_description": "次に Slack でボットへ送るメッセージは、そのままエージェントに届きます。このタブは閉じて構いません。",
@@ -84,14 +84,14 @@
     "error_admin_hint": "繰り返し発生する場合は、Slack でボットにもう一度メッセージを送って新しいリンクを取得してください。",
     "error_missing_token": "リンクにトークンがありません。Slack でボットにもう一度メッセージを送って新しいリンクを取得してください。",
     "error_expired": "このリンクは無効か期限切れです（有効期限は 15 分）。ボットにもう一度メッセージを送って新しいリンクを取得してください。",
-    "error_already_bound": "この Slack アカウントはすでに別の Multica アカウントに連携されています。先に元のアカウントで連携を解除してから、もう一度連携してください。",
-    "error_not_member": "サインインしている Multica アカウントはこのワークスペースのメンバーではありません。",
+    "error_already_bound": "この Slack アカウントはすでに別の Delegora アカウントに連携されています。先に元のアカウントで連携を解除してから、もう一度連携してください。",
+    "error_not_member": "サインインしている Delegora アカウントはこのワークスペースのメンバーではありません。",
     "error_unknown": "問題が発生しました。もう一度試し、それでも解決しない場合はワークスペース管理者にお問い合わせください。"
   },
   "dingtalk_bind": {
     "page_title": "DingTalk アカウントを連携",
     "redeeming": "アカウントを連携しています…",
-    "needs_auth_description": "サインインして DingTalk アカウントを Multica アカウントに連携してください。",
+    "needs_auth_description": "サインインして DingTalk アカウントを Delegora アカウントに連携してください。",
     "sign_in": "サインイン",
     "done_title": "アカウントを連携しました",
     "done_description": "次に DingTalk でボットへ送るメッセージは、そのままエージェントに届きます。このタブは閉じて構いません。",
@@ -99,14 +99,14 @@
     "error_admin_hint": "繰り返し発生する場合は、DingTalk でボットにもう一度メッセージを送って新しいリンクを取得してください。",
     "error_missing_token": "リンクにトークンがありません。DingTalk でボットにもう一度メッセージを送って新しいリンクを取得してください。",
     "error_expired": "このリンクは無効か期限切れです（有効期限は 15 分）。ボットにもう一度メッセージを送って新しいリンクを取得してください。",
-    "error_already_bound": "この DingTalk アカウントはすでに別の Multica アカウントに連携されています。先に元のアカウントで連携を解除してから、もう一度連携してください。",
-    "error_not_member": "サインインしている Multica アカウントはこのワークスペースのメンバーではありません。",
+    "error_already_bound": "この DingTalk アカウントはすでに別の Delegora アカウントに連携されています。先に元のアカウントで連携を解除してから、もう一度連携してください。",
+    "error_not_member": "サインインしている Delegora アカウントはこのワークスペースのメンバーではありません。",
     "error_unknown": "問題が発生しました。もう一度試し、それでも解決しない場合はワークスペース管理者にお問い合わせください。"
   },
   "telegram_bind": {
     "page_title": "Telegram アカウントをリンク",
     "redeeming": "アカウントをリンクしています…",
-    "needs_auth_description": "サインインして Telegram アカウントを Multica アカウントにリンクしてください。",
+    "needs_auth_description": "サインインして Telegram アカウントを Delegora アカウントにリンクしてください。",
     "sign_in": "サインイン",
     "done_title": "アカウントをリンクしました",
     "done_description": "Telegram でボットに送る次のメッセージは、そのままエージェントに届きます。このタブは閉じて構いません。",
@@ -114,8 +114,8 @@
     "error_admin_hint": "問題が続く場合は、Telegram でボットに再度メッセージを送り、新しいリンクを取得してください。",
     "error_missing_token": "リンクにトークンがありません。Telegram でボットに再度メッセージを送り、新しいリンクを取得してください。",
     "error_expired": "このリンクは無効か期限切れです（有効期間は 15 分）。ボットに再度メッセージを送って新しいリンクを取得してください。",
-    "error_already_bound": "この Telegram アカウントはすでに別の Multica アカウントにリンクされています。先に元のアカウントでリンクを解除してから、もう一度リンクしてください。",
-    "error_not_member": "サインイン中の Multica アカウントはこのワークスペースのメンバーではありません。",
+    "error_already_bound": "この Telegram アカウントはすでに別の Delegora アカウントにリンクされています。先に元のアカウントでリンクを解除してから、もう一度リンクしてください。",
+    "error_not_member": "サインイン中の Delegora アカウントはこのワークスペースのメンバーではありません。",
     "error_unknown": "問題が発生しました。再試行しても解決しない場合は、ワークスペース管理者にお問い合わせください。"
   },
   "expandable_description": {
@@ -125,7 +125,7 @@
   "wecom_bind": {
     "page_title": "WeCom アカウントを連携",
     "redeeming": "アカウントをリンク中…",
-    "needs_auth_description": "サインインして WeCom アカウントを Multica アカウントにリンクしてください。",
+    "needs_auth_description": "サインインして WeCom アカウントを Delegora アカウントにリンクしてください。",
     "sign_in": "サインイン",
     "done_title": "アカウントをリンクしました",
     "done_description": "次回 WeCom でボットに送ったメッセージは、そのままエージェントに届きます。このタブは閉じて構いません。",
@@ -133,14 +133,14 @@
     "error_admin_hint": "繰り返し失敗する場合は、WeCom でボットに再度メッセージを送って新しいリンクを取得してください。",
     "error_missing_token": "リンクにトークンがありません。WeCom でボットに再度メッセージを送って新しいリンクを取得してください。",
     "error_expired": "リンクが無効または期限切れです（有効期限は 15 分）。ボットに再度メッセージを送って新しいリンクを取得してください。",
-    "error_already_bound": "この WeCom アカウントはすでに別の Multica アカウントにリンクされています。先に元のアカウントでリンクを解除してから、もう一度リンクしてください。",
-    "error_not_member": "サインインしている Multica アカウントはこのワークスペースのメンバーではありません。",
+    "error_already_bound": "この WeCom アカウントはすでに別の Delegora アカウントにリンクされています。先に元のアカウントでリンクを解除してから、もう一度リンクしてください。",
+    "error_not_member": "サインインしている Delegora アカウントはこのワークスペースのメンバーではありません。",
     "error_unknown": "問題が発生しました。もう一度試し、それでも解決しない場合はワークスペース管理者にお問い合わせください。"
   },
   "not_found": {
     "title": "ページが見つかりません",
     "description": "お探しのページは存在しないか、移動しました。",
-    "back_to_multica": "Multicaに戻る"
+    "back_to_multica": "Delegoraに戻る"
   },
   "navigation": {
     "open_in_new_tab": "新しいタブで開く"

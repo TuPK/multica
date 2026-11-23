@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
- * Theme tokens — RNR template (verbatim) + Multica custom tokens appended.
+ * Theme tokens — RNR template (verbatim) + Delegora custom tokens appended.
  *
  * When changing any variable here, also update apps/mobile/lib/theme.ts —
  * they mirror each other. See apps/mobile/AGENTS.md, "Theming model".
@@ -41,7 +41,7 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
 
-    /* Multica custom tokens */
+    /* Delegora custom tokens */
     --brand: 225 71% 58%;
     --brand-foreground: 0 0% 98%;
     --success: 142 71% 45%;
@@ -107,7 +107,7 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    /* Multica custom tokens — dark mirrors light until a screen demands tuning */
+    /* Delegora custom tokens — dark mirrors light until a screen demands tuning */
     --brand: 225 71% 58%;
     --brand-foreground: 0 0% 98%;
     --success: 142 71% 45%;

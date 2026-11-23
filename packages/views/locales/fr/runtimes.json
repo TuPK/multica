@@ -33,7 +33,7 @@
       "other_machine_hint": "Exécutez deux commandes sur cette machine",
       "cloud_services": "Services cloud",
       "qoder_manage_hint": "Connecté · gérer la connexion",
-      "cloud_runtime_hint": "Créer un nœud cloud hébergé par Multica"
+      "cloud_runtime_hint": "Créer un nœud cloud hébergé par Delegora"
     },
     "columns": {
       "name": "Nom",
@@ -270,7 +270,7 @@
   "connect": {
     "title": "Ajouter une machine",
     "description": "Exécutez ces deux commandes sur la machine à ajouter. Nous la détecterons dès que le daemon sera en ligne.",
-    "step1_label": "Installer le CLI Multica",
+    "step1_label": "Installer le CLI Delegora",
     "platform_group": "Choisissez votre système",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -334,11 +334,11 @@
     "cli_version_label": "Version du CLI :",
     "version_unknown": "inconnue",
     "managed_by_desktop": "Géré par l'application de bureau",
-    "managed_by_desktop_title": "Le binaire du CLI est géré par Multica Desktop — mettez Desktop à jour pour mettre à niveau le CLI.",
+    "managed_by_desktop_title": "Le binaire du CLI est géré par Delegora Desktop — mettez Desktop à jour pour mettre à niveau le CLI.",
     "read_only": "Lecture seule",
     "read_only_title": "Seuls les propriétaires du runtime et les administrateurs de l'espace de travail peuvent mettre le CLI à jour.",
     "local_build": "Build local",
-    "local_build_title": "Ce runtime annonce une version hors publication : Multica ne peut donc pas savoir si une mise à niveau est disponible. Mettez-le à jour depuis la machine elle-même.",
+    "local_build_title": "Ce runtime annonce une version hors publication : Delegora ne peut donc pas savoir si une mise à niveau est disponible. Mettez-le à jour depuis la machine elle-même.",
     "latest": "À jour",
     "available": "disponible",
     "action": "Mettre à jour",
@@ -440,7 +440,7 @@
     "builtin_section_aria": "Familles de protocoles intégrées prises en charge",
     "builtin_reference": "Référence",
     "empty_title": "Créez votre premier runtime personnalisé",
-    "empty_description": "Choisissez un runtime de base compatible, puis indiquez à Multica la commande à exécuter.",
+    "empty_description": "Choisissez un runtime de base compatible, puis indiquez à Delegora la commande à exécuter.",
     "badge_builtin": "Intégré",
     "badge_custom": "Personnalisé",
     "badge_disabled": "Désactivé",
@@ -568,7 +568,7 @@
   },
   "qoder": {
     "title": "Environnement Qoder Cloud Agents",
-    "description": "Connectez Qoder Cloud Agents. Multica gère l’exécution et chiffre les identifiants. Les administrateurs de l’espace de travail peuvent modifier cette configuration.",
+    "description": "Connectez Qoder Cloud Agents. Delegora gère l’exécution et chiffre les identifiants. Les administrateurs de l’espace de travail peuvent modifier cette configuration.",
     "loading": "Chargement…",
     "unavailable": "Qoder Cloud Agents n'est pas encore activé sur ce serveur. Un administrateur serveur doit configurer le chiffrement des identifiants (MULTICA_VCS_SECRET_KEY).",
     "online": "En ligne",
@@ -611,7 +611,7 @@
     "cloud_description": "Exécutez des agents dans Qoder Cloud avec une connexion partagée, sans maintenir d’hôte local.",
     "configure_credentials": "Configurer les identifiants",
     "add_agent": "Ajouter un agent",
-    "add_agent_description": "Créez un agent Multica associé à un agent Qoder Cloud Agents existant. Il utilisera l’environnement et les identifiants configurés pour Qoder Cloud.",
+    "add_agent_description": "Créez un agent Delegora associé à un agent Qoder Cloud Agents existant. Il utilisera l’environnement et les identifiants configurés pour Qoder Cloud.",
     "agent_name": "Nom de l’agent",
     "cancel": "Annuler",
     "shared_credentials_hint": "Les identifiants sont partagés dans cet espace de travail. Les PAT sont chiffrés et ne sont plus affichés après l’enregistrement.",
@@ -624,7 +624,7 @@
     "concurrency_hint": "Au-delà de cette limite, les tâches attendent dans la file.",
     "run_timeout": "Délai d'exécution (minutes)",
     "run_timeout_hint": "Une exécution encore en cours après ce délai est annulée et marquée en échec.",
-    "data_disclosure_title": "Ce que Multica envoie à Qoder",
+    "data_disclosure_title": "Ce que Delegora envoie à Qoder",
     "data_disclosure": "Le titre et la description du ticket, les commentaires pertinents, le contexte du projet et les instructions de l'agent. Les jetons GitHub servent uniquement à monter le dépôt pendant une exécution.",
     "usage": "{{active}} sur {{limit}} en cours · {{queued}} en attente",
     "open_settings": "Ouvrir les paramètres",
@@ -656,7 +656,7 @@
       "description_agents_other": "Ces {{count}} agents gardent leurs instructions et leur historique, mais ne peuvent plus prendre de tâches tant que Qoder n'est pas relancé ou qu'ils ne sont pas déplacés vers un autre environnement."
     },
     "connect_title": "Connecter Qoder Cloud Agents",
-    "connect_description": "Multica exécute les tâches dans les sandboxes Qoder.",
+    "connect_description": "Delegora exécute les tâches dans les sandboxes Qoder.",
     "page": {
       "configuration": "Configuration",
       "agents_title": "Agents",
@@ -718,14 +718,14 @@
       },
       "cloud": {
         "title": "Ou un nœud cloud",
-        "description": "Pas envie de gérer des machines ? Créez un nœud cloud hébergé par Multica."
+        "description": "Pas envie de gérer des machines ? Créez un nœud cloud hébergé par Delegora."
       }
     },
     "art": {
       "this_computer": "Cet ordinateur · Bureau",
       "detected": "Runtimes détectés",
       "run_there": "À lancer sur cette machine",
-      "connected": "{{name}} connecté à Multica"
+      "connected": "{{name}} connecté à Delegora"
     }
   },
   "rate_limits": {

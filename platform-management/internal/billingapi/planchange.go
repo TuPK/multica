@@ -14,7 +14,7 @@ import (
 )
 
 // The self-service subscription routes (spec 7b.1, rules 5 to 8). They are served
-// under the workspace path and called by Multica for an owner or an admin.
+// under the workspace path and called by Delegora for an owner or an admin.
 const (
 	PlanChangePreviewPattern   = "POST /api/v1/subscriptions/{ws}/plan-changes/preview"
 	PlanChangePattern          = "POST /api/v1/subscriptions/{ws}/plan-changes"

@@ -138,7 +138,7 @@ describe("ChatBar", () => {
 
     const chip = screen.getByRole("button", { name: "Weekly report, Unread" });
     expect(chip).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Ask Multica" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Ask Delegora" })).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(chip);
 
@@ -184,12 +184,12 @@ describe("ChatBar", () => {
     expect(h.chat.dismissChatFromBar).toHaveBeenCalledWith("Billing progress", SESSIONS[1]!.updated_at);
   });
 
-  it("starts a new chat from Ask Multica, leaving the open chat behind", () => {
+  it("starts a new chat from Ask Delegora, leaving the open chat behind", () => {
     h.chat.isOpen = true;
     h.chat.activeSessionId = "Weekly report";
     renderBar(SESSIONS);
 
-    const ask = screen.getByRole("button", { name: "Ask Multica" });
+    const ask = screen.getByRole("button", { name: "Ask Delegora" });
     expect(ask).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(ask);
 
@@ -197,12 +197,12 @@ describe("ChatBar", () => {
     expect(h.chat.setOpen).not.toHaveBeenCalled();
   });
 
-  it("closes the window from Ask Multica while it shows the new chat", () => {
+  it("closes the window from Ask Delegora while it shows the new chat", () => {
     h.chat.isOpen = true;
     h.chat.activeSessionId = null;
     renderBar(SESSIONS);
 
-    const ask = screen.getByRole("button", { name: "Ask Multica" });
+    const ask = screen.getByRole("button", { name: "Ask Delegora" });
     expect(ask).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(ask);
 

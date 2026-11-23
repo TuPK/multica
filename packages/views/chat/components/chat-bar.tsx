@@ -25,7 +25,7 @@ import { chatActivity, selectChatBarSessions, type ChatBarSession } from "./chat
 const EMPTY_SESSIONS: ChatSession[] = [];
 const STAR = starPath(STAR_STROKE);
 
-/** The star from the Multica mark, in the text colour. */
+/** The star from the Delegora mark, in the text colour. */
 function MulticaStar() {
   return (
     <svg aria-hidden viewBox="0 0 100 100" fill="currentColor">
@@ -36,7 +36,7 @@ function MulticaStar() {
 const DEFAULT_MAX_CHIPS = 3;
 
 /**
- * How many chips fit. The bar's other content (workspace status, Ask Multica,
+ * How many chips fit. The bar's other content (workspace status, Ask Delegora,
  * history) takes about 560px and a chip up to 170px; a narrow window gives up
  * chips before it squeezes the status.
  */
@@ -82,7 +82,7 @@ function SessionMark({ item }: { item: ChatBarSession }) {
 
 /**
  * Quick chat in the bottom bar: a chip per chat that needs watching or was
- * opened here, then Ask Multica, which starts a new chat, and the history.
+ * opened here, then Ask Delegora, which starts a new chat, and the history.
  * The chat window opens above whichever control is pressed:
  * `useChatWindowAnchor` finds it by `data-chat-anchor`, and re-places the
  * window on a click that carries that attribute or `data-chat-anchor-trigger`.

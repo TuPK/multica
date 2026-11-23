@@ -136,7 +136,7 @@ describe("StarPrompt", () => {
     await agentFinishesIssue();
 
     expect(await screen.findByText("Lambda has completed 4 issues")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Star Multica on GitHub" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Star Delegora on GitHub" })).toHaveAttribute(
       "href",
       "https://github.com/multica-ai/multica",
     );
@@ -151,7 +151,7 @@ describe("StarPrompt", () => {
   it("retires the prompt when the user clicks through to GitHub", async () => {
     renderPrompt();
     await agentFinishesIssue();
-    fireEvent.click(await screen.findByRole("link", { name: "Star Multica on GitHub" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Star Delegora on GitHub" }));
 
     expect(markStarPromptStarred).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Lambda has completed 4 issues")).not.toBeInTheDocument();
@@ -272,7 +272,7 @@ describe("StarPrompt after the source survey", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });
-    expect(screen.getByText("How did you hear about Multica?")).toBeInTheDocument();
+    expect(screen.getByText("How did you hear about Delegora?")).toBeInTheDocument();
 
     await finishSurvey();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -315,7 +315,7 @@ describe("StarPrompt for a workspace that finishes work in custom done statuses"
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });
-    expect(screen.getByText("How did you hear about Multica?")).toBeInTheDocument();
+    expect(screen.getByText("How did you hear about Delegora?")).toBeInTheDocument();
     await finishSurvey();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await agentFinishesIssue();
@@ -329,6 +329,6 @@ describe("StarPrompt for a workspace that finishes work in custom done statuses"
     await agentFinishesIssue();
 
     expect(await screen.findByText("Lambda has completed 3 issues")).toBeInTheDocument();
-    expect(screen.queryByText("How did you hear about Multica?")).not.toBeInTheDocument();
+    expect(screen.queryByText("How did you hear about Delegora?")).not.toBeInTheDocument();
   });
 });

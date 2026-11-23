@@ -328,7 +328,7 @@ func TestDBEachWriteAuditsOnceWithTheStaffActor(t *testing.T) {
 
 	// The workspace owner reads the rows about the workspace in the workspace
 	// log. This is the query behind GET /api/workspaces/{id}/audit-events in
-	// Multica (server/pkg/db/queries/audit_event.sql, ListWorkspaceAuditEvents),
+	// Delegora (server/pkg/db/queries/audit_event.sql, ListWorkspaceAuditEvents),
 	// which the owner's route runs for a workspace they own.
 	rows, err := f.pool.Query(context.Background(),
 		`SELECT action, actor_type, detail::text FROM audit_event

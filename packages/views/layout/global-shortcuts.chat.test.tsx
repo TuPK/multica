@@ -221,7 +221,7 @@ describe("new chat shortcut", () => {
     expect(h.chat.setOpen).not.toHaveBeenCalled();
   });
 
-  it("closes the window while it shows the new chat, like Ask Multica", () => {
+  it("closes the window while it shows the new chat, like Ask Delegora", () => {
     h.chat.isOpen = true;
     h.chat.activeSessionId = null;
     render(<GlobalShortcuts />);

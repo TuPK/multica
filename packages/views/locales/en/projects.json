@@ -176,7 +176,7 @@
     "mode_auto_merge_label": "Merge finished runs into the checked-out branch",
     "mode_auto_merge_description": "Once a run completes, its branch is merged into the branch checked out in this repo and the branch is deleted. Skipped when the repo has uncommitted changes or a detached HEAD; a conflict is left for you to resolve.",
     "mode_worktree_needs_git": "This folder is not a git repository, so runs can't be parallel.",
-    "mode_worktree_needs_server_upgrade": "Your Multica server is too old for parallel runs and would run them in this folder instead. Update the server first.",
+    "mode_worktree_needs_server_upgrade": "Your Delegora server is too old for parallel runs and would run them in this folder instead. Update the server first.",
     "mode_cancel": "Cancel",
     "mode_add": "Add folder",
     "mode_edit_tooltip": "Change run mode",

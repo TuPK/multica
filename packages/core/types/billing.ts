@@ -287,7 +287,7 @@ export interface WorkspaceSubscriptionSummary {
   /** The current period of a usage plan; null for a seat plan. */
   usage?: WorkspaceUsagePeriod | null;
   /**
-   * How the workspace pays. Multica Cloud does not send it; the platform sends
+   * How the workspace pays. Delegora Cloud does not send it; the platform sends
    * `manual` (bank transfer, confirmed by staff). Absent means Stripe. An open
    * string: a later provider must read as unknown.
    */

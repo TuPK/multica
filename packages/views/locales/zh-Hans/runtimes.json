@@ -33,7 +33,7 @@
       "other_machine_hint": "在那台机器上运行两条命令",
       "cloud_services": "云服务",
       "qoder_manage_hint": "已连接 · 管理连接",
-      "cloud_runtime_hint": "由 Multica 托管的云端节点，随时可用"
+      "cloud_runtime_hint": "由 Delegora 托管的云端节点，随时可用"
     },
     "columns": {
       "name": "名称",
@@ -259,7 +259,7 @@
   "connect": {
     "title": "添加机器",
     "description": "在要添加的机器上运行这两条命令。守护进程一上线，这里就会自动识别。",
-    "step1_label": "安装 Multica CLI",
+    "step1_label": "安装 Delegora CLI",
     "platform_group": "选择你的系统",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -283,7 +283,7 @@
   "cloud_runtime": {
     "action": "云端运行时",
     "title": "云端运行时",
-    "description": "由 Multica 托管的云端运行时，可随时运行智能体。",
+    "description": "由 Delegora 托管的云端运行时，可随时运行智能体。",
     "create_title": "新节点",
     "nodes_title": "云端节点",
     "refresh": "刷新",
@@ -323,11 +323,11 @@
     "cli_version_label": "CLI 版本：",
     "version_unknown": "未知",
     "managed_by_desktop": "由桌面端管理",
-    "managed_by_desktop_title": "CLI 二进制由 Multica 桌面端管理——升级桌面端即可升级 CLI。",
+    "managed_by_desktop_title": "CLI 二进制由 Delegora 桌面端管理——升级桌面端即可升级 CLI。",
     "read_only": "只读",
     "read_only_title": "只有运行时所有者和工作区管理员可以更新 CLI。",
     "local_build": "本地构建",
-    "local_build_title": "该运行时报告的不是发布版本，Multica 无法判断是否有可升级的版本。请在这台机器上自行更新。",
+    "local_build_title": "该运行时报告的不是发布版本，Delegora 无法判断是否有可升级的版本。请在这台机器上自行更新。",
     "latest": "最新",
     "available": "可用",
     "action": "更新",
@@ -428,7 +428,7 @@
     "builtin_section_aria": "支持的内置协议族",
     "builtin_reference": "参考",
     "empty_title": "创建第一个自定义运行时",
-    "empty_description": "选择一个兼容的基础运行时，再指定 Multica 要执行的自定义命令。",
+    "empty_description": "选择一个兼容的基础运行时，再指定 Delegora 要执行的自定义命令。",
     "badge_builtin": "内置",
     "badge_custom": "自定义",
     "badge_disabled": "已禁用",
@@ -553,7 +553,7 @@
   },
   "qoder": {
     "title": "Qoder Cloud Agents 运行时",
-    "description": "连接 Qoder Cloud Agents，由 Multica 管理执行并加密保存凭证。工作区管理员可修改配置。",
+    "description": "连接 Qoder Cloud Agents，由 Delegora 管理执行并加密保存凭证。工作区管理员可修改配置。",
     "loading": "加载中...",
     "unavailable": "此服务端尚未启用 Qoder Cloud Agents，需要服务端管理员先配置凭证加密密钥（MULTICA_VCS_SECRET_KEY）。",
     "online": "在线",
@@ -596,7 +596,7 @@
     "cloud_description": "使用共享连接在 Qoder 云端运行智能体，无需维护本地主机。",
     "configure_credentials": "配置凭证",
     "add_agent": "添加智能体",
-    "add_agent_description": "创建 Multica 智能体并关联已有的 Qoder Cloud Agents 智能体，使用 Qoder 云端已配置的环境和凭证。",
+    "add_agent_description": "创建 Delegora 智能体并关联已有的 Qoder Cloud Agents 智能体，使用 Qoder 云端已配置的环境和凭证。",
     "agent_name": "智能体名称",
     "cancel": "取消",
     "shared_credentials_hint": "凭证在当前工作区内共享，PAT 加密保存后不再显示。",
@@ -608,7 +608,7 @@
     "concurrency_hint": "超过上限的运行会排队等待。",
     "run_timeout": "单次运行超时（分钟）",
     "run_timeout_hint": "超过该时长仍未结束的运行会被取消并标记为失败。",
-    "data_disclosure_title": "Multica 会发送给 Qoder 的内容",
+    "data_disclosure_title": "Delegora 会发送给 Qoder 的内容",
     "data_disclosure": "任务标题与描述、相关评论、项目上下文和智能体指令。GitHub 凭证仅用于在运行时挂载仓库。",
     "usage": "运行中 {{active}}/{{limit}} · 排队 {{queued}}",
     "open_settings": "查看设置",
@@ -638,7 +638,7 @@
       "description_agents_other": "下面 {{count}} 个智能体会保留指令和历史，但在恢复 Qoder 或更换运行时之前无法接新任务。"
     },
     "connect_title": "连接 Qoder Cloud Agents",
-    "connect_description": "Multica 会在 Qoder 的沙箱里执行任务。",
+    "connect_description": "Delegora 会在 Qoder 的沙箱里执行任务。",
     "page": {
       "configuration": "配置",
       "agents_title": "智能体",
@@ -698,14 +698,14 @@
       },
       "cloud": {
         "title": "或者用云端节点",
-        "description": "无需本机开机，直接使用 Multica 托管的云端节点运行智能体。"
+        "description": "无需本机开机，直接使用 Delegora 托管的云端节点运行智能体。"
       }
     },
     "art": {
       "this_computer": "这台电脑 · 桌面端",
       "detected": "自动识别到的运行时",
       "run_there": "在那台机器上运行",
-      "connected": "{{name}} 已连接到 Multica"
+      "connected": "{{name}} 已连接到 Delegora"
     }
   },
   "rate_limits": {

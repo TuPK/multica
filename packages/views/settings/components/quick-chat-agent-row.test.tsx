@@ -103,7 +103,7 @@ describe("QuickChatAgentRow", () => {
     const user = userEvent.setup();
     renderRow();
 
-    const select = screen.getByRole("combobox", { name: "Ask Multica agent" });
+    const select = screen.getByRole("combobox", { name: "Ask Delegora agent" });
     expect(select).toHaveTextContent("Last used");
 
     await user.click(select);
@@ -118,7 +118,7 @@ describe("QuickChatAgentRow", () => {
     const user = userEvent.setup();
     renderRow();
 
-    const select = screen.getByRole("combobox", { name: "Ask Multica agent" });
+    const select = screen.getByRole("combobox", { name: "Ask Delegora agent" });
     expect(select).toHaveTextContent("Kepler");
 
     await user.click(select);
@@ -131,13 +131,13 @@ describe("QuickChatAgentRow", () => {
     h.chat.quickChatAgentId = "agent-3";
     renderRow();
 
-    expect(screen.getByRole("combobox", { name: "Ask Multica agent" })).toHaveTextContent("Last used");
+    expect(screen.getByRole("combobox", { name: "Ask Delegora agent" })).toHaveTextContent("Last used");
   });
 
   it("is disabled while the floating chat is off", () => {
     h.chat.floatingChatEnabled = false;
     renderRow();
 
-    expect(screen.getByRole("combobox", { name: "Ask Multica agent" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Ask Delegora agent" })).toBeDisabled();
   });
 });

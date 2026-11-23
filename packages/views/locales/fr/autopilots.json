@@ -279,7 +279,7 @@
     "type_webhook": "Webhook",
     "label_field": "Libellé (facultatif)",
     "label_placeholder": "ex. Matin en semaine",
-    "webhook_help": "Multica générera une URL de webhook après l'enregistrement. Envoyez-y n'importe quel JSON en POST pour déclencher cette automatisation.",
+    "webhook_help": "Delegora générera une URL de webhook après l'enregistrement. Envoyez-y n'importe quel JSON en POST pour déclencher cette automatisation.",
     "submit": "Ajouter un déclencheur",
     "submitting": "Ajout...",
     "toast_added_schedule": "Déclencheur de planification ajouté",
@@ -349,7 +349,7 @@
     "trigger_kind_schedule": "Planification",
     "trigger_kind_webhook": "Webhook",
     "section_webhook": "Webhook",
-    "webhook_help_create": "Multica générera une URL de webhook après la création de cette automatisation. Envoyez n'importe quel JSON en POST à cette URL pour la déclencher.",
+    "webhook_help_create": "Delegora générera une URL de webhook après la création de cette automatisation. Envoyez n'importe quel JSON en POST à cette URL pour la déclencher.",
     "webhook_help_edit": "Cette automatisation est déclenchée par webhook. Gérez l'URL (copie / renouvellement) sur sa page de détail.",
     "webhook_created_title": "Automatisation par webhook prête",
     "webhook_created_description": "Envoyez n'importe quel JSON en POST à l'URL ci-dessous et l'automatisation se déclenchera. Copiez-la maintenant — vous pourrez aussi la retrouver et la renouveler sur sa page de détail.",
@@ -589,7 +589,7 @@
       "slides": {
         "event": {
           "title": "Attendre qu'il se passe quelque chose",
-          "description": "Inutile de faire tourner un agent à vide en attendant. Dès que la condition est remplie, Multica le réveille."
+          "description": "Inutile de faire tourner un agent à vide en attendant. Dès que la condition est remplie, Delegora le réveille."
         },
         "time": {
           "title": "Ou choisir une heure",
@@ -633,7 +633,7 @@
   "intro": {
     "label": "Automatisation",
     "title": "Laissez vos agents se mettre au travail tout seuls",
-    "description": "Définissez une planification ou un webhook. À chaque déclenchement, Multica crée une tâche pour un agent, ou lance directement l'agent. Choisissez un modèle et adaptez-le.",
+    "description": "Définissez une planification ou un webhook. À chaque déclenchement, Delegora crée une tâche pour un agent, ou lance directement l'agent. Choisissez un modèle et adaptez-le.",
     "templates": "Partir d'un modèle"
   }
 }

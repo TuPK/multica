@@ -44,7 +44,7 @@ func testKey() []byte {
 	return key
 }
 
-// seal encrypts a secret the way Multica does: AES-256-GCM, nonce first.
+// seal encrypts a secret the way Delegora does: AES-256-GCM, nonce first.
 func seal(t *testing.T, key []byte, plain string) []byte {
 	t.Helper()
 	block, err := aes.NewCipher(key)

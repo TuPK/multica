@@ -5,7 +5,7 @@ import { api } from "@multica/core/api";
  *
  * A surface asks; the host performs the call on the signed-in user's own
  * session and returns the result. The plugin holds no credential, so this is
- * the only path from a surface into Multica.
+ * the only path from a surface into Delegora.
  *
  * Identity is bound by three things together: the expected outer frame window,
  * a single-use launch challenge, and the guest-created MessagePort. Origin is

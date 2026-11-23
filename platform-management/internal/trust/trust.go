@@ -1,6 +1,6 @@
 // Package trust decides when the platform believes the X-User-ID header.
 //
-// Multica's proxy sends X-User-ID to the platform for user routes and no other
+// Delegora's proxy sends X-User-ID to the platform for user routes and no other
 // credential, so the header proves nothing by itself. The platform believes it
 // only when the TCP peer is inside a trusted network. The peer is the socket's
 // remote address: X-Forwarded-For and X-Real-IP are caller-written text and are
@@ -21,7 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// UserHeader is the header Multica's proxy sets on user routes.
+// UserHeader is the header Delegora's proxy sets on user routes.
 const UserHeader = "X-User-ID"
 
 // DefaultCIDRs is the trusted set when PLATFORM_TRUSTED_CIDRS is unset: the
@@ -120,7 +120,7 @@ func canonicalUserID(values []string) (string, bool) {
 }
 
 // CanonicalUUID returns the lower-case dashed form of a UUID given in the
-// dashed form. pgtype also accepts the 32-digit form and braces; Multica sends
+// dashed form. pgtype also accepts the 32-digit form and braces; Delegora sends
 // the dashed form, so any other text is not an id this service issued.
 func CanonicalUUID(s string) (string, bool) {
 	var u pgtype.UUID

@@ -102,7 +102,7 @@ describe("CompanySetupCard", () => {
 
   it("shows the install guide and a retry when the Hermes runtime is missing", () => {
     setup({ ...NOT_SET_UP, runtime_online: false });
-    expect(screen.getByText("Install Hermes on the machine that runs the Multica daemon, then retry.")).toBeTruthy();
+    expect(screen.getByText("Install Hermes on the machine that runs the Delegora daemon, then retry.")).toBeTruthy();
     const guide = screen.getByRole("link", { name: /Install guide/ });
     expect(guide.getAttribute("href")).toMatch(/\/install-agent-runtime$/);
     expect(guide.getAttribute("target")).toBe("_blank");

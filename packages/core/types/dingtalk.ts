@@ -1,4 +1,4 @@
-/** A DingTalk robot installation bound to a single Multica agent.
+/** A DingTalk robot installation bound to a single Delegora agent.
  *
  * Wire shape mirrors `DingTalkInstallationResponse` in
  * `server/internal/handler/dingtalk.go`. New fields the backend adds in the
@@ -16,7 +16,7 @@ export interface DingTalkInstallation {
   /** False only when a workspace admin is viewing an orphaned installation
    * whose Agent no longer exists. Optional for older backends. */
   agent_available?: boolean;
-  /** DingTalk staff ids linked by the currently authenticated Multica user for
+  /** DingTalk staff ids linked by the currently authenticated Delegora user for
    * this bot. Member-scoped so the member-visible installation endpoint does
    * not disclose other members' DingTalk identities. */
   bound_dingtalk_user_ids?: string[];
@@ -36,7 +36,7 @@ export interface ListDingTalkInstallationsResponse {
   install_supported?: boolean;
 }
 
-/** One connected Multica bot observed in a DingTalk group. */
+/** One connected Delegora bot observed in a DingTalk group. */
 export interface DingTalkGroupBot {
   installation_id: string;
   agent_id: string;
@@ -91,7 +91,7 @@ export interface RegisterDingTalkBYORequest {
 }
 
 /** Post-redemption echo: the DingTalk user id the token carried is now bound to
- * the logged-in Multica user in this workspace/installation. */
+ * the logged-in Delegora user in this workspace/installation. */
 export interface RedeemDingTalkBindingTokenResponse {
   workspace_id: string;
   installation_id: string;

@@ -40,7 +40,7 @@ describe("trust pages copy", () => {
 
   it("keeps the placeholder legal entity out of every locale", () => {
     for (const t of dicts) {
-      expect(JSON.stringify(t)).not.toContain("Multica, Inc");
+      expect(JSON.stringify(t)).not.toContain("Delegora, Inc");
     }
   });
 

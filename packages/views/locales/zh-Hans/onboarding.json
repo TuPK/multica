@@ -1,6 +1,6 @@
 {
   "step_nav": {
-    "wordmark": "Multica",
+    "wordmark": "Delegora",
     "label": "引导步骤",
     "about_you": {
       "label": "关于你"
@@ -13,7 +13,7 @@
     }
   },
   "welcome": {
-    "wordmark": "欢迎使用 Multica",
+    "wordmark": "欢迎使用 Delegora",
     "headline_line1": "你的 AI 队友，",
     "headline_line2": "在",
     "headline_emphasis": "同一个工作区。",
@@ -54,7 +54,7 @@
   },
   "source_backfill": {
     "eyebrow": "顺便问一句",
-    "lede": "帮助我们了解你从哪里知道 Multica。",
+    "lede": "帮助我们了解你从哪里知道 Delegora。",
     "submit": "提交",
     "save_failed_toast": "保存失败"
   },
@@ -63,7 +63,7 @@
       "question": "简单介绍一下你自己。"
     },
     "source": {
-      "question": "你是从哪里了解到 Multica 的？",
+      "question": "你是从哪里了解到 Delegora 的？",
       "friends_colleagues": "朋友或同事",
       "search": "Google / 搜索",
       "social_x": "X / Twitter",
@@ -94,7 +94,7 @@
       "other_placeholder": "例如：教师、支持负责人"
     },
     "use_case": {
-      "question": "你打算用 Multica 做什么？",
+      "question": "你打算用 Delegora 做什么？",
       "ship_code": "让 AI 智能体帮我写代码",
       "manage_team": "给团队做任务管理",
       "personal_tasks": "管理我自己的任务",
@@ -112,7 +112,7 @@
   "cli_install": {
     "copy_aria": "复制",
     "intro": "这台电脑上需要安装一个智能体运行时（Claude Code、Codex、Cursor 等）才能运行你的智能体。也支持服务器和远程开发机。",
-    "step1_label": "安装 Multica CLI",
+    "step1_label": "安装 Delegora CLI",
     "platform_group": "选择你的系统",
     "platform_macos_linux": "macOS / Linux",
     "platform_windows": "Windows",
@@ -164,7 +164,7 @@
     "same_tenant_label": "与 {{name}} 同一租户",
     "workspace_limit_toast": "该租户已达到工作区数量上限",
     "creation_disabled_headline": "请联系管理员邀请你加入工作区。",
-    "creation_disabled_lede": "该 Multica 实例不允许创建新的工作区。等管理员把你邀请到某个工作区后，接受邀请并刷新即可继续。",
+    "creation_disabled_lede": "该 Delegora 实例不允许创建新的工作区。等管理员把你邀请到某个工作区后，接受邀请并刷新即可继续。",
     "creation_disabled_logout": "退出登录",
     "creation_disabled_headline_resume": "继续使用 {{name}}。",
     "creation_disabled_lede_resume": "该实例已禁用创建工作区，继续进入你已有的工作区即可。"

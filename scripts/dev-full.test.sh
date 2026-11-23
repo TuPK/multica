@@ -330,7 +330,7 @@ HUB_STORE_STATUS="running; bucket multica-hub exists"
 print_summary >"$tmp_dir/out-summary" 2>&1
 require_contains "$tmp_dir/out-summary" "Hub store     http://localhost:18333  (S3 API, bucket multica-hub)"
 require_contains "$tmp_dir/out-summary" "SeaweedFS UI  http://localhost:19333  (cluster status: /cluster/status)"
-require_contains "$tmp_dir/out-summary" "Running       Multica API, Multica web, platform console and API, WeKnora (knowledge-postgres knowledge-redis knowledge-docreader knowledge-app knowledge-ui), SeaweedFS (seaweedfs)"
+require_contains "$tmp_dir/out-summary" "Running       Delegora API, Delegora web, platform console and API, WeKnora (knowledge-postgres knowledge-redis knowledge-docreader knowledge-app knowledge-ui), SeaweedFS (seaweedfs)"
 require_contains "$tmp_dir/out-summary" "compose --env-file $ENV_FILE -f docker-compose.selfhost.yml --profile knowledge stop knowledge-postgres knowledge-redis knowledge-docreader knowledge-app knowledge-ui seaweedfs"
 require_absent "$tmp_dir/out-summary" "$(env_value "$ENV_FILE" HUB_S3_SECRET_KEY)"
 
@@ -467,7 +467,7 @@ fi
 [ "$(totp_code GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ 59)" = 287082 ] || fail "totp_code must match the RFC 6238 SHA-1 vector"
 
 # ---------- Startup order ----------
-# The platform starts after the Multica API answers and before the web app is awaited: it needs
+# The platform starts after the Delegora API answers and before the web app is awaited: it needs
 # the migrated database and the system admin, not the web app.
 order_log="$tmp_dir/start-order"
 : >"$order_log"
@@ -481,10 +481,10 @@ start_daemon() { echo "daemon" >>"$order_log"; }
 start_multica
 # start_multica sets its own EXIT trap; restore the temporary directory cleanup.
 trap 'rm -rf "$tmp_dir"' EXIT
-expected_order="wait Multica API
+expected_order="wait Delegora API
 seed
 platform
-wait Multica web
+wait Delegora web
 profile
 daemon"
 if [ "$(cat "$order_log")" != "$expected_order" ]; then
