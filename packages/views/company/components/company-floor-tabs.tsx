@@ -35,6 +35,7 @@ export function CompanyFloorTabs({
   attention,
   canManage,
   onSelect,
+  vertical = false,
   children,
 }: {
   floors: readonly CompanyFloor[];
@@ -45,7 +46,9 @@ export function CompanyFloorTabs({
   attention?: ReadonlySet<string>;
   canManage: boolean;
   onSelect: (floorId: string) => void;
-  /** Trailing controls, aligned to the end of the strip. */
+  /** Stacks the floors in a column, for the rooms sidebar. */
+  vertical?: boolean;
+  /** Trailing controls, aligned to the end of the strip. Horizontal only. */
   children?: ReactNode;
 }) {
   const { t } = useT("issues");
@@ -80,12 +83,17 @@ export function CompanyFloorTabs({
   const deleteFloor = (floor: CompanyFloor) => setFloorToDelete(floor);
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-1">
-      <div role="tablist" aria-label={t(($) => $.company.floors)} className="flex min-w-0 items-center gap-1 overflow-x-auto">
+    <div className={cn("flex min-w-0 gap-1", vertical ? "flex-col" : "flex-1 items-center")}>
+      <div
+        role="tablist"
+        aria-label={t(($) => $.company.floors)}
+        aria-orientation={vertical ? "vertical" : "horizontal"}
+        className={cn("flex min-w-0 gap-1", vertical ? "flex-col" : "items-center overflow-x-auto")}
+      >
         {floors.map((floor, index) => {
           const selected = floor.id === currentId;
           return (
-            <div key={floor.id} className="flex shrink-0 items-center">
+            <div key={floor.id} className={cn("flex items-center", vertical ? "min-w-0" : "shrink-0")}>
               {renamingId === floor.id ? (
                 <RenameField initial={floor.name} label={t(($) => $.company.floor_rename)} onDone={(name) => rename(floor, name)} />
               ) : (
@@ -97,6 +105,7 @@ export function CompanyFloorTabs({
                   onDoubleClick={canManage ? () => setRenamingId(floor.id) : undefined}
                   className={cn(
                     "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-body outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                    vertical && "min-w-0 flex-1",
                     selected ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground hover:bg-accent/50",
                   )}
                 >
@@ -155,7 +164,7 @@ export function CompanyFloorTabs({
           </Button>
         ) : null}
       </div>
-      <div className="ml-auto flex shrink-0 items-center gap-1">{children}</div>
+      {vertical ? null : <div className="ml-auto flex shrink-0 items-center gap-1">{children}</div>}
       {floorToDelete ? (
         <FloorDeleteDialog
           floor={floorToDelete}

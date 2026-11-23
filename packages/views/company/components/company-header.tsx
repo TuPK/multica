@@ -1,27 +1,36 @@
 "use client";
 
 import { cn } from "@multica/ui/lib/utils";
+import { Button } from "@multica/ui/components/ui/button";
+import { PanelLeft } from "@multica/ui/icons";
 import { useViewStore } from "@multica/core/issues/stores/view-store-context";
 import { PAGE_GUTTER } from "../../layout/page-header";
 import { FilterChipsBar } from "../../issues/components/filter-chips-bar";
 import { IssueDisplayControls } from "../../issues/components/issues-header";
 import { WorkspaceAgentWorkingChip } from "../../issues/components/workspace-agent-working-chip";
+import { useT } from "../../i18n";
 import { CompanyState } from "./company-state";
 import { CompanyPulseStrip } from "./company-pulse-strip";
 import type { IssueSurfaceController } from "../../issues/surface/use-issue-surface-controller";
 
 /**
- * The floor plan's toolbar: filters and display options of the board. The page
- * header above it, shared with the overview, carries the title and the tabs.
+ * The floor plan's toolbar: the rooms toggle, the seat banner slot, then filters
+ * and display options of the board. The page header above it, shared with the
+ * overview, carries the title and the tabs.
  */
 export function CompanyHeader({
   controller,
+  roomsOpen,
+  onToggleRooms,
   slotRef,
 }: {
   controller: IssueSurfaceController;
-  /** Receives the leading slot the seat banner portals into. */
+  roomsOpen: boolean;
+  onToggleRooms: () => void;
+  /** Receives the slot the seat banner portals into. */
   slotRef: (el: HTMLDivElement | null) => void;
 }) {
+  const { t } = useT("issues");
   const dateFilter = useViewStore((s) => s.dateFilter);
   const setDateFilter = useViewStore((s) => s.setDateFilter);
   const agentRunningFilter = useViewStore((s) => s.agentRunningFilter);
@@ -30,6 +39,16 @@ export function CompanyHeader({
   return (
     <>
       <div className={cn("flex min-h-12 shrink-0 items-center gap-1 py-2", PAGE_GUTTER)}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={t(($) => $.company.floors)}
+          aria-expanded={roomsOpen}
+          onClick={onToggleRooms}
+        >
+          <PanelLeft className="size-4" />
+        </Button>
         <div ref={slotRef} className="flex min-w-0 flex-1 items-center" />
         <CompanyPulseStrip />
         <CompanyState />

@@ -22,3 +22,10 @@ export const CompanyToolbarSlotContext = createContext<HTMLElement | null>(null)
 export function useCompanyToolbarSlot() {
   return useContext(CompanyToolbarSlotContext);
 }
+
+/** The rooms sidebar's list slot, where the floor list renders. Null outside the floor plan, where the list stays in place. */
+export const CompanySidebarSlotContext = createContext<HTMLElement | null>(null);
+
+export function useCompanySidebarSlot() {
+  return useContext(CompanySidebarSlotContext);
+}

@@ -50,7 +50,7 @@ import { CompanyProjectBacklogDialog } from "./company-project-backlog-dialog";
 import { CompanyDecisionsDialog } from "./company-decisions-dialog";
 import { CompanyFirstRun } from "./company-first-run";
 import { CompanyFloorTabs } from "./company-floor-tabs";
-import { useCompanyHeaderSlot, useCompanyToolbarSlot } from "./company-header-slot";
+import { useCompanyHeaderSlot, useCompanySidebarSlot, useCompanyToolbarSlot } from "./company-header-slot";
 import { ownedOpenCount } from "../../pipeline/pipeline-filters";
 import { useCompanyAdmin } from "../lib/use-company-admin";
 import { useDecisionQueue } from "../lib/decision-queue";
@@ -193,6 +193,7 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
   });
   const headerSlot = useCompanyHeaderSlot();
   const toolbarSlot = useCompanyToolbarSlot();
+  const sidebarSlot = useCompanySidebarSlot();
   const decisionProposals = useMemo(
     () => (linkedProposal && !linkedInBook ? [...decisionBook, linkedProposal] : decisionBook),
     [decisionBook, linkedProposal, linkedInBook],
@@ -293,14 +294,20 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
   const loaded = squadsQuery.isSuccess && floorsQuery.isSuccess;
   const firstRun = loaded && noSquadSeated(squads, floors);
 
-  const floorTabs = (
+  // The floor list sits in the rooms sidebar; the controls end the page header row.
+  const floorList = (
     <CompanyFloorTabs
+      vertical
       floors={floors}
       currentId={floor?.id ?? null}
       seated={squadsQuery.isSuccess ? seatedByFloor : null}
       canManage={canManage}
       onSelect={selectFloor}
-    >
+    />
+  );
+
+  const floorControls = (
+    <div className="ml-auto flex shrink-0 items-center gap-1">
       <CompanySetupCard />
       <CompanyBriefButton focusBriefId={briefFocus} />
       <SecretaryDeskButton />
@@ -323,7 +330,7 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
           {pending.length > 0 ? <span className="tabular-nums text-muted-foreground">{pending.length}</span> : null}
         </Button>
       ) : null}
-    </CompanyFloorTabs>
+    </div>
   );
 
   // The seat banner sits on the toolbar row when it has a slot, and in the body otherwise.
@@ -334,7 +341,8 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
 
   return (
     <>
-      {headerSlot ? createPortal(floorTabs, headerSlot) : floorTabs}
+      {headerSlot ? createPortal(floorControls, headerSlot) : floorControls}
+      {sidebarSlot ? createPortal(floorList, sidebarSlot) : floorList}
       {seatBanner ? (toolbarSlot ? createPortal(seatBanner, toolbarSlot) : seatBanner) : null}
       {firstRun ? (
         <CompanyFirstRun />
