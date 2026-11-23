@@ -156,7 +156,8 @@
       "french": "Français",
       "spanish": "Español",
       "sync_failed": "語言已在本裝置儲存，但同步到帳號失敗。其他裝置可能仍顯示舊語言。",
-      "russian": "Русский"
+      "russian": "Русский",
+      "vietnamese": "Tiếng Việt"
     },
     "timezone": {
       "title": "時區",

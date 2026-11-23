@@ -150,4 +150,15 @@ export const DESKTOP_EMERGENCY_COPY: Record<
     configDescriptionAfter:
       ". Исправьте или удалите этот файл и перезапустите приложение.",
   },
+  vi: {
+    crashTitle: "Đã xảy ra lỗi",
+    crashDescription:
+      "Delegora gặp một lỗi không mong muốn. Tải lại thường giúp ích — dữ liệu của bạn vẫn được lưu trên máy chủ.",
+    crashFallbackError: "Đã xảy ra lỗi không mong muốn.",
+    reload: "Tải lại",
+    configTitle: "Lỗi cấu hình",
+    configDescriptionBefore: "Delegora không thể tải ",
+    configDescriptionAfter:
+      ". Hãy sửa hoặc xóa tệp này, rồi khởi động lại ứng dụng.",
+  },
 };

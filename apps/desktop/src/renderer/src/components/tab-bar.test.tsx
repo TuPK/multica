@@ -752,6 +752,15 @@ describe("TabBar locale", () => {
       newTab: "Новая вкладка",
       pinned: "Issues (закреплено)",
     },
+    vi: {
+      pin: "Ghim thẻ",
+      unpin: "Bỏ ghim thẻ",
+      close: "Đóng thẻ",
+      closeOthers: "Đóng các thẻ khác",
+      openWindow: "Mở trong cửa sổ mới",
+      newTab: "Thẻ mới",
+      pinned: "Nhiệm vụ (đã ghim)",
+    },
   } as const satisfies Record<
     Exclude<SupportedLocale, "en">,
     {

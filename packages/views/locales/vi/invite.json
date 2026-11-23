@@ -1,0 +1,60 @@
+{
+  "header": {
+    "back": "Quay lại",
+    "log_out": "Đăng xuất"
+  },
+  "list": {
+    "title": "Bạn đã được mời",
+    "subtitle": "Tham gia sẽ mở không gian làm việc đó. Các lời mời khác vẫn ở trạng thái chờ.",
+    "workspace_fallback": "Không gian làm việc",
+    "inviter_fallback": "Ai đó",
+    "invited_admin": "{{inviter}} đã mời bạn làm quản trị viên",
+    "invited_member": "{{inviter}} đã mời bạn làm thành viên",
+    "accept": "Tham gia",
+    "joining": "Đang tham gia...",
+    "decline": "Từ chối",
+    "declining": "Đang từ chối...",
+    "skip": "Bỏ qua và tạo không gian làm việc riêng"
+  },
+  "empty": {
+    "title": "Không có lời mời đang chờ",
+    "hint": "Tiếp tục để thiết lập không gian làm việc của riêng bạn.",
+    "continue": "Tiếp tục thiết lập",
+    "go_to_dashboard": "Đến không gian làm việc"
+  },
+  "linked": {
+    "not_found": "Lời mời này có thể đã hết hạn, bị thu hồi hoặc không thuộc về tài khoản của bạn.",
+    "accepted": "Lời mời này đã được chấp nhận.",
+    "declined": "Lời mời này đã bị từ chối.",
+    "expired": "Lời mời này đã hết hạn."
+  },
+  "errors": {
+    "accept_failed": "Không thể chấp nhận lời mời",
+    "decline_failed": "Không thể từ chối lời mời",
+    "member_limit_reached": "{{workspace}} đã đủ số lượng. Hãy nhờ người đã mời bạn; bạn có thể tham gia khi không gian làm việc được nâng cấp."
+  },
+  "join": {
+    "no_code": "Không tìm thấy mã mời. Vui lòng dùng liên kết chia sẻ hợp lệ.",
+    "invalid": "Liên kết mời này không hợp lệ hoặc đã hết hạn.",
+    "joined_title": "Đã tham gia!",
+    "redirecting": "Đang chuyển đến không gian làm việc của bạn...",
+    "error_title": "Không thể mở lời mời",
+    "go_home": "Về trang chủ",
+    "loading": "Đang tải thông tin lời mời...",
+    "title": "Bạn được mời tham gia {{workspace}}",
+    "invited_by": "Được mời bởi {{name}}",
+    "join_as": "Bạn sẽ tham gia không gian làm việc này với vai trò",
+    "role_admin": "Quản trị viên",
+    "role_member": "Thành viên",
+    "login_required": "Bạn cần đăng nhập để tham gia không gian làm việc này.",
+    "join": "Tham gia không gian làm việc",
+    "joining": "Đang tham gia...",
+    "log_in_to_join": "Đăng nhập để tham gia",
+    "join_failed": "Không thể tham gia không gian làm việc. Liên kết có thể đã hết hạn.",
+    "seats_full": "Tất cả số chỗ thành viên đã mua đang được sử dụng. Hãy nhờ quản trị viên không gian làm việc thêm chỗ trước khi thử lại.",
+    "seats_unavailable": "Không thể xác minh số chỗ thành viên. Vui lòng thử lại.",
+    "full_title": "{{workspace}} đã đầy",
+    "full_description": "Hãy liên hệ người đã mời bạn. Liên kết này sẽ hoạt động trở lại khi không gian làm việc được nâng cấp.",
+    "retry": "Thử lại"
+  }
+}

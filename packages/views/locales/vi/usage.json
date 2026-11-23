@@ -1,0 +1,121 @@
+{
+  "title": "Phân tích",
+  "tab_usage": "Mức sử dụng",
+  "header": {
+    "timezone_and_updated": "{{tz}} · cập nhật lúc {{time}}",
+    "refresh": "Làm mới"
+  },
+  "filter": {
+    "project_label": "Dự án",
+    "all_projects": "Tất cả dự án",
+    "period_label": "Khoảng thời gian"
+  },
+  "history_limit": {
+    "note": "Gói của bạn bao gồm {{days}} ngày gần nhất. Hãy nâng cấp để xem dữ liệu cũ hơn. Không có dữ liệu nào bị xóa.",
+    "fell_back": "Đang hiển thị {{days}} ngày gần nhất — giới hạn của gói hiện tại.",
+    "view_plans": "Xem các gói",
+    "locked": "Không có trong gói của bạn",
+    "plan": {
+      "pro": "Pro",
+      "business": "Business"
+    }
+  },
+  "kpi": {
+    "cost_label": "Chi phí · {{days}} ngày",
+    "tokens_label": "Token · {{days}} ngày",
+    "tokens_hint": "Đầu vào {{input}} · Đầu ra {{output}}",
+    "run_time_label": "Thời gian chạy · {{days}} ngày",
+    "run_time_hint": "Trên {{tasks}} lần chạy",
+    "tasks_label": "Lần chạy · {{days}} ngày",
+    "tasks_hint": "{{failed}} lỗi"
+  },
+  "dim": {
+    "label": "Khoảng",
+    "daily": "Theo ngày",
+    "weekly": "Theo tuần"
+  },
+  "daily": {
+    "title_cost": "Chi phí theo ngày",
+    "title_tokens": "Token theo ngày",
+    "title_time": "Thời gian chạy theo ngày",
+    "title_tasks": "Lần chạy theo ngày",
+    "title_errors": "Lỗi theo ngày",
+    "metric_cost": "Chi phí",
+    "metric_tokens": "Token",
+    "metric_time": "Thời gian",
+    "metric_tasks": "Lần chạy",
+    "no_data": "Không có mức sử dụng trong khoảng thời gian này.",
+    "metric_label": "Chỉ số"
+  },
+  "weekly": {
+    "title_cost": "Chi phí theo tuần",
+    "title_tokens": "Token theo tuần",
+    "title_time": "Thời gian chạy theo tuần",
+    "title_tasks": "Lần chạy theo tuần",
+    "title_errors": "Lỗi theo tuần",
+    "partial_label": "{{range}} (một phần · {{covered}} / 7 ngày)"
+  },
+  "errors": {
+    "kpi_failed_label": "Lần chạy lỗi · {{days}} ngày",
+    "kpi_failed_hint": "Trên {{total}} lần chạy",
+    "kpi_rate_label": "Tỷ lệ lỗi · {{days}} ngày",
+    "kpi_agents_label": "Tác nhân bị ảnh hưởng · {{days}} ngày",
+    "kpi_agents_hint": "Nhiều nhất: {{name}} ({{count}} lỗi)",
+    "tooltip_rate": "Tỷ lệ lỗi",
+    "class": {
+      "auth": "Xác thực",
+      "rate_limit": "Giới hạn tần suất",
+      "timeout": "Hết thời gian",
+      "provider": "Nhà cung cấp",
+      "runtime": "Môi trường chạy",
+      "agent": "Tác nhân",
+      "other": "Khác"
+    },
+    "title": "Lỗi",
+    "summary": "{{failed}} trên {{total}} lần chạy bị lỗi · {{rate}}",
+    "mix_title": "Cơ cấu lỗi · {{failed}}",
+    "mix_label": "Cơ cấu lỗi",
+    "codes_label": "Mã lỗi",
+    "by_agent": "Lỗi theo tác nhân",
+    "sort_label": "Xếp hạng tác nhân theo",
+    "sort_failed": "Số lỗi",
+    "sort_rate": "Tỷ lệ",
+    "header_agent": "Tác nhân",
+    "header_failed": "Lỗi",
+    "header_runs": "Lần chạy",
+    "header_rate": "Tỷ lệ",
+    "other_agents": "Các tác nhân khác",
+    "low_sample": "Ít hơn {{count}} lần chạy trong khoảng thời gian này — tỷ lệ này không có ý nghĩa.",
+    "no_data": "Không có lần chạy lỗi nào trong khoảng thời gian này",
+    "show_reasons": "Hiện mã lỗi",
+    "hide_reasons": "Ẩn mã lỗi",
+    "show_all": "Hiện tất cả {{count}}",
+    "show_less": "Chỉ hiện {{count}} đầu"
+  },
+  "leaderboard": {
+    "title": "Bảng xếp hạng",
+    "caption": "{{count}} tác nhân",
+    "caption_with_deleted": "{{count}} tác nhân · {{deleted}} đã xóa",
+    "sort_label": "Xếp hạng tác nhân theo",
+    "deleted_agents": "Tác nhân đã xóa",
+    "other_agents": "Các tác nhân khác",
+    "header_agent": "Tác nhân",
+    "header_tokens": "Token",
+    "header_cost": "Chi phí",
+    "header_time": "Thời gian",
+    "header_tasks": "Lần chạy",
+    "usage_unreported_other": "{{count}} lần chạy không báo cáo mức sử dụng",
+    "usage_unreported_pending_other": "{{count}} lần chạy không báo cáo mức sử dụng · tổng số vẫn đang được xử lý",
+    "usage_totals_pending": "Tổng mức sử dụng vẫn đang được xử lý",
+    "show_all": "Hiện tất cả",
+    "show_less": "Chỉ hiện {{count}} đầu",
+    "no_data": "Không có hoạt động của tác nhân trong khoảng thời gian này."
+  },
+  "empty": {
+    "title": "Chưa có mức sử dụng",
+    "body": "Khi tác nhân bắt đầu chạy, token, chi phí và tỷ lệ lỗi sẽ hiển thị tại đây."
+  },
+  "duration": {
+    "less_than_minute": "<1 phút"
+  }
+}

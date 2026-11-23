@@ -1,0 +1,635 @@
+{
+  "page": {
+    "new_autopilot": "Tự động hóa mới",
+    "table": {
+      "name": "Tên",
+      "agent": "Tác nhân",
+      "created_by": "Người tạo",
+      "mode": "Chế độ",
+      "status": "Trạng thái",
+      "last_run": "Lần chạy gần nhất",
+      "assignee": "Người được giao",
+      "trigger": "Kích hoạt",
+      "next_run": "Lần chạy tiếp theo",
+      "created": "Ngày tạo"
+    },
+    "last_run_empty": "--",
+    "no_matches": "Không có tự động hóa nào khớp",
+    "retry": "Thử lại"
+  },
+  "status": {
+    "active": "Đang hoạt động",
+    "paused": "Tạm dừng",
+    "paused_runtime_required": "Tạm dừng — người được giao cần một môi trường chạy",
+    "archived": "Đã lưu trữ",
+    "paused_project_archived": "Tạm dừng — dự án của nó đã được lưu trữ"
+  },
+  "execution_mode": {
+    "create_issue": "Tạo nhiệm vụ",
+    "run_only": "Chỉ chạy"
+  },
+  "relative_date": {
+    "today": "Hôm nay",
+    "one_day_ago": "1 ngày trước",
+    "days_ago": "{{count}} ngày trước",
+    "months_ago": "{{count}} tháng trước"
+  },
+  "templates": {
+    "daily_news": {
+      "title": "Bản tin tin tức hằng ngày",
+      "summary": "Tìm kiếm và tóm tắt tin tức hôm nay cho cả nhóm"
+    },
+    "pr_review": {
+      "title": "Nhắc xem xét PR",
+      "summary": "Đánh dấu các pull request cũ đang cần xem xét"
+    },
+    "bug_triage": {
+      "title": "Phân loại lỗi",
+      "summary": "Đánh giá và sắp xếp ưu tiên các báo cáo lỗi mới"
+    },
+    "weekly_progress": {
+      "title": "Báo cáo tiến độ hằng tuần",
+      "summary": "Tổng hợp tiến độ làm việc của nhóm trong tuần"
+    },
+    "dependency_audit": {
+      "title": "Kiểm tra phụ thuộc",
+      "summary": "Quét lỗ hổng bảo mật và các gói đã lỗi thời"
+    },
+    "documentation_check": {
+      "title": "Kiểm tra tài liệu",
+      "summary": "Xem các thay đổi gần đây để tìm khoảng trống tài liệu"
+    }
+  },
+  "detail": {
+    "not_found": "Không tìm thấy tự động hóa",
+    "not_found_description": "Tự động hóa có thể đã bị xóa hoặc bạn không có quyền truy cập.",
+    "back_to_list": "Tất cả tự động hóa",
+    "pause_aria": "Tạm dừng tự động hóa",
+    "activate_aria": "Kích hoạt tự động hóa",
+    "paused_runtime_required": "Đã tạm dừng vì người được giao mất môi trường chạy. Hãy gắn một môi trường chạy, rồi kích hoạt lại tự động hóa này.",
+    "bind_runtime": "Gắn môi trường chạy",
+    "edit": "Chỉnh sửa",
+    "run_now": "Chạy ngay",
+    "running": "Đang chạy...",
+    "toast_triggered": "Đã kích hoạt tự động hóa",
+    "toast_trigger_failed": "Không thể kích hoạt tự động hóa",
+    "run_blocked_invocation_not_allowed": "Chưa kích hoạt — bạn không có quyền dùng tác nhân của tự động hóa này",
+    "run_blocked_runtime_offline": "Chưa kích hoạt — môi trường chạy của tác nhân đang ngoại tuyến",
+    "run_blocked_agent_runtime_required": "Chưa kích hoạt — tác nhân chưa có môi trường chạy; hãy gắn một môi trường để chạy",
+    "run_blocked_runtime_access_denied": "Chưa kích hoạt — không thể truy cập môi trường chạy riêng của tác nhân này. Hãy chuyển môi trường chạy sang công khai, hoặc gắn tác nhân với một môi trường chạy có thể truy cập.",
+    "run_blocked_target_unavailable": "Chưa kích hoạt — tác nhân không khả dụng",
+    "run_blocked_attribution": "Chưa kích hoạt — không có thành viên đang hoạt động nào có thể chạy tự động hóa này.",
+    "run_blocked_already_active": "Chưa kích hoạt — một lần chạy đang diễn ra hoặc vừa kết thúc.",
+    "run_blocked_quota_exceeded": "Chưa kích hoạt — đã đạt giới hạn lần chạy trong kỳ này",
+    "run_blocked_generic": "Chưa kích hoạt — lần chạy đã bị chặn",
+    "section_triggers": "Kích hoạt",
+    "section_run_history": "Lịch sử chạy",
+    "field_agent": "Tác nhân",
+    "field_created_by": "Người tạo",
+    "field_output_mode": "Chế độ đầu ra",
+    "field_project": "Dự án",
+    "no_project": "Không có dự án",
+    "project_unavailable": "Dự án không khả dụng",
+    "field_prompt": "Hướng dẫn vận hành",
+    "field_subscribers": "Người theo dõi",
+    "field_subscribers_none": "Không có",
+    "no_prompt": "Chưa có hướng dẫn vận hành.",
+    "copy_link": "Sao chép liên kết",
+    "link_copied": "Đã sao chép liên kết",
+    "link_copy_failed": "Không thể sao chép liên kết",
+    "open_project": "Mở dự án",
+    "summary": {
+      "create_issue": "{{agent}} tạo một nhiệm vụ mỗi lần chạy",
+      "run_only": "{{agent}} chạy mà không tạo nhiệm vụ",
+      "with_trigger": "{{trigger}} · {{action}}"
+    },
+    "add_trigger": "Thêm kích hoạt",
+    "no_triggers": "Chưa cấu hình kích hoạt nào. Hãy thêm lịch hoặc webhook để chạy tự động.",
+    "no_runs": "Chưa có lần chạy nào. Nhấn \"Chạy ngay\" để kích hoạt thủ công.",
+    "delete_button": "Xóa tự động hóa",
+    "toast_deleted": "Đã xóa tự động hóa",
+    "toast_delete_failed": "Không thể xóa tự động hóa",
+    "delete_dialog": {
+      "title": "Xóa tự động hóa",
+      "description": "Thao tác này sẽ xóa vĩnh viễn \"{{title}}\", cùng các kích hoạt và lịch sử chạy của nó. Không thể hoàn tác.",
+      "cancel": "Hủy",
+      "confirm": "Xóa",
+      "deleting": "Đang xóa..."
+    },
+    "paused_project_archived": "Đã tạm dừng vì dự án của nó đã được lưu trữ. Hãy khôi phục dự án, rồi kích hoạt lại tự động hóa này."
+  },
+  "access": {
+    "title": "Quản lý quyền truy cập",
+    "description": "Các thành viên bạn thêm có thể chỉnh sửa, chạy, và quản lý kích hoạt cùng webhook của tự động hóa này.",
+    "current_label": "Có quyền truy cập",
+    "add": "Thêm thành viên",
+    "search_placeholder": "Tìm thành viên...",
+    "no_results": "Không tìm thấy thành viên",
+    "remove_tooltip": "Xóa quyền truy cập",
+    "empty": "Chưa cấp quyền truy cập cho ai.",
+    "toast_granted": "Đã cấp quyền truy cập",
+    "toast_revoked": "Đã xóa quyền truy cập",
+    "toast_failed": "Không thể cập nhật quyền truy cập",
+    "owner_note": "Người tạo và quản trị viên không gian làm việc luôn có quyền truy cập."
+  },
+  "run_status": {
+    "issue_created": "Đã tạo nhiệm vụ",
+    "running": "Đang chạy",
+    "skipped": "Đã bỏ qua",
+    "completed": "Đã hoàn thành",
+    "failed": "Thất bại",
+    "deferred": "Đã hoãn",
+    "held": "Đang giữ"
+  },
+  "run_source": {
+    "schedule": "Lịch",
+    "manual": "Thủ công",
+    "webhook": "Webhook",
+    "api": "API",
+    "catchup": "Bù lại"
+  },
+  "run": {
+    "issue_linked": "Đã liên kết nhiệm vụ",
+    "held_reason": {
+      "company_paused": "Đang giữ: công ty đang tạm dừng",
+      "budget_hold": "Đang giữ: ngân sách đã đạt giới hạn",
+      "quiet_hours": "Đang giữ: giờ yên tĩnh"
+    },
+    "view_log": "Xem nhật ký thực thi",
+    "stop": "Dừng lần chạy",
+    "stop_failed": "Không thể dừng lần chạy.",
+    "skipped_group": {
+      "label": "Đã bỏ qua",
+      "summary": "{{count}} lần chạy đã bỏ qua"
+    }
+  },
+  "webhook_payload": {
+    "label": "Sự kiện webhook:",
+    "unknown_event": "webhook.received",
+    "payload": "Nội dung",
+    "content_type": "Content-Type: {{type}}",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép nội dung webhook",
+    "copied_short": "Đã sao chép",
+    "copy_failed": "Không thể sao chép",
+    "truncated_marker": "[đã cắt bớt — nhấn Sao chép để lấy toàn bộ nội dung]"
+  },
+  "trigger_kind": {
+    "schedule": "Lịch",
+    "webhook": "Webhook",
+    "api": "API"
+  },
+  "trigger_row": {
+    "disabled_badge": "Đã tắt",
+    "deprecated_badge": "Không khuyến khích",
+    "next_label": "Tiếp theo: {{date}}",
+    "webhook_url_label": "URL webhook",
+    "show_url": "Hiện URL",
+    "hide_url": "Ẩn URL",
+    "hidden_url_aria": "URL webhook đang ẩn — nhấp để hiện",
+    "copy_url": "Sao chép URL",
+    "url_copied": "Đã sao chép URL webhook",
+    "url_copy_failed": "Không thể sao chép",
+    "edit_schedule": "Chỉnh sửa lịch",
+    "edit_webhook": "Chỉnh sửa webhook",
+    "event_filter_summary_all": "Chấp nhận mọi sự kiện",
+    "event_filter_summary_conditions_other": "{{count}} điều kiện",
+    "rotate_url": "Đổi URL",
+    "rotate_confirm_title": "Đổi URL webhook",
+    "rotate_confirm_description": "URL hiện tại sẽ ngừng hoạt động ngay lập tức. Mọi hệ thống bên ngoài đang gọi nó phải được cập nhật URL mới. Tiếp tục?",
+    "rotate_confirm_cancel": "Hủy",
+    "rotate_confirm_action": "Đổi URL",
+    "rotate_in_progress": "Đang đổi...",
+    "toast_rotated": "Đã đổi URL webhook",
+    "toast_rotate_failed": "Không thể đổi URL",
+    "toast_deleted": "Đã xóa kích hoạt",
+    "toast_delete_failed": "Không thể xóa kích hoạt",
+    "delete_dialog": {
+      "title": "Xóa kích hoạt",
+      "description": "Kích hoạt này sẽ bị gỡ và không còn chạy tự động hóa này nữa. Thao tác này không thể hoàn tác.",
+      "cancel": "Hủy",
+      "confirm": "Xóa",
+      "deleting": "Đang xóa..."
+    }
+  },
+  "deliveries": {
+    "section_title": "Gửi webhook",
+    "empty": "Chưa có lần gửi webhook nào. Hãy gửi POST tới URL webhook để thấy mục ở đây.",
+    "row": {
+      "attempts": "{{count}}× lần thử",
+      "replay_badge": "Phát lại"
+    },
+    "status": {
+      "queued": "Đang xếp hàng",
+      "dispatched": "Đã chuyển đi",
+      "rejected": "Bị từ chối",
+      "ignored": "Đã bỏ qua",
+      "failed": "Thất bại"
+    },
+    "signature": {
+      "not_required": "Không có chữ ký",
+      "valid": "Chữ ký hợp lệ",
+      "invalid": "Chữ ký không hợp lệ",
+      "missing": "Thiếu chữ ký"
+    },
+    "detail": {
+      "title": "Lần gửi",
+      "received_at": "Đã nhận",
+      "last_attempt_at": "Lần thử gần nhất",
+      "attempt_count": "Số lần thử",
+      "dispatch_attempts": "Số lần chuyển đi",
+      "available_at": "Lần chuyển đi tiếp theo",
+      "response_status": "Phản hồi",
+      "dedupe_key": "Khóa chống trùng",
+      "dedupe_source": "Nguồn chống trùng",
+      "content_type": "Content-Type",
+      "replayed_from": "Phát lại từ",
+      "error_label": "Lỗi",
+      "raw_body": "Nội dung gốc",
+      "selected_headers": "Tiêu đề",
+      "response_body": "Nội dung phản hồi"
+    },
+    "replay": {
+      "action": "Phát lại",
+      "in_progress": "Đang phát lại...",
+      "toast_success": "Đã phát lại lần gửi",
+      "toast_failed": "Phát lại thất bại",
+      "disabled_invalid_signature": "Không thể phát lại — chữ ký không hợp lệ",
+      "disabled_rejected": "Không thể phát lại lần gửi đã bị từ chối",
+      "disabled_queued": "Đã có một lần phát lại đang xếp hàng. Hãy chờ nó hoàn tất."
+    },
+    "ignore": {
+      "title": "Lý do bỏ qua",
+      "payload_filtered": "Không đáp ứng điều kiện nội dung",
+      "event_filtered": "Sự kiện hoặc hành động không khớp",
+      "trigger_disabled": "Kích hoạt đã tắt",
+      "autopilot_paused": "Tự động hóa đã tạm dừng",
+      "autopilot_archived": "Tự động hóa đã lưu trữ",
+      "quota_exceeded": "Đã đạt hạn mức lần chạy",
+      "actual_value": "Giá trị thực tế",
+      "missing": "Thiếu trường",
+      "truncated": "Bản xem trước đã bị cắt bớt. Xem nội dung gốc để có giá trị đầy đủ."
+    }
+  },
+  "add_trigger_dialog": {
+    "title": "Thêm kích hoạt",
+    "type_label": "Loại",
+    "type_schedule": "Lịch",
+    "type_webhook": "Webhook",
+    "label_field": "Nhãn (không bắt buộc)",
+    "label_placeholder": "ví dụ: Sáng ngày thường",
+    "webhook_help": "Delegora sẽ tạo URL webhook sau khi bạn lưu. Gửi POST bất kỳ JSON nào tới đó để kích hoạt tự động hóa này.",
+    "submit": "Thêm kích hoạt",
+    "submitting": "Đang thêm...",
+    "toast_added_schedule": "Đã thêm kích hoạt theo lịch",
+    "toast_added_webhook": "Đã thêm kích hoạt webhook",
+    "toast_add_failed": "Không thể thêm kích hoạt"
+  },
+  "edit_trigger_dialog": {
+    "title": "Chỉnh sửa lịch",
+    "label_field": "Nhãn (không bắt buộc)",
+    "label_placeholder": "ví dụ: Sáng ngày thường",
+    "enabled_label": "Bật",
+    "submit": "Lưu",
+    "submitting": "Đang lưu...",
+    "toast_updated": "Đã cập nhật lịch",
+    "toast_update_failed": "Không thể cập nhật lịch"
+  },
+  "edit_webhook_dialog": {
+    "title": "Chỉnh sửa webhook",
+    "label_placeholder": "ví dụ: Pull request trên GitHub",
+    "toast_updated": "Đã cập nhật webhook",
+    "toast_update_failed": "Không thể cập nhật webhook"
+  },
+  "dialog": {
+    "sr_create": "Tự động hóa mới",
+    "sr_edit": "Chỉnh sửa tự động hóa",
+    "header_create": "Tự động hóa mới",
+    "header_edit": "Chỉnh sửa tự động hóa",
+    "subtitle": "Công việc AI được kích hoạt theo lịch hoặc webhook",
+    "expand": "Mở rộng",
+    "collapse": "Thu gọn",
+    "close": "Đóng",
+    "title_placeholder": "Tên tự động hóa",
+    "runbook_label": "Hướng dẫn vận hành",
+    "runbook_hint": "Tác nhân đọc ở mỗi lần chạy",
+    "description_placeholder": "# Mục tiêu\nTác nhân cần đạt được điều gì?\n\n# Bối cảnh\nDành cho ai? Có ràng buộc nào không?\n\n# Các bước\n1. ...\n2. ...",
+    "auto_run_hint": "Sau khi lưu, tự động chạy cho đến khi tạm dừng.",
+    "cancel": "Hủy",
+    "create": "Tạo tự động hóa",
+    "save": "Lưu",
+    "creating": "Đang tạo...",
+    "saving": "Đang lưu...",
+    "toast_created": "Đã tạo tự động hóa",
+    "toast_create_partial": "Đã tạo tự động hóa, nhưng không lưu được lịch",
+    "toast_create_partial_with_reason": "Đã tạo tự động hóa, nhưng không lưu được lịch: {{reason}}",
+    "toast_create_failed": "Không thể tạo tự động hóa",
+    "toast_updated": "Đã cập nhật tự động hóa",
+    "toast_update_partial": "Đã cập nhật tự động hóa, nhưng không lưu được lịch",
+    "toast_update_partial_with_reason": "Đã cập nhật tự động hóa, nhưng không lưu được lịch: {{reason}}",
+    "toast_update_failed": "Không thể cập nhật tự động hóa",
+    "section_agent": "Tác nhân",
+    "section_assignee": "Người được giao",
+    "select_agent": "Chọn tác nhân",
+    "select_assignee": "Chọn tác nhân hoặc nhóm",
+    "section_project": "Dự án",
+    "project_hint": "Cũng xác định nơi các lần chạy diễn ra — kho mã hoặc thư mục cục bộ của dự án",
+    "no_project": "Không có dự án",
+    "section_output_mode": "Chế độ đầu ra",
+    "section_subscribers": "Người theo dõi",
+    "subscribers_hint": "Tự động theo dõi mọi nhiệm vụ mà tự động hóa này tạo ra",
+    "subscribers_empty": "Chưa có người theo dõi — thêm đồng đội để thông báo cho họ ở mọi lần chạy",
+    "subscribers_add": "Thêm người theo dõi",
+    "subscribers_search_placeholder": "Tìm thành viên theo tên...",
+    "subscribers_no_results": "Không có thành viên phù hợp",
+    "subscribers_remove_tooltip": "Xóa",
+    "section_schedule": "Lịch",
+    "section_trigger_kind": "Kích hoạt",
+    "trigger_kind_schedule": "Lịch",
+    "trigger_kind_webhook": "Webhook",
+    "section_webhook": "Webhook",
+    "webhook_help_create": "Delegora sẽ tạo URL webhook sau khi tự động hóa này được tạo. Gửi POST bất kỳ JSON nào tới URL đó để kích hoạt.",
+    "webhook_help_edit": "Tự động hóa này được kích hoạt bởi webhook. Quản lý URL (sao chép / đổi) ở trang chi tiết của tự động hóa.",
+    "webhook_created_title": "Tự động hóa webhook đã sẵn sàng",
+    "webhook_created_description": "Gửi POST bất kỳ JSON nào tới URL bên dưới và tự động hóa sẽ được kích hoạt. Hãy sao chép ngay — bạn cũng có thể tìm và đổi URL ở trang chi tiết của tự động hóa.",
+    "webhook_created_warning": "Hãy coi URL này như mật khẩu. Bất kỳ ai có nó đều có thể kích hoạt tự động hóa.",
+    "webhook_created_done": "Xong",
+    "event_filter_label": "Bộ lọc sự kiện",
+    "event_filter_docs_link_label": "Tìm hiểu cách hoạt động của bộ lọc sự kiện",
+    "event_filter_event_placeholder": "Sự kiện, ví dụ pull_request",
+    "event_filter_actions_placeholder": "Hành động (không bắt buộc)",
+    "event_filter_add_rule": "Thêm quy tắc",
+    "event_filter_event_label": "Sự kiện",
+    "event_filter_actions_label": "Hành động",
+    "event_filter_new_rule_label": "Quy tắc mới",
+    "event_filter_condition_label": "Điều kiện",
+    "event_filter_error_event_required": "Nhập tên sự kiện.",
+    "event_filter_error_path_required": "Nhập một trường nội dung.",
+    "event_filter_error_path_invalid": "Phân tách tên trường bằng dấu chấm, tối đa {{path}} ký tự.",
+    "event_filter_error_value_required": "Nhập một giá trị.",
+    "event_filter_error_too_many_values": "Tối đa {{values}} giá trị.",
+    "event_filter_remove_label": "Xóa quy tắc",
+    "event_filter_hint": "Chỉ xử lý các sự kiện khớp với một quy tắc và tất cả điều kiện nội dung của nó. Để trống để chấp nhận mọi sự kiện.",
+    "event_filter_condition_remove_label": "Xóa điều kiện",
+    "event_filter_condition_add_label": "Thêm điều kiện",
+    "event_filter_condition_ops": {
+      "equals": "là",
+      "not_equals": "không phải",
+      "contains": "chứa",
+      "in": "là một trong",
+      "exists": "tồn tại"
+    },
+    "event_filter_condition_path_label": "Trường nội dung",
+    "event_filter_condition_path_placeholder": "Trường nội dung, ví dụ pull_request.base.ref",
+    "event_filter_condition_op_label": "Toán tử",
+    "event_filter_condition_value_label": "Giá trị",
+    "event_filter_condition_value_placeholder": "ví dụ: main",
+    "event_filter_condition_values_placeholder": "main, release",
+    "event_filter_condition_ignore_case": "Không phân biệt hoa thường",
+    "schedule_multiple_notice": "Tự động hóa này có {{count}} lịch. Hãy đóng hộp thoại này và chỉnh sửa từng lịch trong mục Kích hoạt bên dưới.",
+    "webhook_multiple_notice": "Tự động hóa này có nhiều hơn một webhook. Hãy đóng hộp thoại này và chỉnh sửa từng webhook trong mục Kích hoạt bên dưới.",
+    "webhook_edit_filters": "Chỉnh sửa bộ lọc",
+    "webhook_filters_saved_separately": "Bộ lọc sự kiện được lưu ngay — nhấn Hủy ở đây sẽ không hoàn tác chúng.",
+    "schedule_empty": "Không có lịch — tự động hóa này chỉ chạy khi được kích hoạt thủ công.",
+    "schedule_add": "Thêm lịch",
+    "error_title_required": "Nhập tên cho tự động hóa này.",
+    "error_assignee_required": "Chọn tác nhân hoặc nhóm sẽ chạy tự động hóa này.",
+    "output_modes": {
+      "create_issue": {
+        "label": "Tạo nhiệm vụ",
+        "description": "Mỗi lần chạy tạo một nhiệm vụ được theo dõi"
+      },
+      "run_only": {
+        "label": "Chỉ chạy",
+        "description": "Chạy âm thầm, không tạo nhiệm vụ"
+      }
+    },
+    "event_filter_condition_all": "Và nội dung khớp với tất cả điều kiện"
+  },
+  "schedule_editor": {
+    "time_label": "Thời gian",
+    "time_at": "Vào một thời điểm",
+    "time_every": "Theo khoảng",
+    "every_prefix": "Mỗi",
+    "unit_hours": "giờ",
+    "unit_minutes": "phút",
+    "days_label": "Ngày",
+    "days_every": "Mỗi ngày",
+    "days_weekly": "Các ngày trong tuần",
+    "days_monthly": "Ngày trong tháng",
+    "monthly_short_month_hint": "Các tháng không có ngày {{day}} sẽ bị bỏ qua.",
+    "days_short": {
+      "sun": "CN",
+      "mon": "T2",
+      "tue": "T3",
+      "wed": "T4",
+      "thu": "T5",
+      "fri": "T6",
+      "sat": "T7"
+    },
+    "timezone_label": "Múi giờ",
+    "cron_toggle": "Cron",
+    "cron_click_to_edit": "nhấp để chỉnh sửa",
+    "cron_hint": "Cron 5 trường chuẩn (phút giờ ngày tháng thứ)",
+    "cron_invalid": "Biểu thức cron này không hợp lệ.",
+    "timezone_invalid": "Máy chủ không nhận diện được múi giờ này.",
+    "advanced_hint": "Biểu thức này dùng các tính năng mà trình chỉnh sửa trực quan không thể thể hiện. Hãy sửa trực tiếp văn bản cron, hoặc đơn giản hóa để bật lại các điều khiển.",
+    "advanced_unverified": "Không thể kết nối máy chủ để kiểm tra biểu thức này, nên các điều khiển vẫn tắt. Hãy chắc chắn văn bản cron đúng trước khi lưu.",
+    "advanced_checking": "Đang kiểm tra biểu thức này với máy chủ. Các điều khiển sẽ tắt cho đến khi có kết quả.",
+    "next_runs_label": "Lần chạy tiếp theo",
+    "next_in": "sau {{countdown}}",
+    "preview_unavailable": "Hiện không thể xem các lần chạy tiếp theo.",
+    "no_upcoming_runs": "Biểu thức này không có lần chạy nào sắp tới.",
+    "describe": {
+      "days_every": "Mỗi ngày",
+      "days_monthly": "Ngày {{day}} hằng tháng",
+      "days_long": {
+        "sun": "Chủ nhật",
+        "mon": "Thứ hai",
+        "tue": "Thứ ba",
+        "wed": "Thứ tư",
+        "thu": "Thứ năm",
+        "fri": "Thứ sáu",
+        "sat": "Thứ bảy"
+      },
+      "days_range": "{{from}}–{{to}}",
+      "days_join": ", ",
+      "time_at": "Lúc {{time}}",
+      "time_every_hour": "Mỗi giờ vào phút :{{minute}}",
+      "time_every_hours": "Mỗi {{interval}} giờ vào phút :{{minute}}",
+      "time_every_hour_window": "Mỗi giờ",
+      "time_every_hours_window": "Mỗi {{interval}} giờ",
+      "time_every_minute": "Mỗi phút",
+      "time_every_minutes": "Mỗi {{interval}} phút",
+      "window": "{{from}}–{{to}}"
+    },
+    "countdown": {
+      "days_hours": "{{days}} ngày {{hours}} giờ {{minutes}} phút",
+      "hours_minutes": "{{hours}} giờ {{minutes}} phút",
+      "minutes": "{{minutes}} phút",
+      "less_than_minute": "<1 phút"
+    },
+    "a11y": {
+      "fixed_hour": "Giờ",
+      "fixed_minute": "Phút",
+      "interval": "Khoảng",
+      "interval_unit": "Đơn vị khoảng",
+      "window_start_hour": "Giờ bắt đầu khoảng",
+      "window_start_minute": "Phút bắt đầu khoảng",
+      "window_end_hour": "Giờ kết thúc khoảng",
+      "window_end_minute": "Phút kết thúc khoảng",
+      "day_pattern": "Mẫu ngày",
+      "day_of_month": "Ngày trong tháng",
+      "timezone": "Múi giờ",
+      "days_full": {
+        "sun": "Chủ nhật",
+        "mon": "Thứ hai",
+        "tue": "Thứ ba",
+        "wed": "Thứ tư",
+        "thu": "Thứ năm",
+        "fri": "Thứ sáu",
+        "sat": "Thứ bảy"
+      }
+    }
+  },
+  "agent_picker": {
+    "filter_placeholder": "Lọc tác nhân hoặc nhóm...",
+    "select_agent": "Chọn tác nhân",
+    "select_assignee": "Chọn tác nhân hoặc nhóm",
+    "agents_group": "Tác nhân",
+    "squads_group": "Nhóm",
+    "agent_runtime_required": "Hãy gắn một môi trường chạy trước khi chọn tác nhân này",
+    "squad_runtime_required": "Hãy gắn một môi trường chạy cho trưởng nhóm trước khi chọn nhóm này"
+  },
+  "timezone_picker": {
+    "search_placeholder": "Tìm múi giờ..."
+  },
+  "toolbar": {
+    "section_assignee": "Người được giao",
+    "section_mode": "Chế độ",
+    "section_trigger": "Kích hoạt",
+    "section_creator": "Người tạo"
+  },
+  "actions": {
+    "row_menu": "Thao tác tự động hóa",
+    "pause": "Tạm dừng",
+    "resume": "Tiếp tục",
+    "delete": "Xóa",
+    "delete_dialog": {
+      "title": "Xóa tự động hóa?",
+      "description_other": "Thao tác này sẽ xóa vĩnh viễn {{count}} tự động hóa cùng lịch sử chạy của chúng.",
+      "warning": "Thao tác này không thể hoàn tác.",
+      "cancel": "Hủy",
+      "confirm": "Xóa vĩnh viễn",
+      "deleting": "Đang xóa...",
+      "title_multiple": "Xóa {{count}} tự động hóa?",
+      "description_single": "Thao tác này sẽ xóa vĩnh viễn \"{{name}}\" và lịch sử chạy của nó."
+    }
+  },
+  "wakeups": {
+    "title": "Đánh thức nhiệm vụ",
+    "issue": "Nhiệm vụ",
+    "trigger": "Kích hoạt",
+    "enabled": "Bật",
+    "all_triggers": "Tất cả kích hoạt",
+    "event": "Sự kiện",
+    "at": "Một lần",
+    "recurring": "Lặp lại",
+    "all_agents": "Tất cả tác nhân",
+    "running": "Đang chạy",
+    "active_runs": "{{count}} lần chạy đang hoạt động",
+    "issue_closed": "Nhiệm vụ đã đóng",
+    "read_only": "Chỉ người tạo hoặc quản trị viên không gian làm việc mới có thể quản lý lần đánh thức này",
+    "select_row": "Chọn {{issue}}, {{agent}}",
+    "select_page": "Chọn tất cả lần đánh thức đang bật",
+    "load_error": "Không thể tải các lần đánh thức",
+    "loading": "Đang tải các lần đánh thức...",
+    "disable_selected": "Tắt các mục đã chọn",
+    "confirm_title": "Tắt {{count}} lần đánh thức?",
+    "confirm_body": "Các lần đánh thức sau này sẽ dừng. Các lần chạy đang xếp hàng chưa bắt đầu sẽ bị hủy. Các lần chạy đang diễn ra sẽ tiếp tục — hãy dừng chúng từ nhật ký thực thi.",
+    "cancel": "Hủy",
+    "confirm": "Tắt",
+    "disabling": "Đang tắt...",
+    "batch_result": "Đã tắt: {{succeeded}}. Thất bại: {{failed}}.",
+    "scopes": {
+      "active": "Đang chờ hoặc đang chạy",
+      "all": "Tất cả lần đánh thức",
+      "disabled": "Đã tắt",
+      "ended": "Đã kết thúc",
+      "paused": "Tạm dừng"
+    },
+    "target_agent": "Đánh thức tác nhân",
+    "empty_filtered": "Không có lần đánh thức nào khớp",
+    "batch_success": "Đã tắt {{count}} quy tắc đánh thức",
+    "batch_partial": "Đã tắt {{succeeded}}; {{failed}} thất bại. Các mục lỗi vẫn được chọn để thử lại.",
+    "source": "Nguồn",
+    "sources": {
+      "all": "Tất cả nguồn",
+      "member": "Thành viên",
+      "agent": "Tác nhân",
+      "system": "Hệ thống"
+    },
+    "runs_7d": "Lần chạy (7 ngày)",
+    "ends": "Kết thúc",
+    "until_issue_ends": "Đến khi nhiệm vụ kết thúc",
+    "fires_once": "Kích hoạt một lần",
+    "assignee_target": "Người được giao · {{name}}",
+    "no_target": "Không có tác nhân được giao",
+    "banner_other": "{{count}} lần đánh thức đã được tạm dừng tự động. Mới nhất: {{issue}} “{{condition}}” — {{reason}}",
+    "banner_view": "Xem",
+    "create": "Lần đánh thức mới",
+    "create_pick_issue": "Chọn nhiệm vụ để thêm lần đánh thức",
+    "create_pick_issue_description": "Lần đánh thức thuộc về nhiệm vụ này và kết thúc cùng nó.",
+    "intro": {
+      "title": "Đưa tác nhân quay lại đúng thời điểm",
+      "description": "Các lần đánh thức nằm trên nhiệm vụ: khi một PR được hợp nhất, có người trả lời, hoặc đến đúng thời điểm, tác nhân sẽ quay lại tiếp tục công việc. Khi nhiệm vụ kết thúc, các lần đánh thức của nó cũng dừng.",
+      "slides": {
+        "event": {
+          "title": "Chờ một điều gì đó xảy ra",
+          "description": "Không cần để tác nhân chạy không ngừng trong lúc chờ. Khi điều kiện được đáp ứng, Delegora sẽ đánh thức nó."
+        },
+        "time": {
+          "title": "Hoặc chọn một thời điểm",
+          "description": "Đánh thức một lần phù hợp với \"kiểm tra lại vào chiều mai\"; đánh thức lặp lại phù hợp với kiểm tra hằng ngày."
+        },
+        "ends": {
+          "title": "Dừng khi nhiệm vụ kết thúc",
+          "description": "Các lần đánh thức thuộc về nhiệm vụ của chúng. Khi nhiệm vụ hoàn thành hoặc bị hủy, chúng sẽ tắt, không còn quy tắc thừa nào bị bỏ lại."
+        }
+      },
+      "art": {
+        "issue_inbox": "Trạng thái trống cho các nhóm trong hộp thư đến",
+        "issue_board": "Các cột bảng có thể đổi kích thước",
+        "issue_paste": "Dán ảnh vào bình luận",
+        "reply": "\"PR đã được hợp nhất. Đang cập nhật tài liệu và đóng nhiệm vụ.\"",
+        "event_examples": "PR được hợp nhất, bình luận mới"
+      }
+    },
+    "defaults": {
+      "title": "Khi các nhiệm vụ con hoàn thành",
+      "description": "Đánh thức người được giao của nhiệm vụ cha khi một giai đoạn hoàn thành và một giai đoạn sau đang chờ, và thêm một lần nữa khi mọi nhiệm vụ con đã đóng. Nếu người được giao là thành viên, họ sẽ nhận thông báo trong hộp thư đến.",
+      "badge": "Mặc định của không gian làm việc",
+      "enabled": "Bật theo mặc định",
+      "instruction": "Hướng dẫn mặc định",
+      "instruction_hint": "Được gửi tới tác nhân được đánh thức. Để trống để dùng hướng dẫn có sẵn bên dưới.",
+      "instruction_placeholder": "Để trống để dùng hướng dẫn có sẵn",
+      "builtin": "Hướng dẫn có sẵn",
+      "instruction_invalid": "Giữ hướng dẫn trong 4.000 byte.",
+      "save": "Lưu",
+      "saving": "Đang lưu...",
+      "save_error": "Không thể lưu mặc định.",
+      "customized_other": "{{count}} nhiệm vụ đang mở có cài đặt riêng và bỏ qua mặc định này.",
+      "admin_only": "Chỉ chủ sở hữu và quản trị viên mới có thể thay đổi các mặc định này.",
+      "load_error": "Không thể tải mặc định đánh thức.",
+      "edit_instruction": "Chỉnh sửa hướng dẫn mặc định",
+      "view_instruction": "Xem hướng dẫn mặc định"
+    },
+    "banner_single": "1 lần đánh thức đã được tạm dừng tự động: {{issue}} “{{condition}}” — {{reason}}"
+  },
+  "intro": {
+    "label": "Tự động hóa",
+    "title": "Để tác nhân tự bắt đầu công việc",
+    "description": "Đặt một lịch hoặc một webhook. Mỗi khi kích hoạt, Delegora sẽ tạo một nhiệm vụ cho tác nhân, hoặc chạy tác nhân trực tiếp. Chọn một mẫu và điều chỉnh theo ý bạn.",
+    "templates": "Bắt đầu từ một mẫu"
+  }
+}

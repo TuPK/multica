@@ -1,0 +1,542 @@
+{
+  "title": "Trung tâm",
+  "search_placeholder": "Tìm kỹ năng và plugin",
+  "view_label": "Chế độ xem",
+  "tabs": {
+    "items": "Mục",
+    "sources": "Nguồn",
+    "files": "Tệp",
+    "overview": "Tổng quan",
+    "versions": "Phiên bản",
+    "usage": "Sử dụng"
+  },
+  "kinds": {
+    "all": "Tất cả",
+    "skill": "Kỹ năng",
+    "plugin": "Plugin"
+  },
+  "kind_singular": {
+    "skill": "Kỹ năng",
+    "plugin": "Plugin"
+  },
+  "view": {
+    "list": "Danh sách",
+    "catalog": "Danh mục"
+  },
+  "sort": {
+    "label": "Sắp xếp",
+    "name": "Tên",
+    "updated": "Cập nhật",
+    "created": "Ngày tạo",
+    "usedBy": "Dùng nhiều nhất",
+    "source": "Nguồn"
+  },
+  "columns": {
+    "name": "Tên",
+    "kind": "Loại",
+    "source": "Nguồn",
+    "version": "Phiên bản",
+    "updated": "Cập nhật"
+  },
+  "source_types": {
+    "manual": "Tạo tại đây",
+    "runtime_local": "Môi trường chạy",
+    "clawhub": "ClawHub",
+    "skills_sh": "Skills.sh",
+    "github": "GitHub",
+    "plugin": "Plugin đã xuất bản",
+    "url_zip": "URL tệp zip",
+    "registry": "Kho đăng ký",
+    "upload": "Tải lên"
+  },
+  "open_source": "Mở nguồn",
+  "empty_title": "Trung tâm chưa có gì",
+  "no_matches": "Không có mục nào khớp",
+  "load_error": "Không thể tải Trung tâm",
+  "retry": "Thử lại",
+  "item": {
+    "not_found": "Mục này không có trong Trung tâm.",
+    "load_error": "Không thể tải mục này.",
+    "version": "v{{version}}",
+    "updated": "Cập nhật {{time}}",
+    "checksum": "Checksum"
+  },
+  "files": {
+    "list": "Tệp",
+    "list_error": "Không thể tải các tệp.",
+    "new_file": "Tệp mới",
+    "new_folder": "Thư mục mới",
+    "file_placeholder": "duong/dan/toi/tep.md",
+    "folder_placeholder": "ten-thu-muc",
+    "create": "Tạo",
+    "cancel": "Hủy",
+    "errors": {
+      "empty": "Nhập tên.",
+      "absolute": "Đường dẫn không được bắt đầu bằng /.",
+      "double_dot": "Đường dẫn không được chứa ..",
+      "reserved": "SKILL.md đã tồn tại.",
+      "exists": "Đã có tệp với tên này.",
+      "is_directory": "Đã có thư mục với tên này.",
+      "under_file": "Một tệp đã dùng một phần đường dẫn này."
+    },
+    "actions": {
+      "label": "Thao tác cho {{path}}",
+      "rename": "Đổi tên",
+      "delete": "Xóa"
+    },
+    "rename_aria": "Tên mới cho {{path}}",
+    "rename_dirty": "Lưu hoặc hủy thay đổi của tệp này trước khi đổi tên.",
+    "empty": "Không có tệp",
+    "select": "Chọn một tệp",
+    "mode": {
+      "aria": "Chế độ xem",
+      "preview": "Xem trước",
+      "source": "Mã nguồn",
+      "edit": "Chỉnh sửa"
+    },
+    "dirty": "Thay đổi chưa lưu",
+    "save": "Lưu",
+    "discard": "Hủy thay đổi",
+    "unavailable": "Không thể xem trước tệp này tại đây.",
+    "binary": "Tệp nhị phân. Không hỗ trợ xem trước và chỉnh sửa tại đây.",
+    "invalid_json": "Không phải JSON hợp lệ. Đang hiển thị văn bản như đã viết.",
+    "load_error": "Không thể tải tệp này.",
+    "editor_label": "Nội dung của {{path}}",
+    "plugin_banner": "Các phiên bản đã xuất bản không thể thay đổi. Chỉnh sửa tại đây sẽ tạo thành bản nháp cho đến khi bạn xuất bản phiên bản mới.",
+    "plugin_readonly": "Chỉ quản trị viên và chủ sở hữu không gian làm việc mới có thể chỉnh sửa plugin.",
+    "draft_count_other": "{{count}} thay đổi chưa xuất bản",
+    "draft_discard": "Hủy bản nháp",
+    "draft_publish": "Xuất bản phiên bản mới",
+    "discard_draft_title": "Hủy bản nháp?",
+    "discard_draft_description": "Các thay đổi chưa xuất bản sẽ bị xóa. Các phiên bản đã xuất bản vẫn giữ nguyên."
+  },
+  "guard": {
+    "title": "Lưu thay đổi vào {{path}}?",
+    "save": "Lưu và tiếp tục",
+    "discard": "Hủy thay đổi",
+    "keep": "Tiếp tục chỉnh sửa"
+  },
+  "conflict": {
+    "title": "{{path}} đã thay đổi trên máy chủ",
+    "description": "Ai đó đã lưu tệp này trong lúc bạn đang chỉnh sửa. Tải lại để hủy chỉnh sửa của bạn, hoặc ghi đè phiên bản của họ bằng phiên bản của bạn.",
+    "reload": "Tải lại",
+    "overwrite": "Ghi đè"
+  },
+  "delete": {
+    "title": "Xóa {{path}}?",
+    "confirm": "Xóa",
+    "description_file": "Không thể hoàn tác.",
+    "description_folder_other": "Thao tác này sẽ xóa {{count}} tệp và không thể hoàn tác.",
+    "description_draft": "Việc xóa sẽ nằm trong bản nháp cho đến khi bạn xuất bản phiên bản mới."
+  },
+  "publish": {
+    "title": "Xuất bản phiên bản mới",
+    "version_label": "Phiên bản",
+    "version_placeholder": "1.1.0",
+    "current": "Phiên bản mới nhất là {{version}}",
+    "errors": {
+      "format": "Dùng định dạng phiên bản như 1.2.0.",
+      "exists": "Phiên bản {{version}} đã được xuất bản."
+    },
+    "confirm": "Xuất bản",
+    "cancel": "Hủy"
+  },
+  "overview": {
+    "no_content": "Kỹ năng này chưa có nội dung SKILL.md.",
+    "no_readme": "Phiên bản này không có README.",
+    "plugin_key": "Khóa plugin",
+    "latest": "Phiên bản mới nhất",
+    "published": "Đã xuất bản",
+    "versions": "Phiên bản",
+    "manifest": "Manifest",
+    "readme": "README"
+  },
+  "versions": {
+    "none": "Chưa có phiên bản nào.",
+    "installed": "Đã cài đặt",
+    "published": "Đã xuất bản {{time}}"
+  },
+  "usage": {
+    "agents_title": "Các tác nhân đang dùng kỹ năng này",
+    "agents_empty": "Chưa có tác nhân nào dùng kỹ năng này.",
+    "installs_title": "Đã cài trong không gian làm việc này",
+    "installs_empty": "Chưa cài trong không gian làm việc này.",
+    "install_version": "Phiên bản {{version}}",
+    "enabled": "Đang bật",
+    "disabled": "Đã tắt"
+  },
+  "toast": {
+    "saved": "Đã lưu {{path}}",
+    "save_failed": "Không thể lưu {{path}}",
+    "renamed": "Đã đổi tên thành {{path}}",
+    "rename_failed": "Không thể đổi tên {{path}}",
+    "deleted": "Đã xóa {{path}}",
+    "delete_failed": "Không thể xóa {{path}}",
+    "published": "Đã xuất bản phiên bản {{version}}",
+    "publish_failed": "Không thể xuất bản phiên bản mới"
+  },
+  "add": {
+    "button": "Thêm",
+    "title": "Thêm vào Trung tâm",
+    "review_title": "Xem lại nhập",
+    "tabs": {
+      "url": "Từ URL",
+      "registry": "Từ kho đăng ký",
+      "upload": "Tải lên",
+      "blank": "Trống"
+    },
+    "url": {
+      "type_label": "Nguồn",
+      "types": {
+        "github": "GitHub",
+        "url_zip": "URL tệp zip",
+        "skills_sh": "skills.sh",
+        "clawhub": "ClawHub"
+      },
+      "url_label": "URL",
+      "url_placeholder": {
+        "github": "https://github.com/owner/repo",
+        "url_zip": "https://example.com/skill.zip",
+        "skills_sh": "https://skills.sh/owner/repo",
+        "clawhub": "clawhub-slug"
+      },
+      "ref_label": "Nhánh hoặc thẻ",
+      "ref_placeholder": "main",
+      "subdir_label": "Thư mục con",
+      "subdir_placeholder": "skills/my-skill",
+      "submit": "Xem trước",
+      "invalid_url": "Nhập một URL http:// hoặc https:// hợp lệ.",
+      "preview_failed": "Không thể đọc nguồn này.",
+      "token_label": "Mã truy cập (không bắt buộc)",
+      "token_help": "Dành cho kho riêng tư. Mã sẽ được lưu cùng nguồn mới, nên lần nhập này và các lần đồng bộ sau có thể dùng nó.",
+      "submit_with_token": "Lưu nguồn và xem trước"
+    },
+    "registry": {
+      "url_label": "URL kho đăng ký",
+      "url_placeholder": "https://example.com/hub-index.json",
+      "load": "Tải",
+      "invalid_url": "Nhập một URL http:// hoặc https:// hợp lệ.",
+      "load_failed": "Không thể tải kho đăng ký này.",
+      "empty": "Kho đăng ký này không có mục nào.",
+      "search_label": "Tìm mục trong kho đăng ký",
+      "search_placeholder": "Tìm mục",
+      "no_matches": "Không có mục nào khớp với tìm kiếm của bạn.",
+      "version": "v{{version}}",
+      "preview": "Xem trước",
+      "preview_item": "Xem trước {{name}}",
+      "preview_failed": "Không thể đọc mục này."
+    },
+    "upload": {
+      "drop": "Kéo thả tệp .zip, tệp lưu trữ .skill hoặc thư mục vào đây",
+      "reading": "Đang đọc tệp...",
+      "choose_archive": "Chọn tệp lưu trữ",
+      "choose_folder": "Chọn thư mục",
+      "read_failed": "Không thể đọc các tệp này.",
+      "errors": {
+        "missing_skill_md": "Không tìm thấy SKILL.md ở cấp cao nhất.",
+        "empty": "Không có tệp nào để nhập.",
+        "too_large": "Tệp lưu trữ này quá lớn.",
+        "too_many_files": "Lần nhập này có quá nhiều tệp.",
+        "unreadable": "Không thể đọc tệp lưu trữ này."
+      }
+    },
+    "blank": {
+      "create": "Tạo kỹ năng trống"
+    },
+    "preview": {
+      "back": "Quay lại",
+      "commit": "Nhập",
+      "committing": "Đang nhập...",
+      "version": "v{{version}}",
+      "expired": "Bản xem trước này đã hết hạn.",
+      "preview_again": "Xem trước lại",
+      "preview_failed": "Không thể xem trước lại.",
+      "scan": {
+        "title": "Quét",
+        "clean": "Không có vấn đề",
+        "warn": "Cảnh báo",
+        "blocked": "Bị chặn",
+        "blocked_hint": "Lần nhập này không thể cài đặt. Hãy quay lại và chọn nguồn khác.",
+        "warn_hint": "Hãy xem lại các phát hiện trước khi nhập.",
+        "blocked_error": "Lần nhập này bị chặn và không thể cài đặt.",
+        "warn_error": "Hãy xác nhận các cảnh báo trước khi nhập.",
+        "acknowledge": "Tôi hiểu các cảnh báo",
+        "severity": {
+          "info": "Thông tin",
+          "warn": "Cảnh báo",
+          "block": "Bị chặn"
+        }
+      },
+      "conflict": {
+        "legend": "“{{name}}” đã có trong Trung tâm",
+        "rename": "Nhập với tên mới",
+        "rename_label": "Tên mới",
+        "replace": "Thay thế mục hiện có",
+        "replace_hint": "Các tệp của mục sẽ bị ghi đè bởi lần nhập này.",
+        "skip": "Giữ mục hiện có và bỏ qua lần nhập này"
+      },
+      "files": {
+        "title_other": "{{count}} tệp",
+        "list_label": "Các tệp trong lần nhập này"
+      },
+      "quota_error": "Không gian làm việc này đã đạt giới hạn Trung tâm. Hãy xóa bớt mục hoặc nhờ quản trị viên tăng giới hạn."
+    },
+    "toast": {
+      "imported": "Đã nhập {{name}}",
+      "replaced": "Đã thay thế {{name}}",
+      "skipped": "{{name}} đã có trong Trung tâm",
+      "failed": "Không thể nhập"
+    }
+  },
+  "sync": {
+    "now": "Đồng bộ ngay",
+    "aria": "Đồng bộ {{name}} ngay",
+    "failed": "Không thể đồng bộ nguồn này.",
+    "done": "Đã kiểm tra {{checked}}. Cập nhật: {{updates}}. Không đổi: {{unchanged}}. Lỗi: {{errors}}.",
+    "disabled_hint": "Bật nguồn để đồng bộ.",
+    "auto": "Tự động đồng bộ: {{interval}}",
+    "auto_paused": "Tự động đồng bộ: {{interval}} (tạm dừng khi nguồn bị tắt)",
+    "interval": {
+      "label": "Tự động đồng bộ",
+      "off": "Tắt",
+      "every_15m": "Mỗi 15 phút",
+      "every_1h": "Mỗi giờ",
+      "every_6h": "Mỗi 6 giờ",
+      "every_24h": "Mỗi ngày",
+      "custom": "Mỗi {{duration}}"
+    },
+    "quota_error": "Không gian làm việc này đã đạt giới hạn Trung tâm, nên việc đồng bộ đã dừng. Hãy xóa bớt mục hoặc nhờ quản trị viên tăng giới hạn."
+  },
+  "update": {
+    "available": "Có bản cập nhật",
+    "filter": "Có bản cập nhật",
+    "banner": "Có phiên bản mới hơn của mục này từ nguồn của nó.",
+    "review": "Xem lại bản cập nhật",
+    "dialog_title": "Cập nhật {{name}}",
+    "check_failed": "Không thể kiểm tra bản cập nhật.",
+    "changes": "Thêm: {{added}} · Sửa đổi: {{modified}} · Xóa: {{removed}}",
+    "files_label": "Tệp đã thay đổi",
+    "status": {
+      "added": "Đã thêm",
+      "modified": "Đã sửa đổi",
+      "removed": "Đã xóa",
+      "unchanged": "Không đổi"
+    },
+    "size_change": "{{from}} → {{to}}",
+    "size_none": "—",
+    "cancel": "Hủy",
+    "apply": "Cập nhật",
+    "applying": "Đang cập nhật...",
+    "choose_local": "Chọn một tùy chọn để tiếp tục.",
+    "local": {
+      "legend": "Chỉnh sửa cục bộ",
+      "description": "Cập nhật sẽ thay thế các tệp này. Hãy quyết định số phận các chỉnh sửa đã thực hiện tại đây.",
+      "overwrite": "Ghi đè chỉnh sửa của tôi",
+      "fork": "Tách bản sao (giữ chỉnh sửa của tôi, ngừng theo dõi)"
+    },
+    "diff": {
+      "region": "Thay đổi trong {{path}}",
+      "select_file": "Chọn một tệp để xem thay đổi.",
+      "load_error": "Không thể tải khác biệt này.",
+      "binary": "Tệp nhị phân. Hãy so sánh bên ngoài Trung tâm.",
+      "no_changes": "Không có thay đổi dòng.",
+      "approximate": "Tệp này quá lớn để so khớp từng dòng, nên mọi dòng cũ được hiển thị là đã xóa và mọi dòng mới là đã thêm.",
+      "gap": "Ẩn {{count}} dòng không đổi",
+      "added_line": "Đã thêm:",
+      "removed_line": "Đã xóa:",
+      "layout": {
+        "aria": "Bố cục khác biệt",
+        "unified": "Hợp nhất",
+        "side_by_side": "Song song"
+      },
+      "before": "Trước",
+      "after": "Sau"
+    },
+    "toast": {
+      "updated": "Đã cập nhật {{name}}"
+    },
+    "errors": {
+      "quota": "Không gian làm việc này đã đạt giới hạn số mục của Trung tâm.",
+      "failed": "Không thể áp dụng bản cập nhật này."
+    }
+  },
+  "fork": {
+    "action": "Tách bản sao",
+    "title": "Tách bản sao {{name}}?",
+    "description": "Mục này sẽ ngừng nhận cập nhật từ {{source}}. Các tệp hiện tại vẫn giữ nguyên.",
+    "confirm": "Tách bản sao",
+    "cancel": "Hủy",
+    "toast": "Đã tách bản sao {{name}}",
+    "failed": "Không thể tách bản sao mục này."
+  },
+  "source_tab": {
+    "title": "Nguồn",
+    "provenance": "Xuất xứ",
+    "source": "Nguồn",
+    "source_ref": "Tham chiếu",
+    "no_source_ref": "—",
+    "version": "Phiên bản",
+    "digest": "Mã băm",
+    "size": "Kích thước",
+    "files": "Tệp",
+    "last_checked": "Kiểm tra lần cuối",
+    "never_checked": "Chưa kiểm tra lần nào",
+    "up_to_date": "Đã cập nhật",
+    "tracking": "Theo dõi",
+    "tracking_state": {
+      "tracking": "Đang theo dõi nguồn",
+      "forked": "Đã tách bản sao",
+      "manual": "Tạo tại đây"
+    },
+    "tracking_help": {
+      "tracking": "Có thể áp dụng cập nhật từ {{source}} sau khi bạn xem lại.",
+      "forked": "Bản sao này không còn nhận cập nhật từ nguồn của nó.",
+      "manual": "Không liên kết với nguồn nào nên không có bản cập nhật để kiểm tra."
+    },
+    "local_edits_warning": "Mục này có chỉnh sửa thực hiện tại đây. Khi áp dụng bản cập nhật, hệ thống sẽ hỏi bạn muốn xử lý chỉnh sửa đó thế nào.",
+    "check": "Kiểm tra bản cập nhật",
+    "checking": "Đang kiểm tra...",
+    "read_only": "Hãy nhờ người có quyền chỉnh sửa mục này kiểm tra hoặc áp dụng bản cập nhật."
+  },
+  "sources": {
+    "add": "Thêm nguồn",
+    "empty_title": "Chưa có nguồn nào",
+    "read_only": "Chỉ quản trị viên và chủ sở hữu không gian làm việc mới có thể quản lý nguồn.",
+    "load_error": "Không thể tải nguồn.",
+    "loading": "Đang tải nguồn",
+    "cancel": "Hủy",
+    "no_url": "Không có URL",
+    "columns": {
+      "name": "Tên",
+      "type": "Loại",
+      "url": "URL",
+      "items": "Mục",
+      "last_sync": "Đồng bộ lần cuối",
+      "enabled": "Bật",
+      "actions": "Thao tác"
+    },
+    "sync": {
+      "ok": "Ổn",
+      "syncing": "Đang đồng bộ",
+      "error": "Lỗi",
+      "never": "Chưa đồng bộ lần nào",
+      "unknown": "Không xác định"
+    },
+    "enabled": "Đang bật",
+    "disabled": "Đã tắt",
+    "toggle_aria": "Bật {{name}}",
+    "toggle_failed": "Không thể thay đổi nguồn này.",
+    "edit_aria": "Chỉnh sửa {{name}}",
+    "remove_aria": "Xóa {{name}}",
+    "form": {
+      "add_title": "Thêm nguồn",
+      "edit_title": "Chỉnh sửa nguồn",
+      "name": "Tên",
+      "type": "Loại",
+      "url": "URL",
+      "url_placeholder": "https://example.com/source",
+      "create": "Thêm",
+      "save": "Lưu",
+      "save_failed": "Không thể lưu nguồn này.",
+      "errors": {
+        "name_required": "Nhập tên.",
+        "url_invalid": "Nhập một URL http:// hoặc https:// hợp lệ.",
+        "token_required": "Nhập mã mới, hoặc giữ mã đã lưu."
+      },
+      "token_label": "Mã truy cập",
+      "token_help": "Chỉ dùng để tải xuống từ nguồn này. Mã được lưu đã mã hóa và sẽ không bao giờ được hiển thị lại.",
+      "token_saved": "Đã lưu mã",
+      "token_replace": "Thay thế",
+      "token_remove": "Xóa",
+      "token_removing": "Mã sẽ bị xóa khi bạn lưu.",
+      "token_keep": "Giữ mã"
+    },
+    "toast": {
+      "added": "Đã thêm nguồn",
+      "updated": "Đã lưu nguồn",
+      "removed": "Đã xóa nguồn"
+    },
+    "delete": {
+      "title": "Xóa {{name}}?",
+      "items_legend_other": "{{count}} mục đến từ nguồn này.",
+      "keep": "Giữ các mục",
+      "keep_hint": "Chúng vẫn ở trong Trung tâm nhưng không còn nguồn.",
+      "delete_items": "Xóa các mục",
+      "delete_hint": "Việc xóa sẽ dừng nếu có tác nhân đang dùng bất kỳ mục nào.",
+      "in_use": "Các tác nhân đang dùng những mục này, nên không thể xóa nguồn.",
+      "confirm": "Xóa",
+      "failed": "Không thể xóa nguồn này."
+    }
+  },
+  "activity": {
+    "tab": "Hoạt động",
+    "list_label": "Hoạt động",
+    "loading": "Đang tải hoạt động",
+    "load_error": "Không thể tải hoạt động.",
+    "empty": "Chưa có hoạt động nào.",
+    "load_more": "Tải thêm",
+    "actor": {
+      "system": "Hệ thống",
+      "unknown": "Ai đó"
+    },
+    "actions": {
+      "source_created": "Đã thêm nguồn",
+      "source_updated": "Đã cập nhật nguồn",
+      "source_deleted": "Đã xóa nguồn",
+      "import_committed": "Đã nhập mục",
+      "source_synced": "Đã đồng bộ nguồn",
+      "update_applied": "Đã áp dụng bản cập nhật",
+      "item_forked": "Đã tách bản sao mục",
+      "item_exported": "Đã xuất mục",
+      "file_saved": "Đã lưu tệp",
+      "plugin_published": "Đã xuất bản phiên bản plugin",
+      "other": "Đã ghi nhận hoạt động"
+    },
+    "detail": {
+      "version": "Phiên bản {{version}}",
+      "items_other": "{{count}} mục",
+      "files_other": "{{count}} tệp",
+      "checked": "{{count}} đã kiểm tra",
+      "updates": "{{count}} có cập nhật",
+      "path": "{{path}}",
+      "size": "{{size}}"
+    }
+  },
+  "quota": {
+    "label": "Sử dụng",
+    "items": "Mục",
+    "storage": "Bộ nhớ",
+    "usage": "{{used}} / {{limit}}",
+    "usage_unlimited": "Đã dùng {{used}}",
+    "warning": "Sắp đầy",
+    "full": "Đã đạt giới hạn"
+  },
+  "export": {
+    "bundle": "Tải xuống gói",
+    "bundle_failed": "Không thể chuẩn bị tệp tải xuống.",
+    "all": "Xuất tất cả",
+    "all_failed": "Không thể xuất Trung tâm."
+  },
+  "list": {
+    "filters": "Bộ lọc",
+    "filter_source": "Nguồn",
+    "filter_label": "Nhãn",
+    "filter_status": "Trạng thái",
+    "filter_usage": "Đang dùng",
+    "status": {
+      "update_available": "Có bản cập nhật",
+      "scan_warning": "Cảnh báo quét",
+      "tracking": "Đang theo dõi nguồn",
+      "forked": "Đã tách bản sao",
+      "manual": "Tạo tại đây"
+    },
+    "usage": {
+      "used": "Đang dùng",
+      "unused": "Không dùng"
+    },
+    "clear": "Xóa bộ lọc",
+    "count": "{{shown}} / {{total}}",
+    "sort_direction": "Chiều sắp xếp",
+    "table_label": "Các mục Trung tâm"
+  }
+}

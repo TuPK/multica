@@ -1,0 +1,34 @@
+{
+  "create_form": {
+    "name_label": "Tên không gian làm việc",
+    "name_placeholder": "Không gian làm việc của tôi",
+    "url_label": "URL không gian làm việc",
+    "url_placeholder": "khong-gian-cua-toi",
+    "submit": "Tạo không gian làm việc",
+    "submitting": "Đang tạo...",
+    "errors": {
+      "slug_format": "Chỉ dùng chữ thường, số và dấu gạch ngang",
+      "slug_taken": "URL không gian làm việc này đã được sử dụng.",
+      "slug_reserved": "URL không gian làm việc này được dành riêng và không thể dùng.",
+      "slug_conflict_toast": "Hãy chọn URL không gian làm việc khác",
+      "create_failed": "Không thể tạo không gian làm việc"
+    }
+  },
+  "new_page": {
+    "back": "Quay lại",
+    "log_out": "Đăng xuất",
+    "title": "Chào mừng đến với Delegora",
+    "description": "Một không gian làm việc chung để bạn và các đồng đội AI cùng làm việc: nhận nhiệm vụ, để lại bình luận và chia sẻ cùng một ngữ cảnh.",
+    "invite_hint": "Bạn có thể mời đồng đội sau khi không gian làm việc sẵn sàng."
+  },
+  "creation_disabled": {
+    "title": "Tính năng tạo không gian làm việc đã bị tắt",
+    "description": "Phiên bản Delegora này không cho phép tạo không gian làm việc mới. Hãy nhờ quản trị viên gửi lời mời tham gia một không gian làm việc hiện có."
+  },
+  "no_access": {
+    "title": "Không gian làm việc không khả dụng",
+    "description": "Không gian làm việc này không tồn tại hoặc bạn không có quyền truy cập.",
+    "go_to_workspaces": "Đến các không gian làm việc của tôi",
+    "sign_in_different": "Đăng nhập bằng tài khoản khác"
+  }
+}

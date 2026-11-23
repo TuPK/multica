@@ -1,0 +1,44 @@
+{
+  "page": {
+    "breadcrumb": "Nhiệm vụ của tôi",
+    "workspace_fallback": "Không gian làm việc",
+    "empty_title": "Chưa có nhiệm vụ nào",
+    "empty_description": "Nhiệm vụ được giao cho bạn, do bạn tạo, hoặc có liên quan đến tác nhân và nhóm của bạn sẽ xuất hiện tại đây."
+  },
+  "header": {
+    "scope": {
+      "all_label": "Tất cả",
+      "all_description": "Được giao cho tôi, do tôi tạo, hoặc có liên quan đến tác nhân và nhóm của tôi",
+      "assigned_label": "Được giao",
+      "assigned_description": "Nhiệm vụ được giao cho tôi",
+      "created_label": "Đã tạo",
+      "created_description": "Nhiệm vụ do tôi tạo",
+      "agents_label": "Tác nhân và nhóm của tôi",
+      "agents_description": "Nhiệm vụ được giao cho tác nhân và nhóm của tôi"
+    },
+    "filter_button": "Lọc",
+    "filter_status": "Trạng thái",
+    "filter_priority": "Mức độ ưu tiên",
+    "issue_count_other": "{{count}} nhiệm vụ",
+    "reset_filters": "Đặt lại tất cả bộ lọc",
+    "display_settings": "Cài đặt hiển thị",
+    "grouping": "Nhóm theo",
+    "group_status": "Trạng thái",
+    "group_assignee": "Người được giao",
+    "ordering": "Sắp xếp",
+    "ascending": "Tăng dần",
+    "descending": "Giảm dần",
+    "card_properties": "Thuộc tính thẻ",
+    "view_board": "Chế độ bảng",
+    "view_list": "Chế độ danh sách",
+    "view_swimlane": "Chế độ làn bơi",
+    "view_label": "Chế độ xem",
+    "view_board_short": "Bảng",
+    "view_list_short": "Danh sách",
+    "view_swimlane_short": "Làn bơi",
+    "sort_manual": "Thủ công"
+  },
+  "errors": {
+    "move_failed": "Không thể di chuyển nhiệm vụ"
+  }
+}

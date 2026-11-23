@@ -13,7 +13,7 @@ type UseCaseText = {
   tableOfContents: string;
 };
 
-export const useCaseText: Record<SupportedLocale, UseCaseText> = {
+export const useCaseText: { en: UseCaseText } & Partial<Record<SupportedLocale, UseCaseText>> = {
   en: {
     indexTitle: "Use cases",
     indexSubtitle:

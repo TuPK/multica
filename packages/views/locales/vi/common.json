@@ -1,0 +1,148 @@
+{
+  "daemon_setup": {
+    "loading": "Đang tải cài đặt kết nối...",
+    "error": "Không thể tải cài đặt kết nối. Hãy kiểm tra mạng; hệ thống sẽ tự động thử lại.",
+    "unknown": "Máy chủ này chưa xác nhận cài đặt kết nối. Hãy nhờ quản trị viên cập nhật máy chủ.",
+    "incomplete": "Cài đặt kết nối chưa đầy đủ. Hãy nhờ quản trị viên cấu hình URL công khai của máy chủ này."
+  },
+  "avatar_upload": {
+    "change": "Đổi ảnh đại diện",
+    "remove": "Xóa",
+    "select_image": "Vui lòng chọn một tệp hình ảnh.",
+    "updated": "Đã cập nhật ảnh đại diện",
+    "failed": "Không thể tải ảnh đại diện lên",
+    "upload_image": "Tải ảnh lên",
+    "emoji_label": "Biểu tượng cảm xúc",
+    "more_emojis": "Thêm biểu tượng cảm xúc...",
+    "emoji_loading": "Đang tải...",
+    "text_icon": "Biểu tượng chữ"
+  },
+  "avatar_crop": {
+    "title": "Chỉnh sửa ảnh đại diện",
+    "zoom": "Thu phóng",
+    "zoom_in": "Phóng to",
+    "zoom_out": "Thu nhỏ",
+    "rotate": "Xoay",
+    "reset": "Đặt lại",
+    "cancel": "Hủy",
+    "apply": "Lưu",
+    "uploading": "Đang tải lên...",
+    "loading": "Đang tải...",
+    "load_failed": "Không thể tải ảnh"
+  },
+  "text_avatar": {
+    "title": "Biểu tượng chữ",
+    "preview": "Xem trước",
+    "text_label": "Chữ",
+    "text_hint": "Tối đa 2 ký tự (chữ cái, chữ số hoặc chữ Hán/Nhật/Hàn). Ký tự thừa sẽ bị cắt bớt.",
+    "color_label": "Màu",
+    "render_failed": "Không thể tạo biểu tượng. Vui lòng thử lại."
+  },
+  "color_picker": {
+    "saturation": "Độ bão hòa và độ sáng",
+    "hue": "Sắc độ",
+    "hex": "Mã màu hex",
+    "eyedropper": "Chọn màu từ màn hình",
+    "presets": "Màu có sẵn",
+    "random": "Ngẫu nhiên"
+  },
+  "save": "Lưu",
+  "cancel": "Hủy",
+  "delete": "Xóa",
+  "confirm": "Xác nhận",
+  "more_actions": "Thêm thao tác",
+  "loading": "Đang tải...",
+  "time": {
+    "just_now": "vừa xong",
+    "minutes_ago": "{{count}} phút trước",
+    "hours_ago": "{{count}} giờ trước",
+    "days_ago": "{{count}} ngày trước"
+  },
+  "lark_bind": {
+    "page_title": "Liên kết tài khoản Feishu / Lark của bạn",
+    "redeeming": "Đang liên kết tài khoản của bạn...",
+    "needs_auth_description": "Đăng nhập để kết nối tài khoản Feishu / Lark với tài khoản Delegora của bạn.",
+    "sign_in": "Đăng nhập",
+    "done_title": "Đã liên kết tài khoản",
+    "done_description": "Tin nhắn tiếp theo của bạn gửi cho bot trên Feishu / Lark sẽ được chuyển thẳng đến tác nhân. Bạn có thể đóng tab này.",
+    "error_title": "Không thể hoàn tất liên kết",
+    "error_admin_hint": "Nếu lỗi vẫn tiếp diễn, hãy nhờ quản trị viên không gian làm việc gửi lại liên kết từ Lark.",
+    "error_missing_token": "Liên kết thiếu mã liên kết. Hãy nhờ bot gửi liên kết mới trên Lark.",
+    "error_expired": "Liên kết này không hợp lệ hoặc đã hết hạn (liên kết có hiệu lực trong 15 phút). Hãy nhờ bot gửi liên kết mới.",
+    "error_already_bound": "Tài khoản Feishu / Lark này đã được liên kết với một tài khoản Delegora khác. Hãy hủy liên kết ở tài khoản đó trước khi liên kết tại đây.",
+    "error_not_member": "Bạn đang đăng nhập bằng tài khoản Delegora không phải là thành viên của không gian làm việc này.",
+    "error_unknown": "Đã xảy ra lỗi. Hãy thử lại; nếu vẫn lỗi, hãy liên hệ quản trị viên không gian làm việc."
+  },
+  "slack_bind": {
+    "page_title": "Liên kết tài khoản Slack của bạn",
+    "redeeming": "Đang liên kết tài khoản của bạn...",
+    "needs_auth_description": "Đăng nhập để kết nối tài khoản Slack với tài khoản Delegora của bạn.",
+    "sign_in": "Đăng nhập",
+    "done_title": "Đã liên kết tài khoản",
+    "done_description": "Tin nhắn tiếp theo của bạn gửi cho bot trên Slack sẽ được chuyển thẳng đến tác nhân. Bạn có thể đóng tab này.",
+    "error_title": "Không thể hoàn tất liên kết",
+    "error_admin_hint": "Nếu lỗi vẫn tiếp diễn, hãy nhắn lại cho bot trên Slack để nhận liên kết mới.",
+    "error_missing_token": "Liên kết thiếu mã. Hãy nhắn lại cho bot trên Slack để nhận mã mới.",
+    "error_expired": "Liên kết này không hợp lệ hoặc đã hết hạn (liên kết có hiệu lực trong 15 phút). Hãy nhắn lại cho bot để nhận liên kết mới.",
+    "error_already_bound": "Tài khoản Slack này đã được liên kết với một tài khoản Delegora khác. Hãy hủy liên kết ở tài khoản đó trước khi liên kết tại đây.",
+    "error_not_member": "Bạn đang đăng nhập bằng tài khoản Delegora không phải là thành viên của không gian làm việc này.",
+    "error_unknown": "Đã xảy ra lỗi. Hãy thử lại; nếu vẫn lỗi, hãy liên hệ quản trị viên không gian làm việc."
+  },
+  "dingtalk_bind": {
+    "page_title": "Liên kết tài khoản DingTalk của bạn",
+    "redeeming": "Đang liên kết tài khoản của bạn...",
+    "needs_auth_description": "Đăng nhập để kết nối tài khoản DingTalk với tài khoản Delegora của bạn.",
+    "sign_in": "Đăng nhập",
+    "done_title": "Đã liên kết tài khoản",
+    "done_description": "Tin nhắn tiếp theo của bạn gửi cho bot trên DingTalk sẽ được chuyển thẳng đến tác nhân. Bạn có thể đóng tab này.",
+    "error_title": "Không thể hoàn tất liên kết",
+    "error_admin_hint": "Nếu lỗi vẫn tiếp diễn, hãy nhắn lại cho bot trên DingTalk để nhận liên kết mới.",
+    "error_missing_token": "Liên kết thiếu mã. Hãy nhắn lại cho bot trên DingTalk để nhận mã mới.",
+    "error_expired": "Liên kết này không hợp lệ hoặc đã hết hạn (liên kết có hiệu lực trong 15 phút). Hãy nhắn lại cho bot để nhận liên kết mới.",
+    "error_already_bound": "Tài khoản DingTalk này đã được liên kết với một tài khoản Delegora khác. Hãy hủy liên kết ở tài khoản đó trước khi liên kết tại đây.",
+    "error_not_member": "Bạn đang đăng nhập bằng tài khoản Delegora không phải là thành viên của không gian làm việc này.",
+    "error_unknown": "Đã xảy ra lỗi. Hãy thử lại; nếu vẫn lỗi, hãy liên hệ quản trị viên không gian làm việc."
+  },
+  "telegram_bind": {
+    "page_title": "Liên kết tài khoản Telegram của bạn",
+    "redeeming": "Đang liên kết tài khoản của bạn...",
+    "needs_auth_description": "Đăng nhập để kết nối tài khoản Telegram với tài khoản Delegora của bạn.",
+    "sign_in": "Đăng nhập",
+    "done_title": "Đã liên kết tài khoản",
+    "done_description": "Tin nhắn tiếp theo của bạn gửi cho bot trên Telegram sẽ được chuyển thẳng đến tác nhân. Bạn có thể đóng tab này.",
+    "error_title": "Không thể hoàn tất liên kết",
+    "error_admin_hint": "Nếu lỗi vẫn tiếp diễn, hãy nhắn lại cho bot trên Telegram để nhận liên kết mới.",
+    "error_missing_token": "Liên kết thiếu mã. Hãy nhắn lại cho bot trên Telegram để nhận mã mới.",
+    "error_expired": "Liên kết này không hợp lệ hoặc đã hết hạn (liên kết có hiệu lực trong 15 phút). Hãy nhắn lại cho bot để nhận liên kết mới.",
+    "error_already_bound": "Tài khoản Telegram này đã được liên kết với một tài khoản Delegora khác. Hãy hủy liên kết ở tài khoản đó trước khi liên kết tại đây.",
+    "error_not_member": "Bạn đang đăng nhập bằng tài khoản Delegora không phải là thành viên của không gian làm việc này.",
+    "error_unknown": "Đã xảy ra lỗi. Hãy thử lại; nếu vẫn lỗi, hãy liên hệ quản trị viên không gian làm việc."
+  },
+  "expandable_description": {
+    "expand": "Xem thêm",
+    "collapse": "Thu gọn"
+  },
+  "wecom_bind": {
+    "page_title": "Liên kết tài khoản WeCom của bạn",
+    "redeeming": "Đang liên kết tài khoản của bạn...",
+    "needs_auth_description": "Đăng nhập để kết nối tài khoản WeCom với tài khoản Delegora của bạn.",
+    "sign_in": "Đăng nhập",
+    "done_title": "Đã liên kết tài khoản",
+    "done_description": "Tin nhắn tiếp theo của bạn gửi cho bot trên WeCom sẽ được chuyển thẳng đến tác nhân. Bạn có thể đóng tab này.",
+    "error_title": "Không thể hoàn tất liên kết",
+    "error_admin_hint": "Nếu lỗi vẫn tiếp diễn, hãy nhắn lại cho bot trên WeCom để nhận liên kết mới.",
+    "error_missing_token": "Liên kết thiếu mã. Hãy nhắn lại cho bot trên WeCom để nhận mã mới.",
+    "error_expired": "Liên kết này không hợp lệ hoặc đã hết hạn (liên kết có hiệu lực trong 15 phút). Hãy nhắn lại cho bot để nhận liên kết mới.",
+    "error_already_bound": "Tài khoản WeCom này đã được liên kết với một tài khoản Delegora khác. Hãy hủy liên kết ở tài khoản đó trước khi liên kết tại đây.",
+    "error_not_member": "Bạn đang đăng nhập bằng tài khoản Delegora không phải là thành viên của không gian làm việc này.",
+    "error_unknown": "Đã xảy ra lỗi. Hãy thử lại; nếu vẫn lỗi, hãy liên hệ quản trị viên không gian làm việc."
+  },
+  "not_found": {
+    "title": "Không tìm thấy trang",
+    "description": "Trang bạn đang tìm không tồn tại hoặc đã được di chuyển.",
+    "back_to_multica": "Quay lại Delegora"
+  },
+  "navigation": {
+    "open_in_new_tab": "Mở trong tab mới"
+  }
+}

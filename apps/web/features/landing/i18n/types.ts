@@ -19,6 +19,7 @@ export const localeLabels: Record<Locale, string> = {
   fr: "FR",
   es: "ES",
   ru: "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+  vi: "Tiếng Việt",
 };
 
 export function toLandingDictionaryLocale(

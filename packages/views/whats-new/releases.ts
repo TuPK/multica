@@ -46,7 +46,7 @@ export const WHATS_NEW_DECK_SINCE = "0.9.0";
  */
 export type CompleteWhatsNewRelease = Omit<WhatsNewRelease, "highlights"> & {
   highlights: (Omit<WhatsNewHighlight, "copy"> & {
-    copy: Record<SupportedLocale, HighlightCopy>;
+    copy: { en: HighlightCopy } & Partial<Record<SupportedLocale, HighlightCopy>>;
   })[];
 };
 

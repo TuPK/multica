@@ -157,7 +157,8 @@
       "french": "Français",
       "spanish": "Español",
       "sync_failed": "Language saved on this device, but failed to sync to your account. Other devices may show the previous language.",
-      "russian": "Русский"
+      "russian": "Русский",
+      "vietnamese": "Tiếng Việt"
     },
     "timezone": {
       "title": "Time zone",

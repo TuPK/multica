@@ -40,7 +40,7 @@ const squadsOf = (locale: string) => (RESOURCES as unknown as Record<string, Rec
 
 describe("spec 11.9 locale keys", () => {
   it("covers the eight locales", () => {
-    expect(locales.sort()).toEqual(["en", "es", "fr", "ja", "ko", "ru", "zh-Hans", "zh-Hant"]);
+    expect(locales.sort()).toEqual(["en", "es", "fr", "ja", "ko", "ru", "vi", "zh-Hans", "zh-Hant"]);
   });
 
   for (const [key, en] of Object.entries(SPEC_11_9_EN)) {
@@ -58,12 +58,13 @@ describe("spec 11.9 locale keys", () => {
 });
 
 describe("no Vietnamese in the interface text of the flow designer and the packs", () => {
-  // Letters only Vietnamese uses. The name "Kit Việt" is the name of a product, and stays.
+  // Letters only Vietnamese uses. The name "Kit Việt" is the name of a product, and stays. The Vietnamese bundle is the one
+  // place these letters belong.
   const VIETNAMESE = /[đĐăĂơƠưƯ\u1EA0-\u1EF9]/;
   const strings = (value: unknown): string[] =>
     typeof value === "string" ? [value] : value && typeof value === "object" ? Object.values(value as Json).flatMap(strings) : [];
 
-  for (const locale of locales) {
+  for (const locale of locales.filter((l) => l !== "vi")) {
     it(`${locale}`, () => {
       const squads = squadsOf(locale);
       const found = [...strings(pick(squads, "flow_designer")), ...strings(pick(squads, "packs"))]

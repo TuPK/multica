@@ -115,4 +115,9 @@ const EMERGENCY_COPY = {
     description: "На странице произошла непредвиденная ошибка. Попробуйте перезагрузить.",
     reload: "Перезагрузить",
   },
+  vi: {
+    title: "Đã xảy ra lỗi",
+    description: "Trang gặp một lỗi không mong muốn. Hãy thử tải lại.",
+    reload: "Tải lại",
+  },
 } as const;

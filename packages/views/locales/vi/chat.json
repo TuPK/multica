@@ -1,0 +1,318 @@
+{
+  "page": {
+    "title": "Trò chuyện",
+    "no_agent_title": "Chưa có tác nhân để trò chuyện",
+    "no_agent_description": "Hãy tạo một tác nhân, rồi trao đổi yêu cầu tại đây để tác nhân biến yêu cầu thành các nhiệm vụ.",
+    "no_agent_action": "Tác nhân mới",
+    "select_prompt": "Chọn một cuộc trò chuyện, hoặc bắt đầu cuộc mới bằng nút +",
+    "agent_link_no_access": "Bạn không có quyền trò chuyện với tác nhân này."
+  },
+  "fab": {
+    "running": "Delegora đang làm việc...",
+    "unread_other": "{{count}} cuộc trò chuyện chưa đọc",
+    "default": "Hỏi Delegora"
+  },
+  "bar": {
+    "history": "Lịch sử trò chuyện",
+    "history_group": {
+      "today": "Hôm nay",
+      "week": "7 ngày qua",
+      "older": "Cũ hơn"
+    },
+    "close_chip": "Đóng {{title}}",
+    "all_chats": "Tất cả cuộc trò chuyện",
+    "more_other": "{{count}} cuộc trò chuyện khác"
+  },
+  "input": {
+    "page_context_add": "Thêm trang này làm ngữ cảnh",
+    "page_context_remove": "Xóa ngữ cảnh trang",
+    "placeholder_no_agent": "Tạo một tác nhân để bắt đầu trò chuyện",
+    "placeholder_archived": "Cuộc trò chuyện này đã được lưu trữ",
+    "placeholder_archived_agent": "Tác nhân này đã được lưu trữ",
+    "placeholder_runtime_required": "Gắn một môi trường chạy để tiếp tục",
+    "placeholder_access_revoked": "Bạn không còn quyền chạy tác nhân này",
+    "placeholder_named": "Nhắn tin cho {{name}}...",
+    "placeholder_default": "Bắt đầu nhắn tin...",
+    "send_tooltip": "Gửi",
+    "queue_send_tooltip": "Xếp hàng tin nhắn",
+    "stop_tooltip": "Dừng",
+    "send_failed_toast": "Không thể gửi tin nhắn",
+    "send_blocked_toast": "Chưa gửi tin nhắn — bạn không còn quyền dùng tác nhân này",
+    "runtime_required_toast": "Chưa gửi tin nhắn — hãy gắn một môi trường chạy cho tác nhân này trước",
+    "runtime_access_denied_toast": "Không thể truy cập môi trường chạy riêng của tác nhân này. Hãy chuyển môi trường chạy sang công khai, hoặc gắn tác nhân với một môi trường chạy có thể truy cập.",
+    "attachment_bind_failed_toast": "Đã gửi tin nhắn nhưng tệp chưa được đính kèm. Vui lòng thử lại sau ít phút.",
+    "add_tooltip": "Thêm",
+    "upload_file": "Hình ảnh hoặc tệp",
+    "project_context": "Ngữ cảnh dự án",
+    "change_project_context": "Đổi ngữ cảnh dự án",
+    "remove_project_context": "Xóa ngữ cảnh dự án",
+    "no_projects": "Chưa có dự án nào",
+    "project_context_unsupported": "Mô tả dự án sẽ không được áp dụng — daemon của tác nhân này cần được nâng cấp"
+  },
+  "queue": {
+    "title_other": "{{count}} tin nhắn đang xếp hàng",
+    "clear": "Xóa tất cả",
+    "steer": "Gửi ngay (dừng phản hồi hiện tại)",
+    "steer_unavailable": "Khả dụng sau khi phản hồi hiện tại bắt đầu",
+    "steer_no_permission": "Bạn không còn quyền chạy tác nhân này",
+    "steer_unavailable_toast": "Không thể gửi ngay. Đang làm mới hàng đợi.",
+    "edit": "Chỉnh sửa tin nhắn đang chờ",
+    "remove": "Xóa tin nhắn đang chờ",
+    "more": "Thêm thao tác hàng đợi",
+    "fallback": "Tin nhắn đang chờ",
+    "action_failed_toast": "Không thể cập nhật tin nhắn đang chờ"
+  },
+  "message_list": {
+    "jump_to_latest": "Đến tin nhắn mới nhất",
+    "new_reply": "Phản hồi mới",
+    "show_details": "Xem chi tiết",
+    "replied_in": "Đã phản hồi sau {{elapsed}}",
+    "failed_after": "Thất bại sau {{elapsed}}",
+    "finished_in": "Hoàn thành sau {{elapsed}}",
+    "no_response": "Tác nhân đã kết thúc lượt này mà không có phản hồi bằng văn bản.",
+    "failure": {
+      "agent_error": "Tác nhân gặp lỗi và không thể hoàn tất phản hồi. Vui lòng thử lại.",
+      "timeout": "Tác nhân mất quá nhiều thời gian và đã dừng trước khi hoàn tất. Hãy thử lại, hoặc chia yêu cầu thành các bước nhỏ hơn.",
+      "codex_semantic_inactivity": "Tác nhân đã ngừng hoạt động và dừng trước khi hoàn tất. Vui lòng thử lại.",
+      "runtime_offline": "Tác nhân hiện đang ngoại tuyến nên không thể phản hồi. Vui lòng thử lại khi tác nhân trực tuyến trở lại.",
+      "runtime_access_denied": "Không thể truy cập môi trường chạy riêng của tác nhân này. Hãy chuyển môi trường chạy sang công khai, hoặc gắn tác nhân với một môi trường chạy có thể truy cập.",
+      "runtime_recovery": "Tác nhân đã khởi động lại trước khi hoàn tất. Vui lòng thử lại.",
+      "runtime_access_revoked": "Quyền truy cập môi trường chạy đã bị thu hồi. Hãy gắn tác nhân với một môi trường chạy có thể truy cập trước khi chạy lại.",
+      "manual": "Phản hồi này đã bị hủy.",
+      "skill_bundle_unavailable": "Không thể tải các kỹ năng của tác nhân nên tác nhân chưa bao giờ bắt đầu. Thường đây là lỗi kết nối — vui lòng thử lại.",
+      "runtime_cli_timeout": "CLI OpenClaw cục bộ đã hết thời gian chờ trước khi trả lời. Hãy kiểm tra thiết lập CLI OpenClaw cục bộ hoặc tăng MULTICA_OPENCLAW_CLI_TIMEOUT trước khi thử lại.",
+      "environment_prepare_failed": "Máy đang chạy tác nhân không thể thiết lập lần chạy này nên nó chưa bao giờ bắt đầu. Lỗi bên dưới cho biết điều gì thất bại — thường là hết dung lượng đĩa, thiếu quyền, thư mục đang được sử dụng, hoặc cấu hình cục bộ không đọc được. Đây không phải lỗi của tác nhân hay nhà cung cấp mô hình.",
+      "local_directory_missing": "Thư mục cục bộ được liên kết với dự án này không còn tồn tại trên máy đang chạy tác nhân nên lần chạy chưa bắt đầu. Hãy khôi phục thư mục, rồi thử lại. Để dùng thư mục khác, hãy mở Tài nguyên → Thư mục cục bộ trong dự án bằng ứng dụng máy tính trên máy đó và liên kết tại đó — trình duyệt không thể chọn thư mục.",
+      "provider_network": "Kết nối tới nhà cung cấp mô hình bị gián đoạn trước khi phản hồi hoàn tất. Hãy kiểm tra mạng và thử lại.",
+      "provider_auth_or_access": "Nhà cung cấp đã từ chối thông tin xác thực hoặc quyền truy cập của tác nhân này. Hãy kiểm tra khóa API hoặc tài khoản — có thể đã hết hạn hoặc không còn quyền truy cập.",
+      "provider_quota_limit": "Tài khoản mô hình của tác nhân đã hết tín dụng. Hãy nạp thêm hoặc đổi tài khoản, rồi thử lại.",
+      "provider_capacity_or_rate_limit": "Nhà cung cấp mô hình đang bận hoặc giới hạn tần suất của tài khoản này. Vui lòng thử lại sau ít phút.",
+      "context_overflow": "Cuộc trò chuyện này đã quá dài đối với mô hình. Hãy bắt đầu cuộc trò chuyện mới để tiếp tục.",
+      "runtime_missing_executable": "Không thể chạy CLI của tác nhân trên máy này. Hãy kiểm tra xem nó đã được cài đặt đúng và nằm trong PATH chưa, rồi thử lại.",
+      "runtime_version_unsupported": "CLI của tác nhân quá cũ đối với môi trường chạy này. Hãy nâng cấp, rồi thử lại.",
+      "fallback": "Đã xảy ra lỗi và tác nhân không thể hoàn tất phản hồi. Vui lòng thử lại."
+    },
+    "tools_other": "{{count}} công cụ",
+    "tool_result_named": "Kết quả {{tool}}: ",
+    "tool_result_unnamed": "kết quả: ",
+    "process_steps_other": "{{count}} bước",
+    "copy_action": "Sao chép",
+    "copied_toast": "Đã sao chép",
+    "copy_failed_toast": "Sao chép thất bại",
+    "loading_older": "Đang tải tin nhắn cũ hơn...",
+    "quick_actions_heading": "Câu hỏi tiếp theo",
+    "quick_actions_aria": "Gợi ý câu hỏi tiếp theo",
+    "quick_actions_regenerate": "Tạo lại gợi ý",
+    "quick_actions_regenerate_failed": "Không thể làm mới gợi ý. Vui lòng thử lại."
+  },
+  "session_history": {
+    "untitled": "Chưa có tiêu đề",
+    "time": {
+      "just_now": "vừa xong",
+      "minutes": "{{count}} phút trước",
+      "hours": "{{count}} giờ trước",
+      "days": "{{count}} ngày trước"
+    },
+    "row_delete_aria": "Xóa phiên trò chuyện",
+    "row_rename_aria": "Đổi tên phiên trò chuyện",
+    "row_stop_aria": "Dừng lần chạy hiện tại",
+    "stop_action": "Dừng",
+    "row_subtitle": {
+      "working": "Đang làm việc",
+      "completed": "Đã hoàn thành",
+      "new_reply": "Phản hồi mới"
+    },
+    "stop_dialog": {
+      "title": "Dừng lần chạy này?",
+      "description_with_title": "Thao tác này sẽ hủy lần chạy hiện tại của tác nhân trong \"{{title}}\". Nội dung đã tạo một phần sẽ được giữ lại trong cuộc trò chuyện.",
+      "description_default": "Thao tác này sẽ hủy lần chạy hiện tại của tác nhân. Nội dung đã tạo một phần sẽ được giữ lại trong cuộc trò chuyện.",
+      "cancel": "Tiếp tục chạy",
+      "confirm": "Dừng lần chạy",
+      "confirming": "Đang dừng..."
+    },
+    "delete_dialog": {
+      "title": "Xóa cuộc trò chuyện",
+      "description_with_title": "\"{{title}}\" và các tin nhắn của nó sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.",
+      "description_default": "Phiên trò chuyện này và các tin nhắn của nó sẽ bị xóa vĩnh viễn. Không thể hoàn tác.",
+      "cancel": "Hủy",
+      "confirm": "Xóa",
+      "confirming": "Đang xóa..."
+    },
+    "row_actions_aria": "Thao tác trò chuyện"
+  },
+  "window": {
+    "new_chat_tooltip": "Trò chuyện mới",
+    "restore_tooltip": "Khôi phục",
+    "expand_tooltip": "Mở rộng",
+    "minimize_tooltip": "Thu nhỏ",
+    "close_tooltip": "Đóng",
+    "another_running": "Một cuộc trò chuyện khác đang chạy",
+    "another_unread": "Một cuộc trò chuyện khác có phản hồi chưa đọc",
+    "running": "Đang chạy",
+    "unread": "Chưa đọc",
+    "no_previous": "Chưa có cuộc trò chuyện nào trước đó",
+    "untitled": "Trò chuyện mới",
+    "my_agents": "Tác nhân của tôi",
+    "others": "Khác",
+    "no_agents": "Không có tác nhân",
+    "history_group": "Lịch sử trò chuyện",
+    "agent_filter_placeholder": "Tìm tác nhân...",
+    "agent_needs_runtime": "Cần môi trường chạy",
+    "agent_needs_runtime_hint": "Hãy gắn môi trường chạy trước khi bắt đầu trò chuyện với tác nhân này"
+  },
+  "empty_state": {
+    "first_time_title": "Trò chuyện với các tác nhân của bạn",
+    "first_time_intro": "✨ Họ hiểu không gian làm việc của bạn —",
+    "first_time_pillars": "nhiệm vụ, dự án, kỹ năng",
+    "first_time_pillars_suffix": ".",
+    "first_time_actions": "Hãy yêu cầu tóm tắt, lên kế hoạch cho ngày của bạn, hoặc giao một việc nhỏ.",
+    "returning_title_named": "Xin chào, tôi là {{name}}",
+    "returning_title_default": "Chào mừng đến với Delegora",
+    "returning_subtitle": "Hãy thử hỏi",
+    "chat_with_named": "Trò chuyện với {{name}}"
+  },
+  "conversation_starters": {
+    "aria_label": "Gợi ý bắt đầu trò chuyện",
+    "capabilities": {
+      "label": "Bạn có thể giúp gì?",
+      "prompt": "Bạn giỏi nhất ở việc gì? Hãy cho tôi một tổng quan ngắn gọn."
+    },
+    "first_task": {
+      "label": "Gợi ý một nhiệm vụ đầu tiên",
+      "prompt": "Hãy gợi ý ba nhiệm vụ hữu ích mà tôi có thể giao cho bạn."
+    },
+    "recommend": {
+      "label": "Đề xuất một hành động",
+      "prompt": "Hãy xem lại những gì bạn biết về không gian làm việc của tôi và đề xuất một hành động đầu tiên hữu ích."
+    },
+    "uploading": "Hãy chờ tải lên xong trước khi dùng gợi ý.",
+    "draft_in_progress": "Hãy gửi hoặc xóa bản nháp trước khi dùng gợi ý."
+  },
+  "onboarding_cards": {
+    "aria_label": "Cách bắt đầu",
+    "cta": "Bắt đầu",
+    "board": {
+      "title": "Dựng bảng công việc trong vài phút",
+      "desc": "Hãy cho tôi biết mục tiêu — tôi sẽ tạo dự án, chia nhỏ nhiệm vụ và đặt mức độ ưu tiên.",
+      "prompt": "Biến các mục tiêu hiện tại của chúng ta thành một bảng công việc dự án"
+    },
+    "delegate": {
+      "title": "Giao cho tôi một việc trước",
+      "desc": "Ví dụ, một nghiên cứu nhỏ — kết quả sẽ trả về dưới dạng một nhiệm vụ và một báo cáo.",
+      "prompt": "Hãy nhận giúp tôi một việc: làm một nghiên cứu nhỏ và gửi kết quả lại dưới dạng báo cáo"
+    },
+    "digest": {
+      "title": "Để bản tin hằng ngày tự viết",
+      "desc": "Bản tóm tắt buổi sáng về tiến độ không gian làm việc, gửi thẳng vào hộp thư đến của bạn.",
+      "prompt": "Thiết lập một tự động hóa hằng ngày để tóm tắt hoạt động không gian làm việc của hôm qua vào mỗi buổi sáng."
+    },
+    "digest_badge": "Hằng ngày 9:00"
+  },
+  "no_agent_banner": "Bạn cần một tác nhân để bắt đầu trò chuyện.",
+  "archived_agent_banner": "{{name}} đã được lưu trữ, nên cuộc trò chuyện này chỉ được xem.",
+  "agent_access_revoked_banner": "Bạn không còn quyền chạy {{name}} — cuộc trò chuyện này chỉ được xem.",
+  "runtime_required_banner": {
+    "fallback_name": "Tác nhân",
+    "message": "{{name}} cần một môi trường chạy trước khi có thể phản hồi.",
+    "action": "Gắn môi trường chạy"
+  },
+  "offline_banner": {
+    "fallback_name": "Tác nhân",
+    "unstable": "Kết nối của {{name}} không ổn định — phản hồi có thể bị chậm.",
+    "offline": "{{name}} đang ngoại tuyến — tin nhắn của bạn sẽ được gửi khi họ trực tuyến trở lại."
+  },
+  "status_pill": {
+    "stages": {
+      "offline": "Ngoại tuyến",
+      "reconnecting": "Đang kết nối lại",
+      "retrying": "Đang thử lại",
+      "queued": "Đang chờ",
+      "waiting_local_directory": "Đang chờ thư mục cục bộ",
+      "waiting_local_directory_reason": "Đang chờ {{reason}}",
+      "starting_up": "Đang khởi động",
+      "thinking": "Đang suy nghĩ",
+      "typing": "Đang gõ"
+    },
+    "tools": {
+      "running_command": "Đang chạy một lệnh",
+      "reading_files": "Đang đọc tệp",
+      "searching_code": "Đang tìm kiếm trong mã nguồn",
+      "making_edits": "Đang chỉnh sửa",
+      "searching_web": "Đang tìm kiếm trên web",
+      "fallback": "Đang làm việc"
+    }
+  },
+  "list": {
+    "typing": "Đang gõ...",
+    "failed": "Gửi thất bại",
+    "you_prefix": "Bạn: ",
+    "no_messages": "Chưa có tin nhắn",
+    "no_response_preview": "Không có phản hồi bằng văn bản",
+    "quick_agents": "Tác nhân thường dùng",
+    "add": "Thêm",
+    "waiting": "Đang chờ phản hồi",
+    "pin": "Ghim",
+    "unpin": "Bỏ ghim",
+    "pinned": "Đã ghim",
+    "archive": "Lưu trữ",
+    "unarchive": "Bỏ lưu trữ",
+    "archived_title": "Đã lưu trữ",
+    "row_actions_aria": "Thao tác trò chuyện",
+    "wakeup_preview": "Đã quay lại để báo cáo",
+    "wakeup_active": "Đang chờ để báo cáo"
+  },
+  "header": {
+    "agent_settings": "Cài đặt tác nhân",
+    "rename": "Đổi tên cuộc trò chuyện",
+    "archive": "Lưu trữ cuộc trò chuyện",
+    "unarchive": "Bỏ lưu trữ cuộc trò chuyện",
+    "delete": "Xóa cuộc trò chuyện"
+  },
+  "wakeup": {
+    "panel_title": "Đánh thức",
+    "panel_empty": "Không có lần đánh thức nào trong cuộc trò chuyện này",
+    "panel_ended": "Đã kết thúc gần đây",
+    "limits_hint": "Mọi lần đánh thức đều có điểm kết thúc: thời gian chờ mặc định là 24 giờ và tối đa 7 ngày. Nếu hạn chót đến trước, tác nhân sẽ quay lại một lần để báo cho bạn tình hình hiện tại.",
+    "strip_waiting": "Đang chờ: {{title}}",
+    "card": "Sẽ báo cáo lại: {{title}}",
+    "ends": "kết thúc {{relative}}",
+    "reminder_at": "nhắc nhở {{relative}}",
+    "next_check": "kiểm tra tiếp theo {{relative}}",
+    "last_check": "Lần kiểm tra cuối: {{note}}",
+    "cancel": "Hủy đánh thức",
+    "cancel_failed": "Không thể hủy đánh thức",
+    "retry": "Thử lại",
+    "retry_failed": "Không thể thử lại đánh thức",
+    "status": {
+      "active": "Đang chờ",
+      "fired": "Đã báo cáo lại",
+      "expired": "Đã đến hạn chót",
+      "cancelled": "Đã hủy",
+      "failed": "Không thể chạy"
+    },
+    "report": {
+      "waiting": "Đang chờ báo cáo",
+      "running": "Đang báo cáo...",
+      "failed": "Không thể báo cáo"
+    },
+    "failure": {
+      "permission_revoked": "Người yêu cầu không còn quyền chạy tác nhân này",
+      "access_lost": "Đối tượng nó theo dõi đã chuyển sang dự án riêng tư",
+      "dispatch_failed": "Tác nhân không thể chạy"
+    },
+    "kind": {
+      "condition": "Khi điều đó xảy ra",
+      "at": "Nhắc nhở",
+      "check": "Kiểm tra định kỳ"
+    },
+    "divider": {
+      "condition": "Quay lại báo cáo · đã xảy ra",
+      "at": "Quay lại báo cáo · nhắc nhở",
+      "check": "Quay lại báo cáo · kiểm tra",
+      "expired": "Quay lại báo cáo · đã đến hạn chót",
+      "generic": "Quay lại báo cáo"
+    },
+    "queue_label": "Đánh thức: {{title}}",
+    "queue_fallback": "Đánh thức"
+  }
+}

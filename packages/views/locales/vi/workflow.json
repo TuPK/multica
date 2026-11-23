@@ -1,0 +1,246 @@
+{
+  "manage": {
+    "title": "Quy trình làm việc",
+    "new_workflow": "Quy trình mới",
+    "search_placeholder": "Tìm quy trình...",
+    "filter_all": "Tất cả",
+    "filter_squads": "Nhóm",
+    "filter_agents": "Tác nhân",
+    "default_badge": "Mặc định",
+    "managed_by_template": "Được quản lý bởi Kit Việt",
+    "steps_count_other": "{{count}} bước",
+    "assigned_squads": "Nhóm",
+    "assigned_agents": "Tác nhân",
+    "empty_title": "Không tìm thấy quy trình nào",
+    "action_failed": "Đã xảy ra lỗi. Hãy thử lại.",
+    "detail_title": "Chi tiết quy trình",
+    "open_designer": "Mở trình thiết kế",
+    "actions": {
+      "menu": "Thao tác",
+      "edit": "Chỉnh sửa",
+      "duplicate": "Nhân bản",
+      "delete": "Xóa"
+    },
+    "delete_dialog": {
+      "title": "Xóa quy trình",
+      "confirm": "Xóa",
+      "cancel": "Hủy",
+      "warning": "Bạn có chắc muốn xóa quy trình này không?",
+      "blocked_title": "Không thể xóa quy trình",
+      "blocked_default": "Không thể xóa quy trình mặc định của không gian làm việc.",
+      "blocked_squads": "Quy trình này hiện đang được dùng bởi {{count}} nhóm. Hãy chuyển các nhóm đó sang quy trình khác trước khi xóa."
+    },
+    "copy_name": "{{name}} (Bản sao)"
+  },
+  "designer": {
+    "title": "Trình thiết kế quy trình",
+    "new_title": "Quy trình mới",
+    "back_to_workflows": "Quay lại danh sách quy trình",
+    "save": "Lưu",
+    "saving": "Đang lưu...",
+    "saved": "Đã lưu",
+    "save_failed": "Không thể lưu quy trình.",
+    "status_create_forbidden": "Chỉ quản trị viên không gian làm việc mới có thể tạo trạng thái, nên quy trình này không thể lưu.",
+    "load_failed": "Không thể tải quy trình này.",
+    "name_placeholder": "Tên quy trình",
+    "description_placeholder": "Thêm mô tả...",
+    "status_palette": "Bảng trạng thái",
+    "add_status": "Thêm trạng thái",
+    "in_workflow": "Trong quy trình",
+    "node": {
+      "drag_handle": "Kéo để sắp xếp lại",
+      "fixed_head": "Đầu cố định",
+      "fixed_tail": "Cuối cố định",
+      "required": "Bắt buộc",
+      "handler": "Người xử lý",
+      "no_handler": "Giữ người được giao",
+      "instructions": "Hướng dẫn",
+      "instructions_placeholder": "Hướng dẫn cho người xử lý khi vào bước này...",
+      "transitions": "Chuyển tiếp",
+      "add_transition": "Thêm chuyển tiếp",
+      "connect_to": "Kết nối đến...",
+      "move_left": "Di chuyển sang trái",
+      "move_right": "Di chuyển sang phải",
+      "move_up": "Di chuyển lên",
+      "move_down": "Di chuyển xuống",
+      "remove_step": "Xóa bước",
+      "role_hint": "Vai trò: {{role}}",
+      "will_be_created": "Sẽ được tạo",
+      "handler_agent": "Tác nhân",
+      "handler_member": "Thành viên",
+      "handler_project_lead": "Trưởng dự án"
+    },
+    "edge": {
+      "from_step": "Từ {{step}}",
+      "edit_transition": "Chỉnh sửa chuyển tiếp",
+      "label": "Nhãn nhánh",
+      "label_placeholder": "ví dụ: Đã duyệt, Cần chỉnh sửa",
+      "target_status": "Trạng thái đích",
+      "is_default": "Nhánh mặc định",
+      "is_default_hint": "Nhánh dự phòng được chọn khi không có điều kiện nhánh nào khác khớp.",
+      "override_handler": "Ghi đè người xử lý",
+      "delete_transition": "Xóa chuyển tiếp"
+    },
+    "conditions": {
+      "builder_title": "Điều kiện định tuyến",
+      "add_rule": "Thêm quy tắc",
+      "add_group": "Thêm nhóm",
+      "remove_group": "Xóa nhóm",
+      "remove_rule": "Xóa quy tắc",
+      "group_and": "VÀ (tất cả đều khớp)",
+      "group_or": "HOẶC (bất kỳ khớp)",
+      "group_not": "KHÔNG",
+      "field": "Trường",
+      "operator": "Toán tử",
+      "value": "Giá trị",
+      "fields": {
+        "outcome": "Kết quả",
+        "priority": "Mức độ ưu tiên",
+        "labels": "Nhãn",
+        "project_id": "Dự án",
+        "rework_count": "Số lần làm lại",
+        "creator_type": "Loại người tạo",
+        "assignee_type": "Loại người được giao"
+      },
+      "operators": {
+        "eq": "bằng",
+        "neq": "không bằng",
+        "in": "trong",
+        "gt": "lớn hơn",
+        "gte": "lớn hơn hoặc bằng",
+        "lt": "nhỏ hơn",
+        "lte": "nhỏ hơn hoặc bằng",
+        "exists": "có tồn tại"
+      }
+    },
+    "validation": {
+      "title": "Kiểm tra hợp lệ",
+      "all_valid": "Quy trình hợp lệ",
+      "fix_errors": "Vui lòng sửa các lỗi kiểm tra trước khi lưu",
+      "step_label": "Bước: {{key}}",
+      "issues_found_other": "{{count}} vấn đề",
+      "errors": "Lỗi",
+      "warnings": "Cảnh báo",
+      "messages": {
+        "max_steps": "Quy trình vượt quá giới hạn tối đa {{limit}} bước.",
+        "missing_required_status": "Quy trình phải có trạng thái bắt buộc '{{status}}'.",
+        "backlog_not_first": "Trạng thái Backlog phải là bước đầu tiên khi có mặt.",
+        "todo_after_backlog": "Trạng thái Todo phải đứng ngay sau Backlog.",
+        "todo_first": "Trạng thái Todo phải là bước đầu tiên.",
+        "cancelled_not_last": "Trạng thái Đã hủy phải là bước cuối cùng.",
+        "done_before_cancelled": "Trạng thái Đã xong phải đứng ngay trước Đã hủy.",
+        "blocked_before_done": "Trạng thái Bị chặn phải đứng trước Đã xong.",
+        "handler_not_allowed": "Bước '{{step}}' không thể chuyển cho {{handler}}. Hãy chọn tác nhân, thành viên hoặc trưởng dự án.",
+        "handler_id_required": "Bước '{{step}}' cần một {{handler}} để chuyển giao.",
+        "duplicate_transition_id": "Bước '{{step}}' có hai chuyển tiếp cùng mã.",
+        "max_transitions": "Bước '{{step}}' vượt quá giới hạn {{limit}} chuyển tiếp.",
+        "missing_default": "Bước '{{step}}' có nhiều nhánh nhưng không có nhánh dự phòng mặc định.",
+        "multiple_defaults": "Bước '{{step}}' có {{count}} nhánh mặc định. Chỉ được phép tối đa một nhánh.",
+        "default_not_last": "Nhánh dự phòng mặc định ở bước '{{step}}' phải là nhánh cuối cùng theo thứ tự.",
+        "label_required": "Một nhánh của '{{step}}' cần có nhãn.",
+        "self_target": "Nhánh '{{label}}' không thể đưa '{{step}}' quay lại chính nó.",
+        "unknown_target": "Nhánh '{{label}}' trỏ đến trạng thái không tồn tại '{{status}}'.",
+        "label_too_long": "Nhãn nhánh vượt quá {{limit}} ký tự.",
+        "condition_depth": "Điều kiện ở nhánh '{{label}}' vượt quá độ lồng tối đa {{limit}} (độ sâu: {{depth}}).",
+        "unreachable_terminal": "Bước '{{step}}' không thể đến trạng thái kết thúc (Đã xong hoặc Đã hủy). Hãy kiểm tra vòng lặp hoặc chuyển tiếp bị thiếu.",
+        "condition_group_empty": "Điều kiện ở nhánh '{{label}}': một nhóm cần ít nhất một quy tắc.",
+        "condition_unknown_field": "Điều kiện ở nhánh '{{label}}': trường \"{{field}}\" không xác định.",
+        "condition_operator_not_for_field": "Điều kiện ở nhánh '{{label}}': \"{{op}}\" không áp dụng cho {{field}}.",
+        "condition_exists_has_value": "Điều kiện ở nhánh '{{label}}': \"có tồn tại\" không nhận giá trị.",
+        "condition_in_needs_list": "Điều kiện ở nhánh '{{label}}': \"trong\" cần một danh sách giá trị.",
+        "condition_whole_number": "Điều kiện ở nhánh '{{label}}': {{field}} phải là số nguyên.",
+        "condition_value_not_allowed": "Điều kiện ở nhánh '{{label}}': \"{{value}}\" không thuộc các giá trị của {{field}}.",
+        "condition_value_required": "Điều kiện ở nhánh '{{label}}': {{field}} cần có giá trị."
+      }
+    },
+    "default_name": "Quy trình mới",
+    "untitled_name": "Quy trình chưa có tên",
+    "default_branch_start": "Bắt đầu",
+    "default_branch_done": "Đã xong",
+    "start_points": {
+      "label": "Điểm bắt đầu",
+      "blank": "Trống",
+      "clone": "Sao chép từ quy trình có sẵn",
+      "template": "Bắt đầu từ mẫu"
+    },
+    "clone_dialog": {
+      "title": "Sao chép từ quy trình có sẵn",
+      "search_placeholder": "Tìm quy trình...",
+      "empty_title": "Không tìm thấy quy trình nào",
+      "loading": "Đang tải quy trình...",
+      "load_failed": "Không thể tải quy trình."
+    },
+    "template_dialog": {
+      "title": "Bắt đầu từ mẫu",
+      "empty_title": "Không tìm thấy mẫu nào",
+      "loading": "Đang tải mẫu...",
+      "load_failed": "Không thể tải mẫu.",
+      "will_be_created": "Sẽ được tạo khi lưu"
+    },
+    "inspector": {
+      "title": "Kiểm tra bước",
+      "select_step_hint": "Chọn một bước để xem người xử lý và các chuyển tiếp của bước đó.",
+      "board_order": "Thứ tự trên bảng",
+      "add_step": "Thêm bước",
+      "step_count": "Bước {{current}} / {{total}}",
+      "close": "Đóng trình kiểm tra",
+      "no_transitions": "Không có chuyển tiếp"
+    },
+    "discard_dialog": {
+      "title": "Hủy các thay đổi chưa lưu?",
+      "warning": "Các thay đổi chưa lưu của bạn sẽ bị mất.",
+      "confirm": "Hủy và thay thế",
+      "cancel": "Hủy"
+    }
+  },
+  "templates": {
+    "delivery": {
+      "name": "Giao hàng",
+      "description": "Xây dựng, xem xét, rồi kiểm thử QA trước khi hoàn thành"
+    },
+    "content": {
+      "name": "Nội dung",
+      "description": "Soạn thảo, biên tập và lên lịch"
+    },
+    "community": {
+      "name": "Cộng đồng",
+      "description": "Phân loại, trả lời, chờ người báo cáo"
+    },
+    "sdlc_auto": {
+      "name": "SDLC Tự động",
+      "description": "Tác nhân lập kế hoạch và xây dựng, có xem xét và QA độc lập"
+    },
+    "bmad_planning_auto": {
+      "name": "Lập kế hoạch BMAD Tự động",
+      "description": "Lập kế hoạch nhiều giai đoạn bằng tác nhân, từ nghiên cứu đến đánh giá sẵn sàng"
+    },
+    "sales_loop": {
+      "name": "Vòng lặp bán hàng",
+      "description": "Tìm khách hàng tiềm năng, soạn thảo, kiểm tra và báo cáo"
+    },
+    "quick_fix": {
+      "name": "SDLC Sửa nhanh",
+      "description": "Vòng lặp sửa lỗi trực tiếp qua lập trình viên đến khi hoàn thành"
+    }
+  },
+  "room_prompt": {
+    "non_request_title": "Chọn một quy trình",
+    "non_request_description": "Nhiệm vụ này không phải yêu cầu của nhóm luồng việc. Lựa chọn của bạn sẽ được lưu vào cài đặt không gian làm việc và có thể thay đổi sau.",
+    "option_default": "Mặc định",
+    "option_existing": "Quy trình có sẵn",
+    "select_workflow_placeholder": "Chọn một quy trình...",
+    "no_custom_workflows": "Không có quy trình nào khác",
+    "squad_required_title": "Cần quy trình",
+    "squad_required_description": "Nhóm này chưa có quy trình đang hoạt động.",
+    "squad_required_description_named": "{{squad}} chưa có quy trình đang hoạt động.",
+    "squad_picker_label": "Quy trình của nhóm",
+    "squad_member_note": "Hãy nhờ quản lý nhóm hoặc quản trị viên không gian làm việc gán một quy trình.",
+    "open_workflow_tab": "Mở Quy trình làm việc",
+    "ok": "OK",
+    "cancel": "Hủy",
+    "close": "Đóng",
+    "saving": "Đang lưu...",
+    "admin_only_error": "Chỉ quản trị viên không gian làm việc mới có thể thay đổi cài đặt này.",
+    "save_failed": "Không thể lưu lựa chọn quy trình."
+  }
+}

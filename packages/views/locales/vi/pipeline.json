@@ -1,0 +1,217 @@
+{
+  "title": "Quy trình",
+  "toolbar": {
+    "squad": "Nhóm phụ trách",
+    "squad_all": "Tất cả nhóm",
+    "status": "Trạng thái",
+    "status_option": {
+      "open": "Mở",
+      "active": "Đang hoạt động",
+      "operating": "Đang vận hành",
+      "shelved": "Tạm gác",
+      "closed": "Đã đóng"
+    }
+  },
+  "board": {
+    "no_pipeline": "Không gian làm việc này chưa thiết lập quy trình nào.",
+    "no_initiatives": "Không có sáng kiến nào khớp với bộ lọc.",
+    "column_empty": "Không có gì ở giai đoạn này",
+    "unknown_stage": "Giai đoạn không xác định",
+    "load_failed": "Không thể tải các sáng kiến."
+  },
+  "card": {
+    "days_in_stage_other": "{{count}} ngày ở giai đoạn này",
+    "artifacts": "{{present}}/{{required}} sản phẩm",
+    "stalled": "Đình trệ",
+    "no_owner": "Chưa có người phụ trách"
+  },
+  "status": {
+    "active": "Đang hoạt động",
+    "operating": "Đang vận hành",
+    "shelved": "Tạm gác",
+    "closed": "Đã đóng",
+    "unknown": "Không xác định"
+  },
+  "stage_sla": {
+    "ok": "Trong thời hạn SLA của giai đoạn",
+    "stalled": "Quá thời hạn SLA của giai đoạn"
+  },
+  "panel": {
+    "loading": "Đang tải sáng kiến...",
+    "unavailable": "Không thể tải sáng kiến này.",
+    "overview": "Tổng quan",
+    "stage": "Giai đoạn",
+    "owner": "Nhóm phụ trách",
+    "status": "Trạng thái",
+    "days_in_stage": "Số ngày ở giai đoạn",
+    "exit": "Điều kiện chuyển",
+    "exit_mode": {
+      "auto": "Tự động chuyển khi các sản phẩm bắt buộc đã được xuất bản",
+      "attest": "Nhóm phụ trách xác nhận giai đoạn đã hoàn thành",
+      "gate": "Trưởng dự án quyết định",
+      "unknown": "Không nhận diện được điều kiện chuyển"
+    },
+    "open_issue": "Mở nhiệm vụ liên kết",
+    "artifacts": "Sản phẩm",
+    "gates": "Cổng phê duyệt",
+    "timeline": "Dòng thời gian giai đoạn",
+    "force": "Chuyển ép buộc",
+    "sla": "SLA giai đoạn",
+    "actions": "Thao tác",
+    "thread": "Thảo luận của nhiệm vụ liên kết"
+  },
+  "artifact": {
+    "required": "Bắt buộc",
+    "optional": "Tùy chọn",
+    "published": "Đã xuất bản",
+    "missing": "Thiếu",
+    "waived": "Đã miễn",
+    "open_knowledge": "Mở trong kiến thức",
+    "waive": "Miễn",
+    "waive_note": "Lý do miễn",
+    "waive_note_required": "Cần ghi chú để miễn một sản phẩm.",
+    "waive_submit": "Miễn sản phẩm",
+    "none": "Không có sản phẩm nào cho giai đoạn này."
+  },
+  "gate": {
+    "state": {
+      "pending": "Đang chờ quyết định",
+      "approved": "Đã phê duyệt",
+      "rejected": "Đã từ chối",
+      "revising": "Đã trả về để chỉnh sửa",
+      "expired": "Đã hết hạn",
+      "unknown": "Không xác định"
+    },
+    "approve": "Phê duyệt",
+    "outcome": {
+      "continue": "Tiếp tục",
+      "scale": "Mở rộng",
+      "sunset": "Kết thúc"
+    },
+    "outcome_hint": "Tiếp tục giữ sáng kiến ở trạng thái vận hành. Mở rộng bắt đầu một sáng kiến nối tiếp ở giai đoạn Xác định. Kết thúc sẽ đóng sáng kiến.",
+    "reject": "Từ chối",
+    "reject_note": "Lý do từ chối",
+    "reject_note_required": "Cần ghi chú để từ chối cổng phê duyệt.",
+    "reject_submit": "Từ chối cổng phê duyệt",
+    "cancel": "Hủy",
+    "none": "Sáng kiến này không có cổng phê duyệt nào."
+  },
+  "event": {
+    "created": "Đã tạo",
+    "advanced": "Đã chuyển tiếp",
+    "sent_back": "Đã trả về",
+    "shelved": "Đã tạm gác",
+    "resumed": "Đã tiếp tục",
+    "closed": "Đã đóng",
+    "forced": "Đã chuyển ép buộc",
+    "attested": "Đã xác nhận",
+    "artifact_waived": "Đã miễn sản phẩm",
+    "unknown": "Đã cập nhật",
+    "move": "{{from}} → {{to}}",
+    "none": "Chưa có sự kiện nào."
+  },
+  "force": {
+    "to_stage": "Chuyển đến giai đoạn",
+    "reason": "Lý do",
+    "reason_required": "Cần nêu lý do để chuyển ép buộc.",
+    "submit": "Chuyển ép buộc"
+  },
+  "toast": {
+    "waived": "Đã miễn sản phẩm.",
+    "waive_failed": "Không thể miễn sản phẩm.",
+    "approved": "Đã phê duyệt cổng.",
+    "rejected": "Đã từ chối cổng.",
+    "decide_failed": "Không thể ghi nhận quyết định.",
+    "forced": "Đã chuyển đến {{stage}}.",
+    "force_failed": "Không thể chuyển sáng kiến.",
+    "created": "Đã tạo sáng kiến.",
+    "advanced": "Đã chuyển tiếp sáng kiến.",
+    "attested": "Đã xác nhận giai đoạn.",
+    "sent_back": "Đã trả sáng kiến về.",
+    "shelved": "Đã tạm gác sáng kiến.",
+    "resumed": "Đã tiếp tục sáng kiến.",
+    "closed": "Đã đóng sáng kiến."
+  },
+  "kind": {
+    "label": {
+      "decision": "Quyết định",
+      "opportunity": "Cơ hội",
+      "stage_gate": "Cổng giai đoạn",
+      "org_change": "Thay đổi tổ chức",
+      "budget": "Ngân sách",
+      "standing_approval": "Phê duyệt thường trực",
+      "publish": "Xuất bản",
+      "unknown": "Khác"
+    }
+  },
+  "opportunity": {
+    "thesis": "Luận điểm",
+    "market": "Thị trường",
+    "evidence": "Bằng chứng",
+    "evidence_item": "Tài liệu {{index}}",
+    "no_evidence": "Chưa đính kèm bằng chứng.",
+    "target_stage": "Bắt đầu tại {{stage}}"
+  },
+  "stage_gate": {
+    "moving": "{{from}} → {{to}}",
+    "checklist": "Danh sách sản phẩm cần có",
+    "checklist_empty": "Không có sản phẩm nào cho giai đoạn này.",
+    "attestation": "Xác nhận của trưởng nhóm",
+    "attested_by": "Được xác nhận bởi {{name}}, {{time}}",
+    "not_attested": "Chưa được xác nhận.",
+    "unavailable": "Không thể tải sáng kiến."
+  },
+  "badge": {
+    "label_other": "Phụ trách {{count}} sáng kiến",
+    "open": "Mở quy trình"
+  },
+  "create": {
+    "button": "Sáng kiến mới",
+    "title": "Sáng kiến mới",
+    "title_label": "Tiêu đề",
+    "title_required": "Cần nhập tiêu đề.",
+    "title_too_long": "Tiêu đề tối đa 200 ký tự.",
+    "thesis_label": "Luận điểm",
+    "thesis_too_long": "Luận điểm quá dài.",
+    "pipeline_label": "Quy trình",
+    "no_pipeline": "Không gian làm việc này chưa có quy trình để bắt đầu sáng kiến.",
+    "failed": "Không thể tạo sáng kiến.",
+    "submit": "Tạo sáng kiến",
+    "cancel": "Hủy"
+  },
+  "actions": {
+    "advance": "Chuyển tiếp",
+    "attest": "Xác nhận giai đoạn",
+    "send_back": "Trả về",
+    "send_back_note": "Ghi chú cho trưởng nhóm",
+    "send_back_note_required": "Cần ghi chú để trả sáng kiến về.",
+    "send_back_submit": "Trả về",
+    "resume": "Tiếp tục",
+    "shelve": "Tạm gác",
+    "shelve_title": "Tạm gác sáng kiến này?",
+    "shelve_description": "Đồng hồ giai đoạn sẽ dừng cho đến khi tiếp tục.",
+    "shelve_note": "Ghi chú (không bắt buộc)",
+    "shelve_submit": "Tạm gác sáng kiến",
+    "close": "Đóng",
+    "close_title": "Đóng sáng kiến này?",
+    "close_description": "Nhiệm vụ liên kết sẽ được đánh dấu đã xong, và sáng kiến rời khỏi quy trình.",
+    "close_reason": "Lý do",
+    "close_reason_required": "Cần nêu lý do để đóng sáng kiến.",
+    "close_submit": "Đóng sáng kiến",
+    "cancel": "Hủy"
+  },
+  "action_error": {
+    "generic": "Không thể thay đổi sáng kiến.",
+    "stage_not_ready": "Giai đoạn vẫn cần các sản phẩm bắt buộc.",
+    "needs_attest": "Nhóm phụ trách phải xác nhận giai đoạn trước.",
+    "stage_is_gate": "Một cổng phê duyệt quyết định giai đoạn này.",
+    "not_attest_stage": "Giai đoạn này không cần xác nhận.",
+    "initiative_closed": "Sáng kiến đã được đóng.",
+    "initiative_shelved": "Sáng kiến đang bị tạm gác. Hãy tiếp tục trước.",
+    "initiative_not_shelved": "Sáng kiến không bị tạm gác.",
+    "no_previous_stage": "Không có giai đoạn trước để quay lại.",
+    "note_required": "Thay đổi này cần có ghi chú.",
+    "stage_unowned": "Giai đoạn này chưa có nhóm phụ trách.",
+    "build_squad_not_sdlc": "Giai đoạn Xây dựng cần một nhóm có quy trình phát triển phần mềm."
+  }
+}

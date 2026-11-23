@@ -1,0 +1,167 @@
+{
+  "title": "Thanh lệnh",
+  "description": "Tìm kiếm, chạy lệnh hoặc giao việc cho tác nhân",
+  "placeholder": "Tìm kiếm, hoặc nhập việc cần làm...",
+  "page_placeholder": "Lọc...",
+  "breadcrumb_aria": "Menu hiện tại",
+  "groups": {
+    "pages": "Trang",
+    "views": "Chế độ xem",
+    "commands": "Lệnh",
+    "members": "Thành viên",
+    "agents": "Tác nhân",
+    "squads": "Nhóm",
+    "projects": "Dự án",
+    "issues": "Nhiệm vụ",
+    "autopilots": "Tự động hóa",
+    "chats": "Trò chuyện",
+    "skills": "Kỹ năng",
+    "docs": "Tài liệu",
+    "cancelled": "Đã hủy",
+    "recent": "Gần đây",
+    "workspaces": "Không gian làm việc",
+    "new": "Mới",
+    "best_match": "Phù hợp nhất",
+    "actions": "Thao tác"
+  },
+  "context": {
+    "current_issue": "Nhiệm vụ hiện tại",
+    "selected_issues_other": "{{count}} nhiệm vụ đã chọn",
+    "current_project": "Dự án hiện tại",
+    "current_agent": "Tác nhân hiện tại",
+    "current_autopilot": "Tự động hóa hiện tại",
+    "inbox": "Hộp thư đến",
+    "current_chat": "Trò chuyện hiện tại"
+  },
+  "commands": {
+    "current_theme_aria": "Chủ đề hiện tại",
+    "current_mode_aria": "Chế độ hiện tại",
+    "new_issue": "Nhiệm vụ mới",
+    "new_project": "Dự án mới",
+    "new_autopilot": "Tự động hóa mới",
+    "chat_with_agent": "Trò chuyện với tác nhân",
+    "change_theme": "Đổi chủ đề...",
+    "send_feedback": "Gửi phản hồi",
+    "copy_issue_link": "Sao chép liên kết nhiệm vụ",
+    "copy_identifier": "Sao chép mã định danh ({{identifier}})",
+    "fold_all_comments": "Thu gọn tất cả bình luận",
+    "unfold_all_comments": "Mở rộng tất cả bình luận"
+  },
+  "issue": {
+    "change_status": "Đổi trạng thái...",
+    "assign_to": "Giao cho...",
+    "set_priority": "Đặt mức độ ưu tiên...",
+    "run_quick_action": "Chạy thao tác nhanh...",
+    "quick_actions_available_other": "{{count}} có sẵn",
+    "add_label": "Thêm nhãn...",
+    "set_due_date": "Đặt hạn chót...",
+    "move_to_project": "Chuyển sang dự án...",
+    "set_parent": "Đặt nhiệm vụ cha...",
+    "cancel_run": "Hủy lần chạy hiện tại",
+    "retry_run": "Thử lại lần chạy trước",
+    "create_sub_issue": "Nhiệm vụ con mới",
+    "subscribe": "Theo dõi",
+    "unsubscribe": "Bỏ theo dõi",
+    "delete": "Xóa nhiệm vụ",
+    "delete_selected_other": "Xóa {{count}} nhiệm vụ"
+  },
+  "project": {
+    "change_status": "Đổi trạng thái dự án...",
+    "new_issue": "Nhiệm vụ mới trong dự án này",
+    "pin": "Ghim vào thanh bên",
+    "unpin": "Bỏ ghim khỏi thanh bên",
+    "copy_link": "Sao chép liên kết dự án"
+  },
+  "agent": {
+    "chat": "Trò chuyện với {{name}}",
+    "assign_issue": "Giao nhiệm vụ cho {{name}}...",
+    "new_issue": "Nhiệm vụ mới cho {{name}}",
+    "pin_in_chat": "Ghim trong trò chuyện",
+    "unpin_in_chat": "Bỏ ghim khỏi trò chuyện",
+    "settings": "Mở cài đặt tác nhân"
+  },
+  "autopilot": {
+    "run_now": "Chạy một lần ngay",
+    "pause": "Tạm dừng",
+    "resume": "Tiếp tục"
+  },
+  "inbox": {
+    "archive": "Lưu trữ",
+    "mark_unread": "Đánh dấu chưa đọc",
+    "mark_all_read": "Đánh dấu tất cả mục trong hộp thư đến là đã đọc",
+    "archive_all_read": "Lưu trữ tất cả mục đã đọc trong hộp thư đến"
+  },
+  "chat": {
+    "link_project": "Liên kết với dự án...",
+    "pin": "Ghim trò chuyện",
+    "unpin": "Bỏ ghim trò chuyện",
+    "archive": "Lưu trữ trò chuyện"
+  },
+  "pages": {
+    "status": "Trạng thái",
+    "priority": "Mức độ ưu tiên",
+    "assignee": "Người được giao",
+    "labels": "Nhãn",
+    "due_date": "Hạn chót",
+    "project": "Dự án",
+    "parent": "Nhiệm vụ cha",
+    "quick_actions": "Thao tác nhanh",
+    "project_status": "Trạng thái dự án",
+    "no_project": "Không có dự án",
+    "current": "Hiện tại"
+  },
+  "theme": {
+    "light": "Sáng",
+    "dark": "Tối",
+    "blue-white": "Xanh-Trắng",
+    "system": "Theo hệ thống"
+  },
+  "toast": {
+    "link_copied": "Đã sao chép liên kết",
+    "copied_identifier": "Đã sao chép {{identifier}}",
+    "run_retried": "Đã khởi động lại lần chạy",
+    "run_cancelled": "Đã hủy lần chạy",
+    "subscribed": "Đã theo dõi",
+    "unsubscribed": "Đã bỏ theo dõi",
+    "label_added": "Đã thêm nhãn {{name}}",
+    "label_removed": "Đã xóa nhãn {{name}}",
+    "update_failed": "Cập nhật thất bại",
+    "assigned": "Đã giao {{identifier}} cho {{name}}"
+  },
+  "empty": {
+    "no_results": "Không tìm thấy kết quả.",
+    "no_labels": "Không có nhãn",
+    "type_to_find_issue": "Nhập để tìm nhiệm vụ",
+    "type_to_find_people": "Nhập để tìm người và tác nhân"
+  },
+  "delegate": {
+    "row": "Giao cho tác nhân: “{{prompt}}”",
+    "hint": "Tạo cùng tác nhân"
+  },
+  "best": {
+    "assign": "Giao {{subject}} cho {{name}}",
+    "chat": "Trò chuyện với {{name}}",
+    "new_issue_in": "Nhiệm vụ mới trong {{name}}"
+  },
+  "types": {
+    "issue": "Nhiệm vụ",
+    "project": "Dự án",
+    "agent": "Tác nhân",
+    "autopilot": "Tự động hóa",
+    "squad": "Nhóm",
+    "member": "Thành viên"
+  },
+  "footer": {
+    "navigate": "Di chuyển",
+    "select": "Chọn",
+    "open_in_new_tab": "Mở trong tab mới",
+    "back": "Quay lại",
+    "prefix_commands": "Lệnh",
+    "prefix_issues": "Nhiệm vụ",
+    "prefix_people": "Người & tác nhân"
+  },
+  "trigger": {
+    "label": "Tìm kiếm..."
+  },
+  "untitled_doc": "Chưa có tiêu đề"
+}

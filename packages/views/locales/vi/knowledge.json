@@ -1,0 +1,344 @@
+{
+  "title": "Kiến thức",
+  "tabs": {
+    "library": "Thư viện",
+    "drafts": "Bản nháp",
+    "governance": "Quản trị",
+    "setup": "Thiết lập"
+  },
+  "state": {
+    "ready": "Sẵn sàng",
+    "provisioning": "Đang thiết lập",
+    "offline": "Ngoại tuyến",
+    "failed": "Thiết lập thất bại",
+    "disabled": "Chưa bật",
+    "unknown": "Không xác định"
+  },
+  "not_offered": {
+    "title": "Máy chủ này không cung cấp tính năng Kiến thức"
+  },
+  "disabled": {
+    "title": "Kiến thức chưa được bật",
+    "description": "Hãy nhờ chủ sở hữu hoặc quản trị viên bật tính năng này."
+  },
+  "enable": "Bật kiến thức",
+  "retry": "Thử lại thiết lập",
+  "provisioning": {
+    "title": "Đang thiết lập kiến thức"
+  },
+  "failed": {
+    "title": "Thiết lập kiến thức chưa hoàn tất"
+  },
+  "offline": {
+    "title": "Dịch vụ kiến thức đang ngoại tuyến",
+    "description": "Tác nhân vẫn tiếp tục làm việc mà không có kiến thức của công ty cho đến khi dịch vụ hoạt động trở lại."
+  },
+  "kb": {
+    "all": "Tất cả"
+  },
+  "documents": {
+    "filter": {
+      "all": "Tất cả",
+      "published": "Đã xuất bản",
+      "failed": "Thất bại",
+      "draft": "Bản nháp"
+    },
+    "empty": "Không có tài liệu"
+  },
+  "search": {
+    "label": "Tìm kiếm kiến thức công ty",
+    "placeholder": "Tìm kiếm kiến thức công ty",
+    "submit": "Tìm kiếm",
+    "results": "Kết quả",
+    "no_results": "Không có kết quả phù hợp",
+    "score": "Điểm {{score}}",
+    "source": "Nguồn",
+    "error": "Tìm kiếm thất bại"
+  },
+  "drafts": {
+    "empty": "Không có bản nháp",
+    "publish": "Xuất bản",
+    "discard": "Hủy bỏ",
+    "author": {
+      "agent": "Tác nhân",
+      "member": "Thành viên",
+      "system": "Hệ thống"
+    }
+  },
+  "discard_title": "Hủy bản nháp?",
+  "discard_description": "Bản nháp sẽ bị xóa và không thể khôi phục.",
+  "cancel": "Hủy",
+  "open_in_weknora": "Mở trong WeKnora",
+  "toast": {
+    "enabled": "Đã bật kiến thức",
+    "enable_failed": "Không thể bật kiến thức",
+    "published": "Đã xuất bản bản nháp",
+    "publish_failed": "Không thể xuất bản bản nháp",
+    "discarded": "Đã hủy bản nháp",
+    "discard_failed": "Không thể hủy bản nháp"
+  },
+  "load_error": {
+    "title": "Không thể tải kiến thức",
+    "retry": "Thử lại"
+  },
+  "ask_secretary": {
+    "button": "Hỏi Thư ký",
+    "prompt": "Hãy trả lời câu hỏi của tôi dựa trên các kết quả kiến thức công ty này. Trích dẫn mỗi tài liệu bạn dùng theo tiêu đề và liên kết, và nói rõ nếu kết quả không trả lời được câu hỏi.\n\nCâu hỏi: {{question}}\n\nKết quả:\n{{results}}"
+  },
+  "taxonomy": {
+    "kind": {
+      "label": "Loại",
+      "all": "Tất cả loại"
+    },
+    "policy": {
+      "title": "Chính sách xuất bản",
+      "description": "Cách bản nháp của tác nhân được xuất bản. Chính sách của một loại sẽ ghi đè chính sách của kho kiến thức. Nếu không có chính sách, bản nháp sẽ chờ người xử lý.",
+      "scope_base": "Kho kiến thức",
+      "scope_kind": "Loại",
+      "inherited": "đang dùng mặc định",
+      "reset": "Đặt lại",
+      "load_error": "Không thể tải các chính sách xuất bản",
+      "aria_mode": "Chế độ xuất bản cho {{name}}",
+      "toast_failed": "Không thể thay đổi chính sách xuất bản",
+      "toast_reset": "Đã đặt lại chính sách xuất bản",
+      "mode": {
+        "manual": "Thủ công: người xuất bản",
+        "auto_after_review": "Sau khi người kiểm duyệt xem xét",
+        "auto": "Tự động",
+        "unknown": "Chế độ không xác định"
+      }
+    },
+    "add_eval": {
+      "button": "Thêm làm trường hợp đánh giá",
+      "title": "Thêm làm trường hợp đánh giá",
+      "description": "Tìm kiếm phải trả về tài liệu này cho câu hỏi. Lần chạy đánh giá tiếp theo sẽ kiểm tra điều này.",
+      "question": "Câu hỏi",
+      "document": "Tài liệu mong đợi",
+      "submit": "Thêm trường hợp",
+      "toast_added": "Đã thêm trường hợp đánh giá",
+      "toast_failed": "Không thể thêm trường hợp đánh giá"
+    },
+    "retrieval": {
+      "title": "Chất lượng truy xuất",
+      "run": "Chạy đánh giá",
+      "last_run": "Tỷ lệ trúng {{rate}}% ({{hits}} trên {{total}} trường hợp)",
+      "no_runs": "Chưa có lần chạy đánh giá nào. Hãy thêm một trường hợp từ kết quả tìm kiếm để bắt đầu.",
+      "ran": "Đã ghi nhận đánh giá: tỷ lệ trúng {{rate}}%",
+      "offline": "Chưa ghi nhận gì: dịch vụ kiến thức đang ngoại tuyến",
+      "run_failed": "Không thể chạy đánh giá"
+    },
+    "routines": {
+      "title": "Tác vụ định kỳ của thủ thư",
+      "empty": "Chưa có tác vụ nào chạy.",
+      "load_error": "Không thể tải các tác vụ định kỳ",
+      "nothing": "Không có gì để báo cáo",
+      "count": "{{label}}: {{count}}",
+      "triage": "Phân loại bản nháp",
+      "freshness": "Rà soát độ mới",
+      "audit": "Kiểm tra phân loại",
+      "eval": "Đánh giá truy xuất",
+      "backfill": "Bổ sung khi thiết lập",
+      "counts": {
+        "review_due": "đến hạn rà soát",
+        "duplicate": "tiêu đề trùng lặp",
+        "missing_sections": "thiếu tiêu đề mục",
+        "missing_kind": "chưa có loại",
+        "orphaned": "không còn trong WeKnora",
+        "repaired": "đã sửa",
+        "new_drafts": "bản nháp mới"
+      }
+    }
+  },
+  "upload": {
+    "title": "Thêm tệp",
+    "drop_hint": "Kéo thả tệp vào đây, hoặc chọn một tệp. Tệp sẽ được xuất bản ngay khi được thêm.",
+    "choose": "Chọn tệp",
+    "base_label": "Kho kiến thức",
+    "kind_label": "Loại",
+    "kind_hint": "Dùng chữ thường, chữ số và dấu gạch dưới, ví dụ market_report.",
+    "submit": "Tải lên",
+    "toast": {
+      "uploaded": "{{name}} đã có trong kho kiến thức",
+      "failed": "Không thể tải tệp lên"
+    }
+  },
+  "import": {
+    "title": "Nhập một trang web",
+    "url_label": "Địa chỉ trang",
+    "title_label": "Tiêu đề (không bắt buộc)",
+    "submit": "Nhập",
+    "toast": {
+      "imported": "Trang đã có trong kho kiến thức",
+      "failed": "Không thể nhập trang"
+    }
+  },
+  "sources": {
+    "title": "Nguồn",
+    "description": "Các kết nối mà WeKnora đồng bộ vào kho kiến thức. Lỗi được hiển thị tại đây; hãy sửa trong WeKnora.",
+    "load_error": "Không thể tải các nguồn",
+    "offline": "Dịch vụ kiến thức đang ngoại tuyến, nên không thể đọc các nguồn.",
+    "empty": "Chưa kết nối nguồn nào.",
+    "create": "Thêm nguồn trong WeKnora",
+    "never_synced": "Chưa đồng bộ lần nào",
+    "last_sync": "Đồng bộ lần cuối {{when}}",
+    "items": "{{count}} mục",
+    "status": {
+      "active": "Đang hoạt động",
+      "paused": "Tạm dừng",
+      "error": "Thất bại",
+      "unknown": "Không xác định"
+    }
+  },
+  "repo": {
+    "title": "Tài liệu kho mã",
+    "description": "Giữ thư mục tài liệu của kho mã trong kho kiến thức kỹ thuật. Mỗi tệp Markdown trở thành một tài liệu tham khảo; mỗi tệp cần có tiêu đề Summary.",
+    "load_error": "Không thể tải đồng bộ kho mã",
+    "enabled": "Đồng bộ kho mã này mỗi ngày",
+    "repo_url": "Địa chỉ kho mã (https)",
+    "branch": "Nhánh",
+    "docs_path": "Thư mục tài liệu",
+    "base": "Kho kiến thức",
+    "save": "Lưu",
+    "run": "Đồng bộ ngay",
+    "last_sync": "Đồng bộ lần cuối {{when}}",
+    "never_synced": "Chưa đồng bộ lần nào",
+    "last_error": "Lần đồng bộ gần nhất có lỗi; xem bên dưới",
+    "toast": {
+      "saved": "Đã lưu đồng bộ kho mã",
+      "synced": "Đã đồng bộ kho mã",
+      "failed": "Không thể lưu đồng bộ kho mã"
+    }
+  },
+  "bases": {
+    "title": "Kho kiến thức",
+    "description": "Giới hạn một kho cho các nhóm, tầng hoặc tác nhân bạn chỉ định. Wiki được giới hạn ba kho; phần tóm tắt tốn lượt gọi mô hình.",
+    "restricted": "Hạn chế",
+    "wiki": "Wiki",
+    "summaries": "Tóm tắt",
+    "access": "Quyền truy cập",
+    "toast": {
+      "failed": "Thay đổi chưa được lưu"
+    }
+  },
+  "access": {
+    "loading": "Đang tải quyền truy cập",
+    "load_error": "Không thể tải danh sách quyền truy cập",
+    "empty": "Chỉ chủ sở hữu và quản trị viên mới thấy kho này.",
+    "remove": "Xóa quyền truy cập",
+    "level": {
+      "read": "Đọc",
+      "write": "Ghi"
+    },
+    "subject": {
+      "squad": "Nhóm",
+      "floor": "Tầng",
+      "agent": "Tác nhân",
+      "unknown": "Không xác định"
+    },
+    "add": {
+      "subject_type": "Cấp cho",
+      "subject": "Ai",
+      "subject_placeholder": "Chọn",
+      "level": "Quyền truy cập",
+      "submit": "Cấp quyền truy cập"
+    },
+    "toast": {
+      "failed": "Quyền truy cập chưa được thay đổi"
+    }
+  },
+  "models": {
+    "title": "Mô hình",
+    "description": "Chạy mỗi mô hình trò chuyện, xếp hạng lại và thị giác đã cấu hình một lần, rồi báo cáo mô hình nào lỗi và vì sao.",
+    "test": "Kiểm tra mô hình",
+    "not_configured": "Máy chủ này chưa cấu hình mô hình nào, nên phần tóm tắt và Wiki đang tắt.",
+    "ok": "Hoạt động",
+    "failed": "Thất bại",
+    "role": {
+      "chat": "Trò chuyện",
+      "rerank": "Xếp hạng lại",
+      "vision": "Thị giác",
+      "unknown": "Mô hình"
+    }
+  },
+  "owner_login": {
+    "title": "Thông tin đăng nhập WeKnora của bạn",
+    "description": "Đăng nhập vào giao diện riêng của WeKnora để chỉnh các cài đặt nâng cao. Mật khẩu chỉ được hiển thị một lần.",
+    "show": "Hiện mật khẩu của tôi",
+    "email": "Email: {{email}}",
+    "once": "Hãy sao chép ngay. Mật khẩu sẽ không được hiển thị lại.",
+    "open": "Mở WeKnora",
+    "failed": "Không thể hiện mật khẩu"
+  },
+  "explorer": {
+    "tree_label": "Cấu trúc thư viện",
+    "all_documents": "Tất cả tài liệu",
+    "company": "Công ty",
+    "projects": "Dự án",
+    "no_projects": "Dự án sẽ xuất hiện ở đây khi được tạo.",
+    "wiki_on": "Wiki đang bật",
+    "wiki_off": "Wiki đang tắt",
+    "summaries_on": "Tóm tắt đang bật",
+    "open_project": "Mở dự án",
+    "path_label": "Đường dẫn thư mục",
+    "company_hint": "Kho dùng chung toàn công ty. Mọi người trong không gian làm việc đều có thể đọc trừ khi bị hạn chế.",
+    "project_hint": "Kho riêng của dự án này. Các tệp được tự động thêm từ thư mục dự án, và bạn có thể thêm tài liệu thủ công.",
+    "visibility": {
+      "workspace": "Hiển thị với không gian làm việc",
+      "restricted": "Hạn chế"
+    },
+    "tabs": {
+      "documents": "Tài liệu",
+      "wiki": "Wiki",
+      "add": "Thêm tài liệu",
+      "settings": "Cài đặt",
+      "collections": "Bộ sưu tập"
+    },
+    "toggle": "Hiện hoặc ẩn {{name}}"
+  },
+  "wiki": {
+    "off_title": "Wiki đang tắt cho kho này",
+    "no_documents": "Hãy thêm tài liệu trước. Wiki được viết từ các tài liệu đó.",
+    "no_chat_model": "Máy chủ này không có mô hình trò chuyện, nên không thể viết Wiki.",
+    "off_hint": "Viết Wiki từ {{count}} tài liệu của kho này: một trang tóm tắt cho mỗi tài liệu, và các trang về người, sản phẩm và ý tưởng mà chúng chia sẻ. Mỗi tài liệu mất vài phút.",
+    "off_member": "Chủ sở hữu hoặc quản trị viên có thể bật Wiki.",
+    "generate": "Tạo Wiki",
+    "rewrite": "Viết lại Wiki",
+    "pages_other": "{{count}} trang",
+    "writing": "Các trang vẫn đang được viết",
+    "none_yet": "Chưa có trang nào. Các trang sẽ xuất hiện ở đây khi được viết.",
+    "pick": "Chọn một trang để đọc.",
+    "type": {
+      "all": "Tất cả",
+      "summary": "Tóm tắt",
+      "entity": "Thực thể",
+      "concept": "Khái niệm",
+      "unknown": "Khác"
+    },
+    "toast": {
+      "queued_other": "Đang viết Wiki từ {{count}} tài liệu",
+      "failed": "Không thể bắt đầu Wiki"
+    },
+    "view": {
+      "label": "Chế độ xem",
+      "rendered": "Đã hiển thị",
+      "source": "Markdown"
+    }
+  },
+  "collections": {
+    "no_kinds": "Chưa có loại nào trong kho này có trường dữ liệu.",
+    "browse": "Duyệt",
+    "views": {
+      "pipeline": "Quy trình",
+      "needs_you": "Cần bạn",
+      "due": "Đến hạn",
+      "lessons": "Bài học",
+      "sources": "Tình trạng nguồn"
+    },
+    "kind_label": "Loại",
+    "empty": "Chưa có tài liệu nào khớp với chế độ xem này.",
+    "load_error": "Không thể tải bộ sưu tập này. Hãy thử lại.",
+    "title_column": "Tiêu đề",
+    "save_error": "Không thể lưu thay đổi.",
+    "no_properties": "Tài liệu này chưa có thuộc tính nào."
+  }
+}

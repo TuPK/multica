@@ -214,7 +214,7 @@ export default async function UseCasePage(props: { params: Promise<Params> }) {
   requireLiveRoute("/usecases");
   const { slug } = await props.params;
   const locale = await getUseCaseLocale();
-  const text = useCaseText[locale];
+  const text = useCaseText[locale] ?? useCaseText.en;
   const page = getUseCasePageForLocale([slug], locale);
   if (!page) notFound();
 

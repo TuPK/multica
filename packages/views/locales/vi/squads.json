@@ -1,0 +1,800 @@
+{
+  "page": {
+    "title": "Nhóm",
+    "new_button": "Nhóm mới",
+    "quickstart_button": "Bắt đầu nhanh",
+    "empty_no_squads": "Chưa có nhóm nào.",
+    "empty_no_match": "Không có nhóm nào khớp với bộ lọc của bạn.",
+    "table": {
+      "name": "Nhóm",
+      "leader": "Trưởng nhóm",
+      "members": "Thành viên",
+      "creator": "Người tạo",
+      "workflows": "Quy trình làm việc",
+      "created": "Ngày tạo"
+    },
+    "no_matches": "Không có nhóm nào khớp",
+    "row_menu": "Thao tác nhóm",
+    "archive_action": "Lưu trữ"
+  },
+  "member_type": {
+    "agent": "Tác nhân",
+    "member": "Thành viên"
+  },
+  "archive_dialog": {
+    "title": "Lưu trữ nhóm này?",
+    "description": "\"{{name}}\" sẽ được lưu trữ. Các nhiệm vụ đang được giao cho nhóm này sẽ chuyển cho trưởng nhóm. Không thể hoàn tác — hãy tạo nhóm mới nếu bạn cần lại việc điều phối.",
+    "cancel": "Hủy",
+    "confirm": "Lưu trữ",
+    "archiving": "Đang lưu trữ...",
+    "success": "Đã lưu trữ nhóm"
+  },
+  "name_editor": {
+    "placeholder": "Tên nhóm"
+  },
+  "add_member_dialog": {
+    "title": "Thêm thành viên",
+    "description": "Chọn thành viên hoặc tác nhân của không gian làm việc.",
+    "label_member": "Thành viên",
+    "label_role": "Vai trò",
+    "label_optional": "(không bắt buộc)",
+    "cancel": "Hủy",
+    "select_target": "Chọn thành viên hoặc tác nhân",
+    "search_placeholder": "Tìm thành viên hoặc tác nhân...",
+    "members_section": "Thành viên",
+    "agents_section": "Tác nhân",
+    "role_placeholder": "ví dụ: Người review, Trưởng nhóm Frontend",
+    "add": "Thêm"
+  },
+  "role_editor": {
+    "empty": "Thêm vai trò...",
+    "placeholder": "Vai trò (ví dụ: Người review)"
+  },
+  "members_tab": {
+    "section_title": "Thành viên",
+    "add_member_button": "Thêm thành viên",
+    "create_agent_button": "Tạo tác nhân",
+    "leader_chip": "Trưởng nhóm",
+    "view_agent_tooltip": "Mở chi tiết tác nhân",
+    "make_leader_tooltip": "Đặt làm trưởng nhóm",
+    "remove_member_tooltip": "Xóa khỏi nhóm",
+    "status_working": "Đang làm việc",
+    "status_idle": "Rảnh",
+    "status_offline": "Ngoại tuyến",
+    "status_unstable": "Không ổn định",
+    "status_archived": "Đã lưu trữ",
+    "issue_status_blocked": "bị chặn",
+    "active_issue_more": "và {{count}} nữa",
+    "squad_runtime_aria": "Môi trường chạy cho cả nhóm",
+    "squad_runtime_placeholder": "Đặt môi trường chạy",
+    "runtime_unavailable": "Môi trường chạy không khả dụng",
+    "agent_runtime_unbound": "Không có môi trường chạy",
+    "agent_runtime_aria": "Môi trường chạy của {{name}}",
+    "agent_model_aria": "Mô hình của {{name}}",
+    "model_default": "Mặc định của môi trường chạy",
+    "agent_thinking_aria": "Chế độ suy nghĩ của {{name}}",
+    "thinking_default": "Theo cấu hình CLI",
+    "empty_title": "Chưa có thành viên",
+    "empty_description": "Thêm tác nhân hoặc thành viên, các nhiệm vụ được giao cho nhóm này sẽ chuyển đến họ.",
+    "squad_custom": "Tùy chỉnh",
+    "squad_model_aria": "Mô hình cho tất cả tác nhân",
+    "squad_thinking_aria": "Chế độ suy nghĩ cho tất cả tác nhân",
+    "bulk_field_runtime": "Môi trường chạy",
+    "bulk_field_model": "Mô hình",
+    "bulk_field_thinking": "Suy nghĩ",
+    "bulk_confirm_title": "Áp dụng cho tất cả tác nhân?",
+    "bulk_confirm_description": "{{field}} sẽ được đặt thành {{value}} cho {{count}} tác nhân, thay thế cài đặt hiện tại của từng tác nhân.",
+    "bulk_confirm_cancel": "Hủy",
+    "bulk_confirm_action": "Áp dụng cho tất cả"
+  },
+  "detail": {
+    "assign_work": "Giao việc",
+    "add_to_company": "Thêm vào công ty",
+    "copy_link": "Sao chép liên kết",
+    "link_copied": "Đã sao chép liên kết",
+    "not_found": "Không tìm thấy nhóm",
+    "instructions": "Hướng dẫn",
+    "edit": "Chỉnh sửa",
+    "cancel": "Hủy",
+    "recent_work": "Công việc gần đây",
+    "recent_work_empty": "Chưa có nhiệm vụ nào được giao cho nhóm này.",
+    "member_menu": "Thao tác cho {{name}}",
+    "working_on": "Đang làm",
+    "not_found_description": "Nhóm có thể đã bị xóa hoặc bạn không có quyền truy cập.",
+    "back_to_list": "Tất cả nhóm"
+  },
+  "details": {
+    "leader": "Trưởng nhóm",
+    "members": "Thành viên",
+    "created_by": "Người tạo",
+    "created": "Ngày tạo",
+    "updated": "Cập nhật",
+    "visibility": "Khả năng hiển thị",
+    "visibility_workspace": "Không gian làm việc"
+  },
+  "toasts": {
+    "member_added": "Đã thêm thành viên",
+    "member_add_failed": "Không thể thêm thành viên",
+    "member_removed": "Đã xóa thành viên",
+    "member_remove_failed": "Không thể xóa thành viên",
+    "role_updated": "Đã cập nhật vai trò",
+    "role_update_failed": "Không thể cập nhật vai trò",
+    "leader_updated": "Đã cập nhật trưởng nhóm",
+    "leader_update_failed": "Không thể cập nhật trưởng nhóm",
+    "archive_failed": "Không thể lưu trữ nhóm",
+    "instructions_saved": "Đã lưu hướng dẫn",
+    "runtime_updated": "Đã cập nhật môi trường chạy",
+    "runtime_update_failed": "Không thể cập nhật môi trường chạy",
+    "squad_runtime_applied": "Đã áp dụng môi trường chạy cho {{count}} tác nhân",
+    "squad_runtime_unchanged": "Mọi tác nhân đã dùng môi trường chạy này",
+    "capabilities_save_failed": "Không thể lưu kỹ năng và plugin",
+    "model_updated": "Đã cập nhật mô hình",
+    "model_update_failed": "Không thể cập nhật mô hình",
+    "thinking_updated": "Đã cập nhật chế độ suy nghĩ",
+    "thinking_update_failed": "Không thể cập nhật chế độ suy nghĩ",
+    "squad_runtime_failed": "Không thể đổi môi trường chạy",
+    "squad_runtime_skipped": "Đã chuyển {{updated}} tác nhân, bỏ qua {{skipped}}: {{reason}}",
+    "bulk_applied": "Đã áp dụng {{field}} cho {{count}} tác nhân",
+    "bulk_partial": "{{failed}} trên {{total}} tác nhân không thể cập nhật",
+    "update_failed": "Không thể lưu"
+  },
+  "profile_card": {
+    "unavailable": "Nhóm không khả dụng",
+    "detail_link": "Xem chi tiết →",
+    "archived": "Đã lưu trữ",
+    "member_count_other": "{{count}} thành viên",
+    "members_section": "Thành viên",
+    "more_members_other": "+{{count}} nữa"
+  },
+  "instructions_tab": {
+    "description": "Trưởng nhóm đọc các hướng dẫn này mỗi khi làm việc với một nhiệm vụ được giao cho nhóm.",
+    "unsaved_changes": "Thay đổi chưa lưu",
+    "save_button": "Lưu",
+    "placeholder": "ví dụ: Luôn bắt đầu bằng việc viết một bài kiểm thử lỗi. Ưu tiên các commit nhỏ, độc lập."
+  },
+  "scope": {
+    "mine": "Nhóm của tôi",
+    "all": "Tất cả nhóm"
+  },
+  "capabilities": {
+    "section_title": "Kỹ năng & plugin",
+    "skills_title": "Kỹ năng",
+    "plugins_title": "Plugin",
+    "add_skill_button": "Thêm kỹ năng",
+    "add_plugin_button": "Thêm plugin",
+    "skills_empty": "Chưa áp dụng kỹ năng nào. Mọi thành viên đều chạy với các kỹ năng được thêm tại đây.",
+    "plugins_empty": "Không yêu cầu plugin nào. Khi thiếu, trưởng nhóm sẽ cài đặt bất kỳ plugin nào được thêm tại đây trên môi trường chạy của dự án.",
+    "remove_aria": "Xóa {{name}}",
+    "add_skill_dialog_title": "Thêm kỹ năng vào nhóm",
+    "add_skill_dialog_no_skills": "Chưa có kỹ năng nào trong không gian làm việc này",
+    "add_skill_dialog_all_applied": "Tất cả kỹ năng của không gian làm việc đã được áp dụng",
+    "add_plugin_dialog_title": "Thêm plugin",
+    "plugin_name_label": "Tên plugin",
+    "plugin_name_placeholder": "ví dụ: bmad-method",
+    "plugin_duplicate": "Plugin này đã được yêu cầu",
+    "plugin_hint_label": "Nguồn cài đặt (không bắt buộc)",
+    "plugin_hint_placeholder": "ví dụ: npx bmad-method install",
+    "search_placeholder": "Tìm kiếm",
+    "no_match": "Không có kết quả khớp",
+    "select_all": "Chọn tất cả ({{count}})",
+    "add_dialog_confirm": "Thêm {{count}} đã chọn",
+    "plugin_suggestions_empty": "Không tìm thấy plugin nào trên các môi trường chạy của nhóm này. Hãy thêm một plugin theo tên bên dưới.",
+    "plugin_manual_add": "Thêm vào danh sách"
+  },
+  "intro": {
+    "title": "Đưa tác nhân vào nhóm và họ sẽ làm việc như một đội",
+    "description": "Giao nhiệm vụ cho nhóm. Tác nhân trưởng nhóm sẽ đọc, giao từng bước cho thành viên có vai trò phù hợp, và theo dõi cho đến khi đạt mục tiêu. Bạn chỉ làm việc với một người được giao.",
+    "slides": {
+      "route": {
+        "title": "Một người được giao, được điều phối cho bạn",
+        "description": "Trưởng nhóm đọc nhiệm vụ và nhắc đến thành viên phù hợp nhất cho bước tiếp theo. Chỉ thành viên đó bắt đầu làm việc."
+      },
+      "roles": {
+        "title": "Chia việc theo vai trò",
+        "description": "Mô tả vai trò cho trưởng nhóm biết mỗi thành viên giỏi việc gì. Thành viên có thể là tác nhân hoặc người thật."
+      },
+      "progress": {
+        "title": "Theo dõi tiến độ ở một nơi",
+        "description": "Trang nhóm hiển thị công việc gần đây và từng thành viên đang làm gì."
+      }
+    },
+    "art": {
+      "assignee": "Người được giao",
+      "squad_name": "Nhóm Frontend",
+      "issue_dark_mode": "Thêm nút chuyển chế độ tối vào cài đặt",
+      "issue_board_columns": "Cho phép thay đổi kích thước cột bảng",
+      "issue_inbox_gestures": "Cử chỉ vuốt trong hộp thư đến trên điện thoại",
+      "issue_paste_images": "Dán ảnh vào bình luận",
+      "delegating": "Đang chọn thành viên theo vai trò...",
+      "role_frontend": "Frontend",
+      "role_testing": "Kiểm thử",
+      "role_product": "Sản phẩm"
+    }
+  },
+  "sources": {
+    "title": "Nguồn",
+    "add_placeholder": "Dán liên kết, @handle, nguồn RSS, truy vấn tìm kiếm, hoặc mô tả nguồn",
+    "add": "Thêm nguồn",
+    "share_placeholder": "Dán một bài đăng hoặc liên kết của nó, từ nhóm bạn tham gia",
+    "share": "Chia sẻ",
+    "added": "Đã thêm. Trưởng nhóm sẽ kiểm tra nguồn và báo cáo những gì tìm thấy.",
+    "shared": "Đã chia sẻ. Nhóm sẽ đọc bài đăng và báo cáo những gì tìm thấy.",
+    "error": "Không thể thêm. Hãy thử lại.",
+    "empty": "Chưa có nguồn nào.",
+    "columns": {
+      "name": "Nguồn",
+      "platform": "Nền tảng",
+      "rung": "Bậc",
+      "status": "Trạng thái",
+      "last_run": "Lần chạy gần nhất",
+      "items": "Mục, 7 ngày"
+    },
+    "status": {
+      "active": "Đang hoạt động",
+      "proposed": "Đã đề xuất",
+      "needs_connector": "Cần kết nối",
+      "manual_only": "Chỉ chia sẻ",
+      "degraded": "Suy giảm",
+      "blocked": "Bị chặn",
+      "disabled": "Tắt",
+      "unknown": "Không xác định"
+    },
+    "bookmarklet": {
+      "title": "Chia sẻ nhanh",
+      "help": "Sao chép bookmarklet này, lưu thành một dấu trang, rồi nhấn vào nó trên bất kỳ trang nào để gửi trang đó cho nhóm này.",
+      "copy": "Sao chép",
+      "copied": "Đã sao chép"
+    }
+  },
+  "web_engine": {
+    "title": "Web engine",
+    "empty": "Chưa có máy nào báo cáo Web engine. Hãy khởi động container trên máy của daemon theo hướng dẫn vận hành; trạng thái sẽ hiện trong vòng một phút.",
+    "columns": {
+      "runtime": "Máy",
+      "status": "Trạng thái",
+      "version": "Phiên bản",
+      "checked": "Đã kiểm tra"
+    },
+    "status": {
+      "running": "Đang chạy",
+      "not_running": "Không kết nối được",
+      "not_configured": "Chưa cấu hình",
+      "unknown": "Không xác định"
+    }
+  },
+  "kitviet_update": {
+    "button": "Cập nhật Kit Việt",
+    "title": "Đã cập nhật các nhóm Kit Việt",
+    "running": "Đang cập nhật các nhóm Kit Việt...",
+    "none": "Không có nhóm Kit Việt nào trong không gian làm việc này.",
+    "agents": "Tác nhân: {{upgraded}} đã cập nhật, {{current}} đã là mới nhất, {{kept}} được giữ nguyên, {{failed}} thất bại",
+    "squad": "Hướng dẫn nhóm: {{status}}",
+    "skills": "Kỹ năng: {{status}}",
+    "kept_note": "Các nội dung được giữ nguyên là những nội dung bạn tự chỉnh sửa. Chúng sẽ không bị ghi đè.",
+    "close": "Đóng",
+    "toast_done": "Các nhóm Kit Việt đã được cập nhật",
+    "toast_problems": "Một số nhóm Kit Việt cần kiểm tra",
+    "toast_failed": "Cập nhật Kit Việt thất bại",
+    "statuses": {
+      "upgraded": "đã cập nhật",
+      "current": "đã là mới nhất",
+      "kept": "giữ nguyên, bạn đã chỉnh sửa",
+      "missing": "không có trong không gian làm việc này",
+      "failed": "thất bại",
+      "ready": "sẵn sàng",
+      "partial": "hoàn thành một phần",
+      "skipped": "không có gì để làm"
+    }
+  },
+  "workflows": {
+    "section_title": "Quy trình làm việc",
+    "empty": "Chưa có quy trình làm việc nào",
+    "error": "Không thể tải quy trình làm việc",
+    "retry": "Thử lại",
+    "badge_active": "Đang dùng",
+    "badge_enforced": "Bắt buộc",
+    "badge_template": "Kit Việt",
+    "badge_unreadable": "Không đọc được",
+    "steps_count_other": "{{count}} bước",
+    "tasks_count_other": "{{count}} tác vụ",
+    "open_requests_other": "{{count}} yêu cầu đang mở",
+    "set_active": "Đặt làm đang dùng",
+    "auto_on": "Tự động bật",
+    "auto_off": "Tự động tắt",
+    "sheet": {
+      "title": "Sơ đồ quy trình",
+      "human_only": "Chỉ người thật",
+      "optional_when": "Khi {{condition}}",
+      "requires_outcome": "Cần kết luận",
+      "requires_attachment": "Cần tệp đính kèm",
+      "kind_gate": "Cổng",
+      "kind_work": "Công việc",
+      "rework_limit": "Trả về tối đa {{count}} lần"
+    }
+  },
+  "flow_designer": {
+    "title": "Chỉnh sửa quy trình làm việc",
+    "new": "Quy trình làm việc mới",
+    "start": {
+      "blank": "Trống",
+      "kitviet": "Sao chép một quy trình Kit Việt",
+      "import": "Nhập từ tệp",
+      "proposal": "Nhờ tác nhân soạn thảo",
+      "name": "Tên",
+      "creating": "Đang tạo...",
+      "failed": "Không thể tạo bản nháp"
+    },
+    "export": "Xuất",
+    "save": {
+      "saved": "Đã lưu",
+      "unsaved": "Thay đổi chưa lưu",
+      "saving": "Đang lưu...",
+      "failed": "Không thể lưu"
+    },
+    "conflict": {
+      "title": "Có người đã lưu bản nháp này trước",
+      "reload": "Tải lại",
+      "keep_copy": "Giữ bản của tôi dưới dạng bản sao"
+    },
+    "roles": {
+      "title": "Vai trò",
+      "leader": "Trưởng nhóm lập kế hoạch và không nhận tác vụ",
+      "pick_agent": "Chọn một tác nhân",
+      "unused": "Chưa được tác vụ nào sử dụng",
+      "kind": {
+        "agent": "Tác nhân",
+        "member": "Thành viên",
+        "managers": "Quản lý nhóm",
+        "lead": "Trưởng nhóm",
+        "requester": "Người yêu cầu"
+      },
+      "add_agent_notice": "Thêm một tác nhân vào nhóm",
+      "add_agent": "Thêm tác nhân",
+      "col_pool": "Nhóm ứng viên",
+      "col_usage": "Sử dụng",
+      "fixed_leader": "Trưởng nhóm cố định",
+      "in_use": "Đang dùng",
+      "delete": "Xóa {{key}}",
+      "label_placeholder": "Nhãn",
+      "add": "Thêm vai trò",
+      "limit_reached": "Đã đạt giới hạn {{count}} vai trò",
+      "col_assigned": "Được giao",
+      "assigned_count": "{{count}} trên {{pool}}",
+      "no_choices": "Không có ai để chọn",
+      "pool_label": "Nhóm ứng viên của {{key}}"
+    },
+    "step": {
+      "work": "Bước công việc",
+      "gate": "Bước cổng",
+      "human": "Chỉ người thật",
+      "add": "Thêm bước",
+      "kind": {
+        "tasks": "Tác vụ",
+        "lead": "Bước của trưởng nhóm",
+        "manual": "Lối thoát thủ công"
+      }
+    },
+    "task": {
+      "add": "Thêm tác vụ",
+      "attachment": "Cần tệp đính kèm",
+      "verdict": "Cần kết luận",
+      "only_when": "Chỉ khi",
+      "after": "Bắt đầu sau",
+      "inputs": "Đầu vào",
+      "skills": "Kỹ năng",
+      "sets": "Đặt biến",
+      "requires_vars": "Phải đặt trước khi đóng"
+    },
+    "switches": {
+      "title": "Công tắc"
+    },
+    "rework": {
+      "label": "Nếu bị từ chối, quay lại tối đa {{count}} lần"
+    },
+    "stop": {
+      "stop1": "Điểm dừng 1 · thiếu căn cứ",
+      "stop2": "Điểm dừng 2 · người thật xem xét trước khi rời không gian làm việc",
+      "stop3": "Điểm dừng 3 · đã đạt giới hạn làm lại",
+      "stalled": "Bị đình trệ",
+      "waiting": "Đang chờ phê duyệt"
+    },
+    "actions": {
+      "check": "Kiểm tra",
+      "simulate": "Mô phỏng",
+      "publish": "Xuất bản",
+      "cancel": "Hủy"
+    },
+    "publish": {
+      "note": "Xuất bản sẽ tạo một phiên bản đã khóa. Các yêu cầu đang chạy vẫn giữ phiên bản của chúng.",
+      "make_active": "Đặt làm quy trình đang dùng",
+      "checking": "Đang kiểm tra...",
+      "blocked": "Hãy sửa lỗi trước khi xuất bản",
+      "stale": "Đã có phiên bản mới hơn được xuất bản",
+      "edit_latest": "Chỉnh sửa phiên bản mới nhất",
+      "admin_only": "Chỉ quản trị viên",
+      "done": "Đã xuất bản",
+      "active_failed": "Đã xuất bản, nhưng không thể đặt làm đang dùng",
+      "failed": "Không thể xuất bản quy trình làm việc"
+    },
+    "simulate": {
+      "note": "Mô phỏng chỉ kiểm tra định tuyến. Nó không kiểm tra việc tác nhân làm gì.",
+      "vars": "Biến",
+      "results": "Kết quả tác vụ",
+      "default": "Mặc định",
+      "run": "Chạy",
+      "end": "Kết thúc tại",
+      "path": "Đường đi",
+      "visit": "Lần ghé {{n}}",
+      "loops": "Vòng lặp",
+      "truncated": "Đã dừng ở số bước tối đa mà một mô phỏng đi theo",
+      "failed": "Mô phỏng thất bại"
+    },
+    "ack": {
+      "no_human_exit": "Tôi hiểu quy trình này có thể kết thúc mà không cần người thật xem xét",
+      "no_gate": "Tôi hiểu không có tác vụ nào được kiểm tra bởi một cổng",
+      "lead_may_work": "Tôi hiểu trưởng nhóm có thể tự làm tác vụ",
+      "proposal_reviewed": "Tôi đã đọc quy trình này"
+    },
+    "problems": {
+      "none": "Không tìm thấy vấn đề",
+      "title": "Vấn đề kiểm tra hợp lệ",
+      "errors_other": "{{count}} lỗi",
+      "warnings_other": "{{count}} cảnh báo",
+      "requires_ack": "Cần xác nhận"
+    },
+    "empty": {
+      "title": "Chưa có quy trình làm việc"
+    },
+    "load_failed": "Không thể tải quy trình làm việc",
+    "retry": "Thử lại",
+    "version": "Phiên bản {{n}}",
+    "locked": "Các phiên bản đã xuất bản được khóa",
+    "edit_as_draft": "Chỉnh sửa dưới dạng bản nháp",
+    "join": {
+      "title": "Chờ",
+      "all": "Tất cả tác vụ",
+      "any": "Bất kỳ tác vụ nào",
+      "quorum": "Ít nhất {{count}} người duyệt"
+    },
+    "loop": {
+      "title": "Vòng lặp",
+      "max": "Tối đa {{count}} lần",
+      "back_to": "Quay lại {{step}}"
+    },
+    "verdicts": {
+      "title": "Kết luận",
+      "built_in": "Bộ có sẵn (chỉ đọc)",
+      "custom": "Bộ tùy chỉnh",
+      "col_verdicts": "Kết luận",
+      "delete": "Xóa {{key}}",
+      "empty": "Chưa có bộ kết luận tùy chỉnh nào",
+      "add": "Thêm bộ kết luận",
+      "item": "{{key}} ({{class}})",
+      "class": {
+        "pass": "đạt",
+        "fail": "không đạt"
+      },
+      "pass_label": "Đạt",
+      "fail_label": "Không đạt"
+    },
+    "verdict": {
+      "pass": "Được tính là đạt",
+      "fail": "Được tính là không đạt",
+      "neutral": "Trung lập"
+    },
+    "instances": {
+      "count": "Chạy {{count}} song song",
+      "per_item": "Một lần cho mỗi mục của {{var}}"
+    },
+    "files": {
+      "title": "Tệp bắt buộc",
+      "min": "Ít nhất {{count}}"
+    },
+    "vars": {
+      "title": "Biến",
+      "col_type": "Loại",
+      "col_default": "Mặc định",
+      "col_set_by": "Đặt bởi",
+      "col_set_at": "Đặt lúc",
+      "delete": "Xóa {{key}}",
+      "empty": "Chưa khai báo biến nào",
+      "default_placeholder": "Giá trị mặc định",
+      "add": "Thêm biến",
+      "limit_reached": "Đã đạt giới hạn {{count}} biến",
+      "type": {
+        "string": "Văn bản",
+        "int": "Số",
+        "bool": "Có hoặc không",
+        "enum": "Lựa chọn",
+        "list_string": "Danh sách văn bản"
+      }
+    },
+    "stops": {
+      "declared": "Lý do dừng",
+      "built_in": "Có sẵn",
+      "empty": "Chưa khai báo điểm dừng nào",
+      "delete": "Xóa {{code}}",
+      "add": "Thêm điểm dừng",
+      "class": {
+        "custom": "Tùy chỉnh",
+        "missing_grounds": "Thiếu căn cứ",
+        "loop_exhausted": "Đã hết vòng lặp"
+      },
+      "message": "Thông điệp",
+      "default_message": "BỊ CHẶN · {{label}}\n{request} dừng tại {step}.\n{tasks}"
+    },
+    "terminal": {
+      "leaves": "Rời không gian làm việc"
+    },
+    "release": {
+      "warning": "Quy trình này có thể rời không gian làm việc mà không cần người thật xem xét"
+    },
+    "close_on_behalf": "Đóng thay mặt",
+    "on_behalf_badge": "Được {{name}} đóng thay mặt tác nhân",
+    "graph": {
+      "collapse": "Thu gọn",
+      "find": "Tìm một bước",
+      "worst_case": "Tối đa {{count}} nhiệm vụ con trong trường hợp xấu nhất",
+      "show_loops": "Chỉ hiện vòng lặp",
+      "fit": "Vừa khung",
+      "vertical_title": "Các bước theo thứ tự",
+      "exits_other": "{{count}} lối thoát"
+    },
+    "request": {
+      "path": "Đường đi",
+      "feedback": "Phản hồi",
+      "exit": "Lối thoát",
+      "exit_failed": "Không thể đi theo lối thoát này"
+    },
+    "trial": {
+      "run": "Chạy thử",
+      "badge": "Thử nghiệm",
+      "dialog_title": "Bắt đầu chạy thử",
+      "description": "Các tác nhân thật sẽ làm việc trên một yêu cầu mẫu mới. Công việc không thể rời không gian làm việc cho đến khi có người thật xem qua.",
+      "title_label": "Tiêu đề của yêu cầu mẫu",
+      "start": "Bắt đầu",
+      "failed": "Không thể bắt đầu chạy thử"
+    },
+    "unsupported": "Phiên bản ứng dụng này chưa hỗ trợ",
+    "editor": {
+      "tab_editor": "Trình soạn",
+      "tab_graph": "Sơ đồ",
+      "tab_terminals": "Điểm kết thúc",
+      "tab_problems": "Vấn đề",
+      "name_placeholder": "Tên quy trình làm việc",
+      "select_step": "Chọn một bước",
+      "disabled": "Chức năng soạn quy trình đang tắt",
+      "back": "Quay lại nhóm",
+      "step_title": "Bước {{n}}",
+      "check_failed": "Không thể kiểm tra quy trình làm việc",
+      "export_failed": "Không thể xuất quy trình làm việc",
+      "not_saved": "Không thể lưu bản nháp"
+    },
+    "import": {
+      "select_file": "Chọn một tệp",
+      "paste": "Hoặc dán manifest",
+      "invalid_json": "Không phải JSON hợp lệ",
+      "not_manifest": "Đây không phải manifest của quy trình làm việc",
+      "too_large": "Tệp lớn hơn 512 KiB",
+      "submit": "Nhập",
+      "failed": "Không thể nhập tệp"
+    },
+    "drafts": "Bản nháp",
+    "edges": {
+      "title": "Cạnh định tuyến",
+      "add": "Thêm cạnh",
+      "label_placeholder": "Nhãn cạnh",
+      "default_label": "Tiếp theo",
+      "manual": "Thủ công",
+      "move_up": "Di chuyển cạnh {{n}} lên",
+      "move_down": "Di chuyển cạnh {{n}} xuống",
+      "delete": "Xóa cạnh {{n}}",
+      "destination": "Đích đến",
+      "group_steps": "Các bước và điểm kết thúc",
+      "group_stops": "Điểm dừng",
+      "step_option": "Bước: {{name}}",
+      "terminal_option": "Điểm kết thúc: {{key}}",
+      "stop_option": "Điểm dừng: {{name}}",
+      "stop_stalled": "Điểm dừng: đình trệ",
+      "loop": "Cạnh quay vòng",
+      "no_loop": "Không có vòng lặp (cạnh tiến)",
+      "loop_option": "{{key}} (đầu vòng: {{header}})",
+      "empty": "Chưa cấu hình cạnh cho bước này"
+    },
+    "common": {
+      "key": "Khóa",
+      "label": "Nhãn",
+      "kind": "Loại",
+      "code": "Mã",
+      "class": "Lớp",
+      "message_key": "Khóa thông điệp",
+      "limit_reached": "Đã đạt giới hạn {{count}}"
+    },
+    "loops": {
+      "col_header": "Bước đầu vòng",
+      "col_max": "Giới hạn tối đa",
+      "col_reset": "Đặt lại",
+      "delete": "Xóa {{key}}",
+      "empty": "Chưa khai báo vòng lặp nào",
+      "header_placeholder": "Bước đầu vòng...",
+      "mode_fixed": "Số lần cố định",
+      "mode_var": "Từ biến",
+      "max_var": "Từ {{var}}, tối đa {{cap}}",
+      "var_label": "Biến số nguyên đủ điều kiện",
+      "var_placeholder": "Chọn biến...",
+      "var_option": "{{key}} (tối đa: {{max}})",
+      "cap_placeholder": "Trần",
+      "add": "Thêm vòng lặp"
+    },
+    "outline": {
+      "title": "Các bước",
+      "search": "Tìm bước...",
+      "empty": "Không tìm thấy bước nào"
+    },
+    "inspector": {
+      "step_title_placeholder": "Tiêu đề bước",
+      "quorum": "Số người tối thiểu",
+      "exit_role": "Vai trò lối thoát",
+      "notice": "Khóa thông báo",
+      "tasks": "Tác vụ ({{count}} / {{limit}})",
+      "no_tasks": "Không có tác vụ trong bước này",
+      "default_task_title": "Tác vụ {{n}}"
+    },
+    "task_card": {
+      "title_placeholder": "Tiêu đề tác vụ",
+      "key": "Khóa: {{key}}",
+      "kind_work": "Công việc",
+      "kind_gate": "Cổng",
+      "delete": "Xóa tác vụ {{key}}",
+      "role": "Vai trò",
+      "no_inputs": "Không có tác vụ ở các bước trước",
+      "no_skills": "Vai trò này không có kỹ năng",
+      "missing_skills": "R09: vai trò thiếu kỹ năng: {{skills}}",
+      "instructions": "Hướng dẫn",
+      "instructions_placeholder": "Tác nhân hoặc thành viên sẽ làm gì...",
+      "input_slot": "Ô tệp của {{from}}",
+      "input_any_slot": "Tệp bất kỳ"
+    },
+    "terminals": {
+      "col_status": "Trạng thái",
+      "col_scope": "Phạm vi",
+      "internal": "Nội bộ",
+      "delete": "Xóa {{key}}",
+      "status_placeholder": "Trạng thái (ví dụ done)",
+      "add": "Thêm điểm kết thúc"
+    },
+    "templates": {
+      "blank": "Bước trống",
+      "work": "Công việc",
+      "gate": "Cổng",
+      "quorum": "Xem xét theo số đông",
+      "human": "Người thật phê duyệt",
+      "lead": "Trưởng nhóm quyết định",
+      "task_work": "Thực hiện công việc",
+      "task_gate": "Kiểm tra công việc",
+      "task_reviewer": "Người review {{n}}",
+      "edge_next": "Tiếp theo",
+      "edge_blocked": "Bị chặn",
+      "edge_passed": "Đạt",
+      "edge_rework": "Gửi về làm lại",
+      "edge_stopped": "Đã dừng",
+      "edge_release": "Phê duyệt và tiếp tục",
+      "notice_human_approval": "{requester} {request} đang chờ một người thật phê duyệt."
+    },
+    "proposal": {
+      "waiting": "Đang chờ đề xuất của tác nhân",
+      "open_issue": "Mở nhiệm vụ",
+      "import": "Nhập đề xuất",
+      "by": "Đề xuất bởi {{agent}}",
+      "import_failed": "Không thể nhập đề xuất",
+      "missing": "Tác nhân chưa đính kèm flow.json",
+      "ask": {
+        "agent": "Tác nhân",
+        "note": "Quy trình làm việc cần làm gì",
+        "files": "Tệp tham khảo",
+        "attach": "Đính kèm một tệp",
+        "send": "Hỏi tác nhân",
+        "no_agent": "Không có tác nhân để hỏi",
+        "failed": "Không thể hỏi tác nhân"
+      }
+    },
+    "reference": {
+      "title": "Tham chiếu",
+      "agents": "Hướng dẫn của tác nhân",
+      "skills": "Kỹ năng của nhóm",
+      "empty": "Chưa có gì để đọc",
+      "show": "Hiện tham chiếu",
+      "hide": "Ẩn tham chiếu",
+      "no_text": "Không có văn bản"
+    },
+    "insights": {
+      "include_trial": "Bao gồm lần chạy thử",
+      "requests_other": "Số liệu từ {{count}} yêu cầu",
+      "truncated": "Chỉ đếm 500 yêu cầu gần nhất",
+      "entered_other": "Đã vào {{count}} lần",
+      "duration": "trung vị {{median}} phút, p90 {{p90}} phút",
+      "taken_other": "Đã đi qua {{count}} lần"
+    }
+  },
+  "packs": {
+    "import": "Nhập một gói",
+    "source": {
+      "upload": "Tải lên tệp zip",
+      "link": "Từ liên kết",
+      "link_placeholder": "https://github.com/owner/repo hoặc liên kết tới tệp .zip",
+      "choose": "Chọn tệp zip"
+    },
+    "preview": "Đọc gói",
+    "reading": "Đang đọc gói...",
+    "read_failed": "Không thể đọc gói",
+    "change_source": "Chọn gói khác",
+    "squad_name": "Tên nhóm",
+    "agents": "Tác nhân",
+    "skills": "Kỹ năng",
+    "leader": "Trưởng nhóm",
+    "leader_generic": "Dùng trưởng nhóm chung",
+    "one_agent_per_skill": "Một tác nhân cho mỗi kỹ năng",
+    "ignored": "Cài đặt bị bỏ qua",
+    "references_omitted_other": "Còn {{count}} tệp tài liệu không được liệt kê",
+    "design_workflow": "Thiết kế quy trình làm việc",
+    "add_agent": "Thêm tác nhân",
+    "no_agents": "Gói này không có tác nhân nào",
+    "action": {
+      "create": "Tạo",
+      "use_existing": "Dùng cái có sẵn",
+      "skip": "Bỏ qua",
+      "label": "Thao tác"
+    },
+    "runtime": "Môi trường chạy",
+    "runtime_none": "Không có môi trường chạy nào bạn có thể dùng",
+    "agent_name": "Tên",
+    "remove": "Xóa",
+    "skill": {
+      "keep": "Giữ kỹ năng hiện có",
+      "new": "Nhập dưới dạng mới",
+      "same": "Nội dung giống nhau",
+      "differs": "Nội dung khác nhau"
+    },
+    "scan": {
+      "title": "Quét bảo mật",
+      "block": "Bị chặn",
+      "warn": "Cảnh báo",
+      "info": "Ghi chú",
+      "ack": "Tôi đã đọc các cảnh báo"
+    },
+    "problems": "Vấn đề trong gói",
+    "draft_from_flow": "Tạo bản nháp từ quy trình trong gói",
+    "install": "Cài đặt",
+    "installing": "Đang cài đặt...",
+    "install_failed": "Không thể cài đặt gói",
+    "disabled": {
+      "blocked": "Quét bảo mật đã chặn gói này",
+      "errors": "Hãy sửa các vấn đề trong gói trước",
+      "leader": "Chọn trưởng nhóm để tạo nhóm",
+      "runtime": "Chọn môi trường chạy để các tác nhân được tạo",
+      "ack": "Đánh dấu rằng bạn đã đọc các cảnh báo",
+      "name": "Đặt tên cho nhóm",
+      "nothing": "Không có gì trong gói để cài đặt"
+    },
+    "conflict": {
+      "title": "Gói này đã được cài đặt",
+      "body": "Phiên bản {{version}} đã được cài đặt.",
+      "keep": "Giữ nguyên",
+      "new_install": "Cài đặt thành nhóm mới"
+    },
+    "name_taken": "Các tên sau đã được sử dụng: {{names}}",
+    "result": {
+      "title": "Đã cài đặt",
+      "already": "Gói này đã được cài đặt trước đó. Không có gì thay đổi.",
+      "agents_other": "{{count}} tác nhân",
+      "skills_other": "{{count}} kỹ năng",
+      "flow_issues": "Quy trình trong gói không thể trở thành bản nháp"
+    },
+    "open_squad": "Mở nhóm",
+    "done": "Xong"
+  },
+  "description_editor": {
+    "empty": "Thêm mô tả",
+    "placeholder": "Nhóm này chịu trách nhiệm về điều gì?"
+  }
+}

@@ -21,6 +21,8 @@ const CONTENT_LANG_BY_LOCALE: Record<SupportedLocale, ContentLang> = {
   ja: "ja",
   // Mika's onboarding content has no French, Spanish or Russian variant yet.
   // Those users read the English copy rather than an untranslated placeholder.
+  // Mika's onboarding content has no Vietnamese variant yet; Vietnamese users read the English copy.
+  vi: "en",
   fr: "en",
   es: "en",
   ru: "en",

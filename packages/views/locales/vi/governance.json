@@ -1,0 +1,448 @@
+{
+  "title": "Quản trị",
+  "tabs": {
+    "goals": "Mục tiêu",
+    "budgets": "Ngân sách",
+    "autonomy": "Mức tự chủ",
+    "reviews": "Đánh giá",
+    "log": "Nhật ký",
+    "controls": "Điều khiển"
+  },
+  "placeholder": {
+    "title": "Chưa có gì để hiển thị"
+  },
+  "autonomy": {
+    "note": "Giới hạn thực tế: Delegora không thể kiểm tra những gì môi trường chạy làm bên trong một lần chạy, vì vậy một mức tự chủ không thể ngăn tác nhân gọi một API bên ngoài mà thông tin xác thực của nó cho phép. Delegora kiểm soát những gì đi qua nó: các tác vụ định kỳ nào chạy, điều gì được xuất bản lên kho chung, đề xuất nào được quyết định mà không cần bạn, sáng kiến nào được tạo, chi tiêu bao nhiêu, và các ranh giới trong mỗi điều lệ. Mọi thứ có tác động ra bên ngoài vẫn nằm sau một cổng do nền tảng quản lý, chẳng hạn cổng Ra mắt, hoặc sau cài đặt quyền riêng của tác nhân. L3 không có nghĩa là hoạt động không cần giám sát.",
+    "levels_heading": "Mỗi mức cho phép gì",
+    "levels": {
+      "suggest": {
+        "name": "Đề xuất",
+        "body": "Các lần chạy định kỳ bị giữ lại. Nhóm chỉ chạy khi có người giao việc hoặc nhắc đến nhóm, và vẫn có thể gửi đề xuất."
+      },
+      "work": {
+        "name": "Làm việc",
+        "body": "Các tác vụ định kỳ chạy. Nhóm nghiên cứu, phân tích, viết bản nháp kiến thức và gửi đề xuất. Mọi quyết định thuộc về người đứng đầu."
+      },
+      "trusted": {
+        "name": "Đáng tin cậy",
+        "body": "Như Làm việc, và bản nháp kiến thức có thể được xuất bản sau khi xem xét. Phê duyệt thường trực có thể duyệt các đề xuất của nhóm."
+      },
+      "autonomous": {
+        "name": "Tự chủ",
+        "body": "Như Đáng tin cậy, và phê duyệt thường trực có thể tạo sáng kiến từ các cơ hội của chính nhóm ở giai đoạn đầu, trong phạm vi giới hạn và ngân sách."
+      }
+    },
+    "boss_only_note": "Việc ra mắt và thay đổi tổ chức luôn là quyết định của người đứng đầu, ở mọi mức. Tiền luôn bị giới hạn bởi ngân sách ở mọi mức.",
+    "squads_heading": "Mức của các nhóm",
+    "squads_empty": "Chưa có nhóm nào.",
+    "read_only": "Chỉ chủ sở hữu và quản trị viên mới có thể thay đổi mức.",
+    "level_tag": "L{{level}}",
+    "default_level": "Vẫn ở mức mặc định. Chưa có thay đổi.",
+    "level_label": "Mức",
+    "reason_label": "Lý do",
+    "reason_placeholder": "Vì sao chọn mức này? Lý do sẽ được lưu trong nhật ký quản trị.",
+    "save_level": "Lưu mức",
+    "level_saved": "Đã lưu mức tự chủ",
+    "level_save_failed": "Không thể thay đổi mức. Vui lòng thử lại.",
+    "panel_heading": "Tự chủ",
+    "policies_heading": "Phê duyệt thường trực",
+    "policies_note": "Phê duyệt thường trực sẽ duyệt một nhóm đề xuất hẹp từ các nhóm ở đúng mức, và bạn sẽ xem chúng sau trong bản tóm tắt. Nó không bao giờ bao gồm thay đổi tổ chức, cổng ra mắt, tăng ngân sách, đề xuất khẩn cấp hoặc các phê duyệt thường trực khác.",
+    "policies_empty": "Chưa có phê duyệt thường trực nào.",
+    "policies_load_failed": "Không thể tải các phê duyệt thường trực.",
+    "policy_kind": {
+      "decision": "Quyết định",
+      "opportunity": "Cơ hội"
+    },
+    "policy_active": "Đang hiệu lực",
+    "policy_revoked": "Đã thu hồi",
+    "policy_flagged": "Một lần đánh giá đã đảo ngược một trong các phê duyệt của nó",
+    "policy_scope_squads": "{{count}} nhóm",
+    "policy_scope_any": "Bất kỳ nhóm nào ở đúng mức",
+    "policy_week": "{{count}} / {{max}} phê duyệt trong tuần này",
+    "policy_until": "Đến {{date}}",
+    "policy_history": "Lịch sử",
+    "policy_history_hide": "Ẩn lịch sử",
+    "policy_revoke": "Thu hồi",
+    "policy_revoked_toast": "Đã thu hồi phê duyệt thường trực",
+    "policy_revoke_failed": "Không thể thu hồi phê duyệt thường trực. Vui lòng thử lại.",
+    "history_empty": "Chưa có đề xuất nào được phê duyệt bởi phê duyệt thường trực này.",
+    "history_load_failed": "Không thể tải lịch sử.",
+    "history_reversed": "Đã đảo ngược khi xem xét: {{note}}",
+    "create_heading": "Phê duyệt thường trực mới",
+    "create_name": "Tên",
+    "create_kind": "Loại",
+    "create_squads": "Nhóm",
+    "create_squads_hint": "Để trống tất cả để áp dụng cho bất kỳ nhóm nào ở đúng mức.",
+    "create_max_per_week": "Số phê duyệt tối đa mỗi tuần",
+    "create_max_cost": "Chi phí lớn nhất, tính bằng micro-đơn vị (không bắt buộc)",
+    "create_submit": "Tạo phê duyệt thường trực",
+    "create_done": "Đã tạo phê duyệt thường trực",
+    "create_failed": "Không thể tạo phê duyệt thường trực. Hãy kiểm tra các trường và thử lại."
+  },
+  "controls": {
+    "state_heading": "Trạng thái công ty",
+    "state": {
+      "running": "Đang chạy",
+      "paused": "Tạm dừng",
+      "quiet": "Yên tĩnh",
+      "unknown": "Không xác định"
+    },
+    "in_force": "Đang có hiệu lực: {{state}}",
+    "pause": "Tạm dừng",
+    "resume": "Tiếp tục",
+    "pause_hint": "Các lần chạy định kỳ và được giao sẽ chờ. Trò chuyện và Thư ký vẫn tiếp tục hoạt động.",
+    "stop_work": "Tạm dừng và dừng công việc đang chạy",
+    "stop_confirm_title": "Tạm dừng và dừng công việc đang chạy?",
+    "stop_confirm_description": "Các tác vụ định kỳ và được giao đang chạy sẽ bị hủy. Các tác vụ đang xếp hàng sẽ chờ đến khi bạn tiếp tục.",
+    "stop_confirm_action": "Tạm dừng và dừng",
+    "cancel": "Hủy",
+    "state_save_failed": "Không thể thay đổi trạng thái công ty. Vui lòng thử lại.",
+    "quiet_heading": "Giờ yên tĩnh",
+    "quiet_enabled": "Bật",
+    "quiet_from": "Từ",
+    "quiet_until": "Đến",
+    "quiet_timezone": "Múi giờ",
+    "quiet_hint": "Các lần chạy định kỳ sẽ chờ đến khi khoảng thời gian kết thúc. Các lần chạy do người khởi động sẽ không bị giữ lại.",
+    "quiet_save": "Lưu giờ yên tĩnh",
+    "quiet_saved": "Đã lưu giờ yên tĩnh",
+    "quiet_save_failed": "Không thể lưu giờ yên tĩnh. Vui lòng thử lại.",
+    "state_load_failed": "Không thể tải trạng thái công ty.",
+    "read_only": "Chỉ chủ sở hữu và quản trị viên mới có thể thay đổi các cài đặt này.",
+    "quiet_hour": "Giờ",
+    "quiet_minute": "Phút",
+    "digest_heading": "Nguồn bản tin",
+    "digest_mode": {
+      "auto": "Tự động",
+      "squads": "Nhóm",
+      "floors": "Tầng"
+    },
+    "digest_note": "Chế độ tự động đọc bản tóm tắt tầng khi có hơn {{threshold}} nhóm đang hoạt động. Bạn có {{count}}, nên Thư ký hiện đọc {{resolved}}.",
+    "digest_save_failed": "Không thể thay đổi nguồn bản tin. Vui lòng thử lại."
+  },
+  "log": {
+    "filter_kind": "Loại",
+    "filter_actor": "Loại tác nhân thực hiện",
+    "filter_subject": "Loại đối tượng",
+    "all": "Tất cả",
+    "column_kind": "Loại",
+    "column_actor": "Người thực hiện",
+    "column_subject": "Đối tượng",
+    "column_summary": "Tóm tắt",
+    "column_time": "Thời gian",
+    "kind": {
+      "policy_auto_approve": "Tự động duyệt theo chính sách",
+      "policy_created": "Đã tạo chính sách",
+      "policy_revoked": "Đã thu hồi chính sách",
+      "budget_set": "Đã đặt ngân sách",
+      "budget_extended": "Đã mở rộng ngân sách",
+      "budget_hold": "Lần chạy bị giữ do ngân sách",
+      "budget_release": "Đã gỡ giữ do ngân sách",
+      "autonomy_changed": "Đã thay đổi mức tự chủ",
+      "org_change_applied": "Đã áp dụng thay đổi tổ chức",
+      "org_change_reverted": "Đã hoàn tác thay đổi tổ chức",
+      "auto_publish": "Đã xuất bản tự động",
+      "initiative_forced": "Sáng kiến được chuyển bằng ghi đè",
+      "company_paused": "Đã tạm dừng công ty",
+      "company_resumed": "Công ty đã tiếp tục",
+      "goal_activated": "Đã kích hoạt mục tiêu",
+      "goal_imported": "Đã nhập mục tiêu",
+      "review_published": "Đã xuất bản đánh giá",
+      "squad_handoff": "Nhóm bàn giao",
+      "unknown": "Sự kiện không xác định"
+    },
+    "actor_type": {
+      "member": "Thành viên",
+      "agent": "Tác nhân",
+      "system": "Hệ thống",
+      "policy": "Chính sách",
+      "unknown": "Không xác định"
+    },
+    "subject_type": {
+      "company": "Công ty",
+      "floor": "Tầng",
+      "squad": "Nhóm",
+      "agent": "Tác nhân",
+      "initiative": "Sáng kiến",
+      "budget": "Ngân sách",
+      "approval_policy": "Chính sách phê duyệt",
+      "proposal": "Đề xuất",
+      "goal": "Mục tiêu",
+      "review": "Đánh giá"
+    },
+    "empty": "Không có sự kiện quản trị nào khớp với bộ lọc này.",
+    "load_failed": "Không thể tải nhật ký quản trị.",
+    "load_more": "Tải thêm",
+    "export": "Xuất CSV",
+    "export_failed": "Không thể xuất nhật ký."
+  },
+  "pulse": {
+    "label": "Nhịp công ty",
+    "decisions": "{{count}} đang chờ bạn",
+    "goals_at_risk": "{{count}} mục tiêu có rủi ro",
+    "budgets": "{{count}} ngân sách vượt ngưỡng cảnh báo",
+    "holds": "{{count}} lần giữ do ngân sách",
+    "stalled": "{{count}} sáng kiến bị đình trệ",
+    "routines_late": "{{count}} tác vụ định kỳ bị trễ",
+    "runtimes_offline": "{{count}} môi trường chạy ngoại tuyến",
+    "quiet": "Không có gì cần bạn"
+  },
+  "health": {
+    "heading": "Tình trạng hệ thống",
+    "unreadable": "Không thể đọc tình trạng hệ thống.",
+    "nothing_at_risk": "Không có gì cần chú ý.",
+    "risks_label": "Rủi ro",
+    "jobs_heading": "Tác vụ theo lịch",
+    "no_jobs": "Chưa có tác vụ theo lịch nào chạy.",
+    "col_job": "Tác vụ",
+    "col_last_success": "Thành công lần cuối",
+    "col_state": "Trạng thái",
+    "never_succeeded": "Chưa bao giờ",
+    "stuck": "Bị kẹt",
+    "ok": "Ổn",
+    "deliveries_label": "Gửi thất bại trong 24 giờ qua",
+    "deliveries_value": "{{count}}",
+    "knowledge_label": "Kho kiến thức",
+    "knowledge_not_offered": "Chưa bật trên hệ thống này",
+    "knowledge_state": {
+      "ready": "Sẵn sàng",
+      "offline": "Ngoại tuyến",
+      "provisioning": "Đang thiết lập",
+      "failed": "Thất bại",
+      "disabled": "Tắt",
+      "unknown": "Không xác định"
+    },
+    "budget_gate_label": "Cổng ngân sách",
+    "budget_gate_not_reported": "Chưa báo cáo",
+    "budget_gate_no_cache": "Chưa có bộ đếm nào được lưu tạm",
+    "budget_gate_age": "Bộ đếm đã làm mới cách đây {{seconds}} giây"
+  },
+  "reviews_tab": {
+    "empty": "Bạn chưa thấy đánh giá nào. Đánh giá hiển thị cho chủ sở hữu, quản trị viên và trưởng nhóm được đánh giá.",
+    "loading": "Đang tải đánh giá",
+    "rating": {
+      "exceeds": "Vượt mong đợi",
+      "meets": "Đạt",
+      "below": "Dưới mong đợi",
+      "at_risk": "Có rủi ro",
+      "unknown": "Chưa xếp hạng"
+    },
+    "subject": {
+      "agent": "Tác nhân",
+      "squad": "Nhóm",
+      "company": "Công ty",
+      "unknown": "Đối tượng"
+    },
+    "period": {
+      "week": "Tuần từ {{start}}",
+      "month": "Tháng từ {{start}}",
+      "unknown": "Kỳ {{start}}"
+    },
+    "recommendation": {
+      "observe": "Đã ghi nhận, không thay đổi",
+      "filed": "Đã gửi để người đứng đầu quyết định",
+      "refused": "Không được gửi"
+    },
+    "change": {
+      "instruction_change": "Thay đổi hướng dẫn",
+      "skill_change": "Thay đổi kỹ năng",
+      "charter_change": "Thay đổi điều lệ",
+      "autonomy_change": "Thay đổi mức tự chủ",
+      "hire": "Tuyển dụng",
+      "retire": "Cho nghỉ",
+      "move": "Chuyển",
+      "merge_squads": "Gộp nhóm",
+      "unretire": "Khôi phục từ nghỉ việc",
+      "unmerge": "Tách nhóm",
+      "observe": "Quan sát"
+    },
+    "proposal": "Đề xuất {{id}}",
+    "figures": "Các chỉ số bảng điểm",
+    "generic": "Khuyến nghị",
+    "no_recommendations": "Không có khuyến nghị"
+  },
+  "goals": {
+    "loading": "Đang tải mục tiêu...",
+    "load_failed": "Không thể tải mục tiêu.",
+    "tree": {
+      "company": "Công ty",
+      "unnamed": "{{scope}} (không có trong danh sách)"
+    },
+    "scope": {
+      "company": "Công ty",
+      "floor": "Tầng",
+      "squad": "Nhóm",
+      "initiative": "Sáng kiến"
+    },
+    "status": {
+      "draft": "Bản nháp",
+      "active": "Đang hoạt động",
+      "achieved": "Đã đạt",
+      "missed": "Không đạt",
+      "dropped": "Đã bỏ",
+      "unknown": "Không xác định"
+    },
+    "confidence": {
+      "on_track": "Đúng tiến độ",
+      "at_risk": "Có rủi ro",
+      "off_track": "Lệch tiến độ",
+      "unknown": "Chưa có số liệu",
+      "overridden": "(quyết định của chủ sở hữu)"
+    },
+    "progress": "{{percent}}%",
+    "progress_none": "Chưa có số liệu",
+    "no_reading": "Chưa có số liệu",
+    "detail": {
+      "load_failed": "Không thể tải mục tiêu này.",
+      "action_failed": "Không thể thay đổi mục tiêu. Vui lòng thử lại.",
+      "close": "Đóng",
+      "period": "{{start}} đến {{end}}",
+      "override_note": "Số liệu cho ra {{derived}}. Chủ sở hữu đã đặt khác: {{note}}",
+      "key_results": "Kết quả then chốt",
+      "kr_title": "Kết quả then chốt",
+      "kr_range": "Từ → mục tiêu",
+      "kr_now": "Mới nhất",
+      "kr_progress": "Tiến độ",
+      "kr_trend": "Số liệu",
+      "kr_from_to": "{{start}} → {{target}}",
+      "kr_trend_label": "Số liệu của {{title}}",
+      "child_goals": "Mục tiêu thuộc mục tiêu này",
+      "source_proposal": "Được đặt bởi đề xuất {{id}}",
+      "activate": "Kích hoạt",
+      "close_as": {
+        "achieved": "Đánh dấu đã đạt",
+        "missed": "Đánh dấu không đạt",
+        "dropped": "Bỏ"
+      },
+      "override_heading": "Mức tin cậy của chủ sở hữu",
+      "override_clear": "Dùng số liệu",
+      "override_why": "Vì sao mức tin cậy này",
+      "override_save": "Lưu mức tin cậy",
+      "override_saved": "Đã lưu mức tin cậy"
+    },
+    "create": {
+      "button": "Mục tiêu mới",
+      "title": "Mục tiêu mới",
+      "scope": "Phạm vi",
+      "target_floor": "Tầng",
+      "target_initiative": "Sáng kiến",
+      "target_required": "Hãy chọn mục đích của mục tiêu này.",
+      "title_label": "Tiêu đề",
+      "title_required": "Hãy đặt tiêu đề cho mục tiêu.",
+      "title_too_long": "Tiêu đề tối đa 200 ký tự.",
+      "why_label": "Lý do (không bắt buộc)",
+      "period_start": "Bắt đầu",
+      "period_end": "Kết thúc",
+      "period_required": "Hãy đặt cả hai ngày của kỳ.",
+      "period_order": "Ngày kết thúc phải sau ngày bắt đầu.",
+      "owner": "Chủ sở hữu",
+      "owner_type": "Loại chủ sở hữu",
+      "owner_types": {
+        "squad": "Nhóm",
+        "member": "Thành viên",
+        "agent": "Tác nhân"
+      },
+      "owner_required": "Hãy chọn chủ sở hữu.",
+      "key_results": "Kết quả then chốt",
+      "kr_title": "Kết quả then chốt",
+      "kr_metric": "Chỉ số",
+      "kr_start": "Giá trị ban đầu",
+      "kr_target": "Giá trị mục tiêu",
+      "kr_add": "Thêm kết quả then chốt",
+      "kr_remove": "Xóa",
+      "kr_title_required": "Hãy đặt tiêu đề cho từng kết quả then chốt.",
+      "kr_metric_required": "Hãy chọn chỉ số cho từng kết quả then chốt.",
+      "kr_values_required": "Nhập giá trị ban đầu và giá trị mục tiêu.",
+      "kr_values_equal": "Giá trị mục tiêu phải khác giá trị ban đầu.",
+      "submit": "Tạo mục tiêu",
+      "cancel": "Hủy",
+      "created": "Đã tạo mục tiêu",
+      "failed": "Không thể tạo mục tiêu. Hãy kiểm tra các trường và thử lại."
+    }
+  },
+  "reading": {
+    "title": "Thêm số liệu",
+    "metric": "Chỉ số",
+    "value": "Giá trị",
+    "note": "Ghi chú",
+    "submit": "Thêm số liệu",
+    "saved": "Đã thêm số liệu",
+    "failed": "Không thể thêm số liệu.",
+    "no_metrics": "Chưa có chỉ số nào",
+    "scope_note": "Số liệu này dành cho {{scope}} mà mục tiêu này theo dõi."
+  },
+  "budgets": {
+    "title": "Ngân sách",
+    "read_only": "Chỉ chủ sở hữu hoặc quản trị viên mới thay đổi được ngân sách.",
+    "scope": {
+      "company": "Công ty",
+      "floor": "Tầng",
+      "squad": "Nhóm",
+      "initiative": "Sáng kiến"
+    },
+    "period": {
+      "week": "Hằng tuần",
+      "month": "Hằng tháng",
+      "quarter": "Hằng quý"
+    },
+    "mode": {
+      "warn": "chỉ cảnh báo",
+      "hold": "giữ các lần chạy khi đạt giới hạn"
+    },
+    "state": {
+      "ok": "Trong ngân sách",
+      "soft": "Gần giới hạn",
+      "hard": "Đã đạt giới hạn",
+      "unknown": "Không xác định"
+    },
+    "spent": "Đã chi {{spent}} trên {{limit}}",
+    "spent_label": "Chi tiêu so với giới hạn",
+    "elapsed": "Đã trôi qua {{percent}}% của kỳ",
+    "overrun": "Với tốc độ này, giới hạn sẽ bị đạt vào {{date}}",
+    "no_overrun": "Với tốc độ này, giới hạn được giữ trong suốt kỳ",
+    "holds_count": "{{count}} đang bị giữ",
+    "history": "Lịch sử",
+    "history_empty": "Chưa ghi nhận kỳ nào.",
+    "columns": {
+      "period": "Kỳ",
+      "spent": "Đã chi",
+      "extended": "Đã mở rộng",
+      "runs": "Lần chạy",
+      "state": "Trạng thái"
+    },
+    "amount_label": "Số tiền mới mỗi kỳ, tính bằng đô la",
+    "amount_placeholder": "Số tiền",
+    "set_amount": "Đặt số tiền",
+    "save_failed": "Không thể lưu ngân sách. Vui lòng thử lại.",
+    "holds_title": "Các lần chạy bị giữ do ngân sách",
+    "holds_empty": "Không có lần chạy nào bị giữ do ngân sách.",
+    "release": "Gỡ giữ",
+    "release_hint": "Cho phép các lần chạy đang bị giữ bắt đầu một lần, kể cả khi đã đạt giới hạn.",
+    "extend": "Mở rộng",
+    "extend_amount": "Số tiền thêm vào kỳ này, tính bằng đô la",
+    "extended": "Đã mở rộng giới hạn của kỳ.",
+    "released": "Đã gỡ giữ {{count}} lần chạy.",
+    "create": {
+      "button": "Ngân sách mới",
+      "title": "Ngân sách mới",
+      "scope": "Phạm vi",
+      "target_required": "Hãy chọn {{scope}} mà ngân sách này áp dụng.",
+      "period": "Kỳ",
+      "amount": "Số tiền mỗi kỳ, tính bằng đô la",
+      "amount_required": "Nhập số tiền từ 0 trở lên.",
+      "soft_percent": "Cảnh báo khi đạt tỷ lệ này của giới hạn (%)",
+      "soft_invalid": "Nhập tỷ lệ phần trăm nguyên từ 1 đến 100.",
+      "mode": "Khi đạt giới hạn",
+      "classes": "Áp dụng cho các lần chạy",
+      "class": {
+        "routine": "Định kỳ",
+        "delegated": "Được giao"
+      },
+      "classes_required": "Chọn ít nhất một loại lần chạy.",
+      "submit": "Tạo ngân sách",
+      "cancel": "Hủy",
+      "created": "Đã tạo ngân sách",
+      "failed": "Không thể tạo ngân sách. Hãy kiểm tra các trường và thử lại.",
+      "exists": "Đã có ngân sách cho phạm vi và kỳ này."
+    }
+  }
+}
