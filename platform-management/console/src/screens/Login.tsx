@@ -6,11 +6,47 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Shield } from "@multica/ui/icons";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@multica/ui/components/ui/input-otp";
 import { useSendCode, useVerifyCode } from "../api/hooks";
 import { t } from "../i18n";
 
 interface LoginProps {
   onSuccess: () => void;
+}
+
+/** Six one-character slots, the same input the Multica sign-in page uses. */
+function OtpSlots({
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <InputOTP
+      autoFocus
+      maxLength={6}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      aria-label={label}
+      autoComplete="one-time-code"
+      inputMode="numeric"
+    >
+      <InputOTPGroup>
+        <InputOTPSlot index={0} />
+        <InputOTPSlot index={1} />
+        <InputOTPSlot index={2} />
+        <InputOTPSlot index={3} />
+        <InputOTPSlot index={4} />
+        <InputOTPSlot index={5} />
+      </InputOTPGroup>
+    </InputOTP>
+  );
 }
 
 export function Login({ onSuccess }: LoginProps) {
@@ -37,12 +73,13 @@ export function Login({ onSuccess }: LoginProps) {
     setInfoMessage(t("If this address can sign in, a code has been sent"));
   };
 
-  const handleVerifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!code.trim() || verifyCode.isPending) return;
+  // Like the Multica sign-in page, a complete 6-digit code submits by itself, and
+  // a wrong code clears the slots so the user can type again.
+  const handleVerifyCode = async (value: string) => {
+    if (value.length !== 6 || verifyCode.isPending) return;
     setErrorMessage(null);
     try {
-      const result = await verifyCode.mutateAsync({ email: email.trim(), code: code.trim() });
+      const result = await verifyCode.mutateAsync({ email: email.trim(), code: value });
       if (result?.mfaRequired) {
         setInfoMessage(null);
         setStep("totp");
@@ -50,18 +87,19 @@ export function Login({ onSuccess }: LoginProps) {
       }
       onSuccess();
     } catch {
+      setCode("");
       setErrorMessage(t("That code is not valid."));
     }
   };
 
-  const handleVerifyTotp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!totp.trim() || verifyCode.isPending) return;
+  const handleVerifyTotp = async (value: string) => {
+    if (value.length !== 6 || verifyCode.isPending) return;
     setErrorMessage(null);
     try {
-      await verifyCode.mutateAsync({ email: email.trim(), code: code.trim(), totp: totp.trim() });
+      await verifyCode.mutateAsync({ email: email.trim(), code: code.trim(), totp: value });
       onSuccess();
     } catch {
+      setTotp("");
       setErrorMessage(t("That code is not valid."));
     }
   };
@@ -123,29 +161,15 @@ export function Login({ onSuccess }: LoginProps) {
               />
             </form>
           ) : step === "code" ? (
-            <form onSubmit={handleVerifyCode} className="space-y-4">
-              <TextInput
-                id="code-input"
-                type="text"
-                inputMode="numeric"
+            <div className="flex flex-col items-center gap-4">
+              <OtpSlots
                 label={t("6-digit code")}
-                width="100%"
                 value={code}
-                onChange={(value) => setCode(value.slice(0, 6))}
-                placeholder="000000"
-                isRequired
-                isDisabled={verifyCode.isPending}
-                hasAutoFocus
-                controlClassName="text-center font-mono tabular-nums tracking-widest"
-              />
-              <Button
-                type="submit"
-                label={t("Sign in")}
-                variant="primary"
-                width="100%"
-                isDisabled={!code.trim() || verifyCode.isPending}
-                isLoading={verifyCode.isPending}
-                aria-busy={verifyCode.isPending}
+                onChange={(value) => {
+                  setCode(value);
+                  void handleVerifyCode(value);
+                }}
+                disabled={verifyCode.isPending}
               />
               <Button
                 type="button"
@@ -154,32 +178,17 @@ export function Login({ onSuccess }: LoginProps) {
                 width="100%"
                 onClick={backToEmail}
               />
-            </form>
+            </div>
           ) : (
-            <form onSubmit={handleVerifyTotp} className="space-y-4">
-              <TextInput
-                id="totp-input"
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
+            <div className="flex flex-col items-center gap-4">
+              <OtpSlots
                 label={t("Authenticator code")}
-                width="100%"
                 value={totp}
-                onChange={(value) => setTotp(value.slice(0, 6))}
-                placeholder="000000"
-                isRequired
-                isDisabled={verifyCode.isPending}
-                hasAutoFocus
-                controlClassName="text-center font-mono tabular-nums tracking-widest"
-              />
-              <Button
-                type="submit"
-                label={t("Sign in")}
-                variant="primary"
-                width="100%"
-                isDisabled={!totp.trim() || verifyCode.isPending}
-                isLoading={verifyCode.isPending}
-                aria-busy={verifyCode.isPending}
+                onChange={(value) => {
+                  setTotp(value);
+                  void handleVerifyTotp(value);
+                }}
+                disabled={verifyCode.isPending}
               />
               <Button
                 type="button"
@@ -188,7 +197,7 @@ export function Login({ onSuccess }: LoginProps) {
                 width="100%"
                 onClick={backToEmail}
               />
-            </form>
+            </div>
           )}
         </div>
       </Card>

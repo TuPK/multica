@@ -13,6 +13,11 @@ vi.mock("../components/sidebar-state", () => ({
 
 configure({ asyncUtilTimeout: 5_000 });
 
+// jsdom doesn't implement elementFromPoint; input-otp uses it internally.
+if (typeof document.elementFromPoint !== "function") {
+  document.elementFromPoint = () => null;
+}
+
 // Astryx controls mark a disabled button with aria-disabled and keep it focusable,
 // so jest-dom's toBeDisabled (native disabled only) does not see them.
 expect.extend({

@@ -88,7 +88,6 @@ describe("Login screen", () => {
 
     const codeInput = screen.getByLabelText(/6-digit code/i);
     fireEvent.change(codeInput, { target: { value: "123456" } });
-    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
 
     await waitFor(() => {
       expect(mockVerifyCodeMutateAsync).toHaveBeenCalledWith({
@@ -120,7 +119,6 @@ describe("Login screen", () => {
     fireEvent.change(screen.getByLabelText(/6-digit code/i), {
       target: { value: "654321" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
 
     await waitFor(() => {
       expect(mockVerifyCodeMutateAsync).toHaveBeenCalledWith({
@@ -129,6 +127,33 @@ describe("Login screen", () => {
       });
       expect(onSuccess).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("does not submit a partial code, and submits a full one by itself", async () => {
+    mockVerifyCodeMutateAsync.mockResolvedValue({});
+    render(<Login onSuccess={vi.fn()} />);
+    await reachCodeStep();
+
+    fireEvent.change(screen.getByLabelText(/6-digit code/i), { target: { value: "12345" } });
+    expect(mockVerifyCodeMutateAsync).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/6-digit code/i), { target: { value: "123456" } });
+    await waitFor(() => {
+      expect(mockVerifyCodeMutateAsync).toHaveBeenCalledWith({
+        email: "staff@example.com",
+        code: "123456",
+      });
+    });
+  });
+
+  it("clears the code after a wrong code so the user can type again", async () => {
+    mockVerifyCodeMutateAsync.mockRejectedValue(new Error("Invalid code"));
+    render(<Login onSuccess={vi.fn()} />);
+    await reachCodeStep();
+
+    fireEvent.change(screen.getByLabelText(/6-digit code/i), { target: { value: "123456" } });
+    expect(await screen.findByText("That code is not valid.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/6-digit code/i)).toHaveValue("");
   });
 
   it("allows switching back to email form via 'Use a different email'", async () => {
@@ -168,7 +193,6 @@ describe("Login screen", () => {
     await reachCodeStep();
 
     fireEvent.change(screen.getByLabelText(/6-digit code/i), { target: { value: "111111" } });
-    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
 
     const totpInput = await screen.findByLabelText(/authenticator code/i);
     expect(mockVerifyCodeMutateAsync).toHaveBeenNthCalledWith(1, {
@@ -178,7 +202,6 @@ describe("Login screen", () => {
     expect(onSuccess).not.toHaveBeenCalled();
 
     fireEvent.change(totpInput, { target: { value: "222222" } });
-    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
 
     await waitFor(() => {
       expect(mockVerifyCodeMutateAsync).toHaveBeenNthCalledWith(2, {
@@ -199,9 +222,7 @@ describe("Login screen", () => {
     await reachCodeStep();
 
     fireEvent.change(screen.getByLabelText(/6-digit code/i), { target: { value: "111111" } });
-    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
     fireEvent.change(await screen.findByLabelText(/authenticator code/i), { target: { value: "000000" } });
-    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
 
     expect(await screen.findByText("That code is not valid.")).toBeInTheDocument();
     expect(screen.getByLabelText(/authenticator code/i)).toBeInTheDocument();
