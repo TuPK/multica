@@ -183,7 +183,7 @@ async function captureWindow(out, { title, settle }) {
   const { screenRecording, windows } = listWindows(pid);
   if (!screenRecording) {
     throw new CaptureError(
-      "Screen Recording permission is missing for the app running this command (Terminal, iTerm, Cursor, the Multica daemon, ...). " +
+      "Screen Recording permission is missing for the app running this command (Terminal, iTerm, Cursor, the Delegora daemon, ...). " +
         "Grant it in System Settings > Privacy & Security > Screen & System Audio Recording, then restart that app.",
     );
   }

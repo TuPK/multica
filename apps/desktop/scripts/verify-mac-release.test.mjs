@@ -6,7 +6,7 @@ import { verifyMacRelease } from "./verify-mac-release.mjs";
 const context = (publish = "always", platform = "darwin") => ({
   appOutDir: "/build path/mac-arm64",
   electronPlatformName: platform,
-  packager: { info: { options: { publish } }, appInfo: { productFilename: "Multica" } },
+  packager: { info: { options: { publish } }, appInfo: { productFilename: "Delegora" } },
 });
 
 describe("macOS release validation before upload", () => {
@@ -22,8 +22,8 @@ describe("macOS release validation before upload", () => {
     const execute = vi.fn();
     verifyMacRelease(context(policy), execute);
     expect(execute.mock.calls.map(([command, args]) => [command, args])).toEqual([
-      ["spctl", ["--assess", "--type", "execute", "--verbose", "/build path/mac-arm64/Multica.app"]],
-      ["xcrun", ["stapler", "validate", "/build path/mac-arm64/Multica.app"]],
+      ["spctl", ["--assess", "--type", "execute", "--verbose", "/build path/mac-arm64/Delegora.app"]],
+      ["xcrun", ["stapler", "validate", "/build path/mac-arm64/Delegora.app"]],
     ]);
     expect(execute.mock.calls.every(([, , options]) => options.timeout === 60_000)).toBe(true);
   });

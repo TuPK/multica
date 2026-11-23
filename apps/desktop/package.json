@@ -1,9 +1,9 @@
 {
   "name": "@multica/desktop",
-  "productName": "Multica",
+  "productName": "Delegora",
   "version": "0.11.1",
   "private": true,
-  "description": "Multica Desktop — native desktop client for the Multica platform.",
+  "description": "Delegora Desktop — native desktop client for the Delegora platform.",
   "homepage": "https://multica.ai",
   "repository": {
     "type": "git",
@@ -11,8 +11,8 @@
     "directory": "apps/desktop"
   },
   "author": {
-    "name": "Multica",
-    "email": "support@multica.ai"
+    "name": "Delegora",
+    "email": "support@delegora.io.vn"
   },
   "license": "SEE LICENSE IN ../../LICENSE",
   "main": "./out/main/index.js",

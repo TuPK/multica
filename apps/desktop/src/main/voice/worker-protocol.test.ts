@@ -41,14 +41,14 @@ describe("joinTranscripts", () => {
 
 describe("hotwordList", () => {
   it("strips separators and ignores non-strings", () => {
-    expect(hotwordList(["Multica", "a,b", "张，三", 3, "  "])).toBe("Multica,a b,张 三");
-    expect(hotwordList("Multica")).toBe("");
+    expect(hotwordList(["Delegora", "a,b", "张，三", 3, "  "])).toBe("Delegora,a b,张 三");
+    expect(hotwordList("Delegora")).toBe("");
   });
 });
 
 describe("recognizerConfig", () => {
   it("points Qwen3-ASR at its files and passes hotwords", () => {
-    const spec: LoadSpec = { key: "k", recognizer: "qwen3-asr", dir: "/m", language: "auto", hotwords: "Multica,Lambda" };
+    const spec: LoadSpec = { key: "k", recognizer: "qwen3-asr", dir: "/m", language: "auto", hotwords: "Delegora,Lambda" };
     const config = recognizerConfig(spec, 4) as { modelConfig: Record<string, unknown> };
     expect(config.modelConfig).toMatchObject({
       qwen3Asr: {
@@ -56,7 +56,7 @@ describe("recognizerConfig", () => {
         encoder: "/m/encoder.int8.onnx",
         decoder: "/m/decoder.int8.onnx",
         tokenizer: "/m/tokenizer",
-        hotwords: "Multica,Lambda",
+        hotwords: "Delegora,Lambda",
       },
       tokens: "",
       numThreads: 4,

@@ -14,18 +14,18 @@ describe("daemon quit dialog copy", () => {
   });
 
   it.each([
-    ["zh-CN", "退出 Multica"],
-    ["zh-SG", "退出 Multica"],
-    ["zh-Hant", "結束 Multica"],
-    ["zh-TW", "結束 Multica"],
-    ["zh-HK", "結束 Multica"],
-    ["zh-MO", "結束 Multica"],
-    ["ja-JP", "Multica を終了"],
-    ["ko-KR", "Multica 종료"],
-    ["fr-FR", "Quitter Multica"],
-    ["es-ES", "Salir de Multica"],
-    ["ru-RU", "Выйти из Multica"],
-    ["", "Quit Multica"],
+    ["zh-CN", "退出 Delegora"],
+    ["zh-SG", "退出 Delegora"],
+    ["zh-Hant", "結束 Delegora"],
+    ["zh-TW", "結束 Delegora"],
+    ["zh-HK", "結束 Delegora"],
+    ["zh-MO", "結束 Delegora"],
+    ["ja-JP", "Delegora を終了"],
+    ["ko-KR", "Delegora 종료"],
+    ["fr-FR", "Quitter Delegora"],
+    ["es-ES", "Salir de Delegora"],
+    ["ru-RU", "Выйти из Delegora"],
+    ["", "Quit Delegora"],
   ])("resolves OS language %s using the native menu locale policy", (language, title) => {
     const options = quitConfirmationOptions(language, 3);
     expect(options.title).toBe(title);

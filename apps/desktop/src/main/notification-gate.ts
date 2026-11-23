@@ -1,6 +1,6 @@
 /**
  * Main-process authority for native notification eligibility. Renderer focus
- * is window-local, so only main can answer whether any Multica window is in
+ * is window-local, so only main can answer whether any Delegora window is in
  * the foreground and collapse the same realtime event from N renderers.
  */
 export class NotificationGate {

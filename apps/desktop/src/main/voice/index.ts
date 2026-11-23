@@ -57,7 +57,7 @@ function engineDir(): string {
 export function setupVoiceInput(): void {
   const engine = new VoiceEngine({
     engineDir: engineDir(),
-    fork: (args) => utilityProcess.fork(workerPath, args, { serviceName: "Multica Voice" }),
+    fork: (args) => utilityProcess.fork(workerPath, args, { serviceName: "Delegora Voice" }),
   });
   const snapshot = (): VoiceModelsSnapshot => ({ engineAvailable: engine.available(), models: store.list() });
   const store: ModelStore = new ModelStore({

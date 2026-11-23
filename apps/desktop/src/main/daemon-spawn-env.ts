@@ -34,7 +34,7 @@ const LAUNCHER_ENV_NAMES = new Set([
  *
  * A dev Desktop is launched by `pnpm dev:desktop` → turbo → `electron-vite
  * dev`, and each layer adds env describing that launch. Left in, pnpm in any
- * repo an agent works on reads the Multica workspace's config (hoisted
+ * repo an agent works on reads the Delegora workspace's config (hoisted
  * node_modules, its catalog), NODE_PATH and PATH resolve modules and bins from
  * the dev checkout, and NODE_ENV=development breaks Next.js and Vite
  * production builds. NODE_ENV_ELECTRON_VITE marks that launch, so the launcher
