@@ -79,7 +79,7 @@ export async function targets(root) {
   const cli = "server/cmd/multica/cmd_auth.go";
   const between = new RegExp(`(${escapeRe(MOBILE_BEGIN)})[^]*?(${escapeRe(MOBILE_END)})`);
   return [
-    ["apps/web/public/favicon.svg", s.favicon],
+    // apps/web/public/favicon.svg is the fork's Delegora tile; it is not generated.
     ["apps/docs/app/icon.svg", s.favicon],
     ["apps/web/public/icons/icon.svg", s.pwaIcon],
     ["docs/assets/logo-light.svg", s.wordmark(INK) + "\n"],
