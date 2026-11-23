@@ -943,6 +943,37 @@ func TestClaimStartsRunWhoseIssueStillHandsItOff(t *testing.T) {
 	}
 }
 
+// An assignment run is stamped with the issue's status at enqueue time, so it
+// carries the step of an intake column that hands to nobody. The issue is still
+// on that column and still assigned to the run's agent, so the run is not
+// stale and must start.
+func TestClaimStartsAssignmentRunOnIntakeStep(t *testing.T) {
+	seedTestCatalog(t)
+	ctx := context.Background()
+	runtimeID := createClaimReclaimRuntime(t, ctx, "Workflow intake run runtime")
+	agentID, _ := createClaimReclaimAgentAndIssue(t, ctx, runtimeID, "Workflow intake run agent")
+	projectID := deliveryProject(t, "Workflow intake run project", agentID)
+	issueID := dbfx.Issue(t, "assigned on intake step", testutil.Cols{
+		"project_id": projectID, "status": "todo", "assignee_type": "agent", "assignee_id": agentID,
+	})
+	taskID := dbfx.Task(t, agentID, testutil.Cols{
+		"issue_id": issueID, "runtime_id": runtimeID, "status": "queued", "workflow_step": "todo",
+	})
+
+	req := newOwnerDaemonRequest("POST", "/api/daemon/runtimes/"+runtimeID+"/tasks/claim", nil)
+	req = withURLParam(req, "runtimeId", runtimeID)
+	w := testutil.Call(t, testHandler.ClaimTaskByRuntime, req).Want(http.StatusOK)
+	var resp struct {
+		Task *struct {
+			ID string `json:"id"`
+		} `json:"task"`
+	}
+	w.JSON(&resp)
+	if resp.Task == nil || resp.Task.ID != taskID {
+		t.Fatalf("assignment run %s on an intake step was not claimed: %s", taskID, w.Body.String())
+	}
+}
+
 func TestClaimExplainsMovedWorkflowStep(t *testing.T) {
 	seedTestCatalog(t)
 	agentID := seededReadyAgentID(t)
