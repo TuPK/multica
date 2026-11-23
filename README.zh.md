@@ -142,9 +142,6 @@ Windows 上先设 `$env:MULTICA_MODE="with-server"`，再跑 PowerShell 安装�
 这会拉取 GHCR 上的官方镜像，需要 Docker。详见[自托管快速上手](https://multica.ai/docs/zh/self-host-quickstart)。
 如果你选的 GHCR 标签还没发布，可以在代码目录里跑 `make selfhost-build` 兜底。
 
-自托管的服务端每天会发送一份匿名的部署级快照：只有版本号和分桶计数，不含名称、内容或任何标识符。
-在 API 服务端设置 `DO_NOT_TRACK=1` 即可关闭——[具体收集哪些数据](https://multica.ai/docs/zh/environment-variables#观测与统计)。
-
 </details>
 
 ### 五分钟跑通第一个智能体

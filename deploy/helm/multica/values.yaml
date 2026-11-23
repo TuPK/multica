@@ -158,9 +158,6 @@ backend:
     # create workspaces. Empty = every signed-in user may create one.
     # disableWorkspaceCreation=true still blocks everyone.
     workspaceCreationAllowedEmails: ""
-    # Set to "1" or "true" to disable first-party anonymous self-host
-    # telemetry collection and delivery.
-    doNotTrack: ""
     # Self-host-only VCS integration (Forgejo / Gitea / GitLab). The official
     # chart enables the product surface by default; operators must also provide
     # MULTICA_VCS_SECRET_KEY through existingSecret before connections work.

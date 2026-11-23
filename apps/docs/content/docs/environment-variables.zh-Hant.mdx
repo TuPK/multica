@@ -404,16 +404,11 @@ multica config show
 
 | 變數 | 預設值 | 說明 |
 |---|---|---|
-| `DO_NOT_TRACK` | 空（預設開啟遙測） | 設為 `1` 或 `true`（不區分大小寫）後，停止首方匿名自託管遙測的採集與傳送 |
 | `ANALYTICS_DISABLED` | `false` | 設為 `true` 關閉 PostHog 上報 |
 | `POSTHOG_API_KEY` | 空 | 不設定時統計上報關閉；接入自己的 PostHog 專案時填寫 |
 | `POSTHOG_HOST` | `https://us.i.posthog.com` | PostHog 地址 |
 | `METRICS_ADDR` | 空 | Prometheus metrics 監聽地址；空表示不啟動 |
 | `REALTIME_METRICS_TOKEN` | 空 | 保護 `/health/realtime` 的 bearer token |
-
-首方自託管遙測每天按 UTC 傳送一份部署級快照，固定且不可配置的地址為 `https://telemetry.multica.ai/v1/telemetry/events`。快照只包含正式釋出版本、工作區數/去重成員數/活躍 AI 代理數/過去 24 小時活躍守護程序數的分桶，過去 24 小時執行的開始、完成、失敗和取消總數，以及過去 1、7、28 個完整 UTC 日內登入後開啟過網頁端或桌面端的成員數、親自發起過 AI 代理執行（分配、@、評論、聊天、手動執行或重跑；不含 autopilot 和 AI 代理之間的委派）的成員數的分桶。成員只在本部署內計數，不會被識別。不會傳送名稱、信箱或網域、IP、業務識別符號、主機或裝置資訊、程式碼倉庫、模型或 plugin、prompt/output、評論或聊天、檔案路徑、token/費用、憑據、錯誤文字、stack 或日誌。此資料只用於瞭解自託管版本採用、部署規模區間、聚合使用量與成員活躍情況，不用於計費、授權、認證或安全決策。
-
-`DO_NOT_TRACK` 與 `ANALYTICS_DISABLED` 相互獨立：前者控制這份首方匿名快照，後者控制可選的 PostHog 整合。
 
 ## 接下來
 

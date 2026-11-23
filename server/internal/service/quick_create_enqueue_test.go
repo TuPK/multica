@@ -56,10 +56,9 @@ func TestEnqueueQuickCreateTaskRecordsDelegationWhenRequestCancelsAfterInsert(t 
 	agentUUID := util.MustParseUUID(agentID)
 
 	taskService := &TaskService{
-		Queries:              db.New(cancelAfterTaskInsertDB{DBTX: pool, cancel: cancel}),
-		TxStarter:            pool,
-		Bus:                  events.New(),
-		RecordMemberActivity: true,
+		Queries:   db.New(cancelAfterTaskInsertDB{DBTX: pool, cancel: cancel}),
+		TxStarter: pool,
+		Bus:       events.New(),
 	}
 
 	task, err := taskService.EnqueueQuickCreateTask(ctx, workspaceUUID, userUUID, agentUUID,
@@ -80,15 +79,5 @@ func TestEnqueueQuickCreateTaskRecordsDelegationWhenRequestCancelsAfterInsert(t 
 	}
 	if queued != 1 {
 		t.Fatalf("queued quick-create tasks = %d, want 1", queued)
-	}
-
-	var delegationDays int
-	if err := pool.QueryRow(context.Background(),
-		`SELECT count(*) FROM member_delegation_day WHERE user_id = $1`, userUUID,
-	).Scan(&delegationDays); err != nil {
-		t.Fatalf("count delegation days: %v", err)
-	}
-	if delegationDays != 1 {
-		t.Fatalf("member_delegation_day rows = %d, want 1 (the delegation was dropped with the request context)", delegationDays)
 	}
 }

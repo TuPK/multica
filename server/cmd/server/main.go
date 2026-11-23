@@ -33,7 +33,6 @@ import (
 	"github.com/multica-ai/multica/server/internal/profiling"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/scheduler"
-	"github.com/multica-ai/multica/server/internal/selfhosttelemetry"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/staffdeletion"
 	"github.com/multica-ai/multica/server/internal/usagesnapshot"
@@ -335,10 +334,6 @@ func newMainHTTPServer(addr string, handler http.Handler) *http.Server {
 
 func main() {
 	logger.Init()
-	// Read the opt-out before constructing any telemetry dependency. In the
-	// disabled case no collector or HTTP client is ever created.
-	telemetryConfig := selfhosttelemetry.ConfigFromDoNotTrack(os.Getenv("DO_NOT_TRACK"))
-	selfhosttelemetry.LogStartupStatus(slog.Default(), telemetryConfig)
 	// Warn about missing configuration
 	if err := jwtSecretBootError(os.Getenv("JWT_SECRET"), os.Getenv("APP_ENV")); err != nil {
 		slog.Error(
@@ -725,9 +720,6 @@ func main() {
 		LLMMaxRetries:       llmMaxRetries,
 		LLMDisableThinking:  llmDisableThinking,
 	})
-	// member_delegation_day exists only for self-host telemetry; DO_NOT_TRACK
-	// stops writing it as well as sending the snapshot.
-	h.TaskService.RecordMemberActivity = telemetryConfig.Enabled
 	h.InboxTrimmer = inboxTrimmer
 	var replicaQueries *db.Queries
 	if replicaPool != nil {
@@ -753,7 +745,6 @@ func main() {
 	// Start background workers.
 	sweepCtx, sweepCancel := context.WithCancel(context.Background())
 	autopilotCtx, autopilotCancel := context.WithCancel(context.Background())
-	telemetryWorker := selfhosttelemetry.New(pool, version, telemetryConfig, slog.Default())
 	// Reuse the router's services here. In particular, the router wires the
 	// EmptyClaim cache into TaskService; constructing a second TaskService for
 	// scheduled Autopilot dispatch would send the daemon wakeup without bumping
@@ -787,9 +778,6 @@ func main() {
 	// backlog, and a departed one retires everything it owned at once.
 	go h.RunQoderConnections(sweepCtx, pool, "http://localhost:"+port)
 	go runRuntimeSweeper(sweepCtx, queries, liveness, taskSvc, bus, runtimeReconnectGrace)
-	if telemetryWorker != nil {
-		go telemetryWorker.Run(sweepCtx)
-	}
 	go runDelegatedFailureRecoverySweeper(sweepCtx, taskSvc)
 	// Seven-day runtime retention does not share the 30-second liveness tick:
 	// its bounded transactions run independently once per hour, so a slow GC

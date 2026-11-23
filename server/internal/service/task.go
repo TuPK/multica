@@ -39,11 +39,6 @@ import (
 )
 
 type TaskService struct {
-	// RecordMemberActivity enables the member_delegation_day ledger, which
-	// only feeds self-host telemetry. Off unless the server enables telemetry
-	// at startup, so DO_NOT_TRACK stops collection, not just delivery.
-	RecordMemberActivity bool
-
 	Queries   *db.Queries
 	TxStarter TxStarter
 	Hub       *realtime.Hub
@@ -485,7 +480,6 @@ func (s *TaskService) attributionFromComment(ctx context.Context, comment db.Com
 		CommentID:  comment.ID,
 		AuthorType: comment.AuthorType,
 		AuthorID:   comment.AuthorID,
-		CreatedAt:  comment.CreatedAt,
 	}
 	// For an agent-authored comment, walk comment.source_task_id → parent task →
 	// parent.originator_user_id (set by every agent comment-write path since
@@ -862,26 +856,6 @@ func attributionCreateParams(attr attribution.Result) (source pgtype.Text, deleg
 	evidenceKind = pgtype.Text{String: string(attr.EvidenceKind), Valid: attr.EvidenceKind != ""}
 	evidenceRef = attr.EvidenceRefID
 	return
-}
-
-// RecordHumanDelegation notes that attr's member personally started an agent
-// run, for the self-host telemetry "delegating member" counts. Call it once the
-// run row (or the fold into a queued row) is committed, with the attribution
-// that row was written with. Runs that only inherit a human (retries, system
-// wakeups, delegation, autopilot) carry HumanAction=false and are skipped.
-//
-// Best-effort and outside any caller transaction: a failed write costs one
-// activity mark, never the run.
-func (s *TaskService) RecordHumanDelegation(ctx context.Context, attr attribution.Result) {
-	if s == nil || !s.RecordMemberActivity || s.Queries == nil || !attr.HumanAction || !attr.UserID.Valid {
-		return
-	}
-	if err := s.Queries.RecordMemberDelegationDay(ctx, db.RecordMemberDelegationDayParams{
-		UserID:  attr.UserID,
-		ActedAt: attr.HumanActedAt,
-	}); err != nil {
-		slog.Warn("record member delegation day failed", "error", err)
-	}
 }
 
 // OriginatorForIssueTask exposes resolveOriginatorForIssueTask to callers
@@ -1446,7 +1420,6 @@ func (s *TaskService) enqueueIssueTaskWithCommentPlan(ctx context.Context, issue
 		"agent_id", util.UUIDToString(issue.AssigneeID),
 		"force_fresh_session", forceFreshSession,
 	)
-	s.RecordHumanDelegation(ctx, attr)
 	if fireAt.Valid {
 		return task, nil
 	}
@@ -1593,7 +1566,6 @@ func (s *TaskService) enqueueMentionTaskWithCommentPlan(ctx context.Context, iss
 	}
 
 	slog.Info("mention task enqueued", "task_id", util.UUIDToString(task.ID), "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "is_leader_task", isLeader)
-	s.RecordHumanDelegation(ctx, attr)
 	if workflowHandoff {
 		// Publish the durable waiting task before promotion can publish queued
 		// or the daemon can claim it. Existing promotion handles occupied slots.
@@ -1826,7 +1798,6 @@ func (s *TaskService) enqueueQuickCreateTask(ctx context.Context, workspaceID, r
 	// cycle. Without this the user perceives "quick create never
 	// triggered" because the modal closes immediately and the task
 	// sits in 'queued' until the next sleepWithContextOrWakeup tick.
-	s.RecordHumanDelegation(enqueueCtx, attr)
 	s.NotifyTaskEnqueued(enqueueCtx, task)
 	return task, nil
 }
@@ -2265,12 +2236,6 @@ func (s *TaskService) enqueueChatTaskTx(
 
 // FinalizeChatTaskEnqueue performs only post-commit effects.
 func (s *TaskService) FinalizeChatTaskEnqueue(ctx context.Context, task db.AgentTaskQueue) {
-	// Every chat enqueue path stamps the message sender as a direct_human
-	// originator (DirectHumanRun); an unresolved sender is unattributed or
-	// owner_fallback and is skipped here.
-	if task.OriginatorSource.String == string(attribution.SourceDirectHuman) && !task.RetryOfTaskID.Valid {
-		s.RecordHumanDelegation(ctx, attribution.Result{UserID: task.OriginatorUserID, HumanAction: true})
-	}
 	if task.Status == "deferred" {
 		slog.Info("chat task deferred for channel media",
 			"task_id", util.UUIDToString(task.ID),
@@ -2746,7 +2711,6 @@ func (s *TaskService) sendDirectChatMessage(
 		"task_id", util.UUIDToString(out.Task.ID),
 		"chat_session_id", util.UUIDToString(session.ID),
 		"agent_id", util.UUIDToString(session.AgentID))
-	s.RecordHumanDelegation(ctx, attr)
 	// Notify only after commit. See EnqueueTaskForIssue for ordering rationale.
 	s.broadcastTaskEvent(ctx, protocol.EventTaskQueued, out.Task)
 	s.NotifyTaskEnqueued(ctx, out.Task)

@@ -159,7 +159,7 @@ require_config "$config" 'DATABASE_MIN_CONNS: ""'
 # into the backend environment is the whole change once that is settled.
 not_passed_to_backend="$(
   cat <<'EOF'
-ANALYTICS_DISABLED                   Cloud product analytics (PostHog); self-host ships no key and opts out of telemetry with DO_NOT_TRACK
+ANALYTICS_DISABLED                   Cloud product analytics (PostHog); self-host ships no key, so nothing is sent
 ANALYTICS_ENVIRONMENT                Cloud product analytics (PostHog)
 POSTHOG_API_KEY                      Cloud product analytics (PostHog)
 POSTHOG_HOST                         Cloud product analytics (PostHog)
