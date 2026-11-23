@@ -1,12 +1,12 @@
 ---
 title: 채팅 연동
-description: Multica 에이전트를 Feishu, Lark, Slack, DingTalk, WeCom, Telegram 또는 WeChat에 연결해 팀이 이미 사용하는 채팅 도구에서 활용합니다.
+description: Delegora 에이전트를 Feishu, Lark, Slack, DingTalk, WeCom, Telegram 또는 WeChat에 연결해 팀이 이미 사용하는 채팅 도구에서 활용합니다.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { ChannelChatDemo } from "@/components/demos/channel-chat-demo";
 
-채팅 연동을 사용하면 팀이 Multica를 열지 않고도 DM으로 에이전트에게 질문하고, 그룹 채팅에서 @멘션하거나, 채팅 창에서 바로 태스크를 만들 수 있습니다.
+채팅 연동을 사용하면 팀이 Delegora를 열지 않고도 DM으로 에이전트에게 질문하고, 그룹 채팅에서 @멘션하거나, 채팅 창에서 바로 태스크를 만들 수 있습니다.
 
 현재 Feishu/Lark, Slack, DingTalk, WeCom, Telegram, WeChat을 지원합니다. WeChat은 연결 QR 코드를 스캔한 계정의 DM만 받습니다. 같은 대화, 신원, 실행 메커니즘을 사용하지만 설치 방법은 다릅니다.
 
@@ -14,7 +14,7 @@ import { ChannelChatDemo } from "@/components/demos/channel-chat-demo";
 
 | | Feishu / Lark | Slack | DingTalk | WeCom | Telegram | WeChat |
 |---|---|---|---|---|---|---|
-| 설치 방법 | Multica에서 QR 코드를 만든 뒤 Feishu로 스캔해 승인 | Slack에서 app을 만든 뒤 두 token을 Multica에 입력 | 사내 app과 Stream 모드 로봇을 만든 뒤 AppKey와 AppSecret을 Multica에 입력 | WeCom 관리자 콘솔에서 장기 연결을 켠 스마트 봇을 만든 뒤 Bot ID와 Secret을 Multica에 입력 | @BotFather에서 Bot을 만든 뒤 token을 Multica에 입력 | 본인의 WeChat 계정으로 QR 코드 스캔 |
+| 설치 방법 | Delegora에서 QR 코드를 만든 뒤 Feishu로 스캔해 승인 | Slack에서 app을 만든 뒤 두 token을 Delegora에 입력 | 사내 app과 Stream 모드 로봇을 만든 뒤 AppKey와 AppSecret을 Delegora에 입력 | WeCom 관리자 콘솔에서 장기 연결을 켠 스마트 봇을 만든 뒤 Bot ID와 Secret을 Delegora에 입력 | @BotFather에서 Bot을 만든 뒤 token을 Delegora에 입력 | 본인의 WeChat 계정으로 QR 코드 스캔 |
 | 에이전트와 DM | 지원 | 지원 | 지원 | 지원 | 지원 | QR 코드를 스캔한 계정만 지원 |
 | 그룹 채팅 또는 채널 | Bot을 @멘션하면 트리거 | Bot을 @멘션하면 트리거 | Bot을 @멘션하면 트리거 | Bot을 @멘션하면 트리거 | Bot을 @멘션하거나 Bot에 답장하면 트리거 | 지원하지 않음 |
 | 태스크 만들기 | `/issue` 메시지 명령으로 입력 내용을 바로 생성 | `/issue` slash 명령으로 에이전트가 설명을 정리한 뒤 생성 | `/issue` 메시지 명령으로 입력 내용을 바로 생성 | `/issue` 메시지 명령으로 입력 내용을 바로 생성 | `/issue` 메시지 명령으로 입력 내용을 바로 생성 | `/issue` 메시지 명령으로 입력 내용을 바로 생성 |
@@ -25,7 +25,7 @@ import { ChannelChatDemo } from "@/components/demos/channel-chat-demo";
 
 새 연결은 현재 중국 본토 버전 Feishu에서만 만들 수 있습니다. 기존 국제 버전 Lark 연결은 계속 사용하고 관리할 수 있습니다.
 
-Bot 하나는 Multica 에이전트 하나에 연결됩니다. 같은 채팅 플랫폼에서 여러 에이전트를 사용하려면 각각 별도의 Bot을 연결해야 합니다.
+Bot 하나는 Delegora 에이전트 하나에 연결됩니다. 같은 채팅 플랫폼에서 여러 에이전트를 사용하려면 각각 별도의 Bot을 연결해야 합니다.
 
 DingTalk, WeCom, Telegram은 [커뮤니티에서 유지 관리](/community-maintained)합니다. 모든 릴리스에 포함되지만 공식 지원 SLA는 없습니다. 문제는 [GitHub issues](https://github.com/multica-ai/multica/issues)에 알려주세요.
 
@@ -43,25 +43,25 @@ Telegram은 이미지, 파일, 영상, 음성을 첨부파일로 에이전트에
 
 ## 메시지 실행 과정
 
-1. Multica가 Bot을 기준으로 해당 워크스페이스와 에이전트를 찾습니다.
+1. Delegora가 Bot을 기준으로 해당 워크스페이스와 에이전트를 찾습니다.
 2. 그룹 채팅이나 채널에서는 Bot을 명시적으로 @멘션한 메시지만 처리됩니다. DM에서는 @멘션이 필요 없습니다.
-3. Multica가 보낸 사람의 계정 연결과 워크스페이스 멤버 자격을 확인합니다.
+3. Delegora가 보낸 사람의 계정 연결과 워크스페이스 멤버 자격을 확인합니다.
 4. 메시지가 [에이전트 대화](/chat)에 들어가고 실행이 하나 생성됩니다.
 5. 에이전트의 답변이 원래 DM 또는 스레드로 돌아옵니다.
 
 Bot을 @멘션하지 않은 채널 메시지는 에이전트를 트리거하지 않으며, 그 자체로 대화의 한 턴이 되지도 않습니다. Feishu/Lark와 Telegram은 누군가 Bot에게 지시를 보낼 때 그룹의 최근 메시지를 읽기 전용 컨텍스트로 그 턴 앞에 붙입니다. 자세한 내용은 각 플랫폼 페이지를 참고하세요.
 
-`/issue`는 명령이며 대화의 한 턴으로 치지 않습니다. Multica는 메시지로 태스크를 만들고 담당자를 이 Bot에 연결된 에이전트로 지정한 뒤, 결과를 원래 채팅으로 보냅니다. 명령 자체는 Multica Chat에 나타나지 않습니다. Slack의 기본 slash 명령은 별도의 비동기 태스크 생성 흐름으로 처리됩니다.
+`/issue`는 명령이며 대화의 한 턴으로 치지 않습니다. Delegora는 메시지로 태스크를 만들고 담당자를 이 Bot에 연결된 에이전트로 지정한 뒤, 결과를 원래 채팅으로 보냅니다. 명령 자체는 Delegora Chat에 나타나지 않습니다. Slack의 기본 slash 명령은 별도의 비동기 태스크 생성 흐름으로 처리됩니다.
 
 <ChannelChatDemo />
 
 ## 대화 컨텍스트 제어
 
-DM에서 `/help`(Slack에서는 `@Multica /help`)를 보내거나 그룹 또는 채널에서 Bot을 @멘션하고 `/help`를 보내면 사용 가능한 명령을 확인할 수 있습니다. `/help`, `/new [메시지]`, `/clear [메시지]`, `/issue <제목>`(다음 줄부터는 설명)입니다. WeCom과 WeChat(DM만)에서도 지원합니다. Multica는 Chat이나 실행을 만들거나 현재 Chat을 변경하지 않고 직접 답합니다. Slack의 `@Multica /help`에는 메시지 명령이 표시됩니다. 네이티브 `/issue <설명>`은 에이전트가 설명으로 태스크를 만드는 별도 흐름입니다.
+DM에서 `/help`(Slack에서는 `@Multica /help`)를 보내거나 그룹 또는 채널에서 Bot을 @멘션하고 `/help`를 보내면 사용 가능한 명령을 확인할 수 있습니다. `/help`, `/new [메시지]`, `/clear [메시지]`, `/issue <제목>`(다음 줄부터는 설명)입니다. WeCom과 WeChat(DM만)에서도 지원합니다. Delegora는 Chat이나 실행을 만들거나 현재 Chat을 변경하지 않고 직접 답합니다. Slack의 `@Multica /help`에는 메시지 명령이 표시됩니다. 네이티브 `/issue <설명>`은 에이전트가 설명으로 태스크를 만드는 별도 흐름입니다.
 
-`/new`은 새 Multica Chat을 만들고 해당 외부 대화의 후속 메시지를 새 Chat으로 라우팅합니다. `/new <메시지>`를 보내면 해당 메시지가 첫 번째 대화가 됩니다. 이전 Chat은 Multica에 저장된 상태로 계속 사용할 수 있습니다.
+`/new`은 새 Delegora Chat을 만들고 해당 외부 대화의 후속 메시지를 새 Chat으로 라우팅합니다. `/new <메시지>`를 보내면 해당 메시지가 첫 번째 대화가 됩니다. 이전 Chat은 Delegora에 저장된 상태로 계속 사용할 수 있습니다.
 
-`/clear`는 현재 Multica Chat을 유지하면서 에이전트에게 보이는 컨텍스트만 새로 시작합니다. 전체 Chat 기록은 Multica에 남지만 에이전트는 경계 이전의 메시지를 가져올 수 없습니다. `/clear <메시지>`는 해당 메시지를 새 컨텍스트의 첫 번째 대화로 사용하고, 인자 없는 `/clear`는 다음 실제 메시지에 적용됩니다.
+`/clear`는 현재 Delegora Chat을 유지하면서 에이전트에게 보이는 컨텍스트만 새로 시작합니다. 전체 Chat 기록은 Delegora에 남지만 에이전트는 경계 이전의 메시지를 가져올 수 없습니다. `/clear <메시지>`는 해당 메시지를 새 컨텍스트의 첫 번째 대화로 사용하고, 인자 없는 `/clear`는 다음 실제 메시지에 적용됩니다.
 
 Slack DM에서는 `/new`과 `/clear`가 네이티브 slash 명령입니다. 네이티브 slash command payload로는 채널의 대상 thread를 식별할 수 없으므로 대상 thread에서 `@Multica /new [메시지]` 또는 `@Multica /clear [메시지]`를 보내세요.
 
@@ -78,25 +78,25 @@ Slack DM에서는 `/new`과 `/clear`가 네이티브 slash 명령입니다. 네�
 
 ## 계정 연결
 
-WeChat은 QR 코드를 스캔할 때 해당 WeChat 계정을 연결을 시작한 Multica 사용자에게 연결합니다. 메시지는 그 사용자의 워크스페이스 권한으로 실행됩니다. 본인 계정으로 스캔하고 QR 코드를 공유하지 마세요. 다른 계정이나 그룹의 메시지는 받지 않습니다.
+WeChat은 QR 코드를 스캔할 때 해당 WeChat 계정을 연결을 시작한 Delegora 사용자에게 연결합니다. 메시지는 그 사용자의 워크스페이스 권한으로 실행됩니다. 본인 계정으로 스캔하고 QR 코드를 공유하지 마세요. 다른 계정이나 그룹의 메시지는 받지 않습니다.
 
-Feishu/Lark, Slack, DingTalk, WeCom, Telegram에서는 멤버가 Bot에 처음 메시지를 보내면 계정 연결 링크를 받습니다. Multica에 로그인하면 플랫폼 계정이 현재 워크스페이스 멤버와 연결됩니다.
+Feishu/Lark, Slack, DingTalk, WeCom, Telegram에서는 멤버가 Bot에 처음 메시지를 보내면 계정 연결 링크를 받습니다. Delegora에 로그인하면 플랫폼 계정이 현재 워크스페이스 멤버와 연결됩니다.
 
-연결을 마친 뒤에만 Multica가 에이전트를 실행합니다. 메시지마다 계정 연결과 워크스페이스 멤버 자격을 다시 확인하므로 워크스페이스를 떠난 뒤에는 Bot으로 해당 에이전트를 계속 사용할 수 없습니다.
+연결을 마친 뒤에만 Delegora가 에이전트를 실행합니다. 메시지마다 계정 연결과 워크스페이스 멤버 자격을 다시 확인하므로 워크스페이스를 떠난 뒤에는 Bot으로 해당 에이전트를 계속 사용할 수 없습니다.
 
 <Callout type="info">
-계정 연결은 보낸 사람의 신원을 확인하는 데만 사용됩니다. 채팅 플랫폼의 다른 멤버가 자동으로 Multica 워크스페이스에 참여하지는 않습니다.
+계정 연결은 보낸 사람의 신원을 확인하는 데만 사용됩니다. 채팅 플랫폼의 다른 멤버가 자동으로 Delegora 워크스페이스에 참여하지는 않습니다.
 </Callout>
 
 ## 연결 관리
 
 워크스페이스 owner와 admin은 Bot을 연결하거나 연결 해제할 수 있습니다. Feishu/Lark, DingTalk, WeChat은 에이전트 owner도 연결하고 연결 해제할 수 있습니다. 일반 멤버는 이미 연결된 연동을 확인하고 자신에게 호출 권한이 있는 에이전트를 사용할 수 있습니다.
 
-연결을 해제하면 Bot이 새 메시지를 받지 않습니다. 기존 Multica 대화와 실행 기록은 그대로 유지됩니다.
+연결을 해제하면 Bot이 새 메시지를 받지 않습니다. 기존 Delegora 대화와 실행 기록은 그대로 유지됩니다.
 
 ## 자체 호스팅
 
-자체 호스팅 환경에서는 해당 플랫폼에 32바이트 암호화 키를 먼저 설정해야 Multica에 연결 메뉴가 열립니다.
+자체 호스팅 환경에서는 해당 플랫폼에 32바이트 암호화 키를 먼저 설정해야 Delegora에 연결 메뉴가 열립니다.
 
 ```dotenv
 MULTICA_LARK_SECRET_KEY=<base64로 인코딩한 32바이트 키>
@@ -107,7 +107,7 @@ MULTICA_TELEGRAM_SECRET_KEY=<base64로 인코딩한 32바이트 키>
 MULTICA_WEIXIN_SECRET_KEY=<base64로 인코딩한 32바이트 키>
 ```
 
-이 키는 Bot 자격 증명을 암호화해 저장하는 데 사용됩니다. 생성, 보관, 교체 방법은 [환경 변수](/environment-variables)를 참고하세요. Multica Cloud에는 이미 설정되어 있습니다.
+이 키는 Bot 자격 증명을 암호화해 저장하는 데 사용됩니다. 생성, 보관, 교체 방법은 [환경 변수](/environment-variables)를 참고하세요. Delegora Cloud에는 이미 설정되어 있습니다.
 
 WeCom의 응답은 한 프로세스가 보유한 WebSocket으로만 보낼 수 있습니다. 다른 레플리카에서 생성된 응답이 어떻게 되는지는 실시간 릴레이 모드에 따라 달라집니다.
 

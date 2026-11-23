@@ -1,9 +1,9 @@
 ---
 title: 项目架构
-description: 了解 Multica 的客户端、Go 服务、执行守护进程和共享前端包如何协作。
+description: 了解 Delegora 的客户端、Go 服务、执行守护进程和共享前端包如何协作。
 ---
 
-Multica 由一个 Go backend、多种客户端和运行在执行电脑上的守护进程组成。PostgreSQL 保存协作数据；守护进程领取 task，并调用本机的 AI 编程工具。
+Delegora 由一个 Go backend、多种客户端和运行在执行电脑上的守护进程组成。PostgreSQL 保存协作数据；守护进程领取 task，并调用本机的 AI 编程工具。
 
 本页聚焦实现，因此正文中的 **task** 指产品 **Run**（运行）背后的内部调度、API 和数据库实体。界面与产品文档统一称为 Run；`TaskService`、`task_id` 等标识为兼容性保持不变。
 
@@ -19,7 +19,7 @@ Web / Desktop / Mobile / CLI
  本机守护进程 ─── AI 编程工具
 ```
 
-面向产品用户的解释见 [Multica 的工作方式](/how-multica-works)。本页关注代码如何分层。
+面向产品用户的解释见 [Delegora 的工作方式](/how-multica-works)。本页关注代码如何分层。
 
 ## 仓库结构
 
@@ -100,7 +100,7 @@ PostgreSQL 是业务数据的权威来源。Redis 是可选组件，用于跨实
 
 ## 实时连接
 
-Multica 有两条不同的 WebSocket 路径：
+Delegora 有两条不同的 WebSocket 路径：
 
 - `internal/realtime/` 把任务、评论、收件箱等变化推送给用户客户端；
 - `internal/daemonws/` 连接守护进程，用于唤醒运行时和执行 daemon RPC。

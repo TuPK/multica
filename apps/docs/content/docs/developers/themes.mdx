@@ -1,12 +1,12 @@
 ---
 title: Make a theme
-description: The Multica theme format — manifest, CSS variables, options, and anchors — how to write and check a theme, and how to publish it to the theme store.
+description: The Delegora theme format — manifest, CSS variables, options, and anchors — how to write and check a theme, and how to publish it to the theme store.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-A Multica theme is a folder with a `manifest.json` and a `theme.css`, plus any fonts and images the CSS uses. The CSS sets public variables for light and dark mode and can restyle a set of stable anchors; the manifest names the theme and can declare options that people adjust in **Settings → Appearance**. Themes never run JavaScript.
+A Delegora theme is a folder with a `manifest.json` and a `theme.css`, plus any fonts and images the CSS uses. The CSS sets public variables for light and dark mode and can restyle a set of stable anchors; the manifest names the theme and can declare options that people adjust in **Settings → Appearance**. Themes never run JavaScript.
 
 <Callout type="warn">
   The theme format is a beta API. Variables, anchors, and the manifest may change until it is declared stable. The complete, generated list of variables and anchors is in [`docs/theming.md`](https://github.com/multica-ai/multica/blob/main/docs/theming.md); this page covers how they fit together.
@@ -34,7 +34,7 @@ In **Settings → Appearance**, pick the theme closest to what you want, then ch
 
 ### Check it
 
-Run the checks from a checkout of the [Multica repository](https://github.com/multica-ai/multica) before you share it (see [Check and preview](#check-and-preview)).
+Run the checks from a checkout of the [Delegora repository](https://github.com/multica-ai/multica) before you share it (see [Check and preview](#check-and-preview)).
 
 </Step>
 </Steps>
@@ -203,7 +203,7 @@ Escapes, case, and comments don't get around the check; it reads the CSS the way
 
 ## Check and preview
 
-From a checkout of the [Multica repository](https://github.com/multica-ai/multica):
+From a checkout of the [Delegora repository](https://github.com/multica-ai/multica):
 
 ```bash
 pnpm theme:check path/to/paper          # a folder
@@ -217,7 +217,7 @@ pnpm theme:preview path/to/paper --out preview   # preview/light.png and preview
 
 If a theme hides or breaks part of the interface while you work on it, open the app with `?theme=default`, or hold **Shift** right after it loads; see [When a theme breaks something](/themes#when-a-theme-breaks-something).
 
-The checker also runs without installing the repository, from a sparse clone and Node 22.18 or newer. Agents get the same commands from their built-in Multica skill:
+The checker also runs without installing the repository, from a sparse clone and Node 22.18 or newer. Agents get the same commands from their built-in Delegora skill:
 
 ```bash
 git clone --depth 1 --filter=blob:none --sparse https://github.com/multica-ai/multica.git multica-themes
@@ -255,7 +255,7 @@ Open a pull request that adds a file `themes/<id>.json`, named by the manifest's
 
 New releases reach the store within about an hour, after they pass the same checks; people who installed the theme then see an update. A release that fails keeps the previous one listed. The app only installs the exact `theme.zip` that passed, and reads it with the same parser and CSS checks as an imported theme.
 
-Each store card shows how many times the theme has been downloaded from that Multica server. Every install and every update counts once, and themes people haven't installed yet are listed most downloaded first.
+Each store card shows how many times the theme has been downloaded from that Delegora server. Every install and every update counts once, and themes people haven't installed yet are listed most downloaded first.
 
 ## Next steps
 

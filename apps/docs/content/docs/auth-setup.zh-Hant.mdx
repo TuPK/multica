@@ -6,11 +6,11 @@ description: 配置信箱驗證碼、Google 登入和新使用者註冊範圍。
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica 預設使用信箱驗證碼登入，也可以增加 Google OAuth。已經存在的使用者始終可以再次登入；註冊限制只決定是否允許建立新帳號。
+Delegora 預設使用信箱驗證碼登入，也可以增加 Google OAuth。已經存在的使用者始終可以再次登入；註冊限制只決定是否允許建立新帳號。
 
 ## 信箱驗證碼
 
-使用者輸入信箱後，Multica 會傳送一個 6 位驗證碼。驗證碼 10 分鐘內有效，驗證成功後瀏覽器獲得登入 cookie。
+使用者輸入信箱後，Delegora 會傳送一個 6 位驗證碼。驗證碼 10 分鐘內有效，驗證成功後瀏覽器獲得登入 cookie。
 
 郵件可以透過 Resend 或 SMTP 傳送。兩者同時配置時，`SMTP_HOST` 優先。
 
@@ -100,7 +100,7 @@ MULTICA_DEV_VERIFICATION_CODE=888888
 </Step>
 <Step>
 
-把 Multica 前端的回呼地址加入 **Authorized redirect URIs**：
+把 Delegora 前端的回呼地址加入 **Authorized redirect URIs**：
 
 ```text
 https://multica.example.com/auth/callback

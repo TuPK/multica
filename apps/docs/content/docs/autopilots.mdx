@@ -8,7 +8,7 @@ import { AutopilotDemo } from "@/components/demos/autopilot-demo";
 
 A daily progress summary, a periodic dependency check, an agent kicked off by an event from an external system: work that happens over and over goes to an autopilot.
 
-Each autopilot stores a Runbook, an assignee, and one or more triggers. When triggered, Multica creates an issue or runs the agent directly, and every run leaves a record.
+Each autopilot stores a Runbook, an assignee, and one or more triggers. When triggered, Delegora creates an issue or runs the agent directly, and every run leaves a record.
 
 ## Autopilots and issue wakeups [#vs-wakeups]
 
@@ -67,7 +67,7 @@ Cron has no seconds field, and timezones use IANA names like `Asia/Shanghai`. Be
 
 ## Run from a webhook
 
-After adding a webhook trigger, Multica generates a unique URL. Send it a JSON object or array to trigger the autopilot:
+After adding a webhook trigger, Delegora generates a unique URL. Send it a JSON object or array to trigger the autopilot:
 
 ```bash
 curl -X POST "$MULTICA_WEBHOOK_URL" \
@@ -82,14 +82,14 @@ Constraints on webhook requests:
 
 - the body must be a valid JSON object or array, up to 256 KiB;
 - `Idempotency-Key` prevents duplicate runs when the sender retries; GitHub deliveries are also deduplicated by `X-GitHub-Delivery`;
-- without a stable idempotency key, Multica can't guarantee that repeated requests run only once;
+- without a stable idempotency key, Delegora can't guarantee that repeated requests run only once;
 - when the trigger is disabled or the event doesn't match, the delivery is recorded as ignored and no run is created.
 
 ### Filter events [#event-filters]
 
 When one source sends several event types, add event filters to the trigger. Click **Add rule** and enter one event name plus an optional list of actions; a run fires if any rule matches, and a trigger with no rules accepts every event. To edit a webhook's filters, click **Edit webhook** on its row under **Triggers**.
 
-For example, with `workflow_run` as the event name and `completed, failed` as the actions, only those two kinds of `workflow_run` results are accepted. Multica recognizes the event and action from common request headers and payload fields, including GitHub's `X-GitHub-Event` and the `action` field in the body.
+For example, with `workflow_run` as the event name and `completed, failed` as the actions, only those two kinds of `workflow_run` results are accepted. Delegora recognizes the event and action from common request headers and payload fields, including GitHub's `X-GitHub-Event` and the `action` field in the body.
 
 For GitLab, the event name is the `X-Gitlab-Event` header value exactly as GitLab sends it, such as `Merge Request Hook`, `Issue Hook`, or `Note Hook`, including spaces and capitals; the payload's `object_kind` (`merge_request`) doesn't match. Each listed action is compared with both `object_attributes.action` and `object_attributes.state`, and the rule matches if either value is listed. This rule accepts new, updated, and reopened merge requests and ignores merges and closes:
 
@@ -135,7 +135,7 @@ Only the autopilot's creator, workspace owners/admins, and collaborators granted
 
 ### Webhook response reference
 
-When debugging a sender, check Multica's responses against this table:
+When debugging a sender, check Delegora's responses against this table:
 
 | HTTP status | Response status | Meaning |
 |---|---|---|
@@ -148,7 +148,7 @@ When debugging a sender, check Multica's responses against this table:
 | 404 | Error message | The token in the URL is invalid or has been rotated. |
 | 413 | Error message | The body exceeds 256 KiB. |
 | 429 | Error message | Too many requests; retry later per the `Retry-After` response header. |
-| 500 | Error message | Multica internal error; the sender can retry later. |
+| 500 | Error message | Delegora internal error; the sender can retry later. |
 
 Business-level ignores — pausing, archiving, and event filtering — return 200 rather than 4xx, so senders don't retry endlessly.
 
@@ -171,7 +171,7 @@ A fully processed webhook delivery can be replayed from its detail view. A repla
 
 A failed run in run-only mode is not retried automatically; the next schedule still fires as planned. Create-issue mode produces regular issue runs, and infrastructure failures follow the rules in [Runs](/tasks#failures-and-automatic-retries).
 
-Multica periodically checks whether recent runs keep failing: when the past 7 days have at least 50 completed or failed runs with a failure rate of 90%, the system pauses the autopilot and notifies its creator; fix the cause, then resume it manually.
+Delegora periodically checks whether recent runs keep failing: when the past 7 days have at least 50 completed or failed runs with a failure rate of 90%, the system pauses the autopilot and notifies its creator; fix the cause, then resume it manually.
 
 Pausing manually stops schedules, webhooks, and **Run now**. Deletion is actually archiving: future triggers stop, and run and delivery history is kept.
 

@@ -1,13 +1,13 @@
 ---
 title: Telegram Bot 연동
-description: 직접 만든 Telegram Bot을 Multica 에이전트에 연결해 DM, 그룹, forum topic, /issue에서 사용합니다.
+description: 직접 만든 Telegram Bot을 Delegora 에이전트에 연결해 DM, 그룹, forum topic, /issue에서 사용합니다.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-Multica는 Telegram 공식 [@BotFather](https://t.me/BotFather)에서 만든 Bot을 사용합니다. Bot 하나는 Multica 에이전트 하나에 연결됩니다. Telegram에서 각자 다른 Bot으로 보여야 하는 에이전트가 여럿이면 에이전트마다 Bot을 만드세요.
+Delegora는 Telegram 공식 [@BotFather](https://t.me/BotFather)에서 만든 Bot을 사용합니다. Bot 하나는 Delegora 에이전트 하나에 연결됩니다. Telegram에서 각자 다른 Bot으로 보여야 하는 에이전트가 여럿이면 에이전트마다 Bot을 만드세요.
 
 <Callout type="info">
 Telegram 연동은 [커뮤니티가 유지관리](/community-maintained)합니다. 매 릴리스에 포함되지만 공식 지원 SLA는 제공되지 않습니다. 문제가 있으면 [GitHub issues](https://github.com/multica-ai/multica/issues)에 보고해 주세요.
@@ -40,18 +40,18 @@ token을 태스크, 채팅, 로그, 코드 저장소에 남기지 마세요. 노
 
 ### 에이전트에 연결하기 [#2-에이전트에-연결하기]
 
-1. Multica의 **에이전트**에서 에이전트를 선택하고 **메신저**를 엽니다.
+1. Delegora의 **에이전트**에서 에이전트를 선택하고 **메신저**를 엽니다.
 2. **메시지 채널 추가**를 클릭한 뒤 **Telegram**을 선택합니다.
 3. Bot token을 붙여 넣고 **연결**을 클릭합니다.
 
-Multica는 Telegram에서 Bot을 검증하고 long polling과 충돌하는 webhook이 없는지 확인한 뒤 token을 암호화해 저장하고 감독되는 `getUpdates` 연결을 시작합니다. 다른 에이전트나 워크스페이스에 연결된 Bot은 먼저 기존 연결을 해제해야 합니다.
+Delegora는 Telegram에서 Bot을 검증하고 long polling과 충돌하는 webhook이 없는지 확인한 뒤 token을 암호화해 저장하고 감독되는 `getUpdates` 연결을 시작합니다. 다른 에이전트나 워크스페이스에 연결된 Bot은 먼저 기존 연결을 해제해야 합니다.
 
 </Step>
 </Steps>
 
 ## 처음 사용 [#최초-사용과-계정-바인딩]
 
-멤버가 처음 Bot에 메시지를 보내면 일회용 Multica 계정 연결 링크를 받습니다. 같은 워크스페이스의 Multica 계정으로 로그인한 뒤 Telegram으로 돌아가 메시지를 다시 보내세요. 링크는 15분 후 만료되며, Bot에 다시 DM을 보내면 새 링크를 받을 수 있습니다.
+멤버가 처음 Bot에 메시지를 보내면 일회용 Delegora 계정 연결 링크를 받습니다. 같은 워크스페이스의 Delegora 계정으로 로그인한 뒤 Telegram으로 돌아가 메시지를 다시 보내세요. 링크는 15분 후 만료되며, Bot에 다시 DM을 보내면 새 링크를 받을 수 있습니다.
 
 그룹에는 자격 증명 역할을 하는 연결 링크를 공개하지 않습니다. Bot은 먼저 개인 채팅을 시작하라고 안내합니다.
 
@@ -65,7 +65,7 @@ Bot을 열고 바로 텍스트를 보냅니다. @멘션은 필요 없습니다.
 
 ### 그룹과 forum topic
 
-Bot을 그룹에 추가한 뒤 @멘션하거나 Bot 메시지에 직접 답장합니다. 수락된 메시지는 이어지는 Multica 대화에 남습니다. 일반 그룹은 각자 하나의 대화를 이어 가고, forum topic은 topic별로 분리됩니다.
+Bot을 그룹에 추가한 뒤 @멘션하거나 Bot 메시지에 직접 답장합니다. 수락된 메시지는 이어지는 Delegora 대화에 남습니다. 일반 그룹은 각자 하나의 대화를 이어 가고, forum topic은 topic별로 분리됩니다.
 
 <Accordions type="multiple">
 <Accordion title="Bot에게 보내지 않은 그룹 메시지" id="unaddressed-group-messages">
@@ -93,9 +93,9 @@ Bot에게 보낸 답장이 인용한 메시지에 이미지나 파일이 있으�
 
 ### 명령
 
-- `/new`는 비어 있는 새 Multica Chat을 만들고 해당 Telegram 대화의 이후 메시지를 새 Chat으로 라우팅합니다. `/new <메시지>`를 보내면 그 메시지가 새 Chat의 첫 턴이 됩니다. 다른 멤버에게 답장하면서 Bot을 명시적으로 @멘션하면 선택한 인용 내용도 첫 턴에 포함됩니다.
-- `/clear`는 현재 Multica Chat을 유지하면서 다음 비어 있지 않은 메시지에 새 에이전트 컨텍스트를 적용합니다. `/clear <메시지>`를 보내면 그 메시지가 경계 이후의 첫 턴이 되며, 명시적으로 선택한 답장 인용도 유지됩니다.
-- `/issue <제목>`은 Multica 태스크를 만듭니다. 다음 줄은 선택 설명으로 사용됩니다. 제목 없이 보내면 사용법을 안내합니다.
+- `/new`는 비어 있는 새 Delegora Chat을 만들고 해당 Telegram 대화의 이후 메시지를 새 Chat으로 라우팅합니다. `/new <메시지>`를 보내면 그 메시지가 새 Chat의 첫 턴이 됩니다. 다른 멤버에게 답장하면서 Bot을 명시적으로 @멘션하면 선택한 인용 내용도 첫 턴에 포함됩니다.
+- `/clear`는 현재 Delegora Chat을 유지하면서 다음 비어 있지 않은 메시지에 새 에이전트 컨텍스트를 적용합니다. `/clear <메시지>`를 보내면 그 메시지가 경계 이후의 첫 턴이 되며, 명시적으로 선택한 답장 인용도 유지됩니다.
+- `/issue <제목>`은 Delegora 태스크를 만듭니다. 다음 줄은 선택 설명으로 사용됩니다. 제목 없이 보내면 사용법을 안내합니다.
 - 그룹에서는 `/issue@your_bot` 같은 Telegram 명령 접미사도 지원합니다.
 
 ### 응답과 지원되는 내용
@@ -116,7 +116,7 @@ Bot은 Telegram 메시지를 보내고 편집해 텍스트 응답을 스트리�
 
 Telegram Bot은 20 MB까지만 내려받을 수 있습니다. 파일을 가져오지 못하면(너무 크거나 다운로드 실패) Bot이 알려 주고 에이전트에게는 자리표시자만 보입니다.
 
-에이전트가 만든 파일은 별도 메시지로 채팅에 전송됩니다. 10 MB 이하 이미지는 인라인으로, 그 외에는 50 MB까지 파일로 도착합니다. 전달을 확인하지 못하면 Bot이 알려 주며 파일은 Multica의 응답에 첨부된 채로 남습니다.
+에이전트가 만든 파일은 별도 메시지로 채팅에 전송됩니다. 10 MB 이하 이미지는 인라인으로, 그 외에는 50 MB까지 파일로 도착합니다. 전달을 확인하지 못하면 Bot이 알려 주며 파일은 Delegora의 응답에 첨부된 채로 남습니다.
 
 객체 스토리지가 설정되지 않았으면 Bot은 미디어에 미지원 안내를 회신하고 에이전트는 파일을 보낼 수 없다는 안내를 받습니다. sticker, 위치, 투표 등 파일이 아닌 메시지는 개인 채팅에서, 그리고 그룹에서 Bot을 명시적으로 @멘션했을 때 같은 안내를 받습니다. 그룹에서 Bot을 지정하지 않은 이런 메시지에는 응답하지 않습니다.
 
@@ -125,7 +125,7 @@ Telegram Bot은 20 MB까지만 내려받을 수 있습니다. 파일을 가져�
 
 ## 연결 관리
 
-**설정 → 메신저**에서 플랫폼별로 연결된 에이전트를 확인할 수 있습니다. 에이전트를 선택하면 상세 페이지의 **메신저** 섹션이 열립니다. 워크스페이스 owner/admin은 그곳의 Bot 관리 메뉴에서 연결을 해제할 수 있습니다. 해제하면 long polling과 이후 응답이 멈추지만 Multica 대화와 감사 기록은 유지됩니다.
+**설정 → 메신저**에서 플랫폼별로 연결된 에이전트를 확인할 수 있습니다. 에이전트를 선택하면 상세 페이지의 **메신저** 섹션이 열립니다. 워크스페이스 owner/admin은 그곳의 Bot 관리 메뉴에서 연결을 해제할 수 있습니다. 해제하면 long polling과 이후 응답이 멈추지만 Delegora 대화와 감사 기록은 유지됩니다.
 
 ## 자체 호스팅 설정 [#관리-및-자체-호스팅]
 
@@ -143,7 +143,7 @@ MULTICA_TELEGRAM_SECRET_KEY=<base64-encoded 32-byte key>
 
 - **Bot 검증 실패**: 먼저 서버 네트워크와 proxy를 확인합니다. Telegram이 token을 명시적으로 거부한 경우에만 재발급하세요.
 - **webhook conflict**: 연결 전에 이 Bot의 기존 webhook을 제거합니다. Telegram은 webhook과 `getUpdates`를 동시에 쓸 수 없습니다.
-- **409 polling conflict**: 다른 Multica 인스턴스나 프로세스가 같은 Bot을 polling하고 있습니다. 그쪽을 중지하거나 환경별로 Bot을 분리합니다.
+- **409 polling conflict**: 다른 Delegora 인스턴스나 프로세스가 같은 Bot을 polling하고 있습니다. 그쪽을 중지하거나 환경별로 Bot을 분리합니다.
 - **그룹에서 답장 없음**: Bot이 그룹에 있고 메시지가 @멘션 또는 Bot에 대한 답장인지 확인합니다.
 - **연결 링크 만료**: Bot에 새 DM을 보내 최신 링크를 사용합니다.
 - **실행되지 않음**: 에이전트가 보관 처리되었는지, 사용하는 [런타임](/daemon-runtimes)이 온라인인지 확인합니다.

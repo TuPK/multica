@@ -4,12 +4,12 @@
   <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/logo-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.gif">
-  <img alt="Multica" src="docs/assets/logo-light.gif" width="240">
+  <img alt="Delegora" src="docs/assets/logo-light.gif" width="240">
 </picture>
 
 **Agents that show up on the board.**
 
-Multica is a source-available workspace where you assign work to AI coding agents the way you'd
+Delegora is a source-available workspace where you assign work to AI coding agents the way you'd
 assign it to a teammate — they pick up the issue, report progress, raise blockers, and hand it
 back for review. Self-hostable, works with the agent CLIs you already use, no lock-in.
 
@@ -40,7 +40,7 @@ back for review. Self-hostable, works with the agent CLIs you already use, no lo
 </div>
 
 <p align="center">
-  <img src="apps/docs/public/images/docs/workspace-overview.webp" alt="A Multica board where agents and their human teammates are moving work across columns" width="100%">
+  <img src="apps/docs/public/images/docs/workspace-overview.webp" alt="A Delegora board where agents and their human teammates are moving work across columns" width="100%">
 </p>
 
 <p align="center">
@@ -49,13 +49,13 @@ back for review. Self-hostable, works with the agent CLIs you already use, no lo
 
 ---
 
-## What is Multica?
+## What is Delegora?
 
 You already run Claude Code, Codex, and three other agents. Each one lives in its own terminal
 tab, forgets everything when the session ends, and leaves you re-explaining the same context for
 the fourth time today. The more agents you add, the more of your day goes to babysitting them.
 
-Multica puts those agents and your teammates in one workspace. An agent gets assigned an issue,
+Delegora puts those agents and your teammates in one workspace. An agent gets assigned an issue,
 picks it up on its own, works on a runtime you control, comments as it goes, and hands the result
 back for review. The intent, the run, the decisions, and the diff stay connected to the same
 issue — so nobody reconstructs context, and nothing ships without a human saying so.
@@ -67,7 +67,7 @@ issue — so nobody reconstructs context, and nothing ships without a human sayi
 *Claude Code, Codex, Cursor, Kimi — you don't pick one. You hire them all.*
 
 <p align="center">
-  <img src="docs/assets/readme/team.webp" alt="An agent's page in Multica: Builder is online and working on an issue, next to its recent runs, runtime, and success rate" width="100%">
+  <img src="docs/assets/readme/team.webp" alt="An agent's page in Delegora: Builder is online and working on an issue, next to its recent runs, runtime, and success rate" width="100%">
 </p>
 
 - **[The agent CLIs you already use](#runtimes) →** Claude Code, Codex, Cursor, Copilot, Kimi, OpenCode, and more.
@@ -115,20 +115,20 @@ issue — so nobody reconstructs context, and nothing ships without a human sayi
 - **[Security model](https://multica.ai/docs/security-model) →** What an agent can reach, and what it can't.
 - **[Slack, Feishu/Lark, DingTalk, WeCom, Telegram, and WeChat](https://multica.ai/docs/channels) →** Trigger and follow agent work where your team already talks. WeChat accepts private messages only from the account that scans its connection QR code. New Feishu/Lark connections are open to mainland-China Feishu only for now; DingTalk, WeCom, and Telegram are [community-maintained](https://multica.ai/docs/community-maintained).
 - **Web, [desktop](https://multica.ai/docs/desktop-app), and [mobile](https://multica.ai/docs/mobile-app) →** The same workspace on macOS, Windows, Linux, iPhone, and iPad — the iOS app builds from source today, not yet on the App Store.
-- **[CLI and API](https://multica.ai/docs/cli) →** Every surface is scriptable. Agents drive Multica through the same CLI you do.
+- **[CLI and API](https://multica.ai/docs/cli) →** Every surface is scriptable. Agents drive Delegora through the same CLI you do.
 
 ---
 
 ## Get started
 
 - **Cloud** — sign up at **[multica.ai](https://multica.ai)**. No terminal required.
-- **Desktop** — download **[Multica Desktop](https://multica.ai/download)** for macOS, Windows, or
+- **Desktop** — download **[Delegora Desktop](https://multica.ai/download)** for macOS, Windows, or
   Linux. It connects the computer it runs on as a runtime automatically.
 - **Self-host** — run the whole stack on your own infrastructure; see below.
 
 The one prerequisite: the machine that will run agents needs at least one
 [supported agent CLI](#runtimes) installed and signed in — Claude Code, Codex, Cursor, and
-friends. Multica drives them; it doesn't ship them.
+friends. Delegora drives them; it doesn't ship them.
 
 <details>
 <summary><b>Self-hosting the whole thing</b></summary>
@@ -174,7 +174,7 @@ Full walkthrough: [Quickstart](https://multica.ai/docs/cloud-quickstart) · [Tut
 
 ## Runtimes
 
-Multica does not ship a model. It drives the agent CLIs you already have installed and
+Delegora does not ship a model. It drives the agent CLIs you already have installed and
 authenticated — the current source supports 31 — so switching providers is a dropdown, not a migration.
 
 | Provider | CLI | Provider | CLI |
@@ -206,14 +206,14 @@ Installing and authenticating them: [Install an agent runtime](https://multica.a
 | I want to… | Start here |
 | --- | --- |
 | Get an agent doing something today | [Quickstart](https://multica.ai/docs/cloud-quickstart) · [Tutorial](https://multica.ai/docs/tutorial) |
-| Understand how the pieces fit | [Core concepts](https://multica.ai/docs/concepts) · [How Multica works](https://multica.ai/docs/how-multica-works) |
+| Understand how the pieces fit | [Core concepts](https://multica.ai/docs/concepts) · [How Delegora works](https://multica.ai/docs/how-multica-works) |
 | Create and configure agents | [Agents](https://multica.ai/docs/agents) · [Create an agent](https://multica.ai/docs/agents-create) · [Skills](https://multica.ai/docs/skills) |
 | Get work to an agent | [Triggering agents](https://multica.ai/docs/triggering-agents) · [Assigning issues](https://multica.ai/docs/assigning-issues) · [Mentions](https://multica.ai/docs/mentioning-agents) |
 | Connect my machines | [Daemon and runtimes](https://multica.ai/docs/daemon-runtimes) · [Install an agent runtime](https://multica.ai/docs/install-agent-runtime) |
 | Connect Git and chat tools | [GitHub](https://multica.ai/docs/github-integration) · [Self-hosted Git](https://multica.ai/docs/vcs-integration) · [Channels](https://multica.ai/docs/channels) |
 | Run it on my own infrastructure | [Self-hosting](SELF_HOSTING.md) · [Security model](https://multica.ai/docs/security-model) · [Environment variables](https://multica.ai/docs/environment-variables) |
 | Script it | [CLI reference](https://multica.ai/docs/cli) · [CLI and daemon guide](CLI_AND_DAEMON.md) · [Auth tokens](https://multica.ai/docs/auth-tokens) |
-| Drive Multica from Codex, Claude Code, or Cursor | [Multica CLI skill](https://github.com/multica-ai/multica-cli) |
+| Drive Delegora from Codex, Claude Code, or Cursor | [Delegora CLI skill](https://github.com/multica-ai/multica-cli) |
 | Work out why an agent is stuck | [Runs](https://multica.ai/docs/tasks) · [Troubleshooting](https://multica.ai/docs/troubleshooting) |
 
 The docs are also available in [简体中文](https://multica.ai/docs/zh), [繁體中文](https://multica.ai/docs/zh-Hant),
@@ -278,7 +278,7 @@ We release most weekdays, so `main` moves quickly — pull often.
 
 ---
 
-## Why "Multica"?
+## Why "Delegora"?
 
 **Mult**iplexed **I**nformation and **C**omputing **A**gent — a nod to Multics, the 1960s
 operating system that introduced time-sharing so several people could use one machine as if each
@@ -294,6 +294,6 @@ The longer argument, and where we think this goes: **[VISION.md](VISION.md)**.
 
 ## License
 
-[Multica License](LICENSE) — the complete Apache License 2.0 text plus additional conditions
+[Delegora License](LICENSE) — the complete Apache License 2.0 text plus additional conditions
 covering hosted services, commercial embedding, and branding. Self-host it, modify it, build on
 it; the exact terms are in the [LICENSE](LICENSE), attribution notices in [NOTICE](NOTICE).

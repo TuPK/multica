@@ -1,12 +1,12 @@
 ---
 title: 환경 변수
-description: 자체 호스팅 Multica에서 자주 사용하는 서버, 저장소, 연동, 런타임 설정입니다.
+description: 자체 호스팅 Delegora에서 자주 사용하는 서버, 저장소, 연동, 런타임 설정입니다.
 ---
 
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica는 프로세스를 시작할 때 환경 변수를 읽습니다. 수정 후에는 보통 해당 API, Web 또는 데몬을 다시 시작해야 합니다. Docker Compose의 `docker compose restart`는 `.env`를 다시 읽지 않으므로 `up -d`로 컨테이너를 다시 만들어야 적용됩니다.
+Delegora는 프로세스를 시작할 때 환경 변수를 읽습니다. 수정 후에는 보통 해당 API, Web 또는 데몬을 다시 시작해야 합니다. Docker Compose의 `docker compose restart`는 `.env`를 다시 읽지 않으므로 `up -d`로 컨테이너를 다시 만들어야 적용됩니다.
 
 이 페이지는 배포자를 위한 설정을 그룹별로 정리하며 테스트 변수와 내부 실행 변수는 다루지 않습니다. 전체 배포 단계는 [자체 호스팅 빠른 시작](/self-host-quickstart)을 참고하세요.
 
@@ -123,7 +123,7 @@ allowlist의 정확한 판단 순서는 [로그인과 가입](/auth-setup#가입
 
 ## 첨부 파일 저장소
 
-`S3_BUCKET`을 설정하지 않으면 Multica가 로컬 디스크를 사용합니다.
+`S3_BUCKET`을 설정하지 않으면 Delegora가 로컬 디스크를 사용합니다.
 
 | 변수 | 기본값 | 설명 |
 |---|---|---|
@@ -228,7 +228,7 @@ reverse proxy 뒤에 배포한다면 실제 proxy 네트워크를 입력해야 �
 API key와 base URL이 모두 비어 있으면 이 레이어가 꺼지고 업스트림 요청을 전혀 보내지 않습니다. 위 두 기능 모두 아무것도 전송하지 않습니다. 이 레이어가 채팅 내용을 배포 환경 밖으로 보내면 안 되는 정책이라면 이것이 지원되는 구성입니다. 세션은 클라이언트가 첫 메시지에서 만든 제목을 그대로 사용하고, 후속 질문 버튼은 표시되지 않으며, 나머지 기능은 영향을 받지 않습니다.
 
 <Callout type="info">
-이는 보조 생성 레이어에만 해당합니다. 에이전트 실행은 별도의 데이터 경로입니다. 에이전트가 채팅에 답변할 때 데몬은 해당 에이전트의 AI 코딩 도구를 그 도구 자체의 자격 증명으로 실행하며, 위의 `MULTICA_LLM_*` 설정을 도구에 전달하지 않습니다. (에이전트 자체에 필요한 실행 범위의 Multica 연결 변수는 데몬이 별도로 주입합니다.) 위 변수를 비워 두어도 이 경로에는 영향이 없으므로, 에이전트의 런타임 설정에서 관리하세요.
+이는 보조 생성 레이어에만 해당합니다. 에이전트 실행은 별도의 데이터 경로입니다. 에이전트가 채팅에 답변할 때 데몬은 해당 에이전트의 AI 코딩 도구를 그 도구 자체의 자격 증명으로 실행하며, 위의 `MULTICA_LLM_*` 설정을 도구에 전달하지 않습니다. (에이전트 자체에 필요한 실행 범위의 Delegora 연결 변수는 데몬이 별도로 주입합니다.) 위 변수를 비워 두어도 이 경로에는 영향이 없으므로, 에이전트의 런타임 설정에서 관리하세요.
 </Callout>
 
 ## 데몬 설정
@@ -237,7 +237,7 @@ API key와 base URL이 모두 비어 있으면 이 레이어가 꺼지고 업스
 
 | 변수 | 기본값 | 설명 |
 |---|---|---|
-| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | Multica API / WebSocket 주소. `http(s)`도 허용 |
+| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | Delegora API / WebSocket 주소. `http(s)`도 허용 |
 | `MULTICA_DAEMON_DEVICE_NAME` | host 이름 | 런타임 목록의 기기 이름 |
 | `MULTICA_AGENT_RUNTIME_NAME` | `Local Agent` | 런타임 표시 이름 |
 | `MULTICA_DAEMON_POLL_INTERVAL` | `30s` | wakeup 이벤트가 없을 때 실행 polling 간격 |
@@ -351,9 +351,9 @@ MULTICA_CLAUDE_ARGS=--max-turns 40
 
 ### DeepSeek Harness 프로필 설치
 
-`MULTICA_DSH_PROFILE_BUNDLE`은 `multica` 프로필이 없을 때 설치할 번들을 지정하며, 쉼표로 구분한 여러 후보를 순서대로 시도합니다. 각 항목은 npm 패키지 이름, 디렉터리 또는 패키징된 tarball입니다. 기본값은 설정하지 않는 것입니다. Multica가 사용하는 `--stdio` 프로토콜은 이 프로필이 제공하므로, 설정하지 않으면 DSH 설치를 건드리지 않고 데몬은 사용할 수 없는 런타임을 등록하지 않고 프로필 누락을 보고합니다.
+`MULTICA_DSH_PROFILE_BUNDLE`은 `multica` 프로필이 없을 때 설치할 번들을 지정하며, 쉼표로 구분한 여러 후보를 순서대로 시도합니다. 각 항목은 npm 패키지 이름, 디렉터리 또는 패키징된 tarball입니다. 기본값은 설정하지 않는 것입니다. Delegora가 사용하는 `--stdio` 프로토콜은 이 프로필이 제공하므로, 설정하지 않으면 DSH 설치를 건드리지 않고 데몬은 사용할 수 없는 런타임을 등록하지 않고 프로필 누락을 보고합니다.
 
-Multica 자체 브리지는 아직 공개 npm 레지스트리에 없으므로 값 선택 방법은 [에이전트 런타임 설치](/install-agent-runtime)를 참고하세요. 여기에 설정한 값은 추가 확인 없이 모든 데몬 호스트의 DSH 홈에 설치되므로 공급망에 관한 결정으로 다루세요.
+Delegora 자체 브리지는 아직 공개 npm 레지스트리에 없으므로 값 선택 방법은 [에이전트 런타임 설치](/install-agent-runtime)를 참고하세요. 여기에 설정한 값은 추가 확인 없이 모든 데몬 호스트의 DSH 홈에 설치되므로 공급망에 관한 결정으로 다루세요.
 
 이 설치는 범위를 의도적으로 제한합니다. 실행은 데몬 수명당 최대 한 번, 프로브가 프로필 부재를 확인한 경우에만 수행됩니다. 실패하면 패키지 관리자 자체의 출력을 로그에 남기고 재시도는 데몬을 재시작한 뒤에만 이루어집니다. 프로브가 시간 초과되거나 이 데몬이 다루지 않는 프로토콜 버전을 반환하면 보고만 하고 덮어쓰지 않습니다. 의도적으로 설치된 프로필을 데몬이 덮어쓰는 일은 없습니다. 진단은 데몬 로그에서 `DSH runtime profile`을 검색하세요. 되돌리려면 `$DSH_HOME/profiles/multica`(기본값 `~/.dsh/profiles/multica`)를 삭제합니다.
 
@@ -378,7 +378,7 @@ multica config show
 
 | key | 기본값 | 설명 |
 |---|---|---|
-| `server_url` | `ws://localhost:8080/ws` | Multica API / WebSocket 주소 |
+| `server_url` | `ws://localhost:8080/ws` | Delegora API / WebSocket 주소 |
 | `app_url` | 비어 있음 | 브라우저 로그인에 사용할 Web 주소 |
 | `workspace_id` | 비어 있음 | 기본 워크스페이스 |
 | `device_name` | host 이름 | 런타임 목록의 기기 이름 |

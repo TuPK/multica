@@ -1,12 +1,12 @@
 ---
 title: Chat integrations
-description: Connect Multica agents to Feishu, Lark, Slack, DingTalk, WeCom, Telegram, or WeChat and use them from the chat tools your team already uses.
+description: Connect Delegora agents to Feishu, Lark, Slack, DingTalk, WeCom, Telegram, or WeChat and use them from the chat tools your team already uses.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { ChannelChatDemo } from "@/components/demos/channel-chat-demo";
 
-Chat integrations let the team ask an agent questions in a DM, @-mention it in a group chat, or create issues from the chat window, without opening Multica.
+Chat integrations let the team ask an agent questions in a DM, @-mention it in a group chat, or create issues from the chat window, without opening Delegora.
 
 Feishu/Lark, Slack, DingTalk, WeCom, Telegram, and WeChat are available. WeChat accepts private messages only from the account that scans the connection QR code. They share the same session, identity, and execution mechanics but install differently.
 
@@ -14,7 +14,7 @@ Feishu/Lark, Slack, DingTalk, WeCom, Telegram, and WeChat are available. WeChat 
 
 | | Feishu / Lark | Slack | DingTalk | WeCom | Telegram | WeChat |
 |---|---|---|---|---|---|---|
-| Installation | Generate a QR code in Multica and authorize by scanning it with Feishu | Create an app in Slack, then paste two tokens into Multica | Create an internal app and Stream-mode robot, then paste its AppKey and AppSecret into Multica | Create a smart bot with the long connection enabled in the WeCom admin console, then paste its Bot ID and Secret into Multica | Create a Bot with @BotFather, then paste its token into Multica | Scan a QR code with your own WeChat account |
+| Installation | Generate a QR code in Delegora and authorize by scanning it with Feishu | Create an app in Slack, then paste two tokens into Delegora | Create an internal app and Stream-mode robot, then paste its AppKey and AppSecret into Delegora | Create a smart bot with the long connection enabled in the WeCom admin console, then paste its Bot ID and Secret into Delegora | Create a Bot with @BotFather, then paste its token into Delegora | Scan a QR code with your own WeChat account |
 | DM the agent | Supported | Supported | Supported | Supported | Supported | Only the account that scanned the QR code |
 | Groups or channels | Triggered by @-mentioning the Bot | Triggered by @-mentioning the Bot | Triggered by @-mentioning the Bot | Triggered by @-mentioning the Bot | Triggered by @-mentioning or replying to the Bot | Not supported |
 | Create issues | `/issue` message command; creates the issue from your input as-is | `/issue` slash command; the agent writes up the description before creating | `/issue` message command; creates the issue from your input as-is | `/issue` message command; creates the issue from your input as-is | `/issue` message command; creates the issue from your input as-is | `/issue` message command; creates the issue from your input as-is |
@@ -25,7 +25,7 @@ Feishu/Lark, Slack, DingTalk, WeCom, Telegram, and WeChat are available. WeChat 
 
 New connections are currently open only for mainland-China Feishu; existing international Lark connections keep working and can still be managed.
 
-Each Bot is bound to one Multica agent. To use several agents on the same chat platform, connect a separate Bot for each.
+Each Bot is bound to one Delegora agent. To use several agents on the same chat platform, connect a separate Bot for each.
 
 DingTalk, WeCom, and Telegram are [community-maintained](/community-maintained): they ship in every release, but carry no official support SLA. Report problems in [GitHub issues](https://github.com/multica-ai/multica/issues).
 
@@ -43,25 +43,25 @@ Step-by-step guides:
 
 ## How a message is processed
 
-1. Multica resolves the Bot to its workspace and agent.
+1. Delegora resolves the Bot to its workspace and agent.
 2. In a group or channel, only messages that explicitly @-mention the Bot continue; DMs need no mention.
-3. Multica verifies the sender's account binding and workspace membership.
+3. Delegora verifies the sender's account binding and workspace membership.
 4. The message joins an [agent chat](/chat) session, and a run is created.
 5. The agent's reply goes back to the original DM or thread.
 
 Channel messages that don't @-mention the Bot never trigger the agent and never become a turn of their own. Feishu/Lark and Telegram attach the group's recent messages as read-only context in front of the turn when someone addresses the Bot; each platform's page has the details.
 
-`/issue` is a command, not a chat turn: Multica creates the issue from the message, assigns it to the agent the Bot is bound to, and posts the result back to the original chat. The command itself never appears in Multica Chat. Slack's native slash command goes through a separate asynchronous issue-creation flow.
+`/issue` is a command, not a chat turn: Delegora creates the issue from the message, assigns it to the agent the Bot is bound to, and posts the result back to the original chat. The command itself never appears in Delegora Chat. Slack's native slash command goes through a separate asynchronous issue-creation flow.
 
 <ChannelChatDemo />
 
 ## Conversation controls
 
-Send `/help` in a DM (on Slack, use `@Multica /help`), or @-mention the Bot with `/help` in a group or channel, to list the available commands: `/help`, `/new [message]`, `/clear [message]`, and `/issue <title>` (subsequent lines become the description). This includes WeCom and WeChat (DMs only). Multica replies directly without creating a Chat or run or changing the active Chat. On Slack, `@Multica /help` lists the message commands. Native `/issue <description>` starts a separate flow where the agent creates an issue from your description.
+Send `/help` in a DM (on Slack, use `@Multica /help`), or @-mention the Bot with `/help` in a group or channel, to list the available commands: `/help`, `/new [message]`, `/clear [message]`, and `/issue <title>` (subsequent lines become the description). This includes WeCom and WeChat (DMs only). Delegora replies directly without creating a Chat or run or changing the active Chat. On Slack, `@Multica /help` lists the message commands. Native `/issue <description>` starts a separate flow where the agent creates an issue from your description.
 
-`/new` creates a new Multica Chat and routes later messages from that external conversation to it. `/new <message>` creates the Chat and uses the message as its first turn. The previous Chat remains stored and usable in Multica.
+`/new` creates a new Delegora Chat and routes later messages from that external conversation to it. `/new <message>` creates the Chat and uses the message as its first turn. The previous Chat remains stored and usable in Delegora.
 
-`/clear` stays in the current Multica Chat but starts a new agent-visible context. The full Chat history remains available in Multica, while the agent cannot retrieve messages from before the boundary. `/clear <message>` uses the message as the first turn in the new context; a bare `/clear` applies to the next real message.
+`/clear` stays in the current Delegora Chat but starts a new agent-visible context. The full Chat history remains available in Delegora, while the agent cannot retrieve messages from before the boundary. `/clear <message>` uses the message as the first turn in the new context; a bare `/clear` applies to the next real message.
 
 On Slack, `/new` and `/clear` are native slash commands in a DM. A native slash-command payload does not identify a channel thread, so use `@Multica /new [message]` or `@Multica /clear [message]` inside the target thread.
 
@@ -78,25 +78,25 @@ Follow-ups in a channel still need a fresh @-mention. Apart from the recent cont
 
 ## Account binding
 
-For WeChat, scanning the QR code binds that WeChat account to the Multica user who started the connection. Messages use that user's workspace permissions. Scan with your own account and do not share the QR code; other accounts and group messages are not accepted.
+For WeChat, scanning the QR code binds that WeChat account to the Delegora user who started the connection. Messages use that user's workspace permissions. Scan with your own account and do not share the QR code; other accounts and group messages are not accepted.
 
-For Feishu/Lark, Slack, DingTalk, WeCom, and Telegram, the first time a member messages the Bot, they receive an account binding link. After signing in to Multica, the platform account is linked to their membership in the current workspace.
+For Feishu/Lark, Slack, DingTalk, WeCom, and Telegram, the first time a member messages the Bot, they receive an account binding link. After signing in to Delegora, the platform account is linked to their membership in the current workspace.
 
-Multica only runs the agent after binding completes. Every message re-checks account binding and workspace membership; after leaving a workspace, the Bot can no longer be used to reach it.
+Delegora only runs the agent after binding completes. Every message re-checks account binding and workspace membership; after leaving a workspace, the Bot can no longer be used to reach it.
 
 <Callout type="info">
-Account binding only confirms who the sender is. Other members on the chat platform are not automatically added to the Multica workspace.
+Account binding only confirms who the sender is. Other members on the chat platform are not automatically added to the Delegora workspace.
 </Callout>
 
 ## Manage connections
 
 Workspace owners and admins can connect or disconnect Bots; for Feishu/Lark, DingTalk, and WeChat, the agent's owner can also connect and disconnect its Bots. Regular members can view connected integrations and use the agents they have access to.
 
-After disconnecting, the Bot stops receiving new messages. Existing Multica conversations and run records are kept.
+After disconnecting, the Bot stops receiving new messages. Existing Delegora conversations and run records are kept.
 
 ## Self-hosting
 
-A self-hosted deployment must configure a 32-byte encryption key for each platform before Multica opens its connection entry point:
+A self-hosted deployment must configure a 32-byte encryption key for each platform before Delegora opens its connection entry point:
 
 ```dotenv
 MULTICA_LARK_SECRET_KEY=<base64-encoded 32-byte key>
@@ -107,7 +107,7 @@ MULTICA_TELEGRAM_SECRET_KEY=<base64-encoded 32-byte key>
 MULTICA_WEIXIN_SECRET_KEY=<base64-encoded 32-byte key>
 ```
 
-These keys encrypt stored Bot credentials. See [Environment variables](/environment-variables) for how to generate, store, and rotate them. Multica Cloud already has this configured.
+These keys encrypt stored Bot credentials. See [Environment variables](/environment-variables) for how to generate, store, and rotate them. Delegora Cloud already has this configured.
 
 WeCom can only send replies through the WebSocket held by one process. What happens to a reply produced on another replica depends on the realtime relay mode:
 
@@ -119,8 +119,8 @@ In every mode, a reply produced while no replica holds a live connection (all mi
 ## Next steps
 
 - [Feishu / Lark Bot integration](/lark-bot-integration) — connect an agent by scanning a QR code.
-- [Slack Bot integration](/slack-bot-integration) — create a Slack app and paste its tokens into Multica.
-- [DingTalk Bot integration](/dingtalk-bot-integration) — create a Stream-mode robot and paste its credentials into Multica.
-- [Telegram Bot integration](/telegram-bot-integration) — create a Bot with @BotFather and paste its token into Multica.
+- [Slack Bot integration](/slack-bot-integration) — create a Slack app and paste its tokens into Delegora.
+- [DingTalk Bot integration](/dingtalk-bot-integration) — create a Stream-mode robot and paste its credentials into Delegora.
+- [Telegram Bot integration](/telegram-bot-integration) — create a Bot with @BotFather and paste its token into Delegora.
 - [WeChat Bot integration](/weixin-bot-integration) — scan a QR code with your own WeChat account.
 - [Chat](/chat) — the conversation and execution model behind every Bot.

@@ -6,13 +6,13 @@ description: Créez un bot Slack pour un agent et utilisez-le dans les messages 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica utilise votre propre application Slack. Une fois la connexion établie, les membres de l'équipe peuvent envoyer des messages directs au bot, le @mentionner dans un canal, utiliser `@Multica /help` pour afficher les commandes, utiliser `/issue` pour créer des tâches, `/new` pour démarrer une nouvelle discussion Multica ou `/clear` pour réinitialiser le contexte de l'agent dans la discussion en cours.
+Delegora utilise votre propre application Slack. Une fois la connexion établie, les membres de l'équipe peuvent envoyer des messages directs au bot, le @mentionner dans un canal, utiliser `@Multica /help` pour afficher les commandes, utiliser `/issue` pour créer des tâches, `/new` pour démarrer une nouvelle discussion Delegora ou `/clear` pour réinitialiser le contexte de l'agent dans la discussion en cours.
 
-Une application Slack correspond à un agent Multica. Pour connecter plusieurs agents, créez une application distincte pour chacun.
+Une application Slack correspond à un agent Delegora. Pour connecter plusieurs agents, créez une application distincte pour chacun.
 
 ## Avant de commencer
 
-La connexion doit être effectuée par un propriétaire ou un administrateur de l'espace de travail, et se termine en collant deux identifiants dans Multica :
+La connexion doit être effectuée par un propriétaire ou un administrateur de l'espace de travail, et se termine en collant deux identifiants dans Delegora :
 
 - un Bot User OAuth Token (jeton du bot), commençant par `xoxb-` ;
 - un App-level Token (jeton d'application), commençant par `xapp-`.
@@ -28,24 +28,24 @@ Ouvrez [Slack API Apps](https://api.slack.com/apps), cliquez sur **Create New Ap
 
 ```yaml
 display_information:
-  name: Multica
+  name: Delegora
 features:
   app_home:
     home_tab_enabled: false
     messages_tab_enabled: true
     messages_tab_read_only_enabled: false
   bot_user:
-    display_name: Multica
+    display_name: Delegora
     always_online: true
   slash_commands:
     - command: /issue
-      description: Create a Multica issue
+      description: Create a Delegora issue
       usage_hint: "[description]"
     - command: /new
-      description: Start a new Multica chat
+      description: Start a new Delegora chat
       usage_hint: "[message]"
     - command: /clear
-      description: Clear the current Multica chat context
+      description: Clear the current Delegora chat context
       usage_hint: "[message]"
 oauth_config:
   scopes:
@@ -75,7 +75,7 @@ settings:
   token_rotation_enabled: false
 ```
 
-Avant de créer l'application, vous pouvez remplacer les deux occurrences de `Multica` par le nom de l'agent. Ne supprimez aucune portée ni aucun événement du manifeste, sinon les messages directs, les mentions dans les canaux, les réponses, `@Multica /help`, `/issue`, `/new` ou `/clear` risquent de ne plus fonctionner.
+Avant de créer l'application, vous pouvez remplacer les deux occurrences de `Delegora` par le nom de l'agent. Ne supprimez aucune portée ni aucun événement du manifeste, sinon les messages directs, les mentions dans les canaux, les réponses, `@Multica /help`, `/issue`, `/new` ou `/clear` risquent de ne plus fonctionner.
 
 <Callout type="warning">
 Les noms des commandes slash Slack sont globaux à l'espace de travail. Si une autre application installée utilise déjà `/new` ou `/clear`, Slack rejette la commande en conflit lorsque vous créez ou mettez à jour l'application. Résolvez le conflit, ou envoyez la forme message `@Multica /new [message]` ou `@Multica /clear [message]` pour contourner l'interception des commandes slash natives.
@@ -110,15 +110,15 @@ Le bot se connecte à Slack en sortie via Socket Mode : aucune Request URL publi
 
 ### Le connecter à un agent [#3-le-connecter-à-un-agent]
 
-1. Dans Multica, ouvrez **Agents** et sélectionnez l'agent à connecter à Slack.
+1. Dans Delegora, ouvrez **Agents** et sélectionnez l'agent à connecter à Slack.
 2. Dans **Messagerie**, cliquez sur **Ajouter un canal de messagerie**, puis choisissez **Slack**.
 3. Collez le jeton du bot et le jeton d'application.
 4. Cliquez sur **Connecter**.
 
-Multica vérifie que les deux jetons proviennent de la même application. Une fois la connexion établie, la page affiche **Connecté**.
+Delegora vérifie que les deux jetons proviennent de la même application. Une fois la connexion établie, la page affiche **Connecté**.
 
 <Callout type="warning">
-Les deux jetons sont stockés chiffrés sur le serveur Multica. Les jetons sont des identifiants : ne les placez pas dans des tâches, des commentaires ou des dépôts de code. Une application déjà connectée à un autre agent ou espace de travail ne peut pas être réutilisée directement ; supprimez d'abord la connexion d'origine.
+Les deux jetons sont stockés chiffrés sur le serveur Delegora. Les jetons sont des identifiants : ne les placez pas dans des tâches, des commentaires ou des dépôts de code. Une application déjà connectée à un autre agent ou espace de travail ne peut pas être réutilisée directement ; supprimez d'abord la connexion d'origine.
 </Callout>
 
 </Step>
@@ -126,11 +126,11 @@ Les deux jetons sont stockés chiffrés sur le serveur Multica. Les jetons sont 
 
 ## Première utilisation
 
-La première fois qu'un membre envoie un message direct au bot ou le @mentionne, il reçoit un lien d'association de compte. Connectez-vous avec le compte Multica de cet espace de travail, puis revenez dans Slack et renvoyez le message.
+La première fois qu'un membre envoie un message direct au bot ou le @mentionne, il reçoit un lien d'association de compte. Connectez-vous avec le compte Delegora de cet espace de travail, puis revenez dans Slack et renvoyez le message.
 
-Le lien est à usage unique et expire au bout de 15 minutes. Une fois qu'il a expiré, écrivez de nouveau au bot pour en obtenir un nouveau. Plusieurs bots d'un même espace de travail Multica peuvent généralement réutiliser une association existante s'ils proviennent du même espace de travail Slack.
+Le lien est à usage unique et expire au bout de 15 minutes. Une fois qu'il a expiré, écrivez de nouveau au bot pour en obtenir un nouveau. Plusieurs bots d'un même espace de travail Delegora peuvent généralement réutiliser une association existante s'ils proviennent du même espace de travail Slack.
 
-Seuls les membres de l'espace de travail Multica actuel peuvent utiliser le bot.
+Seuls les membres de l'espace de travail Delegora actuel peuvent utiliser le bot.
 
 ## Confier du travail à l'agent dans Slack
 
@@ -152,7 +152,7 @@ Cela nécessite la portée `files:read` : si l'application a été installée av
 
 ### Afficher les commandes avec `@Multica /help`
 
-Envoyez `@Multica /help` dans un message direct, un canal ou un fil pour afficher `@Multica /help`, `@Multica /new [message]`, `@Multica /clear [message]` et `@Multica /issue <titre>` (les lignes suivantes servent de description). Multica répond directement sans créer de discussion ni d'exécution et sans changer la discussion active.
+Envoyez `@Multica /help` dans un message direct, un canal ou un fil pour afficher `@Multica /help`, `@Multica /new [message]`, `@Multica /clear [message]` et `@Multica /issue <titre>` (les lignes suivantes servent de description). Delegora répond directement sans créer de discussion ni d'exécution et sans changer la discussion active.
 
 Le manifeste par défaut enregistre uniquement `/issue`, `/new` et `/clear` comme commandes slash natives. `@Multica /help` ne nécessite aucune modification du manifeste ni réinstallation. La commande native `/issue <description>` demande à l'agent de créer une tâche à partir de votre description.
 
@@ -164,21 +164,21 @@ Dans un canal ou un message direct, saisissez :
 /issue Safari reste sur la page de connexion après une connexion réussie
 ```
 
-Cette commande ne nécessite aucune @mention. Multica transmet la description à l'agent qui se trouve derrière le bot actuel ; celui-ci rédige le titre et le corps, puis crée la tâche. Slack affiche d'abord un accusé de réception visible par vous seul ; une fois la tâche créée, vous recevez une notification dans votre Boîte de réception Multica.
+Cette commande ne nécessite aucune @mention. Delegora transmet la description à l'agent qui se trouve derrière le bot actuel ; celui-ci rédige le titre et le corps, puis crée la tâche. Slack affiche d'abord un accusé de réception visible par vous seul ; une fois la tâche créée, vous recevez une notification dans votre Boîte de réception Delegora.
 
 ### Démarrer une nouvelle discussion avec `/new`
 
 Dans un message direct avec le bot, `/new` crée immédiatement une nouvelle discussion vide et visible. `/new <message>` crée la discussion et utilise le message comme premier tour. Une discussion créée par un `/new` seul s'affiche sous le nom **Nouvelle discussion** jusqu'à l'arrivée de son premier vrai message, puis prend un titre tiré de ce message.
 
-La discussion précédente reste disponible dans Multica, et vous pouvez toujours y écrire sur le web, sur ordinateur et sur mobile. Seuls les messages suivants de cette conversation Slack sont acheminés vers la nouvelle discussion.
+La discussion précédente reste disponible dans Delegora, et vous pouvez toujours y écrire sur le web, sur ordinateur et sur mobile. Seuls les messages suivants de cette conversation Slack sont acheminés vers la nouvelle discussion.
 
 Dans un canal ou un fil, la charge utile de la commande slash native de Slack n'identifie pas le fil cible. Envoyez plutôt `@Multica /new [message]` dans le fil cible.
 
 ### Effacer le contexte de la discussion en cours avec `/clear`
 
-Dans un message direct avec le bot, `/clear` conserve la discussion Multica en cours et réinitialise uniquement le contexte visible par l'agent. L'historique complet de la discussion reste enregistré et visible dans Multica. `/clear <message>` utilise le message comme premier tour du nouveau contexte ; un `/clear` seul applique la limite au prochain vrai message.
+Dans un message direct avec le bot, `/clear` conserve la discussion Delegora en cours et réinitialise uniquement le contexte visible par l'agent. L'historique complet de la discussion reste enregistré et visible dans Delegora. `/clear <message>` utilise le message comme premier tour du nouveau contexte ; un `/clear` seul applique la limite au prochain vrai message.
 
-Dans un canal ou un fil, envoyez `@Multica /clear [message]` dans le fil cible afin que Multica puisse appliquer la limite à la bonne conversation.
+Dans un canal ou un fil, envoyez `@Multica /clear [message]` dans le fil cible afin que Delegora puisse appliquer la limite à la bonne conversation.
 
 ## Gérer les connexions
 
@@ -188,7 +188,7 @@ Après la déconnexion, la connexion Socket Mode s'arrête et le bot ne reçoit 
 
 ## Configuration en auto-hébergement
 
-Multica Cloud ne nécessite aucune configuration supplémentaire. Un déploiement auto-hébergé doit d'abord définir une clé servant à chiffrer les jetons Slack :
+Delegora Cloud ne nécessite aucune configuration supplémentaire. Un déploiement auto-hébergé doit d'abord définir une clé servant à chiffrer les jetons Slack :
 
 ```dotenv
 MULTICA_SLACK_SECRET_KEY=<base64-encoded 32-byte key>
@@ -202,7 +202,7 @@ openssl rand -base64 32
 
 Redémarrez le serveur API, puis connectez l'application Slack. Conservez cette clé durablement : si elle est renouvelée ou perdue, les jetons existants ne peuvent plus être déchiffrés et le bot doit être reconnecté.
 
-Les liens d'association de compte utilisent `MULTICA_APP_URL`, ou `FRONTEND_ORIGIN` si elle n'est pas définie ; cette variable doit pointer vers une adresse Multica accessible aux membres.
+Les liens d'association de compte utilisent `MULTICA_APP_URL`, ou `FRONTEND_ORIGIN` si elle n'est pas définie ; cette variable doit pointer vers une adresse Delegora accessible aux membres.
 
 ## Dépannage
 
@@ -210,7 +210,7 @@ Les liens d'association de compte utilisent `MULTICA_APP_URL`, ou `FRONTEND_ORIG
 - **L'application ne peut pas être vérifiée** : vérifiez que le manifeste inclut `users:read`, puis réinstallez l'application après avoir mis à jour les permissions.
 - **Aucun point d'entrée pour les messages directs** : vérifiez que `app_home.messages_tab_enabled` vaut `true`.
 - **Aucune réponse dans un canal** : vérifiez que le bot a été invité dans le canal et que le message le @mentionne.
-- **`/help` ne parvient pas à Multica** : envoyez `@Multica /help` ; le manifeste par défaut ne déclare pas de commande native `/help`.
+- **`/help` ne parvient pas à Delegora** : envoyez `@Multica /help` ; le manifeste par défaut ne déclare pas de commande native `/help`.
 - **`/issue`, `/new` ou `/clear` n'existe pas** : vérifiez que le manifeste inclut les trois commandes slash et la portée `commands`, puis réinstallez l'application. Si Slack indique que `/new` ou `/clear` est déjà pris, utilisez la forme message `@Multica` ou résolvez d'abord le conflit de commandes au niveau de l'espace de travail.
 - **Les fichiers ne parviennent pas à l'agent** : vérifiez que le manifeste inclut `files:read` et que l'application a été réinstallée après l'ajout de cette portée, et que le fichier fait 20 Mio au maximum.
 - **Le bot ne s'exécute pas** : vérifiez si l'agent est archivé et si le [runtime](/daemon-runtimes) qu'il utilise est en ligne.

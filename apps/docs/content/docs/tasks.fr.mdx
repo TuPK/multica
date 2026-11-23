@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { RunLifecycleDemo } from "@/components/demos/run-lifecycle-demo";
 
-Chaque fois qu'un agent commence à travailler, Multica crée une **exécution** qui enregistre ce qui a déclenché le travail, à quel agent il a été confié, où il en est et s'il a réussi.
+Chaque fois qu'un agent commence à travailler, Delegora crée une **exécution** qui enregistre ce qui a déclenché le travail, à quel agent il a été confié, où il en est et s'il a réussi.
 
 ## Tâches et exécutions
 
@@ -31,7 +31,7 @@ Chacun des éléments suivants déclenche une exécution :
 - Une automatisation qui se déclenche selon une planification ou à partir d'un événement externe.
 - Un [réveil de tâche](/issue-wakeups) dont l'événement, l'heure ou la condition arrive.
 
-Selon le point d'entrée, l'agent reçoit un contexte différent, mais l'exécution fonctionne de la même façon : Multica crée une exécution, un runtime la prend en charge, et le runtime invoque l'outil de codage IA configuré pour l'agent.
+Selon le point d'entrée, l'agent reçoit un contexte différent, mais l'exécution fonctionne de la même façon : Delegora crée une exécution, un runtime la prend en charge, et le runtime invoque l'outil de codage IA configuré pour l'agent.
 
 ## Cycle de vie d'une exécution
 

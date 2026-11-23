@@ -40,7 +40,7 @@ Click **Create**.
 </Step>
 </Steps>
 
-Runs a wakeup starts act on behalf of the person who created it, and Multica checks again before the run starts that this person may still run the agent.
+Runs a wakeup starts act on behalf of the person who created it, and Delegora checks again before the run starts that this person may still run the agent.
 
 In the issue below, Ops helper has asked suppliers for quotes and is waiting for their replies. Add a wakeup, then skip ahead to the wakeup time. Choose "Check regularly" to also see how the agent ends a check without commenting when nothing has arrived yet.
 
@@ -60,7 +60,7 @@ In the issue below, Ops helper has asked suppliers for quotes and is waiting for
 | Linked | Another issue's status | Another issue is done, done or cancelled, or moves to In Review. |
 | | Custom events | Pick from the 25 raw events, such as reactions, attachments, edited comments, or resolved threads. |
 
-Multica checks field, sub-issue, PR, and other-issue conditions itself. If the condition already holds when you create the rule, the next check (within about 30 seconds) wakes the agent. CI is the exception: it only counts checks that finish after the rule was created.
+Delegora checks field, sub-issue, PR, and other-issue conditions itself. If the condition already holds when you create the rule, the next check (within about 30 seconds) wakes the agent. CI is the exception: it only counts checks that finish after the rule was created.
 
 Every condition other than time waits for something to happen, and has three more settings:
 

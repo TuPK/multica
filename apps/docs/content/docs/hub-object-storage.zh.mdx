@@ -66,7 +66,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 ### 下载链接
 
-未设置 `HUB_S3_PUBLIC_ENDPOINT` 时，Hub 会通过 Multica 服务器提供压缩包下载。浏览器无法访问 `http://seaweedfs:8333` 这类内部端点，因此指向它的链接不可用。当客户端可以直接访问存储时，请将 `HUB_S3_PUBLIC_ENDPOINT` 设置为公开地址。这样下载会直接指向存储。
+未设置 `HUB_S3_PUBLIC_ENDPOINT` 时，Hub 会通过 Delegora 服务器提供压缩包下载。浏览器无法访问 `http://seaweedfs:8333` 这类内部端点，因此指向它的链接不可用。当客户端可以直接访问存储时，请将 `HUB_S3_PUBLIC_ENDPOINT` 设置为公开地址。这样下载会直接指向存储。
 
 <Callout type="info">
   修改 `HUB_S3_PUBLIC_ENDPOINT` 只影响之后创建的链接。已经创建的链接在过期前仍然有效。
@@ -83,7 +83,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 切换时不会自动复制旧存储中已有的压缩包。请先把存储桶中的内容复制到新存储，否则现有项目的下载和更新会失败。确认切换成功之前，请保留旧存储。
 
 <Callout type="warn">
-  MinIO Community Edition 已不再维护，其代码仓库已归档。Multica 不建议在新安装中使用它。请使用 SeaweedFS 或其他仍在积极维护的 S3 兼容存储。
+  MinIO Community Edition 已不再维护，其代码仓库已归档。Delegora 不建议在新安装中使用它。请使用 SeaweedFS 或其他仍在积极维护的 S3 兼容存储。
 </Callout>
 
 ## 备份与生命周期

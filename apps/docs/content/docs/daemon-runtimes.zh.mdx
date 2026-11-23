@@ -1,24 +1,24 @@
 ---
 title: 守护进程与运行时
-description: 了解 Multica 如何连接电脑、发现 AI 编程工具并运行。
+description: 了解 Delegora 如何连接电脑、发现 AI 编程工具并运行。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { RuntimeOfflineDemo } from "@/components/demos/runtime-offline-demo";
 
-Multica 记录和协调工作，连接上来的电脑负责执行：电脑上的**守护进程**（daemon）领取运行，再调用本机安装的 AI 编程工具。
+Delegora 记录和协调工作，连接上来的电脑负责执行：电脑上的**守护进程**（daemon）领取运行，再调用本机安装的 AI 编程工具。
 
 ## 概念区分
 
-- **守护进程**是运行在一台电脑上的 Multica 后台程序。它负责连接服务器、发现本机工具、领取运行和回传结果。
+- **守护进程**是运行在一台电脑上的 Delegora 后台程序。它负责连接服务器、发现本机工具、领取运行和回传结果。
 - **运行时**代表一个工作区可以使用的具体执行环境。它对应一台电脑，以及这台电脑上的一款 AI 编程工具或自定义运行时配置。
 
 例如，一台电脑装了 Claude Code 和 Codex，连接了两个工作区，守护进程就为每个工作区各注册一条 Claude Code 运行时和一条 Codex 运行时。重启守护进程会更新原有记录，不会为同一个组合反复创建新运行时。
 
 ## 执行位置与数据边界
 
-本地运行时调用的 AI 编程工具、这些工具自己的登录凭据和本地代码目录，都留在连接的电脑上。Multica 服务器不替本地工具执行命令，也不会自动上传整个工作目录。
+本地运行时调用的 AI 编程工具、这些工具自己的登录凭据和本地代码目录，都留在连接的电脑上。Delegora 服务器不替本地工具执行命令，也不会自动上传整个工作目录。
 
 为了让团队能够协作，服务器会保存任务、评论、智能体配置、运行上下文、执行记录和智能体写回的结果。这些内容可能包含智能体主动读取并写入回复的代码片段或其他项目上下文。
 
@@ -31,12 +31,12 @@ Multica 记录和协调工作，连接上来的电脑负责执行：电脑上的
 <Tabs items={["Desktop", "CLI"]}>
 <Tab value="Desktop">
 
-Multica Desktop 会自动启动守护进程，不需要额外运行命令。
+Delegora Desktop 会自动启动守护进程，不需要额外运行命令。
 
 </Tab>
 <Tab value="CLI">
 
-使用 Web、远程电脑或无界面环境时，先[安装 Multica CLI](/cli)，再运行：
+使用 Web、远程电脑或无界面环境时，先[安装 Delegora CLI](/cli)，再运行：
 
 ```bash
 multica daemon start
@@ -63,7 +63,7 @@ multica daemon start
 
 ### 在 Linux 容器中运行 [#linux-container]
 
-在镜像中安装 Multica CLI 和至少一种受支持的编程工具。以非 root 用户运行容器。将 `MULTICA_SERVER_URL` 设置为容器内可访问的 API 地址。将个人访问令牌作为密钥挂载，并通过标准输入传给登录命令。将 `my-workspace` 替换为你的工作区 slug。
+在镜像中安装 Delegora CLI 和至少一种受支持的编程工具。以非 root 用户运行容器。将 `MULTICA_SERVER_URL` 设置为容器内可访问的 API 地址。将个人访问令牌作为密钥挂载，并通过标准输入传给登录命令。将 `my-workspace` 替换为你的工作区 slug。
 
 ```bash
 multica --profile container login --token < /run/secrets/multica-pat
@@ -89,18 +89,18 @@ multica daemon autostart disable
 
 登记的命令是这个 profile 的 `multica daemon start --foreground`，由系统在登录时拉起：Windows 写入当前用户的 Run 注册表项，macOS 写入 `~/Library/LaunchAgents` 下的 LaunchAgent，Linux 写入 systemd 用户单元，没有 systemd 用户会话时改用 XDG autostart 条目。使用命名 profile 时加 `--profile <name>`，每个 profile 单独登记。
 
-- 只有 `enable` 会创建登记。`multica daemon start` 不会自己登记，只在没有登记时提示一行；已有 Multica 创建的登记时，它会顺手更新其中的可执行文件路径，升级或挪动 CLI 后不必重新 `enable`。
+- 只有 `enable` 会创建登记。`multica daemon start` 不会自己登记，只在没有登记时提示一行；已有 Delegora 创建的登记时，它会顺手更新其中的可执行文件路径，升级或挪动 CLI 后不必重新 `enable`。
 - 在 macOS 和 Linux 上，登录会话只带上 `enable` 时 shell 里的 `PATH`，shell 导出的其他变量（API key、`HTTPS_PROXY` 等）都不会带过去。守护进程配置用 `multica config set` 持久化，其他变量放进用户级环境。
 - Linux 的 systemd 用户单元在登录时启动。要在开机后不登录也启动，按 `enable` 输出的提示运行 `loginctl enable-linger <用户名>`。
 - `multica daemon stop` 只停止当前进程，不删除登记。
-- 同一位置已有不是 Multica 创建的文件（例如你自己写的 systemd 单元）时，`enable` 和 `disable` 都会拒绝修改它。
+- 同一位置已有不是 Delegora 创建的文件（例如你自己写的 systemd 单元）时，`enable` 和 `disable` 都会拒绝修改它。
 - Desktop 拉起的守护进程由 Desktop 管理，`daemon start` 不会为它提示或更新登记。
 
 ### 在运行时页面更新 CLI [#updating-cli]
 
 独立运行的 CLI 守护进程有新版本时，运行时所有者和工作区管理员可以在**运行时**页面点击**更新**。如果机器正在执行任务且守护进程支持排队更新，这次更新会被暂存，不中断或暂停当前工作；**运行时**页面会在该机器的所有运行时上显示**空闲后更新**、当前运行数和**取消**按钮。
 
-最后一个运行中的任务结束后，安装会自动开始。每台机器同一时间只允许一个未完成的更新；如果机器持续 24 小时未能空闲，排队会自动失效；在开始安装前随时可以取消。不支持排队的旧版守护进程在忙碌时会直接拒绝远程更新，需等空闲后重试。由 Multica 桌面端拉起的守护进程归桌面端管理，随桌面端一起升级。
+最后一个运行中的任务结束后，安装会自动开始。每台机器同一时间只允许一个未完成的更新；如果机器持续 24 小时未能空闲，排队会自动失效；在开始安装前随时可以取消。不支持排队的旧版守护进程在忙碌时会直接拒绝远程更新，需等空闲后重试。由 Delegora 桌面端拉起的守护进程归桌面端管理，随桌面端一起升级。
 
 ## 派发与在线状态
 
@@ -136,11 +136,11 @@ Claude Code 和 Codex 运行时的页面上还有**额度**：CLI 账号在套�
 
 ## 本机 MCP 配置 [#local-mcp]
 
-智能体没有保存 MCP 配置时，Multica 不向工具传任何 MCP 设置，工具照常读取这台电脑上它自己的配置。
+智能体没有保存 MCP 配置时，Delegora 不向工具传任何 MCP 设置，工具照常读取这台电脑上它自己的配置。
 
-智能体有 MCP 配置后（哪怕是空配置），Multica 会为每次运行生成一份专用配置交给工具，例如 Claude Code 会以严格模式只加载这份配置。为了不让本机已有的服务器因此失效，守护进程会在运行时所在的电脑上读取该工具的用户级 MCP 配置，再和智能体的配置合并。同名服务器按以下顺序取第一个：
+智能体有 MCP 配置后（哪怕是空配置），Delegora 会为每次运行生成一份专用配置交给工具，例如 Claude Code 会以严格模式只加载这份配置。为了不让本机已有的服务器因此失效，守护进程会在运行时所在的电脑上读取该工具的用户级 MCP 配置，再和智能体的配置合并。同名服务器按以下顺序取第一个：
 
-1. 智能体 **MCP** 标签页中由 Multica 管理或从工作区 MCP 库分配的服务器；
+1. 智能体 **MCP** 标签页中由 Delegora 管理或从工作区 MCP 库分配的服务器；
 2. 工具的用户级配置文件；
 3. 仅 Claude Code：已启用的 Claude Code 插件自带的 MCP 服务器。插件取自 `~/.claude/settings.json` 的 `enabledPlugins`，读取插件目录下的 `.mcp.json` 和插件清单里声明的 MCP 文件。
 
@@ -153,13 +153,13 @@ Claude Code 和 Codex 运行时的页面上还有**额度**：CLI 账号在套�
 | OpenClaw | `$CLAWDBOT_CONFIG_PATH`，或 `$OPENCLAW_STATE_DIR/openclaw.json`（默认 `~/.openclaw/openclaw.json`）的 `mcp.servers` |
 | CodeArts | `~/.codeartsdoer/codearts_cli.json` 或 `codearts_cli.jsonc` 的 `mcp` |
 
-CodeBuddy、Kimi CLI 和 Pi 启动时会自己加载用户级配置，并与 Multica 下发的配置合并，守护进程不再预先合并，否则同一个服务器会启动两次。CodeBuddy 遇到同名服务器时以 Multica 下发的为准。表外的其他工具只收到智能体的配置。
+CodeBuddy、Kimi CLI 和 Pi 启动时会自己加载用户级配置，并与 Delegora 下发的配置合并，守护进程不再预先合并，否则同一个服务器会启动两次。CodeBuddy 遇到同名服务器时以 Delegora 下发的为准。表外的其他工具只收到智能体的配置。
 
-合并在运行时所在的电脑上完成，本机服务器的命令、URL、请求头和环境变量不会上传。智能体 **MCP** 标签页的"从运行时继承"一栏只显示服务器名称、传输方式、来源和是否启用；被智能体同名服务器覆盖的会标为"已由 Multica 覆盖"。本机配置文件无法解析时，守护进程记一条警告日志，这次运行只使用智能体的配置。
+合并在运行时所在的电脑上完成，本机服务器的命令、URL、请求头和环境变量不会上传。智能体 **MCP** 标签页的"从运行时继承"一栏只显示服务器名称、传输方式、来源和是否启用；被智能体同名服务器覆盖的会标为"已由 Delegora 覆盖"。本机配置文件无法解析时，守护进程记一条警告日志，这次运行只使用智能体的配置。
 
 ### Cursor 的 MCP 登录 [#cursor-mcp-login]
 
-Cursor 按项目目录保存 MCP 的 OAuth 登录，而每次运行都有自己的目录。因此 daemon 会在运行时所在电脑上为每个 Cursor 智能体保留一份登录文件，即 Multica 配置目录下的 `cursor-mcp-auth/<agent-id>/mcp-auth.json`，并给每次运行一份它的副本。daemon 每隔几秒以及运行结束时，会把 Cursor 对副本的改动合并回智能体的登录文件，所以一次运行刷新的 token，这个智能体之后的运行也能拿到。对 Mobbin 这样的服务登录一次，这个智能体之后在这台电脑上的运行都能用。它和你自己各个 Cursor 项目里的登录分开，运行不会把你那边挤下线。这个智能体在这台电脑上的所有运行都会用到它，包括其他成员触发的运行。
+Cursor 按项目目录保存 MCP 的 OAuth 登录，而每次运行都有自己的目录。因此 daemon 会在运行时所在电脑上为每个 Cursor 智能体保留一份登录文件，即 Delegora 配置目录下的 `cursor-mcp-auth/<agent-id>/mcp-auth.json`，并给每次运行一份它的副本。daemon 每隔几秒以及运行结束时，会把 Cursor 对副本的改动合并回智能体的登录文件，所以一次运行刷新的 token，这个智能体之后的运行也能拿到。对 Mobbin 这样的服务登录一次，这个智能体之后在这台电脑上的运行都能用。它和你自己各个 Cursor 项目里的登录分开，运行不会把你那边挤下线。这个智能体在这台电脑上的所有运行都会用到它，包括其他成员触发的运行。
 
 智能体有 MCP 配置时，每次运行都有自己的 Cursor 数据目录，运行在那里的 `mcp-auth.json` 就是这份副本。没有 MCP 配置时，运行使用你自己的 Cursor 数据目录（`~/.cursor`，或 daemon 的 `CURSOR_DATA_DIR`）和其中配置的 MCP 服务；daemon 只把 Cursor 在 `projects/` 下为运行目录保存的 `mcp-auth.json` 换成智能体登录文件的副本。运行的目录被清理时，这份副本会一并删除。
 
@@ -191,7 +191,7 @@ cd ~/.multica/cursor-mcp-auth/<agent-id>/user-login/workdir && CURSOR_DATA_DIR=~
 
 每次运行在工作目录根目录（默认 `~/multica_workspaces`）下有一个目录，放检出的代码、输出和日志；同一任务的后续运行会续用它。
 
-下表说明 Multica 管理的目录何时会被整个删除。在项目本地目录中直接执行的运行会保留独立的运行记录目录，详见下文。
+下表说明 Delegora 管理的目录何时会被整个删除。在项目本地目录中直接执行的运行会保留独立的运行记录目录，详见下文。
 
 | 运行来源 | 删除时机 |
 |---|---|
@@ -202,7 +202,7 @@ cd ~/.multica/cursor-mcp-auth/<agent-id>/user-login/workdir && CURSOR_DATA_DIR=~
 
 任务仍未关闭时，运行完成 12 小时后只删可以重新生成的内容：目录中的 `node_modules`、`.next`、`.turbo`，以及 `codex-home` 下的四个精确路径：`.sandbox-bin`、`.tmp/plugins`、`.tmp/marketplaces`、`cache/remote_plugin_catalog`。其他文件（包括 SQLite 数据库和 WAL 文件）保留。托管的任务运行目录默认还会在运行完成 14 天后整体删除，不论任务是否关闭。
 
-未归档的聊天如果使用 Multica 管理的工作目录，守护进程默认会在最后一次运行结束 12 小时后按同样的规则清理可重新生成的内容。清理成功后，守护进程会跳过该次运行的重复扫描。后续运行结束后，经过同样的等待时间便可再次清理。聊天直接在项目本地目录中运行时，只清理上述精确路径中的 Codex 缓存。
+未归档的聊天如果使用 Delegora 管理的工作目录，守护进程默认会在最后一次运行结束 12 小时后按同样的规则清理可重新生成的内容。清理成功后，守护进程会跳过该次运行的重复扫描。后续运行结束后，经过同样的等待时间便可再次清理。聊天直接在项目本地目录中运行时，只清理上述精确路径中的 Codex 缓存。
 
 直接运行时，项目的本地目录就是工作目录。守护进程清理时会保留这个目录。运行记录目录保留 daemon 日志和 `output/`。运行完成超过 `MULTICA_GC_COMPLETED_TASK_TTL`（默认 14 天）后，如果会话记录保存在记录目录外，就删除整个 `codex-home`；仍保存任务本地会话记录的 home 会保留。将该变量设为 `0` 可关闭 home 到期清理。后续运行会重建 home 并重新连接会话存储；会话存储仍遵循下文独立的保留策略。
 
@@ -221,20 +221,20 @@ cd ~/.multica/cursor-mcp-auth/<agent-id>/user-login/workdir && CURSOR_DATA_DIR=~
 | 数据 | 位置 | 保留 |
 |---|---|---|
 | Codex 会话记录（每个智能体、每个任务一份） | Codex 目录（默认 `~/.codex`）下的 `multica-sessions/` | 14 天未使用后删除；之后这个任务的运行无法续接原来的 Codex 会话 |
-| Hermes 会话记录 | Multica 配置目录（默认 `~/.multica`，命名 profile 为 `~/.multica/profiles/<name>`）下的 `hermes-sessions/` | 14 天未使用后删除 |
+| Hermes 会话记录 | Delegora 配置目录（默认 `~/.multica`，命名 profile 为 `~/.multica/profiles/<name>`）下的 `hermes-sessions/` | 14 天未使用后删除 |
 | Hermes 记忆（每个智能体一份） | 同一目录下的 `hermes-state/` | 90 天未使用后删除 |
 | Cursor 的 MCP 登录（每个智能体一份） | 同一目录下的 `cursor-mcp-auth/` | 保留 |
 | 每次运行的私有临时目录（`TMPDIR`） | 系统临时目录下的 `multica-task-*` | 运行结束后删除，守护进程被强制结束时由之后的清理补删 |
 
 Hermes 在任务和聊天中的运行会将会话持久目录作为隔离的 `HERMES_HOME`，`state.db` 及其 SQLite 日志文件均为目录内的普通文件。这个布局同时支持旧版进程内 ACP 和新版由 Gateway 执行的 ACP。已有会话记录会直接复用，旧运行目录中的会话历史会在下次运行前迁移。
 
-Multica 每次运行都会刷新其中的 skill 和派生配置。模型服务认证会保留，托管运行的消息平台适配器和 HTTP 入口会关闭。宿主的 Gateway 状态、日志、会话和定时任务各自隔离。运行结束时会停止本次运行的 Gateway，确保后续运行使用自己的执行环境。
+Delegora 每次运行都会刷新其中的 skill 和派生配置。模型服务认证会保留，托管运行的消息平台适配器和 HTTP 入口会关闭。宿主的 Gateway 状态、日志、会话和定时任务各自隔离。运行结束时会停止本次运行的 Gateway，确保后续运行使用自己的执行环境。
 
 ### Codex 原生记忆与子智能体 [#codex-memory]
 
 守护进程管理的 Codex 运行默认关闭 Codex 原生记忆，避免本机或前一次运行留下的记忆带进别的工作区。设置只写入这次运行专用的 `CODEX_HOME/config.toml`（`features.memories` 和 `memories.generate_memories`、`memories.use_memories` 均为 `false`），不改你的 `~/.codex/config.toml`。需要保留原生记忆时，在守护进程的环境中设置 `MULTICA_CODEX_MEMORY=1`。
 
-Codex 原生子智能体同样默认关闭：父线程结束时，Multica 就把这次运行判为结束，仍在执行的子智能体的结果会丢失。接受这个风险的话，设置 `MULTICA_CODEX_MULTI_AGENT=1`。
+Codex 原生子智能体同样默认关闭：父线程结束时，Delegora 就把这次运行判为结束，仍在执行的子智能体的结果会丢失。接受这个风险的话，设置 `MULTICA_CODEX_MULTI_AGENT=1`。
 
 ## 运行时共享 [#私有与公开]
 
@@ -244,7 +244,7 @@ Codex 原生子智能体同样默认关闭：父线程结束时，Multica 就把
 
 只想开放给部分成员时，在运行时详情中选择**指定成员**，勾选一位或多位工作区成员，然后**保存**。这些成员可以选择该运行时并在上面创建智能体。只有所有者能修改名单；在名单上不代表可以重命名、删除或管理这条运行时。
 
-所有者移除共享成员、把公开运行时改为指定成员，或重新设为**私有**时，Multica 会先展示受影响的智能体和活动运行，包括智能体构建会话。确认后会解绑其他成员的这些智能体，以 `runtime_access_revoked` 取消其排队中、已调度、执行中、等待本地目录和延迟中的运行，并暂停分配给这些智能体的已启用自动化。所有者和仍有权限的成员，其智能体与运行不受影响。影响范围变化时需要重新确认；遇到并发聊天写入时可能需要重试。恢复工作时，请先将智能体绑定到可用的运行时，再手动恢复已暂停的自动化。
+所有者移除共享成员、把公开运行时改为指定成员，或重新设为**私有**时，Delegora 会先展示受影响的智能体和活动运行，包括智能体构建会话。确认后会解绑其他成员的这些智能体，以 `runtime_access_revoked` 取消其排队中、已调度、执行中、等待本地目录和延迟中的运行，并暂停分配给这些智能体的已启用自动化。所有者和仍有权限的成员，其智能体与运行不受影响。影响范围变化时需要重新确认；遇到并发聊天写入时可能需要重试。恢复工作时，请先将智能体绑定到可用的运行时，再手动恢复已暂停的自动化。
 
 取消会保留聊天历史，并在服务端保存草稿和附件恢复数据。网页端和桌面端沿用现有的草稿恢复入口；移动端暂未提供该入口。已开始但尚无输出的运行，会等待守护进程确认取消或服务端收尾宽限期结束，再决定是否恢复输入。已连接的守护进程通过常规检查接收取消。电脑离线时，服务端仍会立即撤销访问，但本地进程可能继续执行，直到重新连接并收到取消；服务端无法保证立即远程停止。
 
@@ -256,7 +256,7 @@ Codex 原生子智能体同样默认关闭：父线程结束时，Multica 就把
 
 如果团队使用内部 wrapper、固定版本的可执行文件，或需要为一款兼容工具追加固定参数，可以创建**自定义运行时配置**。
 
-自定义配置不增加新的通信协议。创建时要选择一种 Multica 已支持的协议族（工具的对接协议类型，见 [AI 编程工具对照](/providers)）；命令本身必须与该协议兼容。
+自定义配置不增加新的通信协议。创建时要选择一种 Delegora 已支持的协议族（工具的对接协议类型，见 [AI 编程工具对照](/providers)）；命令本身必须与该协议兼容。
 
 ### Task 运行时环境
 
@@ -270,8 +270,8 @@ Codex 原生子智能体同样默认关闭：父线程结束时，Multica 就把
 | `MULTICA_TASK_ID` | 当前 task 的 ID | **集成契约** |
 | `MULTICA_AGENT_ID` | 被指派智能体的 ID | **集成契约** |
 | `MULTICA_WORKSPACE_ID` | task 所属工作区的 ID | **集成契约** |
-| `MULTICA_SERVER_URL` | 守护进程选定的 Multica 服务地址 | **集成契约** |
-| `MULTICA_TASK_CONFIG_ROOT` | 私有的 task 本地 Multica CLI 配置根目录 | 仅供参考 |
+| `MULTICA_SERVER_URL` | 守护进程选定的 Delegora 服务地址 | **集成契约** |
+| `MULTICA_TASK_CONFIG_ROOT` | 私有的 task 本地 Delegora CLI 配置根目录 | 仅供参考 |
 | `MULTICA_TASK_WORKSPACES_ROOT` | 守护进程管理的 task 工作区根目录 | 仅供参考 |
 | `MULTICA_AGENT_NAME` | 被指派智能体的显示名称 | 仅供参考 |
 | `MULTICA_DAEMON_PORT` | 本地守护进程的健康检查/API 端口，供 `multica repo checkout` 等仅限 task 的命令使用 | 仅供参考 |
@@ -304,19 +304,19 @@ Codex 原生子智能体同样默认关闭：父线程结束时，Multica 就把
 
 ### 参数的排列顺序
 
-命令字段里填写的内容会紧跟在可执行文件之后，排在 Multica 追加的参数之前：
+命令字段里填写的内容会紧跟在可执行文件之后，排在 Delegora 追加的参数之前：
 
 ```text
-<你的命令> <你的固定参数> <Multica 的协议参数> <Agent 的自定义参数>
+<你的命令> <你的固定参数> <Delegora 的协议参数> <Agent 的自定义参数>
 ```
 
-带子命令的 wrapper 靠这个顺序工作。命令是 `ccms start q36` 时，工具先看到 `start q36`，在 Multica 的 `-p` 等参数到达之前选好子命令；这类 wrapper 只接受这一种顺序。
+带子命令的 wrapper 靠这个顺序工作。命令是 `ccms start q36` 时，工具先看到 `start q36`，在 Delegora 的 `-p` 等参数到达之前选好子命令；这类 wrapper 只接受这一种顺序。
 
 这里的参数以前追加在最后。多数 flag 形式的命令在两种位置下解析结果相同，但区分全局 flag 和子命令 flag 的命令会在意位置。已经配置了带固定参数的 profile 的，升级后请发起一次运行，确认它仍能正常启动。
 
 另外：
 
-- **冲突时以 Multica 的值为准。** 如果固定参数设置了 Multica 也会设置的 flag，Multica 的值排在后面并最终生效。最典型的是：在 Agent 上选择的模型会覆盖 profile 里固定的 `--model`。若要为所有人固定模型，请把 Agent 的模型字段留空。
+- **冲突时以 Delegora 的值为准。** 如果固定参数设置了 Delegora 也会设置的 flag，Delegora 的值排在后面并最终生效。最典型的是：在 Agent 上选择的模型会覆盖 profile 里固定的 `--model`。若要为所有人固定模型，请把 Agent 的模型字段留空。
 - **协议关键 flag 会被忽略。** `-p`、`--output-format`、`--input-format`、`--permission-mode` 以及其他协议族的对应 flag 会从固定参数中被剔除，因为覆盖它们会切断 daemon 与工具之间的通信。子命令和其他位置参数始终原样传递。
 
 如果 Desktop 启动的守护进程找不到终端里能够执行的命令，可以为当前电脑设置绝对路径：
@@ -335,12 +335,12 @@ multica runtime profile unset-path <profile-id>
 
 ## Qoder Cloud Agents 远端运行时
 
-Qoder Cloud Agents 通过远端会话执行分配的任务。Multica 服务端管理桥接进程，复用现有守护进程任务协议，无需用户启动本地守护进程。
+Qoder Cloud Agents 通过远端会话执行分配的任务。Delegora 服务端管理桥接进程，复用现有守护进程任务协议，无需用户启动本地守护进程。
 
 ### 准备工作
 
 - 需要工作区管理员权限。每个工作区只有一个 Qoder 连接。
-- 创建 Qoder 个人访问令牌（PAT）、至少一个运行环境，以及要在 Qoder Cloud Agents 中使用的智能体。模型、工具和 skill 都在 Qoder Cloud Agents 中的远端智能体上配置，不在 Multica 中配置。
+- 创建 Qoder 个人访问令牌（PAT）、至少一个运行环境，以及要在 Qoder Cloud Agents 中使用的智能体。模型、工具和 skill 都在 Qoder Cloud Agents 中的远端智能体上配置，不在 Delegora 中配置。
 - 自托管部署需在服务端设置 `MULTICA_VCS_SECRET_KEY`：一个 base64 编码的 32 字节密钥，重启前后必须保持不变。未设置时，**添加**菜单中不会出现 Qoder Cloud Agents。
 
 ### 连接 Qoder
@@ -354,7 +354,7 @@ Qoder Cloud Agents 通过远端会话执行分配的任务。Multica 服务端�
 
 ### 添加智能体
 
-在运行时页面打开 Qoder Cloud Agents，点击**用它创建智能体**；也可以照常创建智能体并选择 Qoder 运行时。在智能体表单的 **远端智能体**中选择远端智能体。已有智能体可在**Qoder Cloud Agents** 标签页中修改关联的 Qoder Cloud Agents 智能体或默认仓库。多个 Multica 智能体可以共用同一个连接，各自关联不同的 Qoder Cloud Agents 智能体。
+在运行时页面打开 Qoder Cloud Agents，点击**用它创建智能体**；也可以照常创建智能体并选择 Qoder 运行时。在智能体表单的 **远端智能体**中选择远端智能体。已有智能体可在**Qoder Cloud Agents** 标签页中修改关联的 Qoder Cloud Agents 智能体或默认仓库。多个 Delegora 智能体可以共用同一个连接，各自关联不同的 Qoder Cloud Agents 智能体。
 
 连接凭证加密保存，在工作区内共享。管理员管理连接，成员可以选择可访问的 Qoder Cloud Agents 智能体。项目选择仓库和起始分支；创建编码会话时，对应仓库的令牌会传给 Qoder Cloud Agents。保存后的 PAT 不会返回浏览器。
 
@@ -364,7 +364,7 @@ Qoder Cloud Agents 通过远端会话执行分配的任务。Multica 服务端�
 
 超出并发上限的任务会排队等待。同一任务的后续运行会在上一会话空闲时继续使用该 Qoder 会话。智能体可以设置默认仓库，在任务所属项目未绑定仓库时使用。智能体会被要求以任务标识命名分支，并在 PR 标题前加上任务标识，以便 PR 自动关联到任务。
 
-首版支持任务运行、聊天、担任小队队长、通过智能体创建任务、进度同步、取消和基于持久化记录的恢复。模型、工具和 skill 在 Qoder 中配置。任务和聊天消息里的附件和图片会交给远端会话，包括 PDF 和 Office 文档，每个文件不超过 5 MB；更大的文件不会传过去，智能体只知道有这些文件。聊天中智能体用 DeliverArtifacts 交付的文件（每个不超过 10 MB）会作为附件随回复发出。暂不支持本地目录，也不支持从 Multica 创建远端 Qoder Cloud Agents 智能体。运行时页面分别展示远端运行时和电脑。
+首版支持任务运行、聊天、担任小队队长、通过智能体创建任务、进度同步、取消和基于持久化记录的恢复。模型、工具和 skill 在 Qoder 中配置。任务和聊天消息里的附件和图片会交给远端会话，包括 PDF 和 Office 文档，每个文件不超过 5 MB；更大的文件不会传过去，智能体只知道有这些文件。聊天中智能体用 DeliverArtifacts 交付的文件（每个不超过 10 MB）会作为附件随回复发出。暂不支持本地目录，也不支持从 Delegora 创建远端 Qoder Cloud Agents 智能体。运行时页面分别展示远端运行时和电脑。
 
 独立桥接进程的配置与限制见 [Qoder runtime README](https://github.com/multica-ai/multica/blob/main/server/cmd/qoder-runtime/README.md)。
 
@@ -375,7 +375,7 @@ Qoder Cloud Agents 通过远端会话执行分配的任务。Multica 服务端�
 1. 运行 `multica daemon status`，确认守护进程已经启动。
 2. 运行 `multica daemon logs -f`，查看登录、网络或工具检测错误。
 3. 在同一运行环境中执行 `command -v <工具命令>`，确认守护进程能够找到它。
-4. 打开 Multica 的**运行时**页面，检查目标电脑和对应的 AI 编程工具是否显示在线。
+4. 打开 Delegora 的**运行时**页面，检查目标电脑和对应的 AI 编程工具是否显示在线。
 5. 工具刚安装、路径刚修改或配置刚更新时，运行 `multica daemon restart`。
 
 仍未解决时，参见[故障排查](/troubleshooting)。

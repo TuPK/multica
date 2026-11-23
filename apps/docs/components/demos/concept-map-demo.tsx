@@ -69,7 +69,7 @@ const EDGES: { id: EdgeId; from: MapNode; to: MapNode; curve?: [number, number];
 
 const MAP_NODES = Object.keys(POSITION) as MapNode[];
 
-// The main line the coach mark walks the reader along, as on "How Multica works".
+// The main line the coach mark walks the reader along, as on "How Delegora works".
 const GUIDE: MapNode[] = ["issue", "agent", "run", "runtime"];
 
 const GROUPS: { key: "basic" | "execution" | "collaboration"; nodes: NodeId[] }[] = [
@@ -110,7 +110,7 @@ const copy = {
       },
       runtime: {
         name: "Runtime",
-        desc: "Where execution actually happens: a computer connected to Multica and the AI coding tools on it.",
+        desc: "Where execution actually happens: a computer connected to Delegora and the AI coding tools on it.",
         page: "Daemon and runtimes",
       },
       run: {
@@ -198,7 +198,7 @@ const copy = {
       },
       runtime: {
         name: "运行时",
-        desc: "执行实际发生的地方：连接到 Multica 的电脑和其中的 AI 编程工具。",
+        desc: "执行实际发生的地方：连接到 Delegora 的电脑和其中的 AI 编程工具。",
         page: "守护进程与运行时",
       },
       run: {
@@ -287,7 +287,7 @@ const copy = {
       },
       runtime: {
         name: "ランタイム",
-        desc: "実行が実際に行われる場所。Multica に接続されたコンピュータと、その上の AI コーディングツールです。",
+        desc: "実行が実際に行われる場所。Delegora に接続されたコンピュータと、その上の AI コーディングツールです。",
         page: "デーモンとランタイム",
       },
       run: {
@@ -374,7 +374,7 @@ const copy = {
       },
       runtime: {
         name: "런타임",
-        desc: "실제 실행이 일어나는 곳으로, Multica에 연결된 컴퓨터와 그 컴퓨터의 AI 코딩 도구를 뜻합니다.",
+        desc: "실제 실행이 일어나는 곳으로, Delegora에 연결된 컴퓨터와 그 컴퓨터의 AI 코딩 도구를 뜻합니다.",
         page: "데몬과 런타임",
       },
       run: {
@@ -462,7 +462,7 @@ const copy = {
       },
       runtime: {
         name: "Runtime",
-        desc: "L'endroit où l'exécution a réellement lieu : un ordinateur connecté à Multica et les outils de codage IA qui y sont installés.",
+        desc: "L'endroit où l'exécution a réellement lieu : un ordinateur connecté à Delegora et les outils de codage IA qui y sont installés.",
         page: "Daemon et runtimes",
       },
       run: {

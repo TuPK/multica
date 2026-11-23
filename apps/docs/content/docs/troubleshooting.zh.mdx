@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-先确认问题发生在哪一层：Multica 服务、守护进程、运行时，还是 AI 编程工具。下面几条命令通常足以找到第一条有效错误：
+先确认问题发生在哪一层：Delegora 服务、守护进程、运行时，还是 AI 编程工具。下面几条命令通常足以找到第一条有效错误：
 
 <Tabs items={["所有安装方式", "自托管服务"]}>
 <Tab value="所有安装方式">
@@ -50,7 +50,7 @@ multica daemon logs --lines 100
 常见原因包括：
 
 - CLI 尚未登录，或本机保存的令牌已经失效；
-- 守护进程连接了错误的 Multica 服务；
+- 守护进程连接了错误的 Delegora 服务；
 - 执行电脑无法访问 API，或 DNS、TLS、防火墙拦截了连接；
 - 当前账号已经不在目标工作区中；
 - 本机没有安装任何受支持的 AI 编程工具，守护进程因此无法启动。
@@ -86,7 +86,7 @@ curl -fsS <server-url>/health
 
 `multica login` 能打开浏览器、网页登录也能完成，但 CLI 仍以 "Sign-in did not complete" 或 "TLS 握手超时" 失败。`multica --debug login` 在 `POST /api/tokens` 上显示 `net/http: TLS handshake timeout`，而同一台机器上的 `curl.exe -I https://api.multica.ai` 或浏览器都能正常连接。
 
-TCP 连接已建立，但 TLS 握手始终没有完成。Go 客户端（包括 Multica CLI 和守护进程）默认在 TLS ClientHello 中携带后量子密钥交换，报文约 1.5 KB，会拆成两个包发送。部分安全软件、VPN、路由器和防火墙会丢弃这种握手；curl 的 ClientHello 小得多，所以能通过。
+TCP 连接已建立，但 TLS 握手始终没有完成。Go 客户端（包括 Delegora CLI 和守护进程）默认在 TLS ClientHello 中携带后量子密钥交换，报文约 1.5 KB，会拆成两个包发送。部分安全软件、VPN、路由器和防火墙会丢弃这种握手；curl 的 ClientHello 小得多，所以能通过。
 
 先关闭后量子密钥交换重试，确认是否为此原因：
 
@@ -178,14 +178,14 @@ multica issue runs <issue-id>
 2. 无人值守的 Mac 请给新二进制授予完全磁盘访问权限。用 `realpath "$(command -v multica)"` 打印路径，然后在**系统设置 → 隐私与安全性 → 完全磁盘访问权限**中删除旧的 `multica` 条目并添加该路径（在文件选择器中按 ⌘⇧G 粘贴路径）。
 3. 按启动守护进程时的方式重启它：`multica daemon restart`；LaunchAgent 则用 `launchctl kickstart -k gui/$(id -u)/<label>`。
 
-每次升级 CLI 后都需要重复这些步骤。只有连接 Multica Cloud 的守护进程默认开启自动更新；用 `--no-auto-update` 启动守护进程后，只在你手动升级时更新。[桌面应用](/desktop-app)内置的 CLI 使用 Developer ID 签名，授权在升级后依然有效。
+每次升级 CLI 后都需要重复这些步骤。只有连接 Delegora Cloud 的守护进程默认开启自动更新；用 `--no-auto-update` 启动守护进程后，只在你手动升级时更新。[桌面应用](/desktop-app)内置的 CLI 使用 Developer ID 签名，授权在升级后依然有效。
 
 </Accordion>
 <Accordion title="使用 Hermes CLI 后，Hermes 运行会重新安装依赖" id="hermes-runs-reinstall-dependencies-after-you-use-the-hermes-cli" value="hermes-runs-reinstall-dependencies-after-you-use-the-hermes-cli">
 
-如果你交替使用 Hermes CLI 或 Hermes 桌面应用和 Multica 中的 Hermes，每次切换都可能多花 30–60 秒启动，因为 Hermes 会重建共享的 Python 依赖环境。每次重建都会在磁盘上留下一个新版本的依赖环境，直到 Hermes 将它清理掉。
+如果你交替使用 Hermes CLI 或 Hermes 桌面应用和 Delegora 中的 Hermes，每次切换都可能多花 30–60 秒启动，因为 Hermes 会重建共享的 Python 依赖环境。每次重建都会在磁盘上留下一个新版本的依赖环境，直到 Hermes 将它清理掉。
 
-如果你常用的 Hermes 主目录把 `memory.provider` 设成了带 Python 依赖的插件，就会出现这个现象。每次 Multica 运行使用独立的 Hermes 主目录，共享已安装的依赖，并关闭外部记忆提供方，让记忆不在不同运行之间共享。Hermes 根据当前主目录中的插件判断需要哪些依赖。两个主目录的需求不同，都会把对方安装的环境视为过期。上游在 [NousResearch/hermes-agent#137726](https://github.com/NousResearch/hermes-agent/issues/137726) 跟踪这个问题。
+如果你常用的 Hermes 主目录把 `memory.provider` 设成了带 Python 依赖的插件，就会出现这个现象。每次 Delegora 运行使用独立的 Hermes 主目录，共享已安装的依赖，并关闭外部记忆提供方，让记忆不在不同运行之间共享。Hermes 根据当前主目录中的插件判断需要哪些依赖。两个主目录的需求不同，都会把对方安装的环境视为过期。上游在 [NousResearch/hermes-agent#137726](https://github.com/NousResearch/hermes-agent/issues/137726) 跟踪这个问题。
 
 要确认是否正在重装，请在[守护进程日志](#日志位置)中查找 `hermes is reinstalling its dependency environment before this task starts`。随后的 `hermes dependency reinstall finished` 日志会在 `startup_delay_ms` 中记录从启动到就绪的总耗时，包括重装时间。
 
@@ -234,7 +234,7 @@ docker compose -f docker-compose.selfhost.yml logs backend \
 - **Resend**：确认 API key 有效，且发件地址的域名已经验证；
 - **SMTP**：确认主机、端口、凭据和发件地址，并从错误日志判断失败发生在连接、TLS、认证还是投递阶段。
 
-`SMTP_HOST` 和 Resend 同时配置时，Multica 会优先使用 SMTP。配置方式见[登录与注册](/auth-setup#邮箱验证码)。
+`SMTP_HOST` 和 Resend 同时配置时，Delegora 会优先使用 SMTP。配置方式见[登录与注册](/auth-setup#邮箱验证码)。
 
 <Callout type="warning">
 生产环境不要依赖日志中的验证码，也不要启用固定本地测试验证码。
@@ -312,7 +312,7 @@ netstat -ano | findstr :8080
 </Tab>
 </Tabs>
 
-如果它是另一个 Multica checkout，先在那个目录运行 `make stop`。否则正常停止占用端口的程序，或修改当前服务端口。公网 80/443 由 Caddy、Nginx 等反向代理监听。
+如果它是另一个 Delegora checkout，先在那个目录运行 `make stop`。否则正常停止占用端口的程序，或修改当前服务端口。公网 80/443 由 Caddy、Nginx 等反向代理监听。
 
 </Accordion>
 </Accordions>

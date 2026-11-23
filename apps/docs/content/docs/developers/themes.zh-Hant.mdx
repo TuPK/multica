@@ -1,12 +1,12 @@
 ---
 title: 製作主題
-description: Multica 的主題格式（manifest、CSS 變數、選項和錨點），如何編寫和檢查主題，以及如何釋出到主題商店。
+description: Delegora 的主題格式（manifest、CSS 變數、選項和錨點），如何編寫和檢查主題，以及如何釋出到主題商店。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica 主題是一個資料夾，包含 `manifest.json`、`theme.css`，以及 CSS 用到的字型和圖片。CSS 為淺色和深色模式設定公開變數，也可以重新設計一組穩定的錨點；manifest 給主題命名，還可以宣告選項，讓使用者在 **設定 → 外觀** 裡調整。主題永遠不會執行 JavaScript。
+Delegora 主題是一個資料夾，包含 `manifest.json`、`theme.css`，以及 CSS 用到的字型和圖片。CSS 為淺色和深色模式設定公開變數，也可以重新設計一組穩定的錨點；manifest 給主題命名，還可以宣告選項，讓使用者在 **設定 → 外觀** 裡調整。主題永遠不會執行 JavaScript。
 
 <Callout type="warn">
   主題格式是 Beta API。在宣佈穩定之前，變數、錨點和 manifest 都可能變化。完整的、自動生成的變數和錨點列表在 [`docs/theming.md`](https://github.com/multica-ai/multica/blob/main/docs/theming.md)；本頁講它們怎麼配合使用。
@@ -34,7 +34,7 @@ Multica 主題是一個資料夾，包含 `manifest.json`、`theme.css`，以及
 
 ### 檢查
 
-分享之前，在 [Multica 倉庫](https://github.com/multica-ai/multica)的本地副本里執行檢查（見[檢查與預覽](#檢查與預覽)）。
+分享之前，在 [Delegora 倉庫](https://github.com/multica-ai/multica)的本地副本里執行檢查（見[檢查與預覽](#檢查與預覽)）。
 
 </Step>
 </Steps>
@@ -203,7 +203,7 @@ paper/
 
 ## 檢查與預覽
 
-在 [Multica 倉庫](https://github.com/multica-ai/multica)的本地副本里執行：
+在 [Delegora 倉庫](https://github.com/multica-ai/multica)的本地副本里執行：
 
 ```bash
 pnpm theme:check path/to/paper          # 資料夾
@@ -217,7 +217,7 @@ pnpm theme:preview path/to/paper --out preview   # preview/light.png 和 preview
 
 開發過程中如果主題隱藏或弄亂了介面，在地址後加 `?theme=default` 開啟應用，或者載入後立刻按住 **Shift**；見[主題出問題時](/themes#主題出問題時)。
 
-檢查器也可以不安裝儲存庫，用稀疏複製和 Node 22.18 或更新版本直接執行。AI 代理內建的 Multica skill 裡也是這些指令：
+檢查器也可以不安裝儲存庫，用稀疏複製和 Node 22.18 或更新版本直接執行。AI 代理內建的 Delegora skill 裡也是這些指令：
 
 ```bash
 git clone --depth 1 --filter=blob:none --sparse https://github.com/multica-ai/multica.git multica-themes
@@ -255,7 +255,7 @@ node multica-themes/scripts/theme-check.mjs path/to/paper
 
 新 release 通過同樣的檢查後，大約一小時內上架；裝過這個主題的人會看到更新。沒通過檢查的 release 不會替換已上架的版本。應用只會安裝通過檢查的那個 `theme.zip`，並用與匯入主題相同的解析器和 CSS 檢查讀取它。
 
-商店卡片會顯示主題從這個 Multica 伺服器被下載的次數。每次安裝和每次更新都算一次，沒裝的主題按下載次數從多到少排列。
+商店卡片會顯示主題從這個 Delegora 伺服器被下載的次數。每次安裝和每次更新都算一次，沒裝的主題按下載次數從多到少排列。
 
 ## 接下來
 

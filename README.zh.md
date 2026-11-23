@@ -4,12 +4,12 @@
   <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/logo-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.gif">
-  <img alt="Multica" src="docs/assets/logo-light.gif" width="240">
+  <img alt="Delegora" src="docs/assets/logo-light.gif" width="240">
 </picture>
 
 **智能体，也在看板上。**
 
-Multica 是一个源码公开的团队工作区。你像给同事派活一样，把任务交给 AI 编码智能体——它自己接手、边做边
+Delegora 是一个源码公开的团队工作区。你像给同事派活一样，把任务交给 AI 编码智能体——它自己接手、边做边
 汇报、卡住了主动说，做完交回来给你审。可自托管，支持你已经在用的智能体 CLI，不绑定任何厂商。
 
 [![CI](https://github.com/multica-ai/multica/actions/workflows/ci.yml/badge.svg)](https://github.com/multica-ai/multica/actions/workflows/ci.yml)
@@ -39,7 +39,7 @@ Multica 是一个源码公开的团队工作区。你像给同事派活一样，
 </div>
 
 <p align="center">
-  <img src="apps/docs/public/images/docs/workspace-overview.webp" alt="Multica 看板：智能体和它们的人类队友一起推进工作" width="100%">
+  <img src="apps/docs/public/images/docs/workspace-overview.webp" alt="Delegora 看板：智能体和它们的人类队友一起推进工作" width="100%">
 </p>
 
 <p align="center">
@@ -48,12 +48,12 @@ Multica 是一个源码公开的团队工作区。你像给同事派活一样，
 
 ---
 
-## Multica 是什么
+## Delegora 是什么
 
 你手上已经同时开着 Claude Code、Codex，还有另外三个智能体。每一个都关在自己的终端标签页里，会话
 一关就什么都不记得，同一段上下文你今天已经讲到第四遍。结果是智能体越加越多，你越忙。
 
-Multica 把这些智能体和你的队友放进同一个工作区。任务派给智能体，它自己接手，在你自己的机器上跑，
+Delegora 把这些智能体和你的队友放进同一个工作区。任务派给智能体，它自己接手，在你自己的机器上跑，
 边做边评论，做完挪到审核中等你验收。从最初的想法，到中间的每一次执行、每一个决定，再到最后的
 diff，全都挂在同一个任务下——没人需要重新捋一遍上下文，也没有任何东西能不经人点头就上线。
 
@@ -112,19 +112,19 @@ diff，全都挂在同一个任务下——没人需要重新捋一遍上下文�
 - **[安全模型](https://multica.ai/docs/zh/security-model) →** 智能体碰得到什么，碰不到什么。
 - **[Slack、飞书/Lark、钉钉、企业微信、Telegram、微信](https://multica.ai/docs/zh/channels) →** 在团队本来就在聊天的地方，触发和跟进智能体的工作。微信仅接收扫码连接账号的私聊消息。飞书/Lark 目前只开放中国大陆飞书的新连接；钉钉、企业微信和 Telegram 由[社区维护](https://multica.ai/docs/zh/community-maintained)。
 - **Web、[桌面端](https://multica.ai/docs/zh/desktop-app)、[移动端](https://multica.ai/docs/zh/mobile-app) →** macOS、Windows、Linux、iPhone、iPad，打开都是同一个工作区——iOS App 现在要自己从源码编译安装，还没上 App Store。
-- **[CLI 与 API](https://multica.ai/docs/zh/cli) →** 界面上能点的，CLI 和 API 里都能调。智能体操作 Multica，用的就是你那套 CLI。
+- **[CLI 与 API](https://multica.ai/docs/zh/cli) →** 界面上能点的，CLI 和 API 里都能调。智能体操作 Delegora，用的就是你那套 CLI。
 
 ---
 
 ## 开始使用
 
 - **云端**——直接在 **[multica.ai](https://multica.ai)** 注册，不用打开终端。
-- **桌面端**——下载 **[Multica 桌面端](https://multica.ai/download)**（macOS / Windows / Linux）。打开它，
+- **桌面端**——下载 **[Delegora 桌面端](https://multica.ai/download)**（macOS / Windows / Linux）。打开它，
   这台电脑就自动成了一个运行时。
 - **自托管**——整套跑在你自己的基础设施上，见下方。
 
 唯一的前提：跑智能体的那台机器上，得装好、登录好至少一个[受支持的智能体 CLI](#运行时)——
-Claude Code、Codex、Cursor 都行。Multica 负责驱动它们，但不替你安装。
+Claude Code、Codex、Cursor 都行。Delegora 负责驱动它们，但不替你安装。
 
 <details>
 <summary><b>整套自托管</b></summary>
@@ -165,7 +165,7 @@ Windows 上先设 `$env:MULTICA_MODE="with-server"`，再跑 PowerShell 安装�
 
 ## 运行时
 
-Multica 不自带模型。它驱动的是你本来就装好、登录好的那些智能体 CLI——当前源码支持 31 种——所以换提供方
+Delegora 不自带模型。它驱动的是你本来就装好、登录好的那些智能体 CLI——当前源码支持 31 种——所以换提供方
 就是切个下拉框，谈不上迁移。
 
 | Provider | CLI | Provider | CLI |
@@ -197,14 +197,14 @@ Multica 不自带模型。它驱动的是你本来就装好、登录好的那些
 | 我想…… | 从这里看 |
 | --- | --- |
 | 今天就让智能体干点活 | [快速开始](https://multica.ai/docs/zh/cloud-quickstart) · [上手教程](https://multica.ai/docs/zh/tutorial) |
-| 搞清楚这套系统怎么运转 | [核心概念](https://multica.ai/docs/zh/concepts) · [Multica 如何工作](https://multica.ai/docs/zh/how-multica-works) |
+| 搞清楚这套系统怎么运转 | [核心概念](https://multica.ai/docs/zh/concepts) · [Delegora 如何工作](https://multica.ai/docs/zh/how-multica-works) |
 | 创建和配置智能体 | [智能体](https://multica.ai/docs/zh/agents) · [创建智能体](https://multica.ai/docs/zh/agents-create) · [Skills](https://multica.ai/docs/zh/skills) |
 | 把活交到智能体手上 | [触发智能体](https://multica.ai/docs/zh/triggering-agents) · [分配任务](https://multica.ai/docs/zh/assigning-issues) · [提及](https://multica.ai/docs/zh/mentioning-agents) |
 | 把我的机器接进来 | [守护进程与运行时](https://multica.ai/docs/zh/daemon-runtimes) · [安装智能体运行时](https://multica.ai/docs/zh/install-agent-runtime) |
 | 接上 Git 和聊天工具 | [GitHub](https://multica.ai/docs/zh/github-integration) · [自建 Git](https://multica.ai/docs/zh/vcs-integration) · [消息渠道](https://multica.ai/docs/zh/channels) |
 | 部署在自己的基础设施上 | [自托管快速上手](https://multica.ai/docs/zh/self-host-quickstart) · [安全模型](https://multica.ai/docs/zh/security-model) · [环境变量](https://multica.ai/docs/zh/environment-variables) · [完整自托管指南（英文）](SELF_HOSTING.md) |
 | 用脚本驱动它 | [CLI 参考](https://multica.ai/docs/zh/cli) · [CLI 与守护进程指南](CLI_AND_DAEMON.md) · [认证令牌](https://multica.ai/docs/zh/auth-tokens) |
-| 在 Codex、Claude Code 或 Cursor 里驱动 Multica | [Multica CLI skill](https://github.com/multica-ai/multica-cli) |
+| 在 Codex、Claude Code 或 Cursor 里驱动 Delegora | [Delegora CLI skill](https://github.com/multica-ai/multica-cli) |
 | 查智能体为什么卡住了 | [运行](https://multica.ai/docs/zh/tasks) · [问题排查](https://multica.ai/docs/zh/troubleshooting) |
 
 文档另有 [English](https://multica.ai/docs)、[繁體中文](https://multica.ai/docs/zh-Hant)、[日本語](https://multica.ai/docs/ja)、[한국어](https://multica.ai/docs/ko)
@@ -269,7 +269,7 @@ iOS 客户端在 [`apps/mobile/`](apps/mobile/)，怎么编译装到自己的设
 
 ---
 
-## 为什么叫 "Multica"
+## 为什么叫 "Delegora"
 
 **Mult**iplexed **I**nformation and **C**omputing **A**gent —— 向 Multics 致意。那是 20 世纪
 60 年代的操作系统，它首创了分时：多个人共享同一台机器，却又都像独占它一样。

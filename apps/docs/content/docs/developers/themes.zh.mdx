@@ -1,12 +1,12 @@
 ---
 title: 制作主题
-description: Multica 的主题格式（manifest、CSS 变量、选项和锚点），如何编写和检查主题，以及如何发布到主题商店。
+description: Delegora 的主题格式（manifest、CSS 变量、选项和锚点），如何编写和检查主题，以及如何发布到主题商店。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica 主题是一个文件夹，包含 `manifest.json`、`theme.css`，以及 CSS 用到的字体和图片。CSS 为浅色和深色模式设置公开变量，也可以重新设计一组稳定的锚点；manifest 给主题命名，还可以声明选项，让用户在 **设置 → 外观** 里调整。主题永远不会运行 JavaScript。
+Delegora 主题是一个文件夹，包含 `manifest.json`、`theme.css`，以及 CSS 用到的字体和图片。CSS 为浅色和深色模式设置公开变量，也可以重新设计一组稳定的锚点；manifest 给主题命名，还可以声明选项，让用户在 **设置 → 外观** 里调整。主题永远不会运行 JavaScript。
 
 <Callout type="warn">
   主题格式是 Beta API。在宣布稳定之前，变量、锚点和 manifest 都可能变化。完整的、自动生成的变量和锚点列表在 [`docs/theming.md`](https://github.com/multica-ai/multica/blob/main/docs/theming.md)；本页讲它们怎么配合使用。
@@ -34,7 +34,7 @@ Multica 主题是一个文件夹，包含 `manifest.json`、`theme.css`，以及
 
 ### 检查
 
-分享之前，在 [Multica 仓库](https://github.com/multica-ai/multica)的本地副本里运行检查（见[检查与预览](#检查与预览)）。
+分享之前，在 [Delegora 仓库](https://github.com/multica-ai/multica)的本地副本里运行检查（见[检查与预览](#检查与预览)）。
 
 </Step>
 </Steps>
@@ -203,7 +203,7 @@ paper/
 
 ## 检查与预览
 
-在 [Multica 仓库](https://github.com/multica-ai/multica)的本地副本里运行：
+在 [Delegora 仓库](https://github.com/multica-ai/multica)的本地副本里运行：
 
 ```bash
 pnpm theme:check path/to/paper          # 文件夹
@@ -217,7 +217,7 @@ pnpm theme:preview path/to/paper --out preview   # preview/light.png 和 preview
 
 开发过程中如果主题隐藏或弄乱了界面，在地址后加 `?theme=default` 打开应用，或者加载后立刻按住 **Shift**；见[主题出问题时](/themes#主题出问题时)。
 
-检查器也可以不安装仓库，用稀疏克隆和 Node 22.18 或更高版本直接运行。智能体内置的 Multica skill 里也是这些命令：
+检查器也可以不安装仓库，用稀疏克隆和 Node 22.18 或更高版本直接运行。智能体内置的 Delegora skill 里也是这些命令：
 
 ```bash
 git clone --depth 1 --filter=blob:none --sparse https://github.com/multica-ai/multica.git multica-themes
@@ -255,7 +255,7 @@ node multica-themes/scripts/theme-check.mjs path/to/paper
 
 新 release 通过同样的检查后，大约一小时内上架；装过这个主题的人会看到更新。没通过检查的 release 不会替换已上架的版本。应用只会安装通过检查的那个 `theme.zip`，并用与导入主题相同的解析器和 CSS 检查读取它。
 
-商店卡片会显示主题从这个 Multica 服务端被下载的次数。每次安装和每次更新都算一次，没装的主题按下载次数从多到少排列。
+商店卡片会显示主题从这个 Delegora 服务端被下载的次数。每次安装和每次更新都算一次，没装的主题按下载次数从多到少排列。
 
 ## 接下来
 

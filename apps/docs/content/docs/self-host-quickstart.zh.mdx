@@ -1,6 +1,6 @@
 ---
 title: 自托管快速上手
-description: 用 Docker Compose 启动 Multica，完成登录，并连接第一台执行电脑。
+description: 用 Docker Compose 启动 Delegora，完成登录，并连接第一台执行电脑。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -8,20 +8,20 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-自托管 Multica 分成两部分：
+自托管 Delegora 分成两部分：
 
 | 部分 | 运行什么 | 放在哪里 |
 |---|---|---|
-| **Multica 服务** | Web、API 和 PostgreSQL | 一台安装了 Docker 的机器 |
-| **执行电脑** | Multica 守护进程和 AI 编程工具 | 开发者实际工作的电脑 |
+| **Delegora 服务** | Web、API 和 PostgreSQL | 一台安装了 Docker 的机器 |
+| **执行电脑** | Delegora 守护进程和 AI 编程工具 | 开发者实际工作的电脑 |
 
-它们可以是同一台机器，也可以分开。自托管替换的只是 Multica Cloud 部分。
+它们可以是同一台机器，也可以分开。自托管替换的只是 Delegora Cloud 部分。
 
 这篇文档使用 Docker Compose。Kubernetes 部署见仓库中的 [Self-hosting guide](https://github.com/multica-ai/multica/blob/main/SELF_HOSTING.md#kubernetes-deployment-alternative)。
 
 ## 开始前
 
-运行 Multica 服务的机器需要：
+运行 Delegora 服务的机器需要：
 
 - Docker Engine 或 Docker Desktop，并且 `docker compose` 可以运行
 - Git、Make、curl 和 OpenSSL
@@ -34,14 +34,14 @@ docker info
 docker compose version
 ```
 
-Multica 使用 Compose v2，也就是 `docker compose`。旧版的 `docker-compose` v1 不受支持。
+Delegora 使用 Compose v2，也就是 `docker compose`。旧版的 `docker-compose` v1 不受支持。
 
-执行电脑还需要至少一款已经安装并登录的 [AI 编程工具](/providers)，例如 Claude Code、Codex 或 Cursor。第 5 步再安装 Multica CLI。
+执行电脑还需要至少一款已经安装并登录的 [AI 编程工具](/providers)，例如 Claude Code、Codex 或 Cursor。第 5 步再安装 Delegora CLI。
 
 <Steps>
 <Step>
 
-## 启动 Multica [#1-启动-multica]
+## 启动 Delegora [#1-启动-multica]
 
 在准备运行服务的机器上执行：
 
@@ -58,7 +58,7 @@ make selfhost
 
 1. 从 `.env.example` 创建 `.env`
 2. 随机生成 `JWT_SECRET`、PostgreSQL 密码和 `MULTICA_VCS_SECRET_KEY`（自托管 Git 集成的加密密钥）
-3. 拉取 PostgreSQL、Multica backend 和 Multica frontend 镜像
+3. 拉取 PostgreSQL、Delegora backend 和 Delegora frontend 镜像
 4. 创建持久化数据卷并启动三个容器
 5. 等待 backend 开始响应健康检查
 
@@ -118,7 +118,7 @@ Docker Compose 默认只把 `3000` 和 `8080` 绑定到 `127.0.0.1`。不要直�
 
 下面以两个域名为例：
 
-- `app.example.com`：Multica Web
+- `app.example.com`：Delegora Web
 - `api.example.com`：API、健康检查和守护进程连接
 
 先在 `.env` 中设置公开地址：
@@ -259,7 +259,7 @@ docker compose -f docker-compose.selfhost.yml logs backend \
 每次运行都拥有守护进程所属用户的全部权限，该用户能读写的一切，运行都能读写。请用专用 Unix 用户、容器或虚拟机来运行守护进程，而不是你的个人账号。详见[安全模型](/security-model)。
 </Callout>
 
-先安装 Multica CLI：
+先安装 Delegora CLI：
 
 <Tabs groupId="os" persist items={["macOS / Linux", "Windows"]}>
 <Tab value="macOS / Linux">
@@ -278,7 +278,7 @@ irm https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.ps
 </Tab>
 </Tabs>
 
-然后让 CLI 连接你的服务。按 Multica 服务所在的位置选择：
+然后让 CLI 连接你的服务。按 Delegora 服务所在的位置选择：
 
 <Tabs items={["服务在这台电脑上", "服务在另一台机器上"]}>
 <Tab value="服务在这台电脑上">
@@ -318,7 +318,7 @@ multica daemon status
 
 ## 完成第一次执行 [#6-完成第一次执行]
 
-回到 Multica。运行时列表中出现在线的运行时后，创建一个智能体，并把第一个任务分配给它。
+回到 Delegora。运行时列表中出现在线的运行时后，创建一个智能体，并把第一个任务分配给它。
 
 执行日志变为"已完成"、时间线中出现智能体的回复，说明自托管服务、执行电脑和 AI 编程工具已经连通。详细步骤见[快速上手](/cloud-quickstart)第 3-5 步。
 
@@ -440,7 +440,7 @@ curl -s localhost:8080/readyz
 <Accordions type="multiple">
 <Accordion title="git pull 到底更新了什么" id="what-git-pull-actually-does">
 
-`git pull` 更新的是 **`docker-compose.selfhost.yml` 本身**：新增的环境变量、新增的服务、改过的 healthcheck。拉新版本 Multica 靠的**不是**它。
+`git pull` 更新的是 **`docker-compose.selfhost.yml` 本身**：新增的环境变量、新增的服务、改过的 healthcheck。拉新版本 Delegora 靠的**不是**它。
 
 真正决定你跑哪个版本的是 `docker compose pull`：它去 GHCR 查这个 tag 当前指向哪个镜像。所以一个几个月没更新的 checkout 照样能拉到今天的 `latest` 镜像；反过来，只跑 `git pull` 而不拉镜像、不重建容器，什么都不会变。
 

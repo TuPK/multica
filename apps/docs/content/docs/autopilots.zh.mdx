@@ -8,7 +8,7 @@ import { AutopilotDemo } from "@/components/demos/autopilot-demo";
 
 每天汇总进展、定期检查依赖、外部系统发来事件时启动智能体，这类反复发生的工作交给自动化。
 
-每条自动化保存一份 Runbook、一个执行方和一个或多个触发器。触发后，Multica 创建任务或直接运行智能体，每一次运行都留有记录。
+每条自动化保存一份 Runbook、一个执行方和一个或多个触发器。触发后，Delegora 创建任务或直接运行智能体，每一次运行都留有记录。
 
 ## 自动化还是任务唤醒 [#vs-wakeups]
 
@@ -67,7 +67,7 @@ Cron 不包含秒，时区使用 `Asia/Shanghai` 这样的 IANA 名称。保存�
 
 ## 通过 Webhook 运行
 
-添加 Webhook 触发器后，Multica 会生成一个唯一 URL。向它发送 JSON 对象或数组，即可触发自动化：
+添加 Webhook 触发器后，Delegora 会生成一个唯一 URL。向它发送 JSON 对象或数组，即可触发自动化：
 
 ```bash
 curl -X POST "$MULTICA_WEBHOOK_URL" \
@@ -82,14 +82,14 @@ Webhook 请求的约束：
 
 - Body 必须是有效的 JSON 对象或数组，最大 256 KiB；
 - `Idempotency-Key` 可以避免发送方重试时重复运行；GitHub 也会使用 `X-GitHub-Delivery` 去重；
-- 没有稳定幂等键时，Multica 无法保证重复请求只运行一次；
+- 没有稳定幂等键时，Delegora 无法保证重复请求只运行一次；
 - 触发器已禁用或事件不匹配时，投递会记录为"已忽略"，不会创建运行。
 
 ### 过滤事件 [#事件过滤]
 
 同一个来源会发送多种事件时，给触发器加上事件过滤。点 **添加规则**，填一个事件名，加可选的 action 列表；任意一条规则命中就运行，没有规则则接收所有事件。要编辑某个 Webhook 的过滤，点「触发器」中该行的 **编辑 Webhook**。
 
-例如，事件名填写 `workflow_run`，Actions 填写 `completed, failed`，只会接收这两类 `workflow_run` 结果。Multica 会从常见请求头和 payload 中识别事件与 action，包括 GitHub 的 `X-GitHub-Event` 和 body 中的 `action`。
+例如，事件名填写 `workflow_run`，Actions 填写 `completed, failed`，只会接收这两类 `workflow_run` 结果。Delegora 会从常见请求头和 payload 中识别事件与 action，包括 GitHub 的 `X-GitHub-Event` 和 body 中的 `action`。
 
 GitLab 的事件名就是 GitLab 发送的 `X-Gitlab-Event` 请求头原值，例如 `Merge Request Hook`、`Issue Hook`、`Note Hook`，空格和大小写都要一致；payload 里的 `object_kind`（`merge_request`）不会命中。Actions 中的每个值会同时与 `object_attributes.action` 和 `object_attributes.state` 比较，任意一个相等即命中。下面这条规则接收新建、更新和重新打开的 merge request，忽略合并和关闭：
 
@@ -135,7 +135,7 @@ Webhook URL 中的 token 就是调用凭证。不要把完整 URL 放进公开�
 
 ### Webhook 响应速查
 
-调试发送方时，对照下表看 Multica 的响应：
+调试发送方时，对照下表看 Delegora 的响应：
 
 | HTTP 状态 | 响应状态 | 含义 |
 |---|---|---|
@@ -148,7 +148,7 @@ Webhook URL 中的 token 就是调用凭证。不要把完整 URL 放进公开�
 | 404 | 错误信息 | URL 中的 token 无效或已被重新生成。 |
 | 413 | 错误信息 | Body 超过 256 KiB。 |
 | 429 | 错误信息 | 请求过于频繁，按响应头 `Retry-After` 稍后重试。 |
-| 500 | 错误信息 | Multica 内部错误，发送方可稍后重试。 |
+| 500 | 错误信息 | Delegora 内部错误，发送方可稍后重试。 |
 
 暂停、归档、事件过滤这类业务上的忽略返回 200，不返回 4xx，以免发送方反复重试。
 
@@ -171,7 +171,7 @@ Webhook URL 中的 token 就是调用凭证。不要把完整 URL 放进公开�
 
 仅运行模式中的运行失败后不会自动重试；下一次时间表仍会按原计划触发。创建任务模式产生的是普通任务运行，基础设施故障按照[运行](/tasks#失败与自动重试)中的规则处理。
 
-Multica 定期检查近期运行是否持续失败：过去 7 天内已完成或失败的运行不少于 50 次、且失败率达到 90% 时，系统暂停这条自动化并通知创建者，修复原因后可以手动恢复。
+Delegora 定期检查近期运行是否持续失败：过去 7 天内已完成或失败的运行不少于 50 次、且失败率达到 90% 时，系统暂停这条自动化并通知创建者，修复原因后可以手动恢复。
 
 手动暂停会停止时间表、Webhook 和"立即运行"。删除实际是归档：停止后续触发，运行和投递历史保留。
 

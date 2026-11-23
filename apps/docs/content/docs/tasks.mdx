@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { RunLifecycleDemo } from "@/components/demos/run-lifecycle-demo";
 
-Every time an agent starts working, Multica creates a **run** that records what triggered the work, which agent it went to, how far it has got, and whether it succeeded.
+Every time an agent starts working, Delegora creates a **run** that records what triggered the work, which agent it went to, how far it has got, and whether it succeeded.
 
 ## Issues and runs
 
@@ -31,7 +31,7 @@ Each of the following triggers a run:
 - An Autopilot firing on a schedule or from an external event.
 - An [issue wakeup](/issue-wakeups) firing on its event, time, or condition.
 
-The agent gets different context depending on the entry point, but execution works the same way: Multica creates a run, a runtime claims it, and the runtime invokes the AI coding tool the agent is configured with.
+The agent gets different context depending on the entry point, but execution works the same way: Delegora creates a run, a runtime claims it, and the runtime invokes the AI coding tool the agent is configured with.
 
 ## Execution lifecycle
 

@@ -1,13 +1,13 @@
 ---
 title: Telegram Bot 接入
-description: 把 Multica AI 代理接入你自己的 Telegram Bot，支援私聊、群聊 @、forum topic 和 /issue。
+description: 把 Delegora AI 代理接入你自己的 Telegram Bot，支援私聊、群聊 @、forum topic 和 /issue。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-Multica 使用你透過 Telegram 官方 [@BotFather](https://t.me/BotFather) 建立的 Bot。一個 Bot 對應一個 Multica AI 代理；需要多個獨立 Bot 身份時，為每個 AI 代理分別建立。
+Delegora 使用你透過 Telegram 官方 [@BotFather](https://t.me/BotFather) 建立的 Bot。一個 Bot 對應一個 Delegora AI 代理；需要多個獨立 Bot 身份時，為每個 AI 代理分別建立。
 
 <Callout type="info">
 Telegram 整合[由社群維護](/community-maintained)：隨每個版本釋出，但沒有官方支援 SLA。遇到問題請提交 [GitHub 任務](https://github.com/multica-ai/multica/issues)。
@@ -40,18 +40,18 @@ Telegram 整合[由社群維護](/community-maintained)：隨每個版本釋出�
 
 ### 連線到 AI 代理 [#2-連線到 AI 代理]
 
-1. 在 Multica 開啟 **AI 代理**，選擇目標 AI 代理並進入 **訊息渠道**。
+1. 在 Delegora 開啟 **AI 代理**，選擇目標 AI 代理並進入 **訊息渠道**。
 2. 點選 **新增訊息管道**，再選擇 **Telegram**。
 3. 貼上 Bot token，然後點選 **連線**。
 
-Multica 會實時請求 Telegram 驗證 Bot，檢查是否存在與長輪詢衝突的 webhook，加密儲存 token，並啟動一條受監督的 `getUpdates` 連線。一個 Bot 若已連線到其他 AI 代理或工作區，必須先在原處斷開。
+Delegora 會實時請求 Telegram 驗證 Bot，檢查是否存在與長輪詢衝突的 webhook，加密儲存 token，並啟動一條受監督的 `getUpdates` 連線。一個 Bot 若已連線到其他 AI 代理或工作區，必須先在原處斷開。
 
 </Step>
 </Steps>
 
 ## 第一次使用 [#首次使用與帳號繫結]
 
-成員第一次向 Bot 發訊息時，會收到一次性 Multica 帳號繫結連結。開啟連結，登入同一工作區的 Multica 帳號，再回到 Telegram 重新傳送訊息。連結 15 分鐘後過期；再私聊 Bot 即可獲取新連結。
+成員第一次向 Bot 發訊息時，會收到一次性 Delegora 帳號繫結連結。開啟連結，登入同一工作區的 Delegora 帳號，再回到 Telegram 重新傳送訊息。連結 15 分鐘後過期；再私聊 Bot 即可獲取新連結。
 
 在群裡，Bot 不會公開傳送帶憑據性質的繫結連結，只會讓傳送者先私聊 Bot。
 
@@ -65,7 +65,7 @@ Multica 會實時請求 Telegram 驗證 Bot，檢查是否存在與長輪詢衝�
 
 ### 群聊與 forum topic
 
-把 Bot 加入群後，@ 它，或直接回復它發過的訊息。被接受的訊息會保留在持續的 Multica 對話中：普通群聊各自延續一段對話，forum 的每個 topic 分別隔離。
+把 Bot 加入群後，@ 它，或直接回復它發過的訊息。被接受的訊息會保留在持續的 Delegora 對話中：普通群聊各自延續一段對話，forum 的每個 topic 分別隔離。
 
 <Accordions type="multiple">
 <Accordion title="沒有發給 Bot 的群訊息" id="unaddressed-group-messages">
@@ -93,9 +93,9 @@ Multica 會實時請求 Telegram 驗證 Bot，檢查是否存在與長輪詢衝�
 
 ### 命令
 
-- `/new` 建立一個新的空 Multica Chat，並把該 Telegram 對話的後續訊息路由到新 Chat；`/new <訊息>` 會把訊息作為新 Chat 的第一輪。回覆其他成員並明確 @ Bot 時，被選中的引用內容仍會附在第一輪中。
-- `/clear` 保留當前 Multica Chat，把新的 AI 代理可見上下文應用到下一條非空訊息；`/clear <訊息>` 會把訊息作為上下文邊界後的第一輪，明確選擇的回覆引用仍會保留。
-- `/issue <標題>` 建立 Multica 任務，後續行作為可選描述；不帶標題時返回用法提示。
+- `/new` 建立一個新的空 Delegora Chat，並把該 Telegram 對話的後續訊息路由到新 Chat；`/new <訊息>` 會把訊息作為新 Chat 的第一輪。回覆其他成員並明確 @ Bot 時，被選中的引用內容仍會附在第一輪中。
+- `/clear` 保留當前 Delegora Chat，把新的 AI 代理可見上下文應用到下一條非空訊息；`/clear <訊息>` 會把訊息作為上下文邊界後的第一輪，明確選擇的回覆引用仍會保留。
+- `/issue <標題>` 建立 Delegora 任務，後續行作為可選描述；不帶標題時返回用法提示。
 - 群聊支援 `/issue@your_bot` 這種 Telegram 命令字尾。
 
 ### 回覆與內容範圍
@@ -116,7 +116,7 @@ Bot 透過傳送並編輯 Telegram 訊息來流式展示文字回覆，引用觸
 
 Telegram 只允許 Bot 下載 20 MB 以內的檔案；檔案無法獲取時（太大或下載失敗），Bot 會告訴你，AI 代理只會看到一個佔位符。
 
-AI 代理生成的檔案作為單獨的訊息發回聊天：10 MB 以內的圖片內聯顯示，其餘 50 MB 以內的檔案以檔案形式到達；無法確認送達時 Bot 會說明，檔案仍保留在 Multica 的回覆附件裡。
+AI 代理生成的檔案作為單獨的訊息發回聊天：10 MB 以內的圖片內聯顯示，其餘 50 MB 以內的檔案以檔案形式到達；無法確認送達時 Bot 會說明，檔案仍保留在 Delegora 的回覆附件裡。
 
 未配置物件儲存時，Bot 對媒體訊息回覆不支援提示，AI 代理也會被告知無法傳送檔案。貼紙、位置、投票等非檔案訊息在私聊中以及群裡明確 @ Bot 時會收到同樣的提示，群裡未 @ 的此類訊息保持靜默。
 
@@ -125,7 +125,7 @@ AI 代理生成的檔案作為單獨的訊息發回聊天：10 MB 以內的圖�
 
 ## 管理連線 [#管理與斷開]
 
-開啟 **設定 → 訊息渠道**，按平台檢視已連接的 AI 代理。點選 AI 代理，進入其詳細頁面的 **訊息渠道**。工作區 owner/admin 可以在這裡開啟 Bot 的管理選單，斷開連線。斷開會停止長輪詢和後續回覆，但保留 Multica 對話與審計記錄。
+開啟 **設定 → 訊息渠道**，按平台檢視已連接的 AI 代理。點選 AI 代理，進入其詳細頁面的 **訊息渠道**。工作區 owner/admin 可以在這裡開啟 Bot 的管理選單，斷開連線。斷開會停止長輪詢和後續回覆，但保留 Delegora 對話與審計記錄。
 
 ## 自託管配置
 
@@ -143,7 +143,7 @@ MULTICA_TELEGRAM_SECRET_KEY=<base64 編碼的 32 位元組金鑰>
 
 - **無法驗證 Bot**：先檢查伺服器網路和代理。只有 Telegram 明確拒絕 token 時才需要重新生成。
 - **webhook 衝突**：連線前移除這個 Bot 已有的 webhook；Telegram 不允許 webhook 與 `getUpdates` 同時使用。
-- **409 輪詢衝突**：另一個 Multica 例項或程序正在輪詢同一個 Bot。停止另一個消費者，或為不同環境使用不同 Bot。
+- **409 輪詢衝突**：另一個 Delegora 例項或程序正在輪詢同一個 Bot。停止另一個消費者，或為不同環境使用不同 Bot。
 - **群裡不回覆**：確認 Bot 已入群，並且訊息 @ 了它或回覆了它的訊息。
 - **繫結連結過期**：重新私聊 Bot，並使用最新連結。
 - **Bot 不執行**：檢查 AI 代理是否已歸檔，以及它使用的[執行時](/daemon-runtimes)是否線上。

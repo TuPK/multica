@@ -10,7 +10,7 @@ export const DOCS_URL = `${SITE_ORIGIN}${DOCS_BASE_PATH}`;
 
 type DocsPage = NonNullable<ReturnType<typeof source.getPage>>;
 
-/** Pages listed first in `llms.txt` for agents that install or operate Multica. */
+/** Pages listed first in `llms.txt` for agents that install or operate Delegora. */
 const AGENT_START_SLUGS = ["self-hosting-ai", "cloud-quickstart", "install-agent-runtime", "cli"];
 
 function langPrefix(lang: string): string {
@@ -93,9 +93,9 @@ export async function docsIndexMarkdown(lang: Lang): Promise<string> {
     .join(" · ");
 
   return [
-    "# Multica Docs",
+    "# Delegora Docs",
     "",
-    "> Multica is a source-available workspace where people assign issues to AI coding agents the way they would to a teammate. Agents run on runtimes you control, with the coding tools you already use, and report progress back on the issue. Use Multica Cloud, the desktop app, or self-host it.",
+    "> Delegora is a source-available workspace where people assign issues to AI coding agents the way they would to a teammate. Agents run on runtimes you control, with the coding tools you already use, and report progress back on the issue. Use Delegora Cloud, the desktop app, or self-host it.",
     "",
     `Every page below is Markdown. On the site, append \`.md\` to a page URL or request it with \`Accept: text/markdown\`. The whole documentation is in [one file](${DOCS_URL}${langPrefix(lang)}/llms-full.txt). Other languages: ${otherLanguages}.`,
     "",

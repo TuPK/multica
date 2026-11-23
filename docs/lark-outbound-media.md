@@ -45,7 +45,7 @@ Attachment sends reuse a UUID derived from the installation, assistant message
 and attachment. Lost responses and the provider's 230049 pending result remain
 uncertain, with bounded retries. Definite failure and uncertainty have distinct
 notices, each with a separate deadline after the transfer budget expires.
-Attachments remain available in Multica. Interrupted batches are not replayed
+Attachments remain available in Delegora. Interrupted batches are not replayed
 without per-file delivery receipts.
 
 ## Verification

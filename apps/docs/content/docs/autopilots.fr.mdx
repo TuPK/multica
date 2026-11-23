@@ -8,7 +8,7 @@ import { AutopilotDemo } from "@/components/demos/autopilot-demo";
 
 Un résumé quotidien de l'avancement, une vérification périodique des dépendances, un agent lancé par un événement venu d'un système externe : le travail qui revient sans cesse se confie à une automatisation.
 
-Chaque automatisation enregistre une procédure, un assigné et un ou plusieurs déclencheurs. Lorsqu'elle est déclenchée, Multica crée une tâche ou exécute directement l'agent, et chaque exécution laisse une trace.
+Chaque automatisation enregistre une procédure, un assigné et un ou plusieurs déclencheurs. Lorsqu'elle est déclenchée, Delegora crée une tâche ou exécute directement l'agent, et chaque exécution laisse une trace.
 
 ## Automatisations et réveils de tâches [#vs-wakeups]
 
@@ -67,7 +67,7 @@ Le cron n'a pas de champ pour les secondes, et les fuseaux horaires utilisent de
 
 ## Exécuter depuis un webhook
 
-Après l'ajout d'un déclencheur webhook, Multica génère une URL unique. Envoyez-lui un objet ou un tableau JSON pour déclencher l'automatisation :
+Après l'ajout d'un déclencheur webhook, Delegora génère une URL unique. Envoyez-lui un objet ou un tableau JSON pour déclencher l'automatisation :
 
 ```bash
 curl -X POST "$MULTICA_WEBHOOK_URL" \
@@ -82,14 +82,14 @@ Contraintes applicables aux requêtes webhook :
 
 - le corps doit être un objet ou un tableau JSON valide, de 256 Kio au maximum ;
 - `Idempotency-Key` évite les exécutions en double lorsque l'expéditeur réessaie ; les livraisons GitHub sont en outre dédupliquées par `X-GitHub-Delivery` ;
-- sans clé d'idempotence stable, Multica ne peut pas garantir que des requêtes répétées ne s'exécutent qu'une seule fois ;
+- sans clé d'idempotence stable, Delegora ne peut pas garantir que des requêtes répétées ne s'exécutent qu'une seule fois ;
 - lorsque le déclencheur est désactivé ou que l'événement ne correspond pas, la livraison est enregistrée comme ignorée et aucune exécution n'est créée.
 
 ### Filtres d'événements
 
 Lorsqu'une même source envoie plusieurs types d'événements, ajoutez des filtres d'événements au déclencheur. Cliquez sur **Ajouter une règle** et saisissez un nom d'événement et une liste facultative d'actions ; une exécution est déclenchée si une règle correspond, et un déclencheur sans règle accepte tous les événements. Pour modifier les filtres d'un webhook, cliquez sur **Modifier le webhook** sur sa ligne dans **Déclencheurs**.
 
-Par exemple, avec `workflow_run` comme nom d'événement et `completed, failed` comme actions, seuls ces deux types de résultats `workflow_run` sont acceptés. Multica reconnaît l'événement et l'action à partir des en-têtes de requête et des champs de charge utile courants, notamment l'en-tête `X-GitHub-Event` de GitHub et le champ `action` du corps.
+Par exemple, avec `workflow_run` comme nom d'événement et `completed, failed` comme actions, seuls ces deux types de résultats `workflow_run` sont acceptés. Delegora reconnaît l'événement et l'action à partir des en-têtes de requête et des champs de charge utile courants, notamment l'en-tête `X-GitHub-Event` de GitHub et le champ `action` du corps.
 
 Pour GitLab, le nom d'événement est la valeur de l'en-tête `X-Gitlab-Event` telle que GitLab l'envoie, par exemple `Merge Request Hook`, `Issue Hook` ou `Note Hook`, espaces et majuscules compris ; le champ `object_kind` de la charge utile (`merge_request`) ne correspond pas. Chaque action listée est comparée à la fois à `object_attributes.action` et à `object_attributes.state`, et la règle correspond si l'une des deux valeurs figure dans la liste. Cette règle accepte les merge requests créées, mises à jour ou rouvertes, et ignore les fusions et fermetures :
 
@@ -135,7 +135,7 @@ Seuls le créateur de l'automatisation, les propriétaires/administrateurs de l'
 
 ### Référence des réponses du webhook
 
-Pour déboguer un expéditeur, comparez les réponses de Multica à ce tableau :
+Pour déboguer un expéditeur, comparez les réponses de Delegora à ce tableau :
 
 | Statut HTTP | Statut de la réponse | Signification |
 |---|---|---|
@@ -148,7 +148,7 @@ Pour déboguer un expéditeur, comparez les réponses de Multica à ce tableau :
 | 404 | Message d'erreur | Le jeton de l'URL est invalide ou a été renouvelé. |
 | 413 | Message d'erreur | Le corps dépasse 256 Kio. |
 | 429 | Message d'erreur | Trop de requêtes ; réessayez plus tard en respectant l'en-tête de réponse `Retry-After`. |
-| 500 | Message d'erreur | Erreur interne de Multica ; l'expéditeur peut réessayer plus tard. |
+| 500 | Message d'erreur | Erreur interne de Delegora ; l'expéditeur peut réessayer plus tard. |
 
 Les cas ignorés au niveau métier — mise en pause, archivage et filtrage d'événements — renvoient 200 plutôt qu'un code 4xx, afin que les expéditeurs ne réessaient pas indéfiniment.
 
@@ -171,7 +171,7 @@ Une livraison de webhook entièrement traitée peut être rejouée depuis sa vue
 
 En mode exécution seule, une exécution en échec n'est pas relancée automatiquement ; la planification suivante se déclenche tout de même comme prévu. Le mode création de tâche produit des exécutions de tâche ordinaires, et les échecs d'infrastructure suivent les règles décrites dans [Exécutions](/tasks#échecs-et-relances-automatiques).
 
-Multica vérifie périodiquement si les exécutions récentes échouent de façon répétée : lorsque les 7 derniers jours comptent au moins 50 exécutions terminées ou en échec avec un taux d'échec de 90 %, le système met l'automatisation en pause et notifie son créateur ; corrigez la cause, puis reprenez-la manuellement.
+Delegora vérifie périodiquement si les exécutions récentes échouent de façon répétée : lorsque les 7 derniers jours comptent au moins 50 exécutions terminées ou en échec avec un taux d'échec de 90 %, le système met l'automatisation en pause et notifie son créateur ; corrigez la cause, puis reprenez-la manuellement.
 
 La mise en pause manuelle arrête les planifications, les webhooks et **Exécuter maintenant**. La suppression est en réalité un archivage : les déclenchements futurs s'arrêtent, et l'historique des exécutions et des livraisons est conservé.
 

@@ -1,6 +1,6 @@
 ---
 title: Démarrage rapide en auto-hébergement
-description: Démarrez Multica avec Docker Compose, connectez-vous, puis reliez votre premier ordinateur.
+description: Démarrez Delegora avec Docker Compose, connectez-vous, puis reliez votre premier ordinateur.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -8,20 +8,20 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-L'auto-hébergement de Multica comporte deux parties :
+L'auto-hébergement de Delegora comporte deux parties :
 
 | Partie | Ce qu'elle exécute | Où elle se trouve |
 |---|---|---|
-| **Service Multica** | Web, API et PostgreSQL | Une machine sur laquelle Docker est installé |
-| **Ordinateur** | Le daemon Multica et les outils de codage IA | L'ordinateur sur lequel les développeurs travaillent réellement |
+| **Service Delegora** | Web, API et PostgreSQL | Une machine sur laquelle Docker est installé |
+| **Ordinateur** | Le daemon Delegora et les outils de codage IA | L'ordinateur sur lequel les développeurs travaillent réellement |
 
-Il peut s'agir de la même machine ou de machines distinctes. L'auto-hébergement ne remplace que la partie Multica Cloud.
+Il peut s'agir de la même machine ou de machines distinctes. L'auto-hébergement ne remplace que la partie Delegora Cloud.
 
 Ce guide utilise Docker Compose. Pour un déploiement sur Kubernetes, consultez le [guide d'auto-hébergement](https://github.com/multica-ai/multica/blob/main/SELF_HOSTING.md#kubernetes-deployment-alternative) dans le dépôt.
 
 ## Avant de commencer
 
-La machine qui exécute le service Multica a besoin de :
+La machine qui exécute le service Delegora a besoin de :
 
 - Docker Engine ou Docker Desktop, avec `docker compose` fonctionnel
 - Git, Make, curl et OpenSSL
@@ -34,14 +34,14 @@ docker info
 docker compose version
 ```
 
-Multica utilise Compose v2, invoqué via `docker compose`. L'ancien `docker-compose` v1 n'est pas pris en charge.
+Delegora utilise Compose v2, invoqué via `docker compose`. L'ancien `docker-compose` v1 n'est pas pris en charge.
 
-L'ordinateur doit également disposer d'au moins un [outil de codage IA](/providers) installé et connecté, comme Claude Code, Codex ou Cursor. Le CLI Multica est installé à l'étape 5.
+L'ordinateur doit également disposer d'au moins un [outil de codage IA](/providers) installé et connecté, comme Claude Code, Codex ou Cursor. Le CLI Delegora est installé à l'étape 5.
 
 <Steps>
 <Step>
 
-## Démarrer Multica [#1-démarrer-multica]
+## Démarrer Delegora [#1-démarrer-multica]
 
 Sur la machine qui fera tourner le service :
 
@@ -58,7 +58,7 @@ Relancer `make selfhost` réutilise le `.env` et les volumes existants ; les sec
 
 1. Crée `.env` à partir de `.env.example`
 2. Génère un `JWT_SECRET` aléatoire, un mot de passe PostgreSQL et une `MULTICA_VCS_SECRET_KEY` (la clé de chiffrement des intégrations Git auto-hébergées)
-3. Télécharge les images PostgreSQL, backend Multica et frontend Multica
+3. Télécharge les images PostgreSQL, backend Delegora et frontend Delegora
 4. Crée des volumes persistants et démarre les trois conteneurs
 5. Attend que le backend commence à répondre aux vérifications d'état
 
@@ -118,7 +118,7 @@ Docker Compose lie `3000` et `8080` uniquement à `127.0.0.1`. Ne remplacez pas 
 
 L'exemple ci-dessous utilise deux domaines :
 
-- `app.example.com` : l'application web Multica
+- `app.example.com` : l'application web Delegora
 - `api.example.com` : l'API, les vérifications d'état et les connexions des daemons
 
 Définissez d'abord les URL publiques dans `.env` :
@@ -260,7 +260,7 @@ Lancez les commandes ci-dessous sur **l'ordinateur qui fait tourner vos outils d
 Les exécutions disposent de toutes les permissions de l'utilisateur qui fait tourner le daemon : elles peuvent lire et écrire tout ce à quoi cet utilisateur a accès. Faites tourner le daemon sous un utilisateur Unix dédié, dans un conteneur ou dans une VM plutôt que sous votre compte personnel. Consultez le [modèle de sécurité](/security-model).
 </Callout>
 
-Installez d'abord le CLI Multica :
+Installez d'abord le CLI Delegora :
 
 <Tabs groupId="os" persist items={["macOS / Linux", "Windows"]}>
 <Tab value="macOS / Linux">
@@ -279,7 +279,7 @@ irm https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.ps
 </Tab>
 </Tabs>
 
-Reliez ensuite le CLI à votre service. Choisissez l'endroit où tourne le service Multica :
+Reliez ensuite le CLI à votre service. Choisissez l'endroit où tourne le service Delegora :
 
 <Tabs items={["Sur cet ordinateur", "Sur une autre machine"]}>
 <Tab value="Sur cet ordinateur">
@@ -319,7 +319,7 @@ La sortie doit afficher :
 
 ## Terminer la première exécution [#6-terminer-la-première-exécution]
 
-De retour dans Multica, dès qu'un runtime en ligne apparaît dans la liste des runtimes, créez un agent et assignez-lui votre première tâche.
+De retour dans Delegora, dès qu'un runtime en ligne apparaît dans la liste des runtimes, créez un agent et assignez-lui votre première tâche.
 
 Lorsque l'exécution apparaît comme terminée et que la réponse de l'agent s'affiche dans la chronologie, le service auto-hébergé, l'ordinateur et l'outil de codage IA sont tous connectés. Pour le détail, consultez les étapes 3 à 5 du [démarrage rapide](/cloud-quickstart).
 
@@ -441,7 +441,7 @@ Toute réponse autre qu'un HTTP 200 avec les deux vérifications à `ok` signifi
 <Accordions type="multiple">
 <Accordion title="Ce que fait réellement git pull" id="what-git-pull-actually-does">
 
-`git pull` met à jour **`docker-compose.selfhost.yml` lui-même** : nouvelles variables d'environnement, nouveaux services, vérifications d'état modifiées. Ce n'est **pas** ainsi que vous obtenez une nouvelle version de Multica.
+`git pull` met à jour **`docker-compose.selfhost.yml` lui-même** : nouvelles variables d'environnement, nouveaux services, vérifications d'état modifiées. Ce n'est **pas** ainsi que vous obtenez une nouvelle version de Delegora.
 
 La version que vous exécutez au final est déterminée par `docker compose pull`, qui demande à GHCR vers quoi pointe le tag à cet instant. Une copie locale en retard de plusieurs mois téléchargera quand même les images `latest` du jour ; à l'inverse, `git pull` seul ne change rien tant que vous n'avez pas téléchargé les images et recréé les conteneurs.
 

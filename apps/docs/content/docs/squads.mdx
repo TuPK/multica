@@ -6,7 +6,7 @@ description: A leader coordinates multiple agents or members and hands work to t
 import { Callout } from "fumadocs-ui/components/callout";
 import { SquadDemo } from "@/components/demos/squad-demo";
 
-A squad consists of one leader agent and any number of members. Assigning an issue to a squad does not run every agent at once. Multica wakes the leader first; it reads the context and decides who takes the next step.
+A squad consists of one leader agent and any number of members. Assigning an issue to a squad does not run every agent at once. Delegora wakes the leader first; it reads the context and decides who takes the next step.
 
 A squad only decides who the work goes to. It doesn't merge multiple agents into a new agent, and it doesn't automatically raise concurrency.
 
@@ -29,10 +29,10 @@ Creating a squad requires a name and a leader. The squad leader automatically be
 
 ## Execution flow after assignment
 
-When a non-Backlog issue is assigned to a squad, Multica immediately enqueues a run for the **leader agent** (not for every member). The flow then looks like this:
+When a non-Backlog issue is assigned to a squad, Delegora immediately enqueues a run for the **leader agent** (not for every member). The flow then looks like this:
 
 1. **Leader claims the run.** The agent runtime picks up the run on its next poll, same as any other agent assignment.
-2. **Leader is briefed.** On claim, Multica appends three sections to the leader's system prompt — see [What the leader sees on every turn](#what-the-leader-sees-on-every-turn) below.
+2. **Leader is briefed.** On claim, Delegora appends three sections to the leader's system prompt — see [What the leader sees on every turn](#what-the-leader-sees-on-every-turn) below.
 3. **Leader posts one delegation comment.** The comment `@`-mentions the chosen member(s) using the exact mention markdown from the roster. Each mentioned agent gets a new run, and each mentioned human member gets a notification. Squads whose instructions delegate by sub-issue (the SDLC templates) instead create a `todo` sub-issue assigned to the member, and the assignment starts the run. A squad leader run also cannot invoke the build skills `bmad-build` or `bmad-build-auto`: building is the developer's job, and the daemon denies those skills to leader runs.
 4. **Leader records its evaluation** via `multica squad activity <issue-id> action --reason "..."`. This writes an entry to the issue's activity timeline so humans can see the leader actually evaluated the trigger.
 5. **The dispatch turn leaves the parent `in_progress`.** Same agent-managed status contract as a direct agent assignment — coordinating the squad is working the parent's ask, so the parent moves from `todo` to `in_progress`, and dispatching members is not delivery, so it stays there while the squad works.
@@ -108,7 +108,7 @@ Archiving cannot be undone.
 
 ## Start from a template [#templates]
 
-On the Squads page, choose **Quickstart** to create a ready-made squad together with the agents it needs. Pick a template and a runtime, and Multica creates the agents, the squad with its instructions and roster, and, if you leave it ticked, the workflow the template needs.
+On the Squads page, choose **Quickstart** to create a ready-made squad together with the agents it needs. Pick a template and a runtime, and Delegora creates the agents, the squad with its instructions and roster, and, if you leave it ticked, the workflow the template needs.
 
 | Template | Use it for |
 |---|---|

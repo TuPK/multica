@@ -1,12 +1,12 @@
 ---
 title: CLI 사용
-description: Multica CLI를 설치하고 로그인해 터미널에서 워크스페이스, 태스크, 에이전트, 런타임을 관리합니다.
+description: Delegora CLI를 설치하고 로그인해 터미널에서 워크스페이스, 태스크, 에이전트, 런타임을 관리합니다.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-Multica CLI는 로컬 런타임을 연결할 뿐 아니라 터미널에서 워크스페이스, 태스크, 에이전트, 자동화를 관리할 수 있습니다. 이 페이지에서는 자주 사용하는 경로를 설명합니다. 현재 버전에서 지원하는 인수는 항상 명령 자체의 `--help`를 기준으로 확인하세요.
+Delegora CLI는 로컬 런타임을 연결할 뿐 아니라 터미널에서 워크스페이스, 태스크, 에이전트, 자동화를 관리할 수 있습니다. 이 페이지에서는 자주 사용하는 경로를 설명합니다. 현재 버전에서 지원하는 인수는 항상 명령 자체의 `--help`를 기준으로 확인하세요.
 
 ## 설치
 
@@ -45,8 +45,8 @@ multica version
 
 연결할 서비스를 선택합니다.
 
-<Tabs items={["Multica Cloud", "자체 호스팅 인스턴스"]}>
-<Tab value="Multica Cloud">
+<Tabs items={["Delegora Cloud", "자체 호스팅 인스턴스"]}>
+<Tab value="Delegora Cloud">
 
 ```bash
 multica setup
@@ -462,7 +462,7 @@ multica config show --profile staging
 ```
 
 <Callout type="warning">
-CLI 설정 파일에는 사용자를 대신해 Multica에 접근할 수 있는 token이 들어 있습니다. 저장소에 commit하거나 로그에 올리거나 다른 사람과 공유하지 마세요.
+CLI 설정 파일에는 사용자를 대신해 Delegora에 접근할 수 있는 token이 들어 있습니다. 저장소에 commit하거나 로그에 올리거나 다른 사람과 공유하지 마세요.
 </Callout>
 
 ## 명령 참조
@@ -575,15 +575,15 @@ CLI 설정 파일에는 사용자를 대신해 Multica에 접근할 수 있는 t
 | `update` | — | CLI를 최신 버전으로 업데이트 | |
 | `version` | — | 버전 정보 확인 | `--output`(`text` 또는 `json`) |
 
-## 다른 코딩 에이전트에서 Multica 조작하기
+## 다른 코딩 에이전트에서 Delegora 조작하기
 
-작업 대부분이 Codex, Claude Code, Cursor 안에서 이루어진다면 터미널로 전환하지 않고 그곳에서 바로 Multica를 조작할 수 있습니다. [Multica CLI skill](https://github.com/multica-ai/multica-cli)은 이 페이지의 명령을 안전하게 다루는 방법을 해당 에이전트에게 가르칩니다. 토큰을 낭비하지 않고 태스크와 댓글 스레드를 읽고, 댓글은 파일을 통해 작성하며, 멘션·상태 변경·할당이 유발하는 부수 효과를 올바르게 처리합니다.
+작업 대부분이 Codex, Claude Code, Cursor 안에서 이루어진다면 터미널로 전환하지 않고 그곳에서 바로 Delegora를 조작할 수 있습니다. [Delegora CLI skill](https://github.com/multica-ai/multica-cli)은 이 페이지의 명령을 안전하게 다루는 방법을 해당 에이전트에게 가르칩니다. 토큰을 낭비하지 않고 태스크와 댓글 스레드를 읽고, 댓글은 파일을 통해 작성하며, 멘션·상태 변경·할당이 유발하는 부수 효과를 올바르게 처리합니다.
 
 인증된 CLI를 통해서만 동작하며 그 자체로는 어떤 접근 권한도 부여하지 않습니다. 권한은 여전히 로그인, 선택한 profile, workspace에서 나옵니다. CLI v0.4.26 이상이 필요합니다. Claude Code 플러그인 마켓플레이스, Codex skill 설치 도구, Cursor를 비롯해 Markdown 지침을 읽어들이는 다른 도구의 설치 방법은 저장소 README를 참고하세요.
 
 ## 다음 단계
 
-- [Multica CLI skill](https://github.com/multica-ai/multica-cli) — Codex, Claude Code, Cursor에서 Multica를 조작합니다.
+- [Delegora CLI skill](https://github.com/multica-ai/multica-cli) — Codex, Claude Code, Cursor에서 Delegora를 조작합니다.
 - [인증과 토큰](/auth-tokens) — PAT 생성, 갱신, 취소를 알아봅니다.
 - [문제 해결](/troubleshooting) — 명령 오류와 실행이 시작되지 않는 문제를 해결합니다.
 - [에이전트 생성 및 설정](/agents-create) — `agent create` 각 필드의 전체 의미를 알아봅니다.

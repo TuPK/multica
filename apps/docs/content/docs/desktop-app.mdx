@@ -1,6 +1,6 @@
 ---
 title: Desktop app
-description: Install Multica Desktop, use desktop tabs and the built-in daemon, and connect to a self-hosted instance.
+description: Install Delegora Desktop, use desktop tabs and the built-in daemon, and connect to a self-hosted instance.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -8,7 +8,7 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { DesktopTabsDemo } from "@/components/demos/desktop-tabs-demo";
 
-Multica Desktop is available for macOS, Windows, and Linux. It uses the same account and workspace data as the web app, but it manages the daemon on your machine automatically and keeps a separate set of tabs for each workspace.
+Delegora Desktop is available for macOS, Windows, and Linux. It uses the same account and workspace data as the web app, but it manages the daemon on your machine automatically and keeps a separate set of tabs for each workspace.
 
 ## Desktop and web
 
@@ -21,13 +21,13 @@ Multica Desktop is available for macOS, Windows, and Linux. It uses the same acc
 
 Web is more convenient for a quick look or on a shared computer.
 
-You can be signed in to both at the same time. As long as they connect to the same Multica service, the data they show is shared.
+You can be signed in to both at the same time. As long as they connect to the same Delegora service, the data they show is shared.
 
 ## Installation
 
 <Steps>
 <Step>
-Pick the installer that matches your OS and CPU architecture from the [Multica downloads page](https://multica.ai/download):
+Pick the installer that matches your OS and CPU architecture from the [Delegora downloads page](https://multica.ai/download):
 
 | Platform | Installer |
 | --- | --- |
@@ -36,7 +36,7 @@ Pick the installer that matches your OS and CPU architecture from the [Multica d
 | Linux | `.AppImage`, `.deb`, or `.rpm` |
 </Step>
 <Step>
-After installing, sign in with the same email you use on the web. Once signed in, Desktop starts its own bundled Multica CLI and detects the AI coding tools already installed on the machine.
+After installing, sign in with the same email you use on the web. Once signed in, Desktop starts its own bundled Delegora CLI and detects the AI coding tools already installed on the machine.
 </Step>
 </Steps>
 
@@ -78,13 +78,13 @@ Turning off **Voice input** hides the mic and disables its shortcut. It does not
 
 ## Built-in daemon
 
-After sign-in, Desktop creates a dedicated CLI profile for the current Multica service and uses it to start the daemon. The profile lives at:
+After sign-in, Desktop creates a dedicated CLI profile for the current Delegora service and uses it to start the daemon. The profile lives at:
 
 ```text
 ~/.multica/profiles/desktop-<host>/
 ```
 
-It never reads or overwrites the default profile you use in the terminal. If you also start another daemon manually, Multica shows them as separate runtimes.
+It never reads or overwrites the default profile you use in the terminal. If you also start another daemon manually, Delegora shows them as separate runtimes.
 
 You can check runtime status and logs in Desktop's settings. If a tool isn't detected, first confirm it runs in a regular terminal and is logged in, then restart Desktop's daemon.
 
@@ -104,7 +104,7 @@ Updates are distributed per OS and CPU architecture:
 
 ## Connecting to a self-hosted instance
 
-Desktop connects to Multica Cloud by default. To connect to a self-hosted instance, create `desktop.json` inside the `.multica` directory of your home directory with this content:
+Desktop connects to Delegora Cloud by default. To connect to a self-hosted instance, create `desktop.json` inside the `.multica` directory of your home directory with this content:
 
 ```json
 {
@@ -189,7 +189,7 @@ Two common ways of writing the file on Windows produce one Desktop can't read:
 
 The PowerShell command in the Windows tab above avoids both.
 
-## Windows Defender flags Multica as a virus
+## Windows Defender flags Delegora as a virus
 
 Windows Security reports a threat such as `Trojan:Script/Wacatac.B!ml` and quarantines a file inside the Desktop installation. The affected item is normally the bundled CLI, not the app executable:
 
@@ -197,7 +197,7 @@ Windows Security reports a threat such as `Trojan:Script/Wacatac.B!ml` and quara
 C:\Users\<you>\AppData\Local\Programs\@multicadesktop\resources\app.asar.unpacked\resources\bin\multica.exe
 ```
 
-This is a false positive. The `!ml` suffix means the verdict came from Defender's machine-learning heuristics rather than a malware signature. Multica's Windows builds are not Authenticode code-signed yet, and a freshly published unsigned binary that starts background processes and opens network connections is the kind of binary those heuristics readily score as suspicious. Every Windows artifact is built by GitHub Actions from the public source in this repository.
+This is a false positive. The `!ml` suffix means the verdict came from Defender's machine-learning heuristics rather than a malware signature. Delegora's Windows builds are not Authenticode code-signed yet, and a freshly published unsigned binary that starts background processes and opens network connections is the kind of binary those heuristics readily score as suspicious. Every Windows artifact is built by GitHub Actions from the public source in this repository.
 
 You can verify it yourself: each GitHub release publishes a `checksums.txt` covering every CLI archive.
 
@@ -211,7 +211,7 @@ Fix it in three steps:
 
 <Steps>
 <Step>
-Restore the quarantined file: Windows Security → *Virus & threat protection* → *Protection history* → select the Multica item → *Actions* → *Restore*.
+Restore the quarantined file: Windows Security → *Virus & threat protection* → *Protection history* → select the Delegora item → *Actions* → *Restore*.
 </Step>
 <Step>
 Add an exclusion so it isn't quarantined again: *Virus & threat protection* → *Manage settings* → *Exclusions* → *Add an exclusion* → *Folder*, and add both:
@@ -227,7 +227,7 @@ Report the false positive to Microsoft at [Microsoft Security Intelligence — s
 </Steps>
 
 <Callout type="warning">
-Only add these exclusions if you installed Multica from the [downloads page](https://multica.ai/download) or [GitHub releases](https://github.com/multica-ai/multica/releases) and the checksum matches. An exclusion disables real-time protection for everything in that folder.
+Only add these exclusions if you installed Delegora from the [downloads page](https://multica.ai/download) or [GitHub releases](https://github.com/multica-ai/multica/releases) and the checksum matches. An exclusion disables real-time protection for everything in that folder.
 </Callout>
 
 ## Next steps

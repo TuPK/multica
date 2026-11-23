@@ -1,6 +1,6 @@
 ---
 title: 桌面应用
-description: 安装 Multica Desktop，使用桌面标签页和内置守护进程，并连接自托管实例。
+description: 安装 Delegora Desktop，使用桌面标签页和内置守护进程，并连接自托管实例。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -8,7 +8,7 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { DesktopTabsDemo } from "@/components/demos/desktop-tabs-demo";
 
-Multica Desktop 提供 macOS、Windows 和 Linux 版本。它和 Web 版使用相同的账号与工作区数据，但会在本机自动管理守护进程，并为不同工作区保留各自的标签页。
+Delegora Desktop 提供 macOS、Windows 和 Linux 版本。它和 Web 版使用相同的账号与工作区数据，但会在本机自动管理守护进程，并为不同工作区保留各自的标签页。
 
 ## Desktop 与 Web
 
@@ -21,13 +21,13 @@ Multica Desktop 提供 macOS、Windows 和 Linux 版本。它和 Web 版使用�
 
 临时查看或在公共电脑上使用时，Web 更方便。
 
-两者可以同时登录。只要连接的是同一个 Multica 服务，看到的数据就是共享的。
+两者可以同时登录。只要连接的是同一个 Delegora 服务，看到的数据就是共享的。
 
 ## 安装
 
 <Steps>
 <Step>
-从 [Multica 下载页](https://multica.ai/download) 选择与系统和处理器架构对应的安装包：
+从 [Delegora 下载页](https://multica.ai/download) 选择与系统和处理器架构对应的安装包：
 
 | 平台 | 安装包 |
 | --- | --- |
@@ -36,7 +36,7 @@ Multica Desktop 提供 macOS、Windows 和 Linux 版本。它和 Web 版使用�
 | Linux | `.AppImage`、`.deb` 或 `.rpm` |
 </Step>
 <Step>
-安装后使用和 Web 版相同的邮箱登录。登录后，Desktop 会启动自己内置的 Multica CLI，并检测本机已有的 AI 编程工具。
+安装后使用和 Web 版相同的邮箱登录。登录后，Desktop 会启动自己内置的 Delegora CLI，并检测本机已有的 AI 编程工具。
 </Step>
 </Steps>
 
@@ -78,13 +78,13 @@ Desktop 可以在本机把语音转成文字，填入聊天、评论、回复和
 
 ## 内置守护进程
 
-登录后，Desktop 会为当前 Multica 服务创建一个专用 CLI profile，并用它启动守护进程。这个 profile 位于：
+登录后，Desktop 会为当前 Delegora 服务创建一个专用 CLI profile，并用它启动守护进程。这个 profile 位于：
 
 ```text
 ~/.multica/profiles/desktop-<host>/
 ```
 
-它不会读取或覆盖你在终端中使用的默认 profile。如果你同时手动启动了另一个守护进程，Multica 会把它们显示为不同的运行时。
+它不会读取或覆盖你在终端中使用的默认 profile。如果你同时手动启动了另一个守护进程，Delegora 会把它们显示为不同的运行时。
 
 可以在 Desktop 的设置中查看运行状态和日志。工具没有被检测到时，先确认它能在普通终端中运行并且已经登录，再重启 Desktop 的守护进程。
 
@@ -104,7 +104,7 @@ Desktop 可以在本机把语音转成文字，填入聊天、评论、回复和
 
 ## 连接自托管实例
 
-Desktop 默认连接 Multica Cloud。连接自托管实例时，在用户目录的 `.multica` 下创建 `desktop.json`，内容如下：
+Desktop 默认连接 Delegora Cloud。连接自托管实例时，在用户目录的 `.multica` 下创建 `desktop.json`，内容如下：
 
 ```json
 {
@@ -189,7 +189,7 @@ Windows 上两种常见的写文件方式会生成 Desktop 读不了的文件：
 
 上面 Windows 页签里的 PowerShell 命令可以同时避开这两个坑。
 
-## Windows Defender 把 Multica 报成病毒
+## Windows Defender 把 Delegora 报成病毒
 
 Windows 安全中心报出 `Trojan:Script/Wacatac.B!ml` 之类的威胁，并隔离 Desktop 安装目录里的某个文件。被隔离的通常是内置的 CLI，而不是应用主程序：
 
@@ -197,7 +197,7 @@ Windows 安全中心报出 `Trojan:Script/Wacatac.B!ml` 之类的威胁，并隔
 C:\Users\<你>\AppData\Local\Programs\@multicadesktop\resources\app.asar.unpacked\resources\bin\multica.exe
 ```
 
-这是误报。`!ml` 后缀表示结论来自 Defender 的机器学习启发式判断，不是病毒特征库匹配。Multica 的 Windows 构建目前还没有做 Authenticode 代码签名，一个刚发布、没有签名、又会拉起后台进程并建立网络连接的二进制，很容易被这类启发式判为可疑。所有 Windows 产物都由 GitHub Actions 从本仓库的公开源码构建。
+这是误报。`!ml` 后缀表示结论来自 Defender 的机器学习启发式判断，不是病毒特征库匹配。Delegora 的 Windows 构建目前还没有做 Authenticode 代码签名，一个刚发布、没有签名、又会拉起后台进程并建立网络连接的二进制，很容易被这类启发式判为可疑。所有 Windows 产物都由 GitHub Actions 从本仓库的公开源码构建。
 
 你可以自己校验：每个 GitHub release 都发布了覆盖全部 CLI 压缩包的 `checksums.txt`。
 
@@ -211,7 +211,7 @@ Get-FileHash .\multica-cli-<version>-windows-amd64.zip -Algorithm SHA256
 
 <Steps>
 <Step>
-把隔离的文件恢复回来：Windows 安全中心 → *病毒和威胁防护* → *保护历史记录* → 选中 Multica 那一条 → *操作* → *还原*。
+把隔离的文件恢复回来：Windows 安全中心 → *病毒和威胁防护* → *保护历史记录* → 选中 Delegora 那一条 → *操作* → *还原*。
 </Step>
 <Step>
 加排除项，避免再次被隔离：*病毒和威胁防护* → *管理设置* → *排除项* → *添加或删除排除项* → *文件夹*，两个都要加：

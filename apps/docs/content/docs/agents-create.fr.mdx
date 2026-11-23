@@ -129,7 +129,7 @@ Modifier la configuration ne change pas les exécutions déjà en cours. Les ex�
 Les variables d'environnement conviennent aux identifiants à privilèges limités dont l'agent a besoin pendant l'exécution, comme une clé d'API en lecture seule ou un jeton à portée unique.
 
 <Callout type="warning">
-**Les valeurs de `custom_env` sont stockées en clair dans la base de données du serveur Multica** — il ne s'agit pas de données qui « restent sur cette machine ». Les endpoints de liste et de détail des agents ne renvoient plus aucune valeur de variable, seulement un nombre opaque ; seuls les `owner` et `admin` de l'espace de travail peuvent déverrouiller et modifier les valeurs, et chaque lecture ou modification laisse une trace d'audit. Un agent en cours d'exécution ne peut pas appeler les endpoints d'administration pour lire les variables d'un autre agent.
+**Les valeurs de `custom_env` sont stockées en clair dans la base de données du serveur Delegora** — il ne s'agit pas de données qui « restent sur cette machine ». Les endpoints de liste et de détail des agents ne renvoient plus aucune valeur de variable, seulement un nombre opaque ; seuls les `owner` et `admin` de l'espace de travail peuvent déverrouiller et modifier les valeurs, et chaque lecture ou modification laisse une trace d'audit. Un agent en cours d'exécution ne peut pas appeler les endpoints d'administration pour lire les variables d'un autre agent.
 </Callout>
 
 N'utilisez pas de mots de passe d'administration de bases de données de production ni d'autres identifiants de grande valeur à longue durée de vie.
@@ -150,11 +150,11 @@ L'onglet **MCP** d'un agent répartit les serveurs MCP qu'il peut utiliser en tr
 
 | Groupe | Origine |
 |---|---|
-| **Géré par Multica** | Serveurs propres à cet agent. Cliquez sur **Ajouter un MCP** et saisissez une commande STDIO ou une URL Streamable HTTP, dans l'éditeur visuel ou en JSON. |
+| **Géré par Delegora** | Serveurs propres à cet agent. Cliquez sur **Ajouter un MCP** et saisissez une commande STDIO ou une URL Streamable HTTP, dans l'éditeur visuel ou en JSON. |
 | **Depuis la bibliothèque de l'espace de travail** | Serveurs partagés de l'espace de travail assignés à cet agent ; voir la section suivante. |
 | **Hérité du runtime** | La configuration utilisateur de l'outil de codage IA sur la machine du runtime, en lecture seule. Elle n'est lisible que lorsqu'un runtime local est en ligne. |
 
-En cas de noms identiques, l'entrée propre à l'agent l'emporte sur un serveur assigné depuis l'espace de travail, et les deux l'emportent sur un serveur du runtime du même nom. L'entrée écartée porte la mention **Remplacé** ou **Remplacé par Multica**.
+En cas de noms identiques, l'entrée propre à l'agent l'emporte sur un serveur assigné depuis l'espace de travail, et les deux l'emportent sur un serveur du runtime du même nom. L'entrée écartée porte la mention **Remplacé** ou **Remplacé par Delegora**.
 
 ### Serveurs MCP partagés de l'espace de travail
 

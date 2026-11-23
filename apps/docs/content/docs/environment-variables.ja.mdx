@@ -1,12 +1,12 @@
 ---
 title: 環境変数
-description: セルフホスト Multica でよく使うサーバー、ストレージ、連携、ランタイムの設定。
+description: セルフホスト Delegora でよく使うサーバー、ストレージ、連携、ランタイムの設定。
 ---
 
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica はプロセス起動時に環境変数を読み込みます。変更後は、該当する API・Web・デーモンのプロセスを再起動してください。Docker Compose の `docker compose restart` は `.env` を再読み込みしません。`up -d` でコンテナを再作成して初めて反映されます。
+Delegora はプロセス起動時に環境変数を読み込みます。変更後は、該当する API・Web・デーモンのプロセスを再起動してください。Docker Compose の `docker compose restart` は `.env` を再読み込みしません。`up -d` でコンテナを再作成して初めて反映されます。
 
 このページでは、デプロイ運用者向けの設定をグループ別にまとめています。テスト用変数や内部実行用の変数は扱いません。完全なデプロイ手順は[セルフホストクイックスタート](/self-host-quickstart)を参照してください。
 
@@ -123,7 +123,7 @@ allowlist の正確な判定順序は[ログインとサインアップ](/auth-s
 
 ## 添付ファイルストレージ
 
-`S3_BUCKET` が未設定の場合、Multica はローカルディスクを使います。
+`S3_BUCKET` が未設定の場合、Delegora はローカルディスクを使います。
 
 | 変数 | デフォルト | 説明 |
 |---|---|---|
@@ -228,7 +228,7 @@ allowlist の正確な判定順序は[ログインとサインアップ](/auth-s
 API key と base URL の両方が空の場合、このレイヤーは無効になり、上流へのリクエストを一切行いません。上記 2 つの機能はどちらも何も送信しなくなります。このレイヤーからチャットの内容をデプロイ外へ出せないポリシーでは、これがサポートされた構成です。セッションはクライアントが最初のメッセージから生成したタイトルをそのまま使い、フォローアップ質問のボタンは表示されず、他の機能への影響はありません。
 
 <Callout type="info">
-これは補助生成レイヤーのみに関する説明です。エージェントの実行は別のデータ経路です。エージェントがチャットに応答するとき、デーモンはそのエージェントの AI コーディングツールをツール自身の資格情報で実行し、上記の `MULTICA_LLM_*` 設定をツールへ渡すことはありません。（エージェント自身が必要とする実行単位の Multica 接続用変数は、デーモンが別途注入します。）上記の変数を空にしてもこの経路には影響しないため、エージェントのランタイム設定側で制御してください。
+これは補助生成レイヤーのみに関する説明です。エージェントの実行は別のデータ経路です。エージェントがチャットに応答するとき、デーモンはそのエージェントの AI コーディングツールをツール自身の資格情報で実行し、上記の `MULTICA_LLM_*` 設定をツールへ渡すことはありません。（エージェント自身が必要とする実行単位の Delegora 接続用変数は、デーモンが別途注入します。）上記の変数を空にしてもこの経路には影響しないため、エージェントのランタイム設定側で制御してください。
 </Callout>
 
 ## デーモン設定
@@ -237,7 +237,7 @@ API key と base URL の両方が空の場合、このレイヤーは無効に�
 
 | 変数 | デフォルト | 説明 |
 |---|---|---|
-| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | Multica API / WebSocket アドレス。`http(s)` も受け付けます |
+| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | Delegora API / WebSocket アドレス。`http(s)` も受け付けます |
 | `MULTICA_DAEMON_DEVICE_NAME` | ホスト名 | ランタイム一覧に表示されるデバイス名 |
 | `MULTICA_AGENT_RUNTIME_NAME` | `Local Agent` | ランタイムの表示名 |
 | `MULTICA_DAEMON_POLL_INTERVAL` | `30s` | ウェイクイベントがないときの実行ポーリング間隔 |
@@ -340,7 +340,7 @@ API key と base URL の両方が空の場合、このレイヤーは無効に�
 </Accordion>
 </Accordions>
 
-QwenPaw と MiniMax Code には、Multica がモデルを渡さないためモデル変数がありません。詳しくは [AI コーディングツール比較](/providers#モデルの取得元)を参照してください。DeepSeek Harness には `MULTICA_DSH_PROFILE_BUNDLE` と `MULTICA_DSH_PLUGIN_PATH` もあり、次のセクションで説明します。
+QwenPaw と MiniMax Code には、Delegora がモデルを渡さないためモデル変数がありません。詳しくは [AI コーディングツール比較](/providers#モデルの取得元)を参照してください。DeepSeek Harness には `MULTICA_DSH_PROFILE_BUNDLE` と `MULTICA_DSH_PLUGIN_PATH` もあり、次のセクションで説明します。
 
 マシン全体のデフォルト引数 `MULTICA_<PREFIX>_ARGS` は、現在 Claude Code、Codex、CodeBuddy、Qwen Code、Amp、Factory Droid、QwenPaw の 7 ツールに対応しています。対応する変数は `MULTICA_CLAUDE_ARGS`、`MULTICA_CODEX_ARGS`、`MULTICA_CODEBUDDY_ARGS`、`MULTICA_QWEN_ARGS`、`MULTICA_AMP_ARGS`、`MULTICA_DROID_ARGS`、`MULTICA_QWENPAW_ARGS` です。例:
 
@@ -351,9 +351,9 @@ MULTICA_CLAUDE_ARGS=--max-turns 40
 
 ### DeepSeek Harness のプロファイルのインストール
 
-`MULTICA_DSH_PROFILE_BUNDLE` は、`multica` プロファイルが存在しない場合にインストールするバンドルを指定します。カンマ区切りで複数の候補を順に試し、各項目は npm のパッケージ名、ディレクトリ、またはパック済み tarball です。既定では未設定です。Multica が利用する `--stdio` プロトコルはこのプロファイルが提供するため、未設定の場合は DSH のインストールには手を加えず、デーモンは使用できないランタイムを登録せずにプロファイルの欠落を報告します。
+`MULTICA_DSH_PROFILE_BUNDLE` は、`multica` プロファイルが存在しない場合にインストールするバンドルを指定します。カンマ区切りで複数の候補を順に試し、各項目は npm のパッケージ名、ディレクトリ、またはパック済み tarball です。既定では未設定です。Delegora が利用する `--stdio` プロトコルはこのプロファイルが提供するため、未設定の場合は DSH のインストールには手を加えず、デーモンは使用できないランタイムを登録せずにプロファイルの欠落を報告します。
 
-Multica 自身のブリッジはまだ公開 npm レジストリにないため、値の選び方は[エージェントランタイムのインストール](/install-agent-runtime)を参照してください。ここに設定した値は追加の確認なしに各デーモンホストの DSH ホームへインストールされるので、サプライチェーンの判断として扱ってください。
+Delegora 自身のブリッジはまだ公開 npm レジストリにないため、値の選び方は[エージェントランタイムのインストール](/install-agent-runtime)を参照してください。ここに設定した値は追加の確認なしに各デーモンホストの DSH ホームへインストールされるので、サプライチェーンの判断として扱ってください。
 
 このインストールは範囲を意図的に限定しています。実行はデーモンのライフタイムにつき最大 1 回、プローブがプロファイルの不在を確認できた場合のみです。失敗時はパッケージマネージャー自身の出力をログに記録し、再試行はデーモンの再起動後のみ行います。プローブがタイムアウトした場合や、このデーモンが扱わないプロトコルバージョンを返した場合は報告のみで、上書きインストールは行いません。意図して用意されたプロファイルをデーモンが上書きすることはありません。調査はデーモンログで `DSH runtime profile` を検索してください。取り消す場合は `$DSH_HOME/profiles/multica`（既定は `~/.dsh/profiles/multica`）を削除します。
 
@@ -378,7 +378,7 @@ multica config show
 
 | キー | デフォルト | 説明 |
 |---|---|---|
-| `server_url` | `ws://localhost:8080/ws` | Multica API / WebSocket アドレス |
+| `server_url` | `ws://localhost:8080/ws` | Delegora API / WebSocket アドレス |
 | `app_url` | 空 | ブラウザログインに使う Web アドレス |
 | `workspace_id` | 空 | デフォルトのワークスペース |
 | `device_name` | ホスト名 | ランタイム一覧に表示されるデバイス名 |

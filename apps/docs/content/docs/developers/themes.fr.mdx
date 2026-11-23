@@ -1,12 +1,12 @@
 ---
 title: Créer un thème
-description: Le format des thèmes Multica — manifeste, variables CSS, options et ancres —, comment écrire et vérifier un thème, et comment le publier dans la boutique de thèmes.
+description: Le format des thèmes Delegora — manifeste, variables CSS, options et ancres —, comment écrire et vérifier un thème, et comment le publier dans la boutique de thèmes.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Un thème Multica est un dossier avec un `manifest.json` et un `theme.css`, plus les polices et images utilisées par le CSS. Le CSS définit des variables publiques pour les modes clair et sombre et peut restyler un ensemble d'ancres stables ; le manifeste nomme le thème et peut déclarer des options que l'on règle dans **Paramètres → Apparence**. Un thème n'exécute jamais de JavaScript.
+Un thème Delegora est un dossier avec un `manifest.json` et un `theme.css`, plus les polices et images utilisées par le CSS. Le CSS définit des variables publiques pour les modes clair et sombre et peut restyler un ensemble d'ancres stables ; le manifeste nomme le thème et peut déclarer des options que l'on règle dans **Paramètres → Apparence**. Un thème n'exécute jamais de JavaScript.
 
 <Callout type="warn">
   Le format des thèmes est une API bêta. Variables, ancres et manifeste peuvent changer jusqu'à ce qu'il soit déclaré stable. La liste complète et générée des variables et des ancres se trouve dans [`docs/theming.md`](https://github.com/multica-ai/multica/blob/main/docs/theming.md) ; cette page explique comment elles s'articulent.
@@ -34,7 +34,7 @@ Dans **Paramètres → Apparence**, choisissez le thème le plus proche de ce qu
 
 ### La vérifier
 
-Avant de la partager, lancez les vérifications depuis un clone du [dépôt Multica](https://github.com/multica-ai/multica) (voir [Vérifier et prévisualiser](#vérifier-et-prévisualiser)).
+Avant de la partager, lancez les vérifications depuis un clone du [dépôt Delegora](https://github.com/multica-ai/multica) (voir [Vérifier et prévisualiser](#vérifier-et-prévisualiser)).
 
 </Step>
 </Steps>
@@ -203,7 +203,7 @@ Tout ce qui charge une ressource est refusé, car le CSS peut lire le contenu de
 
 ## Vérifier et prévisualiser
 
-Depuis un clone du [dépôt Multica](https://github.com/multica-ai/multica) :
+Depuis un clone du [dépôt Delegora](https://github.com/multica-ai/multica) :
 
 ```bash
 pnpm theme:check path/to/paper          # un dossier
@@ -217,7 +217,7 @@ pnpm theme:preview path/to/paper --out preview   # preview/light.png et preview/
 
 Si un thème masque ou casse une partie de l'interface pendant que vous travaillez dessus, ouvrez l'app avec `?theme=default`, ou maintenez **Maj** juste après le chargement ; voir [Quand un thème casse quelque chose](/themes#quand-un-thème-casse-quelque-chose).
 
-Le vérificateur fonctionne aussi sans installer le dépôt, depuis un clone partiel et Node 22.18 ou plus récent. Les agents reçoivent les mêmes commandes dans leur skill Multica intégré :
+Le vérificateur fonctionne aussi sans installer le dépôt, depuis un clone partiel et Node 22.18 ou plus récent. Les agents reçoivent les mêmes commandes dans leur skill Delegora intégré :
 
 ```bash
 git clone --depth 1 --filter=blob:none --sparse https://github.com/multica-ai/multica.git multica-themes
@@ -255,7 +255,7 @@ Ouvrez une pull request qui ajoute au registre un fichier `themes/<id>.json`, no
 
 Les nouvelles releases arrivent dans la boutique en une heure environ, après avoir passé les mêmes vérifications ; les personnes qui ont installé le thème voient alors une mise à jour. Une release qui échoue laisse la précédente en place. L'app n'installe que le `theme.zip` exact qui a passé les vérifications, et le lit avec le même analyseur et les mêmes vérifications CSS qu'un thème importé.
 
-Chaque carte de la boutique indique combien de fois le thème a été téléchargé depuis ce serveur Multica. Chaque installation et chaque mise à jour comptent une fois, et les thèmes pas encore installés sont classés du plus téléchargé au moins téléchargé.
+Chaque carte de la boutique indique combien de fois le thème a été téléchargé depuis ce serveur Delegora. Chaque installation et chaque mise à jour comptent une fois, et les thèmes pas encore installés sont classés du plus téléchargé au moins téléchargé.
 
 ## Étapes suivantes
 

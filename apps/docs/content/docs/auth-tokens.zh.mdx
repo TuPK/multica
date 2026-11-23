@@ -5,21 +5,21 @@ description: 了解浏览器登录、个人访问令牌，以及智能体执行�
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-日常使用 Multica 时，你主要会接触两种凭据：浏览器登录会话和个人访问令牌。浏览器会话用于 Web 与 Desktop；个人访问令牌用于 CLI、守护进程、脚本和 API。
+日常使用 Delegora 时，你主要会接触两种凭据：浏览器登录会话和个人访问令牌。浏览器会话用于 Web 与 Desktop；个人访问令牌用于 CLI、守护进程、脚本和 API。
 
 ## 浏览器登录会话
 
-通过邮箱验证码或 Google 登录后，Multica 会把 JWT 保存到名为 `multica_auth` 的 HttpOnly cookie 中。浏览器自动携带它，JavaScript 无法直接读取。
+通过邮箱验证码或 Google 登录后，Delegora 会把 JWT 保存到名为 `multica_auth` 的 HttpOnly cookie 中。浏览器自动携带它，JavaScript 无法直接读取。
 
 会话默认有效 30 天，但这不是从登录起算的倒计时：持续使用的会话会在到期前自动续期，所以不需要每隔一段时间重新登录一次。续期只在剩余有效期过半之后才发生，因此闲置的会话可能在最后一次使用后不到 30 天就失效。自托管管理员可以通过 `AUTH_TOKEN_TTL` 调整有效期，见[登录与注册](/auth-setup#登录有效期)。退出登录会清除当前浏览器的认证与 CSRF cookie。
 
-浏览器 cookie 不适合复制到脚本或 CLI；从终端访问 Multica 使用个人访问令牌。
+浏览器 cookie 不适合复制到脚本或 CLI；从终端访问 Delegora 使用个人访问令牌。
 
 ## 个人访问令牌
 
 个人访问令牌（PAT）以 `mul_` 开头，代表你的账号。它可以访问你有权访问的全部工作区和 API，需要像密码一样保管。
 
-在 **设置 → API Token** 中创建令牌时，需要填写名称，并选择 30 天、90 天、1 年或永不过期，默认选中 90 天。完整令牌只显示一次；关闭窗口后，Multica 只保留：
+在 **设置 → API Token** 中创建令牌时，需要填写名称，并选择 30 天、90 天、1 年或永不过期，默认选中 90 天。完整令牌只显示一次；关闭窗口后，Delegora 只保留：
 
 - 令牌的哈希值；
 - 用于辨认它的开头几位；
@@ -40,7 +40,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 ~/.multica/profiles/<name>/config.json
 ```
 
-守护进程使用同一个 PAT 连接 Multica。带过期时间的 `mul_` PAT 在剩余有效期不足 7 天时自动续期，延长到当时起 90 天后。续期失败不会改变令牌本身；令牌已经过期或被吊销时，需要重新运行 `multica login`。
+守护进程使用同一个 PAT 连接 Delegora。带过期时间的 `mul_` PAT 在剩余有效期不足 7 天时自动续期，延长到当时起 90 天后。续期失败不会改变令牌本身；令牌已经过期或被吊销时，需要重新运行 `multica login`。
 
 无浏览器环境可以先在 Web 中创建 PAT，再让 CLI 安全地提示输入：
 
@@ -89,7 +89,7 @@ curl https://api.multica.ai/api/issues \
 
 | 前缀 | 用途 | 谁管理 |
 | --- | --- | --- |
-| `mcn_` | Multica Cloud Node 连接 | Multica Cloud Fleet |
+| `mcn_` | Delegora Cloud Node 连接 | Delegora Cloud Fleet |
 | `mdt_` | 工作区范围的守护进程认证协议 | 服务端内部流程 |
 
 普通 Cloud、自托管和 Desktop 安装都不需要手动创建它们。用户侧的 CLI 与守护进程始终使用 `mul_` PAT；不要自行构造其他前缀的令牌。

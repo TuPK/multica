@@ -1,24 +1,24 @@
 ---
 title: 守護程序與執行時
-description: 瞭解 Multica 如何連線電腦、發現 AI 程式設計工具並執行。
+description: 瞭解 Delegora 如何連線電腦、發現 AI 程式設計工具並執行。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { RuntimeOfflineDemo } from "@/components/demos/runtime-offline-demo";
 
-Multica 記錄和協調工作，連線上來的電腦負責執行：電腦上的**守護程序**（daemon）領取執行，再呼叫本機安裝的 AI 程式設計工具。
+Delegora 記錄和協調工作，連線上來的電腦負責執行：電腦上的**守護程序**（daemon）領取執行，再呼叫本機安裝的 AI 程式設計工具。
 
 ## 概念區分
 
-- **守護程序**是執行在一臺電腦上的 Multica 後臺程式。它負責連線伺服器、發現本機工具、領取執行和回傳結果。
+- **守護程序**是執行在一臺電腦上的 Delegora 後臺程式。它負責連線伺服器、發現本機工具、領取執行和回傳結果。
 - **執行時**代表一個工作區可以使用的具體執行環境。它對應一臺電腦，以及這臺電腦上的一款 AI 程式設計工具或自定義執行時配置。
 
 例如，一臺電腦裝了 Claude Code 和 Codex，連線了兩個工作區，守護程序就為每個工作區各註冊一條 Claude Code 執行時和一條 Codex 執行時。重啟守護程序會更新原有記錄，不會為同一個組合反覆建立新執行時。
 
 ## 執行位置與資料邊界
 
-本地執行時呼叫的 AI 程式設計工具、這些工具自己的登入憑據和原生程式碼目錄，都留在連線的電腦上。Multica 伺服器不替本地工具執行命令，也不會自動上傳整個工作目錄。
+本地執行時呼叫的 AI 程式設計工具、這些工具自己的登入憑據和原生程式碼目錄，都留在連線的電腦上。Delegora 伺服器不替本地工具執行命令，也不會自動上傳整個工作目錄。
 
 為了讓團隊能夠協作，伺服器會儲存任務、評論、AI 代理配置、執行上下文、執行記錄和 AI 代理寫回的結果。這些內容可能包含 AI 代理主動讀取並寫入回覆的程式碼片段或其他專案上下文。
 
@@ -31,12 +31,12 @@ Multica 記錄和協調工作，連線上來的電腦負責執行：電腦上的
 <Tabs items={["Desktop", "CLI"]}>
 <Tab value="Desktop">
 
-Multica Desktop 會自動啟動守護程序，不需要額外執行命令。
+Delegora Desktop 會自動啟動守護程序，不需要額外執行命令。
 
 </Tab>
 <Tab value="CLI">
 
-使用 Web、遠端電腦或無介面環境時，先[安裝 Multica CLI](/cli)，再執行：
+使用 Web、遠端電腦或無介面環境時，先[安裝 Delegora CLI](/cli)，再執行：
 
 ```bash
 multica daemon start
@@ -63,7 +63,7 @@ multica daemon start
 
 ### 在 Linux 容器中執行 [#linux-container]
 
-在映像檔中安裝 Multica CLI 和至少一種支援的程式開發工具。以非 root 使用者執行容器。將 `MULTICA_SERVER_URL` 設為容器內可存取的 API 網址。將個人存取權杖以密鑰掛載，並透過標準輸入傳給登入指令。將 `my-workspace` 換成你的工作區 slug。
+在映像檔中安裝 Delegora CLI 和至少一種支援的程式開發工具。以非 root 使用者執行容器。將 `MULTICA_SERVER_URL` 設為容器內可存取的 API 網址。將個人存取權杖以密鑰掛載，並透過標準輸入傳給登入指令。將 `my-workspace` 換成你的工作區 slug。
 
 ```bash
 multica --profile container login --token < /run/secrets/multica-pat
@@ -89,18 +89,18 @@ multica daemon autostart disable
 
 登記的命令是這個 profile 的 `multica daemon start --foreground`，由系統在登入時拉起：Windows 寫入當前使用者的 Run 登入檔項，macOS 寫入 `~/Library/LaunchAgents` 下的 LaunchAgent，Linux 寫入 systemd 使用者單元，沒有 systemd 使用者會話時改用 XDG autostart 條目。使用命名 profile 時加 `--profile <name>`，每個 profile 單獨登記。
 
-- 只有 `enable` 會建立登記。`multica daemon start` 不會自己登記，只在沒有登記時提示一行；已有 Multica 建立的登記時，它會順手更新其中的可執行檔案路徑，升級或挪動 CLI 後不必重新 `enable`。
+- 只有 `enable` 會建立登記。`multica daemon start` 不會自己登記，只在沒有登記時提示一行；已有 Delegora 建立的登記時，它會順手更新其中的可執行檔案路徑，升級或挪動 CLI 後不必重新 `enable`。
 - 在 macOS 和 Linux 上，登入會話只帶上 `enable` 時 shell 裡的 `PATH`，shell 匯出的其他變數（API key、`HTTPS_PROXY` 等）都不會帶過去。守護程序配置用 `multica config set` 持久化，其他變數放進使用者級環境。
 - Linux 的 systemd 使用者單元在登入時啟動。要在開機後不登入也啟動，按 `enable` 輸出的提示執行 `loginctl enable-linger <使用者名稱>`。
 - `multica daemon stop` 只停止當前程序，不刪除登記。
-- 同一位置已有不是 Multica 建立的檔案（例如你自己寫的 systemd 單元）時，`enable` 和 `disable` 都會拒絕修改它。
+- 同一位置已有不是 Delegora 建立的檔案（例如你自己寫的 systemd 單元）時，`enable` 和 `disable` 都會拒絕修改它。
 - Desktop 拉起的守護程序由 Desktop 管理，`daemon start` 不會為它提示或更新登記。
 
 ### 在執行時頁面更新 CLI [#updating-cli]
 
 獨立執行的 CLI 守護程序有新版本時，執行時所有者和工作區管理員可以在**執行時**頁面點選**更新**。如果機器正在執行任務且守護程序支援排隊更新，這次更新會被暫存，不中斷或暫停目前工作；**執行時**頁面會在該機器的所有執行時上顯示**閒置後更新**、目前執行數與**取消**按鈕。
 
-最後一個執行中的任務結束後，安裝會自動開始。每臺機器同一時間只允許一個未完成的更新；如果機器持續 24 小時未能閒置，排隊會自動失效；在開始安裝前隨時可以取消。不支援排隊的舊版守護程序在忙碌時會直接拒絕遠端更新，需等閒置後重試。由 Multica 桌面端拉起的守護程序歸桌面端管理，隨桌面端一起升級。
+最後一個執行中的任務結束後，安裝會自動開始。每臺機器同一時間只允許一個未完成的更新；如果機器持續 24 小時未能閒置，排隊會自動失效；在開始安裝前隨時可以取消。不支援排隊的舊版守護程序在忙碌時會直接拒絕遠端更新，需等閒置後重試。由 Delegora 桌面端拉起的守護程序歸桌面端管理，隨桌面端一起升級。
 
 ## 派發與線上狀態
 
@@ -136,11 +136,11 @@ Claude Code 和 Codex 執行時的頁面上還有**額度**：CLI 帳號在方�
 
 ## 本機 MCP 配置 [#local-mcp]
 
-AI 代理沒有儲存 MCP 配置時，Multica 不向工具傳任何 MCP 設定，工具照常讀取這臺電腦上它自己的配置。
+AI 代理沒有儲存 MCP 配置時，Delegora 不向工具傳任何 MCP 設定，工具照常讀取這臺電腦上它自己的配置。
 
-AI 代理有 MCP 配置後（哪怕是空配置），Multica 會為每次執行生成一份專用配置交給工具，例如 Claude Code 會以嚴格模式只載入這份配置。為了不讓本機已有的伺服器因此失效，守護程序會在執行時所在的電腦上讀取該工具的使用者級 MCP 配置，再和 AI 代理的配置合併。同名伺服器按以下順序取第一個：
+AI 代理有 MCP 配置後（哪怕是空配置），Delegora 會為每次執行生成一份專用配置交給工具，例如 Claude Code 會以嚴格模式只載入這份配置。為了不讓本機已有的伺服器因此失效，守護程序會在執行時所在的電腦上讀取該工具的使用者級 MCP 配置，再和 AI 代理的配置合併。同名伺服器按以下順序取第一個：
 
-1. AI 代理 **MCP** 標籤頁中由 Multica 管理或從工作區 MCP 庫分配的伺服器；
+1. AI 代理 **MCP** 標籤頁中由 Delegora 管理或從工作區 MCP 庫分配的伺服器；
 2. 工具的使用者級配置檔案；
 3. 僅 Claude Code：已啟用的 Claude Code 外掛自帶的 MCP 伺服器。外掛取自 `~/.claude/settings.json` 的 `enabledPlugins`，讀取外掛目錄下的 `.mcp.json` 和外掛清單裡宣告的 MCP 檔案。
 
@@ -153,13 +153,13 @@ AI 代理有 MCP 配置後（哪怕是空配置），Multica 會為每次執行�
 | OpenClaw | `$CLAWDBOT_CONFIG_PATH`，或 `$OPENCLAW_STATE_DIR/openclaw.json`（預設 `~/.openclaw/openclaw.json`）的 `mcp.servers` |
 | CodeArts | `~/.codeartsdoer/codearts_cli.json` 或 `codearts_cli.jsonc` 的 `mcp` |
 
-CodeBuddy、Kimi CLI 和 Pi 啟動時會自己載入使用者級配置，並與 Multica 下發的配置合併，守護程序不再預先合併，否則同一個伺服器會啟動兩次。CodeBuddy 遇到同名伺服器時以 Multica 下發的為準。表外的其他工具只收到 AI 代理的配置。
+CodeBuddy、Kimi CLI 和 Pi 啟動時會自己載入使用者級配置，並與 Delegora 下發的配置合併，守護程序不再預先合併，否則同一個伺服器會啟動兩次。CodeBuddy 遇到同名伺服器時以 Delegora 下發的為準。表外的其他工具只收到 AI 代理的配置。
 
-合併在執行時所在的電腦上完成，本機伺服器的命令、URL、請求頭和環境變數不會上傳。AI 代理 **MCP** 標籤頁的"從執行時繼承"一欄只顯示伺服器名稱、傳輸方式、來源和是否啟用；被 AI 代理同名伺服器覆蓋的會標為"已由 Multica 覆蓋"。本機配置檔案無法解析時，守護程序記一條警告日誌，這次執行只使用 AI 代理的配置。
+合併在執行時所在的電腦上完成，本機伺服器的命令、URL、請求頭和環境變數不會上傳。AI 代理 **MCP** 標籤頁的"從執行時繼承"一欄只顯示伺服器名稱、傳輸方式、來源和是否啟用；被 AI 代理同名伺服器覆蓋的會標為"已由 Delegora 覆蓋"。本機配置檔案無法解析時，守護程序記一條警告日誌，這次執行只使用 AI 代理的配置。
 
 ### Cursor 的 MCP 登入 [#cursor-mcp-login]
 
-Cursor 依專案目錄保存 MCP 的 OAuth 登入，而每次執行都有自己的目錄。因此 daemon 會在執行環境所在電腦上為每個 Cursor AI 代理保留一份登入檔，即 Multica 設定目錄下的 `cursor-mcp-auth/<agent-id>/mcp-auth.json`，並給每次執行一份它的副本。daemon 每隔幾秒以及執行結束時，會把 Cursor 對副本的改動合併回 AI 代理的登入檔，所以一次執行重新整理的 token，這個 AI 代理之後的執行也能拿到。對 Mobbin 這類服務登入一次，這個 AI 代理之後在這台電腦上的執行都能使用。它和你自己各個 Cursor 專案裡的登入分開，執行不會讓你那邊被登出。這個 AI 代理在這台電腦上的所有執行都會用到它，包括其他成員觸發的執行。
+Cursor 依專案目錄保存 MCP 的 OAuth 登入，而每次執行都有自己的目錄。因此 daemon 會在執行環境所在電腦上為每個 Cursor AI 代理保留一份登入檔，即 Delegora 設定目錄下的 `cursor-mcp-auth/<agent-id>/mcp-auth.json`，並給每次執行一份它的副本。daemon 每隔幾秒以及執行結束時，會把 Cursor 對副本的改動合併回 AI 代理的登入檔，所以一次執行重新整理的 token，這個 AI 代理之後的執行也能拿到。對 Mobbin 這類服務登入一次，這個 AI 代理之後在這台電腦上的執行都能使用。它和你自己各個 Cursor 專案裡的登入分開，執行不會讓你那邊被登出。這個 AI 代理在這台電腦上的所有執行都會用到它，包括其他成員觸發的執行。
 
 AI 代理有 MCP 設定時，每次執行都有自己的 Cursor 資料目錄，執行在那裡的 `mcp-auth.json` 就是這份副本。沒有 MCP 設定時，執行使用你自己的 Cursor 資料目錄（`~/.cursor`，或 daemon 的 `CURSOR_DATA_DIR`）和其中設定的 MCP 服務；daemon 只把 Cursor 在 `projects/` 下為執行目錄保存的 `mcp-auth.json` 換成 AI 代理登入檔的副本。執行的目錄被清理時，這份副本會一併刪除。
 
@@ -191,7 +191,7 @@ cd ~/.multica/cursor-mcp-auth/<agent-id>/user-login/workdir && CURSOR_DATA_DIR=~
 
 每次執行在工作目錄根目錄（預設 `~/multica_workspaces`）下有一個目錄，放檢出的程式碼、輸出和日誌；同一任務的後續執行會續用它。
 
-下表說明 Multica 管理的目錄何時會被完整刪除。在專案本地目錄中直接執行的工作會保留獨立的執行記錄目錄，詳見下文。
+下表說明 Delegora 管理的目錄何時會被完整刪除。在專案本地目錄中直接執行的工作會保留獨立的執行記錄目錄，詳見下文。
 
 | 執行來源 | 刪除時機 |
 |---|---|
@@ -202,7 +202,7 @@ cd ~/.multica/cursor-mcp-auth/<agent-id>/user-login/workdir && CURSOR_DATA_DIR=~
 
 任務仍未關閉時，執行完成 12 小時後只刪可以重新生成的內容：目錄中的 `node_modules`、`.next`、`.turbo`，以及 `codex-home` 下的四個精確路徑：`.sandbox-bin`、`.tmp/plugins`、`.tmp/marketplaces`、`cache/remote_plugin_catalog`。其他檔案（包括 SQLite 資料庫和 WAL 檔案）保留。受管的任務執行目錄預設還會在執行完成 14 天後整體刪除，不論任務是否關閉。
 
-未歸檔的聊天如果使用 Multica 管理的工作目錄，守護程序預設會在最後一次執行結束 12 小時後，按同樣的規則清理可重新生成的內容。清理成功後，守護程序會略過該次執行的重複掃描。後續執行結束並經過相同的等待時間後，就會再次符合清理條件。聊天直接在專案本地目錄執行時，只清理上述精確路徑中的 Codex 快取。
+未歸檔的聊天如果使用 Delegora 管理的工作目錄，守護程序預設會在最後一次執行結束 12 小時後，按同樣的規則清理可重新生成的內容。清理成功後，守護程序會略過該次執行的重複掃描。後續執行結束並經過相同的等待時間後，就會再次符合清理條件。聊天直接在專案本地目錄執行時，只清理上述精確路徑中的 Codex 快取。
 
 直接執行時，專案的本地目錄就是工作目錄。守護程序清理時會保留這個目錄。執行記錄目錄保留 daemon 日誌和 `output/`。執行完成超過 `MULTICA_GC_COMPLETED_TASK_TTL`（預設 14 天）後，如果會話記錄保存在記錄目錄外，就刪除整個 `codex-home`；仍保存任務本地會話記錄的 home 會保留。將該變數設為 `0` 可關閉 home 到期清理。後續執行會重建 home 並重新連接會話儲存；會話儲存仍遵循下文獨立的保留策略。
 
@@ -221,20 +221,20 @@ cd ~/.multica/cursor-mcp-auth/<agent-id>/user-login/workdir && CURSOR_DATA_DIR=~
 | 資料 | 位置 | 保留 |
 |---|---|---|
 | Codex 會話記錄（每個 AI 代理、每個任務一份） | Codex 目錄（預設 `~/.codex`）下的 `multica-sessions/` | 14 天未使用後刪除；之後這個任務的執行無法續接原來的 Codex 會話 |
-| Hermes 會話記錄 | Multica 配置目錄（預設 `~/.multica`，命名 profile 為 `~/.multica/profiles/<name>`）下的 `hermes-sessions/` | 14 天未使用後刪除 |
+| Hermes 會話記錄 | Delegora 配置目錄（預設 `~/.multica`，命名 profile 為 `~/.multica/profiles/<name>`）下的 `hermes-sessions/` | 14 天未使用後刪除 |
 | Hermes 記憶（每個 AI 代理一份） | 同一目錄下的 `hermes-state/` | 90 天未使用後刪除 |
 | Cursor 的 MCP 登入（每個 AI 代理一份） | 同一目錄下的 `cursor-mcp-auth/` | 保留 |
 | 每次執行的私有臨時目錄（`TMPDIR`） | 系統臨時目錄下的 `multica-task-*` | 執行結束後刪除，守護程序被強制結束時由之後的清理補刪 |
 
 Hermes 在任務和聊天中的執行會將會話持久目錄作為隔離的 `HERMES_HOME`，`state.db` 及其 SQLite 日誌檔案均為目錄內的普通檔案。這個佈局同時支援舊版程序內 ACP 和新版由 Gateway 執行的 ACP。已有會話記錄會直接重複使用，舊執行目錄中的會話歷史會在下次執行前遷移。
 
-Multica 每次執行都會重新整理其中的 skill 和派生配置。模型服務認證會保留，託管執行的訊息平臺介面卡和 HTTP 入口會關閉。宿主的 Gateway 狀態、日誌、會話和定時任務各自隔離。執行結束時會停止本次執行的 Gateway，確保後續執行使用自己的執行環境。
+Delegora 每次執行都會重新整理其中的 skill 和派生配置。模型服務認證會保留，託管執行的訊息平臺介面卡和 HTTP 入口會關閉。宿主的 Gateway 狀態、日誌、會話和定時任務各自隔離。執行結束時會停止本次執行的 Gateway，確保後續執行使用自己的執行環境。
 
 ### Codex 原生記憶與子 AI 代理 [#codex-memory]
 
 守護程序管理的 Codex 執行預設關閉 Codex 原生記憶，避免本機或前一次執行留下的記憶帶進別的工作區。設定只寫入這次執行專用的 `CODEX_HOME/config.toml`（`features.memories` 和 `memories.generate_memories`、`memories.use_memories` 均為 `false`），不改你的 `~/.codex/config.toml`。需要保留原生記憶時，在守護程序的環境中設定 `MULTICA_CODEX_MEMORY=1`。
 
-Codex 原生子 AI 代理同樣預設關閉：父執行緒結束時，Multica 就把這次執行判為結束，仍在執行的子 AI 代理的結果會丟失。接受這個風險的話，設定 `MULTICA_CODEX_MULTI_AGENT=1`。
+Codex 原生子 AI 代理同樣預設關閉：父執行緒結束時，Delegora 就把這次執行判為結束，仍在執行的子 AI 代理的結果會丟失。接受這個風險的話，設定 `MULTICA_CODEX_MULTI_AGENT=1`。
 
 ## 執行時共享 [#私有與公開]
 
@@ -244,7 +244,7 @@ Codex 原生子 AI 代理同樣預設關閉：父執行緒結束時，Multica �
 
 只想開放給部分成員時，在執行時詳情中選擇**指定成員**，勾選一位或多位工作區成員，然後**儲存**。這些成員可以選擇該執行時並在上面建立 AI 代理。只有所有者能修改名單；在名單上不代表可以重新命名、刪除或管理這條執行時。
 
-所有者移除共享成員、把公開執行時改為指定成員，或重新設為**私有**時，Multica 會先展示受影響的 AI 代理和活動執行，包括 AI 代理構建會話。確認後會解綁其他成員的這些 AI 代理，以 `runtime_access_revoked` 取消其排隊中、已排程、執行中、等待本地目錄和延遲中的執行，並暫停分配給這些 AI 代理的已啟用自動化。所有者和仍有權限的成員，其 AI 代理與執行不受影響。影響範圍變化時需要重新確認；遇到併發聊天寫入時可能需要重試。恢復工作時，請先將 AI 代理繫結到可用的執行時，再手動恢復已暫停的自動化。
+所有者移除共享成員、把公開執行時改為指定成員，或重新設為**私有**時，Delegora 會先展示受影響的 AI 代理和活動執行，包括 AI 代理構建會話。確認後會解綁其他成員的這些 AI 代理，以 `runtime_access_revoked` 取消其排隊中、已排程、執行中、等待本地目錄和延遲中的執行，並暫停分配給這些 AI 代理的已啟用自動化。所有者和仍有權限的成員，其 AI 代理與執行不受影響。影響範圍變化時需要重新確認；遇到併發聊天寫入時可能需要重試。恢復工作時，請先將 AI 代理繫結到可用的執行時，再手動恢復已暫停的自動化。
 
 取消會保留聊天曆史，並在服務端儲存草稿和附件恢復資料。網頁端和桌面端沿用現有的草稿恢復入口；移動端暫未提供該入口。已開始但尚無輸出的執行，會等待守護程序確認取消或服務端收尾寬限期結束，再決定是否恢復輸入。已連線的守護程序透過常規檢查接收取消。電腦離線時，服務端仍會立即撤銷訪問，但本地程序可能繼續執行，直到重新連線並收到取消；服務端無法保證立即遠端停止。
 
@@ -256,7 +256,7 @@ Codex 原生子 AI 代理同樣預設關閉：父執行緒結束時，Multica �
 
 如果團隊使用內部 wrapper、固定版本的可執行檔案，或需要為一款相容工具追加固定引數，可以建立**自定義執行時配置**。
 
-自定義配置不增加新的通訊協議。建立時要選擇一種 Multica 已支援的協議族（工具的對接協議型別，見 [AI 程式設計工具對照](/providers)）；命令本身必須與該協議相容。
+自定義配置不增加新的通訊協議。建立時要選擇一種 Delegora 已支援的協議族（工具的對接協議型別，見 [AI 程式設計工具對照](/providers)）；命令本身必須與該協議相容。
 
 ### Task 執行時環境
 
@@ -270,8 +270,8 @@ Codex 原生子 AI 代理同樣預設關閉：父執行緒結束時，Multica �
 | `MULTICA_TASK_ID` | 當前 task 的 ID | **整合契約** |
 | `MULTICA_AGENT_ID` | 被指派 AI 代理的 ID | **整合契約** |
 | `MULTICA_WORKSPACE_ID` | task 所屬工作區的 ID | **整合契約** |
-| `MULTICA_SERVER_URL` | 守護程序選定的 Multica 服務地址 | **整合契約** |
-| `MULTICA_TASK_CONFIG_ROOT` | 私有的 task 本地 Multica CLI 配置根目錄 | 僅供參考 |
+| `MULTICA_SERVER_URL` | 守護程序選定的 Delegora 服務地址 | **整合契約** |
+| `MULTICA_TASK_CONFIG_ROOT` | 私有的 task 本地 Delegora CLI 配置根目錄 | 僅供參考 |
 | `MULTICA_TASK_WORKSPACES_ROOT` | 守護程序管理的 task 工作區根目錄 | 僅供參考 |
 | `MULTICA_AGENT_NAME` | 被指派 AI 代理的顯示名稱 | 僅供參考 |
 | `MULTICA_DAEMON_PORT` | 本地守護程序的健康檢查/API 埠，供 `multica repo checkout` 等僅限 task 的命令使用 | 僅供參考 |
@@ -302,19 +302,19 @@ Codex 原生子 AI 代理同樣預設關閉：父執行緒結束時，Multica �
 
 ### 引數的排列順序
 
-命令欄位裡填寫的內容會緊跟在可執行檔案之後，排在 Multica 追加的引數之前：
+命令欄位裡填寫的內容會緊跟在可執行檔案之後，排在 Delegora 追加的引數之前：
 
 ```text
-<你的命令> <你的固定引數> <Multica 的協議引數> <Agent 的自定義引數>
+<你的命令> <你的固定引數> <Delegora 的協議引數> <Agent 的自定義引數>
 ```
 
-帶子命令的 wrapper 靠這個順序工作。命令是 `ccms start q36` 時，工具先看到 `start q36`，在 Multica 的 `-p` 等引數到達之前選好子命令；這類 wrapper 只接受這一種順序。
+帶子命令的 wrapper 靠這個順序工作。命令是 `ccms start q36` 時，工具先看到 `start q36`，在 Delegora 的 `-p` 等引數到達之前選好子命令；這類 wrapper 只接受這一種順序。
 
 這裡的引數以前追加在最後。多數 flag 形式的命令在兩種位置下解析結果相同，但區分全域性 flag 和子命令 flag 的命令會在意位置。已經配置了帶固定引數的 profile 的，升級後請發起一次執行，確認它仍能正常啟動。
 
 另外：
 
-- **衝突時以 Multica 的值為準。** 如果固定引數設定了 Multica 也會設定的 flag，Multica 的值排在後面並最終生效。最典型的是：在 Agent 上選擇的模型會覆蓋 profile 裡固定的 `--model`。若要為所有人固定模型，請把 Agent 的模型欄位留空。
+- **衝突時以 Delegora 的值為準。** 如果固定引數設定了 Delegora 也會設定的 flag，Delegora 的值排在後面並最終生效。最典型的是：在 Agent 上選擇的模型會覆蓋 profile 裡固定的 `--model`。若要為所有人固定模型，請把 Agent 的模型欄位留空。
 - **協議關鍵 flag 會被忽略。** `-p`、`--output-format`、`--input-format`、`--permission-mode` 以及其他協議族的對應 flag 會從固定引數中被剔除，因為覆蓋它們會切斷 daemon 與工具之間的通訊。子命令和其他位置引數始終原樣傳遞。
 
 如果 Desktop 啟動的守護程序找不到終端裡能夠執行的命令，可以為當前電腦設定絕對路徑：
@@ -333,12 +333,12 @@ multica runtime profile unset-path <profile-id>
 
 ## Qoder Cloud Agents 遠端執行時
 
-Qoder Cloud Agents 透過遠端會話執行分配的任務。Multica 服務端管理橋接程序，重複使用現有守護程序任務協議，無需使用者啟動本地守護程序。
+Qoder Cloud Agents 透過遠端會話執行分配的任務。Delegora 服務端管理橋接程序，重複使用現有守護程序任務協議，無需使用者啟動本地守護程序。
 
 ### 準備工作
 
 - 需要工作區管理員權限。每個工作區只有一個 Qoder 連線。
-- 建立 Qoder 個人訪問令牌（PAT）、至少一個執行環境，以及要在 Qoder Cloud Agents 中使用的 AI 代理。模型、工具和 skill 都在 Qoder Cloud Agents 中的遠端 AI 代理上配置，不在 Multica 中配置。
+- 建立 Qoder 個人訪問令牌（PAT）、至少一個執行環境，以及要在 Qoder Cloud Agents 中使用的 AI 代理。模型、工具和 skill 都在 Qoder Cloud Agents 中的遠端 AI 代理上配置，不在 Delegora 中配置。
 - 自託管部署需在服務端設定 `MULTICA_VCS_SECRET_KEY`：一個 base64 編碼的 32 位元組金鑰，重啟前後必須保持不變。未設定時，**新增**選單中不會出現 Qoder Cloud Agents。
 
 ### 連線 Qoder
@@ -352,7 +352,7 @@ Qoder Cloud Agents 透過遠端會話執行分配的任務。Multica 服務端�
 
 ### 新增 AI 代理
 
-在執行時頁面開啟 Qoder Cloud Agents，點選**用它建立 AI 代理**；也可以照常建立 AI 代理並選擇 Qoder 執行時。在 AI 代理表單的 **遠端 AI 代理**中選擇遠端 AI 代理。已有 AI 代理可在**Qoder Cloud Agents** 標籤頁中修改關聯的 Qoder Cloud Agents AI 代理或預設倉庫。多個 Multica AI 代理可以共用同一個連線，各自關聯不同的 Qoder Cloud Agents AI 代理。
+在執行時頁面開啟 Qoder Cloud Agents，點選**用它建立 AI 代理**；也可以照常建立 AI 代理並選擇 Qoder 執行時。在 AI 代理表單的 **遠端 AI 代理**中選擇遠端 AI 代理。已有 AI 代理可在**Qoder Cloud Agents** 標籤頁中修改關聯的 Qoder Cloud Agents AI 代理或預設倉庫。多個 Delegora AI 代理可以共用同一個連線，各自關聯不同的 Qoder Cloud Agents AI 代理。
 
 連線憑證加密儲存，在工作區內共享。管理員管理連線，成員可以選擇可訪問的 Qoder Cloud Agents AI 代理。專案選擇倉庫和起始分支；建立編碼會話時，對應倉庫的令牌會傳給 Qoder Cloud Agents。儲存後的 PAT 不會返回瀏覽器。
 
@@ -362,7 +362,7 @@ Qoder Cloud Agents 透過遠端會話執行分配的任務。Multica 服務端�
 
 超出併發上限的任務會排隊等待。同一任務的後續執行會在上一會話空閒時繼續使用該 Qoder 會話。AI 代理可以設定預設倉庫，在任務所屬專案未繫結倉庫時使用。AI 代理會被要求以任務標識命名分支，並在 PR 標題前加上任務標識，以便 PR 自動關聯到任務。
 
-首版支援任務執行、聊天、擔任小隊隊長、透過 AI 代理建立任務、進度同步、取消和基於持久化記錄的恢復。模型、工具和 skill 在 Qoder 中配置。任務和聊天訊息裡的附件和圖片會交給遠端會話，包括 PDF 和 Office 文件，每個檔案不超過 5 MB；更大的檔案不會傳過去，AI 代理只知道有這些檔案。聊天中 AI 代理用 DeliverArtifacts 交付的檔案（每個不超過 10 MB）會作為附件隨回覆發出。暫不支援本地目錄，也不支援從 Multica 建立遠端 Qoder Cloud Agents AI 代理。執行時頁面分別展示遠端執行時和電腦。
+首版支援任務執行、聊天、擔任小隊隊長、透過 AI 代理建立任務、進度同步、取消和基於持久化記錄的恢復。模型、工具和 skill 在 Qoder 中配置。任務和聊天訊息裡的附件和圖片會交給遠端會話，包括 PDF 和 Office 文件，每個檔案不超過 5 MB；更大的檔案不會傳過去，AI 代理只知道有這些檔案。聊天中 AI 代理用 DeliverArtifacts 交付的檔案（每個不超過 10 MB）會作為附件隨回覆發出。暫不支援本地目錄，也不支援從 Delegora 建立遠端 Qoder Cloud Agents AI 代理。執行時頁面分別展示遠端執行時和電腦。
 
 獨立橋接程序的配置與限制見 [Qoder runtime README](https://github.com/multica-ai/multica/blob/main/server/cmd/qoder-runtime/README.md)。
 
@@ -373,7 +373,7 @@ Qoder Cloud Agents 透過遠端會話執行分配的任務。Multica 服務端�
 1. 執行 `multica daemon status`，確認守護程序已經啟動。
 2. 執行 `multica daemon logs -f`，檢視登入、網路或工具檢測錯誤。
 3. 在同一執行環境中執行 `command -v <工具命令>`，確認守護程序能夠找到它。
-4. 開啟 Multica 的**執行時**頁面，檢查目標電腦和對應的 AI 程式設計工具是否顯示線上。
+4. 開啟 Delegora 的**執行時**頁面，檢查目標電腦和對應的 AI 程式設計工具是否顯示線上。
 5. 工具剛安裝、路徑剛修改或配置剛更新時，執行 `multica daemon restart`。
 
 仍未解決時，參見[故障排查](/troubleshooting)。

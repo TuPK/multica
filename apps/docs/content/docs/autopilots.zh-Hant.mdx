@@ -8,7 +8,7 @@ import { AutopilotDemo } from "@/components/demos/autopilot-demo";
 
 每天彙總進展、定期檢查依賴、外部系統發來事件時啟動 AI 代理，這類反覆發生的工作交給自動化。
 
-每條自動化儲存一份 Runbook、一個執行方和一個或多個觸發器。觸發後，Multica 建立任務或直接執行 AI 代理，每一次執行都留有記錄。
+每條自動化儲存一份 Runbook、一個執行方和一個或多個觸發器。觸發後，Delegora 建立任務或直接執行 AI 代理，每一次執行都留有記錄。
 
 ## 自動化還是任務喚醒 [#vs-wakeups]
 
@@ -67,7 +67,7 @@ Cron 不包含秒，時區使用 `Asia/Shanghai` 這樣的 IANA 名稱。儲存�
 
 ## 透過 Webhook 執行
 
-新增 Webhook 觸發器後，Multica 會生成一個唯一 URL。向它傳送 JSON 物件或陣列，即可觸發自動化：
+新增 Webhook 觸發器後，Delegora 會生成一個唯一 URL。向它傳送 JSON 物件或陣列，即可觸發自動化：
 
 ```bash
 curl -X POST "$MULTICA_WEBHOOK_URL" \
@@ -82,14 +82,14 @@ Webhook 請求的約束：
 
 - Body 必須是有效的 JSON 物件或陣列，最大 256 KiB；
 - `Idempotency-Key` 可以避免傳送方重試時重複執行；GitHub 也會使用 `X-GitHub-Delivery` 去重；
-- 沒有穩定冪等鍵時，Multica 無法保證重複請求只執行一次；
+- 沒有穩定冪等鍵時，Delegora 無法保證重複請求只執行一次；
 - 觸發器已禁用或事件不匹配時，投遞會記錄為"已忽略"，不會建立執行。
 
 ### 過濾事件 [#事件過濾]
 
 同一個來源會傳送多種事件時，給觸發器加上事件過濾。點 **新增規則**，填一個事件名，加可選的 action 列表；任意一條規則命中就執行，沒有規則則接收所有事件。要編輯某個 Webhook 的過濾，點「觸發器」中該行的 **編輯 Webhook**。
 
-例如，事件名填寫 `workflow_run`，Actions 填寫 `completed, failed`，只會接收這兩類 `workflow_run` 結果。Multica 會從常見請求頭和 payload 中識別事件與 action，包括 GitHub 的 `X-GitHub-Event` 和 body 中的 `action`。
+例如，事件名填寫 `workflow_run`，Actions 填寫 `completed, failed`，只會接收這兩類 `workflow_run` 結果。Delegora 會從常見請求頭和 payload 中識別事件與 action，包括 GitHub 的 `X-GitHub-Event` 和 body 中的 `action`。
 
 GitLab 的事件名就是 GitLab 傳送的 `X-Gitlab-Event` 請求頭原值，例如 `Merge Request Hook`、`Issue Hook`、`Note Hook`，空格和大小寫都要一致；payload 裡的 `object_kind`（`merge_request`）不會命中。Actions 中的每個值會同時與 `object_attributes.action` 和 `object_attributes.state` 比較，任意一個相等即命中。下面這條規則接收新建、更新和重新開啟的 merge request，忽略合併和關閉：
 
@@ -132,7 +132,7 @@ Webhook URL 中的 token 就是呼叫憑證。不要把完整 URL 放進公開�
 
 ### Webhook 響應速查
 
-除錯傳送方時，對照下表看 Multica 的響應：
+除錯傳送方時，對照下表看 Delegora 的響應：
 
 | HTTP 狀態 | 響應狀態 | 含義 |
 |---|---|---|
@@ -145,7 +145,7 @@ Webhook URL 中的 token 就是呼叫憑證。不要把完整 URL 放進公開�
 | 404 | 錯誤資訊 | URL 中的 token 無效或已被重新生成。 |
 | 413 | 錯誤資訊 | Body 超過 256 KiB。 |
 | 429 | 錯誤資訊 | 請求過於頻繁，按響應頭 `Retry-After` 稍後重試。 |
-| 500 | 錯誤資訊 | Multica 內部錯誤，傳送方可稍後重試。 |
+| 500 | 錯誤資訊 | Delegora 內部錯誤，傳送方可稍後重試。 |
 
 暫停、歸檔、事件過濾這類業務上的忽略返回 200，不返回 4xx，以免傳送方反覆重試。
 
@@ -168,7 +168,7 @@ Webhook URL 中的 token 就是呼叫憑證。不要把完整 URL 放進公開�
 
 僅執行模式中的執行失敗後不會自動重試；下一次時間表仍會按原計劃觸發。建立任務模式產生的是普通任務執行，基礎設施故障按照[執行](/tasks#失敗與自動重試)中的規則處理。
 
-Multica 定期檢查近期執行是否持續失敗：過去 7 天內已完成或失敗的執行不少於 50 次、且失敗率達到 90% 時，系統暫停這條自動化並通知建立者，修復原因後可以手動恢復。
+Delegora 定期檢查近期執行是否持續失敗：過去 7 天內已完成或失敗的執行不少於 50 次、且失敗率達到 90% 時，系統暫停這條自動化並通知建立者，修復原因後可以手動恢復。
 
 手動暫停會停止時間表、Webhook 和"立即執行"。刪除實際是歸檔：停止後續觸發，執行和投遞歷史保留。
 

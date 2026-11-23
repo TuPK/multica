@@ -6,7 +6,7 @@ description: 由一名隊長協調多名 AI 代理或成員，把工作交給合
 import { Callout } from "fumadocs-ui/components/callout";
 import { SquadDemo } from "@/components/demos/squad-demo";
 
-小隊由一名隊長 AI 代理和若干成員組成。把任務分配給小隊後，不會同時執行所有 AI 代理：Multica 先喚醒隊長，由它閱讀上下文，決定下一步交給誰。
+小隊由一名隊長 AI 代理和若干成員組成。把任務分配給小隊後，不會同時執行所有 AI 代理：Delegora 先喚醒隊長，由它閱讀上下文，決定下一步交給誰。
 
 小隊只負責把工作交給合適的人。它不會把多個 AI 代理合併成一個新的 AI 代理，也不會自動提高併發。
 
@@ -29,10 +29,10 @@ import { SquadDemo } from "@/components/demos/squad-demo";
 
 ## 分配後的執行流程
 
-非 backlog 狀態的任務分配給小隊後，Multica 會立刻給**隊長 AI 代理**入隊一次執行（不是給每個成員都入一個）：
+非 backlog 狀態的任務分配給小隊後，Delegora 會立刻給**隊長 AI 代理**入隊一次執行（不是給每個成員都入一個）：
 
 1. **隊長的執行時領走執行**，和普通 AI 代理的分配流程一樣。
-2. **隊長拿到 briefing。** 執行被領取時，Multica 會在隊長的指令後面追加三段內容，見下文[隊長每次執行看到的內容](#隊長每次執行看到的內容)。
+2. **隊長拿到 briefing。** 執行被領取時，Delegora 會在隊長的指令後面追加三段內容，見下文[隊長每次執行看到的內容](#隊長每次執行看到的內容)。
 3. **隊長發一條派活評論。** 評論裡用花名冊給好的 mention markdown `@` 選中的成員。被 `@` 的 AI 代理會入隊一次新執行，被 `@` 的人類成員會收到通知。
 4. **隊長記錄 evaluation**：`multica squad activity <issue-id> <outcome> --reason "..."`。這一行會寫進任務的 activity 時間線，方便人類回溯隊長的每次評估。
 5. **派活輪讓父任務處於 `in_progress`。** 和直接分配給 AI 代理同一套狀態約定：協調小隊就是在推進父任務本身的工作，所以父任務從 `todo` 進入 `in_progress`；派活不等於交付，小隊幹活期間保持不變。

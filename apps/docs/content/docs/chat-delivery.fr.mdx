@@ -20,7 +20,7 @@ Le secrétaire peut vous joindre en dehors de l'application. Si vous l'acceptez,
 Configurez chaque application depuis sa propre page : [Telegram](/telegram-bot-integration), [Slack](/slack-bot-integration), [Lark](/lark-bot-integration) et [DingTalk](/dingtalk-bot-integration). Il n'existe pas de page de configuration séparée pour WeCom dans cette version : son opérateur le configure.
 
 <Callout type="info">
-La plateforme de messagerie doit déjà être connectée à votre compte Multica. L'envoi du brief utilise cette connexion, il n'en crée pas une.
+La plateforme de messagerie doit déjà être connectée à votre compte Delegora. L'envoi du brief utilise cette connexion, il n'en crée pas une.
 </Callout>
 
 ## Activer l'envoi
@@ -43,11 +43,11 @@ La publication d'un brief ne fait que mettre en file une livraison pour chaque m
 
 Dans Telegram, Slack et Lark, chaque décision du message porte les boutons **approve** (approuver), **reject** (rejeter) et **snooze** (reporter). Chaque bouton transporte un jeton signé pour cette proposition et cette action. Le jeton est valable 24 heures.
 
-Lorsque vous appuyez sur un bouton, le serveur détermine quel membre Multica correspond à l'utilisateur de la messagerie, grâce à la connexion que vous avez établie. Seul un propriétaire ou un administrateur peut décider. Les agents n'appuient pas sur les boutons. Si l'utilisateur de la messagerie n'est ni propriétaire ni administrateur, le bouton répond par un lien vers l'application. Une décision déjà tranchée retire ses boutons du message.
+Lorsque vous appuyez sur un bouton, le serveur détermine quel membre Delegora correspond à l'utilisateur de la messagerie, grâce à la connexion que vous avez établie. Seul un propriétaire ou un administrateur peut décider. Les agents n'appuient pas sur les boutons. Si l'utilisateur de la messagerie n'est ni propriétaire ni administrateur, le bouton répond par un lien vers l'application. Une décision déjà tranchée retire ses boutons du message.
 
 ## Commandes dans la discussion
 
-Les membres liés à Multica peuvent envoyer ces commandes dans une discussion avec le secrétaire :
+Les membres liés à Delegora peuvent envoyer ces commandes dans une discussion avec le secrétaire :
 
 - `/brief` renvoie le brief le plus récent.
 - `/decisions` liste les propositions en attente.

@@ -6,11 +6,11 @@ description: Configure email verification codes, Google sign-in, and who can sig
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica signs users in with email verification codes by default; Google OAuth can be added on top. Existing users can always sign in again — signup restrictions only decide whether new accounts can be created.
+Delegora signs users in with email verification codes by default; Google OAuth can be added on top. Existing users can always sign in again — signup restrictions only decide whether new accounts can be created.
 
 ## Email verification codes
 
-After the user enters an email address, Multica sends a 6-digit verification code. The code is valid for 10 minutes; once it verifies, the browser receives a sign-in cookie.
+After the user enters an email address, Delegora sends a 6-digit verification code. The code is valid for 10 minutes; once it verifies, the browser receives a sign-in cookie.
 
 Email can be delivered through Resend or SMTP. When both are configured, `SMTP_HOST` takes priority.
 
@@ -100,7 +100,7 @@ Create an OAuth 2.0 client in the [Google Cloud Console](https://console.cloud.g
 </Step>
 <Step>
 
-Add the Multica frontend's callback URL to **Authorized redirect URIs**:
+Add the Delegora frontend's callback URL to **Authorized redirect URIs**:
 
 ```text
 https://multica.example.com/auth/callback

@@ -20,7 +20,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 各应用的设置请参见其独立页面：[Telegram](/telegram-bot-integration)、[Slack](/slack-bot-integration)、[飞书](/lark-bot-integration) 和[钉钉](/dingtalk-bot-integration)。本版本中企业微信没有单独的设置页面，由运营者进行配置。
 
 <Callout type="info">
-聊天平台必须已经连接到你的 Multica 账户。简报推送使用该连接，它不会自己建立连接。
+聊天平台必须已经连接到你的 Delegora 账户。简报推送使用该连接，它不会自己建立连接。
 </Callout>
 
 ## 选择加入
@@ -43,11 +43,11 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 在 Telegram、Slack 和飞书中，消息里的每项决定都带有 **approve**（批准）、**reject**（驳回）和 **snooze**（稍后）按钮。每个按钮携带针对该提案和动作的签名令牌，有效期为 24 小时。
 
-你按下按钮时，服务器会通过你建立的连接，判断聊天用户对应的 Multica 成员。只有所有者或管理员可以做决定。智能体不能按按钮。如果聊天用户不是所有者或管理员，按钮会回复一个打开应用的链接。已决定的事项会移除其消息中的按钮。
+你按下按钮时，服务器会通过你建立的连接，判断聊天用户对应的 Delegora 成员。只有所有者或管理员可以做决定。智能体不能按按钮。如果聊天用户不是所有者或管理员，按钮会回复一个打开应用的链接。已决定的事项会移除其消息中的按钮。
 
 ## 聊天命令
 
-已与 Multica 关联的成员可以在与秘书的聊天中发送以下命令：
+已与 Delegora 关联的成员可以在与秘书的聊天中发送以下命令：
 
 - `/brief` 返回最新的简报。
 - `/decisions` 列出待决定的提案。

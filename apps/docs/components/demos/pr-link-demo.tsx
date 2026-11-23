@@ -19,7 +19,7 @@ const copy = {
   en: {
     title: "OPS-31 · Update the campaign copy on the website homepage",
     github: "GitHub",
-    multica: "Multica",
+    multica: "Delegora",
     ghTitle: "OPS-31 Update the campaign copy on the website homepage",
     ghNumber: "#19",
     ghBranch: "ops-31-homepage-copy → main",
@@ -51,7 +51,7 @@ const copy = {
         "The issue is linked to #19, and the line under it says what a merge will do. Click Merge pull request on GitHub, or first use the ⋯ menu to keep this issue's status.",
       menu: "Keep status when PRs merge: this issue stays where it is after its PRs merge.",
       optedOut: "This issue now keeps its status when PRs merge. Merge on GitHub, or click Turn on to go back to the default.",
-      merging: "GitHub sends the merge event to Multica.",
+      merging: "GitHub sends the merge event to Delegora.",
       merged:
         "Every linked PR has merged, so the issue moved to Done and the timeline records it as a system change. Use Replay to try the other path.",
       kept: "The PR merged, but this issue keeps its status when PRs merge, so it stays In Review. Use Replay to start over.",
@@ -60,7 +60,7 @@ const copy = {
   zh: {
     title: "OPS-31 · 更新官网首页的活动文案",
     github: "GitHub",
-    multica: "Multica",
+    multica: "Delegora",
     ghTitle: "OPS-31 更新官网首页的活动文案",
     ghNumber: "#19",
     ghBranch: "ops-31-homepage-copy → main",
@@ -91,7 +91,7 @@ const copy = {
       ready: "任务关联了 #19，列表下方写着合并后会改成什么状态。在 GitHub 上点击 Merge pull request；也可以先在 ⋯ 菜单里让这条任务合并后不改状态。",
       menu: "选择\"此任务合并后不改状态\"后，这条任务的 PR 合并时保持当前状态。",
       optedOut: "这条任务已设置为合并后不改状态。去 GitHub 合并，或点击\"恢复\"回到默认规则。",
-      merging: "GitHub 把合并事件发给 Multica。",
+      merging: "GitHub 把合并事件发给 Delegora。",
       merged: "关联的 PR 全部合并，任务改为已完成，时间线以系统操作记下这次变化。点右上角可以换一条路径再试。",
       kept: "PR 已合并，但这条任务设置了合并后不改状态，所以仍是审核中。点右上角可以重新演示。",
     },
@@ -99,7 +99,7 @@ const copy = {
   ja: {
     title: "OPS-31 · Web サイトのトップページのキャンペーン文言を更新する",
     github: "GitHub",
-    multica: "Multica",
+    multica: "Delegora",
     ghTitle: "OPS-31 Web サイトのトップページのキャンペーン文言を更新する",
     ghNumber: "#19",
     ghBranch: "ops-31-homepage-copy → main",
@@ -131,7 +131,7 @@ const copy = {
         "タスクには #19 が関連付けられ、その下の行にマージ後のステータスが表示されています。GitHub で Merge pull request をクリックするか、先に ⋯ メニューでこのタスクのステータスを変えないように設定します。",
       menu: "「PR マージ後もステータスを変えない」を選ぶと、このタスクは PR がマージされても今のステータスのままです。",
       optedOut: "このタスクは PR マージでステータスを変えない設定になりました。GitHub でマージするか、「再開」をクリックしてデフォルトに戻します。",
-      merging: "GitHub がマージイベントを Multica に送ります。",
+      merging: "GitHub がマージイベントを Delegora に送ります。",
       merged:
         "関連する PR がすべてマージされたので、タスクは 完了 になり、タイムラインにシステムによる変更として記録されました。「もう一度」で別の流れも試せます。",
       kept: "PR はマージされましたが、このタスクは PR マージでステータスを変えない設定なので レビュー中 のままです。「もう一度」で最初から見られます。",
@@ -140,7 +140,7 @@ const copy = {
   ko: {
     title: "OPS-31 · 웹사이트 홈페이지의 캠페인 문구 업데이트",
     github: "GitHub",
-    multica: "Multica",
+    multica: "Delegora",
     ghTitle: "OPS-31 웹사이트 홈페이지의 캠페인 문구 업데이트",
     ghNumber: "#19",
     ghBranch: "ops-31-homepage-copy → main",
@@ -172,7 +172,7 @@ const copy = {
         "태스크에 #19가 연결되어 있고, 그 아래 줄에 병합 후 바뀔 상태가 표시됩니다. GitHub에서 Merge pull request를 클릭하거나, 먼저 ⋯ 메뉴에서 이 태스크의 상태를 유지하도록 설정하세요.",
       menu: "PR 병합 후에도 상태 유지를 선택하면 이 태스크는 PR이 병합되어도 현재 상태를 유지합니다.",
       optedOut: "이제 이 태스크는 PR 병합 시 상태를 유지합니다. GitHub에서 병합하거나 다시 켜기를 클릭해 기본 동작으로 돌아가세요.",
-      merging: "GitHub가 병합 이벤트를 Multica로 보냅니다.",
+      merging: "GitHub가 병합 이벤트를 Delegora로 보냅니다.",
       merged:
         "연결된 PR이 모두 병합되어 태스크가 완료로 바뀌었고, 타임라인에 시스템 변경으로 기록되었습니다. 다시 보기를 눌러 다른 경로도 시도해 보세요.",
       kept: "PR은 병합되었지만 이 태스크는 PR 병합 시 상태를 유지하도록 설정되어 있어 리뷰 중으로 남습니다. 다시 보기를 누르면 처음부터 볼 수 있습니다.",
@@ -181,7 +181,7 @@ const copy = {
   fr: {
     title: "OPS-31 · Mettre à jour le texte de la campagne sur la page d'accueil du site",
     github: "GitHub",
-    multica: "Multica",
+    multica: "Delegora",
     ghTitle: "OPS-31 Mettre à jour le texte de la campagne sur la page d'accueil du site",
     ghNumber: "#19",
     ghBranch: "ops-31-homepage-copy → main",
@@ -214,7 +214,7 @@ const copy = {
       menu: "Garder le statut à la fusion des PR : cette tâche reste où elle est après la fusion de ses PR.",
       optedOut:
         "Cette tâche garde désormais son statut à la fusion des PR. Fusionnez sur GitHub, ou cliquez sur Réactiver pour revenir au comportement par défaut.",
-      merging: "GitHub envoie l'événement de fusion à Multica.",
+      merging: "GitHub envoie l'événement de fusion à Delegora.",
       merged:
         "Toutes les PR liées sont fusionnées : la tâche passe à Terminé, et la chronologie l'enregistre comme une modification système. Cliquez sur Rejouer pour essayer l'autre chemin.",
       kept: "La PR est fusionnée, mais cette tâche garde son statut à la fusion des PR : elle reste En relecture. Cliquez sur Rejouer pour recommencer.",

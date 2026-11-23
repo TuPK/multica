@@ -3,7 +3,7 @@ title: 開發規範
 description: 程式碼命名規範、i18n 翻譯術語表、中文風格指南的唯一權威來源。
 ---
 
-寫 Multica 程式碼、改翻譯、寫中文產品文案，都從這一頁查。
+寫 Delegora 程式碼、改翻譯、寫中文產品文案，都從這一頁查。
 
 ---
 
@@ -107,12 +107,12 @@ Conventional 格式：`feat(scope)`、`fix(scope)`、`refactor(scope)`、`docs`�
 
 這是每個翻譯 PR 都必須遵守的術語表。原本在 `packages/views/locales/glossary.md`，那個文件已刪除，由這一頁取代。
 
-### 核心區分：日常詞 vs Multica 專有詞
+### 核心區分：日常詞 vs Delegora 專有詞
 
-Multica 的產品名詞分兩類：
+Delegora 的產品名詞分兩類：
 
 - **日常詞** —— 使用者會直接說出口的詞。**完整翻譯成中文**，是不是資料庫實體都一樣：`issue` → 任務、`workspace` → 工作區、`project` → 專案。
-- **Multica 專有詞** —— 中文裡沒有對應詞的概念（`skill`），或使用者可能要照著敲、照著比對的 schema 識別碼（`todo`、`in_progress`、`task_id`）。**用小寫英文**呈現，讀起來像類型名。
+- **Delegora 專有詞** —— 中文裡沒有對應詞的概念（`skill`），或使用者可能要照著敲、照著比對的 schema 識別碼（`todo`、`in_progress`、`task_id`）。**用小寫英文**呈現，讀起來像類型名。
 
 其餘規則以 `apps/docs/content/docs/*.zh.mdx` 為準 —— docs 是已經實戰 20+ 篇的 CN voice 標準。`*.zh.mdx`、`*.ja.mdx`、`*.ko.mdx` 的正文現在也一律按下面的表格來。
 
@@ -131,10 +131,10 @@ Multica 的產品名詞分兩類：
 
 - **API / DB 欄位**永遠是 `issue` / `task` / `skill`：`issue_status`、`task_id`、`skill_uuid`。開發者正文稱產品物件為 Run；需要對照協議時可寫成「Run（API 中為 `task_id`）」。
 - **程式碼引用和字面命令**保持英文：`multica issue ...`、Slack 與飛書的 `/issue` 斜槓命令。
-- **`skill`** 在中文裡仍用小寫英文 —— Multica 特有概念，沒有公認中文譯法；標題可大寫為 `Skills`。
+- **`skill`** 在中文裡仍用小寫英文 —— Delegora 特有概念，沒有公認中文譯法；標題可大寫為 `Skills`。
 - **表示「問題」的 issue** 不是這個實體：機器卡片上的 `{{count}} issues` 是 `{{count}} 個異常` / `問題 {{count}} 件` / `문제 {{count}}개`，不要用實體那個詞。
 
-**為什麼 `issue` 要譯，而 `skill` 不譯**：使用者每天都在提任務、看任務，而 "issue" 這個詞在中文、日文、韓文裡除了開發圈黑話之外沒有含義，當地人本來就用「任務」在說這件事。`skill` 則是 Multica 特有概念，沒有哪個中文詞能承載它的意思。
+**為什麼 `issue` 要譯，而 `skill` 不譯**：使用者每天都在提任務、看任務，而 "issue" 這個詞在中文、日文、韓文裡除了開發圈黑話之外沒有含義，當地人本來就用「任務」在說這件事。`skill` 則是 Delegora 特有概念，沒有哪個中文詞能承載它的意思。
 
 其它產品名詞同樣按「有沒有穩定的本地日常詞」來判斷：
 
@@ -166,10 +166,10 @@ Agent 在簡體中文（`zh-Hans`）中譯為**智能体**，在繁體中文（`
 
 | 类别 | 词 |
 | --- | --- |
-| 品牌 | **Multica**、GitHub、Slack、Google、Anthropic、OpenAI、Claude、Codex、Cursor、Linear、Jira、Qoder、Qoder Cloud Agents |
+| 品牌 | **Delegora**、GitHub、Slack、Google、Anthropic、OpenAI、Claude、Codex、Cursor、Linear、Jira、Qoder、Qoder Cloud Agents |
 | 缩写 | API、CLI、URL、SDK、OAuth、JWT、SSO、WebSocket、HTTP、JSON、YAML、SQL |
 
-使用者可見文案明確提及該產品時，使用 **Qoder Cloud Agents**。入口及可脫離頁面展示的提示應能獨立識別服務。上下文已明確服務時，欄位可用**遠端 AI 代理**等通用名稱，與 Multica AI 代理區分。品牌拼寫保持一致，周邊文案按各語言自然表達。內部識別碼和外部技術名稱保持原樣，包括 **QCA Assistant**。
+使用者可見文案明確提及該產品時，使用 **Qoder Cloud Agents**。入口及可脫離頁面展示的提示應能獨立識別服務。上下文已明確服務時，欄位可用**遠端 AI 代理**等通用名稱，與 Delegora AI 代理區分。品牌拼寫保持一致，周邊文案按各語言自然表達。內部識別碼和外部技術名稱保持原樣，包括 **QCA Assistant**。
 
 首次說明憑據時寫 **Qoder 個人訪問令牌（PAT）**，後文統一為 **Qoder PAT**，並與 GitHub 倉庫令牌區分。
 

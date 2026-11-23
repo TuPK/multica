@@ -9,7 +9,7 @@ import { TOOLS } from "./provider-picker-tools";
 // else ties the two together, so a tool added to the table never reached the
 // filter. Table rows are the ones whose second cell (the detected command)
 // starts with a backtick. Columns 3–5 are Session resumption, Multica-managed
-// MCP and Model picked in Multica: "—" means no, anything else (✓, a localized
+// MCP and Model picked in Delegora: "—" means no, anything else (✓, a localized
 // "Mode") means yes.
 
 const docsDir = path.resolve(__dirname, "../../content/docs");

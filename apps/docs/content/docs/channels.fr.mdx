@@ -1,12 +1,12 @@
 ---
 title: Intégrations de messagerie
-description: Connectez les agents Multica à Feishu, Lark, Slack, DingTalk, WeCom, Telegram ou WeChat et utilisez-les depuis les outils de messagerie que votre équipe utilise déjà.
+description: Connectez les agents Delegora à Feishu, Lark, Slack, DingTalk, WeCom, Telegram ou WeChat et utilisez-les depuis les outils de messagerie que votre équipe utilise déjà.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { ChannelChatDemo } from "@/components/demos/channel-chat-demo";
 
-Les intégrations de messagerie permettent à l'équipe de poser des questions à un agent en message direct, de le @mentionner dans une conversation de groupe ou de créer des tâches depuis la fenêtre de conversation, sans ouvrir Multica.
+Les intégrations de messagerie permettent à l'équipe de poser des questions à un agent en message direct, de le @mentionner dans une conversation de groupe ou de créer des tâches depuis la fenêtre de conversation, sans ouvrir Delegora.
 
 Feishu/Lark, Slack, DingTalk, WeCom, Telegram et WeChat sont pris en charge. WeChat accepte uniquement les messages privés du compte qui a scanné le QR code de connexion. Ils partagent les mêmes mécanismes de session, d'identité et d'exécution, mais s'installent différemment.
 
@@ -14,7 +14,7 @@ Feishu/Lark, Slack, DingTalk, WeCom, Telegram et WeChat sont pris en charge. WeC
 
 | | Feishu / Lark | Slack | DingTalk | WeCom | Telegram | WeChat |
 |---|---|---|---|---|---|---|
-| Installation | Générez un QR code dans Multica et autorisez-le en le scannant avec Feishu | Créez une application dans Slack, puis collez deux jetons dans Multica | Créez une application interne et un robot en mode Stream, puis collez son AppKey et son AppSecret dans Multica | Créez un bot intelligent avec la connexion longue activée dans la console d'administration WeCom, puis collez son ID de bot et son secret dans Multica | Créez un bot avec @BotFather, puis collez son jeton dans Multica | Scannez un QR code avec votre propre compte WeChat |
+| Installation | Générez un QR code dans Delegora et autorisez-le en le scannant avec Feishu | Créez une application dans Slack, puis collez deux jetons dans Delegora | Créez une application interne et un robot en mode Stream, puis collez son AppKey et son AppSecret dans Delegora | Créez un bot intelligent avec la connexion longue activée dans la console d'administration WeCom, puis collez son ID de bot et son secret dans Delegora | Créez un bot avec @BotFather, puis collez son jeton dans Delegora | Scannez un QR code avec votre propre compte WeChat |
 | Messages directs à l'agent | Pris en charge | Pris en charge | Pris en charge | Pris en charge | Pris en charge | Uniquement le compte qui a scanné le QR code |
 | Groupes ou canaux | Déclenché en @mentionnant le bot | Déclenché en @mentionnant le bot | Déclenché en @mentionnant le bot | Déclenché en @mentionnant le bot | Déclenché en @mentionnant le bot ou en lui répondant | Non pris en charge |
 | Créer des tâches | Commande de message `/issue` ; crée la tâche à partir de votre saisie telle quelle | Commande slash `/issue` ; l'agent rédige la description avant de créer la tâche | Commande de message `/issue` ; crée la tâche à partir de votre saisie telle quelle | Commande de message `/issue` ; crée la tâche à partir de votre saisie telle quelle | Commande de message `/issue` ; crée la tâche à partir de votre saisie telle quelle | Commande de message `/issue` ; crée la tâche à partir de votre saisie telle quelle |
@@ -25,7 +25,7 @@ Feishu/Lark, Slack, DingTalk, WeCom, Telegram et WeChat sont pris en charge. WeC
 
 Les nouvelles connexions ne sont actuellement ouvertes qu'à Feishu en Chine continentale ; les connexions Lark internationales existantes continuent de fonctionner et peuvent toujours être gérées.
 
-Chaque bot est associé à un seul agent Multica. Pour utiliser plusieurs agents sur la même plateforme de messagerie, connectez un bot distinct pour chacun.
+Chaque bot est associé à un seul agent Delegora. Pour utiliser plusieurs agents sur la même plateforme de messagerie, connectez un bot distinct pour chacun.
 
 DingTalk, WeCom et Telegram sont [maintenus par la communauté](/community-maintained) : ils sont inclus dans chaque version, mais sans SLA de support officiel. Signalez les problèmes dans les [issues GitHub](https://github.com/multica-ai/multica/issues).
 
@@ -43,25 +43,25 @@ Guides pas à pas :
 
 ## Traitement d'un message
 
-1. Multica identifie l'espace de travail et l'agent auxquels le bot est rattaché.
+1. Delegora identifie l'espace de travail et l'agent auxquels le bot est rattaché.
 2. Dans un groupe ou un canal, seuls les messages qui @mentionnent explicitement le bot sont traités ; les messages directs ne nécessitent aucune mention.
-3. Multica vérifie l'association du compte de l'expéditeur et son appartenance à l'espace de travail.
+3. Delegora vérifie l'association du compte de l'expéditeur et son appartenance à l'espace de travail.
 4. Le message rejoint une session de [discussion avec l'agent](/chat), et une exécution est créée.
 5. La réponse de l'agent est renvoyée dans le message direct ou le fil d'origine.
 
 Les messages de canal qui ne @mentionnent pas le bot ne déclenchent jamais l'agent et ne deviennent jamais un tour à eux seuls. Feishu/Lark et Telegram joignent toutefois les messages récents du groupe, en lecture seule, devant le tour lorsque quelqu'un s'adresse au bot ; la page de chaque plateforme donne le détail.
 
-`/issue` est une commande, pas un tour de discussion : Multica crée la tâche à partir du message, l'assigne à l'agent lié au bot et publie le résultat dans la conversation d'origine. La commande elle-même n'apparaît pas dans les discussions Multica. La commande slash native de Slack passe par un flux asynchrone distinct de création de tâche.
+`/issue` est une commande, pas un tour de discussion : Delegora crée la tâche à partir du message, l'assigne à l'agent lié au bot et publie le résultat dans la conversation d'origine. La commande elle-même n'apparaît pas dans les discussions Delegora. La commande slash native de Slack passe par un flux asynchrone distinct de création de tâche.
 
 <ChannelChatDemo />
 
 ## Contrôle des conversations
 
-Envoyez `/help` dans un message direct (sur Slack, utilisez `@Multica /help`), ou @mentionnez le bot avec `/help` dans un groupe ou un canal, pour afficher `/help`, `/new [message]`, `/clear [message]` et `/issue <titre>` (les lignes suivantes servent de description). WeCom et WeChat (messages directs uniquement) sont également pris en charge. Multica répond directement sans créer de discussion, de tâche ni d'exécution et sans changer la discussion active. Sur Slack, `@Multica /help` affiche les commandes de message. La commande native `/issue <description>` suit un flux distinct où l'agent crée une tâche à partir de votre description.
+Envoyez `/help` dans un message direct (sur Slack, utilisez `@Multica /help`), ou @mentionnez le bot avec `/help` dans un groupe ou un canal, pour afficher `/help`, `/new [message]`, `/clear [message]` et `/issue <titre>` (les lignes suivantes servent de description). WeCom et WeChat (messages directs uniquement) sont également pris en charge. Delegora répond directement sans créer de discussion, de tâche ni d'exécution et sans changer la discussion active. Sur Slack, `@Multica /help` affiche les commandes de message. La commande native `/issue <description>` suit un flux distinct où l'agent crée une tâche à partir de votre description.
 
-`/new` crée une nouvelle discussion Multica et y achemine les messages suivants de cette conversation externe. `/new <message>` crée la discussion et utilise le message comme premier tour. La discussion précédente reste enregistrée et utilisable dans Multica.
+`/new` crée une nouvelle discussion Delegora et y achemine les messages suivants de cette conversation externe. `/new <message>` crée la discussion et utilise le message comme premier tour. La discussion précédente reste enregistrée et utilisable dans Delegora.
 
-`/clear` reste dans la discussion Multica en cours, mais démarre un nouveau contexte visible par l'agent. L'historique complet de la discussion reste disponible dans Multica, tandis que l'agent ne peut plus récupérer les messages antérieurs à cette limite. `/clear <message>` utilise le message comme premier tour du nouveau contexte ; un `/clear` seul s'applique au prochain vrai message.
+`/clear` reste dans la discussion Delegora en cours, mais démarre un nouveau contexte visible par l'agent. L'historique complet de la discussion reste disponible dans Delegora, tandis que l'agent ne peut plus récupérer les messages antérieurs à cette limite. `/clear <message>` utilise le message comme premier tour du nouveau contexte ; un `/clear` seul s'applique au prochain vrai message.
 
 Sur Slack, `/new` et `/clear` sont des commandes slash natives dans un message direct. La charge utile d'une commande slash native n'identifie pas le fil d'un canal : utilisez donc `@Multica /new [message]` ou `@Multica /clear [message]` dans le fil cible.
 
@@ -78,25 +78,25 @@ Dans un canal, chaque relance nécessite toujours une nouvelle @mention. En deho
 
 ## Association de compte
 
-Pour WeChat, le scan du QR code associe le compte WeChat à l'utilisateur Multica qui a lancé la connexion. Les messages utilisent les permissions de cet utilisateur dans l'espace de travail. Scannez avec votre propre compte et ne partagez pas le QR code ; les autres comptes et les messages de groupe ne sont pas acceptés.
+Pour WeChat, le scan du QR code associe le compte WeChat à l'utilisateur Delegora qui a lancé la connexion. Les messages utilisent les permissions de cet utilisateur dans l'espace de travail. Scannez avec votre propre compte et ne partagez pas le QR code ; les autres comptes et les messages de groupe ne sont pas acceptés.
 
-Pour Feishu/Lark, Slack, DingTalk, WeCom et Telegram, la première fois qu'un membre écrit au bot, il reçoit un lien d'association de compte. Une fois qu'il s'est connecté à Multica, son compte sur la plateforme est associé à son appartenance à l'espace de travail actuel.
+Pour Feishu/Lark, Slack, DingTalk, WeCom et Telegram, la première fois qu'un membre écrit au bot, il reçoit un lien d'association de compte. Une fois qu'il s'est connecté à Delegora, son compte sur la plateforme est associé à son appartenance à l'espace de travail actuel.
 
-Multica n'exécute l'agent qu'une fois l'association terminée. Chaque message revérifie l'association du compte et l'appartenance à l'espace de travail ; après avoir quitté un espace de travail, on ne peut plus l'atteindre via le bot.
+Delegora n'exécute l'agent qu'une fois l'association terminée. Chaque message revérifie l'association du compte et l'appartenance à l'espace de travail ; après avoir quitté un espace de travail, on ne peut plus l'atteindre via le bot.
 
 <Callout type="info">
-L'association de compte confirme uniquement l'identité de l'expéditeur. Les autres membres de la plateforme de messagerie ne sont pas ajoutés automatiquement à l'espace de travail Multica.
+L'association de compte confirme uniquement l'identité de l'expéditeur. Les autres membres de la plateforme de messagerie ne sont pas ajoutés automatiquement à l'espace de travail Delegora.
 </Callout>
 
 ## Gérer les connexions
 
 Les propriétaires et administrateurs de l'espace de travail peuvent connecter ou déconnecter des bots ; pour Feishu/Lark, DingTalk et WeChat, la connexion et la déconnexion sont aussi ouvertes au propriétaire de l'agent. Les membres ordinaires peuvent consulter les intégrations connectées et utiliser les agents auxquels ils ont accès.
 
-Après la déconnexion, le bot ne reçoit plus de nouveaux messages. Les conversations Multica et les historiques d'exécution existants sont conservés.
+Après la déconnexion, le bot ne reçoit plus de nouveaux messages. Les conversations Delegora et les historiques d'exécution existants sont conservés.
 
 ## Auto-hébergement
 
-Un déploiement auto-hébergé doit configurer une clé de chiffrement de 32 octets pour chaque plateforme avant que Multica n'ouvre le point d'entrée de connexion correspondant :
+Un déploiement auto-hébergé doit configurer une clé de chiffrement de 32 octets pour chaque plateforme avant que Delegora n'ouvre le point d'entrée de connexion correspondant :
 
 ```dotenv
 MULTICA_LARK_SECRET_KEY=<base64-encoded 32-byte key>
@@ -107,7 +107,7 @@ MULTICA_TELEGRAM_SECRET_KEY=<base64-encoded 32-byte key>
 MULTICA_WEIXIN_SECRET_KEY=<base64-encoded 32-byte key>
 ```
 
-Ces clés chiffrent les identifiants de bot stockés. Consultez [Variables d'environnement](/environment-variables) pour savoir comment les générer, les stocker et les renouveler. Multica Cloud est déjà configuré.
+Ces clés chiffrent les identifiants de bot stockés. Consultez [Variables d'environnement](/environment-variables) pour savoir comment les générer, les stocker et les renouveler. Delegora Cloud est déjà configuré.
 
 WeCom ne peut envoyer ses réponses que par le WebSocket détenu par un processus. Ce qu'il advient d'une réponse produite sur une autre réplique dépend du mode du relais temps réel :
 
@@ -119,8 +119,8 @@ Quel que soit le mode, une réponse produite alors qu'aucune réplique ne détie
 ## Étapes suivantes
 
 - [Intégration du bot Feishu / Lark](/lark-bot-integration) — connecter un agent en scannant un QR code.
-- [Intégration du bot Slack](/slack-bot-integration) — créer une application Slack et coller ses jetons dans Multica.
-- [Intégration du bot DingTalk](/dingtalk-bot-integration) — créer un robot en mode Stream et coller ses identifiants dans Multica.
-- [Intégration du bot Telegram](/telegram-bot-integration) — créer un bot avec @BotFather et coller son jeton dans Multica.
+- [Intégration du bot Slack](/slack-bot-integration) — créer une application Slack et coller ses jetons dans Delegora.
+- [Intégration du bot DingTalk](/dingtalk-bot-integration) — créer un robot en mode Stream et coller ses identifiants dans Delegora.
+- [Intégration du bot Telegram](/telegram-bot-integration) — créer un bot avec @BotFather et coller son jeton dans Delegora.
 - [Intégration du bot WeChat](/weixin-bot-integration)
 - [Discussion](/chat) — le modèle de conversation et d'exécution derrière chaque bot.

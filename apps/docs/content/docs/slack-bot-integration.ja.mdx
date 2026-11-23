@@ -6,13 +6,13 @@ description: エージェント用の Slack Bot を作成し、DM、チャンネ
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica では、自分で作成した Slack app を使います。接続すると、チームメンバーは Bot へ DM を送る、チャンネルで @メンションする、`@Multica /help` でコマンドを確認する、`/issue` でタスクを作成する、`/new` で新しい Multica Chat を開始する、`/clear` で現在の Chat のエージェントコンテキストをリセットするといった操作ができます。
+Delegora では、自分で作成した Slack app を使います。接続すると、チームメンバーは Bot へ DM を送る、チャンネルで @メンションする、`@Multica /help` でコマンドを確認する、`/issue` でタスクを作成する、`/new` で新しい Delegora Chat を開始する、`/clear` で現在の Chat のエージェントコンテキストをリセットするといった操作ができます。
 
-1 つの Slack app に接続できる Multica エージェントは 1 つです。複数のエージェントを接続する場合は、エージェントごとに app を作成してください。
+1 つの Slack app に接続できる Delegora エージェントは 1 つです。複数のエージェントを接続する場合は、エージェントごとに app を作成してください。
 
 ## 始める前に
 
-接続はワークスペースの owner または admin が行います。最終的に次の 2 つの認証情報を Multica へ入力します。
+接続はワークスペースの owner または admin が行います。最終的に次の 2 つの認証情報を Delegora へ入力します。
 
 - `xoxb-` で始まる Bot User OAuth Token
 - `xapp-` で始まる App-level Token
@@ -28,24 +28,24 @@ Multica では、自分で作成した Slack app を使います。接続する�
 
 ```yaml
 display_information:
-  name: Multica
+  name: Delegora
 features:
   app_home:
     home_tab_enabled: false
     messages_tab_enabled: true
     messages_tab_read_only_enabled: false
   bot_user:
-    display_name: Multica
+    display_name: Delegora
     always_online: true
   slash_commands:
     - command: /issue
-      description: Create a Multica issue
+      description: Create a Delegora issue
       usage_hint: "[description]"
     - command: /new
-      description: Start a new Multica chat
+      description: Start a new Delegora chat
       usage_hint: "[message]"
     - command: /clear
-      description: Clear the current Multica chat context
+      description: Clear the current Delegora chat context
       usage_hint: "[message]"
 oauth_config:
   scopes:
@@ -75,7 +75,7 @@ settings:
   token_rotation_enabled: false
 ```
 
-作成前に、2 か所の `Multica` をエージェント名に変更してもかまいません。manifest の権限やイベントは削除しないでください。削除すると、DM、チャンネルでのメンション、返信、`@Multica /help`、`/issue`、`/new`、`/clear` が動作しないことがあります。
+作成前に、2 か所の `Delegora` をエージェント名に変更してもかまいません。manifest の権限やイベントは削除しないでください。削除すると、DM、チャンネルでのメンション、返信、`@Multica /help`、`/issue`、`/new`、`/clear` が動作しないことがあります。
 
 <Callout type="warning">
 Slack の slash command 名は workspace 全体で共有されます。インストール済みの別 app が `/new` または `/clear` を使用している場合、app の作成または更新時に競合するコマンドが拒否されます。競合を解消するか、メッセージ形式の `@Multica /new [メッセージ]` または `@Multica /clear [メッセージ]` を送信して、ネイティブ slash command のインターセプトを回避してください。
@@ -110,15 +110,15 @@ Bot は Socket Mode で Slack へ接続するため、公開 Request URL や OAu
 
 ### エージェントへ接続する [#3-エージェントへ接続する]
 
-1. Multica で**エージェント**を開き、Slack に接続するエージェントを選びます。
+1. Delegora で**エージェント**を開き、Slack に接続するエージェントを選びます。
 2. **メッセージング**で**メッセージチャネルを追加**をクリックし、**Slack**を選びます。
 3. Bot token と App-level token を入力します。
 4. **接続**をクリックします。
 
-Multica は 2 つの token が同じ app のものか確認します。接続に成功すると、画面に **接続済み**と表示されます。
+Delegora は 2 つの token が同じ app のものか確認します。接続に成功すると、画面に **接続済み**と表示されます。
 
 <Callout type="warning">
-2 つの token は暗号化して Multica サーバーに保存されます。Token は認証情報です。タスク、コメント、コードリポジトリには書き込まないでください。ほかのエージェントやワークスペースに接続済みの app をそのまま再利用することはできません。先に元の接続を解除してください。
+2 つの token は暗号化して Delegora サーバーに保存されます。Token は認証情報です。タスク、コメント、コードリポジトリには書き込まないでください。ほかのエージェントやワークスペースに接続済みの app をそのまま再利用することはできません。先に元の接続を解除してください。
 </Callout>
 
 </Step>
@@ -126,11 +126,11 @@ Multica は 2 つの token が同じ app のものか確認します。接続に
 
 ## 初回利用
 
-メンバーが初めて Bot に DM を送るか @メンションすると、アカウント連携用のリンクが届きます。そのワークスペースで使う Multica アカウントにログインしてから、Slack に戻ってもう一度メッセージを送ってください。
+メンバーが初めて Bot に DM を送るか @メンションすると、アカウント連携用のリンクが届きます。そのワークスペースで使う Delegora アカウントにログインしてから、Slack に戻ってもう一度メッセージを送ってください。
 
-リンクは 1 回だけ使用でき、15 分後に期限切れになります。期限が切れた場合は、Bot にもう一度メッセージを送ると新しいリンクが届きます。同じ Multica ワークスペースにある複数の Bot が同じ Slack workspace のものなら、通常は既存のアカウント連携を再利用できます。
+リンクは 1 回だけ使用でき、15 分後に期限切れになります。期限が切れた場合は、Bot にもう一度メッセージを送ると新しいリンクが届きます。同じ Delegora ワークスペースにある複数の Bot が同じ Slack workspace のものなら、通常は既存のアカウント連携を再利用できます。
 
-Bot を利用できるのは、現在の Multica ワークスペースのメンバーだけです。
+Bot を利用できるのは、現在の Delegora ワークスペースのメンバーだけです。
 
 ## Slack から仕事を依頼する
 
@@ -152,7 +152,7 @@ DM、または Bot を @ メンションしたチャンネルのメッセージ�
 
 ### `@Multica /help` でコマンドを確認する
 
-DM、チャンネル、スレッドで `@Multica /help` を送信すると、`@Multica /help`、`@Multica /new [メッセージ]`、`@Multica /clear [メッセージ]`、`@Multica /issue <タイトル>`（2 行目以降は説明）が表示されます。Multica は直接返信し、Chat や実行を作成せず、現在の Chat も変更しません。
+DM、チャンネル、スレッドで `@Multica /help` を送信すると、`@Multica /help`、`@Multica /new [メッセージ]`、`@Multica /clear [メッセージ]`、`@Multica /issue <タイトル>`（2 行目以降は説明）が表示されます。Delegora は直接返信し、Chat や実行を作成せず、現在の Chat も変更しません。
 
 デフォルトの manifest が登録するネイティブ slash command は `/issue`、`/new`、`/clear` のみです。`@Multica /help` の利用に manifest の変更や再インストールは不要です。ネイティブ `/issue <説明>` では、エージェントが説明からタスクを作成します。
 
@@ -164,19 +164,19 @@ DM、チャンネル、スレッドで `@Multica /help` を送信すると、`@M
 /issue Safari ではログインに成功してもログイン画面に残る
 ```
 
-このコマンドでは Bot の @メンションは不要です。Multica は説明を現在の Bot に対応するエージェントへ渡し、エージェントがタイトルと本文を整理してタスクを作成します。Slack には最初に自分だけが見える受付メッセージが表示されます。作成が完了すると、Multica のインボックスに通知が届きます。
+このコマンドでは Bot の @メンションは不要です。Delegora は説明を現在の Bot に対応するエージェントへ渡し、エージェントがタイトルと本文を整理してタスクを作成します。Slack には最初に自分だけが見える受付メッセージが表示されます。作成が完了すると、Delegora のインボックスに通知が届きます。
 
 ### `/new` で新しい Chat を開始する
 
-Bot との DM で `/new` を送ると、空の新しい Chat がすぐに作成され、Multica に表示されます。`/new <メッセージ>` では、そのメッセージが新しい Chat の最初のターンになります。引数なしの `/new` で作成した Chat は、最初の有効なメッセージが届くまで「新しいチャット」と表示され、その後は最初のメッセージからタイトルが付きます。
+Bot との DM で `/new` を送ると、空の新しい Chat がすぐに作成され、Delegora に表示されます。`/new <メッセージ>` では、そのメッセージが新しい Chat の最初のターンになります。引数なしの `/new` で作成した Chat は、最初の有効なメッセージが届くまで「新しいチャット」と表示され、その後は最初のメッセージからタイトルが付きます。
 
-以前の Chat は Multica の Web、デスクトップ、モバイルに残り、引き続きメッセージを送信できます。新しい Chat に切り替わるのは、この Slack 会話からの後続メッセージだけです。
+以前の Chat は Delegora の Web、デスクトップ、モバイルに残り、引き続きメッセージを送信できます。新しい Chat に切り替わるのは、この Slack 会話からの後続メッセージだけです。
 
 チャンネルまたはスレッドでは、Slack のネイティブ slash command payload から対象スレッドを特定できません。対象スレッド内で `@Multica /new [メッセージ]` を送信してください。
 
 ### `/clear` で現在の Chat のコンテキストをクリアする
 
-Bot との DM で `/clear` を送ると、現在の Multica Chat はそのまま維持され、エージェントから見えるコンテキストだけがリセットされます。Chat の全履歴は Multica に保存されたままです。`/clear <メッセージ>` では、そのメッセージが新しいコンテキストの最初のターンになります。引数なしの `/clear` は次の実メッセージに境界を適用します。
+Bot との DM で `/clear` を送ると、現在の Delegora Chat はそのまま維持され、エージェントから見えるコンテキストだけがリセットされます。Chat の全履歴は Delegora に保存されたままです。`/clear <メッセージ>` では、そのメッセージが新しいコンテキストの最初のターンになります。引数なしの `/clear` は次の実メッセージに境界を適用します。
 
 チャンネルまたはスレッドでは、対象スレッド内で `@Multica /clear [メッセージ]` を送信してください。
 
@@ -188,7 +188,7 @@ Bot との DM で `/clear` を送ると、現在の Multica Chat はそのまま
 
 ## セルフホスト設定
 
-Multica Cloud では追加設定は不要です。セルフホスト環境では、Slack token を暗号化するキーを先に設定してください。
+Delegora Cloud では追加設定は不要です。セルフホスト環境では、Slack token を暗号化するキーを先に設定してください。
 
 ```dotenv
 MULTICA_SLACK_SECRET_KEY=<base64-encoded 32-byte key>
@@ -202,7 +202,7 @@ openssl rand -base64 32
 
 API サービスを再起動してから Slack app を接続します。このキーは継続して保管してください。変更または紛失すると既存の token を復号できなくなり、app の再接続が必要になります。
 
-アカウント連携用リンクには `MULTICA_APP_URL` が使われ、未設定の場合は `FRONTEND_ORIGIN` にフォールバックします。メンバーがアクセスできる Multica のアドレスを指定してください。
+アカウント連携用リンクには `MULTICA_APP_URL` が使われ、未設定の場合は `FRONTEND_ORIGIN` にフォールバックします。メンバーがアクセスできる Delegora のアドレスを指定してください。
 
 ## よくある問題
 
@@ -210,7 +210,7 @@ API サービスを再起動してから Slack app を接続します。この�
 - **app を検証できない**: manifest に `users:read` が含まれていることを確認します。権限を更新した後は app を再インストールしてください。
 - **DM の入口がない**: `app_home.messages_tab_enabled` が `true` であることを確認します。
 - **チャンネルで返信がない**: Bot がチャンネルに招待されており、メッセージで @メンションされていることを確認します。
-- **`/help` が Multica に届かない**: `@Multica /help` を送信してください。デフォルトの manifest はネイティブ `/help` を登録しません。
+- **`/help` が Delegora に届かない**: `@Multica /help` を送信してください。デフォルトの manifest はネイティブ `/help` を登録しません。
 - **`/issue`、`/new`、または `/clear` がない**: manifest に 3 つの slash command と `commands` scope が含まれていることを確認し、app を再インストールします。Slack が `/new` または `/clear` は使用済みだと表示する場合は、`@Multica` のメッセージ形式を使うか、workspace 全体のコマンド競合を先に解消してください。
 - **ファイルがエージェントに届かない**: manifest に `files:read` が含まれていること、scope を追加した後に app を再インストールしたことを確認し、ファイルが 20 MiB 以下かも確認します。
 - **Bot が実行しない**: エージェントがアーカイブされていないことと、使用する[ランタイム](/daemon-runtimes)がオンラインであることを確認します。

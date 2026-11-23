@@ -6,7 +6,7 @@ description: Un chef coordonne plusieurs agents ou membres et confie le travail 
 import { Callout } from "fumadocs-ui/components/callout";
 import { SquadDemo } from "@/components/demos/squad-demo";
 
-Un squad se compose d'un agent chef et d'un nombre quelconque de membres. Assigner une tâche à un squad ne lance pas tous les agents à la fois. Multica réveille d'abord le chef ; celui-ci lit le contexte et décide qui se charge de l'étape suivante.
+Un squad se compose d'un agent chef et d'un nombre quelconque de membres. Assigner une tâche à un squad ne lance pas tous les agents à la fois. Delegora réveille d'abord le chef ; celui-ci lit le contexte et décide qui se charge de l'étape suivante.
 
 Un squad décide seulement à qui revient le travail. Il ne fusionne pas plusieurs agents en un nouvel agent et n'augmente pas automatiquement le parallélisme.
 
@@ -29,10 +29,10 @@ Pour créer un squad, il faut un nom et un chef. Le chef du squad en devient aut
 
 ## Déroulement de l'exécution après l'assignation
 
-Lorsqu'une tâche qui n'est pas dans À planifier est assignée à un squad, Multica met immédiatement en file une exécution pour l'**agent chef** (et non pour chaque membre). Le déroulement est ensuite le suivant :
+Lorsqu'une tâche qui n'est pas dans À planifier est assignée à un squad, Delegora met immédiatement en file une exécution pour l'**agent chef** (et non pour chaque membre). Le déroulement est ensuite le suivant :
 
 1. **Le chef récupère l'exécution.** Le runtime de l'agent prend en charge l'exécution lors de sa prochaine interrogation, comme pour toute autre assignation d'agent.
-2. **Le chef reçoit ses consignes.** Au moment de la récupération, Multica ajoute trois sections au prompt système du chef — voir [Ce que le chef voit à chaque tour](#ce-que-le-chef-voit-à-chaque-tour) ci-dessous.
+2. **Le chef reçoit ses consignes.** Au moment de la récupération, Delegora ajoute trois sections au prompt système du chef — voir [Ce que le chef voit à chaque tour](#ce-que-le-chef-voit-à-chaque-tour) ci-dessous.
 3. **Le chef publie un commentaire de délégation.** Le commentaire mentionne avec `@` le ou les membres choisis, en reprenant exactement le markdown de mention fourni par le roster. Chaque agent mentionné reçoit une nouvelle exécution, et chaque membre humain mentionné reçoit une notification.
 4. **Le chef consigne son évaluation** via `multica squad activity <issue-id> action --reason "..."`. Cela ajoute une entrée dans la chronologie d'activité de la tâche, afin que les humains voient que le chef a bien évalué le déclencheur.
 5. **Le tour de répartition laisse la tâche parente en `in_progress`.** Même contrat de statut géré par l'agent que pour une assignation directe à un agent — coordonner le squad revient à traiter la demande de la tâche parente, qui passe donc de `todo` à `in_progress` ; répartir le travail entre les membres n'est pas une livraison, donc elle y reste pendant que le squad travaille.

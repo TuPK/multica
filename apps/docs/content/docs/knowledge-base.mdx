@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 The knowledge base keeps the company's durable record: policies, research, product documents, and decisions. Agents search it before they work, and cite what they use. Nothing reaches it unless someone publishes it, so one wrong fact cannot slip into every run.
 
-The knowledge base is stored in [WeKnora](https://github.com/Tencent/WeKnora), a self-hosted sidecar. Multica owns the agents, the permissions, and the Knowledge page. WeKnora stores and retrieves.
+The knowledge base is stored in [WeKnora](https://github.com/Tencent/WeKnora), a self-hosted sidecar. Delegora owns the agents, the permissions, and the Knowledge page. WeKnora stores and retrieves.
 
 <Callout type="info">
 If the Knowledge page says **Knowledge is not offered on this server**, the operator has not configured the sidecar. See [self-hosting the knowledge base](/self-host-quickstart#company-knowledge-base) for what they set up.
@@ -35,7 +35,7 @@ The page shows one of these states:
 
 ## The knowledge bases
 
-Each knowledge base has a key that the CLI uses, such as `market`. Members and agents can create drafts in any of them except `decisions`, which only Multica writes to. Each document has a kind, which sets its headings and review interval. See [Knowledge taxonomy](/knowledge-taxonomy).
+Each knowledge base has a key that the CLI uses, such as `market`. Members and agents can create drafts in any of them except `decisions`, which only Delegora writes to. Each document has a kind, which sets its headings and review interval. See [Knowledge taxonomy](/knowledge-taxonomy).
 
 | Key | Name | Typical contents |
 | --- | --- | --- |
@@ -52,7 +52,7 @@ A knowledge base is shared and long-lived. So writing and publishing are separat
 
 - **Members and agents create drafts.** A draft is saved but not searchable. It appears in the **Drafts** tab.
 - **A person publishes.** Owners and admins press **Publish** in the Drafts tab, and the document becomes searchable. **Discard** deletes a draft instead.
-- **Multica publishes its own records.** Each proposal decision and each brief is written to `decisions` at once, so the decision history is searchable without a manual step.
+- **Delegora publishes its own records.** Each proposal decision and each brief is written to `decisions` at once, so the decision history is searchable without a manual step.
 - **A publish policy can publish for a person.** Each knowledge base and each kind can be set to publish drafts after a critic's review, or at once. Manual is the default. See [Knowledge taxonomy](/knowledge-taxonomy).
 
 To save a draft from the command line:

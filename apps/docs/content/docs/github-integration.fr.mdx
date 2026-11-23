@@ -1,17 +1,17 @@
 ---
 title: Intégration GitHub
-description: Associez les pull requests aux tâches Multica et suivez l'avancement du développement depuis la tâche.
+description: Associez les pull requests aux tâches Delegora et suivez l'avancement du développement depuis la tâche.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { PrLinkDemo } from "@/components/demos/pr-link-demo";
 
-Une fois GitHub connecté, Multica associe automatiquement les pull requests à partir des identifiants de tâche. Le détail de la tâche affiche directement l'état de la PR, l'ampleur des modifications, les résultats de la CI et les conflits de fusion.
+Une fois GitHub connecté, Delegora associe automatiquement les pull requests à partir des identifiants de tâche. Le détail de la tâche affiche directement l'état de la PR, l'ampleur des modifications, les résultats de la CI et les conflits de fusion.
 
 L'intégration GitHub se contente de lire les dépôts autorisés lors de l'installation ; elle ne pousse jamais de commits, de commentaires ni de status checks.
 
-Multica auto-hébergé peut aussi connecter en parallèle des instances Forgejo, Gitea ou GitLab auto-hébergées, avec la même association automatique des PR, le même changement de statut à la fusion et le même affichage de la CI. Le point d'entrée est **Paramètres → Code** ; voir [Fournisseurs Git auto-hébergés](/vcs-integration). Multica Cloud ne propose pas ce point d'entrée.
+Delegora auto-hébergé peut aussi connecter en parallèle des instances Forgejo, Gitea ou GitLab auto-hébergées, avec la même association automatique des PR, le même changement de statut à la fusion et le même affichage de la CI. Le point d'entrée est **Paramètres → Code** ; voir [Fournisseurs Git auto-hébergés](/vcs-integration). Delegora Cloud ne propose pas ce point d'entrée.
 
 ## Connecter GitHub
 
@@ -30,18 +30,18 @@ Sur la ligne **GitHub**, cliquez sur **Connecter GitHub**.
 Sur GitHub, choisissez le compte ou l'organisation, puis autorisez tous les dépôts ou une sélection d'entre eux.
 </Step>
 <Step>
-Revenez sur Multica une fois l'installation terminée.
+Revenez sur Delegora une fois l'installation terminée.
 </Step>
 </Steps>
 
 Choisissez **Ajouter un compte ou une organisation** dans la ligne GitHub ou le menu **Ajouter un dépôt** pour connecter une autre installation sans déconnecter les précédentes. Chaque connexion affiche le compte et la personne qui l’a connectée ; le sélecteur de dépôts permet de changer de compte. **Mettre en pause les fonctionnalités GitHub** s’applique à toutes les connexions de l’espace de travail.
 
-Si GitHub ne renvoie pas d’autorisation utilisateur, Multica ne peut pas vérifier une nouvelle connexion, même si l’App est déjà installée ou connectée à un autre espace. Reconnectez-vous et terminez l’autorisation ; si cela se répète, demandez à votre opérateur Multica de vérifier les réglages d’autorisation utilisateur de l’App. Modifier uniquement l’accès aux dépôts peut ne pas suffire.
+Si GitHub ne renvoie pas d’autorisation utilisateur, Delegora ne peut pas vérifier une nouvelle connexion, même si l’App est déjà installée ou connectée à un autre espace. Reconnectez-vous et terminez l’autorisation ; si cela se répète, demandez à votre opérateur Delegora de vérifier les réglages d’autorisation utilisateur de l’App. Modifier uniquement l’accès aux dépôts peut ne pas suffire.
 
 L'état de la connexion s'affiche sur la même page. Les membres ordinaires peuvent consulter cet état, mais ne peuvent ni connecter, ni déconnecter, ni modifier les interrupteurs.
 
 <Callout type="info">
-La **connexion GitHub** détermine de quels dépôts Multica reçoit les événements de PR ; le réglage des **dépôts de code** détermine les dépôts que les agents peuvent choisir au démarrage des exécutions. Ils ont des rôles différents et se configurent séparément.
+La **connexion GitHub** détermine de quels dépôts Delegora reçoit les événements de PR ; le réglage des **dépôts de code** détermine les dépôts que les agents peuvent choisir au démarrage des exécutions. Ils ont des rôles différents et se configurent séparément.
 </Callout>
 
 ## Interrupteurs de fonctions
@@ -54,7 +54,7 @@ La section **Pull requests et tâches** de **Paramètres → Code** comporte ces
 | Mention Co-authored-by | Ajoute `Co-authored-by: multica-agent <github@multica.ai>` aux commits créés par les agents. |
 | Lier automatiquement tâches et PR | Associe une PR à la tâche dont l'identifiant figure dans son nom de branche ou son titre, ou suit un mot-clé de clôture dans sa description. |
 | Après la fusion des PR, passer la tâche à | Ce que fait la fusion de toutes les PR liées à une tâche : la passer à un statut (`Done` par défaut) ou ne rien changer. Voir [Quand des PR fusionnées changent le statut d'une tâche](#quand-une-pr-fusionnée-fait-passer-une-tâche-à-terminé). |
-| Carte de PR → CI et possibilité de fusion | Pour chaque PR associée, Multica récupère un instantané via l'API GitHub en tant qu'App et affiche son statut CI et sa possibilité de fusion sur la carte. Voir [Voir les PR d'une tâche](#voir-les-pr-dune-tâche). |
+| Carte de PR → CI et possibilité de fusion | Pour chaque PR associée, Delegora récupère un instantané via l'API GitHub en tant qu'App et affiche son statut CI et sa possibilité de fusion sur la carte. Voir [Voir les PR d'une tâche](#voir-les-pr-dune-tâche). |
 
 **Après la fusion des PR, passer la tâche à** s'applique à tous les hébergeurs de code, y compris les [fournisseurs Git auto-hébergés](/vcs-integration).
 
@@ -70,7 +70,7 @@ mul-123-fix-login-redirect
 MUL-123 Fix the redirect after login
 ```
 
-Multica ignore la casse et ne reconnaît que le préfixe de tâche de l'espace de travail courant. Une même PR peut être associée à plusieurs tâches.
+Delegora ignore la casse et ne reconnaît que le préfixe de tâche de l'espace de travail courant. Une même PR peut être associée à plusieurs tâches.
 
 Si l'identifiant n'apparaît que dans la description de la PR, placez-le juste après un mot-clé de clôture :
 
@@ -82,7 +82,7 @@ Resolves MUL-123
 
 Une simple mention dans la description, comme `Related to MUL-123`, n'associe pas du tout la PR à cette tâche. Les messages de commit et les commentaires de PR ne déclenchent pas non plus l'association.
 
-Vous pouvez aussi associer une PR à la main : dans le bloc **Pull requests** de la tâche, cliquez sur **+** et collez l'URL de la PR. Pour retirer une PR d'une tâche, ouvrez le menu **⋯** de sa ligne et choisissez **Retirer de la tâche** ; Multica ne la réassociera plus à partir de son titre ou de sa branche.
+Vous pouvez aussi associer une PR à la main : dans le bloc **Pull requests** de la tâche, cliquez sur **+** et collez l'URL de la PR. Pour retirer une PR d'une tâche, ouvrez le menu **⋯** de sa ligne et choisissez **Retirer de la tâche** ; Delegora ne la réassociera plus à partir de son titre ou de sa branche.
 
 ## Voir les PR d'une tâche
 
@@ -94,7 +94,7 @@ Une fois associées, les PR apparaissent dans le bloc **Pull requests** du déta
 - le statut CI : toutes les vérifications ont réussi (avec leur nombre), certaines sont en échec (avec le nom des vérifications concernées) ou certaines sont en cours ; les PR sans vérification configurée n'affichent pas cet élément, et « aucune vérification » n'est jamais considéré comme une réussite ;
 - la possibilité de fusion : « Prête à fusionner » (uniquement lorsque GitHub signale un état de fusion propre), « Conflits de fusion », « Bloquée » ou « En retard sur la base ».
 
-Le statut CI et la possibilité de fusion proviennent d'instantanés que Multica récupère depuis l'API GitHub, et les deux sont indépendants ; les PR fusionnées ou fermées n'affichent plus ni l'un ni l'autre. Lorsque GitHub est momentanément indisponible, la carte conserve le dernier instantané et le signale comme périmé.
+Le statut CI et la possibilité de fusion proviennent d'instantanés que Delegora récupère depuis l'API GitHub, et les deux sont indépendants ; les PR fusionnées ou fermées n'affichent plus ni l'un ni l'autre. Lorsque GitHub est momentanément indisponible, la carte conserve le dernier instantané et le signale comme périmé.
 
 Sous la liste, une ligne indique ce qui va se passer : par exemple *Passe à Terminé quand #19 est fusionnée*, ou quelle PR a été fermée sans fusion. Cette ligne n'apparaît pas lorsque l'espace de travail ne change pas le statut ou que la tâche a déjà le statut cible.
 
@@ -119,21 +119,21 @@ Le changement de statut est inscrit dans la chronologie comme une action systèm
 
 ## Plusieurs espaces de travail
 
-Une même installation de la GitHub App peut être connectée à plusieurs espaces de travail Multica. Les événements GitHub parviennent à chaque espace de travail séparément et sont comparés au préfixe de tâche propre à chacun.
+Une même installation de la GitHub App peut être connectée à plusieurs espaces de travail Delegora. Les événements GitHub parviennent à chaque espace de travail séparément et sont comparés au préfixe de tâche propre à chacun.
 
 Par exemple, une PR qui référence à la fois `MUL-1` et `ENG-2` peut être associée dans deux espaces de travail aux préfixes différents. Les espaces de travail ne voient jamais les tâches les uns des autres.
 
-Si un même identifiant correspond à une tâche dans plusieurs des espaces de travail connectés (possible lorsqu'ils partagent un préfixe), Multica ne l'associe automatiquement dans aucun d'eux, afin que la fusion de la PR ne termine pas une tâche sans rapport. Associez la PR à la main dans le bon espace de travail.
+Si un même identifiant correspond à une tâche dans plusieurs des espaces de travail connectés (possible lorsqu'ils partagent un préfixe), Delegora ne l'associe automatiquement dans aucun d'eux, afin que la fusion de la PR ne termine pas une tâche sans rapport. Associez la PR à la main dans le bon espace de travail.
 
 ## Déconnecter
 
 Dans **Paramètres → Code**, choisissez **Déconnecter** à côté du compte à retirer. Seule la connexion de cette installation à l’espace courant est supprimée ; les autres continuent de recevoir des événements. L’App reste installée sur GitHub et les PR et liens existants sont conservés.
 
-Pour révoquer l'autorisation d'accès aux dépôts côté GitHub, désinstallez l'App ou ajustez son périmètre de dépôts depuis la page des installations de GitHub Apps de votre compte personnel ou de votre organisation. Après la désinstallation, tous les espaces de travail Multica liés à cette installation cessent de recevoir des événements.
+Pour révoquer l'autorisation d'accès aux dépôts côté GitHub, désinstallez l'App ou ajustez son périmètre de dépôts depuis la page des installations de GitHub Apps de votre compte personnel ou de votre organisation. Après la désinstallation, tous les espaces de travail Delegora liés à cette installation cessent de recevoir des événements.
 
 ## Configuration en auto-hébergement
 
-Multica Cloud n'a pas besoin de cette section. En auto-hébergement, vous devez d'abord créer votre propre GitHub App.
+Delegora Cloud n'a pas besoin de cette section. En auto-hébergement, vous devez d'abord créer votre propre GitHub App.
 
 <Steps>
 <Step>
@@ -144,7 +144,7 @@ Créez l'App dans **Developer settings → GitHub Apps** sur GitHub et renseigne
 
 | Champ | Valeur |
 |---|---|
-| Homepage URL | L'adresse de votre frontend Multica, par ex. `https://multica.example.com` |
+| Homepage URL | L'adresse de votre frontend Delegora, par ex. `https://multica.example.com` |
 | Callback URL | `https://<api-host>/api/github/setup` |
 | Request user authorization (OAuth) during installation | Activer |
 | Webhook URL | `https://<api-host>/api/webhooks/github` |
@@ -165,7 +165,7 @@ Abonnez-vous à ces événements :
 - **Pull request** ;
 - **Check suite**, **Check run** et **Status**, qui déclenchent l'actualisation de la CI et de la possibilité de fusion.
 
-Les instantanés de PR utilisent les API REST Pull requests, Checks et Commit statuses. La permission Contents n'est pas nécessaire. Avec la permission facultative Actions, Multica lit aussi les exécutions de workflow du commit. Sans elle, une exécution annulée compte toujours comme un échec, même après la réussite d'une exécution plus récente du même workflow.
+Les instantanés de PR utilisent les API REST Pull requests, Checks et Commit statuses. La permission Contents n'est pas nécessaire. Avec la permission facultative Actions, Delegora lit aussi les exécutions de workflow du commit. Sans elle, une exécution annulée compte toujours comme un échec, même après la réussite d'une exécution plus récente du même workflow.
 
 <Callout type="warning">
 Il s'agit du **Webhook secret**, et non du Client secret OAuth. Si les deux côtés n'ont pas le même secret de webhook, les livraisons GitHub renvoient `401 invalid signature`.
@@ -188,7 +188,7 @@ FRONTEND_ORIGIN=https://multica.example.com
 
 Les six variables GitHub de cette section sont requises pour les nouvelles connexions, y compris `GITHUB_APP_ID` et `GITHUB_APP_PRIVATE_KEY`. Si une variable manque, la connexion est désactivée ; la réception des webhooks exige seulement `GITHUB_WEBHOOK_SECRET`. Les connexions existantes continuent de fonctionner. Avant le déploiement, définissez la première Callback URL sur cet endpoint et activez OAuth lors de l’installation. GitHub n’utilise alors pas de Setup URL distincte.
 
-Pour les nouvelles connexions, le statut CI et la possibilité de fusion des PR, définissez aussi les deux variables suivantes. Multica compare la liste complète des dépôts de l’installation, obtenue avec un jeton metadata en lecture seule, aux dépôts administrés par l’utilisateur :
+Pour les nouvelles connexions, le statut CI et la possibilité de fusion des PR, définissez aussi les deux variables suivantes. Delegora compare la liste complète des dépôts de l’installation, obtenue avec un jeton metadata en lecture seule, aux dépôts administrés par l’utilisateur :
 
 ```dotenv
 GITHUB_APP_ID=<the GitHub App's numeric ID>

@@ -1,6 +1,6 @@
 ---
 title: 데스크톱 앱
-description: Multica Desktop을 설치하고 데스크톱 탭과 내장 데몬을 사용하며 자체 호스팅 인스턴스에 연결합니다.
+description: Delegora Desktop을 설치하고 데스크톱 탭과 내장 데몬을 사용하며 자체 호스팅 인스턴스에 연결합니다.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -8,7 +8,7 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { DesktopTabsDemo } from "@/components/demos/desktop-tabs-demo";
 
-Multica Desktop은 macOS, Windows, Linux에서 사용할 수 있습니다. Web 버전과 같은 계정 및 워크스페이스 데이터를 사용하지만 로컬 데몬을 자동으로 관리하고 워크스페이스별 탭을 따로 유지합니다.
+Delegora Desktop은 macOS, Windows, Linux에서 사용할 수 있습니다. Web 버전과 같은 계정 및 워크스페이스 데이터를 사용하지만 로컬 데몬을 자동으로 관리하고 워크스페이스별 탭을 따로 유지합니다.
 
 ## Desktop과 Web
 
@@ -21,13 +21,13 @@ Multica Desktop은 macOS, Windows, Linux에서 사용할 수 있습니다. Web �
 
 잠시 확인하거나 공용 컴퓨터에서 사용할 때는 Web이 더 편리합니다.
 
-둘 다 동시에 로그인할 수 있습니다. 같은 Multica 서비스에 연결되어 있으면 표시되는 데이터가 공유됩니다.
+둘 다 동시에 로그인할 수 있습니다. 같은 Delegora 서비스에 연결되어 있으면 표시되는 데이터가 공유됩니다.
 
 ## 설치
 
 <Steps>
 <Step>
-[Multica 다운로드 페이지](https://multica.ai/download)에서 운영체제와 프로세서 아키텍처에 맞는 설치 패키지를 선택합니다.
+[Delegora 다운로드 페이지](https://multica.ai/download)에서 운영체제와 프로세서 아키텍처에 맞는 설치 패키지를 선택합니다.
 
 | 플랫폼 | 설치 패키지 |
 | --- | --- |
@@ -36,7 +36,7 @@ Multica Desktop은 macOS, Windows, Linux에서 사용할 수 있습니다. Web �
 | Linux | `.AppImage`, `.deb`, `.rpm` |
 </Step>
 <Step>
-설치 후 Web 버전과 같은 이메일로 로그인합니다. 로그인하면 Desktop이 내장 Multica CLI를 시작하고 로컬에 설치된 AI 코딩 도구를 감지합니다.
+설치 후 Web 버전과 같은 이메일로 로그인합니다. 로그인하면 Desktop이 내장 Delegora CLI를 시작하고 로컬에 설치된 AI 코딩 도구를 감지합니다.
 </Step>
 </Steps>
 
@@ -78,13 +78,13 @@ Desktop은 이 컴퓨터에서 음성을 텍스트로 변환해 채팅, 댓글, 
 
 ## 내장 데몬
 
-로그인하면 Desktop이 현재 Multica 서비스 전용 CLI profile을 만들고 이 profile로 데몬을 시작합니다. profile은 다음 위치에 있습니다.
+로그인하면 Desktop이 현재 Delegora 서비스 전용 CLI profile을 만들고 이 profile로 데몬을 시작합니다. profile은 다음 위치에 있습니다.
 
 ```text
 ~/.multica/profiles/desktop-<host>/
 ```
 
-터미널에서 사용하는 기본 profile을 읽거나 덮어쓰지 않습니다. 다른 데몬을 직접 동시에 시작하면 Multica에는 각각 별도 런타임으로 표시됩니다.
+터미널에서 사용하는 기본 profile을 읽거나 덮어쓰지 않습니다. 다른 데몬을 직접 동시에 시작하면 Delegora에는 각각 별도 런타임으로 표시됩니다.
 
 Desktop 설정에서 실행 상태와 로그를 확인할 수 있습니다. 도구가 감지되지 않으면 먼저 일반 터미널에서 실행되고 로그인되어 있는지 확인한 뒤 Desktop 데몬을 다시 시작하세요.
 
@@ -104,7 +104,7 @@ Desktop 설정에서 실행 상태와 로그를 확인할 수 있습니다. 도�
 
 ## 자체 호스팅 인스턴스 연결
 
-Desktop은 기본적으로 Multica Cloud에 연결됩니다. 자체 호스팅 인스턴스에 연결하려면 사용자 디렉터리의 `.multica` 안에 `desktop.json`을 만들고 다음 내용을 넣습니다.
+Desktop은 기본적으로 Delegora Cloud에 연결됩니다. 자체 호스팅 인스턴스에 연결하려면 사용자 디렉터리의 `.multica` 안에 `desktop.json`을 만들고 다음 내용을 넣습니다.
 
 ```json
 {
@@ -189,7 +189,7 @@ Windows에서 흔히 쓰는 두 가지 방법으로 파일을 만들면 Desktop�
 
 위 Windows 탭의 PowerShell 명령을 쓰면 두 문제를 모두 피할 수 있습니다.
 
-## Windows Defender가 Multica를 바이러스로 탐지하는 경우
+## Windows Defender가 Delegora를 바이러스로 탐지하는 경우
 
 Windows 보안이 `Trojan:Script/Wacatac.B!ml` 같은 위협을 보고하고 Desktop 설치 경로 안의 파일을 격리합니다. 격리되는 대상은 보통 앱 실행 파일이 아니라 함께 포함된 CLI입니다.
 
@@ -197,7 +197,7 @@ Windows 보안이 `Trojan:Script/Wacatac.B!ml` 같은 위협을 보고하고 Des
 C:\Users\<사용자>\AppData\Local\Programs\@multicadesktop\resources\app.asar.unpacked\resources\bin\multica.exe
 ```
 
-오탐입니다. `!ml` 접미사는 이 판정이 악성코드 시그니처 일치가 아니라 Defender의 머신러닝 휴리스틱에서 나왔다는 뜻입니다. Multica의 Windows 빌드는 아직 Authenticode 코드 서명을 하지 않았고, 갓 배포된 서명 없는 바이너리가 백그라운드 프로세스를 띄우고 네트워크 연결을 여는 바이너리는 이런 휴리스틱에서 의심스럽게 평가되기 쉽습니다. 모든 Windows 산출물은 이 저장소의 공개 소스에서 GitHub Actions로 빌드됩니다.
+오탐입니다. `!ml` 접미사는 이 판정이 악성코드 시그니처 일치가 아니라 Defender의 머신러닝 휴리스틱에서 나왔다는 뜻입니다. Delegora의 Windows 빌드는 아직 Authenticode 코드 서명을 하지 않았고, 갓 배포된 서명 없는 바이너리가 백그라운드 프로세스를 띄우고 네트워크 연결을 여는 바이너리는 이런 휴리스틱에서 의심스럽게 평가되기 쉽습니다. 모든 Windows 산출물은 이 저장소의 공개 소스에서 GitHub Actions로 빌드됩니다.
 
 직접 검증할 수도 있습니다. 모든 GitHub 릴리스에는 CLI 아카이브 전체를 포함한 `checksums.txt`가 함께 게시됩니다.
 
@@ -211,7 +211,7 @@ Get-FileHash .\multica-cli-<version>-windows-amd64.zip -Algorithm SHA256
 
 <Steps>
 <Step>
-격리된 파일 복원: Windows 보안 → *바이러스 및 위협 방지* → *보호 기록* → Multica 항목 선택 → *작업* → *복원*.
+격리된 파일 복원: Windows 보안 → *바이러스 및 위협 방지* → *보호 기록* → Delegora 항목 선택 → *작업* → *복원*.
 </Step>
 <Step>
 제외 항목 추가 (다시 격리되지 않도록): *바이러스 및 위협 방지* → *설정 관리* → *제외* → *제외 추가 또는 제거* → *폴더*에서 다음 두 경로를 모두 추가합니다.

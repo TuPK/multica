@@ -1,12 +1,12 @@
 ---
 title: Variables d'environnement
-description: Configuration courante du serveur, du stockage, des intégrations et du runtime pour auto-héberger Multica.
+description: Configuration courante du serveur, du stockage, des intégrations et du runtime pour auto-héberger Delegora.
 ---
 
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica lit les variables d'environnement au démarrage du processus. Après en avoir modifié une, redémarrez le processus API, web ou daemon concerné. La commande `docker compose restart` de Docker Compose ne relit pas `.env` ; recréez les conteneurs avec `up -d` pour que les modifications prennent effet.
+Delegora lit les variables d'environnement au démarrage du processus. Après en avoir modifié une, redémarrez le processus API, web ou daemon concerné. La commande `docker compose restart` de Docker Compose ne relit pas `.env` ; recréez les conteneurs avec `up -d` pour que les modifications prennent effet.
 
 Cette page regroupe par thème la configuration liée au déploiement ; les variables de test et les variables internes aux exécutions n'y figurent pas. Pour les étapes complètes de déploiement, consultez le [démarrage rapide de l'auto-hébergement](/self-host-quickstart).
 
@@ -123,7 +123,7 @@ Pour l'ordre exact d'évaluation des listes d'autorisation, consultez [Connexion
 
 ## Stockage des pièces jointes
 
-Lorsque `S3_BUCKET` n'est pas défini, Multica utilise le disque local.
+Lorsque `S3_BUCKET` n'est pas défini, Delegora utilise le disque local.
 
 | Variable | Défaut | Description |
 |---|---|---|
@@ -225,7 +225,7 @@ Deux fonctionnalités utilisent cette couche, et chacune envoie du contenu de di
 Lorsque la clé d'API et l'URL de base sont toutes deux vides, cette couche est désactivée et n'effectue aucune requête en amont — aucune des deux fonctionnalités ci-dessus n'envoie quoi que ce soit. C'est la configuration prise en charge lorsque votre politique n'autorise pas cette couche à envoyer du contenu de discussion hors du déploiement : les sessions de discussion conservent le titre que le client dérive du premier message, les boutons de questions de suivi n'apparaissent pas, et tout le reste fonctionne normalement.
 
 <Callout type="info">
-Ceci ne concerne que la couche d'assistance. L'exécution d'un agent suit un chemin de données distinct : lorsqu'un agent répond dans une discussion, votre daemon exécute l'outil de codage IA de cet agent avec les propres identifiants de l'outil, et ne lui transmet pas les paramètres `MULTICA_LLM_*` ci-dessus. (Les variables de connexion à Multica propres à l'exécution, dont l'agent a besoin, sont injectées séparément par le daemon.) Vider les variables ci-dessus n'a aucun effet sur ce chemin — contrôlez-le via la configuration du runtime de l'agent.
+Ceci ne concerne que la couche d'assistance. L'exécution d'un agent suit un chemin de données distinct : lorsqu'un agent répond dans une discussion, votre daemon exécute l'outil de codage IA de cet agent avec les propres identifiants de l'outil, et ne lui transmet pas les paramètres `MULTICA_LLM_*` ci-dessus. (Les variables de connexion à Delegora propres à l'exécution, dont l'agent a besoin, sont injectées séparément par le daemon.) Vider les variables ci-dessus n'a aucun effet sur ce chemin — contrôlez-le via la configuration du runtime de l'agent.
 </Callout>
 
 ## Configuration du daemon
@@ -234,7 +234,7 @@ Les variables ci-dessous sont lues sur l'ordinateur qui exécute vos agents, et 
 
 | Variable | Valeur par défaut | Description |
 |---|---|---|
-| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | URL de l'API / WebSocket Multica ; accepte aussi `http(s)` |
+| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | URL de l'API / WebSocket Delegora ; accepte aussi `http(s)` |
 | `MULTICA_DAEMON_DEVICE_NAME` | nom d'hôte | Nom de l'appareil affiché dans la liste des runtimes |
 | `MULTICA_AGENT_RUNTIME_NAME` | `Local Agent` | Nom d'affichage du runtime |
 | `MULTICA_DAEMON_POLL_INTERVAL` | `30s` | Intervalle d'interrogation des exécutions lorsqu'aucun événement de réveil n'arrive |
@@ -337,7 +337,7 @@ Chaque outil intégré a une variable de chemin, `MULTICA_<PREFIX>_PATH`. Quand 
 </Accordion>
 </Accordions>
 
-QwenPaw et MiniMax Code n'ont pas de variable de modèle, car Multica ne leur envoie jamais de modèle ; consultez [Comparaison des outils de codage IA](/providers#sources-des-modèles). DeepSeek Harness a aussi `MULTICA_DSH_PROFILE_BUNDLE` et `MULTICA_DSH_PLUGIN_PATH`, décrits dans la section suivante.
+QwenPaw et MiniMax Code n'ont pas de variable de modèle, car Delegora ne leur envoie jamais de modèle ; consultez [Comparaison des outils de codage IA](/providers#sources-des-modèles). DeepSeek Harness a aussi `MULTICA_DSH_PROFILE_BUNDLE` et `MULTICA_DSH_PLUGIN_PATH`, décrits dans la section suivante.
 
 Les arguments par défaut à l'échelle de la machine via `MULTICA_<PREFIX>_ARGS` sont actuellement pris en charge pour sept outils : Claude Code, Codex, CodeBuddy, Qwen Code, Amp, Factory Droid et QwenPaw. Les variables sont `MULTICA_CLAUDE_ARGS`, `MULTICA_CODEX_ARGS`, `MULTICA_CODEBUDDY_ARGS`, `MULTICA_QWEN_ARGS`, `MULTICA_AMP_ARGS`, `MULTICA_DROID_ARGS` et `MULTICA_QWENPAW_ARGS`. Par exemple :
 
@@ -348,9 +348,9 @@ MULTICA_CLAUDE_ARGS=--max-turns 40
 
 ### Installation du profil DeepSeek Harness
 
-`MULTICA_DSH_PROFILE_BUNDLE` est une liste de bundles, séparés par des virgules, à installer dans le profil `multica` lorsque ce profil est absent, essayés dans l'ordre, chaque entrée étant une spécification npm, un répertoire ou une archive tarball empaquetée. Elle n'est pas définie par défaut. C'est ce profil qui fournit le protocole `--stdio` que pilote Multica : si la variable n'est pas définie, l'installation DSH reste intacte et le daemon signale le profil manquant au lieu d'enregistrer un runtime inutilisable.
+`MULTICA_DSH_PROFILE_BUNDLE` est une liste de bundles, séparés par des virgules, à installer dans le profil `multica` lorsque ce profil est absent, essayés dans l'ordre, chaque entrée étant une spécification npm, un répertoire ou une archive tarball empaquetée. Elle n'est pas définie par défaut. C'est ce profil qui fournit le protocole `--stdio` que pilote Delegora : si la variable n'est pas définie, l'installation DSH reste intacte et le daemon signale le profil manquant au lieu d'enregistrer un runtime inutilisable.
 
-Le bridge de Multica n'est pas encore publié sur un registre npm public ; le choix d'une valeur est traité dans [Installer un runtime d'agent](/install-agent-runtime). Ce que vous définissez est installé dans le répertoire DSH de chaque hôte de daemon sans autre confirmation : considérez ce choix comme une décision relative à la chaîne d'approvisionnement.
+Le bridge de Delegora n'est pas encore publié sur un registre npm public ; le choix d'une valeur est traité dans [Installer un runtime d'agent](/install-agent-runtime). Ce que vous définissez est installé dans le répertoire DSH de chaque hôte de daemon sans autre confirmation : considérez ce choix comme une décision relative à la chaîne d'approvisionnement.
 
 Cette installation est volontairement limitée : elle s'exécute au plus une fois par durée de vie du daemon, uniquement lorsque la sonde signale que le profil est réellement absent, et un échec est journalisé avec la sortie du gestionnaire de paquets lui-même et n'est retenté qu'après un redémarrage du daemon. Une sonde qui expire, ou qui répond avec une version de protocole que ce daemon ne pilote pas, est signalée et ne donne jamais lieu à une installation par-dessus : le daemon n'écrase pas un profil présent à dessein. Pour diagnostiquer, recherchez `DSH runtime profile` dans le journal du daemon ; pour annuler une installation, supprimez `$DSH_HOME/profiles/multica` (par défaut `~/.dsh/profiles/multica`).
 
@@ -375,7 +375,7 @@ Clés prises en charge :
 
 | Clé | Valeur par défaut | Description |
 |---|---|---|
-| `server_url` | `ws://localhost:8080/ws` | URL de l'API / WebSocket Multica |
+| `server_url` | `ws://localhost:8080/ws` | URL de l'API / WebSocket Delegora |
 | `app_url` | vide | URL web utilisée pour la connexion dans le navigateur |
 | `workspace_id` | vide | Espace de travail par défaut |
 | `device_name` | nom d'hôte | Nom de l'appareil affiché dans la liste des runtimes |
@@ -405,16 +405,16 @@ Quelques règles concernant les valeurs :
 
 | Variable | Valeur par défaut | Description |
 |---|---|---|
-| `DO_NOT_TRACK` | vide (télémétrie activée) | Définissez `1` ou `true` (insensible à la casse) pour arrêter la collecte et l'envoi de la télémétrie anonyme propre à Multica pour les instances auto-hébergées |
+| `DO_NOT_TRACK` | vide (télémétrie activée) | Définissez `1` ou `true` (insensible à la casse) pour arrêter la collecte et l'envoi de la télémétrie anonyme propre à Delegora pour les instances auto-hébergées |
 | `ANALYTICS_DISABLED` | `false` | Définissez `true` pour désactiver l'envoi de données à PostHog |
 | `POSTHOG_API_KEY` | vide | L'envoi est désactivé si elle n'est pas définie ; définissez-la pour utiliser votre propre projet PostHog |
 | `POSTHOG_HOST` | `https://us.i.posthog.com` | Hôte PostHog |
 | `METRICS_ADDR` | vide | Adresse d'écoute des métriques Prometheus ; vide signifie non démarré |
 | `REALTIME_METRICS_TOKEN` | vide | Jeton Bearer qui protège `/health/realtime` |
 
-La télémétrie propre à Multica pour les instances auto-hébergées envoie un instantané par jour UTC, au niveau du déploiement, au point de terminaison fixe et non configurable `https://telemetry.multica.ai/v1/telemetry/events`. Il contient la version officielle publiée ; les nombres, regroupés par tranches, d'espaces de travail, de membres humains distincts, d'agents actifs et de daemons actifs sur 24 heures ; le nombre agrégé d'exécutions des 24 heures précédentes ; ainsi que les nombres, regroupés par tranches, de membres ayant ouvert l'application web ou de bureau connectée et de membres ayant lancé eux-mêmes une exécution d'agent (attribution, mention, commentaire, chat, exécution manuelle ou relance — hors autopilot et délégation entre agents) au cours des 1, 7 et 28 jours UTC complets précédents. Les membres sont comptés au sein du déploiement et ne sont jamais identifiés. Il n'inclut jamais de noms, d'adresses ou de domaines e-mail, d'adresses IP, d'identifiants métier, de détails sur les hôtes ou les appareils, de dépôts, de modèles ou de plugins, de prompts ou de sorties, de commentaires ou de discussions, de chemins, de données de tokens ou de coûts, d'identifiants de connexion, d'erreurs, de piles d'appels ni de journaux. Il sert uniquement à comprendre l'adoption des versions auto-hébergées, les tranches de taille des déploiements, l'usage agrégé et l'activité des membres — et non à la facturation, aux licences, à l'authentification ou aux décisions de sécurité.
+La télémétrie propre à Delegora pour les instances auto-hébergées envoie un instantané par jour UTC, au niveau du déploiement, au point de terminaison fixe et non configurable `https://telemetry.multica.ai/v1/telemetry/events`. Il contient la version officielle publiée ; les nombres, regroupés par tranches, d'espaces de travail, de membres humains distincts, d'agents actifs et de daemons actifs sur 24 heures ; le nombre agrégé d'exécutions des 24 heures précédentes ; ainsi que les nombres, regroupés par tranches, de membres ayant ouvert l'application web ou de bureau connectée et de membres ayant lancé eux-mêmes une exécution d'agent (attribution, mention, commentaire, chat, exécution manuelle ou relance — hors autopilot et délégation entre agents) au cours des 1, 7 et 28 jours UTC complets précédents. Les membres sont comptés au sein du déploiement et ne sont jamais identifiés. Il n'inclut jamais de noms, d'adresses ou de domaines e-mail, d'adresses IP, d'identifiants métier, de détails sur les hôtes ou les appareils, de dépôts, de modèles ou de plugins, de prompts ou de sorties, de commentaires ou de discussions, de chemins, de données de tokens ou de coûts, d'identifiants de connexion, d'erreurs, de piles d'appels ni de journaux. Il sert uniquement à comprendre l'adoption des versions auto-hébergées, les tranches de taille des déploiements, l'usage agrégé et l'activité des membres — et non à la facturation, aux licences, à l'authentification ou aux décisions de sécurité.
 
-`DO_NOT_TRACK` et `ANALYTICS_DISABLED` sont indépendantes. La première contrôle cet instantané anonyme propre à Multica ; la seconde contrôle l'intégration facultative avec PostHog.
+`DO_NOT_TRACK` et `ANALYTICS_DISABLED` sont indépendantes. La première contrôle cet instantané anonyme propre à Delegora ; la seconde contrôle l'intégration facultative avec PostHog.
 
 ## Base de connaissances de l'entreprise
 

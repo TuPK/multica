@@ -1,9 +1,9 @@
 ---
 title: Architecture du projet
-description: Découvrez comment les clients de Multica, le service Go, le daemon d'exécution et les packages frontend partagés fonctionnent ensemble.
+description: Découvrez comment les clients de Delegora, le service Go, le daemon d'exécution et les packages frontend partagés fonctionnent ensemble.
 ---
 
-Multica se compose d'un backend Go, de plusieurs clients et d'un daemon qui tourne sur les ordinateurs d'exécution. PostgreSQL stocke les données de collaboration ; le daemon récupère les tasks et invoque les outils de codage IA locaux.
+Delegora se compose d'un backend Go, de plusieurs clients et d'un daemon qui tourne sur les ordinateurs d'exécution. PostgreSQL stocke les données de collaboration ; le daemon récupère les tasks et invoque les outils de codage IA locaux.
 
 Cette page, centrée sur l'implémentation, emploie **task** pour désigner l'entité interne de l'ordonnanceur, de l'API et de la base de données qui se trouve derrière une **exécution** du produit. L'interface et la documentation produit parlent d'exécution ; les identifiants comme `TaskService` et `task_id` restent inchangés pour des raisons de compatibilité.
 
@@ -19,7 +19,7 @@ Web / Desktop / Mobile / CLI
      daemon local ─── outils de codage IA
 ```
 
-Pour une explication orientée produit, consultez [Fonctionnement de Multica](/how-multica-works). Cette page se concentre sur l'organisation du code en couches.
+Pour une explication orientée produit, consultez [Fonctionnement de Delegora](/how-multica-works). Cette page se concentre sur l'organisation du code en couches.
 
 ## Organisation du dépôt
 
@@ -100,7 +100,7 @@ PostgreSQL est la source de vérité pour les données métier. Redis est facult
 
 ## Connexions temps réel
 
-Multica dispose de deux chemins WebSocket distincts :
+Delegora dispose de deux chemins WebSocket distincts :
 
 - `internal/realtime/` pousse vers les clients utilisateurs les modifications des tâches, des commentaires, de la boîte de réception et d'autres éléments.
 - `internal/daemonws/` connecte les daemons pour réveiller les runtimes et effectuer les RPC du daemon.

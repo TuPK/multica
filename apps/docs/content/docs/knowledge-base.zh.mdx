@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 知识库保存公司的长期记录：政策、研究、产品文档和决定。智能体在工作前会搜索它，并引用其中使用的内容。只有经过人工发布的内容才会进入知识库，因此一条错误的事实不会被每次运行反复使用。
 
-知识库存储在 [WeKnora](https://github.com/Tencent/WeKnora) 中，这是一个可自托管的边车服务。Multica 负责智能体、权限和知识页面。WeKnora 负责存储和检索。
+知识库存储在 [WeKnora](https://github.com/Tencent/WeKnora) 中，这是一个可自托管的边车服务。Delegora 负责智能体、权限和知识页面。WeKnora 负责存储和检索。
 
 <Callout type="info">
 如果知识页面显示 **此服务器未提供知识库**，说明运营者还没有配置边车服务。请参阅[自托管知识库](/self-host-quickstart#company-knowledge-base)，了解运营者需要完成的设置。
@@ -35,7 +35,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 ## 知识库
 
-每个知识库都有一个 CLI 使用的键，例如 `market`。成员和智能体可以在除 `decisions` 以外的所有知识库中创建草稿，`decisions` 只由 Multica 写入。
+每个知识库都有一个 CLI 使用的键，例如 `market`。成员和智能体可以在除 `decisions` 以外的所有知识库中创建草稿，`decisions` 只由 Delegora 写入。
 
 | 键 | 名称 | 典型内容 |
 | --- | --- | --- |
@@ -52,7 +52,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 - **成员和智能体创建草稿。** 草稿已保存但不可搜索，会出现在 **草稿** 标签页中。
 - **由人发布。** 所有者和管理员在 **草稿** 标签页中点击 **发布**，文档即可被搜索。点击 **丢弃** 则会删除草稿。
-- **Multica 发布自己的记录。** 每个提案决定和每份简报都会立即写入 `decisions`，因此决定历史无需手动操作即可被搜索。
+- **Delegora 发布自己的记录。** 每个提案决定和每份简报都会立即写入 `decisions`，因此决定历史无需手动操作即可被搜索。
 
 从命令行保存草稿：
 

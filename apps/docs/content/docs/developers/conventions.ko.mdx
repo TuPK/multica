@@ -5,7 +5,7 @@ description: 코드 네이밍, i18n 번역 용어집, 중국어 보이스 가이
 
 이 페이지는 코드 네이밍, i18n 번역 용어집, 중국어 보이스 가이드의 단일 진실 공급원입니다. 예전에 `packages/views/locales/glossary.md`나 여기저기 흩어진 주석에 있던 내용은 이제 모두 이곳에 모여 있습니다.
 
-Multica 코드를 작성하거나, 번역을 변경하거나, 중국어 제품 카피를 작성한다면 이 페이지를 참고하세요.
+Delegora 코드를 작성하거나, 번역을 변경하거나, 중국어 제품 카피를 작성한다면 이 페이지를 참고하세요.
 
 ---
 
@@ -109,12 +109,12 @@ Conventional 형식: `feat(scope)`, `fix(scope)`, `refactor(scope)`, `docs`, `te
 
 이것은 모든 번역 PR이 **반드시** 지켜야 하는 용어집입니다. 예전에는 `packages/views/locales/glossary.md`에 있었는데, 그 파일은 삭제되었고 이 페이지가 대체합니다.
 
-### 핵심 구분: 일상어 vs Multica 고유어
+### 핵심 구분: 일상어 vs Delegora 고유어
 
-Multica의 제품 명사는 두 가지 범주로 나뉩니다:
+Delegora의 제품 명사는 두 가지 범주로 나뉩니다:
 
 - **일상어** — 사용자가 소리 내어 말하는 단어입니다. 데이터베이스 엔티티인지와 무관하게 **완전히 번역**합니다: `issue` → 태스크, `workspace` → 워크스페이스, `project` → 프로젝트.
-- **Multica 고유어** — 해당 언어에 대응하는 단어가 없는 개념(`skill`), 또는 사용자가 직접 입력하거나 대조해야 하는 스키마 수준 식별자(`todo`, `in_progress`, `task_id`). **소문자 영문**으로 표기해 타입 이름처럼 읽히게 합니다.
+- **Delegora 고유어** — 해당 언어에 대응하는 단어가 없는 개념(`skill`), 또는 사용자가 직접 입력하거나 대조해야 하는 스키마 수준 식별자(`todo`, `in_progress`, `task_id`). **소문자 영문**으로 표기해 타입 이름처럼 읽히게 합니다.
 
 `apps/docs/content/docs/*.zh.mdx`는 이 페이지의 나머지 모든 것에 대한 사실상의 보이스 표준입니다. `*.zh.mdx` / `*.ja.mdx` / `*.ko.mdx`의 본문도 이제 아래 표를 따릅니다.
 
@@ -133,10 +133,10 @@ Multica의 제품 명사는 두 가지 범주로 나뉩니다:
 
 - **API / DB 필드**는 어디서나 `issue` / `task` / `skill`: `issue_status`, `task_id`, `skill_uuid`. 프로토콜과의 대응을 보여 줘야 하는 개발자 문서에서는 "Run(API에서는 `task_id`)"으로 표기할 수 있습니다.
 - **코드 참조와 명령어 리터럴**은 영문 유지: `multica issue ...`, Slack과 Lark의 `/issue` slash 명령.
-- **`skill`** 용어는 중국어 텍스트에서도 소문자 영문 유지 — 정착된 번역어가 없는 Multica 고유 개념이며, 제목에서는 `Skills`처럼 대문자로 쓸 수 있습니다.
+- **`skill`** 용어는 중국어 텍스트에서도 소문자 영문 유지 — 정착된 번역어가 없는 Delegora 고유 개념이며, 제목에서는 `Skills`처럼 대문자로 쓸 수 있습니다.
 - **"문제" 의미의 `issue`**(런타임 헬스)는 엔티티가 아니라 일반 명사입니다. 머신 카드의 `{{count}} issues`는 `{{count}} 个异常` / `問題 {{count}} 件` / `문제 {{count}}개`이며, 엔티티 단어를 쓰지 않습니다.
 
-**왜 `issue`는 번역하고 `skill`은 번역하지 않는가**: 사용자는 매일 issue를 등록하고 읽습니다. 그리고 "issue"라는 단어는 중국어·일본어·한국어에서 개발자 은어를 빼면 아무 의미가 없습니다. 현지 사용자가 원래 이 대상을 가리켜 쓰는 말은 "태스크"에 해당하는 일상어입니다. `skill`은 그 의미를 담을 현지어가 없는 Multica 고유 개념입니다.
+**왜 `issue`는 번역하고 `skill`은 번역하지 않는가**: 사용자는 매일 issue를 등록하고 읽습니다. 그리고 "issue"라는 단어는 중국어·일본어·한국어에서 개발자 은어를 빼면 아무 의미가 없습니다. 현지 사용자가 원래 이 대상을 가리켜 쓰는 말은 "태스크"에 해당하는 일상어입니다. `skill`은 그 의미를 담을 현지어가 없는 Delegora 고유 개념입니다.
 
 다른 제품 명사도 "정착된 현지어가 있는가"라는 같은 기준으로 판단합니다:
 
@@ -147,7 +147,7 @@ Multica의 제품 명사는 두 가지 범주로 나뉩니다:
 
 | 범주 | 용어 |
 | --- | --- |
-| 브랜드 | **Multica**, GitHub, Slack, Google, Anthropic, OpenAI, Claude, Codex, Cursor, Linear, Jira |
+| 브랜드 | **Delegora**, GitHub, Slack, Google, Anthropic, OpenAI, Claude, Codex, Cursor, Linear, Jira |
 | 약어 | API, CLI, URL, SDK, OAuth, JWT, SSO, WebSocket, HTTP, JSON, YAML, SQL |
 
 ### 완전히 번역 — 개념

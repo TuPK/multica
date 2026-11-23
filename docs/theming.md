@@ -1,6 +1,6 @@
-# Theming Multica
+# Theming Delegora
 
-A Multica theme is a folder with a `manifest.json` and a `theme.css`, plus any
+A Delegora theme is a folder with a `manifest.json` and a `theme.css`, plus any
 fonts and images the CSS uses. The CSS overrides public variables for light
 and dark mode and can restyle the stable anchors listed below; the manifest
 names the theme and can declare options that appear under **Settings →
@@ -451,7 +451,7 @@ kept. If a check fails, the import dialog lists every problem.
 ### Ask an agent
 
 Any agent can build a theme: ask for one in a chat, an issue or a comment.
-The theme reference in Multica's built-in platform skill tells the agent to
+The theme reference in Delegora's built-in platform skill tells the agent to
 read this guide, to pass `theme:check` with 0 errors before it delivers, and
 to attach `theme:preview` screenshots when it can run them. It is a reference
 inside the existing skill rather than a skill of its own, so it adds a line
@@ -566,7 +566,7 @@ fails keeps the previous one listed. The app only installs the exact
 sanitizer as an imported theme.
 
 Each store card shows how many times the theme was downloaded from the
-Multica server it lists on: every install and every update counts once.
+Delegora server it lists on: every install and every update counts once.
 Themes not yet installed are listed most downloaded first. A self-hosted
 server counts its own downloads.
 

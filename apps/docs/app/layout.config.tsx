@@ -20,7 +20,7 @@ function GitHubMark() {
 }
 
 // External links shown at the top of the sidebar (and in the top nav on
-// desktop). Leading icon = brand identity (GitHub mark / Multica icon);
+// desktop). Leading icon = brand identity (GitHub mark / Delegora icon);
 // trailing ArrowUpRight = "opens externally" glyph, same pattern as
 // `packages/views/layout/help-launcher.tsx` from PR #1560.
 const externalLinkText = (label: string) => (
@@ -48,7 +48,7 @@ export const baseOptions: BaseLayoutProps = {
     },
     {
       icon: <MulticaIcon />,
-      text: externalLinkText("Multica"),
+      text: externalLinkText("Delegora"),
       url: "https://multica.ai",
       external: true,
     },

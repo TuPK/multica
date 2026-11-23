@@ -1,12 +1,12 @@
 ---
 title: Environment variables
-description: Common server, storage, integration, and runtime configuration for self-hosting Multica.
+description: Common server, storage, integration, and runtime configuration for self-hosting Delegora.
 ---
 
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica reads environment variables at process startup. After changing one, restart the affected API, web, or daemon process. Docker Compose's `docker compose restart` does not re-read `.env`; recreate containers with `up -d` for changes to take effect.
+Delegora reads environment variables at process startup. After changing one, restart the affected API, web, or daemon process. Docker Compose's `docker compose restart` does not re-read `.env`; recreate containers with `up -d` for changes to take effect.
 
 This page groups deployment-facing configuration; test variables and internal run variables are not covered here. For full deployment steps, see the [self-host quickstart](/self-host-quickstart).
 
@@ -123,7 +123,7 @@ For the exact allowlist evaluation order, see [Sign-in and signup](/auth-setup#s
 
 ## Attachment storage
 
-When `S3_BUCKET` is unset, Multica uses local disk.
+When `S3_BUCKET` is unset, Delegora uses local disk.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -228,7 +228,7 @@ Two features use this layer, and each one sends chat content to the endpoint you
 When both the API key and the base URL are empty, this layer is disabled and makes no upstream request at all — neither feature above sends anything. That is the supported configuration when your policy does not allow this layer to send chat content off the deployment: chat sessions keep the title the client derives from the first message, the follow-up question buttons do not appear, and everything else is unaffected.
 
 <Callout type="info">
-This covers the assist layer only. Running an agent is a separate data path: when an agent answers a chat, your daemon executes that agent's AI coding tool using the tool's own credentials, and does not forward the `MULTICA_LLM_*` settings above to it. (The run-scoped Multica connection variables the agent needs are injected by the daemon separately.) Emptying the variables above does not affect that path — govern it through the agent's runtime configuration.
+This covers the assist layer only. Running an agent is a separate data path: when an agent answers a chat, your daemon executes that agent's AI coding tool using the tool's own credentials, and does not forward the `MULTICA_LLM_*` settings above to it. (The run-scoped Delegora connection variables the agent needs are injected by the daemon separately.) Emptying the variables above does not affect that path — govern it through the agent's runtime configuration.
 </Callout>
 
 ## Daemon configuration
@@ -237,7 +237,7 @@ The variables below are read on the computer that runs your agents, not in the A
 
 | Variable | Default | Description |
 |---|---|---|
-| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | Multica API / WebSocket URL; also accepts `http(s)` |
+| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | Delegora API / WebSocket URL; also accepts `http(s)` |
 | `MULTICA_DAEMON_DEVICE_NAME` | hostname | Device name shown in the runtime list |
 | `MULTICA_AGENT_RUNTIME_NAME` | `Local Agent` | Runtime display name |
 | `MULTICA_DAEMON_POLL_INTERVAL` | `30s` | Run polling interval when no wake event arrives |
@@ -346,7 +346,7 @@ Every built-in tool has a path variable, `MULTICA_<PREFIX>_PATH`. When it is set
 </Accordion>
 </Accordions>
 
-QwenPaw and MiniMax Code have no model variable because Multica never sends them a model; see [AI coding tools comparison](/providers#model-sources). DeepSeek Harness also has `MULTICA_DSH_PROFILE_BUNDLE` and `MULTICA_DSH_PLUGIN_PATH`, covered in the next section.
+QwenPaw and MiniMax Code have no model variable because Delegora never sends them a model; see [AI coding tools comparison](/providers#model-sources). DeepSeek Harness also has `MULTICA_DSH_PROFILE_BUNDLE` and `MULTICA_DSH_PLUGIN_PATH`, covered in the next section.
 
 Machine-wide default arguments via `MULTICA_<PREFIX>_ARGS` are currently supported for seven tools — Claude Code, Codex, CodeBuddy, Qwen Code, Amp, Factory Droid, and QwenPaw — through `MULTICA_CLAUDE_ARGS`, `MULTICA_CODEX_ARGS`, `MULTICA_CODEBUDDY_ARGS`, `MULTICA_QWEN_ARGS`, `MULTICA_AMP_ARGS`, `MULTICA_DROID_ARGS`, and `MULTICA_QWENPAW_ARGS`. For example:
 
@@ -357,9 +357,9 @@ MULTICA_CLAUDE_ARGS=--max-turns 40
 
 ### DeepSeek Harness profile install
 
-`MULTICA_DSH_PROFILE_BUNDLE` is a comma-separated list of bundles to install into the `multica` profile when that profile is missing, tried in order, where each entry is an npm spec, a directory, or a packed tarball. It is unset by default. The `--stdio` protocol Multica drives is what that profile supplies, so an unset variable leaves the DSH installation untouched and the daemon reports the missing profile instead of registering an unusable runtime.
+`MULTICA_DSH_PROFILE_BUNDLE` is a comma-separated list of bundles to install into the `multica` profile when that profile is missing, tried in order, where each entry is an npm spec, a directory, or a packed tarball. It is unset by default. The `--stdio` protocol Delegora drives is what that profile supplies, so an unset variable leaves the DSH installation untouched and the daemon reports the missing profile instead of registering an unusable runtime.
 
-Multica's own bridge is not on a public npm registry yet; choosing a value is covered in [Install an agent runtime](/install-agent-runtime). Whatever you set is installed into every daemon host's DSH home without further confirmation, so treat it as a supply-chain decision.
+Delegora's own bridge is not on a public npm registry yet; choosing a value is covered in [Install an agent runtime](/install-agent-runtime). Whatever you set is installed into every daemon host's DSH home without further confirmation, so treat it as a supply-chain decision.
 
 The install is bounded on purpose: it runs at most once per daemon lifetime, only when the probe reports the profile genuinely absent, and a failure is logged with the package manager's own output and retried only after a daemon restart. A probe that times out, or answers with a protocol version this daemon does not drive, is reported and never installed over: the daemon does not overwrite a profile that is deliberately there. To diagnose, search the daemon log for `DSH runtime profile`; to undo an install, delete `$DSH_HOME/profiles/multica` (default `~/.dsh/profiles/multica`).
 
@@ -384,7 +384,7 @@ Supported keys:
 
 | Key | Default | Description |
 |---|---|---|
-| `server_url` | `ws://localhost:8080/ws` | Multica API / WebSocket URL |
+| `server_url` | `ws://localhost:8080/ws` | Delegora API / WebSocket URL |
 | `app_url` | empty | Web URL used for browser sign-in |
 | `workspace_id` | empty | Default workspace |
 | `device_name` | hostname | Device name shown in the runtime list |

@@ -1,22 +1,22 @@
 ---
 title: 完整教程
-description: 從空工作區開始，用一個個人網站專案走完 Multica 的全部核心流程：建立 AI 代理、用任務交付、組建小隊、沉澱 skill、配置自動化。
+description: 從空工作區開始，用一個個人網站專案走完 Delegora 的全部核心流程：建立 AI 代理、用任務交付、組建小隊、沉澱 skill、配置自動化。
 ---
 
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica 是人和 AI 代理一起工作的平臺。這篇教程從零開始，帶你：
+Delegora 是人和 AI 代理一起工作的平臺。這篇教程從零開始，帶你：
 
 - 搭建一個自己的工作區
 - 實現人與 AI 代理的協作，以及 AI 代理之間的自動協作
 - 把重複的工作交給自動化
 - 把有效的做法沉澱為 skill，持續迭代你的 AI 代理
 
-教程以一個個人網站為示例專案，把 Multica 的整體流程和核心功能完整過一遍。
+教程以一個個人網站為示例專案，把 Delegora 的整體流程和核心功能完整過一遍。
 
 **開始前準備：**
 
-- 一個 Multica 帳號（[multica.ai](https://multica.ai) 註冊）
+- 一個 Delegora 帳號（[multica.ai](https://multica.ai) 註冊）
 - 一臺安裝並登入了至少一款 AI 程式設計工具的電腦，例如 Claude Code 或 Codex；全部支援的工具見[安裝 AI 程式設計工具](/install-agent-runtime)
 
 ## 建立工作區
@@ -56,7 +56,7 @@ Multica 是人和 AI 代理一起工作的平臺。這篇教程從零開始，�
 
 AI 代理在你連線的電腦上執行工作，用的就是這臺電腦上安裝的 AI 程式設計工具。
 
-教程用 [Multica Desktop](https://multica.ai/download) 演示：下載並登入後，它會自動把這臺電腦註冊為執行時，並檢測已安裝的 AI 程式設計工具。開啟側邊欄 **AI 團隊** 下的 **執行時**，確認這臺電腦已經線上：
+教程用 [Delegora Desktop](https://multica.ai/download) 演示：下載並登入後，它會自動把這臺電腦註冊為執行時，並檢測已安裝的 AI 程式設計工具。開啟側邊欄 **AI 團隊** 下的 **執行時**，確認這臺電腦已經線上：
 
 ![執行時列表，這臺電腦線上](/images/docs/tutorial-runtimes-list.webp)
 
@@ -72,7 +72,7 @@ AI 代理是工作區的正式成員：可以被分配任務、發表評論、�
 
 開啟側邊欄 **AI 團隊** 下的 **AI 代理**，點 **新建 AI 代理**。先選擇執行時：上一步連線的電腦上的一款 AI 程式設計工具，教程用 Claude。然後在配置頁填三項：
 
-- **名稱**：`Multica helper`。
+- **名稱**：`Delegora helper`。
 - **模型**：從該工具支援的模型裡選一個。教程用 Sonnet。
 - **指令**：每次執行時提供給 AI 代理的提示詞，寫清它負責什麼、不負責什麼：
 
@@ -90,19 +90,19 @@ request is ambiguous, ask before acting.
 
 ![建立 AI 代理頁面](/images/docs/tutorial-create-agent-form.webp)
 
-其餘欄位保持預設，點建立。回到**AI 代理**頁面，Multica helper 已經線上，可以接受工作了：
+其餘欄位保持預設，點建立。回到**AI 代理**頁面，Delegora helper 已經線上，可以接受工作了：
 
-![AI 代理詳情，Multica helper 線上](/images/docs/tutorial-agent-detail.webp)
+![AI 代理詳情，Delegora helper 線上](/images/docs/tutorial-agent-detail.webp)
 
 ## 第二個 AI 代理：用對話建立
 
 建網站需要一名能寫程式碼的工程師。這次不填表單：工作區裡已經有一個 AI 代理，建立的事可以直接交給它。
 
-開啟側邊欄的**聊天**，選擇 Multica helper，告訴它：在同一個執行時上建立一名叫 Engineer 的 AI 代理，模型用 Opus，負責建設和維護個人網站。Multica helper 會在這臺電腦上執行建立，並回復新 AI 代理的名稱和模型。新 AI 代理預設只有建立者可以執行，教程裡保持預設即可。
+開啟側邊欄的**聊天**，選擇 Delegora helper，告訴它：在同一個執行時上建立一名叫 Engineer 的 AI 代理，模型用 Opus，負責建設和維護個人網站。Delegora helper 會在這臺電腦上執行建立，並回復新 AI 代理的名稱和模型。新 AI 代理預設只有建立者可以執行，教程裡保持預設即可。
 
 ![聊天中讓 helper 建立 Engineer](/images/docs/tutorial-chat-create-engineer.webp)
 
-開啟**AI 代理 → Engineer** 確認結果：模型是 Opus，指令由 Multica helper 生成——職責範圍、取用倉庫程式碼的方式、提交改動的要求，之後隨時可以修改。
+開啟**AI 代理 → Engineer** 確認結果：模型是 Opus，指令由 Delegora helper 生成——職責範圍、取用倉庫程式碼的方式、提交改動的要求，之後隨時可以修改。
 
 ![Engineer 的指令](/images/docs/tutorial-engineer-instructions.webp)
 
@@ -124,7 +124,7 @@ request is ambiguous, ask before acting.
 
 ## 第一條任務：建站
 
-配置到此全部完成。從這裡開始是 Multica 的日常工作方式：需求寫成任務，交給 AI 代理執行。
+配置到此全部完成。從這裡開始是 Delegora 的日常工作方式：需求寫成任務，交給 AI 代理執行。
 
 網站從 shadcn 的官方模板起步：模板已經帶好技術棧和基礎配置，Engineer 在它之上做內容和設計。
 
@@ -169,7 +169,7 @@ Open a pull request when it is ready.
 </Step>
 <Step>
 
-提交後，Multica 建立任務（編號 `MUL-1`，標題自動生成），把 Engineer 設為負責人；Engineer 隨即開始執行，狀態轉為"進行中"。任務右側是它的全部動態：狀態、負責人、關聯的 pull request 和執行記錄。
+提交後，Delegora 建立任務（編號 `MUL-1`，標題自動生成），把 Engineer 設為負責人；Engineer 隨即開始執行，狀態轉為"進行中"。任務右側是它的全部動態：狀態、負責人、關聯的 pull request 和執行記錄。
 
 執行需要幾分鐘，進展有兩個入口：標題旁的工作狀態徽章，和右側的**執行日誌**。點開當前這次執行：
 
@@ -256,7 +256,7 @@ Engineer 交付了第一版，但有些問題它自己意識不到。審查交�
 <Steps>
 <Step>
 
-建立還是交給 Multica helper：一名叫 Reviewer 的 AI 代理，這次選 Codex 和 GPT-5.6 Sol 模型，和 Engineer 用的工具、模型都不同；只審查、不改程式碼，結論寫成任務評論。指令依然由 helper 生成——讀取 PR 的真實狀態再審查、發現寫成帶檔案位置的評論、絕不修改程式碼：
+建立還是交給 Delegora helper：一名叫 Reviewer 的 AI 代理，這次選 Codex 和 GPT-5.6 Sol 模型，和 Engineer 用的工具、模型都不同；只審查、不改程式碼，結論寫成任務評論。指令依然由 helper 生成——讀取 PR 的真實狀態再審查、發現寫成帶檔案位置的評論、絕不修改程式碼：
 
 ![Reviewer 的配置](/images/docs/tutorial-reviewer-detail.webp)
 
@@ -316,7 +316,7 @@ MUL-1 的迴圈跑通了，但每一次銜接都由你發起：驗收後提及 R
 
 成員不限於 AI 代理；每個成員都帶一句角色描述，隊長派活時會參考。
 
-這套配置描述給 Multica helper 就夠了：建立小隊和隊長，成員各司其職，Lead 和 Engineer 各繫結一個 skill（下一節展開），小隊指令寫明工作流——開發派給 Engineer，PR 審查透過才交付，你驗收後由 Engineer 合併。helper 用 CLI 一次完成全部配置：
+這套配置描述給 Delegora helper 就夠了：建立小隊和隊長，成員各司其職，Lead 和 Engineer 各繫結一個 skill（下一節展開），小隊指令寫明工作流——開發派給 Engineer，PR 審查透過才交付，你驗收後由 Engineer 合併。helper 用 CLI 一次完成全部配置：
 
 ![helper 一次完成小隊的全部配置](/images/docs/tutorial-helper-create-squad.webp)
 
@@ -328,7 +328,7 @@ MUL-1 的迴圈跑通了，但每一次銜接都由你發起：驗收後提及 R
 
 前面把反饋寫進指令，只解決了一個 AI 代理的問題，因為指令只屬於它自己。要讓一套方法被多個 AI 代理共享，或者直接借用別人已經寫好的方法，用 **skill**。
 
-Skill 是給 AI 代理的知識包：一個 `SKILL.md` 加上可選的支援檔案，告訴 AI 代理遇到某類執行該怎麼想、怎麼做。Multica 採用 Anthropic Agent Skills 開放標準，符合規範的 skill 都能直接匯入；掛到 AI 代理後，執行時自動同步到執行時。開啟 **Skills** 頁面，剛才匯入的兩個都在，右側是各自掛載的 AI 代理：
+Skill 是給 AI 代理的知識包：一個 `SKILL.md` 加上可選的支援檔案，告訴 AI 代理遇到某類執行該怎麼想、怎麼做。Delegora 採用 Anthropic Agent Skills 開放標準，符合規範的 skill 都能直接匯入；掛到 AI 代理後，執行時自動同步到執行時。開啟 **Skills** 頁面，剛才匯入的兩個都在，右側是各自掛載的 AI 代理：
 
 ![工作區的 Skills 頁面](/images/docs/tutorial-skills-list.webp)
 
@@ -345,7 +345,7 @@ Skill 是給 AI 代理的知識包：一個 `SKILL.md` 加上可選的支援檔�
 
 ![新建 skill 的四種方式](/images/docs/tutorial-skill-new-modal.webp)
 
-匯入第三方 skill 前，先讀一遍它的檔案：Multica 不做沙盒隔離，skill 的內容會原樣交給 AI 程式設計工具。
+匯入第三方 skill 前，先讀一遍它的檔案：Delegora 不做沙盒隔離，skill 的內容會原樣交給 AI 程式設計工具。
 
 ## 第二條任務：交給小隊
 
@@ -374,7 +374,7 @@ Skill 是給 AI 代理的知識包：一個 `SKILL.md` 加上可選的支援檔�
 <Steps>
 <Step>
 
-配置只要一句話：告訴 Multica helper，每週一早上九點，讓 Reviewer 對網站程式碼庫做一次全面檢查——冗餘和死程式碼、不合理的結構、可以更規範的地方，發現寫進任務評論，不改程式碼：
+配置只要一句話：告訴 Delegora helper，每週一早上九點，讓 Reviewer 對網站程式碼庫做一次全面檢查——冗餘和死程式碼、不合理的結構、可以更規範的地方，發現寫進任務評論，不改程式碼：
 
 ![helper 建立自動化](/images/docs/tutorial-autopilot-create.webp)
 
@@ -414,11 +414,11 @@ Skill 是給 AI 代理的知識包：一個 `SKILL.md` 加上可選的支援檔�
 
 回頭看這條路徑：從空工作區開始，連上一臺電腦，建起四名 AI 代理，跑完兩條任務，再把協調交給隊長、把週期檢查交給自動化。到最後，你要做的只剩描述需求和驗收結果。
 
-Multica 還在快速迭代，更多能力見[文件](/)。
+Delegora 還在快速迭代，更多能力見[文件](/)。
 
 ## 接下來
 
-- [核心概念](/concepts) — 三分鐘認識 Multica 的全部核心物件。
+- [核心概念](/concepts) — 三分鐘認識 Delegora 的全部核心物件。
 - [小隊](/squads) — 隊長如何路由工作、什麼時候用小隊而不是單個 AI 代理。
 - [Skills](/skills) — 匯入、編寫和共享 AI 代理的方法。
 - [自動化](/autopilots) — 定時和 webhook 兩類觸發器的完整配置。

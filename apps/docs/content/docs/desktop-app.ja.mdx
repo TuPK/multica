@@ -1,6 +1,6 @@
 ---
 title: デスクトップアプリ
-description: Multica Desktop をインストールし、デスクトップタブと内蔵デーモンを使い、セルフホストインスタンスに接続します。
+description: Delegora Desktop をインストールし、デスクトップタブと内蔵デーモンを使い、セルフホストインスタンスに接続します。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -8,7 +8,7 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { DesktopTabsDemo } from "@/components/demos/desktop-tabs-demo";
 
-Multica Desktop は macOS、Windows、Linux で利用できます。Web 版と同じアカウントとワークスペースデータを使いますが、ローカルマシンのデーモンを自動で管理し、ワークスペースごとに独立したタブのセットを保持します。
+Delegora Desktop は macOS、Windows、Linux で利用できます。Web 版と同じアカウントとワークスペースデータを使いますが、ローカルマシンのデーモンを自動で管理し、ワークスペースごとに独立したタブのセットを保持します。
 
 ## Desktop と Web
 
@@ -21,13 +21,13 @@ Multica Desktop は macOS、Windows、Linux で利用できます。Web 版と�
 
 ちょっと確認するだけのときや共用のパソコンでは、Web のほうが手軽です。
 
-両方に同時にサインインできます。同じ Multica サービスに接続している限り、表示されるデータは共有されます。
+両方に同時にサインインできます。同じ Delegora サービスに接続している限り、表示されるデータは共有されます。
 
 ## インストール
 
 <Steps>
 <Step>
-[Multica ダウンロードページ](https://multica.ai/download)から、OS と CPU アーキテクチャに合ったインストーラーを選びます:
+[Delegora ダウンロードページ](https://multica.ai/download)から、OS と CPU アーキテクチャに合ったインストーラーを選びます:
 
 | プラットフォーム | インストーラー |
 | --- | --- |
@@ -36,7 +36,7 @@ Multica Desktop は macOS、Windows、Linux で利用できます。Web 版と�
 | Linux | `.AppImage`、`.deb` または `.rpm` |
 </Step>
 <Step>
-インストール後、Web 版と同じメールアドレスでサインインします。サインインすると、Desktop は内蔵の Multica CLI を起動し、マシンにすでにインストールされている AI コーディングツールを検出します。
+インストール後、Web 版と同じメールアドレスでサインインします。サインインすると、Desktop は内蔵の Delegora CLI を起動し、マシンにすでにインストールされている AI コーディングツールを検出します。
 </Step>
 </Steps>
 
@@ -78,13 +78,13 @@ Desktop では、このコンピューター上で音声を文字に変換し、
 
 ## 内蔵デーモン
 
-サインイン後、Desktop は現在の Multica サービス専用の CLI プロファイルを作成し、それを使ってデーモンを起動します。プロファイルの場所:
+サインイン後、Desktop は現在の Delegora サービス専用の CLI プロファイルを作成し、それを使ってデーモンを起動します。プロファイルの場所:
 
 ```text
 ~/.multica/profiles/desktop-<host>/
 ```
 
-このプロファイルが、ターミナルで使っているデフォルトのプロファイルを読み取ったり上書きしたりすることはありません。別のデーモンを手動で起動した場合、Multica はそれらを別々のランタイムとして表示します。
+このプロファイルが、ターミナルで使っているデフォルトのプロファイルを読み取ったり上書きしたりすることはありません。別のデーモンを手動で起動した場合、Delegora はそれらを別々のランタイムとして表示します。
 
 ランタイムの状態とログは Desktop の設定で確認できます。ツールが検出されないときは、まず通常のターミナルで動作しサインイン済みであることを確認してから、Desktop のデーモンを再起動してください。
 
@@ -104,7 +104,7 @@ Desktop では、このコンピューター上で音声を文字に変換し、
 
 ## セルフホストインスタンスへの接続
 
-Desktop はデフォルトで Multica Cloud に接続します。セルフホストインスタンスに接続するには、ホームディレクトリの `.multica` の中に `desktop.json` を作成し、次の内容を書きます:
+Desktop はデフォルトで Delegora Cloud に接続します。セルフホストインスタンスに接続するには、ホームディレクトリの `.multica` の中に `desktop.json` を作成し、次の内容を書きます:
 
 ```json
 {
@@ -189,7 +189,7 @@ Windows でよく使う 2 つの書き方では、Desktop が読めないファ�
 
 上の Windows タブにある PowerShell のコマンドなら、この 2 つをどちらも避けられます。
 
-## Windows Defender が Multica をウイルスとして検出する
+## Windows Defender が Delegora をウイルスとして検出する
 
 Windows セキュリティが `Trojan:Script/Wacatac.B!ml` のような脅威を報告し、Desktop のインストール先にあるファイルを隔離します。対象になるのは通常、アプリ本体の実行ファイルではなく同梱の CLI です。
 
@@ -197,7 +197,7 @@ Windows セキュリティが `Trojan:Script/Wacatac.B!ml` のような脅威を
 C:\Users\<ユーザー名>\AppData\Local\Programs\@multicadesktop\resources\app.asar.unpacked\resources\bin\multica.exe
 ```
 
-これは誤検知です。`!ml` というサフィックスは、この判定がマルウェアのシグネチャ一致ではなく Defender の機械学習ヒューリスティックによるものであることを示します。Multica の Windows ビルドはまだ Authenticode コード署名を行っておらず、公開されたばかりで署名がなく、バックグラウンドプロセスを起動してネットワーク接続を張るバイナリは、この種のヒューリスティックで疑わしいと判定されやすいのです。Windows 向けの成果物はすべて、このリポジトリの公開ソースから GitHub Actions でビルドされています。
+これは誤検知です。`!ml` というサフィックスは、この判定がマルウェアのシグネチャ一致ではなく Defender の機械学習ヒューリスティックによるものであることを示します。Delegora の Windows ビルドはまだ Authenticode コード署名を行っておらず、公開されたばかりで署名がなく、バックグラウンドプロセスを起動してネットワーク接続を張るバイナリは、この種のヒューリスティックで疑わしいと判定されやすいのです。Windows 向けの成果物はすべて、このリポジトリの公開ソースから GitHub Actions でビルドされています。
 
 自分で検証することもできます。各 GitHub リリースには、すべての CLI アーカイブを網羅した `checksums.txt` が公開されています。
 
@@ -211,7 +211,7 @@ Get-FileHash .\multica-cli-<version>-windows-amd64.zip -Algorithm SHA256
 
 <Steps>
 <Step>
-隔離されたファイルを復元する：Windows セキュリティ → *ウイルスと脅威の防止* → *保護の履歴* → Multica の項目を選択 → *操作* → *復元*。
+隔離されたファイルを復元する：Windows セキュリティ → *ウイルスと脅威の防止* → *保護の履歴* → Delegora の項目を選択 → *操作* → *復元*。
 </Step>
 <Step>
 除外を追加する（再び隔離されないように）：*ウイルスと脅威の防止* → *設定の管理* → *除外* → *除外の追加または削除* → *フォルダー* で、次の両方を追加します。

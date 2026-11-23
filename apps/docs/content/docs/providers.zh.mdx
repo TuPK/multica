@@ -1,16 +1,16 @@
 ---
 title: AI 编程工具对照
-description: 比较 Multica 支持的 AI 编程工具，以及模型、MCP、会话和 Skill 的差异。
+description: 比较 Delegora 支持的 AI 编程工具，以及模型、MCP、会话和 Skill 的差异。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { ProviderPickerDemo } from "@/components/demos/provider-picker-demo";
 
-Multica 不替代你在用的 AI 编程工具：运行时调用电脑上已经安装并登录的工具，再把执行进度和结果写回任务。已经在用其中一款的，通常直接沿用就行。还没定的话，看四件事：
+Delegora 不替代你在用的 AI 编程工具：运行时调用电脑上已经安装并登录的工具，再把执行进度和结果写回任务。已经在用其中一款的，通常直接沿用就行。还没定的话，看四件事：
 
 - 电脑上是否已经安装；
 - 账号可以使用哪些模型；
-- 是否需要由 Multica 配置 MCP；
+- 是否需要由 Delegora 配置 MCP；
 - 团队要复用哪些 skill。
 
 安装方法见 [安装 AI 编程工具](/install-agent-runtime)。
@@ -19,7 +19,7 @@ Multica 不替代你在用的 AI 编程工具：运行时调用电脑上已经�
 
 <ProviderPickerDemo />
 
-| 工具 | 检测命令 | 会话恢复 | Multica 管理 MCP | 在 Multica 选模型 | Skill 注入位置 |
+| 工具 | 检测命令 | 会话恢复 | Delegora 管理 MCP | 在 Delegora 选模型 | Skill 注入位置 |
 |---|---|---:|---:|---:|---|
 | Antigravity | `agy` | ✓ | — | ✓ | `.agents/skills/` |
 | Claude Code | `claude` | ✓ | ✓ | ✓ | `.claude/skills/` |
@@ -53,33 +53,33 @@ Multica 不替代你在用的 AI 编程工具：运行时调用电脑上已经�
 | ZeroClaw | `zeroclaw` | ✓ | — | — | — |
 | ZCode | `zcode` / ZCode Desktop | ✓ | ✓ | ✓ | `.zcode/skills/` |
 
-对于 Claude Code，如果守护进程环境中的 `CLAUDE_CONFIG_DIR` 是绝对路径，Multica 会从该目录列出和导入用户及插件技能。扫描器无法读取仅在启动包装脚本中设置的路径。
+对于 Claude Code，如果守护进程环境中的 `CLAUDE_CONFIG_DIR` 是绝对路径，Delegora 会从该目录列出和导入用户及插件技能。扫描器无法读取仅在启动包装脚本中设置的路径。
 
 Amp 的模型字段用于选择 Amp **模式**（如 `high`），而不是底层模型 ID。留空则使用 Amp 的默认模式。
 
 Amp 还需要在守护进程或智能体环境中设置 `AMP_API_KEY`，仅有交互式登录记录不够。
 
-"Multica 管理 MCP"指可以在智能体配置中填写 MCP server，由 Multica 在执行前传给对应工具。这一列只说明 Multica 能否代为配置，不说明工具自身有没有别的 MCP 配置方式。
+"Delegora 管理 MCP"指可以在智能体配置中填写 MCP server，由 Delegora 在执行前传给对应工具。这一列只说明 Delegora 能否代为配置，不说明工具自身有没有别的 MCP 配置方式。
 
-"在 Multica 选模型"为 — 的工具，模型要在工具自己的配置里选，见[模型来源](#模型来源)。
+"在 Delegora 选模型"为 — 的工具，模型要在工具自己的配置里选，见[模型来源](#模型来源)。
 
 ## 模型来源
 
 Devin 通过本机 ACP 运行，支持 stdio MCP；只有 CLI 声明支持时才会传入 HTTP/SSE 配置。全局 skill 依次从 `$XDG_CONFIG_HOME/devin/skills`（默认 `~/.config/devin/skills`，Windows 为 `%APPDATA%\devin\skills`）、旧版 `cognition/skills`、`~/.codeium/<channel>/skills`（依次为 `windsurf`、`windsurf-next`、`windsurf-insiders`）和 `~/.agents/skills` 导入。同名 skill 在列表和导入时都以前面的目录为准。
 
-Devin 模型列表可能包含当前账号无权使用的模型。可以选择完整模型 ID、无歧义的会话模型名称或目录中的系列 slug/别名（如 `opus`），也可以留空使用 CLI 默认模型。Multica 会在发送任务前确认实际模型，拒绝回退到其他系列；有歧义的名称、任意截断名称或不可用的变体需要改选完整 ID，不会猜测匹配。用量按实际返回的模型归属；Adaptive 按返回的 Adaptive 路由 ID 记录，不推测底层模型。
+Devin 模型列表可能包含当前账号无权使用的模型。可以选择完整模型 ID、无歧义的会话模型名称或目录中的系列 slug/别名（如 `opus`），也可以留空使用 CLI 默认模型。Delegora 会在发送任务前确认实际模型，拒绝回退到其他系列；有歧义的名称、任意截断名称或不可用的变体需要改选完整 ID，不会猜测匹配。用量按实际返回的模型归属；Adaptive 按返回的 Adaptive 路由 ID 记录，不推测底层模型。
 
-Devin 优先读取 `WINDSURF_API_KEY`，否则使用 `devin auth login` 保存的凭据；未知的 ACP 认证方式不会阻断已保存的登录。Multica 保留 Devin 配置的会话模式，不自动提升权限。如果默认为 `plan`，请先在 Devin 中切换到可编辑模式，再派发需要修改文件的任务。
+Devin 优先读取 `WINDSURF_API_KEY`，否则使用 `devin auth login` 保存的凭据；未知的 ACP 认证方式不会阻断已保存的登录。Delegora 保留 Devin 配置的会话模式，不自动提升权限。如果默认为 `plan`，请先在 Devin 中切换到可编辑模式，再派发需要修改文件的任务。
 
 创建智能体时，模型列表来自对应的运行时。有的工具给出固定的模型名称，有的按本机配置、登录账号和订阅权益返回可用模型。
 
-不选择模型时，Multica 使用该工具的默认设置。列表为空时，先确认运行时在线并且工具已经登录，再刷新模型列表。
+不选择模型时，Delegora 使用该工具的默认设置。列表为空时，先确认运行时在线并且工具已经登录，再刷新模型列表。
 
 使用 Kiro CLI 时，创建和设置智能体页面中的**思考**选项来自所选模型支持的 effort 档位，选择会应用到新建和恢复的会话。不选择时沿用 Kiro 自身的 effort 设置。模型或 CLI 版本未返回 effort 选项时，不显示该选择器。
 
-QwenPaw、MiniMax Code 和 ZeroClaw 例外：它们不接受在 Multica 侧选择的模型，选择框不可用，显示为"由运行时管理"，模型要在工具自身的配置里选。它们的模型列表为空是正常的，不表示运行时离线。
+QwenPaw、MiniMax Code 和 ZeroClaw 例外：它们不接受在 Delegora 侧选择的模型，选择框不可用，显示为"由运行时管理"，模型要在工具自身的配置里选。它们的模型列表为空是正常的，不表示运行时离线。
 
-Antigravity 会把 `agy models` 中的推理变体显示为独立模型。在模型选择器中选用完整的变体名称，包括后缀。Multica 不为 Antigravity 提供单独的**思考**设置。如果在自定义参数中传入 `--effort`，Antigravity 会检查它能否与所选模型同时使用。
+Antigravity 会把 `agy models` 中的推理变体显示为独立模型。在模型选择器中选用完整的变体名称，包括后缀。Delegora 不为 Antigravity 提供单独的**思考**设置。如果在自定义参数中传入 `--effort`，Antigravity 会检查它能否与所选模型同时使用。
 
 DeepSeek Harness 的模型目录由运行时自身提供（`dsh --profile multica --list-models`）。它的模型 id 采用 `provider/model` 形式（例如 `deepseek-official/deepseek-chat`），请从列表中选择完整 id。
 
@@ -91,7 +91,7 @@ DeepSeek Harness 的模型目录由运行时自身提供（`dsh --profile multic
 
 表格中标 ✓ 的工具支持在后续执行中继续已有会话，前提是原会话还在，并且运行由能访问它的运行时执行。MiniMax Code 0.1.2 尚未通过 ACP 声明会话加载能力，因此后续执行会新建 MCode 会话。
 
-Multica 保存工具返回的会话标识。下次在同一任务中继续工作时，运行时先尝试恢复这段会话，恢复不了就新建会话接着执行。Pi 保存的是本地会话文件路径，所以更依赖原来的电脑和文件。
+Delegora 保存工具返回的会话标识。下次在同一任务中继续工作时，运行时先尝试恢复这段会话，恢复不了就新建会话接着执行。Pi 保存的是本地会话文件路径，所以更依赖原来的电脑和文件。
 
 有关重试和会话恢复的规则，见 [运行](/tasks#手动重试)。
 
@@ -109,9 +109,9 @@ MCP server 的命令、参数和环境变量会随智能体配置保存在服务
 
 ## Skill 注入方式
 
-执行开始前，Multica 把智能体绑定的 skill 写入上表对应的位置，工具用自己的原生机制发现它们。
+执行开始前，Delegora 把智能体绑定的 skill 写入上表对应的位置，工具用自己的原生机制发现它们。
 
-仓库里原有的 skill 不会被覆盖。名称冲突时，Multica 给注入的副本换一个目录名；执行结束后，只清理自己创建的文件。
+仓库里原有的 skill 不会被覆盖。名称冲突时，Delegora 给注入的副本换一个目录名；执行结束后，只清理自己创建的文件。
 
 Codex、Hermes 和 OpenClaw 的处理稍有不同：
 

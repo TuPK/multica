@@ -129,7 +129,7 @@ Access 決定哪些成員可以執行這名 AI 代理（分配、@提及或對�
 環境變數適合放這名 AI 代理執行時需要的有限權限憑據，例如只讀 API key 或單一 scope 的 token。
 
 <Callout type="warning">
-**`custom_env` 的值在 Multica 伺服器的資料庫裡是明文儲存的**，不屬於"只留在本機"的資料。agent list/get 介面不再返回任何 env 值，只返回鍵的數量；只有工作區 `owner`、`admin` 可以解鎖和修改，並且每次讀取或修改都會留下審計記錄。執行中的 AI 代理不能呼叫管理介面讀取其他 AI 代理的變數。
+**`custom_env` 的值在 Delegora 伺服器的資料庫裡是明文儲存的**，不屬於"只留在本機"的資料。agent list/get 介面不再返回任何 env 值，只返回鍵的數量；只有工作區 `owner`、`admin` 可以解鎖和修改，並且每次讀取或修改都會留下審計記錄。執行中的 AI 代理不能呼叫管理介面讀取其他 AI 代理的變數。
 </Callout>
 
 不要使用生產資料庫的管理員密碼或其他高價值長期憑據。
@@ -140,7 +140,7 @@ Access 決定哪些成員可以執行這名 AI 代理（分配、@提及或對�
 
 自定義引數按陣列逐項傳給 AI 程式設計工具，不經過 shell 展開。引數名稱是否有效由對應工具決定；已有獨立欄位的模型配置不需要在這裡重複設定。
 
-建立 AI 代理、修改自定義引數或更換執行時時，執行時介面卡保留的引數會被拒絕，錯誤資訊會指出衝突的引數。例如，Multica 使用 `--permission-mode bypassPermissions` 執行 Claude Code，在自定義引數裡設定 `--permission-mode dontAsk` 會被拒絕。已儲存的引數與目標執行時衝突時，可以同時傳入 `[]` 清空自定義引數，再完成更換。
+建立 AI 代理、修改自定義引數或更換執行時時，執行時介面卡保留的引數會被拒絕，錯誤資訊會指出衝突的引數。例如，Delegora 使用 `--permission-mode bypassPermissions` 執行 Claude Code，在自定義引數裡設定 `--permission-mode dontAsk` 會被拒絕。已儲存的引數與目標執行時衝突時，可以同時傳入 `[]` 清空自定義引數，再完成更換。
 
 <Callout type="warning">
 不要把憑據或其他 secret 放進自定義引數。它們會留在子程式的 argv 中，同機其他程式可能透過 `ps` 或 `/proc` 看到；請改用環境變數（`custom_env`）。守護程式日誌會遮蔽引數值，但無法保護作業系統的程式列表。
@@ -152,11 +152,11 @@ AI 代理詳情頁的 **MCP** 分三組列出這名 AI 代理能用的 MCP serve
 
 | 分組 | 來源 |
 |---|---|
-| **由 Multica 管理** | 只屬於這名 AI 代理的 server。點選**新增 MCP Server**，用視覺化表單或 JSON 填寫 STDIO 啟動命令或 Streamable HTTP 地址。 |
+| **由 Delegora 管理** | 只屬於這名 AI 代理的 server。點選**新增 MCP Server**，用視覺化表單或 JSON 填寫 STDIO 啟動命令或 Streamable HTTP 地址。 |
 | **工作區 MCP Server** | 從工作區共享庫裡分配給它的 server，見下一節。 |
 | **從執行時繼承** | 執行時所在電腦上 AI 程式設計工具自己的使用者配置，只讀。只有本地執行時線上時才能讀取。 |
 
-名稱相同時，AI 代理自己的配置優先於工作區分配的 server，兩者又都優先於執行時裡的同名 server。被蓋住的一項會標上**已覆蓋**或**已由 Multica 覆蓋**。
+名稱相同時，AI 代理自己的配置優先於工作區分配的 server，兩者又都優先於執行時裡的同名 server。被蓋住的一項會標上**已覆蓋**或**已由 Delegora 覆蓋**。
 
 ### 工作區共享的 MCP Server
 

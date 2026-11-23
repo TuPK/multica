@@ -21,7 +21,7 @@ type RunStatus = "queued" | "dispatched" | "running" | "completed";
 const copy = {
   en: {
     title: "OPS-31 · Compile this week's customer support FAQ",
-    multicaLane: "Multica",
+    multicaLane: "Delegora",
     multicaRole: "Records and coordinates",
     computerLane: "Your computer",
     computerRole: "Executes",
@@ -47,7 +47,7 @@ const copy = {
     stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
     steps: [
       "The issue provides the context",
-      "Multica creates a run",
+      "Delegora creates a run",
       "A runtime claims the run",
       "The AI coding tool executes locally",
       "Results are written back to the issue",
@@ -67,7 +67,7 @@ const copy = {
   },
   zh: {
     title: "OPS-31 · 整理本周客服常见问题",
-    multicaLane: "Multica",
+    multicaLane: "Delegora",
     multicaRole: "记录与协调",
     computerLane: "你的电脑",
     computerRole: "负责执行",
@@ -87,7 +87,7 @@ const copy = {
     wroteBack: "把结果写回任务",
     reply: "常见问题文档已整理好：共 12 个问题，按账号、订单、退款分组，请检查。",
     stepOf: (n: number, total: number) => `第 ${n} 步，共 ${total} 步`,
-    steps: ["任务提供上下文", "Multica 创建运行", "运行时领取运行", "AI 编程工具在本地执行", "结果写回任务"],
+    steps: ["任务提供上下文", "Delegora 创建运行", "运行时领取运行", "AI 编程工具在本地执行", "结果写回任务"],
     next: "下一步",
     captions: {
       idle: "一条刚分配给智能体的任务。",
@@ -103,7 +103,7 @@ const copy = {
   },
   ja: {
     title: "OPS-31 · 今週のカスタマーサポートのよくある質問をまとめる",
-    multicaLane: "Multica",
+    multicaLane: "Delegora",
     multicaRole: "記録と調整",
     computerLane: "あなたのコンピュータ",
     computerRole: "実行を担当",
@@ -129,7 +129,7 @@ const copy = {
     stepOf: (n: number, total: number) => `ステップ ${n} / ${total}`,
     steps: [
       "タスクがコンテキストを提供する",
-      "Multica が実行を作成する",
+      "Delegora が実行を作成する",
       "ランタイムが実行を引き受ける",
       "AI コーディングツールがローカルで実行する",
       "結果がタスクに書き戻される",
@@ -149,7 +149,7 @@ const copy = {
   },
   ko: {
     title: "OPS-31 · 이번 주 고객 지원 자주 묻는 질문 정리",
-    multicaLane: "Multica",
+    multicaLane: "Delegora",
     multicaRole: "기록과 조율",
     computerLane: "내 컴퓨터",
     computerRole: "실행 담당",
@@ -175,7 +175,7 @@ const copy = {
     stepOf: (n: number, total: number) => `${total}단계 중 ${n}단계`,
     steps: [
       "태스크가 컨텍스트 제공",
-      "Multica가 실행 생성",
+      "Delegora가 실행 생성",
       "런타임이 실행을 가져감",
       "AI 코딩 도구가 로컬에서 실행",
       "결과를 태스크에 기록",
@@ -195,7 +195,7 @@ const copy = {
   },
   fr: {
     title: "OPS-31 · Compiler la FAQ du support client de la semaine",
-    multicaLane: "Multica",
+    multicaLane: "Delegora",
     multicaRole: "Consigne et coordonne",
     computerLane: "Votre ordinateur",
     computerRole: "Exécute",
@@ -221,7 +221,7 @@ const copy = {
     stepOf: (n: number, total: number) => `Étape ${n} sur ${total}`,
     steps: [
       "La tâche fournit le contexte",
-      "Multica crée une exécution",
+      "Delegora crée une exécution",
       "Un runtime prend en charge l'exécution",
       "L'outil de codage IA s'exécute localement",
       "Les résultats sont réécrits dans la tâche",

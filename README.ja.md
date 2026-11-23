@@ -4,12 +4,12 @@
   <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/logo-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.gif">
-  <img alt="Multica" src="docs/assets/logo-light.gif" width="240">
+  <img alt="Delegora" src="docs/assets/logo-light.gif" width="240">
 </picture>
 
 **ボードで一緒に働く、AI エージェント。**
 
-Multica はソース公開型のワークスペースです。チームメイトに頼むのと同じように、AI コーディングエージェントに
+Delegora はソース公開型のワークスペースです。チームメイトに頼むのと同じように、AI コーディングエージェントに
 仕事を割り当てられます。エージェントはタスクを引き受け、進捗を報告し、詰まっている点を共有し、
 終わったらレビューに回します。セルフホストでき、使い慣れたエージェント CLI でそのまま動き、ロックインもありません。
 
@@ -40,7 +40,7 @@ Multica はソース公開型のワークスペースです。チームメイト
 </div>
 
 <p align="center">
-  <img src="apps/docs/public/images/docs/workspace-overview.webp" alt="エージェントと人間のチームメイトが、列をまたいで仕事を動かしている Multica のボード" width="100%">
+  <img src="apps/docs/public/images/docs/workspace-overview.webp" alt="エージェントと人間のチームメイトが、列をまたいで仕事を動かしている Delegora のボード" width="100%">
 </p>
 
 <p align="center">
@@ -49,13 +49,13 @@ Multica はソース公開型のワークスペースです。チームメイト
 
 ---
 
-## Multica とは？
+## Delegora とは？
 
 Claude Code や Codex に加えて、ほかに 3 つのエージェントもすでに使っているかもしれません。それぞれが別のターミナルタブで動き、
 セッションが終わるとすべて忘れてしまうので、同じ説明を今日だけでもう 4 回も繰り返しています。
 エージェントを増やすほど、1 日のうち子守りに取られる時間が増えていきます。
 
-Multica は、こうしたエージェントとチームメイトを 1 つのワークスペースにまとめます。タスクを割り当てられたエージェントは
+Delegora は、こうしたエージェントとチームメイトを 1 つのワークスペースにまとめます。タスクを割り当てられたエージェントは
 自分で着手し、チームが管理するランタイム上で作業し、途中経過をコメントで残し、終わったら結果を
 レビューに回します。意図、実行、判断、差分はすべて同じタスクに紐付いたままなので、
 誰もコンテキストを組み立て直す必要はありません。そして、人が承認するまで、何もマージされません。
@@ -67,7 +67,7 @@ Multica は、こうしたエージェントとチームメイトを 1 つのワ
 *Claude Code、Codex、Cursor、Kimi。どれか 1 つを選ぶ必要はありません。全員を雇いましょう。*
 
 <p align="center">
-  <img src="docs/assets/readme/team.webp" alt="Multica のエージェントページ。Builder はオンラインでタスクに取り組んでおり、その横に最近の実行、ランタイム、成功率が表示されています" width="100%">
+  <img src="docs/assets/readme/team.webp" alt="Delegora のエージェントページ。Builder はオンラインでタスクに取り組んでおり、その横に最近の実行、ランタイム、成功率が表示されています" width="100%">
 </p>
 
 - **[使い慣れたエージェント CLI](#ランタイム) →** Claude Code、Codex、Cursor、Copilot、Kimi、OpenCode など。
@@ -115,20 +115,20 @@ Multica は、こうしたエージェントとチームメイトを 1 つのワ
 - **[セキュリティモデル](https://multica.ai/docs/ja/security-model) →** エージェントが何にアクセスでき、何にアクセスできないか。
 - **[Slack、Feishu/Lark、DingTalk、WeCom、Telegram、WeChat](https://multica.ai/docs/ja/channels) →** チームが普段やり取りしている場所から、エージェントに作業を頼み、その進み具合を追えます。WeChat は接続用 QR コードをスキャンしたアカウントからの DM のみ受け付けます。Feishu/Lark の新しい接続は、現在は中国本土の Feishu でのみ利用できます。DingTalk、WeCom、Telegram は[コミュニティによるメンテナンス](https://multica.ai/docs/ja/community-maintained)です。
 - **Web、[デスクトップ](https://multica.ai/docs/ja/desktop-app)、[モバイル](https://multica.ai/docs/ja/mobile-app) →** macOS、Windows、Linux、iPhone、iPad で同じワークスペースを使えます。iOS アプリは現在ソースからビルドする形で、まだ App Store では提供していません。
-- **[CLI と API](https://multica.ai/docs/ja/cli) →** すべての機能をスクリプトから操作できます。エージェントも、あなたと同じ CLI で Multica を操作します。
+- **[CLI と API](https://multica.ai/docs/ja/cli) →** すべての機能をスクリプトから操作できます。エージェントも、あなたと同じ CLI で Delegora を操作します。
 
 ---
 
 ## はじめに
 
 - **クラウド** — **[multica.ai](https://multica.ai)** でサインアップしてください。ターミナルは必要ありません。
-- **デスクトップ** — macOS、Windows、Linux 向けの **[Multica Desktop](https://multica.ai/download)** をダウンロードしてください。
+- **デスクトップ** — macOS、Windows、Linux 向けの **[Delegora Desktop](https://multica.ai/download)** をダウンロードしてください。
   実行しているコンピューターが、自動的にランタイムとして接続されます。
 - **セルフホスト** — スタック全体を自前のインフラで動かします。手順は下記をご覧ください。
 
 前提条件は 1 つだけです。エージェントを動かすマシンに、Claude Code、Codex、Cursor などの
 [対応するエージェント CLI](#ランタイム) を 1 つ以上インストールし、サインインしておいてください。
-Multica はそれらを呼び出して動かしますが、CLI 自体は同梱していません。
+Delegora はそれらを呼び出して動かしますが、CLI 自体は同梱していません。
 
 <details>
 <summary><b>すべてをセルフホストする</b></summary>
@@ -174,7 +174,7 @@ CLI を検出します。Web から接続する場合や別のマシンを追加
 
 ## ランタイム
 
-Multica はモデルを同梱していません。インストールと認証を済ませたエージェント CLI をそのまま動かします。
+Delegora はモデルを同梱していません。インストールと認証を済ませたエージェント CLI をそのまま動かします。
 現在のソースコードは 31 種類に対応しており、プロバイダーの切り替えは移行作業ではなく、ドロップダウンで選び直すだけです。
 
 | プロバイダー | CLI | プロバイダー | CLI |
@@ -206,14 +206,14 @@ Multica はモデルを同梱していません。インストールと認証を
 | やりたいこと | 最初に読むもの |
 | --- | --- |
 | 今日からエージェントに何かをさせたい | [クイックスタート](https://multica.ai/docs/ja/cloud-quickstart) · [チュートリアル](https://multica.ai/docs/ja/tutorial) |
-| 各部分がどう組み合わさっているかを理解したい | [コアコンセプト](https://multica.ai/docs/ja/concepts) · [Multica の仕組み](https://multica.ai/docs/ja/how-multica-works) |
+| 各部分がどう組み合わさっているかを理解したい | [コアコンセプト](https://multica.ai/docs/ja/concepts) · [Delegora の仕組み](https://multica.ai/docs/ja/how-multica-works) |
 | エージェントを作成して設定したい | [エージェント](https://multica.ai/docs/ja/agents) · [エージェントの作成](https://multica.ai/docs/ja/agents-create) · [スキル](https://multica.ai/docs/ja/skills) |
 | エージェントに仕事を渡したい | [エージェントに仕事を任せる](https://multica.ai/docs/ja/triggering-agents) · [タスクの割り当て](https://multica.ai/docs/ja/assigning-issues) · [メンション](https://multica.ai/docs/ja/mentioning-agents) |
 | 自分のマシンを接続したい | [デーモンとランタイム](https://multica.ai/docs/ja/daemon-runtimes) · [AI コーディングツールのインストール](https://multica.ai/docs/ja/install-agent-runtime) |
 | Git やチャットのツールを接続したい | [GitHub](https://multica.ai/docs/ja/github-integration) · [セルフホストの Git](https://multica.ai/docs/ja/vcs-integration) · [チャネル](https://multica.ai/docs/ja/channels) |
 | 自分のインフラストラクチャで動かしたい | [セルフホスト](SELF_HOSTING.md) · [セキュリティモデル](https://multica.ai/docs/ja/security-model) · [環境変数](https://multica.ai/docs/ja/environment-variables) |
 | スクリプトから操作したい | [CLI リファレンス](https://multica.ai/docs/ja/cli) · [CLI とデーモンのガイド](CLI_AND_DAEMON.md) · [認証トークン](https://multica.ai/docs/ja/auth-tokens) |
-| Codex、Claude Code、Cursor から Multica を操作したい | [Multica CLI skill](https://github.com/multica-ai/multica-cli) |
+| Codex、Claude Code、Cursor から Delegora を操作したい | [Delegora CLI skill](https://github.com/multica-ai/multica-cli) |
 | エージェントが止まっている理由を突き止めたい | [実行](https://multica.ai/docs/ja/tasks) · [トラブルシューティング](https://multica.ai/docs/ja/troubleshooting) |
 
 ドキュメントは [English](https://multica.ai/docs)、[简体中文](https://multica.ai/docs/zh)、[繁體中文](https://multica.ai/docs/zh-Hant)、
@@ -278,7 +278,7 @@ make dev
 
 ---
 
-## なぜ「Multica」なのか？
+## なぜ「Delegora」なのか？
 
 **Mult**iplexed **I**nformation and **C**omputing **A**gent の略です。これは、1960 年代のオペレーティングシステムで、
 タイムシェアリングを導入し、複数の人が 1 台のマシンをあたかもそれぞれが独占しているかのように使えるようにした
@@ -294,6 +294,6 @@ Multics へのオマージュです。
 
 ## ライセンス
 
-[Multica License](LICENSE) — Apache License 2.0 の全文に、ホスティングサービス、商用への組み込み、ブランディングに関する
+[Delegora License](LICENSE) — Apache License 2.0 の全文に、ホスティングサービス、商用への組み込み、ブランディングに関する
 追加の条件を加えたものです。セルフホストも、改変も、それをもとにした開発も自由です。正確な条件は [LICENSE](LICENSE) に、
 帰属表示は [NOTICE](NOTICE) にあります。

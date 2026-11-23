@@ -6,7 +6,7 @@ description: Connect an agent to Feishu and hand it work directly from a DM or a
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Connect a Multica agent as a Feishu Bot and team members can DM it in Feishu, @-mention it in a group, or use `/issue` to create issues. Conversations and run records are saved in the Multica workspace.
+Connect a Delegora agent as a Feishu Bot and team members can DM it in Feishu, @-mention it in a group, or use `/issue` to create issues. Conversations and run records are saved in the Delegora workspace.
 
 Each Bot maps to exactly one agent. To use several agents in Feishu, connect a Bot for each of them.
 
@@ -25,7 +25,7 @@ Go to **Messaging**, click **Add messaging channel**, then choose **Feishu**.
 Scan the QR code with Feishu and confirm the authorization. The QR code works only once; if it expires, generate a new one.
 </Step>
 <Step>
-Return to Multica. After binding, Multica shows **Waiting for first message**. Send the bot a message in Feishu/Lark. **Connected** means a valid message reached this binding; it does not guarantee ongoing connectivity, agent execution, or replies. During rollout, legacy bindings with qualifying conversation history from the current binding can retain their reception evidence. Bindings without that evidence wait for a new message. Rebinding clears the record.
+Return to Delegora. After binding, Delegora shows **Waiting for first message**. Send the bot a message in Feishu/Lark. **Connected** means a valid message reached this binding; it does not guarantee ongoing connectivity, agent execution, or replies. During rollout, legacy bindings with qualifying conversation history from the current binding can retain their reception evidence. Bindings without that evidence wait for a new message. Rebinding clears the record.
 </Step>
 </Steps>
 
@@ -41,7 +41,7 @@ The first time a member messages the Bot, they receive an account binding link:
 
 <Steps>
 <Step>
-Open the link and sign in to Multica.
+Open the link and sign in to Delegora.
 </Step>
 <Step>
 Confirm the workspace account to link.
@@ -51,19 +51,19 @@ Return to Feishu and send the message again.
 </Step>
 </Steps>
 
-This binding is how Multica knows which workspace member a message comes from. Non-members cannot use the Bot.
+This binding is how Delegora knows which workspace member a message comes from. Non-members cannot use the Bot.
 
 ## Hand work to the agent in Feishu
 
 ### Direct messages
 
-Message the Bot directly. Consecutive messages stay in the same Multica conversation, and the agent's replies go back to that conversation.
+Message the Bot directly. Consecutive messages stay in the same Delegora conversation, and the agent's replies go back to that conversation.
 
 ### Group chats
 
 Add the Bot to the group first, then `@Bot` and describe what you need. The Bot only responds to messages that explicitly @-mention it, and each run includes the group's most recent messages as context.
 
-In both direct messages and group chats, each run's prompt also lists the Feishu ids of the message it answers: `chat_id`, `chat_type`, `message_id`, the topic's `thread_id` when the message is in a topic, and `sender_open_id` (the sender's `open_id`). These are Feishu ids, not Multica ids, so an agent with its own Feishu access can look up the original message or conversation. The `open_id` is specific to the connected Bot's app. Ids Multica did not record are left out.
+In both direct messages and group chats, each run's prompt also lists the Feishu ids of the message it answers: `chat_id`, `chat_type`, `message_id`, the topic's `thread_id` when the message is in a topic, and `sender_open_id` (the sender's `open_id`). These are Feishu ids, not Delegora ids, so an agent with its own Feishu access can look up the original message or conversation. The `open_id` is specific to the connected Bot's app. Ids Delegora did not record are left out.
 
 When several messages are combined into one run, `message_id` identifies the last message in that batch and `sender_open_id` identifies that message's sender. A recovered older topic run may include `thread_id` without `message_id`.
 
@@ -80,7 +80,7 @@ The first line becomes the title and the rest becomes the description. Sending `
 
 ## Images and files from the agent
 
-When file delivery is enabled, text and supported images attached to an agent’s reply appear together in one Feishu message. Images update that message as they finish uploading; files arrive separately in the same conversation. An image-only reply can use an image message. Supported images are limited to 10 MB; unsupported, larger, or explicitly rejected images are sent as files, up to 30 MB. This requires object storage and the application’s resource upload permission. If delivery fails or cannot be confirmed, the attachments remain available on the reply in Multica. Check the conversation before requesting a resend.
+When file delivery is enabled, text and supported images attached to an agent’s reply appear together in one Feishu message. Images update that message as they finish uploading; files arrive separately in the same conversation. An image-only reply can use an image message. Supported images are limited to 10 MB; unsupported, larger, or explicitly rejected images are sent as files, up to 30 MB. This requires object storage and the application’s resource upload permission. If delivery fails or cannot be confirmed, the attachments remain available on the reply in Delegora. Check the conversation before requesting a resend.
 
 ## Manage connections
 
@@ -90,7 +90,7 @@ After disconnecting, the Bot stops receiving new messages. Existing conversation
 
 ## Self-hosting setup
 
-Multica Cloud needs no extra configuration. A self-hosted deployment must first set a key used to encrypt Bot credentials:
+Delegora Cloud needs no extra configuration. A self-hosted deployment must first set a key used to encrypt Bot credentials:
 
 ```dotenv
 MULTICA_LARK_SECRET_KEY=<base64-encoded 32-byte key>
@@ -110,9 +110,9 @@ Restart the API server, then connect the Bot from the agent's **Messaging** sect
 
 - **No bind button**: confirm the current account is the agent's owner or a workspace owner or admin, and check that the self-hosting key is configured.
 - **QR code expired**: close the dialog and start the connection again.
-- **The Bot asks for account binding**: open the binding link and sign in with the Multica account for that workspace.
+- **The Bot asks for account binding**: open the binding link and sign in with the Delegora account for that workspace.
 - **The Bot doesn't run**: check whether the agent is archived and whether the [runtime](/daemon-runtimes) it uses is online.
-- **The Bot never replies at all**: the app must push events over a long connection; Multica has no webhook endpoint. In the Feishu/Lark developer console, open **Events & Callbacks → Event Configuration** and confirm that the subscription method is the long connection rather than a request URL, that `im.message.receive_v1` is subscribed, and that the app version carrying that configuration is published (and approved, where the tenant reviews releases). An app set to a request URL still binds, shows **Waiting for first message**, and silently receives nothing.
+- **The Bot never replies at all**: the app must push events over a long connection; Delegora has no webhook endpoint. In the Feishu/Lark developer console, open **Events & Callbacks → Event Configuration** and confirm that the subscription method is the long connection rather than a request URL, that `im.message.receive_v1` is subscribed, and that the app version carrying that configuration is published (and approved, where the tenant reviews releases). An app set to a request URL still binds, shows **Waiting for first message**, and silently receives nothing.
 
 ## Next steps
 

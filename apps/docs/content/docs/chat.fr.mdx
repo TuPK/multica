@@ -11,7 +11,7 @@ Discussion convient aux sujets qui n'ont pas encore pris la forme d'une tâche c
 
 Une discussion est une conversation en tête-à-tête entre vous et un [agent](/agents), en dehors du tableau des [tâches](/issues). Elle est **entièrement privée** : personne d'autre dans l'[espace de travail](/workspaces), pas même les administrateurs, ne peut la voir.
 
-Une discussion n'est **liée à aucune tâche**. L'agent ne regarde pas votre tableau, ne reçoit pas automatiquement la description et les commentaires d'une tâche, et ne transforme pas la conversation en tâches de lui-même. Il peut toujours utiliser le CLI Multica pour consulter les espaces de travail, projets, tâches et skills dans la limite de ses autorisations, et quand vous le lui demandez explicitement, il agit avec vos accès à l'espace de travail, par exemple pour créer une tâche.
+Une discussion n'est **liée à aucune tâche**. L'agent ne regarde pas votre tableau, ne reçoit pas automatiquement la description et les commentaires d'une tâche, et ne transforme pas la conversation en tâches de lui-même. Il peut toujours utiliser le CLI Delegora pour consulter les espaces de travail, projets, tâches et skills dans la limite de ses autorisations, et quand vous le lui demandez explicitement, il agit avec vos accès à l'espace de travail, par exemple pour créer une tâche.
 
 Une discussion peut aussi porter un contexte. Cliquez sur **+** en bas à gauche de la zone de saisie et choisissez **Contexte de projet** pour rattacher un [projet](/projects) à la conversation ; lorsque l'agent s'exécute, il reçoit la description, les dépôts et les autres ressources de ce projet.
 
@@ -35,7 +35,7 @@ Saisissez un message ; vous pouvez aussi joindre des images ou des fichiers.
 </Step>
 <Step>
 
-Après l'envoi, Multica crée une exécution pour le message, et la réponse revient dans la conversation en cours.
+Après l'envoi, Delegora crée une exécution pour le message, et la réponse revient dans la conversation en cours.
 
 </Step>
 </Steps>
@@ -54,7 +54,7 @@ Inutile de quitter la page en cours pour discuter. Les pages de l'espace de trav
 
 Dans une fenêtre large, la discussion rapide se trouve à l'extrémité droite de la barre d'état, en bas de l'application :
 
-- **Demander à Multica** démarre une nouvelle discussion.
+- **Demander à Delegora** démarre une nouvelle discussion.
 - Une discussion obtient une puce dans la barre pendant que l'agent y travaille, tant qu'elle contient une réponse non lue, et dès que vous l'avez ouverte dans la fenêtre flottante. Un indicateur qui tourne sur la puce signale que l'agent répond, un point de couleur une réponse non lue ; survolez la puce pour voir le titre et l'état de la discussion. Cliquez sur une puce pour ouvrir cette discussion, puis de nouveau pour fermer la fenêtre. Les puces qui ne tiennent pas passent dans un menu **+N**.
 - Pour fermer une puce, survolez-la et cliquez sur **×**. Elle revient quand la discussion reçoit un nouveau message ou quand vous la rouvrez.
 - **Historique des discussions**, le dernier bouton de la barre, liste vos discussions récentes avec les mêmes marques « en cours » et « non lu ». Choisissez-en une pour l'ouvrir, ou cliquez sur **Toutes les discussions** pour aller sur la page **Discussion**.
@@ -63,7 +63,7 @@ Dans une fenêtre large, la discussion rapide se trouve à l'extrémité droite 
 Une fenêtre étroite n'a pas de barre d'état : c'est un bouton de discussion rond, en bas à droite, qui ouvre la fenêtre. Le bouton pulse légèrement pendant qu'un agent répond, et son info-bulle indique quand une discussion est en cours ou contient des réponses non lues.
 
 - Appuyez sur `⌘J` (`Ctrl+J` sous Windows et Linux) pour ouvrir ou fermer la fenêtre flottante ; à l'ouverture, le curseur se place dans la zone de saisie. La touche fonctionne aussi pendant que vous tapez dans cette zone. Vous pouvez la modifier dans **Paramètres → Raccourcis** ; voir [Recherche, raccourcis et préférences](/shortcuts).
-- Appuyez sur `⇧⌘J` (`Ctrl+Maj+J` sous Windows et Linux) pour démarrer plutôt une nouvelle discussion, comme avec **Demander à Multica** ; `⌘J` rouvre la dernière discussion ouverte. Appuyez de nouveau sur la nouvelle discussion pour fermer la fenêtre.
+- Appuyez sur `⇧⌘J` (`Ctrl+Maj+J` sous Windows et Linux) pour démarrer plutôt une nouvelle discussion, comme avec **Demander à Delegora** ; `⌘J` rouvre la dernière discussion ouverte. Appuyez de nouveau sur la nouvelle discussion pour fermer la fenêtre.
 - Faites glisser les bords de la fenêtre pour la redimensionner, ou développez-la et réduisez-la.
 - Sur la page **Discussion** elle-même, la discussion rapide n'apparaît pas dans la barre d'état et le bouton rond ne s'affiche pas ; ni `⌘J` ni `⇧⌘J` n'y font rien : la page montre déjà la même conversation.
 
@@ -78,11 +78,11 @@ Si vous ne voulez pas de la fenêtre flottante, désactivez **Fenêtre de discus
 | Permettre à vos coéquipiers de voir le contexte et de poursuivre la discussion | **Tâche** |
 | Un coup d'œil rapide aux informations de l'espace de travail, sans besoin de garder une trace du travail | **Discussion** |
 
-Seul leur créateur peut lire les discussions directes créées dans Multica ; les autres membres et les administrateurs ne le peuvent pas. Consignez les conclusions que l'équipe doit voir dans une tâche, une description de projet ou un skill.
+Seul leur créateur peut lire les discussions directes créées dans Delegora ; les autres membres et les administrateurs ne le peuvent pas. Consignez les conclusions que l'équipe doit voir dans une tâche, une description de projet ou un skill.
 
 ## Contexte sur plusieurs tours
 
-Une conversation tente de poursuivre la session d'origine dans l'outil de codage IA, afin que les messages suivants n'aient pas à répéter le contenu précédent. Multica stocke l'identifiant de session et achemine les exécutions suivantes vers un runtime qui a accès à cette session.
+Une conversation tente de poursuivre la session d'origine dans l'outil de codage IA, afin que les messages suivants n'aient pas à répéter le contenu précédent. Delegora stocke l'identifiant de session et achemine les exécutions suivantes vers un runtime qui a accès à cette session.
 
 Si la session locale n'existe plus, si le contexte ne peut pas être poursuivi, ou si l'erreur précédente ne doit pas être réutilisée, le runtime démarre une nouvelle session. L'historique des messages de la conversation est conservé dans tous les cas.
 

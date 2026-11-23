@@ -1,12 +1,12 @@
 ---
 title: テーマを作る
-description: Multica のテーマ形式（マニフェスト、CSS 変数、オプション、アンカー）、テーマの書き方とチェック方法、テーマストアへの公開方法。
+description: Delegora のテーマ形式（マニフェスト、CSS 変数、オプション、アンカー）、テーマの書き方とチェック方法、テーマストアへの公開方法。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica のテーマは、`manifest.json` と `theme.css`、それに CSS が使うフォントや画像を入れたフォルダです。CSS はライトとダークのモードごとに公開変数を設定し、安定したアンカーのスタイルを変更できます。マニフェストはテーマに名前を付け、**設定 → 外観** で調整できるオプションを宣言できます。テーマが JavaScript を実行することはありません。
+Delegora のテーマは、`manifest.json` と `theme.css`、それに CSS が使うフォントや画像を入れたフォルダです。CSS はライトとダークのモードごとに公開変数を設定し、安定したアンカーのスタイルを変更できます。マニフェストはテーマに名前を付け、**設定 → 外観** で調整できるオプションを宣言できます。テーマが JavaScript を実行することはありません。
 
 <Callout type="warn">
   テーマの形式はベータ版の API です。安定版と宣言されるまで、変数、アンカー、マニフェストは変わる可能性があります。自動生成された変数とアンカーの完全な一覧は [`docs/theming.md`](https://github.com/multica-ai/multica/blob/main/docs/theming.md) にあります。このページではそれらの組み合わせ方を説明します。
@@ -34,7 +34,7 @@ Multica のテーマは、`manifest.json` と `theme.css`、それに CSS が使
 
 ### チェックする
 
-共有する前に、[Multica リポジトリ](https://github.com/multica-ai/multica)のクローンでチェックを実行します（[チェックとプレビュー](#チェックとプレビュー)を参照）。
+共有する前に、[Delegora リポジトリ](https://github.com/multica-ai/multica)のクローンでチェックを実行します（[チェックとプレビュー](#チェックとプレビュー)を参照）。
 
 </Step>
 </Steps>
@@ -203,7 +203,7 @@ paper/
 
 ## チェックとプレビュー
 
-[Multica リポジトリ](https://github.com/multica-ai/multica)のクローンで実行します。
+[Delegora リポジトリ](https://github.com/multica-ai/multica)のクローンで実行します。
 
 ```bash
 pnpm theme:check path/to/paper          # フォルダ
@@ -217,7 +217,7 @@ pnpm theme:preview path/to/paper --out preview   # preview/light.png と preview
 
 作業中にテーマでインターフェースが隠れたり崩れたりしたら、`?theme=default` を付けてアプリを開くか、読み込み直後に **Shift** を押し続けます。[テーマで表示が崩れたとき](/themes#テーマで表示が崩れたとき)を参照してください。
 
-チェッカーはリポジトリをインストールしなくても、スパースクローンと Node 22.18 以降で実行できます。エージェントも、組み込みの Multica スキルで同じコマンドを使います。
+チェッカーはリポジトリをインストールしなくても、スパースクローンと Node 22.18 以降で実行できます。エージェントも、組み込みの Delegora スキルで同じコマンドを使います。
 
 ```bash
 git clone --depth 1 --filter=blob:none --sparse https://github.com/multica-ai/multica.git multica-themes
@@ -255,7 +255,7 @@ node multica-themes/scripts/theme-check.mjs path/to/paper
 
 新しいリリースは同じチェックを通過してから約 1 時間でストアに反映され、テーマをインストールした人にはアップデートが表示されます。失敗したリリースは前のリリースを置き換えません。アプリはチェックを通過した `theme.zip` そのものだけをインストールし、読み込んだテーマと同じパーサーと CSS チェックで読み込みます。
 
-ストアのカードには、その Multica サーバーからテーマがダウンロードされた回数が表示されます。インストールとアップデートはそれぞれ 1 回と数えられ、まだインストールされていないテーマはダウンロード数の多い順に並びます。
+ストアのカードには、その Delegora サーバーからテーマがダウンロードされた回数が表示されます。インストールとアップデートはそれぞれ 1 回と数えられ、まだインストールされていないテーマはダウンロード数の多い順に並びます。
 
 ## 次のステップ
 

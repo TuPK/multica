@@ -1,17 +1,17 @@
 ---
 title: GitHub 연동
-description: pull request를 Multica 태스크에 연결하고 태스크에서 개발 진행 상황을 확인합니다.
+description: pull request를 Delegora 태스크에 연결하고 태스크에서 개발 진행 상황을 확인합니다.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { PrLinkDemo } from "@/components/demos/pr-link-demo";
 
-GitHub를 연결하면 Multica가 태스크 번호를 기준으로 pull request를 자동 연결합니다. 태스크 상세 화면에서 PR 상태, 변경 규모, CI 결과, merge conflict를 바로 확인할 수 있습니다.
+GitHub를 연결하면 Delegora가 태스크 번호를 기준으로 pull request를 자동 연결합니다. 태스크 상세 화면에서 PR 상태, 변경 규모, CI 결과, merge conflict를 바로 확인할 수 있습니다.
 
 GitHub 연동은 설치할 때 승인한 저장소만 읽으며 코드, 댓글, status check를 제출하지 않습니다.
 
-자체 배포한 Multica에서는 자체 호스팅 Forgejo, Gitea, GitLab 인스턴스도 동시에 연결해 동일한 PR 자동 연결, merge 시 상태 변경, CI 표시 기능을 사용할 수 있습니다. **설정 → 코드**에서 연결하며 자세한 내용은 [자체 호스팅 Git 코드 호스팅](/vcs-integration)을 참고하세요. Multica Cloud에는 이 메뉴가 없습니다.
+자체 배포한 Delegora에서는 자체 호스팅 Forgejo, Gitea, GitLab 인스턴스도 동시에 연결해 동일한 PR 자동 연결, merge 시 상태 변경, CI 표시 기능을 사용할 수 있습니다. **설정 → 코드**에서 연결하며 자세한 내용은 [자체 호스팅 Git 코드 호스팅](/vcs-integration)을 참고하세요. Delegora Cloud에는 이 메뉴가 없습니다.
 
 ## GitHub 연결
 
@@ -30,18 +30,18 @@ GitHub 연동은 설치할 때 승인한 저장소만 읽으며 코드, 댓글, 
 GitHub에서 계정 또는 조직을 선택하고 모든 저장소나 지정한 저장소를 승인합니다.
 </Step>
 <Step>
-설치가 끝나면 Multica로 돌아옵니다.
+설치가 끝나면 Delegora로 돌아옵니다.
 </Step>
 </Steps>
 
 GitHub 행 또는 **저장소 추가** 메뉴에서 **계정 또는 조직 추가**를 선택하면 기존 연결을 해제하지 않고 다른 설치를 연결할 수 있습니다. 각 연결에는 계정과 연결한 사람이 표시되며 저장소 선택기에서 계정을 전환할 수 있습니다. **GitHub 기능 일시 중지**는 워크스페이스의 모든 연결에 적용됩니다.
 
-GitHub에서 사용자 인증을 반환하지 않으면 App이 이미 설치되어 있거나 다른 워크스페이스에 연결되어 있어도 새 연결을 확인할 수 없습니다. 다시 연결하고 인증을 완료하세요. 반복되면 Multica 운영자에게 App의 사용자 인증 설정 확인을 요청하세요. 저장소 범위 변경만으로는 새 연결이 완료되지 않을 수 있습니다.
+GitHub에서 사용자 인증을 반환하지 않으면 App이 이미 설치되어 있거나 다른 워크스페이스에 연결되어 있어도 새 연결을 확인할 수 없습니다. 다시 연결하고 인증을 완료하세요. 반복되면 Delegora 운영자에게 App의 사용자 인증 설정 확인을 요청하세요. 저장소 범위 변경만으로는 새 연결이 완료되지 않을 수 있습니다.
 
 연결 상태는 같은 페이지에 표시됩니다. 일반 멤버는 상태를 볼 수 있지만 연결, 연결 해제, 스위치 변경은 할 수 없습니다.
 
 <Callout type="info">
-**GitHub 연결**은 Multica가 어느 저장소에서 PR 이벤트를 받을지 결정합니다. **코드 저장소** 설정은 에이전트가 작업을 실행할 때 선택할 수 있는 저장소를 결정합니다. 용도가 다르므로 각각 설정해야 합니다.
+**GitHub 연결**은 Delegora가 어느 저장소에서 PR 이벤트를 받을지 결정합니다. **코드 저장소** 설정은 에이전트가 작업을 실행할 때 선택할 수 있는 저장소를 결정합니다. 용도가 다르므로 각각 설정해야 합니다.
 </Callout>
 
 ## 기능 스위치
@@ -54,7 +54,7 @@ GitHub에서 사용자 인증을 반환하지 않으면 App이 이미 설치되�
 | Co-authored-by | 에이전트가 만든 commit에 `Co-authored-by: multica-agent <github@multica.ai>`를 추가합니다. |
 | PR 자동 연결 | 브랜치 이름이나 제목에 태스크 번호가 있거나, 본문에서 closing keyword 바로 뒤에 태스크 번호를 쓴 PR을 해당 태스크에 연결합니다. |
 | PR 병합 후 태스크 상태 | 태스크에 연결된 PR이 모두 병합되면 태스크를 특정 상태(기본값 `Done`)로 바꿀지, 바꾸지 않을지 정합니다. [PR 병합 후 상태 변경](#pr-병합-후-상태-변경)을 참고하세요. |
-| PR 카드 → CI와 merge 가능 여부 | 연결된 각 PR에 대해 Multica는 App 신원으로 GitHub API에서 snapshot을 가져와 CI 상태와 merge 가능 여부를 카드에 표시합니다. [태스크에서 PR 확인](#태스크에서-pr-확인)을 참고하세요. |
+| PR 카드 → CI와 merge 가능 여부 | 연결된 각 PR에 대해 Delegora는 App 신원으로 GitHub API에서 snapshot을 가져와 CI 상태와 merge 가능 여부를 카드에 표시합니다. [태스크에서 PR 확인](#태스크에서-pr-확인)을 참고하세요. |
 
 ## PR을 태스크에 연결
 
@@ -68,7 +68,7 @@ mul-123-fix-login-redirect
 MUL-123 로그인 후 리디렉션 수정
 ```
 
-Multica는 대소문자를 구분하지 않으며 현재 워크스페이스의 태스크 접두사만 매칭합니다. 하나의 PR을 여러 태스크에 연결할 수 있습니다.
+Delegora는 대소문자를 구분하지 않으며 현재 워크스페이스의 태스크 접두사만 매칭합니다. 하나의 PR을 여러 태스크에 연결할 수 있습니다.
 
 태스크 번호를 PR 본문에만 쓴다면 GitHub의 closing keyword를 사용해야 합니다.
 
@@ -80,7 +80,7 @@ Resolves MUL-123
 
 본문에 `Related to MUL-123`처럼 단순히 언급만 하면 해당 태스크와 전혀 연결되지 않습니다. Commit message와 PR 댓글도 연결을 트리거하지 않습니다.
 
-직접 연결할 수도 있습니다. 태스크의 **Pull requests** 영역에서 **+** 버튼을 누르고 PR URL을 붙여넣습니다. PR을 태스크에서 빼려면 해당 행의 **⋯** 메뉴에서 **태스크에서 제거**를 선택합니다. 이후 Multica는 제목이나 브랜치를 보고 다시 연결하지 않습니다.
+직접 연결할 수도 있습니다. 태스크의 **Pull requests** 영역에서 **+** 버튼을 누르고 PR URL을 붙여넣습니다. PR을 태스크에서 빼려면 해당 행의 **⋯** 메뉴에서 **태스크에서 제거**를 선택합니다. 이후 Delegora는 제목이나 브랜치를 보고 다시 연결하지 않습니다.
 
 ## 태스크에서 PR 확인
 
@@ -92,7 +92,7 @@ Resolves MUL-123
 - CI 상태: 모두 통과(개수 표시), 일부 실패(실패한 check 이름 표시), 일부 진행 중. 설정된 check가 없는 PR에는 이 항목을 표시하지 않으며 "check 없음"을 통과로 간주하지 않습니다.
 - merge 가능 여부: merge 가능(GitHub가 merge 상태를 clean으로 보고한 경우만), conflict 있음, blocked, behind
 
-CI 상태와 merge 가능 여부는 Multica가 GitHub API에서 가져온 snapshot이며 서로 독립적입니다. 이미 merge되거나 닫힌 PR에는 두 항목을 더 이상 표시하지 않습니다. GitHub를 일시적으로 사용할 수 없으면 카드는 마지막 snapshot을 유지하고 만료된 정보라고 표시합니다.
+CI 상태와 merge 가능 여부는 Delegora가 GitHub API에서 가져온 snapshot이며 서로 독립적입니다. 이미 merge되거나 닫힌 PR에는 두 항목을 더 이상 표시하지 않습니다. GitHub를 일시적으로 사용할 수 없으면 카드는 마지막 snapshot을 유지하고 만료된 정보라고 표시합니다.
 
 목록 아래에는 다음에 일어날 일을 한 줄로 보여 줍니다. 예를 들어 "#19 병합 시 완료(으)로 변경"이나 병합되지 않고 닫힌 PR입니다. 워크스페이스가 "변경하지 않음"으로 설정되어 있거나 태스크가 이미 대상 상태이면 표시되지 않습니다.
 
@@ -117,21 +117,21 @@ PR을 어떻게 연결했는지는 결과에 영향을 주지 않습니다. 제�
 
 ## 여러 워크스페이스
 
-같은 GitHub App installation을 여러 Multica 워크스페이스에 연결할 수 있습니다. GitHub 이벤트는 각 워크스페이스로 따로 들어가고 각 워크스페이스의 태스크 접두사를 기준으로 매칭됩니다.
+같은 GitHub App installation을 여러 Delegora 워크스페이스에 연결할 수 있습니다. GitHub 이벤트는 각 워크스페이스로 따로 들어가고 각 워크스페이스의 태스크 접두사를 기준으로 매칭됩니다.
 
 예를 들어 PR 하나에서 `MUL-1`과 `ENG-2`를 함께 참조하면 서로 다른 접두사를 사용하는 두 워크스페이스에 각각 연결될 수 있습니다. 워크스페이스는 서로의 태스크를 볼 수 없습니다.
 
-같은 번호가 연결된 여러 워크스페이스에서 태스크와 일치하면(접두사가 같을 때 생길 수 있음) Multica는 어느 워크스페이스에서도 자동으로 연결하지 않습니다. merge로 관련 없는 태스크가 완료되지 않도록 하기 위해서입니다. 올바른 워크스페이스에서 직접 연결하세요.
+같은 번호가 연결된 여러 워크스페이스에서 태스크와 일치하면(접두사가 같을 때 생길 수 있음) Delegora는 어느 워크스페이스에서도 자동으로 연결하지 않습니다. merge로 관련 없는 태스크가 완료되지 않도록 하기 위해서입니다. 올바른 워크스페이스에서 직접 연결하세요.
 
 ## 연결 해제
 
 **설정 → 코드**에서 제거할 계정 옆의 **연결 해제**를 선택하세요. 해당 설치와 현재 워크스페이스의 연결만 제거되며 다른 연결은 이벤트를 계속 수신합니다. App은 GitHub에 설치된 상태로 유지되고 기존 PR 기록과 링크도 보존됩니다.
 
-GitHub 측의 저장소 승인을 취소하려면 개인 또는 조직의 GitHub App installations 페이지에서 App을 제거하거나 저장소 범위를 조정해야 합니다. App을 제거하면 해당 installation에 연결된 모든 Multica 워크스페이스가 이벤트 수신을 중지합니다.
+GitHub 측의 저장소 승인을 취소하려면 개인 또는 조직의 GitHub App installations 페이지에서 App을 제거하거나 저장소 범위를 조정해야 합니다. App을 제거하면 해당 installation에 연결된 모든 Delegora 워크스페이스가 이벤트 수신을 중지합니다.
 
 ## 자체 호스팅 설정
 
-Multica Cloud에서는 이 절차가 필요 없습니다. 자체 호스팅 환경에서는 자신의 GitHub App을 먼저 만들어야 합니다.
+Delegora Cloud에서는 이 절차가 필요 없습니다. 자체 호스팅 환경에서는 자신의 GitHub App을 먼저 만들어야 합니다.
 
 <Steps>
 <Step>
@@ -142,7 +142,7 @@ GitHub의 **Developer settings → GitHub Apps**에서 App을 만들고 다음 �
 
 | 필드 | 값 |
 |---|---|
-| Homepage URL | Multica 프런트엔드 주소. 예: `https://multica.example.com` |
+| Homepage URL | Delegora 프런트엔드 주소. 예: `https://multica.example.com` |
 | Callback URL | `https://<api-host>/api/github/setup` |
 | Request user authorization (OAuth) during installation | 활성화 |
 | Webhook URL | `https://<api-host>/api/webhooks/github` |
@@ -186,7 +186,7 @@ FRONTEND_ORIGIN=https://multica.example.com
 
 새 연결에는 이 절의 GitHub 변수 여섯 개가 모두 필요하며 `GITHUB_APP_ID`와 `GITHUB_APP_PRIVATE_KEY`도 포함됩니다. 하나라도 없으면 연결 버튼이 비활성화됩니다. webhook 수신에는 `GITHUB_WEBHOOK_SECRET`만 필요하며 기존 연결은 계속 작동합니다. 배포 전에 첫 번째 Callback URL을 이 endpoint로 설정하고 설치 시 OAuth 승인을 활성화하세요. 이 옵션이 활성화되면 GitHub는 별도의 Setup URL을 사용하지 않습니다.
 
-새 연결과 PR 카드의 CI 상태 및 merge 가능 여부를 위해 다음 두 변수도 설정하세요. Multica는 metadata 읽기 전용 토큰으로 installation의 전체 저장소 목록을 가져와 연결 사용자가 관리하는 목록과 비교합니다.
+새 연결과 PR 카드의 CI 상태 및 merge 가능 여부를 위해 다음 두 변수도 설정하세요. Delegora는 metadata 읽기 전용 토큰으로 installation의 전체 저장소 목록을 가져와 연결 사용자가 관리하는 목록과 비교합니다.
 
 ```dotenv
 GITHUB_APP_ID=<GitHub App 숫자 ID>

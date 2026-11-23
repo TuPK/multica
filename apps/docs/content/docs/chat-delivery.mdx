@@ -20,7 +20,7 @@ The Secretary can reach you outside the app. When you opt in, the daily brief is
 Set up each app by its own page: [Telegram](/telegram-bot-integration), [Slack](/slack-bot-integration), [Lark](/lark-bot-integration), and [DingTalk](/dingtalk-bot-integration). WeCom has no separate setup page in this release. Its operator configures it.
 
 <Callout type="info">
-The chat platform must already be connected to your Multica account. Brief push uses that connection. It does not create one.
+The chat platform must already be connected to your Delegora account. Brief push uses that connection. It does not create one.
 </Callout>
 
 ## Opting in
@@ -43,11 +43,11 @@ Publishing a brief only queues a delivery for each member who opted in. A separa
 
 In Telegram, Slack, and Lark, each decision in the message has buttons: **approve**, **reject**, and **snooze**. Each button carries a signed token for that proposal and action. The token is valid for 24 hours.
 
-When you press a button, the server works out which Multica member the chat user is, through the connection you made. Only an owner or admin can decide. Agents cannot press buttons. If the chat user is not an owner or admin, the button replies with a link to the app instead. A settled decision removes its buttons from the message.
+When you press a button, the server works out which Delegora member the chat user is, through the connection you made. Only an owner or admin can decide. Agents cannot press buttons. If the chat user is not an owner or admin, the button replies with a link to the app instead. A settled decision removes its buttons from the message.
 
 ## Commands in chat
 
-Members who are linked to Multica can send these commands in a chat with the Secretary:
+Members who are linked to Delegora can send these commands in a chat with the Secretary:
 
 - `/brief` returns the latest brief.
 - `/decisions` lists the pending proposals.

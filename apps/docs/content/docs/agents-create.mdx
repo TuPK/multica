@@ -129,7 +129,7 @@ Editing configuration does not change runs already running. Later runs use the a
 Environment variables suit limited-privilege credentials the agent needs at run time, such as a read-only API key or a single-scope token.
 
 <Callout type="warning">
-**`custom_env` values are stored in plaintext in the Multica server database** — they are not "stays on this machine" data. Agent list and detail endpoints no longer return any env values, only an opaque count; only workspace `owner`s and `admin`s can unlock and modify values, and every read or change leaves an audit record. A running agent cannot call the admin endpoints to read another agent's variables.
+**`custom_env` values are stored in plaintext in the Delegora server database** — they are not "stays on this machine" data. Agent list and detail endpoints no longer return any env values, only an opaque count; only workspace `owner`s and `admin`s can unlock and modify values, and every read or change leaves an audit record. A running agent cannot call the admin endpoints to read another agent's variables.
 </Callout>
 
 Do not use production database admin passwords or other high-value long-lived credentials.
@@ -140,7 +140,7 @@ Critical runtime variables such as `PATH`, `HOME`, and `MULTICA_*` cannot be ove
 
 Custom arguments are passed to the AI coding tool as an array, item by item, without shell expansion. Whether an argument is valid is up to the tool; model configuration that already has a dedicated field doesn't need to be repeated here.
 
-Arguments reserved by the runtime adapter are rejected when creating an agent, editing its custom arguments, or changing its runtime. The error names the conflicting argument. For example, Multica runs Claude Code with `--permission-mode bypassPermissions`; setting `--permission-mode dontAsk` in custom arguments is rejected. Clearing custom arguments with `[]` allows a runtime change when the saved arguments conflict with the target runtime.
+Arguments reserved by the runtime adapter are rejected when creating an agent, editing its custom arguments, or changing its runtime. The error names the conflicting argument. For example, Delegora runs Claude Code with `--permission-mode bypassPermissions`; setting `--permission-mode dontAsk` in custom arguments is rejected. Clearing custom arguments with `[]` allows a runtime change when the saved arguments conflict with the target runtime.
 
 <Callout type="warning">
 Do not put credentials or other secrets in custom arguments. They remain in the child process's argv and may be visible to other local processes through `ps` or `/proc`; use environment variables (`custom_env`) instead. Daemon logs redact argument values, but that does not protect the operating system's process list.
@@ -152,11 +152,11 @@ An agent's **MCP** tab lists the MCP servers it can use in three groups:
 
 | Group | Source |
 |---|---|
-| **Managed by Multica** | Servers that belong to this agent alone. Click **Add MCP** and fill in a STDIO command or a Streamable HTTP URL, in the visual editor or as JSON. |
+| **Managed by Delegora** | Servers that belong to this agent alone. Click **Add MCP** and fill in a STDIO command or a Streamable HTTP URL, in the visual editor or as JSON. |
 | **From the workspace library** | Shared workspace servers assigned to this agent; see the next section. |
 | **Inherited from runtime** | The AI coding tool's own user configuration on the runtime's machine, read-only. It can be read only while a local runtime is online. |
 
-When names collide, the agent's own entry wins over an assigned workspace server, and both win over a runtime server with the same name. The entry that loses is marked **Overridden** or **Overridden by Multica**.
+When names collide, the agent's own entry wins over an assigned workspace server, and both win over a runtime server with the same name. The entry that loses is marked **Overridden** or **Overridden by Delegora**.
 
 ### Shared workspace MCP servers
 

@@ -5,21 +5,21 @@ description: Understand browser sign-in sessions, personal access tokens, and th
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-In day-to-day use of Multica you mainly deal with two kinds of credentials: browser sign-in sessions and personal access tokens. Browser sessions serve web and Desktop; personal access tokens serve the CLI, the daemon, scripts, and the API.
+In day-to-day use of Delegora you mainly deal with two kinds of credentials: browser sign-in sessions and personal access tokens. Browser sessions serve web and Desktop; personal access tokens serve the CLI, the daemon, scripts, and the API.
 
 ## Browser sign-in sessions
 
-After signing in with an email verification code or Google, Multica stores a JWT in an HttpOnly cookie named `multica_auth`. The browser sends it automatically; JavaScript cannot read it directly.
+After signing in with an email verification code or Google, Delegora stores a JWT in an HttpOnly cookie named `multica_auth`. The browser sends it automatically; JavaScript cannot read it directly.
 
 By default a session lasts 30 days, but that is not a countdown from sign-in: a session in continuous use is re-issued before it expires, so staying signed in does not require signing in again on a schedule. It is only re-issued once it is past the halfway point of its lifetime, so a session left unused can end sooner than 30 days after its last use. Self-hosting admins can adjust the lifetime with `AUTH_TOKEN_TTL`; see [Sign-in and signup configuration](/auth-setup#session-lifetime). Logging out clears the auth and CSRF cookies in the current browser.
 
-Browser cookies are not meant to be copied into scripts or the CLI; use a personal access token to access Multica from a terminal.
+Browser cookies are not meant to be copied into scripts or the CLI; use a personal access token to access Delegora from a terminal.
 
 ## Personal access tokens
 
 A personal access token (PAT) starts with `mul_` and represents your account. It can access every workspace and API you have access to, so guard it like a password.
 
-When creating a token under **Settings → API Token**, you provide a name and pick an expiry of 30 days, 90 days, 1 year, or never; 90 days is preselected. The full token is shown exactly once; after the dialog closes, Multica keeps only:
+When creating a token under **Settings → API Token**, you provide a name and pick an expiry of 30 days, 90 days, 1 year, or never; 90 days is preselected. The full token is shown exactly once; after the dialog closes, Delegora keeps only:
 
 - the token's hash;
 - the first few characters, for identification;
@@ -40,7 +40,7 @@ When you run `multica login`, the CLI completes sign-in through the browser, the
 ~/.multica/profiles/<name>/config.json
 ```
 
-The daemon connects to Multica with the same PAT. A `mul_` PAT with an expiry renews automatically when less than 7 days remain, extending it to 90 days from that moment. A failed renewal leaves the token unchanged; once a token has expired or been revoked, run `multica login` again.
+The daemon connects to Delegora with the same PAT. A `mul_` PAT with an expiry renews automatically when less than 7 days remain, extending it to 90 days from that moment. A failed renewal leaves the token unchanged; once a token has expired or been revoked, run `multica login` again.
 
 On a machine without a browser, create a PAT on the web first and let the CLI prompt for it safely:
 
@@ -89,7 +89,7 @@ The server also recognizes two credentials used in internal or managed scenarios
 
 | Prefix | Purpose | Managed by |
 | --- | --- | --- |
-| `mcn_` | Multica Cloud Node connections | Multica Cloud Fleet |
+| `mcn_` | Delegora Cloud Node connections | Delegora Cloud Fleet |
 | `mdt_` | Workspace-scoped daemon authentication protocol | Internal server flows |
 
 Regular Cloud, self-hosted, and Desktop installations never need to create them manually. The user-side CLI and daemon always use `mul_` PATs; don't construct tokens with other prefixes yourself.

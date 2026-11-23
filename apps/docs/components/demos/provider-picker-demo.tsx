@@ -19,7 +19,7 @@ const copy = {
     needs: {
       resume: "Session resumption",
       mcp: "Multica-managed MCP",
-      model: "Model picked in Multica",
+      model: "Model picked in Delegora",
     } as Record<Need, string>,
     toolsLabel: "Tools",
     matching: (n: number, total: number) => `Matching tools: ${n} of ${total}`,
@@ -35,8 +35,8 @@ const copy = {
     needsLabel: "我需要",
     needs: {
       resume: "会话恢复",
-      mcp: "Multica 管理 MCP",
-      model: "在 Multica 选模型",
+      mcp: "Delegora 管理 MCP",
+      model: "在 Delegora 选模型",
     } as Record<Need, string>,
     toolsLabel: "工具",
     matching: (n: number, total: number) => `符合的工具 ${n} 个（共 ${total} 个）`,
@@ -52,8 +52,8 @@ const copy = {
     needsLabel: "必要なもの",
     needs: {
       resume: "セッション再開",
-      mcp: "Multica による MCP 管理",
-      model: "Multica でのモデル選択",
+      mcp: "Delegora による MCP 管理",
+      model: "Delegora でのモデル選択",
     } as Record<Need, string>,
     toolsLabel: "ツール",
     matching: (n: number, total: number) => `条件に合うツール: ${n} 個（全 ${total} 個）`,
@@ -69,8 +69,8 @@ const copy = {
     needsLabel: "필요한 기능",
     needs: {
       resume: "세션 복원",
-      mcp: "Multica의 MCP 관리",
-      model: "Multica에서 모델 선택",
+      mcp: "Delegora의 MCP 관리",
+      model: "Delegora에서 모델 선택",
     } as Record<Need, string>,
     toolsLabel: "도구",
     matching: (n: number, total: number) => `조건에 맞는 도구 ${n}개 (전체 ${total}개)`,
@@ -86,8 +86,8 @@ const copy = {
     needsLabel: "J'ai besoin de",
     needs: {
       resume: "Reprise de session",
-      mcp: "MCP géré par Multica",
-      model: "Modèle choisi dans Multica",
+      mcp: "MCP géré par Delegora",
+      model: "Modèle choisi dans Delegora",
     } as Record<Need, string>,
     toolsLabel: "Outils",
     matching: (n: number, total: number) => `Outils correspondants : ${n} sur ${total}`,

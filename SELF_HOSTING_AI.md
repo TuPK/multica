@@ -1,6 +1,6 @@
 # Self-Hosting Setup (for AI Agents)
 
-This document is designed for AI agents to execute. Follow these steps exactly to deploy a local Multica instance and connect to it.
+This document is designed for AI agents to execute. Follow these steps exactly to deploy a local Delegora instance and connect to it.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/ins
 multica setup self-host
 ```
 
-Wait for the server output `✓ Multica server is running and CLI is ready!` before running `multica setup self-host`.
+Wait for the server output `✓ Delegora server is running and CLI is ready!` before running `multica setup self-host`.
 
 **Expected result:**
 - Frontend at http://localhost:3000

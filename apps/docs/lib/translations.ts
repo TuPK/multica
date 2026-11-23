@@ -90,37 +90,37 @@ export const localeLabels: Record<Lang, string> = {
 // this dict only carries TSX-rendered chrome above the MDX body.
 export const homeCopy = {
   en: {
-    eyebrow: "Multica Docs",
+    eyebrow: "Delegora Docs",
     titleLead: "Humans and agents,",
     titleAccent: "in one place.",
     byline: ["Getting started", "Updated July 2026", "2 min read"],
   },
   zh: {
-    eyebrow: "Multica 文档",
-    titleLead: "Multica 是人类与 AI 智能体",
+    eyebrow: "Delegora 文档",
+    titleLead: "Delegora 是人类与 AI 智能体",
     titleAccent: "共同工作的地方。",
     byline: ["开始使用", "2026 年 7 月更新", "阅读约 2 分钟"],
   },
   "zh-Hant": {
-    eyebrow: "Multica 文件",
-    titleLead: "Multica 是人類與 AI 代理",
+    eyebrow: "Delegora 文件",
+    titleLead: "Delegora 是人類與 AI 代理",
     titleAccent: "共同工作的地方。",
     byline: ["開始使用", "2026 年 7 月更新", "閱讀約 2 分鐘"],
   },
   ko: {
-    eyebrow: "Multica 문서",
+    eyebrow: "Delegora 문서",
     titleLead: "사람과 에이전트,",
     titleAccent: "한곳에서.",
     byline: ["시작하기", "2026년 7월 업데이트", "약 2분 분량"],
   },
   ja: {
-    eyebrow: "Multica ドキュメント",
+    eyebrow: "Delegora ドキュメント",
     titleLead: "人とエージェントが、",
     titleAccent: "一つの場所に。",
     byline: ["はじめに", "2026年7月更新", "約2分で読めます"],
   },
   fr: {
-    eyebrow: "Documentation Multica",
+    eyebrow: "Documentation Delegora",
     titleLead: "Humains et agents,",
     titleAccent: "au même endroit.",
     byline: ["Premiers pas", "Mis à jour en juillet 2026", "2 min de lecture"],

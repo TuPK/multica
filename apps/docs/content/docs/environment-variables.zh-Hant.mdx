@@ -1,12 +1,12 @@
 ---
 title: 環境變數
-description: 自託管 Multica 常用的服務端、儲存、整合和執行時配置。
+description: 自託管 Delegora 常用的服務端、儲存、整合和執行時配置。
 ---
 
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica 在程序啟動時讀取環境變數。修改後通常需要重啟對應的 API、Web 或守護程序。Docker Compose 的 `docker compose restart` 不會重新讀取 `.env`，要用 `up -d` 重建容器才能生效。
+Delegora 在程序啟動時讀取環境變數。修改後通常需要重啟對應的 API、Web 或守護程序。Docker Compose 的 `docker compose restart` 不會重新讀取 `.env`，要用 `up -d` 重建容器才能生效。
 
 本頁按分組列出面向部署者的配置，測試變數和內部執行變數不在這裡展開。完整部署步驟見[自託管快速上手](/self-host-quickstart)。
 
@@ -123,7 +123,7 @@ MULTICA_PUBLIC_URL=https://api.multica.example.com
 
 ## 附件儲存
 
-沒有設定 `S3_BUCKET` 時，Multica 使用本地磁碟。
+沒有設定 `S3_BUCKET` 時，Delegora 使用本地磁碟。
 
 ### S3 或相容儲存
 
@@ -224,7 +224,7 @@ MULTICA_PUBLIC_URL=https://api.multica.example.com
 API key 與 base URL 都為空時，這一層關閉，不會發出任何上游請求——上面兩個功能都不再傳送內容。如果你的政策不允許這一層把聊天內容發到部署之外，這就是受支援的配置方式：對話繼續使用客戶端根據第一條訊息生成的標題，後續提問按鈕不再出現，其餘功能不受影響。
 
 <Callout type="info">
-這只覆蓋輔助生成這一層。AI 代理執行是另一條資料路徑：AI 代理回覆對話時，由你的守護程序呼叫該 AI 代理的 AI 程式設計工具，用的是那個工具自己的憑據，守護程序不會把上面的 `MULTICA_LLM_*` 配置傳給它。（AI 代理自身需要的執行級 Multica 連線變數由守護程序單獨注入。）把上面的變數留空不影響這條路徑——它由 AI 代理的執行時配置決定。
+這只覆蓋輔助生成這一層。AI 代理執行是另一條資料路徑：AI 代理回覆對話時，由你的守護程序呼叫該 AI 代理的 AI 程式設計工具，用的是那個工具自己的憑據，守護程序不會把上面的 `MULTICA_LLM_*` 配置傳給它。（AI 代理自身需要的執行級 Delegora 連線變數由守護程序單獨注入。）把上面的變數留空不影響這條路徑——它由 AI 代理的執行時配置決定。
 </Callout>
 
 ## 守護程序配置
@@ -233,7 +233,7 @@ API key 與 base URL 都為空時，這一層關閉，不會發出任何上游�
 
 | 變數 | 預設值 | 說明 |
 |---|---|---|
-| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | Multica API / WebSocket 地址，也接受 `http(s)` |
+| `MULTICA_SERVER_URL` | `ws://localhost:8080/ws` | Delegora API / WebSocket 地址，也接受 `http(s)` |
 | `MULTICA_DAEMON_DEVICE_NAME` | 主機名 | 執行時列表中的裝置名 |
 | `MULTICA_AGENT_RUNTIME_NAME` | `Local Agent` | 執行時顯示名 |
 | `MULTICA_DAEMON_POLL_INTERVAL` | `30s` | 沒有喚醒事件時的執行輪詢間隔 |
@@ -336,7 +336,7 @@ API key 與 base URL 都為空時，這一層關閉，不會發出任何上游�
 </Accordion>
 </Accordions>
 
-QwenPaw 和 MiniMax Code 沒有模型變數，因為 Multica 不會向它們傳模型，詳見 [AI 程式設計工具對比](/providers#模型來源)。DeepSeek Harness 另有 `MULTICA_DSH_PROFILE_BUNDLE` 和 `MULTICA_DSH_PLUGIN_PATH`，見下一節。
+QwenPaw 和 MiniMax Code 沒有模型變數，因為 Delegora 不會向它們傳模型，詳見 [AI 程式設計工具對比](/providers#模型來源)。DeepSeek Harness 另有 `MULTICA_DSH_PROFILE_BUNDLE` 和 `MULTICA_DSH_PLUGIN_PATH`，見下一節。
 
 全機預設引數 `MULTICA_<字首>_ARGS` 目前支援 Claude Code、Codex、CodeBuddy、Qwen Code、Amp、Factory Droid 和 QwenPaw 七款工具，對應變數是 `MULTICA_CLAUDE_ARGS`、`MULTICA_CODEX_ARGS`、`MULTICA_CODEBUDDY_ARGS`、`MULTICA_QWEN_ARGS`、`MULTICA_AMP_ARGS`、`MULTICA_DROID_ARGS` 和 `MULTICA_QWENPAW_ARGS`。例如：
 
@@ -347,9 +347,9 @@ MULTICA_CLAUDE_ARGS=--max-turns 40
 
 ### DeepSeek Harness 的 profile 安裝
 
-`MULTICA_DSH_PROFILE_BUNDLE` 指定 `multica` profile 缺失時要安裝的 bundle，多個候選用逗號分隔、按序嘗試，每項可以是 npm 包名、目錄或打包好的 tarball。該變數預設不設定。Multica 驅動的 `--stdio` 協議正是由這個 profile 提供，所以不設定時不會改動 DSH 的安裝，守護程序會報告缺少 profile，不會註冊一個不可用的執行時。
+`MULTICA_DSH_PROFILE_BUNDLE` 指定 `multica` profile 缺失時要安裝的 bundle，多個候選用逗號分隔、按序嘗試，每項可以是 npm 包名、目錄或打包好的 tarball。該變數預設不設定。Delegora 驅動的 `--stdio` 協議正是由這個 profile 提供，所以不設定時不會改動 DSH 的安裝，守護程序會報告缺少 profile，不會註冊一個不可用的執行時。
 
-Multica 自己的橋接還沒有釋出到公共 npm registry，如何選取值見[安裝 AI 代理執行時](/install-agent-runtime)。這裡填的東西會在沒有二次確認的情況下裝進每一臺守護程序宿主的 DSH 家目錄，請當作供應鏈決策來對待。
+Delegora 自己的橋接還沒有釋出到公共 npm registry，如何選取值見[安裝 AI 代理執行時](/install-agent-runtime)。這裡填的東西會在沒有二次確認的情況下裝進每一臺守護程序宿主的 DSH 家目錄，請當作供應鏈決策來對待。
 
 這項安裝被刻意限制了範圍：每個守護程序生命週期最多執行一次，只在探測確認 profile 確實缺失時執行；失敗時會把包管理器自身的輸出記入日誌，且只有重啟守護程序後才會重試。探測超時、或返回本守護程序不支援的協議版本時，只做報告，絕不覆蓋安裝：守護程序不會覆蓋一個明顯是刻意裝上去的 profile。排查時在守護程序日誌中搜尋 `DSH runtime profile`；要撤銷安裝，刪除 `$DSH_HOME/profiles/multica`（預設 `~/.dsh/profiles/multica`）。
 
@@ -374,7 +374,7 @@ multica config show
 
 | 鍵 | 預設值 | 說明 |
 |---|---|---|
-| `server_url` | `ws://localhost:8080/ws` | Multica API / WebSocket 地址 |
+| `server_url` | `ws://localhost:8080/ws` | Delegora API / WebSocket 地址 |
 | `app_url` | 空 | 瀏覽器登入使用的 Web 地址 |
 | `workspace_id` | 空 | 預設工作區 |
 | `device_name` | 主機名 | 執行時列表中的裝置名 |

@@ -1,13 +1,13 @@
 ---
 title: Bot Telegram
-description: Connectez un agent Multica à votre propre bot Telegram pour les conversations privées, les mentions dans les groupes, les sujets et /issue.
+description: Connectez un agent Delegora à votre propre bot Telegram pour les conversations privées, les mentions dans les groupes, les sujets et /issue.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-Multica utilise un bot que vous créez avec [@BotFather](https://t.me/BotFather), l'outil officiel de Telegram. Un bot correspond à un agent Multica. Créez un bot distinct pour chaque agent qui a besoin de sa propre identité Telegram.
+Delegora utilise un bot que vous créez avec [@BotFather](https://t.me/BotFather), l'outil officiel de Telegram. Un bot correspond à un agent Delegora. Créez un bot distinct pour chaque agent qui a besoin de sa propre identité Telegram.
 
 <Callout type="info">
 La prise en charge de Telegram est [maintenue par la communauté](/community-maintained) : elle est incluse dans chaque version, mais sans SLA de support officiel. Signalez les problèmes dans les [issues GitHub](https://github.com/multica-ai/multica/issues).
@@ -15,7 +15,7 @@ La prise en charge de Telegram est [maintenue par la communauté](/community-mai
 
 ## Avant de commencer
 
-- Un propriétaire ou un administrateur de l'espace de travail Multica doit connecter le bot.
+- Un propriétaire ou un administrateur de l'espace de travail Delegora doit connecter le bot.
 - Le serveur API doit pouvoir joindre `https://api.telegram.org`.
 - Vous avez besoin du jeton de bot délivré par @BotFather. Traitez-le comme un mot de passe.
 
@@ -40,18 +40,18 @@ Ne collez jamais le jeton dans une tâche, un message de discussion, un journal 
 
 ### Le connecter à un agent [#2-le-connecter-à-un-agent]
 
-1. Dans Multica, ouvrez **Agents**, sélectionnez un agent et ouvrez **Messagerie**.
+1. Dans Delegora, ouvrez **Agents**, sélectionnez un agent et ouvrez **Messagerie**.
 2. Cliquez sur **Ajouter un canal de messagerie**, puis choisissez **Telegram**.
 3. Collez le jeton du bot et cliquez sur **Connecter**.
 
-Multica appelle Telegram pour vérifier le bot, s'assure qu'aucun webhook sortant n'entre en conflit avec le long polling, chiffre le jeton et démarre une connexion `getUpdates` supervisée. Un bot déjà connecté à un autre agent ou espace de travail doit d'abord y être déconnecté.
+Delegora appelle Telegram pour vérifier le bot, s'assure qu'aucun webhook sortant n'entre en conflit avec le long polling, chiffre le jeton et démarre une connexion `getUpdates` supervisée. Un bot déjà connecté à un autre agent ou espace de travail doit d'abord y être déconnecté.
 
 </Step>
 </Steps>
 
 ## Première utilisation [#première-utilisation-et-association-de-compte]
 
-La première fois qu'un membre écrit au bot, celui-ci lui envoie un lien d'association de compte Multica à usage unique. Ouvrez-le, connectez-vous au même espace de travail Multica, puis revenez dans Telegram et renvoyez le message. Le lien expire au bout de 15 minutes ; écrivez de nouveau au bot pour obtenir un nouveau lien.
+La première fois qu'un membre écrit au bot, celui-ci lui envoie un lien d'association de compte Delegora à usage unique. Ouvrez-le, connectez-vous au même espace de travail Delegora, puis revenez dans Telegram et renvoyez le message. Le lien expire au bout de 15 minutes ; écrivez de nouveau au bot pour obtenir un nouveau lien.
 
 Dans un groupe, le bot ne publie jamais publiquement ce lien, qui donne accès à quiconque le détient. Il demande d'abord à l'expéditeur de démarrer une conversation privée.
 
@@ -65,7 +65,7 @@ Ouvrez le bot et envoyez-lui directement du texte. Aucune @mention n'est nécess
 
 ### Groupes et sujets de forum
 
-Ajoutez le bot à un groupe, puis @mentionnez-le ou répondez directement à l'un de ses messages. Les messages acceptés restent dans la conversation Multica qui se poursuit : chaque groupe ordinaire a sa propre discussion, et les sujets de forum sont isolés dans des discussions distinctes.
+Ajoutez le bot à un groupe, puis @mentionnez-le ou répondez directement à l'un de ses messages. Les messages acceptés restent dans la conversation Delegora qui se poursuit : chaque groupe ordinaire a sa propre discussion, et les sujets de forum sont isolés dans des discussions distinctes.
 
 <Accordions type="multiple">
 <Accordion title="Messages de groupe qui ne s'adressent pas au bot" id="unaddressed-group-messages">
@@ -93,9 +93,9 @@ Lorsqu'une réponse adressée au bot cite un message contenant une photo ou un f
 
 ### Commandes
 
-- `/new` crée une nouvelle discussion Multica vide et y achemine les messages suivants de la conversation Telegram. `/new <message>` crée la discussion avec ce message comme premier tour. Dans une réponse à une autre personne qui mentionne explicitement le bot, la citation sélectionnée reste jointe à ce premier tour.
-- `/clear` conserve la discussion Multica en cours et applique un nouveau contexte visible par l'agent au prochain message non vide. `/clear <message>` utilise ce message comme premier tour après la limite de contexte ; une citation de réponse explicitement sélectionnée reste jointe.
-- `/issue <title>` crée une tâche Multica ; les lignes suivantes servent de description facultative. `/issue` sans titre renvoie des indications d'utilisation.
+- `/new` crée une nouvelle discussion Delegora vide et y achemine les messages suivants de la conversation Telegram. `/new <message>` crée la discussion avec ce message comme premier tour. Dans une réponse à une autre personne qui mentionne explicitement le bot, la citation sélectionnée reste jointe à ce premier tour.
+- `/clear` conserve la discussion Delegora en cours et applique un nouveau contexte visible par l'agent au prochain message non vide. `/clear <message>` utilise ce message comme premier tour après la limite de contexte ; une citation de réponse explicitement sélectionnée reste jointe.
+- `/issue <title>` crée une tâche Delegora ; les lignes suivantes servent de description facultative. `/issue` sans titre renvoie des indications d'utilisation.
 - Les suffixes de commande Telegram tels que `/issue@your_bot` sont pris en charge dans les groupes.
 
 ### Réponses et contenus pris en charge
@@ -116,7 +116,7 @@ Répondre à un message contenant une photo, un fichier, une vidéo, un message 
 
 Telegram ne permet à un bot de télécharger que des fichiers de 20 Mo au maximum. Lorsqu'un fichier ne peut pas être récupéré (trop volumineux, ou échec du téléchargement), le bot vous le signale et l'agent ne voit qu'un espace réservé.
 
-Les fichiers produits par l'agent sont renvoyés sous forme de messages distincts : les photos jusqu'à 10 Mo s'affichent directement, tout le reste arrive sous forme de fichier, jusqu'à 50 Mo. Si la livraison d'un fichier ne peut pas être confirmée, le bot le signale et le fichier reste joint à la réponse dans Multica.
+Les fichiers produits par l'agent sont renvoyés sous forme de messages distincts : les photos jusqu'à 10 Mo s'affichent directement, tout le reste arrive sous forme de fichier, jusqu'à 50 Mo. Si la livraison d'un fichier ne peut pas être confirmée, le bot le signale et le fichier reste joint à la réponse dans Delegora.
 
 Sans stockage objet, le bot répond aux médias en indiquant qu'ils ne sont pas pris en charge, et l'agent est informé qu'il ne peut pas envoyer de fichiers. Les stickers, positions, sondages et autres messages qui ne sont pas des fichiers reçoivent la même réponse dans les conversations privées et lorsqu'ils sont adressés au bot dans un groupe ; dans un groupe, ceux qui ne lui sont pas adressés restent sans réponse.
 
@@ -125,7 +125,7 @@ Sans stockage objet, le bot répond aux médias en indiquant qu'ils ne sont pas 
 
 ## Gérer les connexions
 
-Ouvrez **Paramètres → Messagerie** pour voir les agents connectés, regroupés par plateforme. Sélectionnez un agent pour ouvrir sa section **Messagerie**. Les propriétaires et administrateurs de l'espace de travail peuvent y déconnecter le bot depuis son menu de gestion. La déconnexion arrête le long polling et les réponses sortantes, mais conserve les conversations Multica et les enregistrements d'audit.
+Ouvrez **Paramètres → Messagerie** pour voir les agents connectés, regroupés par plateforme. Sélectionnez un agent pour ouvrir sa section **Messagerie**. Les propriétaires et administrateurs de l'espace de travail peuvent y déconnecter le bot depuis son menu de gestion. La déconnexion arrête le long polling et les réponses sortantes, mais conserve les conversations Delegora et les enregistrements d'audit.
 
 ## Configuration en auto-hébergement
 
@@ -143,7 +143,7 @@ Les liens d'association utilisent `MULTICA_APP_URL`, ou à défaut `FRONTEND_ORI
 
 - **Le bot ne peut pas être vérifié** : vérifiez d'abord la connectivité du serveur et les réglages du proxy. Ne générez un nouveau jeton que si Telegram rejette lui-même le jeton actuel.
 - **Conflit de webhook** : supprimez le webhook existant du bot avant de le connecter. Telegram n'autorise pas `getUpdates` tant qu'un webhook est actif.
-- **Conflit de polling 409** : une autre instance ou un autre processus Multica interroge le même bot. Arrêtez l'autre consommateur ou utilisez un bot distinct par environnement.
+- **Conflit de polling 409** : une autre instance ou un autre processus Delegora interroge le même bot. Arrêtez l'autre consommateur ou utilisez un bot distinct par environnement.
 - **Aucune réponse dans le groupe** : vérifiez que le bot est dans le groupe et que le message le @mentionne ou répond à l'un de ses messages.
 - **Lien d'association expiré** : envoyez un autre message privé au bot et utilisez le lien le plus récent.
 - **Le bot ne s'exécute pas** : vérifiez si l'agent est archivé et si son [runtime](/daemon-runtimes) est en ligne.

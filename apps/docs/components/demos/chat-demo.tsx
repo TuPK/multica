@@ -50,7 +50,7 @@ const copy = {
       idle: "A new chat with an agent. Nobody else can see it.",
       start: "Before the first message, the agent's suggestions are shown. Pick the first one.",
       filled: "The suggestion went into the composer and was not sent, so you can adjust it first. Click send.",
-      replying: "The agent looks this up in the workspace with the Multica CLI. The chat isn't tied to any issue.",
+      replying: "The agent looks this up in the workspace with the Delegora CLI. The chat isn't tied to any issue.",
       replied:
         "The agent answered without creating anything. Click the follow-up to ask it to create an issue: a follow-up is sent right away.",
       creating: "You asked it explicitly, so the agent acts with your workspace access and creates the issue.",
@@ -95,7 +95,7 @@ const copy = {
       idle: "和智能体新开的一段对话，只有你能看到。",
       start: "发送第一条消息前，这里列出智能体的开场建议。选择第一条。",
       filled: "建议填进了输入框，没有发送，可以先改。点击发送。",
-      replying: "智能体用 Multica CLI 查询工作区。这段对话不绑定任何任务。",
+      replying: "智能体用 Delegora CLI 查询工作区。这段对话不绑定任何任务。",
       replied: "智能体只回答了问题，没有建任何东西。点击后续提问请它建任务，后续提问点了就会发送。",
       creating: "你明确提出了要求，智能体以你的工作区权限代你建任务。",
       done: "任务建好了，这段对话仍然只有你能看到。点右上角可以重新演示。",
@@ -142,7 +142,7 @@ const copy = {
       idle: "エージェントと新しく始めたチャットです。ほかの人には見えません。",
       start: "最初のメッセージを送る前は、エージェントの開始例が表示されます。最初の例を選びます。",
       filled: "開始例は入力欄に入っただけで、送信はされていません。先に手直しできます。送信をクリックします。",
-      replying: "エージェントは Multica CLI でワークスペースを調べます。このチャットはどのタスクにも紐づいていません。",
+      replying: "エージェントは Delegora CLI でワークスペースを調べます。このチャットはどのタスクにも紐づいていません。",
       replied:
         "エージェントは質問に答えただけで、何も作成していません。フォローアップ質問をクリックしてタスクの作成を頼みます。フォローアップ質問はクリックするとすぐ送信されます。",
       creating: "はっきり頼んだので、エージェントはあなたのワークスペース権限でタスクを作成します。",
@@ -190,7 +190,7 @@ const copy = {
       idle: "에이전트와 새로 시작한 채팅입니다. 다른 사람은 볼 수 없습니다.",
       start: "첫 메시지를 보내기 전에는 에이전트의 대화 시작 예시가 표시됩니다. 첫 번째 예시를 선택하세요.",
       filled: "예시는 입력란에 채워졌을 뿐 전송되지 않았으니 먼저 고칠 수 있습니다. 보내기를 클릭하세요.",
-      replying: "에이전트가 Multica CLI로 워크스페이스를 조회합니다. 이 채팅은 어떤 태스크에도 묶여 있지 않습니다.",
+      replying: "에이전트가 Delegora CLI로 워크스페이스를 조회합니다. 이 채팅은 어떤 태스크에도 묶여 있지 않습니다.",
       replied:
         "에이전트는 질문에 답하기만 했고 아무것도 만들지 않았습니다. 후속 질문을 클릭해 태스크 생성을 요청하세요. 후속 질문은 클릭하면 바로 전송됩니다.",
       creating: "명시적으로 요청했으므로 에이전트가 내 워크스페이스 권한으로 태스크를 만듭니다.",
@@ -242,7 +242,7 @@ const copy = {
       filled:
         "La suggestion est dans la zone de saisie, pas encore envoyée : vous pouvez l'ajuster d'abord. Cliquez sur envoyer.",
       replying:
-        "L'agent consulte l'espace de travail avec la CLI Multica. La discussion n'est liée à aucune tâche.",
+        "L'agent consulte l'espace de travail avec la CLI Delegora. La discussion n'est liée à aucune tâche.",
       replied:
         "L'agent a répondu sans rien créer. Cliquez sur la question de suivi pour lui demander de créer une tâche : une question de suivi part dès le clic.",
       creating:

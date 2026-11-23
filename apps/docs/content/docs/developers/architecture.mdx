@@ -1,9 +1,9 @@
 ---
 title: Project architecture
-description: Learn how Multica's clients, Go service, execution daemon, and shared frontend packages work together.
+description: Learn how Delegora's clients, Go service, execution daemon, and shared frontend packages work together.
 ---
 
-Multica consists of a Go backend, multiple clients, and a daemon that runs on execution computers. PostgreSQL stores collaboration data; the daemon claims tasks and invokes local AI coding tools.
+Delegora consists of a Go backend, multiple clients, and a daemon that runs on execution computers. PostgreSQL stores collaboration data; the daemon claims tasks and invokes local AI coding tools.
 
 This implementation-focused page uses **task** for the internal scheduler, API, and database entity behind a product **Run**. The UI and product documentation call it a Run; identifiers such as `TaskService` and `task_id` remain unchanged for compatibility.
 
@@ -19,7 +19,7 @@ Web / Desktop / Mobile / CLI
      local daemon ─── AI coding tools
 ```
 
-For a product-facing explanation, see [How Multica works](/how-multica-works). This page focuses on how the code is layered.
+For a product-facing explanation, see [How Delegora works](/how-multica-works). This page focuses on how the code is layered.
 
 ## Repository layout
 
@@ -100,7 +100,7 @@ PostgreSQL is the source of truth for business data. Redis is optional and is us
 
 ## Realtime connections
 
-Multica has two distinct WebSocket paths:
+Delegora has two distinct WebSocket paths:
 
 - `internal/realtime/` pushes issue, comment, inbox, and other changes to user clients.
 - `internal/daemonws/` connects daemons to wake runtimes and perform daemon RPC.

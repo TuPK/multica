@@ -6,13 +6,13 @@ description: Create a Slack Bot for an agent and use it in DMs, channels, and th
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica uses your own Slack app. Once connected, team members can DM the Bot or @-mention it in a channel, and use `@Multica /help` to list commands, `/issue` to create issues, `/new` to start a new Multica Chat, and `/clear` to reset the current Chat's agent context.
+Delegora uses your own Slack app. Once connected, team members can DM the Bot or @-mention it in a channel, and use `@Multica /help` to list commands, `/issue` to create issues, `/new` to start a new Delegora Chat, and `/clear` to reset the current Chat's agent context.
 
-One Slack app maps to one Multica agent. To connect several agents, create a separate app for each.
+One Slack app maps to one Delegora agent. To connect several agents, create a separate app for each.
 
 ## Before you start
 
-The connection must be completed by a workspace owner or admin, and ends with two credentials pasted into Multica:
+The connection must be completed by a workspace owner or admin, and ends with two credentials pasted into Delegora:
 
 - a Bot User OAuth Token, starting with `xoxb-`;
 - an App-level Token, starting with `xapp-`.
@@ -28,29 +28,29 @@ Open [Slack API Apps](https://api.slack.com/apps), click **Create New App → Fr
 
 ```yaml
 display_information:
-  name: Multica
+  name: Delegora
 features:
   app_home:
     home_tab_enabled: false
     messages_tab_enabled: true
     messages_tab_read_only_enabled: false
   bot_user:
-    display_name: Multica
+    display_name: Delegora
     always_online: true
   slash_commands:
     - command: /issue
-      description: Create a Multica issue
+      description: Create a Delegora issue
       usage_hint: "[description]"
     - command: /new
-      description: Start a new Multica chat
+      description: Start a new Delegora chat
       usage_hint: "[message]"
     - command: /clear
-      description: Clear the current Multica chat context
+      description: Clear the current Delegora chat context
       usage_hint: "[message]"
     - command: /brief
-      description: Show the latest Multica brief
+      description: Show the latest Delegora brief
     - command: /decisions
-      description: Show the decisions waiting for you in Multica
+      description: Show the decisions waiting for you in Delegora
 oauth_config:
   scopes:
     bot:
@@ -80,7 +80,7 @@ settings:
   token_rotation_enabled: false
 ```
 
-Before creating, you can replace both occurrences of `Multica` with the agent's name. Do not remove scopes or events from the manifest, or DMs, channel mentions, replies, `@Multica /help`, `/issue`, `/new`, or `/clear` may stop working.
+Before creating, you can replace both occurrences of `Delegora` with the agent's name. Do not remove scopes or events from the manifest, or DMs, channel mentions, replies, `@Multica /help`, `/issue`, `/new`, or `/clear` may stop working.
 
 <Callout type="warning">
 Slack slash-command names are workspace-global. If another installed app already owns `/new`, `/clear`, `/brief`, or `/decisions`, Slack rejects the conflicting command when you create or update the app. Resolve the collision, or send the message form `@Multica /new [message]` or `@Multica /clear [message]` to bypass native slash-command interception. `/brief` and `/decisions` have no message form, so they need the slash command.
@@ -119,15 +119,15 @@ The Bot connects out to Slack over Socket Mode, so no public Request URL or OAut
 
 ### Connect it to an agent [#3-connect-it-to-an-agent]
 
-1. In Multica, open **Agents** and select the agent to connect to Slack.
+1. In Delegora, open **Agents** and select the agent to connect to Slack.
 2. Go to **Messaging**, click **Add messaging channel**, then choose **Slack**.
 3. Paste the Bot token and the App-level token.
 4. Click **Connect**.
 
-Multica verifies that the two tokens come from the same app. Once connected, the page shows **Connected**.
+Delegora verifies that the two tokens come from the same app. Once connected, the page shows **Connected**.
 
 <Callout type="warning">
-Both tokens are stored encrypted on the Multica server. Tokens are credentials: don't put them in issues, comments, or code repositories. An app already connected to another agent or workspace can't be reused directly; disconnect the original connection first.
+Both tokens are stored encrypted on the Delegora server. Tokens are credentials: don't put them in issues, comments, or code repositories. An app already connected to another agent or workspace can't be reused directly; disconnect the original connection first.
 </Callout>
 
 </Step>
@@ -135,11 +135,11 @@ Both tokens are stored encrypted on the Multica server. Tokens are credentials: 
 
 ## First use
 
-The first time a member DMs or @-mentions the Bot, they receive an account binding link. Sign in with the Multica account for that workspace, then return to Slack and send the message again.
+The first time a member DMs or @-mentions the Bot, they receive an account binding link. Sign in with the Delegora account for that workspace, then return to Slack and send the message again.
 
-The link is single-use and expires after 15 minutes. Once it expires, message the Bot again for a new one. Multiple Bots in the same Multica workspace can usually reuse an existing binding if they come from the same Slack workspace.
+The link is single-use and expires after 15 minutes. Once it expires, message the Bot again for a new one. Multiple Bots in the same Delegora workspace can usually reuse an existing binding if they come from the same Slack workspace.
 
-Only members of the current Multica workspace can use the Bot.
+Only members of the current Delegora workspace can use the Bot.
 
 ## Hand work to the agent in Slack
 
@@ -165,17 +165,17 @@ This needs the `files:read` scope; if the app was installed before attachment su
 
 ### See the brief and decisions with `/brief` and `/decisions`
 
-In a DM or a channel, type `/brief` to see the headline of the latest brief with a link to it, or `/decisions` to see the decisions waiting for you, each with a link to the Company. Only you see the reply. You need to be linked to a Multica member of the workspace, as for the other commands.
+In a DM or a channel, type `/brief` to see the headline of the latest brief with a link to it, or `/decisions` to see the decisions waiting for you, each with a link to the Company. Only you see the reply. You need to be linked to a Delegora member of the workspace, as for the other commands.
 
 ### Decide from the brief in Slack
 
-When a brief is ready and brief push is on for you, the Bot sends it to your DM with the headline, the number of decisions, the top three decisions and a link to the brief. Each decision has **Approve**, **Reject** and **Snooze 7 days** buttons, and **Revise** opens the decision in Multica because a revision needs a note.
+When a brief is ready and brief push is on for you, the Bot sends it to your DM with the headline, the number of decisions, the top three decisions and a link to the brief. Each decision has **Approve**, **Reject** and **Snooze 7 days** buttons, and **Revise** opens the decision in Delegora because a revision needs a note.
 
-Only an owner or admin of the workspace can decide from Slack. Anyone else is shown a link to the app instead. A button works for 24 hours after the brief is sent; after that, open the decision in Multica. Once a decision is decided, its buttons are removed from the message.
+Only an owner or admin of the workspace can decide from Slack. Anyone else is shown a link to the app instead. A button works for 24 hours after the brief is sent; after that, open the decision in Delegora. Once a decision is decided, its buttons are removed from the message.
 
 ### List commands with `@Multica /help`
 
-Send `@Multica /help` in a DM, channel, or thread to list `@Multica /help`, `@Multica /new [message]`, `@Multica /clear [message]`, and `@Multica /issue <title>` (subsequent lines become the description). Multica replies directly without creating a Chat or run or changing the active Chat.
+Send `@Multica /help` in a DM, channel, or thread to list `@Multica /help`, `@Multica /new [message]`, `@Multica /clear [message]`, and `@Multica /issue <title>` (subsequent lines become the description). Delegora replies directly without creating a Chat or run or changing the active Chat.
 
 The default manifest registers only `/issue`, `/new`, and `/clear` as native slash commands. `@Multica /help` needs no manifest change or reinstall. Native `/issue <description>` asks the agent to create an issue from your description.
 
@@ -187,21 +187,21 @@ In a channel or DM, type:
 /issue Safari stays on the login page after a successful sign-in
 ```
 
-This command needs no @-mention. Multica hands the description to the agent behind the current Bot, which writes up the title and body and creates the issue. Slack first shows an acknowledgment visible only to you; when the issue is created, you get a notification in your Multica inbox.
+This command needs no @-mention. Delegora hands the description to the agent behind the current Bot, which writes up the title and body and creates the issue. Slack first shows an acknowledgment visible only to you; when the issue is created, you get a notification in your Delegora inbox.
 
 ### Start a new Chat with `/new`
 
 In a DM with the Bot, `/new` immediately creates a new, visible empty Chat. `/new <message>` creates the Chat and uses the message as its first turn. A Chat created by a bare `/new` displays as **New chat** until its first effective message arrives, and is then titled from that message.
 
-The previous Chat remains available and writable in Multica on the web, desktop, and mobile. Only subsequent messages from this Slack conversation are routed to the new Chat.
+The previous Chat remains available and writable in Delegora on the web, desktop, and mobile. Only subsequent messages from this Slack conversation are routed to the new Chat.
 
 In a channel or thread, Slack's native slash-command payload does not identify the target thread. Send `@Multica /new [message]` in the target thread instead.
 
 ### Clear the current Chat context with `/clear`
 
-In a DM with the Bot, `/clear` keeps the current Multica Chat and resets only the context visible to the agent. The complete Chat history remains stored and visible in Multica. `/clear <message>` uses the message as the first turn in the new context; a bare `/clear` applies the boundary to the next real message.
+In a DM with the Bot, `/clear` keeps the current Delegora Chat and resets only the context visible to the agent. The complete Chat history remains stored and visible in Delegora. `/clear <message>` uses the message as the first turn in the new context; a bare `/clear` applies the boundary to the next real message.
 
-In a channel or thread, send `@Multica /clear [message]` in the target thread so Multica can apply the boundary to the correct conversation.
+In a channel or thread, send `@Multica /clear [message]` in the target thread so Delegora can apply the boundary to the correct conversation.
 
 ## Manage connections
 
@@ -211,7 +211,7 @@ After disconnecting, the Socket Mode connection stops and the Bot no longer rece
 
 ## Self-hosting setup
 
-Multica Cloud needs no extra configuration. A self-hosted deployment must first set a key used to encrypt Slack tokens:
+Delegora Cloud needs no extra configuration. A self-hosted deployment must first set a key used to encrypt Slack tokens:
 
 ```dotenv
 MULTICA_SLACK_SECRET_KEY=<base64-encoded 32-byte key>
@@ -225,7 +225,7 @@ openssl rand -base64 32
 
 Restart the API server, then connect the Slack app. Keep this key long-term: if it is rotated or lost, existing tokens can no longer be decrypted and the Bot must be reconnected.
 
-Account binding links use `MULTICA_APP_URL`, falling back to `FRONTEND_ORIGIN` when unset; it must point to a Multica address members can reach.
+Account binding links use `MULTICA_APP_URL`, falling back to `FRONTEND_ORIGIN` when unset; it must point to a Delegora address members can reach.
 
 ## Troubleshooting
 
@@ -233,7 +233,7 @@ Account binding links use `MULTICA_APP_URL`, falling back to `FRONTEND_ORIGIN` w
 - **App can't be verified**: confirm the manifest includes `users:read`, then reinstall the app after updating permissions.
 - **No DM entry point**: confirm `app_home.messages_tab_enabled` is `true`.
 - **No reply in a channel**: confirm the Bot has been invited to the channel and the message @-mentions it.
-- **`/help` does not reach Multica**: send `@Multica /help`; the default manifest does not register native `/help`.
+- **`/help` does not reach Delegora**: send `@Multica /help`; the default manifest does not register native `/help`.
 - **`/issue`, `/new`, or `/clear` doesn't exist**: confirm the manifest includes all three slash commands and the `commands` scope, then reinstall the app. If Slack reports that `/new` or `/clear` is already taken, use the `@Multica` message form or resolve the workspace-level command collision first.
 - **Files don't reach the agent**: confirm the manifest includes `files:read` and that the app was reinstalled after the scope was added, and check the file is 20 MiB or smaller.
 - **The Bot doesn't run**: check whether the agent is archived and whether the [runtime](/daemon-runtimes) it uses is online.

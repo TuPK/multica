@@ -20,7 +20,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 
 ## 资源进入执行的方式
 
-当智能体处理项目内的任务时，Multica 会把项目名称、项目描述和资源列表加入执行上下文，并在工作目录中写入 `.multica/project/resources.json`。
+当智能体处理项目内的任务时，Delegora 会把项目名称、项目描述和资源列表加入执行上下文，并在工作目录中写入 `.multica/project/resources.json`。
 
 工作区关联的仓库列表始终包含在执行上下文中。项目关联的仓库在此基础上指明这组工作使用的代码和默认 ref。
 
@@ -32,7 +32,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 
 粘贴 GitHub 分支页面的 URL（`https://github.com/owner/repo/tree/branch`）时，仓库地址和起始分支会分别填入。经过 URL 编码的分支名会还原，查询参数和页面锚点不会算入分支名。添加仓库前请检查起始分支。修改仓库地址时，原来的起始分支会清空；如果新地址包含分支，则改用该分支。
 
-仓库不限于 GitHub：任何运行时能访问的 Git URL 都可以作为仓库资源。自部署的 Multica 还可以在 **设置 → 代码** 连接自托管的 Forgejo、Gitea 或 GitLab，见[自托管 Git 代码托管](/vcs-integration)。
+仓库不限于 GitHub：任何运行时能访问的 Git URL 都可以作为仓库资源。自部署的 Delegora 还可以在 **设置 → 代码** 连接自托管的 Forgejo、Gitea 或 GitLab，见[自托管 Git 代码托管](/vcs-integration)。
 
 创建项目时，也可以直接在 **Repos** 中选择仓库。一个项目可以关联多个 GitHub 仓库。
 
@@ -82,7 +82,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 每个项目在同一台守护进程上最多关联一个本地目录。团队中的不同电脑可以分别为同一个项目关联各自的目录。
 
 <Callout type="warning">
-在默认的 `in_place` 模式下，本地目录不是隔离环境：智能体会直接看到并修改当前分支和未提交的文件，Multica 也不会自动切换分支、stash、commit、push 或创建 PR。worktree 模式不一样，见下面的[运行如何共享这个目录](#运行如何共享这个目录)。
+在默认的 `in_place` 模式下，本地目录不是隔离环境：智能体会直接看到并修改当前分支和未提交的文件，Delegora 也不会自动切换分支、stash、commit、push 或创建 PR。worktree 模式不一样，见下面的[运行如何共享这个目录](#运行如何共享这个目录)。
 </Callout>
 
 <span id="task-如何共享这个目录" />
@@ -99,7 +99,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 
 智能体直接在你的目录里工作。同一小组的运行依次占用目录，不同小组的运行可以同时在其中工作。运行发现目录被占用时进入 `waiting_local_directory`，等占用者释放后继续。两个路径经不同符号链接指向同一目录时，共用同一把锁。
 
-共享目录不等于隔离。所有运行都写进同一个文件夹，因此两个小组可能互相覆盖文件（例如两份报告都叫 `01-reader.md`），或读到另一个小组刚写入的文件。Multica 不会阻止这种情况。如果各小组的产出不能冲突，请在指令里让它们写入各自的子文件夹，或在 git 仓库中使用 worktree 模式。
+共享目录不等于隔离。所有运行都写进同一个文件夹，因此两个小组可能互相覆盖文件（例如两份报告都叫 `01-reader.md`），或读到另一个小组刚写入的文件。Delegora 不会阻止这种情况。如果各小组的产出不能冲突，请在指令里让它们写入各自的子文件夹，或在 git 仓库中使用 worktree 模式。
 
 等待不会修改目录，也不占用守护进程执行槽位。等待中的运行可以取消，否则会在目录和执行容量都可用后继续启动。
 
@@ -112,7 +112,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 
 这个目录必须是至少有一次提交的 git 仓库；不满足时运行会明确报错，不会悄悄退回串行。
 
-那台机器上的运行时也必须实现了该模式。运行时在连接时会声明这项能力，Multica 只看这个声明，不看版本号：一个开发构建完全可能带着看起来足够新的版本号，却没有对应的实现。这个声明会被检查两次。保存资源时，只要那台机器的运行时没有声明该能力，保存就会被拒绝，并提示去升级那台机器上的 App；每次运行被真正领取时，还会按领取它的运行时再检查一次，所以资源保存之后才降级的机器，其运行会被带原因取消，不会悄悄在原目录里跑掉。选择 `worktree` 就是在要求隔离，Multica 不会拿"直接改你的工作副本"来兜底。
+那台机器上的运行时也必须实现了该模式。运行时在连接时会声明这项能力，Delegora 只看这个声明，不看版本号：一个开发构建完全可能带着看起来足够新的版本号，却没有对应的实现。这个声明会被检查两次。保存资源时，只要那台机器的运行时没有声明该能力，保存就会被拒绝，并提示去升级那台机器上的 App；每次运行被真正领取时，还会按领取它的运行时再检查一次，所以资源保存之后才降级的机器，其运行会被带原因取消，不会悄悄在原目录里跑掉。选择 `worktree` 就是在要求隔离，Delegora 不会拿"直接改你的工作副本"来兜底。
 
 智能体看到什么、你拿回什么：
 
@@ -126,7 +126,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 </Accordion>
 <Accordion title="结果是你仓库里的一个分支" id="result-is-a-branch">
 
-分支按任务而不是按每次执行来分：`agent/<agent>/<issue>`（chat 则是 `agent/<agent>/chat-<session>`）。本次运行的**详情**面板里会显示分支名（可直接复制），也可以用 `git branch` 找到它。用 `git log` / `git diff` review，然后自己决定 merge 还是 cherry-pick，Multica 不会替你合并。
+分支按任务而不是按每次执行来分：`agent/<agent>/<issue>`（chat 则是 `agent/<agent>/chat-<session>`）。本次运行的**详情**面板里会显示分支名（可直接复制），也可以用 `git branch` 找到它。用 `git log` / `git diff` review，然后自己决定 merge 还是 cherry-pick，Delegora 不会替你合并。
 
 `<agent>` 由智能体名字得来：转成小写后只保留英文字母和数字，其余字符换成 `-`，最长 30 个字符；名字里没有英文字母和数字时写作 `agent`。所以"运营助手"处理 OPS-21 时，分支是 `agent/agent/ops-21`。`<issue>` 是小写的任务编号。
 
@@ -154,9 +154,9 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 只要还有文件没合完，这一轮就什么都不交付：运行失败、worktree 保留，下一轮会再次把同样的改动送上来，你的修改不会被悄悄丢掉。
 
 </Accordion>
-<Accordion title="只有 Multica 自己的分支才会被续接" id="only-multica-branches-resume">
+<Accordion title="只有 Delegora 自己的分支才会被续接" id="only-multica-branches-resume">
 
-是否续接由归属记录决定，跟分支名无关：记录里既写了属于哪个会话，也写了这条分支当时停在哪个 commit。你自己建的、恰好叫 `agent/<agent>/<issue>` 的分支永远不会被 check out、被追加提交，也不会被当成上一轮的成果读取；已经不包含记录中那个 commit 的分支同样如此。所以把 Multica 的分支删掉再自己建一条同名的，或者把它 force-move 到别的历史上，都是安全的，运行会改用 `agent/<agent>/<issue>-<id>`。在已交付的分支上继续提交则是正常用法，续接照常，你的提交下一轮就在那里。
+是否续接由归属记录决定，跟分支名无关：记录里既写了属于哪个会话，也写了这条分支当时停在哪个 commit。你自己建的、恰好叫 `agent/<agent>/<issue>` 的分支永远不会被 check out、被追加提交，也不会被当成上一轮的成果读取；已经不包含记录中那个 commit 的分支同样如此。所以把 Delegora 的分支删掉再自己建一条同名的，或者把它 force-move 到别的历史上，都是安全的，运行会改用 `agent/<agent>/<issue>-<id>`。在已交付的分支上继续提交则是正常用法，续接照常，你的提交下一轮就在那里。
 
 每条分支还会以一个属于自己的 baseline commit 开头，标记第一轮开始时的目录状态。后续正是靠这个 commit 辨认这条分支，`git diff <baseline>..<branch>` 也恰好就是智能体做的改动。
 
@@ -188,7 +188,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 
 worktree 位于运行时的工作区目录内，会按[正常的清理周期](/daemon-runtimes#cleanup)回收。留在你仓库里的有：分支；每条分支对应的一个隐藏 ref（在 `refs/multica/local-state/` 下），记录这条分支归谁所有、以及上次续接时你目录里的内容；以及智能体自己提交后又留下未提交改动的每次运行，各对应一个隐藏 ref（在 `refs/multica/leftovers/` 下）。
 
-隐藏 ref 不会出现在 `git branch` 里，可以用 `git for-each-ref refs/multica` 查看。Multica 删除分支时会一并删掉它；你自己删掉的分支所对应的 ref，会在下一次该仓库上有运行开始时被清理。也可以用 `git for-each-ref --format='%(refname)' refs/multica | xargs -n1 git update-ref -d` 一次性清掉。
+隐藏 ref 不会出现在 `git branch` 里，可以用 `git for-each-ref refs/multica` 查看。Delegora 删除分支时会一并删掉它；你自己删掉的分支所对应的 ref，会在下一次该仓库上有运行开始时被清理。也可以用 `git for-each-ref --format='%(refname)' refs/multica | xargs -n1 git update-ref -d` 一次性清掉。
 
 </Accordion>
 </Accordions>
@@ -204,7 +204,7 @@ worktree 位于运行时的工作区目录内，会按[正常的清理周期](/d
 
 除了智能体产生的代码改动，运行时还可能在目录中写入当前 AI 编程工具所需的说明文件，以及 `.multica/project/resources.json`。不希望它们进入版本控制时，加入 `.gitignore` 即可。
 
-Multica 清理执行环境时不会删除关联的本地目录。智能体对该目录的改动，与你在终端中直接运行 AI 编程工具的改动性质相同，需要同样的审查。
+Delegora 清理执行环境时不会删除关联的本地目录。智能体对该目录的改动，与你在终端中直接运行 AI 编程工具的改动性质相同，需要同样的审查。
 
 ## 使用 CLI 管理资源
 

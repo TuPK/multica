@@ -6,11 +6,11 @@ description: 이메일 인증 코드, Google 로그인, 신규 사용자 가입 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica는 기본적으로 이메일 인증 코드로 로그인하며 Google OAuth를 추가할 수도 있습니다. 기존 사용자는 언제든 다시 로그인할 수 있습니다. 가입 제한은 새 계정을 만들 수 있는지만 결정합니다.
+Delegora는 기본적으로 이메일 인증 코드로 로그인하며 Google OAuth를 추가할 수도 있습니다. 기존 사용자는 언제든 다시 로그인할 수 있습니다. 가입 제한은 새 계정을 만들 수 있는지만 결정합니다.
 
 ## 이메일 인증 코드
 
-사용자가 이메일을 입력하면 Multica가 6자리 인증 코드를 보냅니다. 코드는 10분 동안 유효하며 인증에 성공하면 브라우저에 로그인 cookie가 발급됩니다.
+사용자가 이메일을 입력하면 Delegora가 6자리 인증 코드를 보냅니다. 코드는 10분 동안 유효하며 인증에 성공하면 브라우저에 로그인 cookie가 발급됩니다.
 
 이메일은 Resend 또는 SMTP로 보낼 수 있습니다. 둘 다 설정하면 `SMTP_HOST`가 우선합니다.
 
@@ -100,7 +100,7 @@ MULTICA_DEV_VERIFICATION_CODE=888888
 </Step>
 <Step>
 
-Multica 프런트엔드의 callback 주소를 **Authorized redirect URIs**에 추가합니다.
+Delegora 프런트엔드의 callback 주소를 **Authorized redirect URIs**에 추가합니다.
 
 ```text
 https://multica.example.com/auth/callback

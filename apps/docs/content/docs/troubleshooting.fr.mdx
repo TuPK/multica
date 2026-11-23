@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-Commencez par déterminer à quelle couche appartient le problème : le service Multica, le daemon, le runtime ou l'outil de codage IA. Ces commandes suffisent généralement à faire apparaître la première erreur significative :
+Commencez par déterminer à quelle couche appartient le problème : le service Delegora, le daemon, le runtime ou l'outil de codage IA. Ces commandes suffisent généralement à faire apparaître la première erreur significative :
 
 <Tabs items={["Toute installation", "Service auto-hébergé"]}>
 <Tab value="Toute installation">
@@ -50,7 +50,7 @@ Si la CLI ne peut pas vérifier le jeton, examinez l’erreur signalée avant de
 Causes fréquentes :
 
 - Le CLI ne s'est pas connecté, ou le jeton stocké sur cette machine a expiré.
-- Le daemon est connecté au mauvais service Multica.
+- Le daemon est connecté au mauvais service Delegora.
 - L'ordinateur d'exécution ne peut pas joindre l'API, ou le DNS, TLS ou un pare-feu bloque la connexion.
 - Le compte actuel n'est plus membre de l'espace de travail cible.
 - Aucun outil de codage IA pris en charge n'est installé sur cette machine ; le daemon ne peut donc pas démarrer.
@@ -86,7 +86,7 @@ curl -fsS <server-url>/health
 
 `multica login` ouvre le navigateur et la connexion web aboutit, mais le CLI échoue quand même avec « Sign-in did not complete » ou « TLS handshake timed out ». `multica --debug login` affiche `net/http: TLS handshake timeout` sur `POST /api/tokens`, alors que `curl.exe -I https://api.multica.ai` ou un navigateur sur la même machine se connecte sans problème.
 
-La connexion TCP s'ouvre, mais la poignée de main TLS n'aboutit jamais. Les clients Go, dont le CLI et le daemon Multica, envoient par défaut un partage de clé post-quantique dans le ClientHello TLS, ce qui porte sa taille à environ 1,5 Ko et le répartit sur deux paquets. Certains logiciels de sécurité, VPN, routeurs et pare-feu abandonnent ces poignées de main ; curl envoie un ClientHello beaucoup plus petit et passe.
+La connexion TCP s'ouvre, mais la poignée de main TLS n'aboutit jamais. Les clients Go, dont le CLI et le daemon Delegora, envoient par défaut un partage de clé post-quantique dans le ClientHello TLS, ce qui porte sa taille à environ 1,5 Ko et le répartit sur deux paquets. Certains logiciels de sécurité, VPN, routeurs et pare-feu abandonnent ces poignées de main ; curl envoie un ClientHello beaucoup plus petit et passe.
 
 Confirmez la cause en réessayant avec le partage de clé post-quantique désactivé :
 
@@ -178,14 +178,14 @@ Pour rétablir l'accès :
 2. Pour un Mac sans surveillance, accordez l'accès complet au disque au nouveau binaire. Affichez son chemin avec `realpath "$(command -v multica)"`, puis dans **Réglages Système → Confidentialité et sécurité → Accès complet au disque**, supprimez l'ancienne entrée `multica` et ajoutez ce chemin (appuyez sur ⌘⇧G dans le sélecteur de fichiers pour le coller).
 3. Redémarrez le daemon de la même façon que vous l'avez lancé : `multica daemon restart`, ou `launchctl kickstart -k gui/$(id -u)/<label>` pour un LaunchAgent.
 
-Répétez ces étapes après chaque mise à jour du CLI. La mise à jour automatique n'est activée par défaut que pour les daemons connectés à Multica Cloud ; démarrez le daemon avec `--no-auto-update` pour que les mises à jour n'aient lieu que lorsque vous les lancez. Le CLI intégré à [Multica Desktop](/desktop-app) est signé avec un Developer ID, ses autorisations survivent donc aux mises à jour.
+Répétez ces étapes après chaque mise à jour du CLI. La mise à jour automatique n'est activée par défaut que pour les daemons connectés à Delegora Cloud ; démarrez le daemon avec `--no-auto-update` pour que les mises à jour n'aient lieu que lorsque vous les lancez. Le CLI intégré à [Delegora Desktop](/desktop-app) est signé avec un Developer ID, ses autorisations survivent donc aux mises à jour.
 
 </Accordion>
 <Accordion title="Hermes réinstalle ses dépendances après l’utilisation de la CLI" id="hermes-runs-reinstall-dependencies-after-you-use-the-hermes-cli" value="hermes-runs-reinstall-dependencies-after-you-use-the-hermes-cli">
 
-Si vous alternez entre la CLI ou l’application de bureau Hermes et les exécutions Hermes dans Multica, chaque changement peut ajouter 30 à 60 secondes au démarrage. Hermes reconstruit alors son environnement Python partagé. Chaque reconstruction laisse une nouvelle génération de l’environnement sur le disque jusqu’à ce que Hermes la nettoie.
+Si vous alternez entre la CLI ou l’application de bureau Hermes et les exécutions Hermes dans Delegora, chaque changement peut ajouter 30 à 60 secondes au démarrage. Hermes reconstruit alors son environnement Python partagé. Chaque reconstruction laisse une nouvelle génération de l’environnement sur le disque jusqu’à ce que Hermes la nettoie.
 
-Cela se produit lorsque `memory.provider` désigne dans votre répertoire Hermes un plugin qui a des dépendances Python. Chaque exécution Multica utilise son propre répertoire Hermes, partage les dépendances installées et désactive le fournisseur de mémoire externe pour éviter que les exécutions partagent leur mémoire. Hermes détermine les dépendances à partir des plugins du répertoire actif. Les deux répertoires ont des besoins différents et chacun considère l’installation de l’autre comme obsolète. Le problème est suivi dans [NousResearch/hermes-agent#137726](https://github.com/NousResearch/hermes-agent/issues/137726).
+Cela se produit lorsque `memory.provider` désigne dans votre répertoire Hermes un plugin qui a des dépendances Python. Chaque exécution Delegora utilise son propre répertoire Hermes, partage les dépendances installées et désactive le fournisseur de mémoire externe pour éviter que les exécutions partagent leur mémoire. Hermes détermine les dépendances à partir des plugins du répertoire actif. Les deux répertoires ont des besoins différents et chacun considère l’installation de l’autre comme obsolète. Le problème est suivi dans [NousResearch/hermes-agent#137726](https://github.com/NousResearch/hermes-agent/issues/137726).
 
 Pour confirmer le diagnostic, cherchez `hermes is reinstalling its dependency environment before this task starts` dans le [journal du daemon](#emplacement-des-journaux). L’entrée suivante, `hermes dependency reinstall finished`, indique dans `startup_delay_ms` le temps écoulé entre le lancement et le moment où Hermes est prêt, réinstallation comprise.
 
@@ -234,7 +234,7 @@ docker compose -f docker-compose.selfhost.yml logs backend \
 - **Resend** : vérifiez que la clé d'API est valide et que le domaine de l'adresse de l'expéditeur est vérifié.
 - **SMTP** : vérifiez l'hôte, le port, les identifiants et l'adresse de l'expéditeur, et utilisez le journal d'erreurs pour déterminer si l'échec est survenu à l'étape de la connexion, de TLS, de l'authentification ou de la remise.
 
-Lorsque `SMTP_HOST` et Resend sont tous deux configurés, Multica privilégie SMTP. Pour la configuration, consultez [Connexion et inscription](/auth-setup#codes-de-vérification-par-e-mail).
+Lorsque `SMTP_HOST` et Resend sont tous deux configurés, Delegora privilégie SMTP. Pour la configuration, consultez [Connexion et inscription](/auth-setup#codes-de-vérification-par-e-mail).
 
 <Callout type="warning">
 En production, ne vous fiez pas aux codes écrits dans le journal et n'activez pas le code de test local fixe.
@@ -312,7 +312,7 @@ netstat -ano | findstr :8080
 </Tab>
 </Tabs>
 
-S'il s'agit d'une autre copie de travail (checkout) de Multica, exécutez d'abord `make stop` dans ce répertoire. Sinon, arrêtez normalement le programme en cause, ou changez le port du service actuel. Les ports publics 80/443 sont écoutés par un proxy inverse tel que Caddy ou Nginx.
+S'il s'agit d'une autre copie de travail (checkout) de Delegora, exécutez d'abord `make stop` dans ce répertoire. Sinon, arrêtez normalement le programme en cause, ou changez le port du service actuel. Les ports publics 80/443 sont écoutés par un proxy inverse tel que Caddy ou Nginx.
 
 </Accordion>
 </Accordions>

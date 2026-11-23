@@ -73,7 +73,7 @@ Pour le sens de chaque code et la manière de le traiter, voir [Exécutions · R
 
 Tous les coûts affichés dans Statistiques sont des estimations en USD, pas une facture de l'outil de codage IA ni du fournisseur de modèle :
 
-- Multica embarque une table des tarifs publiés des modèles, avec un prix par million de tokens pour l'entrée, la sortie, la lecture et l'écriture de cache, qu'il multiplie par les tokens transmis.
+- Delegora embarque une table des tarifs publiés des modèles, avec un prix par million de tokens pour l'entrée, la sortie, la lecture et l'écriture de cache, qu'il multiplie par les tokens transmis.
 - Quand l'outil de codage IA communique son propre coût (c'est le cas de Grok Build, par exemple), ce chiffre est repris tel quel au lieu d'une estimation.
 - Les tokens des modèles absents de la table sont comptés, mais leur coût vaut $0. Vous pouvez [définir des tarifs personnalisés](#tarifs-personnalisés) pour ces modèles depuis la consommation d'un runtime.
 - Certains modèles appliquent un tarif plus élevé au-delà d'une certaine longueur de prompt. Les données agrégées ne disent pas quelle était la longueur de chaque requête, tout est donc compté au tarif standard, et ces exécutions peuvent être sous-estimées.

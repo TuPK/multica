@@ -1,14 +1,14 @@
 ---
 title: 移动 App（iOS）
-description: 从源码把 Multica 安装到 iPhone，并连接 Cloud 或自托管实例。
+description: 从源码把 Delegora 安装到 iPhone，并连接 Cloud 或自托管实例。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica iOS 客户端目前还没有上架 App Store。你可以在 Mac 上从公开的源码仓库构建 Release 版本，再安装到自己的 iPhone。Android 客户端暂未提供。
+Delegora iOS 客户端目前还没有上架 App Store。你可以在 Mac 上从公开的源码仓库构建 Release 版本，再安装到自己的 iPhone。Android 客户端暂未提供。
 
-安装后的 App 默认连接 Multica Cloud，用已有账号登录即可。工作区、任务、评论和执行记录都保存在服务端，不需要从 Web 或 Desktop 同步。
+安装后的 App 默认连接 Delegora Cloud，用已有账号登录即可。工作区、任务、评论和执行记录都保存在服务端，不需要从 Web 或 Desktop 同步。
 
 ## 准备工作
 
@@ -63,7 +63,7 @@ export EXPO_BUNDLE_IDENTIFIER_PROD=com.yourname.multica
 pnpm ios:mobile:device:prod:release
 ```
 
-这个值只需要在你的 Apple Developer team 中可用，不影响 Multica 账号或工作区。
+这个值只需要在你的 Apple Developer team 中可用，不影响 Delegora 账号或工作区。
 
 ## 更新
 

@@ -1,12 +1,12 @@
 ---
 title: 使用 CLI
-description: 安裝並登入 Multica CLI，在終端中管理工作區、任務、AI 代理和執行時。
+description: 安裝並登入 Delegora CLI，在終端中管理工作區、任務、AI 代理和執行時。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-Multica CLI 既負責連線本機執行時，也可以在終端中管理工作區、任務、AI 代理和自動化。這裡介紹常用路徑；當前版本支援的引數始終以命令自身的 `--help` 為準。
+Delegora CLI 既負責連線本機執行時，也可以在終端中管理工作區、任務、AI 代理和自動化。這裡介紹常用路徑；當前版本支援的引數始終以命令自身的 `--help` 為準。
 
 ## 安裝
 
@@ -45,8 +45,8 @@ multica version
 
 按連線的服務選擇：
 
-<Tabs items={["Multica Cloud", "自託管例項"]}>
-<Tab value="Multica Cloud">
+<Tabs items={["Delegora Cloud", "自託管例項"]}>
+<Tab value="Delegora Cloud">
 
 ```bash
 multica setup
@@ -455,7 +455,7 @@ multica config show --profile staging
 ```
 
 <Callout type="warning">
-CLI 配置檔案包含可代表你訪問 Multica 的令牌。不要提交到倉庫、上傳到日誌或與他人共享。
+CLI 配置檔案包含可代表你訪問 Delegora 的令牌。不要提交到倉庫、上傳到日誌或與他人共享。
 </Callout>
 
 ## 命令參考
@@ -572,15 +572,15 @@ CLI 配置檔案包含可代表你訪問 Multica 的令牌。不要提交到倉�
 | `update` | — | 更新 CLI 到最新版本 | |
 | `version` | — | 檢視版本資訊 | `--output`（`text` 或 `json`） |
 
-## 在其他編碼 AI 代理裡操作 Multica
+## 在其他編碼 AI 代理裡操作 Delegora
 
-如果你的工作大多發生在 Codex、Claude Code 或 Cursor 裡，可以直接在那裡操作 Multica，不必切回終端。[Multica CLI skill](https://github.com/multica-ai/multica-cli) 會教這些 AI 代理安全地使用本頁的命令：讀任務和評論執行緒時少耗 token、透過檔案寫評論，以及正確處理 mention、狀態變更和指派帶來的副作用。
+如果你的工作大多發生在 Codex、Claude Code 或 Cursor 裡，可以直接在那裡操作 Delegora，不必切回終端。[Delegora CLI skill](https://github.com/multica-ai/multica-cli) 會教這些 AI 代理安全地使用本頁的命令：讀任務和評論執行緒時少耗 token、透過檔案寫評論，以及正確處理 mention、狀態變更和指派帶來的副作用。
 
 它完全透過你已認證的 CLI 執行，本身不授予任何權限，權限仍然只來自你的登入、所選 profile 和工作區。要求 CLI 版本不低於 v0.4.26。該倉庫的 README 說明了 Claude Code 外掛市場、Codex skill 安裝器、Cursor 以及其他任何載入 Markdown 指令的工具的安裝方式。
 
 ## 接下來
 
-- [Multica CLI skill](https://github.com/multica-ai/multica-cli) — 在 Codex、Claude Code 或 Cursor 裡操作 Multica。
+- [Delegora CLI skill](https://github.com/multica-ai/multica-cli) — 在 Codex、Claude Code 或 Cursor 裡操作 Delegora。
 - [認證與令牌](/auth-tokens) — PAT 的建立、續期和吊銷。
 - [故障排查](/troubleshooting) — 命令報錯和執行不開始的排查路徑。
 - [建立和配置 AI 代理](/agents-create) — `agent create` 各欄位的完整語義。

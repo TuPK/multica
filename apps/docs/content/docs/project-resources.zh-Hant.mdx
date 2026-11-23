@@ -20,7 +20,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 
 ## 資源進入執行的方式
 
-當 AI 代理處理專案內的任務時，Multica 會把專案名稱、專案描述和資源列表加入執行上下文，並在工作目錄中寫入 `.multica/project/resources.json`。
+當 AI 代理處理專案內的任務時，Delegora 會把專案名稱、專案描述和資源列表加入執行上下文，並在工作目錄中寫入 `.multica/project/resources.json`。
 
 工作區關聯的倉庫列表始終包含在執行上下文中。專案關聯的倉庫在此基礎上指明這組工作使用的程式碼和預設 ref。
 
@@ -32,7 +32,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 
 貼上 GitHub 分支頁面的 URL（`https://github.com/owner/repo/tree/branch`）時，倉庫位址和起始分支會分別填入。經過 URL 編碼的分支名稱會還原，查詢參數和頁面錨點不會算入分支名稱。新增倉庫前請檢查起始分支。修改倉庫位址時，原來的起始分支會清空；如果新位址包含分支，則改用該分支。
 
-倉庫不限於 GitHub：任何執行時能訪問的 Git URL 都可以作為倉庫資源。自部署的 Multica 還可以在 **設定 → 程式碼** 連線自託管的 Forgejo、Gitea 或 GitLab，見[自託管 Git 程式碼託管](/vcs-integration)。
+倉庫不限於 GitHub：任何執行時能訪問的 Git URL 都可以作為倉庫資源。自部署的 Delegora 還可以在 **設定 → 程式碼** 連線自託管的 Forgejo、Gitea 或 GitLab，見[自託管 Git 程式碼託管](/vcs-integration)。
 
 建立專案時，也可以直接在 **Repos** 中選擇倉庫。一個專案可以關聯多個 GitHub 倉庫。
 
@@ -82,7 +82,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 每個專案在同一臺守護程序上最多關聯一個本地目錄。團隊中的不同電腦可以分別為同一個專案關聯各自的目錄。
 
 <Callout type="warning">
-在預設的 `in_place` 模式下，本地目錄不是隔離環境：AI 代理會直接看到並修改當前分支和未提交的檔案，Multica 也不會自動切換分支、stash、commit、push 或建立 PR。worktree 模式不一樣，見下面的[執行如何共享這個目錄](#執行如何共享這個目錄)。
+在預設的 `in_place` 模式下，本地目錄不是隔離環境：AI 代理會直接看到並修改當前分支和未提交的檔案，Delegora 也不會自動切換分支、stash、commit、push 或建立 PR。worktree 模式不一樣，見下面的[執行如何共享這個目錄](#執行如何共享這個目錄)。
 </Callout>
 
 <span id="task-如何共享這個目錄" />
@@ -99,7 +99,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 
 AI 代理直接在你的目錄裡工作。同一小組的執行依次佔用目錄，不同小組的執行可以同時在其中工作。執行發現目錄被佔用時進入 `waiting_local_directory`，等佔用者釋放後繼續。兩個路徑經不同符號連結指向同一目錄時，共用同一把鎖。
 
-共享目錄不等於隔離。所有執行都寫進同一個資料夾，因此兩個小組可能互相覆蓋檔案（例如兩份報告都叫 `01-reader.md`），或讀到另一個小組剛寫入的檔案。Multica 不會阻止這種情況。如果各小組的產出不能衝突，請在指令裡讓它們寫入各自的子資料夾，或在 git 倉庫中使用 worktree 模式。
+共享目錄不等於隔離。所有執行都寫進同一個資料夾，因此兩個小組可能互相覆蓋檔案（例如兩份報告都叫 `01-reader.md`），或讀到另一個小組剛寫入的檔案。Delegora 不會阻止這種情況。如果各小組的產出不能衝突，請在指令裡讓它們寫入各自的子資料夾，或在 git 倉庫中使用 worktree 模式。
 
 等待不會修改目錄，也不佔用守護程序執行槽位。等待中的執行可以取消，否則會在目錄和執行容量都可用後繼續啟動。
 
@@ -112,7 +112,7 @@ AI 代理直接在你的目錄裡工作。同一小組的執行依次佔用目�
 
 這個目錄必須是至少有一次提交的 git 倉庫；不滿足時執行會明確報錯，不會悄悄退回序列。
 
-那臺機器上的執行時也必須實現了該模式。執行時在連線時會宣告這項能力，Multica 只看這個宣告，不看版本號：一個開發構建完全可能帶著看起來足夠新的版本號，卻沒有對應的實現。這個宣告會被檢查兩次。儲存資源時，只要那臺機器的執行時沒有宣告該能力，儲存就會被拒絕，並提示去升級那臺機器上的 App；每次執行被真正領取時，還會按領取它的執行時再檢查一次，所以資源儲存之後才降級的機器，其執行會被帶原因取消，不會悄悄在原目錄裡跑掉。選擇 `worktree` 就是在要求隔離，Multica 不會拿"直接改你的工作副本"來兜底。
+那臺機器上的執行時也必須實現了該模式。執行時在連線時會宣告這項能力，Delegora 只看這個宣告，不看版本號：一個開發構建完全可能帶著看起來足夠新的版本號，卻沒有對應的實現。這個宣告會被檢查兩次。儲存資源時，只要那臺機器的執行時沒有宣告該能力，儲存就會被拒絕，並提示去升級那臺機器上的 App；每次執行被真正領取時，還會按領取它的執行時再檢查一次，所以資源儲存之後才降級的機器，其執行會被帶原因取消，不會悄悄在原目錄裡跑掉。選擇 `worktree` 就是在要求隔離，Delegora 不會拿"直接改你的工作副本"來兜底。
 
 AI 代理看到什麼、你拿回什麼：
 
@@ -126,7 +126,7 @@ AI 代理看到什麼、你拿回什麼：
 </Accordion>
 <Accordion title="結果是你倉庫裡的一個分支" id="result-is-a-branch">
 
-分支按任務而不是按每次執行來分：`agent/<agent>/<issue>`（chat 則是 `agent/<agent>/chat-<session>`）。本次執行的**詳情**面板裡會顯示分支名（可直接複製），也可以用 `git branch` 找到它。用 `git log` / `git diff` review，然後自己決定 merge 還是 cherry-pick，Multica 不會替你合併。
+分支按任務而不是按每次執行來分：`agent/<agent>/<issue>`（chat 則是 `agent/<agent>/chat-<session>`）。本次執行的**詳情**面板裡會顯示分支名（可直接複製），也可以用 `git branch` 找到它。用 `git log` / `git diff` review，然後自己決定 merge 還是 cherry-pick，Delegora 不會替你合併。
 
 `<agent>` 由 AI 代理名字得來：轉成小寫後只保留英文字母和數字，其餘字元換成 `-`，最長 30 個字元；名字裡沒有英文字母和數字時寫作 `agent`。所以"運營助手"處理 OPS-21 時，分支是 `agent/agent/ops-21`。`<issue>` 是小寫的任務編號。
 
@@ -154,9 +154,9 @@ AI 代理看到什麼、你拿回什麼：
 只要還有檔案沒合完，這一輪就什麼都不交付：執行失敗、worktree 保留，下一輪會再次把同樣的改動送上來，你的修改不會被悄悄丟掉。
 
 </Accordion>
-<Accordion title="只有 Multica 自己的分支才會被續接" id="only-multica-branches-resume">
+<Accordion title="只有 Delegora 自己的分支才會被續接" id="only-multica-branches-resume">
 
-是否續接由歸屬記錄決定，跟分支名無關：記錄裡既寫了屬於哪個會話，也寫了這條分支當時停在哪個 commit。你自己建的、恰好叫 `agent/<agent>/<issue>` 的分支永遠不會被 check out、被追加提交，也不會被當成上一輪的成果讀取；已經不包含記錄中那個 commit 的分支同樣如此。所以把 Multica 的分支刪掉再自己建一條同名的，或者把它 force-move 到別的歷史上，都是安全的，執行會改用 `agent/<agent>/<issue>-<id>`。在已交付的分支上繼續提交則是正常用法，續接照常，你的提交下一輪就在那裡。
+是否續接由歸屬記錄決定，跟分支名無關：記錄裡既寫了屬於哪個會話，也寫了這條分支當時停在哪個 commit。你自己建的、恰好叫 `agent/<agent>/<issue>` 的分支永遠不會被 check out、被追加提交，也不會被當成上一輪的成果讀取；已經不包含記錄中那個 commit 的分支同樣如此。所以把 Delegora 的分支刪掉再自己建一條同名的，或者把它 force-move 到別的歷史上，都是安全的，執行會改用 `agent/<agent>/<issue>-<id>`。在已交付的分支上繼續提交則是正常用法，續接照常，你的提交下一輪就在那裡。
 
 每條分支還會以一個屬於自己的 baseline commit 開頭，標記第一輪開始時的目錄狀態。後續正是靠這個 commit 辨認這條分支，`git diff <baseline>..<branch>` 也恰好就是 AI 代理做的改動。
 
@@ -188,7 +188,7 @@ AI 代理留下的未提交改動不會隨 worktree 一起刪除，執行中途�
 
 worktree 位於執行時的工作區目錄內，會按[正常的清理週期](/daemon-runtimes#cleanup)回收。留在你倉庫裡的有：分支；每條分支對應的一個隱藏 ref（在 `refs/multica/local-state/` 下），記錄這條分支歸誰所有、以及上次續接時你目錄裡的內容；以及 AI 代理自己提交後又留下未提交改動的每次執行，各對應一個隱藏 ref（在 `refs/multica/leftovers/` 下）。
 
-隱藏 ref 不會出現在 `git branch` 裡，可以用 `git for-each-ref refs/multica` 檢視。Multica 刪除分支時會一併刪掉它；你自己刪掉的分支所對應的 ref，會在下一次該倉庫上有執行開始時被清理。也可以用 `git for-each-ref --format='%(refname)' refs/multica | xargs -n1 git update-ref -d` 一次性清掉。
+隱藏 ref 不會出現在 `git branch` 裡，可以用 `git for-each-ref refs/multica` 檢視。Delegora 刪除分支時會一併刪掉它；你自己刪掉的分支所對應的 ref，會在下一次該倉庫上有執行開始時被清理。也可以用 `git for-each-ref --format='%(refname)' refs/multica | xargs -n1 git update-ref -d` 一次性清掉。
 
 </Accordion>
 </Accordions>
@@ -204,7 +204,7 @@ worktree 位於執行時的工作區目錄內，會按[正常的清理週期](/d
 
 除了 AI 代理產生的程式碼改動，執行時還可能在目錄中寫入當前 AI 程式設計工具所需的說明檔案，以及 `.multica/project/resources.json`。不希望它們進入版本控制時，加入 `.gitignore` 即可。
 
-Multica 清理執行環境時不會刪除關聯的本地目錄。AI 代理對該目錄的改動，與你在終端中直接執行 AI 程式設計工具的改動性質相同，需要同樣的審查。
+Delegora 清理執行環境時不會刪除關聯的本地目錄。AI 代理對該目錄的改動，與你在終端中直接執行 AI 程式設計工具的改動性質相同，需要同樣的審查。
 
 ## 使用 CLI 管理資源
 

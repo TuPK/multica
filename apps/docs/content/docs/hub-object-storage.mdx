@@ -66,7 +66,7 @@ On a development checkout, `make dev-full` starts the same SeaweedFS service and
 
 ### Download links
 
-If `HUB_S3_PUBLIC_ENDPOINT` is unset, the Hub serves bundles through the Multica server. Browsers cannot reach an internal endpoint such as `http://seaweedfs:8333`, so a link to it would not work. Set `HUB_S3_PUBLIC_ENDPOINT` to a public address when clients can reach the store directly. Downloads then go straight to the store.
+If `HUB_S3_PUBLIC_ENDPOINT` is unset, the Hub serves bundles through the Delegora server. Browsers cannot reach an internal endpoint such as `http://seaweedfs:8333`, so a link to it would not work. Set `HUB_S3_PUBLIC_ENDPOINT` to a public address when clients can reach the store directly. Downloads then go straight to the store.
 
 <Callout type="info">
   Changing `HUB_S3_PUBLIC_ENDPOINT` affects only links created after the change. Links that have already been created stay valid until they expire.
@@ -83,7 +83,7 @@ Any store that speaks the S3 API works. To switch:
 Bundles already in the old store are not copied automatically. Copy the bucket's contents to the new store before you switch, or the existing items' downloads and updates will fail. Keep the old store until you have confirmed the switch.
 
 <Callout type="warn">
-  MinIO Community Edition is no longer maintained: its repository has been archived. Multica does not recommend it for new installations. Use SeaweedFS or another actively maintained S3-compatible store.
+  MinIO Community Edition is no longer maintained: its repository has been archived. Delegora does not recommend it for new installations. Use SeaweedFS or another actively maintained S3-compatible store.
 </Callout>
 
 ## Backups and lifecycle

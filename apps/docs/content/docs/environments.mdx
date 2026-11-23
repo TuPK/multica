@@ -33,7 +33,7 @@ These are left out:
 - servers that already belong to a declared environment, which are listed once, under that environment;
 - servers from runs that are not on an issue, such as chat sessions.
 
-A desktop app (for example an Electron app) is listed once as an app instead of as a list of ports. It has no URL; from Multica Desktop on the same machine, **Switch to window** brings it forward. Its remote-debugging ports are not offered as links.
+A desktop app (for example an Electron app) is listed once as an app instead of as a list of ports. It has no URL; from Delegora Desktop on the same machine, **Switch to window** brings it forward. Its remote-debugging ports are not offered as links.
 
 A detected server keeps showing after its run ends, for as long as it keeps listening. Members can stop it from the sidebar, but the daemon does not know how it was started, so it has no log and cannot be restarted. To get those, declare it.
 
@@ -200,7 +200,7 @@ Each environment shows its state, when it started or ended, when it expires, and
 - **Start**: click **+** next to **Environments**. The menu lists the environments the latest run on each machine declared, and starts the one you pick in that run's code. If the issue has not run yet or that code has been cleaned up, it offers to ask an agent instead: the agent gets the code ready and runs `multica env start`, or works out how to start the project if it declares nothing.
 - **Stop, restart, view logs**: open an environment's **More actions** menu. **Restart** reads the declaration in the checkout again, so the checkout and its `.multica/environments.toml` must still exist. A detected server offers only **Stop**, after a confirmation.
 
-Starting, stopping, and restarting require a workspace member who can access the issue and use that machine's runtime (see [Daemon and runtimes](/daemon-runtimes)). The machine must be online, and its Multica must be recent enough to support environment controls; otherwise the buttons explain what is missing. Reading logs only requires access to the issue.
+Starting, stopping, and restarting require a workspace member who can access the issue and use that machine's runtime (see [Daemon and runtimes](/daemon-runtimes)). The machine must be online, and its Delegora must be recent enough to support environment controls; otherwise the buttons explain what is missing. Reading logs only requires access to the issue.
 
 ### Logs [#logs]
 
@@ -211,7 +211,7 @@ When an environment crashes, its last two lines of output are saved with it, so 
 The complete log stays on the machine, under `<workspaces root>/.environments/v1/`, and is kept for seven days after the environment ends. `multica env start` and `multica env list` print its path.
 
 <Callout type="warning">
-Anyone with access to the issue can read an environment's logs. Multica redacts recognizable secrets from the lines it uploads and deletes log reads after ten minutes, but don't rely on that: keep credentials out of your servers' output.
+Anyone with access to the issue can read an environment's logs. Delegora redacts recognizable secrets from the lines it uploads and deletes log reads after ten minutes, but don't rely on that: keep credentials out of your servers' output.
 </Callout>
 
 ## States [#states]
@@ -228,7 +228,7 @@ While the daemon is down, it does not supervise anything; environments whose pro
 
 ## Let an agent write the file [#agent]
 
-Agents know the format: Multica's built-in platform skill, which every agent receives, documents `.multica/environments.toml` and how to verify one. Ask in an issue, for example:
+Agents know the format: Delegora's built-in platform skill, which every agent receives, documents `.multica/environments.toml` and how to verify one. Ask in an issue, for example:
 
 > Add a `.multica/environments.toml` so this repository's web app can be started with `multica env start`. Start it once to check it works, then open a PR.
 

@@ -4,7 +4,7 @@ Trạng thái: **R1 đã viết xong, chưa qua cổng G-R1.** Tài liệu này 
 
 Ngôn ngữ: tiếng Việt. Tên tệp, bảng, cột, lệnh, mã lỗi giữ tiếng Anh.
 
-Mọi câu lệnh SQL dưới đây chạy bằng `psql` trên cơ sở dữ liệu của máy chủ Multica. `<uid>` là UUID người dùng (`"user".id`), `<ws>` là UUID workspace.
+Mọi câu lệnh SQL dưới đây chạy bằng `psql` trên cơ sở dữ liệu của máy chủ Delegora. `<uid>` là UUID người dùng (`"user".id`), `<ws>` là UUID workspace.
 
 ## 1. Khóa và mở tài khoản bằng SQL
 
@@ -64,7 +64,7 @@ Thêm tùy chọn kết nối (`-h`, `-p`, `-a` hoặc `-u`) theo Redis của h�
 
 ### 1.5 WebSocket
 
-SQL **không ngắt** WebSocket đang mở. Máy chủ chỉ kiểm tài khoản lúc kết nối hoặc lúc nhận thông điệp xác thực đầu tiên (`server/internal/realtime/hub.go:880`, `:926`). Kết nối đang mở vẫn sống cho đến khi tự rớt; khi nối lại, nó bị từ chối bằng 403 `account_suspended` hoặc 401 `session_revoked` (`:826`). Ngắt kết nối (`Hub.DisconnectUser`, `server/internal/realtime/hub.go:606`) chỉ được gọi từ ba đường API: đăng xuất mọi thiết bị (`server/internal/handler/me_sessions.go:98`), yêu cầu xóa (`server/internal/handler/me_deletion.go:244`) và job xóa (`:457`). Muốn ngắt ngay ở R1: khởi động lại máy chủ Multica (hub nằm trong bộ nhớ, ngắt mọi người dùng), và chấp nhận ảnh hưởng đó.
+SQL **không ngắt** WebSocket đang mở. Máy chủ chỉ kiểm tài khoản lúc kết nối hoặc lúc nhận thông điệp xác thực đầu tiên (`server/internal/realtime/hub.go:880`, `:926`). Kết nối đang mở vẫn sống cho đến khi tự rớt; khi nối lại, nó bị từ chối bằng 403 `account_suspended` hoặc 401 `session_revoked` (`:826`). Ngắt kết nối (`Hub.DisconnectUser`, `server/internal/realtime/hub.go:606`) chỉ được gọi từ ba đường API: đăng xuất mọi thiết bị (`server/internal/handler/me_sessions.go:98`), yêu cầu xóa (`server/internal/handler/me_deletion.go:244`) và job xóa (`:457`). Muốn ngắt ngay ở R1: khởi động lại máy chủ Delegora (hub nằm trong bộ nhớ, ngắt mọi người dùng), và chấp nhận ảnh hưởng đó.
 
 ## 2. Đọc nhật ký kiểm toán bằng SQL
 
@@ -152,9 +152,9 @@ Sources: [platform-management-spec.md](engineering/platform-management-spec.md) 
 
 ## 6. Startup checklist
 
-Spec 5.1. The platform checks its own settings at start and exits with a message naming the variable. Two checks used to run in Multica and cannot run there now, so make them before each deploy. Values are never written in this file; keep them in the secret store.
+Spec 5.1. The platform checks its own settings at start and exits with a message naming the variable. Two checks used to run in Delegora and cannot run there now, so make them before each deploy. Values are never written in this file; keep them in the secret store.
 
-**Multica server**
+**Delegora server**
 
 | Check | Expected | Note |
 | --- | --- | --- |
@@ -167,43 +167,43 @@ Spec 5.1. The platform checks its own settings at start and exits with a message
 | Check | Expected | Failure |
 | --- | --- | --- |
 | `DATABASE_URL`, `REDIS_URL` | set; `REDIS_URL` is a `redis://`, `rediss://` or `unix://` URL | exit, variable named (`:137`, `:139`) |
-| `PLATFORM_APP_URL` | origin of the Multica web app, such as `https://app.example.com`, no path | exit (`:217`) |
+| `PLATFORM_APP_URL` | origin of the Delegora web app, such as `https://app.example.com`, no path | exit (`:217`) |
 | `PLATFORM_SESSION_SECRET` | at least 32 bytes | exit (`:155`) |
 | `PLATFORM_ADMIN_EMAILS` | one or more plain email addresses, comma-separated | exit (`:146`) |
 | Email provider | Resend (`RESEND_API_KEY` and `RESEND_FROM_EMAIL`) or SMTP (`SMTP_HOST` and `SMTP_FROM_EMAIL`) | exit (`:319`) |
 | `PLATFORM_DEV_VERIFICATION_CODE` | not set | exit when `APP_ENV=production` (`:246`) |
 | Migrations | every version in `platform-management/internal/schemacheck` present | exit, missing versions listed (`cmd/platform-server/main.go:96`) |
 
-- Each address in `PLATFORM_ADMIN_EMAILS` needs a Multica account. An address without one is logged and skipped (`main.go`, staff seeding). If none matches, nobody can sign in to the console.
+- Each address in `PLATFORM_ADMIN_EMAILS` needs a Delegora account. An address without one is logged and skipped (`main.go`, staff seeding). If none matches, nobody can sign in to the console.
 - The email provider also carries the overdue notices. Without one, the `subscription_lifecycle` job is not registered and no subscription moves to the next overdue state (`main.go:239`). The platform logs `lifecycle notices are off: no email provider is configured`.
 - Check after start: `GET /healthz` on the console port (30001) answers 200 when the database and Redis respond.
 
 **Bank details (decision D49).** `BILLING_BANK_ACCOUNT_NAME`, `BILLING_BANK_ACCOUNT_NUMBER` and `BILLING_BANK_NAME` may be empty. The platform then starts and logs `billing: bank details are empty` (`main.go:61`). Before the first real payment:
 
-1. Set all three. The order page reads them from the **Multica server** environment (`server/internal/handler/billing_orders.go:88`). The platform only uses them for the warning. `docker-compose.selfhost.yml` does not pass them to the server (see section 12).
+1. Set all three. The order page reads them from the **Delegora server** environment (`server/internal/handler/billing_orders.go:88`). The platform only uses them for the warning. `docker-compose.selfhost.yml` does not pass them to the server (see section 12).
 2. Open an order page as a customer and check that all three fields show.
 
 Until both are done, do not accept real orders. D49 is open (section 12).
 
 ### 6.2 Staff two-step sign-in (decision D51)
 
-Every staff member signs in to the console with the email code and then a six-digit code from the authenticator app they enrolled in the Multica web app. The session records `mfa` in its `amr` claim, and the console refuses a session without it. A staff member with no confirmed second factor cannot sign in. The recovery codes of the Multica web app are not accepted at the console.
+Every staff member signs in to the console with the email code and then a six-digit code from the authenticator app they enrolled in the Delegora web app. The session records `mfa` in its `amr` claim, and the console refuses a session without it. A staff member with no confirmed second factor cannot sign in. The recovery codes of the Delegora web app are not accepted at the console.
 
-The platform reads `MULTICA_MFA_SECRET_KEY`, the same variable and value as the Multica server, because it opens the secrets that Multica sealed. Without it the platform exits at start. At start it also opens one confirmed `user_mfa` row; if the key does not open it, the platform exits with a message naming `MULTICA_MFA_SECRET_KEY`. Set the same value in both services.
+The platform reads `MULTICA_MFA_SECRET_KEY`, the same variable and value as the Delegora server, because it opens the secrets that Delegora sealed. Without it the platform exits at start. At start it also opens one confirmed `user_mfa` row; if the key does not open it, the platform exits with a message naming `MULTICA_MFA_SECRET_KEY`. Set the same value in both services.
 
 **Rollout order** (do not start the new platform before step 3 is done for every staff member):
 
-1. Set `MULTICA_MFA_SECRET_KEY` in the Multica server and in the platform to the same value, and deploy Multica.
-2. Each staff member, including every address in `PLATFORM_ADMIN_EMAILS`, signs in to the Multica web app and turns on two-step sign-in. Check: `SELECT u.email FROM platform_staff s JOIN "user" u ON u.id = s.user_id WHERE s.revoked_at IS NULL AND NOT EXISTS (SELECT 1 FROM user_mfa m WHERE m.user_id = s.user_id AND m.confirmed_at IS NOT NULL);` returns no rows.
+1. Set `MULTICA_MFA_SECRET_KEY` in the Delegora server and in the platform to the same value, and deploy Delegora.
+2. Each staff member, including every address in `PLATFORM_ADMIN_EMAILS`, signs in to the Delegora web app and turns on two-step sign-in. Check: `SELECT u.email FROM platform_staff s JOIN "user" u ON u.id = s.user_id WHERE s.revoked_at IS NULL AND NOT EXISTS (SELECT 1 FROM user_mfa m WHERE m.user_id = s.user_id AND m.confirmed_at IS NOT NULL);` returns no rows.
 3. Deploy the platform with this change.
 
 **Reset from the console.** A `support` or `admin` member opens the user in the console and chooses "Reset two-step sign-in". The `user_mfa` row is deleted, the audit event `user.mfa_reset` names the staff member and the user, and the user is emailed. The user is not signed out and signs in with the email code alone until they enrol again. A staff member cannot reset their own (`self_reset_refused`).
 
 **Lockout recovery.**
 
-- A staff member who lost their phone but has a recovery code: sign in to the Multica web app with the recovery code, turn two-step sign-in off with another recovery code, enrol again, then sign in to the console.
-- A staff member with neither: another `support` or `admin` member resets them from the console, then they enrol again in the Multica web app.
-- The first admin when no other staff member can sign in, for example because the rollout order was not followed: run this on the shared database, then enrol again in the Multica web app and sign in to the console. The change has no audit row, so write the reason in your change log.
+- A staff member who lost their phone but has a recovery code: sign in to the Delegora web app with the recovery code, turn two-step sign-in off with another recovery code, enrol again, then sign in to the console.
+- A staff member with neither: another `support` or `admin` member resets them from the console, then they enrol again in the Delegora web app.
+- The first admin when no other staff member can sign in, for example because the rollout order was not followed: run this on the shared database, then enrol again in the Delegora web app and sign in to the console. The change has no audit row, so write the reason in your change log.
 
 ```sql
 DELETE FROM user_mfa
@@ -285,7 +285,7 @@ A tenant is locked by setting its workspace state to `suspended`. Use it for a v
 - Autopilot stops creating runs. It can take up to 5 minutes (spec 5.3).
 - Still allowed: owners and admins use the subscription pages, owners export workspace data, and members can leave the workspace.
 - If the state cannot be read, requests answer 503 `workspace_state_unavailable`.
-- The console clears the cache key when it writes, so Multica sees the change at once. The cache lifetime of 60 seconds is the upper limit (`platform-management/workspacestate/workspacestate.go:23`).
+- The console clears the cache key when it writes, so Delegora sees the change at once. The cache lifetime of 60 seconds is the upper limit (`platform-management/workspacestate/workspacestate.go:23`).
 
 **Lock:** console, **Tenants**, the tenant, **Change status**, **Suspended**, enter the reason, confirm. Roles `support` and `admin`. The change writes `workspace.status_changed` to the workspace audit log, which the tenant's owners can read.
 
@@ -307,8 +307,8 @@ Spec 5.8 says staff export the paid orders for e-invoicing and record the invoic
 ## 11. Rollout order
 
 1. Back up the database.
-2. Run the migrations first: `server/cmd/migrate up` against the shared database. The Multica image carries it as `migrate` (`Dockerfile:38`). Migrations only add, so the older Multica and platform keep working on the newer schema (spec 12).
-3. Deploy Multica.
+2. Run the migrations first: `server/cmd/migrate up` against the shared database. The Delegora image carries it as `migrate` (`Dockerfile:38`). Migrations only add, so the older Delegora and platform keep working on the newer schema (spec 12).
+3. Deploy Delegora.
 4. Deploy the platform. At start it compares `schema_migrations` with its required list (the last entry is `690_platform_usage_daily_uidx`) and **refuses to start when a version is missing**, naming the versions. Run it with `restart: unless-stopped` so that it starts by itself once the migration is done. Publish only the console port 30001; the API port 8095 stays on the internal network (spec 11, 12).
 5. Point `MULTICA_CLOUD_URL` at `http://platform:8095` only after the rehearsal in section 12 and after every existing workspace has a transitional subscription set by staff (spec 12).
 
@@ -385,7 +385,7 @@ Deviation from the contract: the audit detail is `{"plan": "free", "source": "cu
 
 - No order export and no `einvoice_ref` write (section 10).
 - The console's **Edit subscription** dialog clears dates on a subscription (section 8.1).
-- `docker-compose.selfhost.yml` has no `platform` service, and does not pass `BILLING_BANK_*` to the Multica server (sections 6 and 11).
+- `docker-compose.selfhost.yml` has no `platform` service, and does not pass `BILLING_BANK_*` to the Delegora server (sections 6 and 11).
 - Rules for underpayment, overpayment and refunds are not in the spec (section 7.1).
 
 ## 13. Bảng kiểm trước khi bật R5
@@ -397,14 +397,14 @@ Nguồn: mã trong `server/migrations/`, `platform-management/internal/schemache
 Migration R5 có số từ 953 đến 969 trong `server/migrations/`.
 
 1. Sao lưu cơ sở dữ liệu (mục 11, bước 1).
-2. Chạy lệnh migrate của Multica **trước khi** khởi động lại Multica và platform:
+2. Chạy lệnh migrate của Delegora **trước khi** khởi động lại Delegora và platform:
 
 ```bash
 cd server && go run ./cmd/migrate up
 ```
 
 3. Lệnh này áp cả dải 953 đến 969. Hai nhóm không nằm trong danh sách kiểm của platform vẫn do lệnh này áp:
-   - 956 đến 960 tạo bảng nhóm tài khoản (`member_group`, `member_group_member`) và chỉ mục của chúng. Chỉ máy chủ Multica đọc các bảng này.
+   - 956 đến 960 tạo bảng nhóm tài khoản (`member_group`, `member_group_member`) và chỉ mục của chúng. Chỉ máy chủ Delegora đọc các bảng này.
    - **969** (`billing_order.expires_at` cho phép NULL) thuộc R5. Platform **không** kiểm migration này lúc khởi động (`schemacheck.go` không liệt kê nó), nên platform vẫn khởi động khi thiếu 969. Khi đó việc lập hóa đơn theo mức dùng không ghi được: cột còn `NOT NULL` (`677_billing_order.up.sql:23`), còn `usage.Invoicer` ghi đơn không có `expires_at` (`platform-management/internal/usage/invoicing.go:144`). Hãy kiểm `schema_migrations` có dòng `969_billing_order_usage_expiry` sau khi chạy lệnh.
 
 ### 13.2 Platform từ chối khởi động khi thiếu migration
@@ -426,7 +426,7 @@ Tức là 953, 954, 955 và 961 đến 968. Phần trước đó của danh sác
 ### 13.3 Thứ tự khởi động lại
 
 1. Chạy migrate (13.1).
-2. Khởi động lại máy chủ Multica.
+2. Khởi động lại máy chủ Delegora.
 3. Khởi động lại dịch vụ platform.
 
 ### 13.4 Biến môi trường R5 của platform
@@ -458,9 +458,9 @@ Chỉ trỏ `MULTICA_CLOUD_URL` về platform theo mục 11, bước 5.
 
 ### 13.6 Hoàn tác
 
-- Dừng dịch vụ platform thì các route R5 phía platform ngừng trả lời: hồ sơ thanh toán, đổi gói, hủy và tiếp tục, mua ghế, đọc mức dùng, và các việc nền của platform (chấm tiền theo mức dùng, lập hóa đơn, áp đổi giá). Máy chủ Multica vẫn chạy.
-- Phần nằm trong máy chủ Multica không dừng theo: các route nhóm tài khoản và việc kiểm khóa quyền đọc cơ sở dữ liệu (13.5).
-- Migration **không** tự hoàn tác. Chạy lại bản Multica cũ không rút migration nào. Mỗi migration có tệp `.down.sql`, và `cmd/migrate` nhận lệnh `down`, nhưng không có bước nào gọi lệnh này tự động. Chỉ chạy `down` khi có quyết định riêng và đã có bản sao lưu.
+- Dừng dịch vụ platform thì các route R5 phía platform ngừng trả lời: hồ sơ thanh toán, đổi gói, hủy và tiếp tục, mua ghế, đọc mức dùng, và các việc nền của platform (chấm tiền theo mức dùng, lập hóa đơn, áp đổi giá). Máy chủ Delegora vẫn chạy.
+- Phần nằm trong máy chủ Delegora không dừng theo: các route nhóm tài khoản và việc kiểm khóa quyền đọc cơ sở dữ liệu (13.5).
+- Migration **không** tự hoàn tác. Chạy lại bản Delegora cũ không rút migration nào. Mỗi migration có tệp `.down.sql`, và `cmd/migrate` nhận lệnh `down`, nhưng không có bước nào gọi lệnh này tự động. Chỉ chạy `down` khi có quyết định riêng và đã có bản sao lưu.
 
 ## 14. Hóa đơn điện tử (R4): hướng dẫn cho nhà vận hành
 
@@ -625,7 +625,7 @@ Chỉ bật khi có ít nhất hai `system_admin` đang hoạt động. Nếu ch
 
 ### 15.3 Yêu cầu tăng hạn mức
 
-- **Tạo:** owner hoặc người có `billing.manage` gửi `POST /api/workspaces/{id}/quota-requests` trong Multica. Console dùng `POST /api/platform/workspaces/{id}/quota-requests`, cho `system_admin` và `admin` của tenant đó.
+- **Tạo:** owner hoặc người có `billing.manage` gửi `POST /api/workspaces/{id}/quota-requests` trong Delegora. Console dùng `POST /api/platform/workspaces/{id}/quota-requests`, cho `system_admin` và `admin` của tenant đó.
 - **Nội dung:** `gate` là một trong chín khóa `issue_count`, `autopilot_runs`, `agents`, `runtimes`, `storage_bytes`, `api_rate_per_minute`, `audit_retention_days`, `member_groups`, `max_workspaces` (`platform-management/internal/plan/plan.go:25`). `requested_value` phải lớn hơn giá trị hiệu lực hiện tại. `reason` bắt buộc.
 - Mỗi workspace có tối đa một yêu cầu đang chờ cho mỗi gate. Gửi thêm trả 409 `quota_request_pending`.
 - **Duyệt và từ chối:** chỉ `system_admin`. `POST /api/platform/quota-requests/{id}/approve` nhận `{value?, reason}`; `value` có thể thấp hơn mức xin nhưng phải lớn hơn giá trị hiện tại. `POST .../deny` nhận `{reason}`.

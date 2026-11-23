@@ -1,19 +1,19 @@
 ---
-title: How Multica works
-description: Multica records and coordinates the work; connected computers execute it.
+title: How Delegora works
+description: Delegora records and coordinates the work; connected computers execute it.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { RunPathDemo } from "@/components/demos/run-path-demo";
 
-When you assign an issue to an agent, Multica creates a run that a runtime on a connected computer claims. The runtime invokes a local AI coding tool and writes progress and results back to the original issue.
+When you assign an issue to an agent, Delegora creates a run that a runtime on a connected computer claims. The runtime invokes a local AI coding tool and writes progress and results back to the original issue.
 
 ## The full path of a run
 
 <RunPathDemo />
 
 1. **The issue provides the context.** The issue holds the work description, the discussion, and the assignee. When it is assigned to an agent, the system uses that agent's instructions, model, skills, and runtime configuration.
-2. **Multica creates a run.** The run enters the queue; if no runtime is online, it waits there.
+2. **Delegora creates a run.** The run enters the queue; if no runtime is online, it waits there.
 3. **A runtime claims the run.** An online runtime on a connected computer claims the run and invokes the AI coding tool the agent is configured to use.
 4. **The AI coding tool executes locally.** The tool reads the working directory, runs commands, and produces results.
 5. **Results are written back to the issue.** Progress, comments, and results appear in the issue's timeline and execution log.
@@ -22,16 +22,16 @@ For the full list of issues, agents, runs, and runtimes and how they relate, see
 
 ## The data and execution boundary
 
-| Multica | Connected computer |
+| Delegora | Connected computer |
 |---|---|
 | Workspaces, issues, comments, and statuses | AI coding tools and their credentials |
 | Agent configuration and skills | Code directories and local files |
 | Run status, records, and results | Actual file changes and command execution |
 
-This boundary is the same on Multica Cloud and in self-hosted deployments.
+This boundary is the same on Delegora Cloud and in self-hosted deployments.
 
 <Callout type="warning">
-One exception: anything saved to an agent's `custom_env` is stored on the Multica server and passed to the runtime at execution time. Do not put secrets in `custom_env` that must never leave your computer.
+One exception: anything saved to an agent's `custom_env` is stored on the Delegora server and passed to the runtime at execution time. Do not put secrets in `custom_env` that must never leave your computer.
 </Callout>
 
 ## How agents are triggered
@@ -44,6 +44,6 @@ When the execution log shows Completed, it only means that one run has ended. Th
 
 ## Next steps
 
-- [Daemon and runtimes](/daemon-runtimes) — how computers connect to Multica, and what happens when runtimes go online or offline.
+- [Daemon and runtimes](/daemon-runtimes) — how computers connect to Delegora, and what happens when runtimes go online or offline.
 - [Runs](/tasks) — run statuses, retries, and cancellation rules.
 - [Assign issues to agents](/assigning-issues) — the most common way to collaborate.

@@ -1,6 +1,6 @@
 # Self-Hosting Guide
 
-Deploy Multica on your own infrastructure in minutes.
+Deploy Delegora on your own infrastructure in minutes.
 
 ## Architecture
 
@@ -15,7 +15,7 @@ Each user who runs AI agents locally also installs the **`multica` CLI** and run
 
 ## Anonymous Deployment Telemetry
 
-The self-hosted API server sends one first-party, deployment-level anonymous snapshot per UTC day to the fixed Multica endpoint `https://telemetry.multica.ai/v1/telemetry/events`. This helps maintainers understand which release versions are in use, deployment-size ranges, aggregate run volume, and how many members actively use a deployment. The endpoint is compiled into the server and cannot be redirected through configuration.
+The self-hosted API server sends one first-party, deployment-level anonymous snapshot per UTC day to the fixed Delegora endpoint `https://telemetry.multica.ai/v1/telemetry/events`. This helps maintainers understand which release versions are in use, deployment-size ranges, aggregate run volume, and how many members actively use a deployment. The endpoint is compiled into the server and cannot be redirected through configuration.
 
 The snapshot contains only the release version; bucketed counts of workspaces, distinct human members, active agents, and daemons seen in the previous 24 hours; aggregate counts of runs started, completed, failed, and cancelled in that window; and bucketed counts of members who opened the signed-in web or desktop app, and of members who personally started an agent run (assign, mention, comment, chat, manual run, or rerun — not autopilot or agent-to-agent delegation), in the previous 1, 7, and 28 complete UTC days. Members are counted per deployment and are never identified. It does not include names, email addresses or domains, IP addresses, business IDs, host/device details, repository or organization details, model/plugin data, prompts or output, comments or chats, paths, token/cost data, credentials, errors, stacks, or logs. This telemetry is not used for billing, licensing, authentication, or security decisions.
 
@@ -54,7 +54,7 @@ multica setup self-host
 ```
 </details>
 
-This installs the `multica` CLI, checks out the latest self-host assets, pulls the official Multica images from GHCR, and configures everything for localhost.
+This installs the `multica` CLI, checks out the latest self-host assets, pulls the official Delegora images from GHCR, and configures everything for localhost.
 
 Open http://localhost:3000. To log in, configure `RESEND_API_KEY` in `.env` for email-based codes (recommended), or leave Resend unset and copy the generated code from the backend logs. See [Step 2 — Log In](#step-2--log-in) for details.
 
@@ -147,7 +147,7 @@ You also need at least one AI agent CLI installed:
 - [Factory Droid](https://docs.factory.com/droid-exec/overview) (native `droid` 1.8.0+ on PATH; sign in or set `FACTORY_API_KEY` on the daemon machine; Linux requires glibc)
 - [QwenPaw](https://github.com/agentscope-ai/QwenPaw) (`qwenpaw` on PATH; pick its model in QwenPaw's own configuration)
 - [MiniMax Code CLI](https://www.npmjs.com/package/@minimax-ai/code) (`mcode` 0.1.2+ on PATH). Install a supported Node.js release (`>=22.19 <23` or `>=24 <27`), run `npm install --global @minimax-ai/code@latest`, then `mcode login`.
-- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh` on PATH with the Multica runtime profile installed; set `DEEPSEEK_API_KEY`)
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh` on PATH with the Delegora runtime profile installed; set `DEEPSEEK_API_KEY`)
 
 ### b) One-command setup
 
@@ -186,7 +186,7 @@ multica daemon status
 
 ## Kubernetes Deployment (Alternative)
 
-If you already run a Kubernetes cluster, you can deploy Multica there instead of Docker Compose using the released OCI Helm chart at `oci://ghcr.io/multica-ai/charts/multica` or the source chart at [`deploy/helm/multica/`](deploy/helm/multica/). It targets a typical k3s / k8s setup with an Ingress controller and a default `ReadWriteOnce` StorageClass — authored against k3s + Traefik + `local-path`, and should work on any cluster with minor tweaks.
+If you already run a Kubernetes cluster, you can deploy Delegora there instead of Docker Compose using the released OCI Helm chart at `oci://ghcr.io/multica-ai/charts/multica` or the source chart at [`deploy/helm/multica/`](deploy/helm/multica/). It targets a typical k3s / k8s setup with an Ingress controller and a default `ReadWriteOnce` StorageClass — authored against k3s + Traefik + `local-path`, and should work on any cluster with minor tweaks.
 
 The chart creates the following resources in the target namespace:
 
@@ -359,7 +359,7 @@ To pull the latest images without changing the chart version when your values st
 kubectl -n multica rollout restart deploy/multica-backend deploy/multica-frontend
 ```
 
-To upgrade to a specific Multica release, upgrade to the matching chart version. The released chart defaults its app images to the matching Git tag:
+To upgrade to a specific Delegora release, upgrade to the matching chart version. The released chart defaults its app images to the matching Git tag:
 
 ```bash
 helm upgrade multica oci://ghcr.io/multica-ai/charts/multica \
@@ -459,15 +459,15 @@ If you already have a `pg_cron` job in production, the safe sequence to retire i
      FROM cron.job WHERE jobname = 'rollup_task_usage_hourly';
    ```
 
-3. Leave the `pg_cron` extension itself installed unless you are sure no other workload depends on it. The bundled `pgvector/pgvector:pg17` image does **not** ship `pg_cron`, so nothing in Multica's default install needs it; uninstalling `pg_cron` from a custom image that other workloads still use is a separate decision.
+3. Leave the `pg_cron` extension itself installed unless you are sure no other workload depends on it. The bundled `pgvector/pgvector:pg17` image does **not** ship `pg_cron`, so nothing in Delegora's default install needs it; uninstalling `pg_cron` from a custom image that other workloads still use is a separate decision.
 
 External cron / systemd timer / Kubernetes `CronJob` setups that call `SELECT rollup_task_usage_hourly()` directly can be retired the same way — once `sys_cron_executions` shows steady SUCCESS rows from the in-process scheduler, the external job is redundant and can be removed.
 
 ## Company Knowledge Base (Optional)
 
-Multica can run a pinned [WeKnora](https://github.com/Tencent/WeKnora) sidecar that stores and retrieves company documents. Agents read it through a read-only MCP server; people publish into it. It is opt-in, and a workspace that never enables it behaves exactly as before. If the sidecar is down, runs continue without it and the Knowledge page shows "offline".
+Delegora can run a pinned [WeKnora](https://github.com/Tencent/WeKnora) sidecar that stores and retrieves company documents. Agents read it through a read-only MCP server; people publish into it. It is opt-in, and a workspace that never enables it behaves exactly as before. If the sidecar is down, runs continue without it and the Knowledge page shows "offline".
 
-The stack adds five containers behind the `knowledge` compose profile: `knowledge-app`, `knowledge-ui`, `knowledge-docreader`, `knowledge-postgres` (ParadeDB) and `knowledge-redis`, with their own volumes. Only `knowledge-app` joins Multica's network. Together they idle at roughly 650 MB of RAM, plus an embedding model.
+The stack adds five containers behind the `knowledge` compose profile: `knowledge-app`, `knowledge-ui`, `knowledge-docreader`, `knowledge-postgres` (ParadeDB) and `knowledge-redis`, with their own volumes. Only `knowledge-app` joins Delegora's network. Together they idle at roughly 650 MB of RAM, plus an embedding model.
 
 ### 1. Choose an embedding model
 
@@ -492,7 +492,7 @@ KNOWLEDGE_SERVICE_EMAIL=multica-service@example.com
 KNOWLEDGE_SERVICE_PASSWORD=<8-32 characters, letters and digits>
 ```
 
-Then start the profile and register the service user once. Multica signs in as this user to create one WeKnora workspace per Multica workspace:
+Then start the profile and register the service user once. Delegora signs in as this user to create one WeKnora workspace per Delegora workspace:
 
 ```bash
 docker compose -f docker-compose.selfhost.yml --profile knowledge up -d
@@ -504,11 +504,11 @@ curl -X POST http://localhost:8090/api/v1/auth/register \
 docker compose -f docker-compose.selfhost.yml up -d backend   # pick up the new .env values
 ```
 
-Optionally set `KNOWLEDGE_DISABLE_REGISTRATION=true` afterwards to close WeKnora self-registration. In Multica, a workspace owner or admin then enables knowledge for the workspace; Multica creates the workspace, five default knowledge bases and a read-only `company-read` MCP server that every agent receives.
+Optionally set `KNOWLEDGE_DISABLE_REGISTRATION=true` afterwards to close WeKnora self-registration. In Delegora, a workspace owner or admin then enables knowledge for the workspace; Delegora creates the workspace, five default knowledge bases and a read-only `company-read` MCP server that every agent receives.
 
 ### Models, Wiki and summaries (optional)
 
-Summaries, Wiki pages and reranking need a language model. Point Multica at an OpenAI-compatible endpoint and it registers the models in WeKnora when knowledge is enabled:
+Summaries, Wiki pages and reranking need a language model. Point Delegora at an OpenAI-compatible endpoint and it registers the models in WeKnora when knowledge is enabled:
 
 | Variable | Purpose |
 |---|---|
@@ -518,7 +518,7 @@ Summaries, Wiki pages and reranking need a language model. Point Multica at an O
 | `KNOWLEDGE_RERANK_MODEL` | The reranking model, optional. |
 | `KNOWLEDGE_VISION_MODEL` | The vision model, optional. It is registered but not tested at setup. |
 
-When a chat model exists, Wiki is turned on for `company`, `ventures` and `decisions` at WeKnora's `focused` setting, and every base gets summaries. Owners and admins change either per base on the Knowledge page, under Setup. Wiki is limited to three bases. Multica does not meter the model calls WeKnora makes; the cost is bounded by the focused setting, the three-base limit and the summaries switch, so turn summaries off on a base that is high-volume. Setup > Models runs each configured model once and names any that failed and why.
+When a chat model exists, Wiki is turned on for `company`, `ventures` and `decisions` at WeKnora's `focused` setting, and every base gets summaries. Owners and admins change either per base on the Knowledge page, under Setup. Wiki is limited to three bases. Delegora does not meter the model calls WeKnora makes; the cost is bounded by the focused setting, the three-base limit and the summaries switch, so turn summaries off on a base that is high-volume. Setup > Models runs each configured model once and names any that failed and why.
 
 If the endpoint is on a private address, add its host to `KNOWLEDGE_SSRF_WHITELIST_EXTRA` as described above. A model that fails to register does not stop knowledge from becoming ready; the failure is shown by the models test.
 
@@ -536,7 +536,7 @@ Agents run on your daemons, usually outside Docker, and talk to WeKnora's MCP en
 
 ### Ports
 
-WeKnora normally listens on 80 and 8080; 8080 is Multica's. The profile publishes the WeKnora API on `127.0.0.1:${KNOWLEDGE_API_PORT:-8090}` and its UI on `127.0.0.1:${KNOWLEDGE_UI_PORT:-8085}`.
+WeKnora normally listens on 80 and 8080; 8080 is Delegora's. The profile publishes the WeKnora API on `127.0.0.1:${KNOWLEDGE_API_PORT:-8090}` and its UI on `127.0.0.1:${KNOWLEDGE_UI_PORT:-8085}`.
 
 ### Backups
 
@@ -551,7 +551,7 @@ Losing `KNOWLEDGE_SYSTEM_AES_KEY` makes WeKnora's encrypted credentials unrecove
 
 ### Upgrading WeKnora
 
-The three WeKnora images are pinned to `v0.9.0` through `KNOWLEDGE_VERSION`; never use `latest`. Multica's adapter is tested against recorded v0.9.0 responses, so a version bump is a deliberate change that re-records them.
+The three WeKnora images are pinned to `v0.9.0` through `KNOWLEDGE_VERSION`; never use `latest`. Delegora's adapter is tested against recorded v0.9.0 responses, so a version bump is a deliberate change that re-records them.
 
 See [Advanced Configuration](SELF_HOSTING_ADVANCED.md#company-knowledge-base) for every variable.
 
@@ -585,9 +585,9 @@ make selfhost-stop
 multica daemon stop
 ```
 
-## Switching to Multica Cloud
+## Switching to Delegora Cloud
 
-If you've been self-hosting and want to switch your CLI to [Multica Cloud](https://multica.ai):
+If you've been self-hosting and want to switch your CLI to [Delegora Cloud](https://multica.ai):
 
 ```bash
 multica setup

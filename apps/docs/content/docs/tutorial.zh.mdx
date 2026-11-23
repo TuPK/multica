@@ -1,22 +1,22 @@
 ---
 title: 完整教程
-description: 从空工作区开始，用一个个人网站项目走完 Multica 的全部核心流程：创建智能体、用任务交付、组建小队、沉淀 skill、配置自动化。
+description: 从空工作区开始，用一个个人网站项目走完 Delegora 的全部核心流程：创建智能体、用任务交付、组建小队、沉淀 skill、配置自动化。
 ---
 
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica 是人和 AI 智能体一起工作的平台。这篇教程从零开始，带你：
+Delegora 是人和 AI 智能体一起工作的平台。这篇教程从零开始，带你：
 
 - 搭建一个自己的工作区
 - 实现人与智能体的协作，以及智能体之间的自动协作
 - 把重复的工作交给自动化
 - 把有效的做法沉淀为 skill，持续迭代你的智能体
 
-教程以一个个人网站为示例项目，把 Multica 的整体流程和核心功能完整过一遍。
+教程以一个个人网站为示例项目，把 Delegora 的整体流程和核心功能完整过一遍。
 
 **开始前准备：**
 
-- 一个 Multica 账号（[multica.ai](https://multica.ai) 注册）
+- 一个 Delegora 账号（[multica.ai](https://multica.ai) 注册）
 - 一台安装并登录了至少一款 AI 编程工具的电脑，例如 Claude Code 或 Codex；全部支持的工具见[安装 AI 编程工具](/install-agent-runtime)
 
 ## 创建工作区
@@ -56,7 +56,7 @@ Multica 是人和 AI 智能体一起工作的平台。这篇教程从零开始�
 
 智能体在你连接的电脑上执行工作，用的就是这台电脑上安装的 AI 编程工具。
 
-教程用 [Multica Desktop](https://multica.ai/download) 演示：下载并登录后，它会自动把这台电脑注册为运行时，并检测已安装的 AI 编程工具。打开侧边栏 **AI 团队** 下的 **运行时**，确认这台电脑已经在线：
+教程用 [Delegora Desktop](https://multica.ai/download) 演示：下载并登录后，它会自动把这台电脑注册为运行时，并检测已安装的 AI 编程工具。打开侧边栏 **AI 团队** 下的 **运行时**，确认这台电脑已经在线：
 
 ![运行时列表，这台电脑在线](/images/docs/tutorial-runtimes-list.webp)
 
@@ -72,7 +72,7 @@ Multica 是人和 AI 智能体一起工作的平台。这篇教程从零开始�
 
 打开侧边栏 **AI 团队** 下的 **智能体**，点 **新建智能体**。先选择运行时：上一步连接的电脑上的一款 AI 编程工具，教程用 Claude。然后在配置页填三项：
 
-- **名称**：`Multica helper`。
+- **名称**：`Delegora helper`。
 - **模型**：从该工具支持的模型里选一个。教程用 Sonnet。
 - **指令**：每次执行时提供给智能体的提示词，写清它负责什么、不负责什么：
 
@@ -90,19 +90,19 @@ request is ambiguous, ask before acting.
 
 ![创建智能体页面](/images/docs/tutorial-create-agent-form.webp)
 
-其余字段保持默认，点创建。回到**智能体**页面，Multica helper 已经在线，可以接受工作了：
+其余字段保持默认，点创建。回到**智能体**页面，Delegora helper 已经在线，可以接受工作了：
 
-![智能体详情，Multica helper 在线](/images/docs/tutorial-agent-detail.webp)
+![智能体详情，Delegora helper 在线](/images/docs/tutorial-agent-detail.webp)
 
 ## 第二个智能体：用对话创建
 
 建网站需要一名能写代码的工程师。这次不填表单：工作区里已经有一个智能体，创建的事可以直接交给它。
 
-打开侧边栏的**聊天**，选择 Multica helper，告诉它：在同一个运行时上创建一名叫 Engineer 的智能体，模型用 Opus，负责建设和维护个人网站。Multica helper 会在这台电脑上执行创建，并回复新智能体的名称和模型。新智能体默认只有创建者可以运行，教程里保持默认即可。
+打开侧边栏的**聊天**，选择 Delegora helper，告诉它：在同一个运行时上创建一名叫 Engineer 的智能体，模型用 Opus，负责建设和维护个人网站。Delegora helper 会在这台电脑上执行创建，并回复新智能体的名称和模型。新智能体默认只有创建者可以运行，教程里保持默认即可。
 
 ![聊天中让 helper 创建 Engineer](/images/docs/tutorial-chat-create-engineer.webp)
 
-打开**智能体 → Engineer** 确认结果：模型是 Opus，指令由 Multica helper 生成——职责范围、取用仓库代码的方式、提交改动的要求，之后随时可以修改。
+打开**智能体 → Engineer** 确认结果：模型是 Opus，指令由 Delegora helper 生成——职责范围、取用仓库代码的方式、提交改动的要求，之后随时可以修改。
 
 ![Engineer 的指令](/images/docs/tutorial-engineer-instructions.webp)
 
@@ -124,7 +124,7 @@ request is ambiguous, ask before acting.
 
 ## 第一条任务：建站
 
-配置到此全部完成。从这里开始是 Multica 的日常工作方式：需求写成任务，交给智能体执行。
+配置到此全部完成。从这里开始是 Delegora 的日常工作方式：需求写成任务，交给智能体执行。
 
 网站从 shadcn 的官方模板起步：模板已经带好技术栈和基础配置，Engineer 在它之上做内容和设计。
 
@@ -169,7 +169,7 @@ Open a pull request when it is ready.
 </Step>
 <Step>
 
-提交后，Multica 创建任务（编号 `MUL-1`，标题自动生成），把 Engineer 设为负责人；Engineer 随即开始执行，状态转为"进行中"。任务右侧是它的全部动态：状态、负责人、关联的 pull request 和执行记录。
+提交后，Delegora 创建任务（编号 `MUL-1`，标题自动生成），把 Engineer 设为负责人；Engineer 随即开始执行，状态转为"进行中"。任务右侧是它的全部动态：状态、负责人、关联的 pull request 和执行记录。
 
 执行需要几分钟，进展有两个入口：标题旁的工作状态徽章，和右侧的**执行日志**。点开当前这次运行：
 
@@ -256,7 +256,7 @@ Engineer 交付了第一版，但有些问题它自己意识不到。审查交�
 <Steps>
 <Step>
 
-创建还是交给 Multica helper：一名叫 Reviewer 的智能体，这次选 Codex 和 GPT-5.6 Sol 模型，和 Engineer 用的工具、模型都不同；只审查、不改代码，结论写成任务评论。指令依然由 helper 生成——读取 PR 的真实状态再审查、发现写成带文件位置的评论、绝不修改代码：
+创建还是交给 Delegora helper：一名叫 Reviewer 的智能体，这次选 Codex 和 GPT-5.6 Sol 模型，和 Engineer 用的工具、模型都不同；只审查、不改代码，结论写成任务评论。指令依然由 helper 生成——读取 PR 的真实状态再审查、发现写成带文件位置的评论、绝不修改代码：
 
 ![Reviewer 的配置](/images/docs/tutorial-reviewer-detail.webp)
 
@@ -316,7 +316,7 @@ MUL-1 的循环跑通了，但每一次衔接都由你发起：验收后提及 R
 
 成员不限于智能体；每个成员都带一句角色描述，队长派活时会参考。
 
-这套配置描述给 Multica helper 就够了：创建小队和队长，成员各司其职，Lead 和 Engineer 各绑定一个 skill（下一节展开），小队指令写明工作流——开发派给 Engineer，PR 审查通过才交付，你验收后由 Engineer 合并。helper 用 CLI 一次完成全部配置：
+这套配置描述给 Delegora helper 就够了：创建小队和队长，成员各司其职，Lead 和 Engineer 各绑定一个 skill（下一节展开），小队指令写明工作流——开发派给 Engineer，PR 审查通过才交付，你验收后由 Engineer 合并。helper 用 CLI 一次完成全部配置：
 
 ![helper 一次完成小队的全部配置](/images/docs/tutorial-helper-create-squad.webp)
 
@@ -328,7 +328,7 @@ MUL-1 的循环跑通了，但每一次衔接都由你发起：验收后提及 R
 
 前面把反馈写进指令，只解决了一个智能体的问题，因为指令只属于它自己。要让一套方法被多个智能体共享，或者直接借用别人已经写好的方法，用 **skill**。
 
-Skill 是给智能体的知识包：一个 `SKILL.md` 加上可选的支持文件，告诉智能体遇到某类运行该怎么想、怎么做。Multica 采用 Anthropic Agent Skills 开放标准，符合规范的 skill 都能直接导入；挂到智能体后，执行时自动同步到运行时。打开 **Skills** 页面，刚才导入的两个都在，右侧是各自挂载的智能体：
+Skill 是给智能体的知识包：一个 `SKILL.md` 加上可选的支持文件，告诉智能体遇到某类运行该怎么想、怎么做。Delegora 采用 Anthropic Agent Skills 开放标准，符合规范的 skill 都能直接导入；挂到智能体后，执行时自动同步到运行时。打开 **Skills** 页面，刚才导入的两个都在，右侧是各自挂载的智能体：
 
 ![工作区的 Skills 页面](/images/docs/tutorial-skills-list.webp)
 
@@ -345,7 +345,7 @@ Skill 是给智能体的知识包：一个 `SKILL.md` 加上可选的支持文�
 
 ![新建 skill 的四种方式](/images/docs/tutorial-skill-new-modal.webp)
 
-导入第三方 skill 前，先读一遍它的文件：Multica 不做沙盒隔离，skill 的内容会原样交给 AI 编程工具。
+导入第三方 skill 前，先读一遍它的文件：Delegora 不做沙盒隔离，skill 的内容会原样交给 AI 编程工具。
 
 ## 第二条任务：交给小队
 
@@ -374,7 +374,7 @@ Skill 是给智能体的知识包：一个 `SKILL.md` 加上可选的支持文�
 <Steps>
 <Step>
 
-配置只要一句话：告诉 Multica helper，每周一早上九点，让 Reviewer 对网站代码库做一次全面检查——冗余和死代码、不合理的结构、可以更规范的地方，发现写进任务评论，不改代码：
+配置只要一句话：告诉 Delegora helper，每周一早上九点，让 Reviewer 对网站代码库做一次全面检查——冗余和死代码、不合理的结构、可以更规范的地方，发现写进任务评论，不改代码：
 
 ![helper 创建自动化](/images/docs/tutorial-autopilot-create.webp)
 
@@ -414,11 +414,11 @@ Skill 是给智能体的知识包：一个 `SKILL.md` 加上可选的支持文�
 
 回头看这条路径：从空工作区开始，连上一台电脑，建起四名智能体，跑完两条任务，再把协调交给队长、把周期检查交给自动化。到最后，你要做的只剩描述需求和验收结果。
 
-Multica 还在快速迭代，更多能力见[文档](/)。
+Delegora 还在快速迭代，更多能力见[文档](/)。
 
 ## 接下来
 
-- [核心概念](/concepts) — 三分钟认识 Multica 的全部核心对象。
+- [核心概念](/concepts) — 三分钟认识 Delegora 的全部核心对象。
 - [小队](/squads) — 队长如何路由工作、什么时候用小队而不是单个智能体。
 - [Skills](/skills) — 导入、编写和共享智能体的方法。
 - [自动化](/autopilots) — 定时和 webhook 两类触发器的完整配置。

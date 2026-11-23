@@ -1,17 +1,17 @@
 ---
 title: GitHub integration
-description: Link pull requests to Multica issues and watch development progress from the issue.
+description: Link pull requests to Delegora issues and watch development progress from the issue.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { PrLinkDemo } from "@/components/demos/pr-link-demo";
 
-Once GitHub is connected, Multica automatically links pull requests based on issue identifiers. Issue detail shows PR state, change size, CI results, and merge conflicts in place.
+Once GitHub is connected, Delegora automatically links pull requests based on issue identifiers. Issue detail shows PR state, change size, CI results, and merge conflicts in place.
 
 The GitHub integration only reads the repositories authorized at install time; it never pushes commits, comments, or status checks.
 
-Self-hosted Multica can also connect self-hosted Forgejo, Gitea, or GitLab instances in parallel, with the same PR auto-linking, merge-driven status changes, and CI display. The entry point is **Settings → Code**; see [Self-hosted Git hosting](/vcs-integration). Multica Cloud does not offer this entry point.
+Self-hosted Delegora can also connect self-hosted Forgejo, Gitea, or GitLab instances in parallel, with the same PR auto-linking, merge-driven status changes, and CI display. The entry point is **Settings → Code**; see [Self-hosted Git hosting](/vcs-integration). Delegora Cloud does not offer this entry point.
 
 ## Connect GitHub
 
@@ -30,18 +30,18 @@ In the **GitHub** row, click **Connect GitHub**.
 In GitHub, pick the account or organization and authorize all repositories or a chosen subset.
 </Step>
 <Step>
-Return to Multica after the installation completes.
+Return to Delegora after the installation completes.
 </Step>
 </Steps>
 
 Use **Add account or organization** in the GitHub row or the **Add repository** menu to connect another installation without disconnecting an existing one. Each connection lists its account and who connected it; the repository picker lets you switch between accounts. **Pause GitHub features** applies to all connections in the workspace.
 
-If GitHub returns no user authorization, Multica cannot verify a new connection, even if the App is already installed or connected to another workspace. Retry connecting and complete authorization; if this repeats, ask your Multica operator to check the App’s user authorization settings. Changing repository access alone may not complete a new connection.
+If GitHub returns no user authorization, Delegora cannot verify a new connection, even if the App is already installed or connected to another workspace. Retry connecting and complete authorization; if this repeats, ask your Delegora operator to check the App’s user authorization settings. Changing repository access alone may not complete a new connection.
 
 The connection status shows on the same page. Regular members can view the status but can't connect, disconnect, or change the switches.
 
 <Callout type="info">
-The **GitHub connection** decides which repositories Multica receives PR events from; the **code repositories** setting decides which repositories agents can pick when starting runs. They serve different purposes and are configured separately.
+The **GitHub connection** decides which repositories Delegora receives PR events from; the **code repositories** setting decides which repositories agents can pick when starting runs. They serve different purposes and are configured separately.
 </Callout>
 
 ## Feature switches
@@ -54,7 +54,7 @@ The **Pull requests & issues** section of **Settings → Code** has these settin
 | Co-authored-by | Adds `Co-authored-by: multica-agent <github@multica.ai>` to commits created by agents. |
 | Auto-link PRs | Links a PR to the issue whose identifier is in its branch name or title, or follows a closing keyword in its body. |
 | After PRs merge, move the issue to | What merging every PR linked to an issue does: move it to a status (`Done` by default) or leave it alone. See [When merged PRs move an issue](#when-merged-prs-move-an-issue). |
-| PR card → CI & mergeability | For each linked PR, Multica fetches a GitHub API snapshot as the App and shows its CI status and mergeability on the card. See [View PRs on an issue](#view-prs-on-an-issue). |
+| PR card → CI & mergeability | For each linked PR, Delegora fetches a GitHub API snapshot as the App and shows its CI status and mergeability on the card. See [View PRs on an issue](#view-prs-on-an-issue). |
 
 **After PRs merge, move the issue to** applies to every code host, including [self-hosted Git hosting](/vcs-integration).
 
@@ -70,7 +70,7 @@ mul-123-fix-login-redirect
 MUL-123 Fix the redirect after login
 ```
 
-Multica ignores case and only matches the current workspace's issue prefix. One PR can link to multiple issues.
+Delegora ignores case and only matches the current workspace's issue prefix. One PR can link to multiple issues.
 
 If the identifier appears only in the PR body, put it right after a closing keyword:
 
@@ -82,7 +82,7 @@ Resolves MUL-123
 
 A bare mention in the body, such as `Related to MUL-123`, doesn't link the PR at all. Commit messages and PR comments don't trigger linking either.
 
-You can also link a PR by hand: in the issue's **Pull requests** block, click **+** and paste the PR URL. To take a PR off an issue, open the **⋯** menu on its row and choose **Remove from issue**; Multica won't link it again from its title or branch.
+You can also link a PR by hand: in the issue's **Pull requests** block, click **+** and paste the PR URL. To take a PR off an issue, open the **⋯** menu on its row and choose **Remove from issue**; Delegora won't link it again from its title or branch.
 
 ## View PRs on an issue
 
@@ -94,7 +94,7 @@ Once linked, PRs appear in the **Pull requests** block of issue detail. Each ent
 - CI status: all passed (with a count), some failed (naming the failing checks), or some in progress; PRs with no checks configured don't show this item, and "no checks" is never treated as passing;
 - mergeability: mergeable (only when GitHub reports a clean merge state), conflicting, blocked, or behind.
 
-CI status and mergeability come from snapshots Multica pulls from the GitHub API, and the two are independent; merged or closed PRs no longer show either. When GitHub is temporarily unavailable, the card keeps the last snapshot and marks it stale.
+CI status and mergeability come from snapshots Delegora pulls from the GitHub API, and the two are independent; merged or closed PRs no longer show either. When GitHub is temporarily unavailable, the card keeps the last snapshot and marks it stale.
 
 Under the list, one line says what happens next: for example *Moves to Done when #19 merges*, or which PR closed without merging. There's no line when the workspace leaves status alone or the issue already has the target status.
 
@@ -119,21 +119,21 @@ The status change is written to the timeline as a system action naming the PRs, 
 
 ## Multiple workspaces
 
-The same GitHub App installation can be connected to multiple Multica workspaces. GitHub events flow into each workspace separately and are matched against each workspace's own issue prefix.
+The same GitHub App installation can be connected to multiple Delegora workspaces. GitHub events flow into each workspace separately and are matched against each workspace's own issue prefix.
 
 For example, a PR that references both `MUL-1` and `ENG-2` can link in two workspaces with different prefixes. Workspaces never see each other's issues.
 
-If one identifier matches an issue in more than one of the connected workspaces (possible when they share a prefix), Multica doesn't link it automatically in any of them, so merging the PR can't complete an unrelated issue. Link the PR by hand in the right workspace.
+If one identifier matches an issue in more than one of the connected workspaces (possible when they share a prefix), Delegora doesn't link it automatically in any of them, so merging the PR can't complete an unrelated issue. Link the PR by hand in the right workspace.
 
 ## Disconnect
 
 On **Settings → Code**, choose **Disconnect** beside the account you want to remove. Only that installation’s connection to the current workspace is removed; other connections keep receiving events. The App remains installed on GitHub, and existing PR records and links are kept.
 
-To revoke repository authorization on the GitHub side, uninstall the App or adjust its repository scope from your personal or organization GitHub App installations page. After uninstalling, every Multica workspace linked to that installation stops receiving events.
+To revoke repository authorization on the GitHub side, uninstall the App or adjust its repository scope from your personal or organization GitHub App installations page. After uninstalling, every Delegora workspace linked to that installation stops receiving events.
 
 ## Self-hosting setup
 
-Multica Cloud doesn't need this section. Self-hosting requires creating your own GitHub App first.
+Delegora Cloud doesn't need this section. Self-hosting requires creating your own GitHub App first.
 
 <Steps>
 <Step>
@@ -144,7 +144,7 @@ Create the App under GitHub's **Developer settings → GitHub Apps** and fill in
 
 | Field | Value |
 |---|---|
-| Homepage URL | Your Multica frontend address, e.g. `https://multica.example.com` |
+| Homepage URL | Your Delegora frontend address, e.g. `https://multica.example.com` |
 | Callback URL | `https://<api-host>/api/github/setup` |
 | Request user authorization (OAuth) during installation | Enable |
 | Webhook URL | `https://<api-host>/api/webhooks/github` |
@@ -165,7 +165,7 @@ Subscribe to these events:
 - **Pull request**;
 - **Check suite**, **Check run**, and **Status**, which trigger CI and mergeability refreshes.
 
-PR snapshots use the Pull requests, Checks, and Commit statuses REST APIs. Contents access is not required. With the optional Actions permission, Multica also reads the commit's workflow runs. Without it, a cancelled run still counts as failed even after a newer run of the same workflow passes.
+PR snapshots use the Pull requests, Checks, and Commit statuses REST APIs. Contents access is not required. With the optional Actions permission, Delegora also reads the commit's workflow runs. Without it, a cancelled run still counts as failed even after a newer run of the same workflow passes.
 
 <Callout type="warning">
 This is the **Webhook secret**, not the OAuth Client secret. If the two sides have different webhook secrets, GitHub deliveries return `401 invalid signature`.
@@ -188,7 +188,7 @@ FRONTEND_ORIGIN=https://multica.example.com
 
 All six GitHub variables in this section are required for new connections, including `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY`. Missing any of them disables Connect; webhook acceptance requires only `GITHUB_WEBHOOK_SECRET`. Existing bindings continue working. Set the first Callback URL to this endpoint and enable installation OAuth before deploying. GitHub does not use a separate Setup URL when installation OAuth is enabled.
 
-For new connections, PR-card CI status and mergeability, also set the next two variables. Multica uses a metadata-only installation token to compare the complete installation repository list with the repositories the connecting user administers:
+For new connections, PR-card CI status and mergeability, also set the next two variables. Delegora uses a metadata-only installation token to compare the complete installation repository list with the repositories the connecting user administers:
 
 ```dotenv
 GITHUB_APP_ID=<the GitHub App's numeric ID>

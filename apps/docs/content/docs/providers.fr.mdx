@@ -1,16 +1,16 @@
 ---
 title: "Comparatif des outils de codage IA"
-description: "Comparez les outils de codage IA pris en charge par Multica, et leurs différences en matière de modèles, de MCP, de sessions et de skills."
+description: "Comparez les outils de codage IA pris en charge par Delegora, et leurs différences en matière de modèles, de MCP, de sessions et de skills."
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { ProviderPickerDemo } from "@/components/demos/provider-picker-demo";
 
-Multica ne remplace pas l'outil de codage IA que vous utilisez : un runtime invoque l'outil déjà installé et connecté sur l'ordinateur, puis renvoie la progression et les résultats dans la tâche. Si vous utilisez déjà l'un de ces outils, vous pouvez généralement le garder. Si vous n'avez pas encore choisi, regardez quatre points :
+Delegora ne remplace pas l'outil de codage IA que vous utilisez : un runtime invoque l'outil déjà installé et connecté sur l'ordinateur, puis renvoie la progression et les résultats dans la tâche. Si vous utilisez déjà l'un de ces outils, vous pouvez généralement le garder. Si vous n'avez pas encore choisi, regardez quatre points :
 
 - s'il est déjà installé sur l'ordinateur ;
 - quels modèles votre compte peut utiliser ;
-- si Multica doit configurer MCP pour lui ;
+- si Delegora doit configurer MCP pour lui ;
 - quels skills l'équipe souhaite réutiliser.
 
 Les étapes d'installation se trouvent dans [Installer les outils de codage IA](/install-agent-runtime).
@@ -19,7 +19,7 @@ Les étapes d'installation se trouvent dans [Installer les outils de codage IA](
 
 <ProviderPickerDemo />
 
-| Outil | Commande détectée | Reprise de session | MCP géré par Multica | Modèle choisi dans Multica | Chemin d'injection des skills |
+| Outil | Commande détectée | Reprise de session | MCP géré par Delegora | Modèle choisi dans Delegora | Chemin d'injection des skills |
 |---|---|---:|---:|---:|---|
 | Antigravity | `agy` | ✓ | — | ✓ | `.agents/skills/` |
 | Claude Code | `claude` | ✓ | ✓ | ✓ | `.claude/skills/` |
@@ -53,31 +53,31 @@ Les étapes d'installation se trouvent dans [Installer les outils de codage IA](
 | ZeroClaw | `zeroclaw` | ✓ | — | — | — |
 | ZCode | `zcode` / ZCode Desktop | ✓ | ✓ | ✓ | `.zcode/skills/` |
 
-Pour Claude Code, Multica liste et importe les compétences utilisateur et de plugins depuis le chemin absolu `CLAUDE_CONFIG_DIR` défini dans l’environnement du daemon. Le scanner ne voit pas les chemins définis uniquement dans un script de lancement.
+Pour Claude Code, Delegora liste et importe les compétences utilisateur et de plugins depuis le chemin absolu `CLAUDE_CONFIG_DIR` défini dans l’environnement du daemon. Le scanner ne voit pas les chemins définis uniquement dans un script de lancement.
 
 Pour Amp, le champ du modèle sélectionne un **mode** Amp, comme `high`, et non l’identifiant du modèle sous-jacent. Laissez-le vide pour utiliser le mode par défaut d’Amp.
 
 Amp exige aussi `AMP_API_KEY` dans l’environnement du daemon ou de l’agent ; une connexion interactive enregistrée ne suffit pas.
 
-« MCP géré par Multica » signifie que vous pouvez définir des serveurs MCP dans la configuration de l'agent et que Multica les transmet à l'outil avant une exécution. Cette colonne indique seulement si Multica peut s'en charger, pas si l'outil dispose d'autres moyens de configurer MCP.
+« MCP géré par Delegora » signifie que vous pouvez définir des serveurs MCP dans la configuration de l'agent et que Delegora les transmet à l'outil avant une exécution. Cette colonne indique seulement si Delegora peut s'en charger, pas si l'outil dispose d'autres moyens de configurer MCP.
 
-Pour les outils marqués — dans « Modèle choisi dans Multica », le modèle se choisit dans la configuration propre à l'outil ; voir [Sources des modèles](#sources-des-modèles).
+Pour les outils marqués — dans « Modèle choisi dans Delegora », le modèle se choisit dans la configuration propre à l'outil ; voir [Sources des modèles](#sources-des-modèles).
 
 ## Sources des modèles
 
 Devin utilise ACP en local et prend en charge les serveurs MCP stdio. HTTP/SSE ne sont transmis que si le CLI annonce leur prise en charge. L'import des skills inclut aussi `~/.codeium/<channel>/skills` (`windsurf`, `windsurf-next`, `windsurf-insiders`), après les répertoires Devin/Cognition et avant `~/.agents/skills`.
 
-Le catalogue Devin peut inclure des modèles indisponibles pour votre compte. Choisissez un identifiant complet, un nom de modèle de session ou un slug/alias de famille non ambigu (par exemple `opus`), ou laissez le champ vide pour le modèle par défaut. Multica confirme le modèle de session avant d'envoyer le prompt et refuse un repli vers une autre famille. Pour les noms ambigus, les noms partiels ou les variantes indisponibles, utilisez un identifiant complet. L'usage est attribué au modèle retourné ; Adaptive reste associé à son identifiant de routage, sans déduire le modèle sous-jacent.
+Le catalogue Devin peut inclure des modèles indisponibles pour votre compte. Choisissez un identifiant complet, un nom de modèle de session ou un slug/alias de famille non ambigu (par exemple `opus`), ou laissez le champ vide pour le modèle par défaut. Delegora confirme le modèle de session avant d'envoyer le prompt et refuse un repli vers une autre famille. Pour les noms ambigus, les noms partiels ou les variantes indisponibles, utilisez un identifiant complet. L'usage est attribué au modèle retourné ; Adaptive reste associé à son identifiant de routage, sans déduire le modèle sous-jacent.
 
-Devin utilise `WINDSURF_API_KEY` s'il est défini, sinon les identifiants enregistrés par `devin auth login`. Une méthode d'authentification ACP inconnue ne bloque pas cette connexion. Multica conserve le mode de session configuré sans augmenter les permissions : si le mode par défaut est `plan`, passez à un mode d'édition dans Devin avant d'envoyer une tâche qui modifie des fichiers.
+Devin utilise `WINDSURF_API_KEY` s'il est défini, sinon les identifiants enregistrés par `devin auth login`. Une méthode d'authentification ACP inconnue ne bloque pas cette connexion. Delegora conserve le mode de session configuré sans augmenter les permissions : si le mode par défaut est `plan`, passez à un mode d'édition dans Devin avant d'envoyer une tâche qui modifie des fichiers.
 
 Lorsque vous créez un agent, la liste des modèles provient du runtime correspondant. Certains outils exposent un ensemble fixe de noms de modèles ; d'autres renvoient les modèles disponibles selon la configuration locale, le compte connecté et les droits de l'abonnement.
 
-Si vous ne choisissez pas de modèle, Multica utilise le modèle par défaut de l'outil. Si la liste est vide, vérifiez que le runtime est en ligne et que l'outil est connecté, puis actualisez la liste des modèles.
+Si vous ne choisissez pas de modèle, Delegora utilise le modèle par défaut de l'outil. Si la liste est vide, vérifiez que le runtime est en ligne et que l'outil est connecté, puis actualisez la liste des modèles.
 
-QwenPaw, MiniMax Code et ZeroClaw font exception : ils n'acceptent pas de modèle choisi depuis Multica, donc le sélecteur est inactif et affiche « Géré par le runtime ». Choisissez plutôt le modèle dans la configuration propre à l'outil. Pour ces outils, une liste de modèles vide est normale et n'indique pas que le runtime est hors ligne.
+QwenPaw, MiniMax Code et ZeroClaw font exception : ils n'acceptent pas de modèle choisi depuis Delegora, donc le sélecteur est inactif et affiche « Géré par le runtime ». Choisissez plutôt le modèle dans la configuration propre à l'outil. Pour ces outils, une liste de modèles vide est normale et n'indique pas que le runtime est hors ligne.
 
-Antigravity affiche ses variantes de raisonnement comme des modèles distincts lorsqu’elles figurent dans `agy models`. Sélectionnez la variante exacte dans le sélecteur de modèle, suffixe compris. Multica ne propose pas de réglage du raisonnement séparé pour Antigravity. Si vous passez `--effort` dans les arguments personnalisés, Antigravity vérifie que cette option est compatible avec le modèle sélectionné.
+Antigravity affiche ses variantes de raisonnement comme des modèles distincts lorsqu’elles figurent dans `agy models`. Sélectionnez la variante exacte dans le sélecteur de modèle, suffixe compris. Delegora ne propose pas de réglage du raisonnement séparé pour Antigravity. Si vous passez `--effort` dans les arguments personnalisés, Antigravity vérifie que cette option est compatible avec le modèle sélectionné.
 
 DeepSeek Harness publie son catalogue de modèles depuis le runtime lui-même (`dsh --profile multica --list-models`). Ses identifiants de modèle utilisent la forme `provider/model` (par exemple `deepseek-official/deepseek-chat`) ; sélectionnez donc l'identifiant complet dans la liste.
 
@@ -87,9 +87,9 @@ Les noms de modèles ne sont pas communs d'un outil à l'autre. Après un change
 
 ## Reprise de session
 
-Les outils marqués ✓ permettent de poursuivre une session existante lors d'une exécution ultérieure, à condition que la session d'origine existe toujours et que l'exécution soit effectuée par un runtime qui peut y accéder. MiniMax Code 0.1.2 n'annonce aucune capacité de chargement de session via ACP, donc Multica démarre une nouvelle session MCode pour une exécution ultérieure.
+Les outils marqués ✓ permettent de poursuivre une session existante lors d'une exécution ultérieure, à condition que la session d'origine existe toujours et que l'exécution soit effectuée par un runtime qui peut y accéder. MiniMax Code 0.1.2 n'annonce aucune capacité de chargement de session via ACP, donc Delegora démarre une nouvelle session MCode pour une exécution ultérieure.
 
-Multica stocke l'identifiant de session renvoyé par l'outil. La prochaine fois que le travail se poursuit sur la même tâche, le runtime tente de reprendre cette session ; s'il n'y parvient pas, il crée une nouvelle session et continue. Pi stocke le chemin d'un fichier de session local ; il dépend donc davantage de l'ordinateur et du fichier d'origine.
+Delegora stocke l'identifiant de session renvoyé par l'outil. La prochaine fois que le travail se poursuit sur la même tâche, le runtime tente de reprendre cette session ; s'il n'y parvient pas, il crée une nouvelle session et continue. Pi stocke le chemin d'un fichier de session local ; il dépend donc davantage de l'ordinateur et du fichier d'origine.
 
 Les règles de relance et de reprise de session se trouvent dans [Exécutions](/tasks#relance-manuelle).
 
@@ -107,9 +107,9 @@ Les serveurs MCP déjà configurés sur la machine du runtime sont fusionnés su
 
 ## Injection des skills
 
-Avant le démarrage d'une exécution, Multica écrit les skills rattachés à l'agent dans les chemins du tableau ci-dessus, afin que chaque outil les découvre par son propre mécanisme natif.
+Avant le démarrage d'une exécution, Delegora écrit les skills rattachés à l'agent dans les chemins du tableau ci-dessus, afin que chaque outil les découvre par son propre mécanisme natif.
 
-Les skills qui existent déjà dans le dépôt ne sont jamais écrasés. En cas de conflit de nom, Multica utilise un autre nom de répertoire pour la copie injectée ; après l'exécution, il ne nettoie que les fichiers qu'il a créés.
+Les skills qui existent déjà dans le dépôt ne sont jamais écrasés. En cas de conflit de nom, Delegora utilise un autre nom de répertoire pour la copie injectée ; après l'exécution, il ne nettoie que les fichiers qu'il a créés.
 
 Codex, Hermes et OpenClaw sont traités un peu différemment :
 

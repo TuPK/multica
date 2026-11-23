@@ -6,11 +6,11 @@ description: メール認証コード、Google ログイン、新規登録の範
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica はデフォルトでメール認証コードによるログインを使い、Google OAuth を追加することもできます。既存のユーザーはいつでも再ログインできます。サインアップ制限は、新しいアカウントを作成できるかどうかだけを決めます。
+Delegora はデフォルトでメール認証コードによるログインを使い、Google OAuth を追加することもできます。既存のユーザーはいつでも再ログインできます。サインアップ制限は、新しいアカウントを作成できるかどうかだけを決めます。
 
 ## メール認証コード
 
-ユーザーがメールアドレスを入力すると、Multica は 6 桁の認証コードを送信します。コードは 10 分間有効で、検証に成功するとブラウザにログイン cookie が発行されます。
+ユーザーがメールアドレスを入力すると、Delegora は 6 桁の認証コードを送信します。コードは 10 分間有効で、検証に成功するとブラウザにログイン cookie が発行されます。
 
 メールは Resend または SMTP で送信できます。両方を設定した場合は `SMTP_HOST` が優先されます。
 
@@ -100,7 +100,7 @@ MULTICA_DEV_VERIFICATION_CODE=888888
 </Step>
 <Step>
 
-Multica フロントエンドのコールバックアドレスを **Authorized redirect URIs** に追加します:
+Delegora フロントエンドのコールバックアドレスを **Authorized redirect URIs** に追加します:
 
 ```text
 https://multica.example.com/auth/callback

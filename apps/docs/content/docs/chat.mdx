@@ -11,7 +11,7 @@ Chat fits work that hasn't become a clear issue yet: sorting out ideas, checking
 
 Chat is a one-to-one conversation between you and an [agent](/agents), off the [issue](/issues) board. The whole conversation is **fully private**: nobody else in the [workspace](/workspaces), admins included, can see it.
 
-A chat is **not bound to any issue**. The agent isn't watching your board, doesn't automatically receive an issue's description and comments, and won't turn the conversation into issues on its own. It can still use the Multica CLI to query workspaces, projects, issues, and skills within its permissions, and when you explicitly ask, it acts with your workspace access, for example to create an issue.
+A chat is **not bound to any issue**. The agent isn't watching your board, doesn't automatically receive an issue's description and comments, and won't turn the conversation into issues on its own. It can still use the Delegora CLI to query workspaces, projects, issues, and skills within its permissions, and when you explicitly ask, it acts with your workspace access, for example to create an issue.
 
 A chat can also carry background. Click **+** at the bottom left of the input and choose **Project context** to attach a [project](/projects) to the conversation; when the agent runs, it receives that project's description, repositories, and other resources.
 
@@ -35,7 +35,7 @@ Type a message; you can also attach images or files.
 </Step>
 <Step>
 
-After you send, Multica creates a run for the message, and the reply comes back to the current conversation.
+After you send, Delegora creates a run for the message, and the reply comes back to the current conversation.
 
 </Step>
 </Steps>
@@ -54,7 +54,7 @@ You don't have to leave the page you're on to chat. Workspace pages can open a c
 
 In a wide window, quick chat sits at the right end of the status bar along the bottom of the app:
 
-- **Ask Multica** starts a new chat.
+- **Ask Delegora** starts a new chat.
 - A chat gets a chip in the bar while the agent is working on it, while it has a reply you haven't read, and once you've opened it in the floating window. A spinner on the chip means the agent is replying, and a colored dot means an unread reply; hover the chip to see the chat's title and state. Click a chip to open that chat, and click it again to close the window. Chips that don't fit go into a **+N** menu.
 - To close a chip, hover it and click **×**. It comes back when the chat gets a new message or when you open the chat again.
 - **Chat history**, the last button in the bar, lists your recent chats with the same running and unread marks. Pick one to open it, or click **All chats** to go to the **Chat** page.
@@ -63,7 +63,7 @@ In a wide window, quick chat sits at the right end of the status bar along the b
 A narrow window has no status bar. Instead, a round chat button in the bottom-right corner opens the window. The button pulses gently while an agent is replying, and its tooltip says when a chat is running or has unread replies.
 
 - Press `⌘J` (`Ctrl+J` on Windows and Linux) to open or close the floating window; opening it puts the cursor in the message input. The key works while you're typing in that input, too. You can rebind it under **Settings → Shortcuts**; see [Search, shortcuts, and preferences](/shortcuts).
-- Press `⇧⌘J` (`Ctrl+Shift+J` on Windows and Linux) to start a new chat instead, the same as **Ask Multica**; `⌘J` reopens the chat you had open last. Press it again on the new chat to close the window.
+- Press `⇧⌘J` (`Ctrl+Shift+J` on Windows and Linux) to start a new chat instead, the same as **Ask Delegora**; `⌘J` reopens the chat you had open last. Press it again on the new chat to close the window.
 - Drag the window's edges to resize it, or expand or minimize it.
 - On the **Chat** page itself, quick chat doesn't appear in the status bar and the round button doesn't show. Neither `⌘J` nor `⇧⌘J` does anything there: the page already shows the same conversation.
 
@@ -78,11 +78,11 @@ If you don't want the floating window, turn off **Floating chat window** under *
 | Letting teammates see the background and continue the discussion | **Issue** |
 | A quick look at workspace information with no work record needed | **Chat** |
 
-Direct chats created in Multica can be read only by their creator, not by other members or admins. Put conclusions the team needs to see into an issue, a project description, or a skill.
+Direct chats created in Delegora can be read only by their creator, not by other members or admins. Put conclusions the team needs to see into an issue, a project description, or a skill.
 
 ## Multi-turn context
 
-A conversation tries to continue the original session in the AI coding tool, so later messages don't need to repeat earlier content. Multica stores the session ID and routes subsequent runs to a runtime that can access that session.
+A conversation tries to continue the original session in the AI coding tool, so later messages don't need to repeat earlier content. Delegora stores the session ID and routes subsequent runs to a runtime that can access that session.
 
 If the local session no longer exists, the context can't be continued, or the previous error shouldn't be reused, the runtime starts from a fresh session. The conversation's message history is kept either way.
 

@@ -1,6 +1,6 @@
 ---
 title: セルフホストクイックスタート
-description: Docker Compose で Multica を起動し、ログインして、最初の実行用コンピュータを接続します。
+description: Docker Compose で Delegora を起動し、ログインして、最初の実行用コンピュータを接続します。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -8,20 +8,20 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-Multica のセルフホストは 2 つの部分に分かれます。
+Delegora のセルフホストは 2 つの部分に分かれます。
 
 | 構成要素 | 実行するもの | 置く場所 |
 |---|---|---|
-| **Multica サービス** | Web、API、PostgreSQL | Docker をインストールした 1 台のマシン |
-| **実行用コンピュータ** | Multica デーモンと AI コーディングツール | 開発者が実際に作業するコンピュータ |
+| **Delegora サービス** | Web、API、PostgreSQL | Docker をインストールした 1 台のマシン |
+| **実行用コンピュータ** | Delegora デーモンと AI コーディングツール | 開発者が実際に作業するコンピュータ |
 
-両者は同じマシンでも、別々のマシンでも構いません。セルフホストで置き換えるのは Multica Cloud の部分だけです。
+両者は同じマシンでも、別々のマシンでも構いません。セルフホストで置き換えるのは Delegora Cloud の部分だけです。
 
 このページでは Docker Compose を使います。Kubernetes でのデプロイは、リポジトリの [Self-hosting guide](https://github.com/multica-ai/multica/blob/main/SELF_HOSTING.md#kubernetes-deployment-alternative) を参照してください。
 
 ## 始める前に
 
-Multica サービスを実行するマシンには次が必要です。
+Delegora サービスを実行するマシンには次が必要です。
 
 - Docker Engine または Docker Desktop（`docker compose` が実行できること）
 - Git、Make、curl、OpenSSL
@@ -34,14 +34,14 @@ docker info
 docker compose version
 ```
 
-Multica は Compose v2（`docker compose`）を使います。旧版の `docker-compose` v1 はサポートされません。
+Delegora は Compose v2（`docker compose`）を使います。旧版の `docker-compose` v1 はサポートされません。
 
-実行用コンピュータには、Claude Code、Codex、Cursor などの [AI コーディングツール](/providers)を最低 1 つインストールし、ログインしておく必要があります。Multica CLI はステップ 5 でインストールします。
+実行用コンピュータには、Claude Code、Codex、Cursor などの [AI コーディングツール](/providers)を最低 1 つインストールし、ログインしておく必要があります。Delegora CLI はステップ 5 でインストールします。
 
 <Steps>
 <Step>
 
-## Multica を起動する [#1-multica-を起動する]
+## Delegora を起動する [#1-multica-を起動する]
 
 サービスを実行するマシンで次を実行します。
 
@@ -58,7 +58,7 @@ make selfhost
 
 1. `.env.example` から `.env` を作成する
 2. `JWT_SECRET`、PostgreSQL パスワード、`MULTICA_VCS_SECRET_KEY`（セルフホストの Git 連携用の暗号化キー）をランダム生成する
-3. PostgreSQL、Multica backend、Multica frontend のイメージを取得する
+3. PostgreSQL、Delegora backend、Delegora frontend のイメージを取得する
 4. 永続化ボリュームを作成し、3 つのコンテナを起動する
 5. backend がヘルスチェックに応答し始めるまで待機する
 
@@ -118,7 +118,7 @@ Docker Compose はデフォルトで `3000` と `8080` を `127.0.0.1` だけに
 
 以下では 2 つのドメインを例にします。
 
-- `app.example.com`: Multica Web
+- `app.example.com`: Delegora Web
 - `api.example.com`: API、ヘルスチェック、デーモン接続
 
 まず `.env` に公開 URL を設定します。
@@ -259,7 +259,7 @@ docker compose -f docker-compose.selfhost.yml logs backend \
 実行はデーモンを実行しているユーザーの全権限で動作し、そのユーザーが読み書きできるものはすべて読み書きできます。個人アカウントではなく、専用の Unix ユーザー、コンテナ、または VM でデーモンを実行してください。[セキュリティモデル](/security-model)を参照してください。
 </Callout>
 
-まず Multica CLI をインストールします。
+まず Delegora CLI をインストールします。
 
 <Tabs groupId="os" persist items={["macOS / Linux", "Windows"]}>
 <Tab value="macOS / Linux">
@@ -278,7 +278,7 @@ irm https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.ps
 </Tab>
 </Tabs>
 
-次に CLI をサービスに接続します。Multica サービスが動いている場所に合わせて選んでください。
+次に CLI をサービスに接続します。Delegora サービスが動いている場所に合わせて選んでください。
 
 <Tabs items={["このコンピュータ", "別のマシン"]}>
 <Tab value="このコンピュータ">
@@ -318,7 +318,7 @@ multica daemon status
 
 ## 最初の実行を完了する [#6-最初の実行を完了する]
 
-Multica に戻ります。ランタイム一覧にオンラインのランタイムが表示されたら、エージェントを作成し、最初のタスクを割り当てます。
+Delegora に戻ります。ランタイム一覧にオンラインのランタイムが表示されたら、エージェントを作成し、最初のタスクを割り当てます。
 
 実行ログが完了になり、タイムラインにエージェントの返信が現れれば、セルフホストのサービス、実行用コンピュータ、AI コーディングツールがつながっています。詳しい手順は[クイックスタート](/cloud-quickstart)のステップ 3〜5 を参照してください。
 
@@ -440,7 +440,7 @@ HTTP 200 かつ両方のチェックが `ok` でない場合、新しいバー�
 <Accordions type="multiple">
 <Accordion title="git pull が実際に更新するもの" id="what-git-pull-actually-does">
 
-`git pull` が更新するのは **`docker-compose.selfhost.yml` そのもの**です。新しい環境変数、新しいサービス、変更された healthcheck などです。新しい Multica のバージョンを取得する仕組み**ではありません**。
+`git pull` が更新するのは **`docker-compose.selfhost.yml` そのもの**です。新しい環境変数、新しいサービス、変更された healthcheck などです。新しい Delegora のバージョンを取得する仕組み**ではありません**。
 
 実際に動くバージョンを決めるのは `docker compose pull` で、そのタグが今どのイメージを指しているかを GHCR に問い合わせます。したがって数か月更新していない checkout でも今日の `latest` イメージを取得できますし、逆に `git pull` だけではイメージを取得してコンテナを作り直すまで何も変わりません。
 

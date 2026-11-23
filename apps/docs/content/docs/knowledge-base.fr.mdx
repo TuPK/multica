@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 La base de connaissances conserve la mémoire durable de l'entreprise : politiques, recherches, documents produit et décisions. Les agents la consultent avant de travailler et citent ce qu'ils utilisent. Rien n'y entre sans être publié par quelqu'un, si bien qu'un fait erroné ne se retrouve pas dans chaque exécution.
 
-La base de connaissances est stockée dans [WeKnora](https://github.com/Tencent/WeKnora), un service auxiliaire auto-hébergeable. Multica gère les agents, les droits et la page Connaissances. WeKnora stocke et retrouve les contenus.
+La base de connaissances est stockée dans [WeKnora](https://github.com/Tencent/WeKnora), un service auxiliaire auto-hébergeable. Delegora gère les agents, les droits et la page Connaissances. WeKnora stocke et retrouve les contenus.
 
 <Callout type="info">
 Si la page Connaissances affiche **Les connaissances ne sont pas proposées sur ce serveur**, l'opérateur n'a pas configuré le service auxiliaire. Consultez [l'auto-hébergement de la base de connaissances](/self-host-quickstart#company-knowledge-base) pour ce qu'il doit mettre en place.
@@ -35,7 +35,7 @@ La page affiche l'un de ces états :
 
 ## Les bases de connaissances
 
-Chaque base de connaissances a une clé utilisée par la CLI, par exemple `market`. Les membres et les agents peuvent créer des brouillons dans toutes, sauf `decisions`, où seul Multica écrit.
+Chaque base de connaissances a une clé utilisée par la CLI, par exemple `market`. Les membres et les agents peuvent créer des brouillons dans toutes, sauf `decisions`, où seul Delegora écrit.
 
 | Clé | Nom | Contenu type |
 | --- | --- | --- |
@@ -52,7 +52,7 @@ Une base de connaissances est partagée et durable. Écrire et publier sont donc
 
 - **Les membres et les agents créent des brouillons.** Un brouillon est enregistré mais n'est pas consultable. Il apparaît dans l'onglet **Brouillons**.
 - **Une personne publie.** Les propriétaires et les administrateurs cliquent sur **Publier** dans l'onglet Brouillons, et le document devient consultable. **Rejeter** supprime le brouillon à la place.
-- **Multica publie ses propres enregistrements.** Chaque décision de proposition et chaque bulletin est écrit dans `decisions` immédiatement, si bien que l'historique des décisions est consultable sans étape manuelle.
+- **Delegora publie ses propres enregistrements.** Chaque décision de proposition et chaque bulletin est écrit dans `decisions` immédiatement, si bien que l'historique des décisions est consultable sans étape manuelle.
 
 Pour enregistrer un brouillon depuis la ligne de commande :
 

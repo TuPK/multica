@@ -1,12 +1,12 @@
 ---
 title: Utiliser le CLI
-description: Installez le CLI Multica, connectez-vous et gérez les espaces de travail, les tâches, les agents et les runtimes depuis le terminal.
+description: Installez le CLI Delegora, connectez-vous et gérez les espaces de travail, les tâches, les agents et les runtimes depuis le terminal.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-Le CLI Multica sert à la fois à connecter des runtimes locaux et à gérer, depuis le terminal, les espaces de travail, les tâches, les agents et les automatisations. Cette page présente les parcours courants ; les options prises en charge par la version installée sont toujours définies par le `--help` de chaque commande.
+Le CLI Delegora sert à la fois à connecter des runtimes locaux et à gérer, depuis le terminal, les espaces de travail, les tâches, les agents et les automatisations. Cette page présente les parcours courants ; les options prises en charge par la version installée sont toujours définies par le `--help` de chaque commande.
 
 ## Installation
 
@@ -45,8 +45,8 @@ multica version
 
 Choisissez le service auquel vous vous connectez :
 
-<Tabs items={["Multica Cloud", "Instance auto-hébergée"]}>
-<Tab value="Multica Cloud">
+<Tabs items={["Delegora Cloud", "Instance auto-hébergée"]}>
+<Tab value="Delegora Cloud">
 
 ```bash
 multica setup
@@ -463,14 +463,14 @@ multica config show --profile staging
 
 Ne définissez pas `MULTICA_DAEMON_PORT` dans le shell hôte, le service Compose ou le point d'entrée du conteneur qui démarre un daemon. Le daemon hôte déduit son port de contrôle de santé de `--profile` et injecte lui-même cette variable dans les exécutions d'agent. Supprimez complètement la variable des anciens environnements de démarrage : sinon, les versions 0.4.22 et 0.4.23 prennent ce shell pour une exécution gérée et refusent la connexion. Les versions plus récentes permettent à la connexion humaine protégée et à `daemon status` de se rétablir lorsque le port est le seul signal d'exécution, mais les commandes API ordinaires et celles qui résolvent un profil restent volontairement bloquées (fail-closed) tant que la variable n'est pas supprimée.
 
-Lorsque le CLI tourne au sein d'une exécution d'agent gérée par le daemon, il ne charge ni ne modifie ces fichiers de profil qui appartiennent à l'utilisateur humain. Les commandes de l'API Multica s'authentifient avec l'identifiant limité à l'exécution que le daemon injecte. `config show` et `config set` utilisent un état privé, local à l'exécution ; les commandes humaines ou locales comme `login`, `logout`, `setup`, `workspace switch`, les modifications de chemin des profils de runtime locaux, `daemon start` / `stop` / `restart`, `daemon logs` et `daemon probe-runtimes` sont indisponibles. Dans ce contexte, `auth status` n'affiche aucun élément de jeton.
+Lorsque le CLI tourne au sein d'une exécution d'agent gérée par le daemon, il ne charge ni ne modifie ces fichiers de profil qui appartiennent à l'utilisateur humain. Les commandes de l'API Delegora s'authentifient avec l'identifiant limité à l'exécution que le daemon injecte. `config show` et `config set` utilisent un état privé, local à l'exécution ; les commandes humaines ou locales comme `login`, `logout`, `setup`, `workspace switch`, les modifications de chemin des profils de runtime locaux, `daemon start` / `stop` / `restart`, `daemon logs` et `daemon probe-runtimes` sont indisponibles. Dans ce contexte, `auth status` n'affiche aucun élément de jeton.
 
 `daemon status` et `daemon disk-usage` restent disponibles pour qu'un agent puisse inspecter le runtime qui l'héberge, dans les limites de ce runtime : `status` interroge le port de contrôle de santé injecté par le daemon, et `disk-usage` analyse la racine des répertoires de travail injectée par le daemon. Aucune des deux n'accepte `--profile` ; `disk-usage` refuse aussi `--all-profiles` et `--workspaces-root`, et sa colonne STATUS reste vide, car la renseigner exigerait le jeton enregistré de l'utilisateur humain. Utilisez `du` et `df` pour tout ce qui sort de ce périmètre.
 
-Cela protège la résolution implicite des profils du CLI Multica tout en préservant les variables `HOME` et XDG habituelles qu'utilisent les outils des autres fournisseurs. Ce n'est pas une frontière du système de fichiers au niveau de l'OS : des processus qui tournent sous le même utilisateur système peuvent toujours ouvrir un chemin connu explicitement. Utilisez un utilisateur dédié, un conteneur, une VM ou une isolation équivalente lorsque cette garantie plus forte est nécessaire.
+Cela protège la résolution implicite des profils du CLI Delegora tout en préservant les variables `HOME` et XDG habituelles qu'utilisent les outils des autres fournisseurs. Ce n'est pas une frontière du système de fichiers au niveau de l'OS : des processus qui tournent sous le même utilisateur système peuvent toujours ouvrir un chemin connu explicitement. Utilisez un utilisateur dédié, un conteneur, une VM ou une isolation équivalente lorsque cette garantie plus forte est nécessaire.
 
 <Callout type="warning">
-Les fichiers de configuration du CLI contiennent des jetons qui permettent d'accéder à Multica en votre nom. Ne les commitez pas dans un dépôt, ne les envoyez pas dans des journaux et ne les partagez avec personne.
+Les fichiers de configuration du CLI contiennent des jetons qui permettent d'accéder à Delegora en votre nom. Ne les commitez pas dans un dépôt, ne les envoyez pas dans des journaux et ne les partagez avec personne.
 </Callout>
 
 ## Référence des commandes
@@ -583,15 +583,15 @@ Migration depuis l'ancien découpage CSV : remplacez `--attachment a,b` par `--a
 | `update` | — | Mettre à jour le CLI vers la dernière version | |
 | `version` | — | Afficher les informations de version | `--output` (`text` ou `json`) |
 
-## Piloter Multica depuis un autre agent de codage
+## Piloter Delegora depuis un autre agent de codage
 
-Si l'essentiel de votre travail se passe déjà dans Codex, Claude Code ou Cursor, vous pouvez piloter Multica depuis ces outils au lieu de basculer vers un terminal. Le [skill Multica CLI](https://github.com/multica-ai/multica-cli) apprend à ces agents à utiliser les commandes de cette page en toute sécurité : lire les tâches et les fils de commentaires sans gaspiller de tokens, écrire les commentaires via un fichier, et gérer les effets de bord qu'entraînent les mentions, les changements de statut et les assignations.
+Si l'essentiel de votre travail se passe déjà dans Codex, Claude Code ou Cursor, vous pouvez piloter Delegora depuis ces outils au lieu de basculer vers un terminal. Le [skill Delegora CLI](https://github.com/multica-ai/multica-cli) apprend à ces agents à utiliser les commandes de cette page en toute sécurité : lire les tâches et les fils de commentaires sans gaspiller de tokens, écrire les commentaires via un fichier, et gérer les effets de bord qu'entraînent les mentions, les changements de statut et les assignations.
 
 Il passe entièrement par votre CLI authentifié et n'accorde aucun accès qui lui soit propre : les permissions proviennent toujours de votre connexion, du profil sélectionné et de l'espace de travail. Il nécessite le CLI v0.4.26 ou ultérieur. Le README du dépôt explique l'installation via la marketplace de plugins de Claude Code, l'installateur de skills de Codex, Cursor et tout autre outil qui charge des instructions Markdown.
 
 ## Étapes suivantes
 
-- [Skill Multica CLI](https://github.com/multica-ai/multica-cli) — piloter Multica depuis Codex, Claude Code ou Cursor.
+- [Skill Delegora CLI](https://github.com/multica-ai/multica-cli) — piloter Delegora depuis Codex, Claude Code ou Cursor.
 - [Authentification et jetons](/auth-tokens) — créer, renouveler et révoquer des PAT.
 - [Dépannage](/troubleshooting) — diagnostiquer les erreurs de commande et les exécutions qui ne démarrent jamais.
 - [Créer et configurer un agent](/agents-create) — la sémantique complète de chaque champ de `agent create`.

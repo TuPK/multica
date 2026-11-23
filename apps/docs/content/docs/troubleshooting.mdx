@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-First work out which layer the problem lives in: the Multica service, the daemon, the runtime, or the AI coding tool. These commands are usually enough to surface the first meaningful error:
+First work out which layer the problem lives in: the Delegora service, the daemon, the runtime, or the AI coding tool. These commands are usually enough to surface the first meaningful error:
 
 <Tabs items={["Any install", "Self-hosted service"]}>
 <Tab value="Any install">
@@ -50,7 +50,7 @@ If the CLI cannot verify the token, check the reported error before signing in a
 Common causes include:
 
 - The CLI has not signed in, or the token stored on this machine has expired.
-- The daemon is connected to the wrong Multica service.
+- The daemon is connected to the wrong Delegora service.
 - The executing computer cannot reach the API, or DNS, TLS, or a firewall blocks the connection.
 - The current account is no longer a member of the target workspace.
 - No supported AI coding tool is installed on this machine, so the daemon cannot start.
@@ -86,7 +86,7 @@ curl -fsS <server-url>/health
 
 `multica login` opens the browser and the web sign-in completes, but the CLI still fails with "Sign-in did not complete" or "TLS handshake timed out". `multica --debug login` shows `net/http: TLS handshake timeout` on `POST /api/tokens`, while `curl.exe -I https://api.multica.ai` or a browser on the same machine connects fine.
 
-The TCP connection opens, but the TLS handshake never completes. Go clients, including the Multica CLI and daemon, send a post-quantum key share in the TLS ClientHello by default, which makes it about 1.5 KB and splits it across two packets. Some security software, VPNs, routers, and firewalls drop such handshakes; curl sends a much smaller ClientHello and gets through.
+The TCP connection opens, but the TLS handshake never completes. Go clients, including the Delegora CLI and daemon, send a post-quantum key share in the TLS ClientHello by default, which makes it about 1.5 KB and splits it across two packets. Some security software, VPNs, routers, and firewalls drop such handshakes; curl sends a much smaller ClientHello and gets through.
 
 Confirm the cause by retrying with the post-quantum key share disabled:
 
@@ -178,14 +178,14 @@ To restore access:
 2. For a Mac that runs unattended, grant Full Disk Access to the new binary. Print its path with `realpath "$(command -v multica)"`, then under **System Settings → Privacy & Security → Full Disk Access** remove the stale `multica` entry and add that path (press ⌘⇧G in the file picker to paste it).
 3. Restart the daemon the same way you started it: `multica daemon restart`, or `launchctl kickstart -k gui/$(id -u)/<label>` for a LaunchAgent.
 
-Repeat this after every CLI upgrade. Auto-update is on by default only for daemons connected to Multica Cloud; start the daemon with `--no-auto-update` so upgrades happen only when you run them. The CLI bundled with [Multica Desktop](/desktop-app) is signed with a Developer ID, so its grants survive upgrades.
+Repeat this after every CLI upgrade. Auto-update is on by default only for daemons connected to Delegora Cloud; start the daemon with `--no-auto-update` so upgrades happen only when you run them. The CLI bundled with [Delegora Desktop](/desktop-app) is signed with a Developer ID, so its grants survive upgrades.
 
 </Accordion>
 <Accordion title="Hermes runs reinstall dependencies after you use the Hermes CLI" id="hermes-runs-reinstall-dependencies-after-you-use-the-hermes-cli" value="hermes-runs-reinstall-dependencies-after-you-use-the-hermes-cli">
 
-If you alternate between the Hermes CLI (or the Hermes desktop app) and Multica Hermes runs, each switch can add 30–60 seconds to startup while Hermes rebuilds its shared Python dependency environment. Each rebuild also leaves a new environment generation on disk until Hermes cleans it up.
+If you alternate between the Hermes CLI (or the Hermes desktop app) and Delegora Hermes runs, each switch can add 30–60 seconds to startup while Hermes rebuilds its shared Python dependency environment. Each rebuild also leaves a new environment generation on disk until Hermes cleans it up.
 
-This happens when your own Hermes home sets `memory.provider` to a plugin that has Python dependencies. Each Multica run uses its own Hermes home, shares your installed dependencies, and turns the external memory provider off so memory is not shared across runs. Hermes works out which dependencies it needs from the active home's plugins, so your home and the run's home disagree, and each one treats the other's install as out of date. The underlying behavior is tracked upstream in [NousResearch/hermes-agent#137726](https://github.com/NousResearch/hermes-agent/issues/137726).
+This happens when your own Hermes home sets `memory.provider` to a plugin that has Python dependencies. Each Delegora run uses its own Hermes home, shares your installed dependencies, and turns the external memory provider off so memory is not shared across runs. Hermes works out which dependencies it needs from the active home's plugins, so your home and the run's home disagree, and each one treats the other's install as out of date. The underlying behavior is tracked upstream in [NousResearch/hermes-agent#137726](https://github.com/NousResearch/hermes-agent/issues/137726).
 
 To confirm, look in the [daemon log](#log-locations) for `hermes is reinstalling its dependency environment before this task starts`. A follow-up `hermes dependency reinstall finished` entry reports, in `startup_delay_ms`, how long Hermes took from launch until it was ready, including the reinstall.
 
@@ -234,7 +234,7 @@ docker compose -f docker-compose.selfhost.yml logs backend \
 - **Resend**: confirm the API key is valid and the sender address's domain is verified.
 - **SMTP**: confirm the host, port, credentials, and sender address, and use the error log to tell whether the failure happened at the connection, TLS, authentication, or delivery stage.
 
-When `SMTP_HOST` and Resend are both configured, Multica prefers SMTP. For configuration, see [Sign-in and signup](/auth-setup#email-verification-codes).
+When `SMTP_HOST` and Resend are both configured, Delegora prefers SMTP. For configuration, see [Sign-in and signup](/auth-setup#email-verification-codes).
 
 <Callout type="warning">
 Do not rely on codes in the log in production, and do not enable the fixed local test code.
@@ -312,7 +312,7 @@ netstat -ano | findstr :8080
 </Tab>
 </Tabs>
 
-If it is another Multica checkout, run `make stop` in that directory first. Otherwise stop the offending program normally, or change the current service's port. Public ports 80/443 are listened on by a reverse proxy such as Caddy or Nginx.
+If it is another Delegora checkout, run `make stop` in that directory first. Otherwise stop the offending program normally, or change the current service's port. Public ports 80/443 are listened on by a reverse proxy such as Caddy or Nginx.
 
 </Accordion>
 </Accordions>

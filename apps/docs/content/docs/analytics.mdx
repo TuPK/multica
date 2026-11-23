@@ -73,7 +73,7 @@ For what each code means and how to handle it, see [Runs · Failure reason refer
 
 Every cost in Analytics is an estimate in USD, not a bill from the AI coding tool or the model provider:
 
-- Multica ships a table of published model rates, priced per million tokens separately for input, output, cache reads, and cache writes, and multiplies the reported tokens by it.
+- Delegora ships a table of published model rates, priced per million tokens separately for input, output, cache reads, and cache writes, and multiplies the reported tokens by it.
 - When the AI coding tool reports its own cost (Grok Build does, for example), that figure is used as is instead of an estimate.
 - Tokens from models missing from the table are still counted, but their cost counts as $0. You can [set custom prices](#custom-prices) for those models from a runtime's usage.
 - Some models charge a higher rate once a prompt passes a certain length. The rolled-up data cannot tell how long each request was, so everything is priced at the standard rate, and such runs may be underestimated.

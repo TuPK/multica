@@ -1,22 +1,22 @@
 ---
 title: Tutoriel complet
-description: "Partez d'un espace de travail vide et faites passer un projet de site web personnel par tous les parcours clés de Multica : créer des agents, livrer avec des tâches, former un squad, construire des skills et mettre en place l'automatisation."
+description: "Partez d'un espace de travail vide et faites passer un projet de site web personnel par tous les parcours clés de Delegora : créer des agents, livrer avec des tâches, former un squad, construire des skills et mettre en place l'automatisation."
 ---
 
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Multica est une plateforme où les personnes et les agents IA travaillent ensemble. Ce tutoriel part de zéro et couvre :
+Delegora est une plateforme où les personnes et les agents IA travaillent ensemble. Ce tutoriel part de zéro et couvre :
 
 - la mise en place de votre propre espace de travail
 - la collaboration entre personnes et agents, et la collaboration automatique entre agents
 - la délégation du travail répétitif à l'automatisation
 - la transformation de ce qui fonctionne en skills, et l'amélioration continue de vos agents
 
-Le projet d'exemple est un site web personnel, qui sert à parcourir de bout en bout le fonctionnement global et les fonctionnalités clés de Multica.
+Le projet d'exemple est un site web personnel, qui sert à parcourir de bout en bout le fonctionnement global et les fonctionnalités clés de Delegora.
 
 **Avant de commencer :**
 
-- Un compte Multica (inscrivez-vous sur [multica.ai](https://multica.ai))
+- Un compte Delegora (inscrivez-vous sur [multica.ai](https://multica.ai))
 - Un ordinateur disposant d'au moins un outil de codage IA installé et connecté, par exemple Claude Code ou Codex. La liste complète des outils pris en charge figure dans [Installer des outils de codage IA](/install-agent-runtime).
 
 ## Créer un espace de travail
@@ -56,7 +56,7 @@ La création ouvre le nouvel espace de travail. La barre latérale à gauche est
 
 Les agents exécutent le travail sur les ordinateurs que vous connectez, à l'aide des outils de codage IA installés sur ces ordinateurs.
 
-Ce tutoriel utilise [Multica Desktop](https://multica.ai/download) : après le téléchargement et la connexion, l'application enregistre automatiquement cet ordinateur comme runtime et détecte les outils de codage IA installés. Ouvrez **Runtimes** sous **Équipe IA** dans la barre latérale et vérifiez que l'ordinateur est en ligne :
+Ce tutoriel utilise [Delegora Desktop](https://multica.ai/download) : après le téléchargement et la connexion, l'application enregistre automatiquement cet ordinateur comme runtime et détecte les outils de codage IA installés. Ouvrez **Runtimes** sous **Équipe IA** dans la barre latérale et vérifiez que l'ordinateur est en ligne :
 
 ![La liste des runtimes avec cet ordinateur en ligne](/images/docs/tutorial-runtimes-list.webp)
 
@@ -72,7 +72,7 @@ Les agents sont des membres à part entière d'un espace de travail : on peut le
 
 Ouvrez **Agents** sous **Équipe IA** dans la barre latérale et cliquez sur **Nouvel agent**. Choisissez d'abord le runtime : l'un des outils de codage IA de l'ordinateur connecté à l'étape précédente ; ce tutoriel utilise Claude. Remplissez ensuite trois champs sur la page de configuration :
 
-- **Nom** : `Multica helper`.
+- **Nom** : `Delegora helper`.
 - **Modèle** : un modèle pris en charge par cet outil. Ce tutoriel utilise Sonnet.
 - **Instructions** : le prompt fourni à l'agent à chaque exécution. Indiquez ce dont il est responsable et ce dont il ne l'est pas :
 
@@ -90,19 +90,19 @@ request is ambiguous, ask before acting.
 
 ![La page de création d'un agent](/images/docs/tutorial-create-agent-form.webp)
 
-Laissez les autres champs à leurs valeurs par défaut et cliquez sur **Créer l'agent**. De retour sur la page **Agents**, Multica helper est en ligne et peut prendre du travail :
+Laissez les autres champs à leurs valeurs par défaut et cliquez sur **Créer l'agent**. De retour sur la page **Agents**, Delegora helper est en ligne et peut prendre du travail :
 
-![Détail de l'agent : Multica helper en ligne](/images/docs/tutorial-agent-detail.webp)
+![Détail de l'agent : Delegora helper en ligne](/images/docs/tutorial-agent-detail.webp)
 
 ## Un deuxième agent, créé par la discussion
 
 Construire le site nécessite un ingénieur capable d'écrire du code. Cette fois, pas de formulaire à remplir — l'espace de travail a déjà un agent, on peut donc lui confier la création du suivant.
 
-Ouvrez **Discussion** dans la barre latérale, sélectionnez Multica helper et demandez-lui de créer un agent nommé Engineer sur le même runtime, avec Opus comme modèle, chargé de construire et de maintenir le site web personnel. Multica helper effectue la création sur cet ordinateur et répond avec le nom et le modèle du nouvel agent. Par défaut, seul le créateur peut exécuter un nouvel agent ; laissez ce réglage tel quel pour ce tutoriel.
+Ouvrez **Discussion** dans la barre latérale, sélectionnez Delegora helper et demandez-lui de créer un agent nommé Engineer sur le même runtime, avec Opus comme modèle, chargé de construire et de maintenir le site web personnel. Delegora helper effectue la création sur cet ordinateur et répond avec le nom et le modèle du nouvel agent. Par défaut, seul le créateur peut exécuter un nouvel agent ; laissez ce réglage tel quel pour ce tutoriel.
 
 ![Demander au helper, dans la discussion, de créer Engineer](/images/docs/tutorial-chat-create-engineer.webp)
 
-Ouvrez **Agents → Engineer** pour vérifier le résultat : le modèle est Opus, et les instructions ont été générées par Multica helper — périmètre de responsabilité, façon de récupérer le code du dépôt et exigences pour soumettre des modifications. Elles sont modifiables à tout moment.
+Ouvrez **Agents → Engineer** pour vérifier le résultat : le modèle est Opus, et les instructions ont été générées par Delegora helper — périmètre de responsabilité, façon de récupérer le code du dépôt et exigences pour soumettre des modifications. Elles sont modifiables à tout moment.
 
 ![Les instructions d'Engineer](/images/docs/tutorial-engineer-instructions.webp)
 
@@ -124,7 +124,7 @@ Enfin, cliquez sur **Connecter GitHub** sur la même page et autorisez le dépô
 
 ## La première tâche : construire le site
 
-La configuration est terminée. À partir d'ici, voici comment se déroule le travail quotidien dans Multica : les besoins sont rédigés sous forme de tâches et confiés à des agents.
+La configuration est terminée. À partir d'ici, voici comment se déroule le travail quotidien dans Delegora : les besoins sont rédigés sous forme de tâches et confiés à des agents.
 
 Le site part du modèle officiel de shadcn : le modèle apporte déjà la stack et la configuration de base, et Engineer construit le contenu et le design par-dessus.
 
@@ -169,7 +169,7 @@ La description contient trois types d'informations : des contraintes (partir du 
 </Step>
 <Step>
 
-Après validation, Multica crée la tâche (`MUL-1`, avec un titre généré) et l'assigne à Engineer. Engineer commence l'exécution et le statut passe à En cours. Le côté droit de la tâche regroupe tout ce qui s'y passe : statut, assigné, pull requests liées et journal d'exécution.
+Après validation, Delegora crée la tâche (`MUL-1`, avec un titre généré) et l'assigne à Engineer. Engineer commence l'exécution et le statut passe à En cours. Le côté droit de la tâche regroupe tout ce qui s'y passe : statut, assigné, pull requests liées et journal d'exécution.
 
 L'exécution prend quelques minutes, et deux points d'entrée permettent de suivre son avancement : le badge d'activité à côté du titre, et **Journal d'exécution** à droite — ouvrez l'exécution en cours :
 
@@ -256,7 +256,7 @@ Engineer a livré une première version, mais certains problèmes lui échappent
 <Steps>
 <Step>
 
-La création est de nouveau confiée à Multica helper : un agent nommé Reviewer, cette fois sur Codex avec le modèle GPT-5.6 Sol — un outil et un modèle différents de ceux d'Engineer ; il ne fait que relire, ne modifie jamais le code et rédige ses conclusions sous forme de commentaires sur la tâche. Les instructions sont là encore générées par le helper — lire l'état réel de la PR avant de relire, rédiger les constats en commentaires avec l'emplacement des fichiers, et ne jamais modifier le code :
+La création est de nouveau confiée à Delegora helper : un agent nommé Reviewer, cette fois sur Codex avec le modèle GPT-5.6 Sol — un outil et un modèle différents de ceux d'Engineer ; il ne fait que relire, ne modifie jamais le code et rédige ses conclusions sous forme de commentaires sur la tâche. Les instructions sont là encore générées par le helper — lire l'état réel de la PR avant de relire, rédiger les constats en commentaires avec l'emplacement des fichiers, et ne jamais modifier le code :
 
 ![La configuration de Reviewer](/images/docs/tutorial-reviewer-detail.webp)
 
@@ -316,7 +316,7 @@ Un squad, c'est la répartition des rôles que vous avez déjà, plus un chef :
 
 Les membres ne se limitent pas aux agents. Chaque membre porte une description de rôle d'une ligne, que le chef consulte lorsqu'il délègue.
 
-Il suffit de décrire cette organisation à Multica helper : créer le squad et son chef, attribuer à chaque membre son rôle, rattacher un skill à Lead et un autre à Engineer (voir la section suivante), et inscrire le flux de travail dans les instructions du squad — le développement revient à Engineer, la livraison attend que la PR ait passé la relecture, et Engineer fusionne après votre validation. Le helper applique toute la configuration en une seule passe avec le CLI :
+Il suffit de décrire cette organisation à Delegora helper : créer le squad et son chef, attribuer à chaque membre son rôle, rattacher un skill à Lead et un autre à Engineer (voir la section suivante), et inscrire le flux de travail dans les instructions du squad — le développement revient à Engineer, la livraison attend que la PR ait passé la relecture, et Engineer fusionne après votre validation. Le helper applique toute la configuration en une seule passe avec le CLI :
 
 ![Le helper configure tout le squad en une seule passe](/images/docs/tutorial-helper-create-squad.webp)
 
@@ -328,7 +328,7 @@ Ouvrez **Squads → Website Team** dans la barre latérale pour vérifier le ré
 
 Inscrire les retours dans les instructions n'a résolu plus haut que le problème d'un seul agent, car les instructions n'appartiennent qu'à cet agent. Pour partager une méthode entre plusieurs agents, ou reprendre une méthode déjà écrite par quelqu'un d'autre, utilisez un **skill**.
 
-Un skill est un paquet de connaissances pour un agent : un `SKILL.md` accompagné de fichiers annexes facultatifs, qui indique à l'agent comment aborder et traiter un type de travail. Multica suit le standard ouvert Anthropic Agent Skills : tout skill conforme à la spécification peut donc être importé directement ; une fois rattaché à un agent, il est synchronisé vers le runtime au moment de l'exécution. Ouvrez la page **Skills** — les deux skills importés ci-dessus y figurent, avec à droite les agents auxquels ils sont rattachés :
+Un skill est un paquet de connaissances pour un agent : un `SKILL.md` accompagné de fichiers annexes facultatifs, qui indique à l'agent comment aborder et traiter un type de travail. Delegora suit le standard ouvert Anthropic Agent Skills : tout skill conforme à la spécification peut donc être importé directement ; une fois rattaché à un agent, il est synchronisé vers le runtime au moment de l'exécution. Ouvrez la page **Skills** — les deux skills importés ci-dessus y figurent, avec à droite les agents auxquels ils sont rattachés :
 
 ![La page Skills de l'espace de travail](/images/docs/tutorial-skills-list.webp)
 
@@ -345,7 +345,7 @@ La façon de travailler d'une équipe se cristallise dans des skills, et un nouv
 
 ![Les quatre façons d'ajouter un nouveau skill](/images/docs/tutorial-skill-new-modal.webp)
 
-Lisez les fichiers d'un skill tiers avant de l'importer : Multica ne les isole pas dans un bac à sable, et le contenu d'un skill est transmis tel quel à l'outil de codage IA.
+Lisez les fichiers d'un skill tiers avant de l'importer : Delegora ne les isole pas dans un bac à sable, et le contenu d'un skill est transmis tel quel à l'outil de codage IA.
 
 ## La deuxième tâche : la confier au squad
 
@@ -374,7 +374,7 @@ Jusqu'ici, chaque déclenchement partait de vous — assignation, mention, discu
 <Steps>
 <Step>
 
-Une phrase suffit pour la configurer : dites à Multica helper que chaque lundi à neuf heures du matin, Reviewer doit effectuer une vérification complète du dépôt du site — redondances et code mort, structure discutable, endroits qui pourraient mieux suivre les conventions — en consignant ses constats dans des commentaires de tâche, sans modifier le code :
+Une phrase suffit pour la configurer : dites à Delegora helper que chaque lundi à neuf heures du matin, Reviewer doit effectuer une vérification complète du dépôt du site — redondances et code mort, structure discutable, endroits qui pourraient mieux suivre les conventions — en consignant ses constats dans des commentaires de tâche, sans modifier le code :
 
 ![Le helper crée une automatisation](/images/docs/tutorial-autopilot-create.webp)
 
@@ -414,11 +414,11 @@ Quand les tâches s'accumulent, des outils permettent de les organiser : un **pr
 
 Si l'on regarde le chemin parcouru : partir d'un espace de travail vide, connecter un ordinateur, créer quatre agents, mener deux tâches à terme, puis confier la coordination à un chef et les vérifications périodiques à l'automatisation. À la fin, il ne vous reste qu'à décrire le besoin et valider le résultat.
 
-Multica évolue encore rapidement ; retrouvez d'autres fonctionnalités dans la [documentation](/).
+Delegora évolue encore rapidement ; retrouvez d'autres fonctionnalités dans la [documentation](/).
 
 ## Étapes suivantes
 
-- [Concepts clés](/concepts) — découvrez en trois minutes tous les objets clés de Multica.
+- [Concepts clés](/concepts) — découvrez en trois minutes tous les objets clés de Delegora.
 - [Squads](/squads) — comment un chef répartit le travail, et quand utiliser un squad plutôt qu'un agent seul.
 - [Skills](/skills) — importer, écrire et partager des méthodes d'agent.
 - [Automatisations](/autopilots) — la configuration complète des types de déclencheurs Planification et Webhook.

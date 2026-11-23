@@ -1,6 +1,6 @@
 ---
 title: Application de bureau
-description: Installez Multica Desktop, utilisez les onglets de Desktop et le daemon intégré, et connectez-vous à une instance auto-hébergée.
+description: Installez Delegora Desktop, utilisez les onglets de Desktop et le daemon intégré, et connectez-vous à une instance auto-hébergée.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -8,7 +8,7 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { DesktopTabsDemo } from "@/components/demos/desktop-tabs-demo";
 
-Multica Desktop est disponible pour macOS, Windows et Linux. Il utilise le même compte et les mêmes données d'espace de travail que l'application web, mais il gère automatiquement le daemon sur votre machine et conserve un ensemble d'onglets distinct pour chaque espace de travail.
+Delegora Desktop est disponible pour macOS, Windows et Linux. Il utilise le même compte et les mêmes données d'espace de travail que l'application web, mais il gère automatiquement le daemon sur votre machine et conserve un ensemble d'onglets distinct pour chaque espace de travail.
 
 ## Desktop et web
 
@@ -21,13 +21,13 @@ Multica Desktop est disponible pour macOS, Windows et Linux. Il utilise le même
 
 Le web est plus pratique pour un coup d'œil rapide ou sur un ordinateur partagé.
 
-Vous pouvez être connecté aux deux en même temps. Tant qu'ils se connectent au même service Multica, les données qu'ils affichent sont partagées.
+Vous pouvez être connecté aux deux en même temps. Tant qu'ils se connectent au même service Delegora, les données qu'ils affichent sont partagées.
 
 ## Installation
 
 <Steps>
 <Step>
-Choisissez le programme d'installation correspondant à votre système d'exploitation et à l'architecture de votre processeur sur la [page de téléchargement de Multica](https://multica.ai/download) :
+Choisissez le programme d'installation correspondant à votre système d'exploitation et à l'architecture de votre processeur sur la [page de téléchargement de Delegora](https://multica.ai/download) :
 
 | Plateforme | Programme d'installation |
 | --- | --- |
@@ -36,7 +36,7 @@ Choisissez le programme d'installation correspondant à votre système d'exploit
 | Linux | `.AppImage`, `.deb` ou `.rpm` |
 </Step>
 <Step>
-Après l'installation, connectez-vous avec la même adresse e-mail que sur le web. Une fois connecté, Desktop démarre son propre CLI Multica intégré et détecte les outils de codage IA déjà installés sur la machine.
+Après l'installation, connectez-vous avec la même adresse e-mail que sur le web. Une fois connecté, Desktop démarre son propre CLI Delegora intégré et détecte les outils de codage IA déjà installés sur la machine.
 </Step>
 </Steps>
 
@@ -78,13 +78,13 @@ Désactiver **Saisie vocale** masque le micro et désactive son raccourci. Les e
 
 ## Daemon intégré
 
-Après la connexion, Desktop crée un profil CLI dédié au service Multica courant et l'utilise pour démarrer le daemon. Le profil se trouve ici :
+Après la connexion, Desktop crée un profil CLI dédié au service Delegora courant et l'utilise pour démarrer le daemon. Le profil se trouve ici :
 
 ```text
 ~/.multica/profiles/desktop-<host>/
 ```
 
-Il ne lit ni n'écrase jamais le profil par défaut que vous utilisez dans le terminal. Si vous démarrez aussi manuellement un autre daemon, Multica les affiche comme des runtimes distincts.
+Il ne lit ni n'écrase jamais le profil par défaut que vous utilisez dans le terminal. Si vous démarrez aussi manuellement un autre daemon, Delegora les affiche comme des runtimes distincts.
 
 Vous pouvez consulter l'état et les journaux du runtime dans les paramètres de Desktop. Si un outil n'est pas détecté, vérifiez d'abord qu'il fonctionne dans un terminal ordinaire et qu'il est connecté, puis redémarrez le daemon de Desktop.
 
@@ -104,7 +104,7 @@ Les mises à jour sont distribuées par système d'exploitation et par architect
 
 ## Se connecter à une instance auto-hébergée
 
-Desktop se connecte par défaut à Multica Cloud. Pour vous connecter à une instance auto-hébergée, créez `desktop.json` dans le répertoire `.multica` de votre répertoire personnel, avec ce contenu :
+Desktop se connecte par défaut à Delegora Cloud. Pour vous connecter à une instance auto-hébergée, créez `desktop.json` dans le répertoire `.multica` de votre répertoire personnel, avec ce contenu :
 
 ```json
 {
@@ -189,7 +189,7 @@ Deux façons courantes d'écrire le fichier sous Windows produisent un fichier q
 
 La commande PowerShell de l'onglet Windows ci-dessus évite ces deux problèmes.
 
-## Windows Defender signale Multica comme un virus
+## Windows Defender signale Delegora comme un virus
 
 Sécurité Windows signale une menace telle que `Trojan:Script/Wacatac.B!ml` et met en quarantaine un fichier de l'installation de Desktop. L'élément concerné est normalement le CLI intégré, et non l'exécutable de l'application :
 
@@ -197,7 +197,7 @@ Sécurité Windows signale une menace telle que `Trojan:Script/Wacatac.B!ml` et 
 C:\Users\<you>\AppData\Local\Programs\@multicadesktop\resources\app.asar.unpacked\resources\bin\multica.exe
 ```
 
-Il s'agit d'un faux positif. Le suffixe `!ml` signifie que le verdict provient des heuristiques d'apprentissage automatique de Defender, et non d'une signature de logiciel malveillant. Les builds Windows de Multica ne sont pas encore signées avec Authenticode, et un binaire non signé tout juste publié, qui lance des processus en arrière-plan et ouvre des connexions réseau, est facilement jugé suspect par ces heuristiques. Chaque artefact Windows est construit par GitHub Actions à partir du code source public de ce dépôt.
+Il s'agit d'un faux positif. Le suffixe `!ml` signifie que le verdict provient des heuristiques d'apprentissage automatique de Defender, et non d'une signature de logiciel malveillant. Les builds Windows de Delegora ne sont pas encore signées avec Authenticode, et un binaire non signé tout juste publié, qui lance des processus en arrière-plan et ouvre des connexions réseau, est facilement jugé suspect par ces heuristiques. Chaque artefact Windows est construit par GitHub Actions à partir du code source public de ce dépôt.
 
 Vous pouvez le vérifier vous-même : chaque release GitHub publie un fichier `checksums.txt` couvrant toutes les archives du CLI.
 
@@ -211,7 +211,7 @@ Corrigez-le en trois étapes :
 
 <Steps>
 <Step>
-Restaurez le fichier mis en quarantaine : Sécurité Windows → *Protection contre les virus et menaces* → *Historique de protection* → sélectionnez l'élément Multica → *Actions* → *Restaurer*.
+Restaurez le fichier mis en quarantaine : Sécurité Windows → *Protection contre les virus et menaces* → *Historique de protection* → sélectionnez l'élément Delegora → *Actions* → *Restaurer*.
 </Step>
 <Step>
 Ajoutez une exclusion pour qu'il ne soit plus mis en quarantaine : *Protection contre les virus et menaces* → *Gérer les paramètres* → *Exclusions* → *Ajouter une exclusion* → *Dossier*, et ajoutez les deux dossiers suivants :
@@ -227,7 +227,7 @@ Signalez le faux positif à Microsoft sur [Microsoft Security Intelligence — s
 </Steps>
 
 <Callout type="warning">
-N'ajoutez ces exclusions que si vous avez installé Multica depuis la [page de téléchargement](https://multica.ai/download) ou les [releases GitHub](https://github.com/multica-ai/multica/releases) et que la somme de contrôle correspond. Une exclusion désactive la protection en temps réel pour tout le contenu de ce dossier.
+N'ajoutez ces exclusions que si vous avez installé Delegora depuis la [page de téléchargement](https://multica.ai/download) ou les [releases GitHub](https://github.com/multica-ai/multica/releases) et que la somme de contrôle correspond. Une exclusion désactive la protection en temps réel pour tout le contenu de ce dossier.
 </Callout>
 
 ## Étapes suivantes

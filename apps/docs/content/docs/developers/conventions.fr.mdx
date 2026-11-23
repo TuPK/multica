@@ -5,7 +5,7 @@ description: Source unique de vérité pour le nommage du code, le glossaire de 
 
 Cette page est la source unique de vérité pour le nommage du code, le glossaire de traduction i18n et le guide de ton pour le chinois. Tout ce qui se trouvait auparavant dans `packages/views/locales/glossary.md` ou dans des commentaires épars se trouve désormais ici.
 
-Si vous écrivez du code Multica, modifiez une traduction ou rédigez des textes produit en chinois, c'est la page de référence.
+Si vous écrivez du code Delegora, modifiez une traduction ou rédigez des textes produit en chinois, c'est la page de référence.
 
 ---
 
@@ -109,12 +109,12 @@ Format conventionnel : `feat(scope)`, `fix(scope)`, `refactor(scope)`, `docs`, `
 
 Voici le glossaire **obligatoire** pour toute PR de traduction. Il se trouvait auparavant dans `packages/views/locales/glossary.md` ; ce fichier a été supprimé et cette page le remplace.
 
-### La distinction essentielle : nom courant vs terme propre à Multica
+### La distinction essentielle : nom courant vs terme propre à Delegora
 
-Les noms de produit de Multica se répartissent en deux catégories :
+Les noms de produit de Delegora se répartissent en deux catégories :
 
 - **Nom courant** — le mot qu'un utilisateur emploierait à voix haute pour le désigner. **Traduisez-le entièrement**, qu'il s'agisse ou non d'une entité de base de données : `issue` → 任务, `workspace` → 工作区, `project` → 项目.
-- **Terme propre à Multica** — un concept qu'aucun mot local ne porte (`skill`), ou un identifiant de niveau schéma qu'un utilisateur peut avoir à saisir ou à faire correspondre (`todo`, `in_progress`, `task_id`). Écrivez-le en **anglais minuscule** pour qu'il se lise comme un nom de type.
+- **Terme propre à Delegora** — un concept qu'aucun mot local ne porte (`skill`), ou un identifiant de niveau schéma qu'un utilisateur peut avoir à saisir ou à faire correspondre (`todo`, `in_progress`, `task_id`). Écrivez-le en **anglais minuscule** pour qu'il se lise comme un nom de type.
 
 Les pages chinoises `apps/docs/content/docs/*.zh.mdx` sont la norme de fait pour le ton de tout le reste de cette page. Le texte des pages `*.zh.mdx`, `*.ja.mdx` et `*.ko.mdx` suit désormais aussi le tableau ci-dessous.
 
@@ -133,10 +133,10 @@ Ce qui ne change pas :
 
 - **Les champs d'API / de base de données** restent `issue` / `task` / `skill` partout : `issue_status`, `task_id`, `skill_uuid`. La prose destinée aux développeurs appelle l'objet produit un Run et peut préciser « Run (`task_id` dans l'API) » lorsque l'identifiant compte.
 - **Les références de code et les commandes littérales** restent en anglais : `multica issue ...`, la commande slash `/issue` de Slack et de Lark.
-- **`skill`** reste en anglais minuscule dans le texte chinois — c'est un concept propre à Multica sans terme chinois établi ; les titres peuvent l'écrire avec une majuscule, `Skills`.
+- **`skill`** reste en anglais minuscule dans le texte chinois — c'est un concept propre à Delegora sans terme chinois établi ; les titres peuvent l'écrire avec une majuscule, `Skills`.
 - **`issue` au sens de « problème »** (santé du runtime) est un nom ordinaire, pas l'entité : `{{count}} issues` sur une carte de machine devient `{{count}} 个异常` / `問題 {{count}} 件` / `문제 {{count}}개`, jamais le mot de l'entité.
 
-**Pourquoi `issue` est traduit alors que `skill` ne l'est pas** : les utilisateurs créent et lisent des tâches toute la journée, et « issue » n'a aucun sens en chinois, en japonais ou en coréen en dehors du jargon des développeurs. Le mot courant pour « tâche » est celui que les gens emploient déjà pour cet objet. `skill` est un concept propre à Multica, pour lequel aucun mot local ne porte ce sens.
+**Pourquoi `issue` est traduit alors que `skill` ne l'est pas** : les utilisateurs créent et lisent des tâches toute la journée, et « issue » n'a aucun sens en chinois, en japonais ou en coréen en dehors du jargon des développeurs. Le mot courant pour « tâche » est celui que les gens emploient déjà pour cet objet. `skill` est un concept propre à Delegora, pour lequel aucun mot local ne porte ce sens.
 
 Les autres noms de produit suivent le même critère, « traduire ce qui a un mot local établi » :
 
@@ -147,7 +147,7 @@ Les autres noms de produit suivent le même critère, « traduire ce qui a un mo
 
 | Catégorie | Termes |
 | --- | --- |
-| Marques | **Multica**, GitHub, Slack, Google, Anthropic, OpenAI, Claude, Codex, Cursor, Linear, Jira |
+| Marques | **Delegora**, GitHub, Slack, Google, Anthropic, OpenAI, Claude, Codex, Cursor, Linear, Jira |
 | Acronymes | API, CLI, URL, SDK, OAuth, JWT, SSO, WebSocket, HTTP, JSON, YAML, SQL |
 
 ### Traduire entièrement — concepts

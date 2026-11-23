@@ -6,11 +6,11 @@ description: Configurez les codes de vérification par e-mail, la connexion avec
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Par défaut, Multica connecte les utilisateurs au moyen de codes de vérification envoyés par e-mail ; Google OAuth peut être ajouté en complément. Les utilisateurs existants peuvent toujours se reconnecter — les restrictions d'inscription décident uniquement si de nouveaux comptes peuvent être créés.
+Par défaut, Delegora connecte les utilisateurs au moyen de codes de vérification envoyés par e-mail ; Google OAuth peut être ajouté en complément. Les utilisateurs existants peuvent toujours se reconnecter — les restrictions d'inscription décident uniquement si de nouveaux comptes peuvent être créés.
 
 ## Codes de vérification par e-mail
 
-Une fois que l'utilisateur a saisi une adresse e-mail, Multica envoie un code de vérification à 6 chiffres. Le code est valable 10 minutes ; une fois vérifié, le navigateur reçoit un cookie de connexion.
+Une fois que l'utilisateur a saisi une adresse e-mail, Delegora envoie un code de vérification à 6 chiffres. Le code est valable 10 minutes ; une fois vérifié, le navigateur reçoit un cookie de connexion.
 
 Les e-mails peuvent être envoyés via Resend ou SMTP. Lorsque les deux sont configurés, `SMTP_HOST` est prioritaire.
 
@@ -100,7 +100,7 @@ Créez un client OAuth 2.0 dans la [Google Cloud Console](https://console.cloud.
 </Step>
 <Step>
 
-Ajoutez l'URL de rappel du frontend Multica dans **Authorized redirect URIs** (« URI de redirection autorisés » dans la console en français) :
+Ajoutez l'URL de rappel du frontend Delegora dans **Authorized redirect URIs** (« URI de redirection autorisés » dans la console en français) :
 
 ```text
 https://multica.example.com/auth/callback
