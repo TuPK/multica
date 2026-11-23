@@ -352,6 +352,26 @@ func registerListeners(bus *events.Bus, b realtime.Broadcaster, audience ...priv
 				}
 				return
 			}
+			// The event is open to the workspace, but its duplicate points at
+			// a private original: the workspace gets the frame without that
+			// reference, and the original's members get the whole frame after it.
+			if redactor, ok := projectAudience.(duplicateOriginalRedactor); ok {
+				ctx, cancel := context.WithTimeout(context.Background(), audienceResolveTimeout)
+				members, hidden, err := redactor.duplicateOriginalAudience(ctx, e)
+				cancel()
+				if err != nil {
+					logAudienceFailure(e, err)
+					return
+				}
+				if hidden {
+					realtime.M.RecordEvent(e.Type)
+					b.BroadcastToWorkspace(e.WorkspaceID, withoutDuplicateOf(data))
+					for _, userID := range members {
+						b.BroadcastToScope(realtime.ScopeWorkspaceMember, realtime.WorkspaceMemberScopeID(e.WorkspaceID, userID), data)
+					}
+					return
+				}
+			}
 		}
 
 		// Phase 1 (MUL-1138): the per-resource scope routing for high-frequency

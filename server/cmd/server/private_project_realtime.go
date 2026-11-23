@@ -34,6 +34,11 @@ type privateProjectAudience interface {
 	Audience(ctx context.Context, e events.Event) (userIDs []string, private bool, err error)
 }
 
+// duplicateOriginalRedactor is implemented by the database-backed audience.
+type duplicateOriginalRedactor interface {
+	duplicateOriginalAudience(ctx context.Context, e events.Event) (userIDs []string, hidden bool, err error)
+}
+
 type audienceQuerier interface {
 	ListPrivateProjectAudience(ctx context.Context, workspaceID pgtype.UUID) ([]db.ListPrivateProjectAudienceRow, error)
 	GetIssueProjectID(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
@@ -150,6 +155,83 @@ func (a *dbPrivateProjectAudience) Audience(ctx context.Context, e events.Event)
 		return nil, false, nil
 	}
 	return members, true, nil
+}
+
+// duplicateOriginalAudience reports whether the issue in an issue event is a
+// duplicate whose original lives in a private project and, if so, who may read
+// the original. The event's own audience is decided by the duplicate's project;
+// without this, a duplicate in the open would carry a private original's title
+// and identifier to the whole workspace.
+func (a *dbPrivateProjectAudience) duplicateOriginalAudience(ctx context.Context, e events.Event) ([]string, bool, error) {
+	originalID := duplicateOriginalID(e.Payload)
+	if originalID == "" || e.WorkspaceID == "" {
+		return nil, false, nil
+	}
+	uid, err := util.ParseUUID(originalID)
+	if err != nil {
+		return nil, false, nil
+	}
+	projectID, err := a.q.GetIssueProjectID(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	ws, err := a.workspace(ctx, e.WorkspaceID)
+	if err != nil {
+		return nil, false, err
+	}
+	members, ok := ws.projects[util.UUIDToString(projectID)]
+	return members, ok, nil
+}
+
+// duplicateOriginalID is the id of the original named by payload.issue.duplicate_of.
+func duplicateOriginalID(payload any) string {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return ""
+	}
+	var top struct {
+		Issue struct {
+			DuplicateOf *struct {
+				ID string `json:"id"`
+			} `json:"duplicate_of"`
+		} `json:"issue"`
+	}
+	if json.Unmarshal(raw, &top) != nil || top.Issue.DuplicateOf == nil {
+		return ""
+	}
+	return top.Issue.DuplicateOf.ID
+}
+
+// withoutDuplicateOf returns the outbound frame without payload.issue.duplicate_of.
+// A frame that is not shaped as expected is returned unchanged.
+func withoutDuplicateOf(frame []byte) []byte {
+	var msg map[string]json.RawMessage
+	if json.Unmarshal(frame, &msg) != nil {
+		return frame
+	}
+	var payload map[string]json.RawMessage
+	if json.Unmarshal(msg["payload"], &payload) != nil {
+		return frame
+	}
+	var issue map[string]json.RawMessage
+	if json.Unmarshal(payload["issue"], &issue) != nil {
+		return frame
+	}
+	delete(issue, "duplicate_of")
+	if payload["issue"], _ = json.Marshal(issue); payload["issue"] == nil {
+		return frame
+	}
+	if msg["payload"], _ = json.Marshal(payload); msg["payload"] == nil {
+		return frame
+	}
+	out, err := json.Marshal(msg)
+	if err != nil {
+		return frame
+	}
+	return out
 }
 
 func intersect(a, b []string) []string {
