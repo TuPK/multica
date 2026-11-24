@@ -15,11 +15,11 @@ Ngôn ngữ: tiếng Việt; tên tệp, lệnh, mã giữ tiếng Anh.
 
 ## Trạng thái (2026-11-24)
 
-- Xong: T0.1 (`sync:simulate`), T0.2 (`sync:surface` và baseline), T0.3 (`ledger.md`), T1.1 đến T1.6. Số nghiệm thu ở spec mục 2.7: 29/38/36 conflict còn lại, đạt cổng.
+- Xong: P0 (T0.1 đến T0.3), P1 (T1.1 đến T1.6), P2 (T2.1 `sync:upstream`, T2.2 `brand:check` và rebrand, T2.3 `sync:vi`, T2.4 `sync:contract`). Số nghiệm thu ở spec mục 2.7 và 2.8: 29/37/30 conflict còn lại ở ba merge cũ.
 - Đã bỏ: T2.5 (không chạy định kỳ trên CI).
-- Chưa làm: T2.1 (`sync:upstream`), T2.2 (`brand:check`, rebrand sau merge), T2.3 (`vi-worklist`), T2.4 (`sync:contract`), P3, P4, P5.
-- Lệch so với kế hoạch: `.github/ci-paths.json` nhóm `scripts` được thêm `scripts/sync/**` và `.gitattributes` để CI chạy test của công cụ; `shard-timings.json` dùng `ours` và không cần tái sinh (do reporter test ghi).
-- Driver đã được định nghĩa trong cấu hình git của checkout này (`bash scripts/sync/install.sh`), nên mọi `git merge` từ giờ đều dùng chúng.
+- Chưa làm: P3 (seam), P4 (điều tra migration), P5 (cập nhật `docs/fork-branding.md`, `AGENTS.md`, bộ nhớ; sync thật đầu tiên).
+- Lệch so với kế hoạch: `.github/ci-paths.json` nhóm `scripts` có thêm `scripts/sync/**` và `.gitattributes`; `shard-timings.json` dùng `ours` và không cần tái sinh; driver JSON phủ thêm mọi `package.json` và hợp mảng chèn; `brand:check` dùng tệp nợ `scripts/sync/brand-debt.json` (66 file, 240 dòng còn `Multica` có sẵn) nên chỉ chặn chỗ **mới**, và nó chưa được thêm vào CI; `--finish` thêm bước kiểm marker conflict.
+- Driver đã được định nghĩa trong cấu hình git của checkout này (`bash scripts/sync/install.sh`).
 
 ## 1. Tổng quan thứ tự
 

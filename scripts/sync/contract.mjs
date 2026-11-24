@@ -24,7 +24,13 @@ export function runCheck(root, check) {
       return existsSync(path) && new RegExp(check.pattern).test(read(path)) ? `forbidden pattern found: ${check.pattern}` : null;
     case "jsonEquals": {
       if (!existsSync(path)) return "missing";
-      const value = check.key.split(".").reduce((o, k) => o?.[k], JSON.parse(read(path)));
+      let json;
+      try {
+        json = JSON.parse(read(path));
+      } catch {
+        return "not valid JSON (unresolved conflict markers?)";
+      }
+      const value = check.key.split(".").reduce((o, k) => o?.[k], json);
       return value === check.value ? null : `${check.key} is ${JSON.stringify(value)}, expected ${JSON.stringify(check.value)}`;
     }
     default:

@@ -91,8 +91,10 @@ Còn lại 31–41 file/lần phần lớn là conflict thật do cùng một lo
 | Merge | Gốc | Với driver (nguyên mẫu) | Với driver (trong repo) | Cổng ở plan T1.6 |
 |---|---|---|---|---|
 | `7b6a1ab8f` | 97 | 31 | **29** | ≤ 34 |
-| `ce85c3b61` | 75 | 41 | **38** | ≤ 45 |
-| `0ecf290b7` | 85 | 35 | **36** | ≤ 39 |
+| `ce85c3b61` | 75 | 41 | **37** | ≤ 45 |
+| `0ecf290b7` | 85 | 35 | **30** | ≤ 39 |
+
+(Số của `ce85c3b61` và `0ecf290b7` giảm so với lần đo đầu nhờ thêm `package.json` và hợp mảng chèn vào driver JSON.)
 
 Kiểm tính đúng, hai phép so:
 
@@ -104,6 +106,10 @@ Kiểm tính đúng, hai phép so:
 Giới hạn: 59 file khác nhau tổng cộng trong `--compare` còn lại là file git tự merge sạch nhưng merge commit thật có sửa thêm (sửa ngữ nghĩa sau merge, ví dụ thêm import, đổi chữ ký hàm). Đó là việc của người, không phải lỗi driver.
 
 Phân loại các dòng fork giữ `Multica` có chủ ý (kiểm trên HEAD với `brand-rules.mjs`; 69 file, 246 dòng không thỏa `brand(canon(x)) == x`): tên giấy phép `Multica License` (ngoại lệ trong quy tắc), dòng ví dụ `@Multica /help` và vài đoạn docs ngôn ngữ ko/ja/fr/zh mà fork chưa đổi (nợ brand, `brand:check` sẽ báo), và các tệp trong `docs/` tự mô tả quy tắc. Đường dẫn `Delegora.app` được quy tắc xử lý (`/Multica.app` → `Delegora.app`).
+
+### 2.8 Chạy thử đầu cuối (P2)
+
+Tái hiện sync #4 trong bản clone: lấy `c7603c040` (fork trước sync #4), phủ công cụ lên trên, rồi `pnpm sync:upstream --no-fetch` với `upstream` = `6368504e1`. Kết quả: 114 commit, **36 conflict** (lần chạy đầu, trước khi thêm `package.json` và hợp mảng chèn; mô phỏng sau đó cho 30). Danh sách trùng với các file sync #4 thật phải giải tay (`daemon.go`, `dashboard.go`, `issue.go`, `task.go`, `billing-tab.tsx`, `issue-detail.tsx`, ...) và các file hot được gắn nhãn seam. Bước `--finish` ra đúng **131 khóa `vi` thiếu** (sync #4 thật phải điền 132). Lần thử này cũng lộ một lỗ hổng: `git add` file còn marker conflict làm git coi như đã giải; nay `--finish` kiểm marker ở bước đầu, và `sync:contract` báo lỗi thay vì sập khi JSON hỏng.
 
 ## 3. Thiết kế
 
@@ -132,13 +138,13 @@ Giới hạn đã biết: git chỉ gọi driver khi **cả hai phía** sửa fi
 
 ### 3.2 Driver JSON theo key (`merge=jsonmerge`)
 
-Áp cho `packages/views/locales/**/*.json`, `apps/mobile/locales/**/*.json`, `apps/docs/content/**/meta*.json`, `server/internal/handler/reserved_slugs.json`, và các JSON dữ liệu khác khi cần (danh sách trong `.gitattributes`).
+Áp cho `packages/views/locales/**/*.json`, `apps/mobile/locales/**/*.json`, `apps/docs/content/**/meta*.json`, `server/internal/handler/reserved_slugs.json` và mọi `package.json` (phát hiện ở lần chạy thử đầu: `apps/desktop/package.json` conflict vì fork đổi `productName` ngay dòng trên `version` mà upstream nâng) (danh sách trong `.gitattributes`).
 
 Quy tắc, theo từng đường dẫn khóa, ba bản `O`/`A`/`B` (so sánh sau chuẩn hóa brand):
 
 - `A==B`: giữ. `O==A`: lấy `B`. `O==B`: lấy `A`.
 - Cả hai đổi và cả hai là object: đệ quy.
-- Mảng toàn giá trị đơn (chuỗi, số): merge theo dòng, mỗi phần tử một dòng, bằng `git merge-file`. Có conflict thì thoát 1.
+- Mảng toàn giá trị đơn (chuỗi, số): merge theo dòng, mỗi phần tử một dòng, bằng `git merge-file`. Nếu hai bên **chỉ chèn thêm** phần tử (bản gốc là dãy con của cả hai) và vướng nhau tại cùng một chỗ, giữ cả hai, bản fork trước (ví dụ `pages` của `meta.json`). Mọi trường hợp khác có conflict thì rơi về merge dòng.
 - Còn lại (cả hai sửa cùng giá trị, hoặc một bên xóa một bên sửa): thoát 1.
 - Thứ tự key: giữ thứ tự của `A`, chèn key mới của `B` ngay sau key đứng trước nó ở `B`.
 - Chuỗi từ `B` đi vào kết quả được áp `brand()`.

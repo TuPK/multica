@@ -94,6 +94,21 @@ test("string arrays merge element by element", () => {
   assert.deepEqual(json.pages, ["a", "fork", "b", "c", "d", "upstream"]);
 });
 
+test("both sides inserting at the same spot of a string array keeps both, ours first", () => {
+  const { conflicts, json } = scenario(
+    { pages: ["a", "b", "c"] },
+    { pages: ["a", "b", "f1", "f2", "c"] },
+    { pages: ["a", "b", "u1", "c"] },
+  );
+  assert.deepEqual(conflicts, []);
+  assert.deepEqual(json.pages, ["a", "b", "f1", "f2", "u1", "c"]);
+});
+
+test("a deletion that overlaps the other side's insertion stays a conflict", () => {
+  const { conflicts } = scenario({ pages: ["a", "b", "c"] }, { pages: ["a", "c"] }, { pages: ["a", "b", "x", "c"] });
+  assert.deepEqual(conflicts, ["a.json"]);
+});
+
 test("a fork file whose layout is not canonical falls back to a line merge", () => {
   const compact = '{\n  "pages": ["a", "b"]\n}\n';
   const { conflicts, raw } = scenario(compact, '{\n  "pages": ["a", "b", "f"]\n}\n', '{\n  "pages": ["a", "b", "u"]\n}\n');

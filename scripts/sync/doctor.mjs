@@ -16,7 +16,7 @@ const config = (key) => {
 /** Sample path per driver; `git check-attr` must resolve it to that driver. */
 export const SAMPLES = {
   brand: ["README.md", "apps/docs/content/docs/agents.mdx", "server/internal/daemon/daemon.go"],
-  jsonmerge: ["packages/views/locales/en/auth.json", "apps/docs/content/docs/meta.json"],
+  jsonmerge: ["packages/views/locales/en/auth.json", "apps/docs/content/docs/meta.json", "package.json", "apps/desktop/package.json"],
   ours: ["pnpm-lock.yaml", "server/pkg/db/generated/models.go"],
 };
 

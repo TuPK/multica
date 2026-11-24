@@ -6,7 +6,7 @@ Mỗi lần sync thêm một dòng. "Conflict gốc" là số file git báo chư
 |---|---|---|---|---|---|---|---|
 | 2026-11-22 | `e4f7bf2ad` | 588 | 301 | | | | sync #1, chưa mô phỏng với driver |
 | 2026-11-22 | `7b6a1ab8f` | 53 | 97 | 29 (mô phỏng) | | 14 khóa `composio_mcp` ở locale bị bỏ, phát hiện và khôi phục sau | merge thật bỏ khóa này ở cả `en`; driver giữ |
-| 2026-11-23 | `ce85c3b61` | 27 | 75 | 38 (mô phỏng) | | | |
-| 2026-11-24 | `0ecf290b7` | 114 | 85 | 36 (mô phỏng) | | | sync #4 |
+| 2026-11-23 | `ce85c3b61` | 27 | 75 | 37 (mô phỏng) | | | |
+| 2026-11-24 | `0ecf290b7` | 114 | 85 | 30 (mô phỏng) | | | sync #4 |
 
 Số "còn lại" của ba dòng cuối là mô phỏng bằng driver trong repo (`pnpm sync:simulate --merge <commit>`), không phải số lúc đó người giải.

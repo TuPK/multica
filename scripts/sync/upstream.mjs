@@ -21,6 +21,18 @@ const git = (root, ...args) => execFileSync("git", args, { cwd: root, encoding: 
 const statePath = (root) => join(git(root, "rev-parse", "--absolute-git-dir").trim(), "sync-state.json");
 const loadPolicy = (file = join(here, "policy.json")) => JSON.parse(readFileSync(file, "utf8"));
 
+/** Changed files that still contain git conflict markers (resolved by `git add` alone). */
+export function markerFiles(root, base = "HEAD") {
+  const changed = git(root, "diff", "--name-only", "--diff-filter=AM", base).split("\n").filter(Boolean);
+  return changed.filter((f) => {
+    try {
+      return /^(<{7}|>{7}) /m.test(readFileSync(join(root, f), "utf8"));
+    } catch {
+      return false;
+    }
+  });
+}
+
 export function unmerged(root) {
   return git(root, "diff", "--name-only", "--diff-filter=U").split("\n").filter(Boolean);
 }
@@ -78,6 +90,9 @@ export function finish({ root, policy = loadPolicy(), run = sh, skipRegenerate =
   if (left.length) throw new Error(`${left.length} files are still unmerged, e.g. ${left.slice(0, 3).join(", ")}`);
   const steps = [];
   const step = (name, ok, note = "") => steps.push({ name, ok, note });
+  const markers = markerFiles(root);
+  step("no conflict markers left in changed files", markers.length === 0, markers.slice(0, 5).join(", "));
+  if (markers.length) return { steps, ok: false, state };
   if (!skipRegenerate) {
     for (const g of [...policy.regenerate].sort((a, b) => a.order - b.order)) step(`regenerate ${g.name}`, run(root, g.command), g.command);
   }

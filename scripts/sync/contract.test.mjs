@@ -35,6 +35,8 @@ test("each check kind passes and fails as described", () => {
     { kind: "jsonEquals", path: "p.json", key: "k.n", value: "Multica" },
     { kind: "wat", path: "a.txt" },
   ];
+  writeFileSync(join(root, "broken.json"), "<<<<<<< HEAD\n{}\n");
+  assert.match(runCheck(root, { kind: "jsonEquals", path: "broken.json", key: "k", value: 1 }), /not valid JSON/);
   for (const c of bad) assert.notEqual(runCheck(root, c), null, JSON.stringify(c));
   rmSync(root, { recursive: true });
 });

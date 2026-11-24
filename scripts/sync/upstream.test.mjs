@@ -73,6 +73,17 @@ test("finish waits for conflicts, then runs regeneration and the checks in order
   r.cleanup();
 });
 
+test("finish stops when a file still has conflict markers", () => {
+  const r = build();
+  start({ root: r.dir, fetch: false, skipDoctor: true, policy: POLICY, date: "d" });
+  r.git("add", "-A"); // adds hot.go with its markers, which clears the unmerged state
+  const res = finish({ root: r.dir, policy: POLICY, run: () => true });
+  assert.equal(res.ok, false);
+  assert.deepEqual(res.steps.map((s) => s.name), ["no conflict markers left in changed files"]);
+  assert.match(res.steps[0].note, /hot\.go/);
+  r.cleanup();
+});
+
 test("finish without a started sync says so", () => {
   const r = build();
   assert.throws(() => finish({ root: r.dir, policy: POLICY, run: () => true }), /no sync in progress/);

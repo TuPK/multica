@@ -31,9 +31,17 @@ function brandDeep(v) {
 }
 
 /** Line merge of scalar arrays, one element per line, in the upstream spelling. */
+function isSubsequence(small, big) {
+  let i = 0;
+  for (const x of big) if (i < small.length && ser(small[i]) === ser(x)) i += 1;
+  return i === small.length;
+}
+
 function mergeScalarArrays(o, a, b, mergeLines) {
   const lines = (arr) => arr.map((x) => canon(JSON.stringify(x))).join("\n") + (arr.length ? "\n" : "");
-  const merged = mergeLines(lines(a), lines(o), lines(b));
+  let merged = mergeLines(lines(a), lines(o), lines(b));
+  // Both sides only inserted entries (e.g. new doc pages at the same spot): keep both, ours first.
+  if (merged.conflict && isSubsequence(o, a) && isSubsequence(o, b)) merged = mergeLines(lines(a), lines(o), lines(b), { union: true });
   if (merged.conflict) throw new Unmergeable("array conflict");
   const pool = new Map();
   for (const x of a) {
@@ -78,7 +86,7 @@ const format = (value, finalNewline) => JSON.stringify(value, null, 2) + (finalN
 
 /**
  * Pure core. Returns the merged file text, or throws Unmergeable. `mergeLines(ours, base,
- * theirs)` behaves like `git merge-file -p` and returns `{ text, conflict }`.
+ * theirs, {union})` behaves like `git merge-file -p [--union]` and returns `{ text, conflict }`.
  */
 export function mergeJson({ base, ours, theirs }, mergeLines) {
   const parse = (t) => {
@@ -95,14 +103,14 @@ export function mergeJson({ base, ours, theirs }, mergeLines) {
   return format(merge(o, a, b, mergeLines), finalNewline);
 }
 
-function gitMergeFile(ours, base, theirs) {
+function gitMergeFile(ours, base, theirs, { union = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "merge-json-"));
   try {
     const [a, o, b] = ["a", "o", "b"].map((n) => join(dir, n));
     writeFileSync(a, ours);
     writeFileSync(o, base);
     writeFileSync(b, theirs);
-    const r = spawnSync("git", ["merge-file", "-p", a, o, b], { encoding: "utf8" });
+    const r = spawnSync("git", ["merge-file", "-p", ...(union ? ["--union"] : []), a, o, b], { encoding: "utf8" });
     if (r.status === null || r.status < 0 || r.status > 127) throw new Error(r.stderr || "git merge-file failed");
     return { text: r.stdout, conflict: r.status > 0 };
   } finally {
