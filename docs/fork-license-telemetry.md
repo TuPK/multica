@@ -32,6 +32,10 @@ not be changed by configuration, and `DO_NOT_TRACK` only turned it off.
 | `apps/web/features/landing/i18n/{en,ja,ko,zh}.ts` | Privacy sentences and changelog bullets describing the snapshot. |
 | `scripts/selfhost-config.test.sh` | One description string that mentioned `DO_NOT_TRACK`. |
 
+### Kept as no-ops, so a new upstream call site compiles
+
+`TaskService.RecordHumanDelegation` (`server/internal/service/telemetry_fork.go`) and `attribution.CommentFacts.CreatedAt` exist again but do nothing. When a merge brings a new upstream call, leave it: it reports nothing. Do not restore the ledger write, `RecordMemberActivity`, `Result.HumanAction` or `HumanActedAt`.
+
 ### Deliberately not removed: database objects
 
 The migrations that created the telemetry tables stay, and so do the tables:

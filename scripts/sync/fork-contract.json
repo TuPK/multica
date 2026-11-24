@@ -31,6 +31,15 @@
       ]
     },
     {
+      "id": "notification-fork-listeners",
+      "why": "Brief-ready notifications and the mention visibility filter live in notification_listeners_fork.go; upstream's file only calls them.",
+      "checks": [
+        { "kind": "matches", "path": "server/cmd/server/notification_listeners.go", "pattern": "registerForkNotificationListeners\\(" },
+        { "kind": "matches", "path": "server/cmd/server/notification_listeners.go", "pattern": "dropUnseeableRecipients\\(" },
+        { "kind": "matches", "path": "server/cmd/server/notification_listeners_fork.go", "pattern": "EventBriefCreated" }
+      ]
+    },
+    {
       "id": "billing-ui",
       "why": "Settings billing tab, return pages and limit-recovery dialog are fork code.",
       "checks": [

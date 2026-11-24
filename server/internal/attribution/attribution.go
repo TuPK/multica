@@ -202,6 +202,8 @@ type CommentFacts struct {
 	CommentID  pgtype.UUID
 	AuthorType string // "member" | "agent" | other
 	AuthorID   pgtype.UUID
+	// CreatedAt is accepted and ignored: upstream sets it for the telemetry ledger this fork removed.
+	CreatedAt pgtype.Timestamptz
 
 	// For agent-authored comments: the source task the comment was written
 	// from (comment.source_task_id) and that task's originator_user_id. The

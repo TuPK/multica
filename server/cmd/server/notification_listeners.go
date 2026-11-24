@@ -407,25 +407,6 @@ func publishInboxBatchArchived(
 	return len(counts)
 }
 
-// issueAudience is inbox.IssueAudience for the string ids the listeners carry
-// (spec 7.1 rule 4).
-type issueAudience struct{ a *inbox.IssueAudience }
-
-func newIssueAudience(ctx context.Context, queries *db.Queries, workspaceID, issueID string) issueAudience {
-	ws, wsErr := util.ParseUUID(workspaceID)
-	issue, issueErr := util.ParseUUID(issueID)
-	if wsErr != nil || issueErr != nil {
-		return issueAudience{inbox.NewIssueAudience(ctx, queries, pgtype.UUID{}, pgtype.UUID{})}
-	}
-	return issueAudience{inbox.NewIssueAudience(ctx, queries, ws, issue)}
-}
-
-// sees reports whether the member sees the issue.
-func (a issueAudience) sees(userID string) bool {
-	id, err := util.ParseUUID(userID)
-	return err == nil && a.a.Sees(id)
-}
-
 // notifySubscribers queries the subscriber table for an issue, excludes the
 // actor and any extra IDs, and creates inbox items for each remaining member
 // subscriber. Publishes an inbox:new event for each notification.
@@ -855,14 +836,7 @@ func notifyMentionedMembers(
 		}
 	}
 
-	// A mention reaches only the members who see the issue, @all and @squad
-	// included.
-	audience := newIssueAudience(context.Background(), queries, e.WorkspaceID, issueID)
-	for id := range recipientIDs {
-		if !audience.sees(id) {
-			delete(recipientIDs, id)
-		}
-	}
+	dropUnseeableRecipients(queries, e.WorkspaceID, issueID, recipientIDs)
 
 	// Batch-load notification preferences for all mention recipients.
 	var mentionUserIDs []string
@@ -1311,10 +1285,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 		)
 	})
 
-	// brief:created — one brief_ready item per workspace owner
-	bus.Subscribe(protocol.EventBriefCreated, func(e events.Event) {
-		notifyBriefReady(ctx, queries, bus, e)
-	})
+	registerForkNotificationListeners(ctx, bus, queries)
 
 	// task:completed — no notification of its own; a squad leader run that
 	// ends its squad's chain delivers the handoff that woke it

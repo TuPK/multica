@@ -270,21 +270,25 @@ const (
 // reportTerminalTask gives the durable outbox one insertion point without
 // revisiting every task exit when it is added.
 type terminalTaskReport struct {
-	kind       terminalTaskReportKind
-	taskID     string
-	output     string
-	branchName string
+	kind           terminalTaskReportKind
+	taskID         string
+	output         string
+	branchName     string
+	errorMessage   string
+	sessionID      string
+	workDir        string
+	durableWorkDir string
+	failureReason  string
+	// noToolCallsStarted accompanies a verified Trae prompt failure.
+	noToolCallsStarted bool
+
+	// Fork fields, kept in their own block so gofmt alignment never touches the
+	// upstream fields above.
+	//
 	// branchMergeStatus and branchMergeError carry the opt-in merge outcome of a
 	// completed run (execenv.BranchMerge*); they are reported with the completion.
 	branchMergeStatus string
 	branchMergeError  string
-	errorMessage      string
-	sessionID         string
-	workDir           string
-	durableWorkDir    string
-	failureReason     string
-	// noToolCallsStarted accompanies a verified Trae prompt failure.
-	noToolCallsStarted bool
 	// sessionRolloutMissing is true when the daemon withheld this task's Codex
 	// session because its rollout was not in the store (MUL-5305). The server
 	// clears the resume pointer and flags the continuity gap for the next claim.

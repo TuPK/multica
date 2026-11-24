@@ -261,3 +261,10 @@ Sync #5 còn 27 conflict: ~11 là hai bên cùng thêm vào một chỗ (không 
 Kết quả (2026-11-24, ngay sau sync #5):
 - S8 **đã làm**: `entitlement/types.go` và `client.go` giờ chỉ lệch upstream 3 và 1 dòng (hook `forkGateValid`, `normalizeForkGates`); cổng của fork nằm ở `gates_fork.go`. Test entitlement, kiểm kê tiền tệ, golden route đạt.
 - S7 **không làm**, theo đúng quy tắc dừng: (a) `billing-tab.tsx` của fork là một thành phần khác hẳn (+1.471/−1.259 so với upstream) và dựa trên kiểu và hook billing đã phân kỳ trong `core` (`planChange`, `trial`, `checkPlanChange`...), nên không thể giữ nguyên file upstream bên cạnh: thử rồi, upstream `billing-tab.tsx` và test của nó không biên dịch được trong cây fork; (b) `squad-detail-page.tsx` của fork đổi cấu trúc (`SquadDetailPage` → `SquadDetailView`, thêm props) và xen hook lẫn JSX của upstream, nên không có khối nguyên để chuyển. Hai file này đánh dấu trong `policy.json` (`hotFiles`) để lần sau báo rõ là phải mang diff của upstream sang bằng tay.
+
+## Sau sync #7 (2026-11-24)
+
+- **Hợp đồng inline**: `pnpm sync:coverage` tìm 193 file upstream có ≥15 dòng sửa của fork mà không kiểm tra nào gọi tên; `--write` sinh `scripts/sync/fork-inline.json` (186 tính năng, ~310 kiểm tra: tên khai báo fork thêm, hoặc dòng mã dài nhất). Sinh lại chỉ từ cây đã xác nhận.
+- **Shim telemetry** (đã làm, theo yêu cầu): `RecordHumanDelegation` rỗng ở `service/telemetry_fork.go` và `CommentFacts.CreatedAt` (bỏ qua), để lời gọi mới của upstream biên dịch mà không ghi gì. Ghi trong `docs/fork-license-telemetry.md`.
+- **Không làm shim cho 38 hàm lõi khác đã đổi chữ ký**: tham số fork thêm (`scope Hidden`, `guard`, `hook`, `storageQuota`, `permission`...) mang kiểm tra quyền, audit và quota; mặc định rỗng sẽ để mã upstream mới lọt qua mà không bị kiểm. Lỗi biên dịch là chốt chặn; runbook dặn truyền giá trị đúng có chủ đích.
+- **Hai seam nhỏ** (đã làm): `notification_listeners_fork.go` (đăng ký brief, lọc người nhận mention; file upstream còn +14 dòng so với +45) và nhóm trường fork riêng trong `terminalTaskReport` của `daemon.go`.
