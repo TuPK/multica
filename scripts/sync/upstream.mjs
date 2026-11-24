@@ -57,7 +57,8 @@ export function start({ root, upstream = "upstream/main", fetch = true, skipDoct
   const pre = git(root, "rev-parse", "HEAD").trim();
   const up = git(root, "rev-parse", upstream).trim();
   const base = git(root, "merge-base", pre, up).trim();
-  const syncBranch = `chore/sync-upstream-${date}`;
+  let syncBranch = `chore/sync-upstream-${date}`;
+  for (let n = 2; git(root, "branch", "--list", syncBranch).trim(); n++) syncBranch = `chore/sync-upstream-${date}-${n}`;
   git(root, "checkout", "-b", syncBranch);
   log.push(`branch ${syncBranch}; merging ${ahead} upstream commits (base ${base.slice(0, 9)})`);
   try {
