@@ -170,6 +170,23 @@
       ]
     },
     {
+      "id": "fork-api-client",
+      "why": "The fork's ApiClient methods live in client.fork.ts (seam S4) and ApiClient extends them; losing the extends line drops hundreds of methods.",
+      "checks": [
+        { "kind": "matches", "path": "packages/core/api/client.ts", "pattern": "class ApiClient extends ForkApiMethods" },
+        { "kind": "matches", "path": "packages/core/api/client.fork.ts", "pattern": "export abstract class ForkApiMethods" }
+      ]
+    },
+    {
+      "id": "fork-issue-handlers",
+      "why": "Workflow choice and batch rules of issues live in issue_fork.go (seam S2).",
+      "checks": [
+        { "kind": "matches", "path": "server/internal/handler/issue_fork.go", "pattern": "func \\(h \\*Handler\\) chooseCreateFlow" },
+        { "kind": "matches", "path": "server/internal/handler/issue.go", "pattern": "h\\.chooseCreateFlow\\(" },
+        { "kind": "matches", "path": "server/internal/handler/issue.go", "pattern": "h\\.checkBatchFlow\\(" }
+      ]
+    },
+    {
       "id": "sync-tooling",
       "why": "The upstream-sync tooling that keeps these checks meaningful.",
       "checks": [

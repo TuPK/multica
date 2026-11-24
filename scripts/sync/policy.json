@@ -44,14 +44,14 @@
     "packages/views/test/shard-timings.json"
   ],
   "hotFiles": {
-    "server/internal/handler/issue.go": "S2",
+    "server/internal/handler/issue.go": "S2 (partly done: see issue_fork.go)",
     "server/internal/service/task.go": "S2",
     "packages/views/issues/components/issue-detail.tsx": "S3",
     "packages/views/chat/chat-page.tsx": "S3",
     "packages/views/layout/panels/work-panel.tsx": "S3",
     "packages/views/settings/components/settings-layout.tsx": "S3",
     "packages/views/settings/components/settings-page.tsx": "S3",
-    "packages/core/api/client.ts": "S4",
+    "packages/core/api/client.ts": "S4 (done: fork-only methods moved to client.fork.ts; inline edits remain)",
     "packages/core/api/schemas.ts": "S4",
     "server/cmd/server/router.go": "S5 (partly done: fork-owned sections moved to router_fork.go)",
     "apps/desktop/src/renderer/src/routes.tsx": "S6",
