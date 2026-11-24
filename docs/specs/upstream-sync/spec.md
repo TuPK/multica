@@ -205,7 +205,7 @@ Quy tắc cho mã fork mới và cho việc dọn dần mã cũ:
 
 | # | Mục tiêu | Cách tách | Ghi chú |
 |---|---|---|---|
-| S1 | `server/cmd/migrate/main.go` (3/3) | map `concurrentIndexCleanups` của fork sang `fork_index_cleanups.go`, gộp lúc khởi tạo | 4 khối, +187 dòng; đơn giản nhất |
+| S1 | `server/cmd/migrate/main.go` (3/3) | map `concurrentIndexCleanups` của fork sang `fork_index_cleanups.go`, gộp lúc khởi tạo | **Đã làm (2026-11-24).** 186 mục chuyển nguyên văn sang `fork_index_cleanups.go`, `main.go` giờ trùng upstream từng byte. Gộp bằng `var _ = mergeForkIndexCleanups()`, **không** dùng `init()`: `preMigrationHooks` được dựng trong bộ khởi tạo biến, chạy trước mọi `init()`, nên dùng `init()` làm hook bị thiếu (test `TestConcurrentIndexCleanupsMatchTheirMigrations` đã bắt lỗi này) |
 | S2 | `handler/issue.go` (3/3), `service/task.go` (2) | tách logic flow/workflow của fork ra `issue_fork.go`, `task_fork.go`; chỗ còn lại là một dòng gọi | cần đọc từng khối; có test DB, chạy trên `multica_test` |
 | S3 | `issue-detail.tsx` (3/3), `chat-page.tsx`, `work-panel.tsx`, `settings-layout.tsx`, `settings-page.tsx` | đăng ký phần fork vào registry (hàng thuộc tính, tab) thay vì chèn JSX | thiết kế registry cần thử trên `issue-detail.tsx` trước, rồi mới nhân rộng |
 | S4 | `packages/core/api/client.ts`, `schemas.ts` | phương thức và schema của fork sang `client.fork.ts`, `schemas.fork.ts`; ghép bằng khai báo `interface ApiClient` + gán prototype | cần kiểm `sideEffects`, kiểu `this`, và mọi chỗ gọi (~746 phương thức `async` trong class; bao nhiêu cái của fork **chưa đếm**, T3.4 đếm trước) |

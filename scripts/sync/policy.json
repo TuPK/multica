@@ -44,7 +44,6 @@
     "packages/views/test/shard-timings.json"
   ],
   "hotFiles": {
-    "server/cmd/migrate/main.go": "S1",
     "server/internal/handler/issue.go": "S2",
     "server/internal/service/task.go": "S2",
     "packages/views/issues/components/issue-detail.tsx": "S3",

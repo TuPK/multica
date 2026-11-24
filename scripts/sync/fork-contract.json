@@ -153,6 +153,14 @@
       ]
     },
     {
+      "id": "fork-index-cleanups",
+      "why": "The fork's concurrent-index cleanup entries live in their own file (seam S1) and must be merged before the migration hooks are built.",
+      "checks": [
+        { "kind": "exists", "path": "server/cmd/migrate/fork_index_cleanups.go" },
+        { "kind": "matches", "path": "server/cmd/migrate/fork_index_cleanups.go", "pattern": "var _ = mergeForkIndexCleanups\\(\\)" }
+      ]
+    },
+    {
       "id": "sync-tooling",
       "why": "The upstream-sync tooling that keeps these checks meaningful.",
       "checks": [
