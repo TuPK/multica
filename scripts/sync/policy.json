@@ -1,32 +1,61 @@
 {
-  "_doc": "Inputs of the upstream-sync tooling. See docs/specs/upstream-sync/spec.md sections 3.3 and 3.4.",
-  "excluded": ["server/ee", "packages/ee"],
+  "_doc": "Inputs of the upstream-sync tooling. See docs/specs/upstream-sync/spec.md sections 3.3 and 3.4. hotFiles maps a file that conflicted repeatedly to the seam task (plan P3) that will remove the cause.",
+  "excluded": [
+    "server/ee",
+    "packages/ee"
+  ],
   "regenerate": [
     {
       "name": "dependencies",
-      "paths": ["pnpm-lock.yaml"],
+      "paths": [
+        "pnpm-lock.yaml"
+      ],
       "command": "pnpm install --no-frozen-lockfile",
       "order": 1
     },
     {
       "name": "reserved slugs",
-      "paths": ["packages/core/paths/reserved-slugs.ts"],
+      "paths": [
+        "packages/core/paths/reserved-slugs.ts"
+      ],
       "command": "pnpm generate:reserved-slugs",
       "order": 2
     },
     {
       "name": "catalog",
-      "paths": ["packages/core/catalog/generated", "server/internal/catalog/generated"],
+      "paths": [
+        "packages/core/catalog/generated",
+        "server/internal/catalog/generated"
+      ],
       "command": "pnpm catalog:build",
       "order": 3
     },
     {
       "name": "sqlc",
-      "paths": ["server/pkg/db/generated"],
+      "paths": [
+        "server/pkg/db/generated"
+      ],
       "command": "make sqlc",
       "order": 4,
       "after": "queries and migrations are merged"
     }
   ],
-  "keepFork": ["packages/views/test/shard-timings.json"]
+  "keepFork": [
+    "packages/views/test/shard-timings.json"
+  ],
+  "hotFiles": {
+    "server/cmd/migrate/main.go": "S1",
+    "server/internal/handler/issue.go": "S2",
+    "server/internal/service/task.go": "S2",
+    "packages/views/issues/components/issue-detail.tsx": "S3",
+    "packages/views/chat/chat-page.tsx": "S3",
+    "packages/views/layout/panels/work-panel.tsx": "S3",
+    "packages/views/settings/components/settings-layout.tsx": "S3",
+    "packages/views/settings/components/settings-page.tsx": "S3",
+    "packages/core/api/client.ts": "S4",
+    "packages/core/api/schemas.ts": "S4",
+    "server/cmd/server/router.go": "S5",
+    "apps/desktop/src/renderer/src/routes.tsx": "S6",
+    "packages/core/paths/paths.ts": "S6"
+  }
 }

@@ -1,0 +1,165 @@
+{
+  "_doc": "Static checks that this fork's own features survived a merge. Each entry is one feature, with the reason it exists. Kinds: exists, nonEmptyDir, absent, matches (regex must occur), lacks (regex must not occur), jsonEquals (dotted key equals value). Add an entry when the fork gains a feature it must never lose. See docs/specs/upstream-sync/spec.md section 3.7.",
+  "features": [
+    {
+      "id": "billing-server",
+      "why": "The fork keeps its own billing (Stripe) instead of upstream's.",
+      "checks": [
+        { "kind": "exists", "path": "server/internal/handler/cloud_billing.go" },
+        { "kind": "matches", "path": "server/cmd/server/router.go", "pattern": "/api/webhooks/stripe" },
+        { "kind": "nonEmptyDir", "path": "server/internal/planlimit" },
+        { "kind": "nonEmptyDir", "path": "server/internal/seatcapacity" }
+      ]
+    },
+    {
+      "id": "billing-ui",
+      "why": "Settings billing tab, return pages and limit-recovery dialog are fork code.",
+      "checks": [
+        { "kind": "exists", "path": "packages/views/settings/components/billing-tab.tsx" },
+        { "kind": "matches", "path": "packages/views/settings/components/billing-tab.tsx", "pattern": "hasReturnParams" },
+        { "kind": "nonEmptyDir", "path": "packages/views/billing" },
+        { "kind": "exists", "path": "packages/core/types/billing.ts" },
+        { "kind": "exists", "path": "packages/views/modals/limit-recovery-dialog.tsx" }
+      ]
+    },
+    {
+      "id": "entitlement",
+      "why": "Entitlement is the union of upstream's and the fork's rules.",
+      "checks": [{ "kind": "nonEmptyDir", "path": "server/internal/entitlement" }]
+    },
+    {
+      "id": "platform-management",
+      "why": "The platform console and its API are fork-only products (ports 30001 and 8095).",
+      "checks": [
+        { "kind": "nonEmptyDir", "path": "platform-management/cmd" },
+        { "kind": "nonEmptyDir", "path": "platform-management/internal" },
+        { "kind": "nonEmptyDir", "path": "platform-management/console" }
+      ]
+    },
+    {
+      "id": "room-workflows",
+      "why": "Workflows are room-based; the fork has no project workflows (no SetProjectWorkflow).",
+      "checks": [
+        { "kind": "nonEmptyDir", "path": "server/internal/issueworkflow" },
+        { "kind": "exists", "path": "server/internal/handler/issue_workflow.go" },
+        { "kind": "exists", "path": "server/internal/handler/issue_workflow_entry.go" },
+        { "kind": "lacks", "path": "server/internal/handler/issue_workflow.go", "pattern": "SetProjectWorkflow" },
+        { "kind": "matches", "path": "server/internal/issueworkflow/issueworkflow.go", "pattern": "NextStatusKey" },
+        { "kind": "nonEmptyDir", "path": "packages/core/issue-workflows" }
+      ]
+    },
+    {
+      "id": "company",
+      "why": "The company floor plan and board dialog are fork features.",
+      "checks": [
+        { "kind": "exists", "path": "packages/views/company/components/company-board-dialog.tsx" },
+        { "kind": "matches", "path": "server/cmd/server/router.go", "pattern": "company" }
+      ]
+    },
+    {
+      "id": "hub-knowledge-pipeline-governance",
+      "why": "Hub, knowledge (WeKnora), pipeline and governance modules exist only in the fork.",
+      "checks": [
+        { "kind": "nonEmptyDir", "path": "server/internal/hub" },
+        { "kind": "nonEmptyDir", "path": "server/internal/knowledge" },
+        { "kind": "nonEmptyDir", "path": "packages/views/hub" },
+        { "kind": "nonEmptyDir", "path": "packages/views/knowledge" },
+        { "kind": "nonEmptyDir", "path": "packages/views/pipeline" },
+        { "kind": "nonEmptyDir", "path": "packages/views/governance" }
+      ]
+    },
+    {
+      "id": "catalog",
+      "why": "Squads, skills, workflows, agents and collections are fork content built into generated code.",
+      "checks": [
+        { "kind": "nonEmptyDir", "path": "catalog/squads" },
+        { "kind": "nonEmptyDir", "path": "catalog/skills" },
+        { "kind": "nonEmptyDir", "path": "catalog/workflows" },
+        { "kind": "nonEmptyDir", "path": "catalog/agents" },
+        { "kind": "nonEmptyDir", "path": "catalog/collections" }
+      ]
+    },
+    {
+      "id": "pixtuoid-and-landing",
+      "why": "The office renderer and the landing site are fork-only apps.",
+      "checks": [
+        { "kind": "nonEmptyDir", "path": "pixtuoid/crates" },
+        { "kind": "nonEmptyDir", "path": "apps/landing" }
+      ]
+    },
+    {
+      "id": "blue-white-default-theme",
+      "why": "Blue White is the default appearance, also in dark mode, with a persisted-state migration.",
+      "checks": [
+        { "kind": "matches", "path": "packages/core/appearance/built-in-themes.ts", "pattern": "id: \"blue-white\"" },
+        { "kind": "matches", "path": "packages/core/appearance/index.ts", "pattern": "theme: \"blue-white\"" },
+        { "kind": "matches", "path": "packages/core/appearance/index.ts", "pattern": "version: 1" }
+      ]
+    },
+    {
+      "id": "vi-locale",
+      "why": "Vietnamese is a fork-only locale and must cover every English key.",
+      "checks": [
+        { "kind": "exists", "path": "packages/views/locales/vi.ts" },
+        { "kind": "nonEmptyDir", "path": "packages/views/locales/vi" },
+        { "kind": "matches", "path": "packages/views/locales/index.ts", "pattern": "\\bvi\\b" }
+      ]
+    },
+    {
+      "id": "delegora-display-name",
+      "why": "Display text is Delegora; identifiers keep multica (docs/fork-branding.md).",
+      "checks": [
+        { "kind": "exists", "path": "docs/fork-branding.md" },
+        { "kind": "jsonEquals", "path": "apps/desktop/package.json", "key": "productName", "value": "Delegora" },
+        { "kind": "matches", "path": "apps/desktop/electron-builder.yml", "pattern": "productName: Delegora" },
+        { "kind": "exists", "path": "scripts/sync/brand-rules.mjs" }
+      ]
+    },
+    {
+      "id": "excluded-ee-code",
+      "why": "server/ee and packages/ee are excluded for licence reasons.",
+      "checks": [
+        { "kind": "absent", "path": "server/ee" },
+        { "kind": "absent", "path": "packages/ee" }
+      ]
+    },
+    {
+      "id": "dev-full-build-mode",
+      "why": "make dev-full serves the built web app by default, not the debug server.",
+      "checks": [
+        { "kind": "matches", "path": "Makefile", "pattern": "WEB_MODE \\?= build" },
+        { "kind": "matches", "path": "scripts/dev-full.sh", "pattern": "WEB_MODE:-build" }
+      ]
+    },
+    {
+      "id": "settings-tabs",
+      "why": "Settings uses the fork's Tabs-based SettingsViewTabs.",
+      "checks": [{ "kind": "matches", "path": "packages/views/settings/components/settings-layout.tsx", "pattern": "SettingsViewTabs" }]
+    },
+    {
+      "id": "agent-runtime-fork-options",
+      "why": "DenyBuildSkills and the lane-aware local path locker are fork daemon behaviour.",
+      "checks": [
+        { "kind": "matches", "path": "server/pkg/agent/agent.go", "pattern": "DenyBuildSkills" },
+        { "kind": "matches", "path": "server/internal/daemon/local_directory.go", "pattern": "Acquire\\(ctx context\\.Context, realPath, lane" }
+      ]
+    },
+    {
+      "id": "dashboard-hidden-projects",
+      "why": "Usage queries exclude hidden (private) projects on top of upstream's squad scope.",
+      "checks": [
+        { "kind": "matches", "path": "server/internal/handler/dashboard.go", "pattern": "HiddenProjectIds" },
+        { "kind": "matches", "path": "server/pkg/db/queries/task_usage.sql", "pattern": "hidden_project_ids" }
+      ]
+    },
+    {
+      "id": "sync-tooling",
+      "why": "The upstream-sync tooling that keeps these checks meaningful.",
+      "checks": [
+        { "kind": "exists", "path": "scripts/sync/merge-brand.mjs" },
+        { "kind": "exists", "path": "scripts/sync/merge-json.mjs" },
+        { "kind": "matches", "path": ".gitattributes", "pattern": "merge=jsonmerge" }
+      ]
+    }
+  ]
+}
