@@ -30,6 +30,7 @@ import {
   X,
   Zap,
 } from "@multica/ui/icons";
+import { prefersReducedMotion } from "@multica/core/appearance";
 import { useCurrentWorkspace, useWorkspacePaths } from "@multica/core/paths";
 import { useFeatureEnabled } from "@multica/core/config";
 import { useCan, useCurrentMember } from "@multica/core/permissions";
@@ -465,12 +466,9 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
         }
         return;
       }
-      const reduceMotion =
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       target.scrollIntoView?.({
         block: "center",
-        behavior: reduceMotion ? "auto" : "smooth",
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
       });
       target.setAttribute("data-flash", "true");
       flashTimer = setTimeout(() => target.removeAttribute("data-flash"), FLASH_MS);

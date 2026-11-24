@@ -54,10 +54,14 @@ type SelectedMember = {
 const CHIP_DISPLAY_LIMIT = 3;
 
 export function CreateSquadModal({
+  open = true,
   onClose,
+  onOpenChangeComplete,
   onCreated,
 }: {
+  open?: boolean;
   onClose: () => void;
+  onOpenChangeComplete?: (open: boolean) => void;
   /** Called with the new squad instead of opening its page. */
   onCreated?: (squad: Squad) => void;
 }) {
@@ -149,7 +153,11 @@ export function CreateSquadModal({
   };
 
   return (
-    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => { if (!v) onClose(); }}
+      onOpenChangeComplete={onOpenChangeComplete}
+    >
       <DialogContent className="p-0 gap-0 flex flex-col overflow-hidden !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-full !max-w-2xl !h-[85%]">
         <DialogHeader className="border-b px-5 py-3 space-y-0">
           <DialogTitle className="text-title-sm font-semibold">

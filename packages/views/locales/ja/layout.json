@@ -108,7 +108,7 @@
     "workflow": "ワークフロー",
     "team": "チーム",
     "chat": "チャット",
-    "autopilots": "オートパイロット",
+    "autopilots": "自動化",
     "switch_workspace": "ワークスペースを切り替え",
     "pin_workspace": "ワークスペースをピン留め",
     "unpin_workspace": "ピン留めを解除",
@@ -125,7 +125,7 @@
     "reset_order": "デフォルトの順序に戻す",
     "copy_workspace_link": "ワークスペースのリンクをコピー",
     "workspace_meta_other": "{{slug}} · メンバー {{count}} 人",
-    "docs": "ドキュメント"
+    "docs": "文書"
   },
   "panels": {
     "work": {
@@ -173,8 +173,6 @@
       "view_delete": "ビューを削除",
       "new_issue_here": "このプロジェクトに新規タスク",
       "inbox_actions": "インボックスの操作",
-      "inbox_view_snoozed": "スヌーズ中を表示",
-      "inbox_view_archived": "アーカイブ済みを表示",
       "inbox_empty": "通知はありません",
       "inbox_settings": "インボックスの表示",
       "inbox_all": "すべての通知",

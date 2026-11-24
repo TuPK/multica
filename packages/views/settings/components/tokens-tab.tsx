@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useId, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Trash2, Copy, Check, Info } from "@multica/ui/icons";
+import { Trash2, Info } from "@multica/ui/icons";
+import { CopyCheckIcon } from "@multica/ui/components/common/copy-check-icon";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
 import type {
   CreatePersonalAccessTokenRequest,
@@ -382,7 +383,7 @@ export function TokensTab() {
                     onClick={handleCopyToken}
                     aria-label={t(($) => $.tokens.created_dialog.copy_tooltip)}
                   >
-                    {tokenCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    <CopyCheckIcon copied={tokenCopied} className="size-4" />
                   </Button>
                 }
               />
@@ -404,7 +405,7 @@ export function TokensTab() {
                       onClick={handleCopyCommand}
                       aria-label={t(($) => $.tokens.created_dialog.copy_command_tooltip)}
                     >
-                      {commandCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      <CopyCheckIcon copied={commandCopied} className="size-4" />
                     </Button>
                   }
                 />

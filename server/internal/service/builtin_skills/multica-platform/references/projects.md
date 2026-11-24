@@ -231,9 +231,12 @@ workflow. Projects no longer have a workflow of their own.
 - **Changing the status is the handoff.** Entering a column that hands off
   reassigns the issue to that column's handler and starts their run; a member
   handler is assigned and runs nothing. Nothing advances the status when a run
-  ends: finishing a step means moving the issue to the next status yourself,
-  with the command the block names. A column can also name a "needs changes"
-  status that sends the issue back.
+  ends: finishing a step means moving the issue to the next status yourself.
+  The block is a status map — each status's category, meaning, handler and
+  where its author routes finished work ("Routes") — and you set the
+  status that matches where the issue stands; an older runtime gets the
+  commands to run instead. A column can also name a "needs changes" status
+  that sends the issue back.
 - **Entering a step you handle starts your run.** Even when your own run makes
   the move, a run for the new step queues behind the current one, and the
   write skips your own event wakeups so one change starts one run. Do not add
@@ -251,7 +254,7 @@ workflow. Projects no longer have a workflow of their own.
   instead of started when its issue has left its step: the issue went back to
   backlog, to a step no handler takes, or to another assignee.
 - **The assignee owns the step.** Only the issue's assignee gets the step's
-  instructions and commands. Any other agent on the issue — mentioned in a
+  instructions and is told to move it. Any other agent on the issue — mentioned in a
   comment, say — sees the statuses and leaves them to the assignee unless
   explicitly asked to change them.
 - **No `blocked` column.** When the workflow has none, comment why you cannot

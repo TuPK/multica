@@ -788,6 +788,7 @@ func main() {
 	go runSourceContextSweeper(sweepCtx, taskSvc)
 	go inboxTrimmer.Run(sweepCtx)
 	go runEnvironmentLogSweeper(sweepCtx, queries)
+	go runCommentIdempotencySweeper(sweepCtx, queries)
 	if h.ConnectedApps != nil {
 		go h.ConnectedApps.RunSweeper(sweepCtx)
 	}

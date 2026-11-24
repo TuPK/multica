@@ -7,6 +7,7 @@ import { Button } from "@multica/ui/components/ui/button";
 import { IconButton } from "@multica/ui/components/common/icon-button";
 import { useIsCompact } from "@multica/ui/hooks/use-mobile";
 import { cn } from "@multica/ui/lib/utils";
+import { useReducedMotion } from "@multica/core/appearance";
 import { useRequiredWorkspaceSlug, useWorkspacePaths } from "@multica/core/paths";
 import { getCurrentSlug } from "@multica/core/platform";
 import { useChatStore } from "@multica/core/chat";
@@ -163,6 +164,7 @@ export function ChatPage() {
       setSessionTransition({ sessionId: c.activeSessionId, direction: "fade" });
     }
   }
+  const reduceMotion = useReducedMotion();
   const activeTransition: ChatMessageEnterTransition | null =
     sessionTransition?.sessionId === c.activeSessionId
       ? sessionTransition.direction
@@ -429,7 +431,7 @@ export function ChatPage() {
           <div
             className={cn(
               "flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground",
-              activeTransition && "animate-chat-enter-fade",
+              activeTransition && !reduceMotion && "animate-chat-enter-fade",
             )}
           >
             <MessageSquare className="h-10 w-10 text-faint-foreground" />

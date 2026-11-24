@@ -58,6 +58,7 @@ import type {
   IssueGroupPageState,
 } from "../surface/use-issue-group-branches";
 import { useDragSettle } from "./use-drag-settle";
+import { createIssueDropAnimation, ISSUE_DRAG_OVERLAY_CLASS } from "./drag-drop-animation";
 import { useIssuePeekActions } from "../surface/peek-context";
 import { useBoardDragPan } from "./use-board-drag-pan";
 import { useRestoredScrollRef } from "../../platform";
@@ -487,6 +488,8 @@ function BoardViewImpl({
 
   // --- Drag state ---
   const [activeIssue, setActiveIssue] = useState<Issue | null>(null);
+  const skipDropAnimationRef = useRef(false);
+  const dropAnimation = useMemo(() => createIssueDropAnimation(skipDropAnimationRef), []);
   const [pendingHandoff, setPendingHandoff] = useState<{
     issue: Issue;
     status: IssueStatus;
@@ -612,6 +615,7 @@ function BoardViewImpl({
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
+      skipDropAnimationRef.current = false;
       isDraggingRef.current = true;
       const issue = issueMapRef.current.get(event.active.id as string) ?? null;
       setActiveIssue(issue);
@@ -662,8 +666,10 @@ function BoardViewImpl({
       isDraggingRef.current = false;
       setActiveIssue(null);
 
-      const resetColumns = () =>
+      const resetColumns = () => {
+        skipDropAnimationRef.current = true;
         setColumns(buildColumns(groupedIssues, groups, grouping, groupingOptionIds));
+      };
 
       if (!over) {
         resetColumns();
@@ -841,6 +847,7 @@ function BoardViewImpl({
   // column mirror resyncing with the cache afterwards — see the same handler in
   // list-view for the touch path that makes this routine (MUL-6240).
   const handleDragCancel = useCallback(() => {
+    skipDropAnimationRef.current = true;
     isDraggingRef.current = false;
     setActiveIssue(null);
     setColumns(buildColumns(groupedIssues, groups, grouping, groupingOptionIds));
@@ -942,9 +949,9 @@ function BoardViewImpl({
         )}
       </div>
 
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay dropAnimation={dropAnimation}>
         {activeIssue ? (
-          <div style={{ width: BOARD_CARD_WIDTH }} className="rotate-1 cursor-grabbing opacity-90 shadow-lg shadow-black/10">
+          <div style={{ width: BOARD_CARD_WIDTH }} className={ISSUE_DRAG_OVERLAY_CLASS}>
             <BoardCardContent
               issue={activeIssue}
               childProgress={childProgressMap.get(activeIssue.id)}
