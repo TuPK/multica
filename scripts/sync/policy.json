@@ -53,7 +53,7 @@
     "packages/views/settings/components/settings-page.tsx": "S3",
     "packages/core/api/client.ts": "S4",
     "packages/core/api/schemas.ts": "S4",
-    "server/cmd/server/router.go": "S5",
+    "server/cmd/server/router.go": "S5 (partly done: fork-owned sections moved to router_fork.go)",
     "apps/desktop/src/renderer/src/routes.tsx": "S6",
     "packages/core/paths/paths.ts": "S6"
   }

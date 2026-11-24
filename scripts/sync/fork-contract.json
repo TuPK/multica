@@ -161,6 +161,15 @@
       ]
     },
     {
+      "id": "fork-routes",
+      "why": "The fork's knowledge, pipeline, goals, company, governance and hub routes live in router_fork.go (seam S5); the golden route table pins them.",
+      "checks": [
+        { "kind": "matches", "path": "server/cmd/server/router_fork.go", "pattern": "func registerForkWorkspaceRoutes" },
+        { "kind": "matches", "path": "server/cmd/server/router.go", "pattern": "registerForkWorkspaceRoutes\\(r, h, queries\\)" },
+        { "kind": "exists", "path": "server/cmd/server/testdata/route_table.golden" }
+      ]
+    },
+    {
       "id": "sync-tooling",
       "why": "The upstream-sync tooling that keeps these checks meaningful.",
       "checks": [
