@@ -54,6 +54,8 @@ export function main() {
   const here = dirname(fileURLToPath(import.meta.url));
   const root = join(here, "..", "..");
   const contract = JSON.parse(read(join(here, "fork-contract.json")));
+  const inline = join(here, "fork-inline.json");
+  if (existsSync(inline)) contract.features.push(...JSON.parse(read(inline)).features);
   const failures = runContract(root, contract);
   const checks = contract.features.reduce((n, f) => n + f.checks.length, 0);
   if (!failures.length) {

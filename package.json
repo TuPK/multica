@@ -54,7 +54,8 @@
     "catalog:check": "node scripts/catalog/cli.mjs check",
     "catalog:new": "node scripts/catalog/cli.mjs new",
     "catalog:list": "node scripts/catalog/cli.mjs list",
-    "catalog:map": "node scripts/catalog/cli.mjs map"
+    "catalog:map": "node scripts/catalog/cli.mjs map",
+    "sync:coverage": "node scripts/sync/coverage.mjs"
   },
   "engines": {
     "node": ">=22"

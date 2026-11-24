@@ -21,11 +21,12 @@
 8. **Đọc `sync-audit`:** mỗi dòng nó liệt kê là ứng viên mất mã, không phải bằng chứng; kiểm từng cái (thường là dòng đã viết lại hoặc chuyển chỗ).
 9. **Kiểm thử đầy đủ**, chạy nối tiếp khi máy yếu: `pnpm typecheck`, `pnpm lint`, `pnpm exec turbo run test --concurrency=1`, `pnpm test:scripts`, `cd server && go vet ./... && go test -p 1 ./...` (với `DATABASE_URL` trỏ `multica_test`; xuất `export DATABASE_URL=...` trước). Test đỏ từ trước, không do sync: `platform-management/console`, `TestAgentTaskHistoryIndexMigrationAndPagePlans`.
 10. **Migration mới của upstream:** cái nào tạo index `CONCURRENTLY` phải có mục trong `concurrentIndexCleanups` (`server/cmd/migrate/main.go`); của fork nằm ở `fork_index_cleanups.go`. Thử cài mới: tạo DB trống, `cd server && DATABASE_URL=<DB trống> go run ./cmd/migrate up`, phải `Done.`, rồi xóa DB đó. Runner sắp xếp migration theo chuỗi (spec 3.12).
-11. **Commit, đẩy nhánh sync lên `origin`, fast-forward `main`, đẩy `main`** (cần người dùng đồng ý cho hành động đẩy). Thêm một dòng vào [ledger.md](ledger.md): ngày, merge, số commit upstream, số conflict gốc và còn lại, thời gian, tính năng mất nếu có; chạy `pnpm sync:surface --write` nếu bề mặt đổi có lý do. Cập nhật bộ nhớ `upstream-sync-progress.md`.
+11. **Commit, đẩy nhánh sync lên `origin`, fast-forward `main`, đẩy `main`** (cần người dùng đồng ý cho hành động đẩy). Thêm một dòng vào [ledger.md](ledger.md): ngày, merge, số commit upstream, số conflict gốc và còn lại, thời gian, tính năng mất nếu có; chạy `pnpm sync:surface --write` nếu bề mặt đổi có lý do, và `pnpm sync:coverage --write` để cập nhật hợp đồng inline. Cập nhật bộ nhớ `upstream-sync-progress.md`.
 
 ## Khi công cụ sai
 
 - Driver làm kết quả lạ: `pnpm sync:simulate --merge <commit cũ> --compare` so với merge thật; lỗi công cụ thì sửa trong `scripts/sync/` kèm test (`pnpm test:scripts`).
 - Cần tắt tạm: `bash scripts/sync/install.sh --remove` (git quay về merge thường).
-- Tính năng fork mới không được mất: thêm mục vào `scripts/sync/fork-contract.json`.
+- Tính năng fork mới không được mất: thêm mục vào `scripts/sync/fork-contract.json`. Phần sửa xen trong file upstream được bao phủ tự động bởi `scripts/sync/fork-inline.json` (sinh bằng `pnpm sync:coverage --write` từ cây đã xác nhận, ví dụ `main` sau khi push; không sinh lại để làm một lỗi biến mất). `pnpm sync:coverage` liệt kê file upstream có sửa lớn của fork mà chưa có kiểm tra nào.
+- Lỗi biên dịch sau khi merge sạch là do fork đã đổi chữ ký hàm lõi (thêm tham số `scope`, `guard`, `hook`...). Truyền giá trị đúng một cách có chủ đích, không truyền `nil` hay `Hidden{}` cho xong: các tham số đó mang kiểm tra quyền, audit hay quota, và lỗi biên dịch là chốt chặn duy nhất.
 - File nào vẫn conflict ở nhiều lần sync: xem `scripts/sync/policy.json` (`hotFiles`) và spec 3.9 để quyết định có tách seam hay không.
