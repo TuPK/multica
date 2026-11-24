@@ -13,6 +13,14 @@ Ngôn ngữ: tiếng Việt; tên tệp, lệnh, mã giữ tiếng Anh.
 - Trước mỗi bước đụng file có sẵn, đọc file; không sửa ngoài phạm vi bước.
 - Ước lượng công (S ≈ dưới nửa ngày, M ≈ nửa đến một ngày, L ≈ một đến hai ngày) là **ước tính của tôi**, chưa kiểm.
 
+## Trạng thái (2026-11-24)
+
+- Xong: T0.1 (`sync:simulate`), T0.2 (`sync:surface` và baseline), T0.3 (`ledger.md`), T1.1 đến T1.6. Số nghiệm thu ở spec mục 2.7: 29/38/36 conflict còn lại, đạt cổng.
+- Đã bỏ: T2.5 (không chạy định kỳ trên CI).
+- Chưa làm: T2.1 (`sync:upstream`), T2.2 (`brand:check`, rebrand sau merge), T2.3 (`vi-worklist`), T2.4 (`sync:contract`), P3, P4, P5.
+- Lệch so với kế hoạch: `.github/ci-paths.json` nhóm `scripts` được thêm `scripts/sync/**` và `.gitattributes` để CI chạy test của công cụ; `shard-timings.json` dùng `ours` và không cần tái sinh (do reporter test ghi).
+- Driver đã được định nghĩa trong cấu hình git của checkout này (`bash scripts/sync/install.sh`), nên mọi `git merge` từ giờ đều dùng chúng.
+
 ## 1. Tổng quan thứ tự
 
 ```
