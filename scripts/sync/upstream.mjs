@@ -3,6 +3,7 @@
 //
 //   pnpm sync:upstream               start: preflight, branch, merge, policy cleanup, rebrand
 //   pnpm sync:upstream --finish      after you resolved conflicts: regenerate, checks, audit
+//   options: --upstream <ref> (default upstream/main)  --no-fetch  --skip-regenerate (with --finish)
 //
 // Steps and reasons: docs/specs/upstream-sync/spec.md section 3.5.
 import { execFileSync, spawnSync } from "node:child_process";
@@ -99,7 +100,7 @@ export const CHECKLIST = [
 ];
 
 export function main(argv) {
-  const { values: v } = parseArgs({ args: argv, options: { finish: { type: "boolean" }, upstream: { type: "string", default: "upstream/main" }, "skip-regenerate": { type: "boolean" } } });
+  const { values: v } = parseArgs({ args: argv, options: { finish: { type: "boolean" }, upstream: { type: "string", default: "upstream/main" }, "skip-regenerate": { type: "boolean" }, "no-fetch": { type: "boolean" } } });
   const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
   try {
     if (v.finish) {
@@ -109,7 +110,7 @@ export function main(argv) {
       if (r.ok) console.log(`\nNext:\n${CHECKLIST.map((c) => `  - ${c}`).join("\n")}`);
       return r.ok ? 0 : 1;
     }
-    const r = start({ root, upstream: v.upstream });
+    const r = start({ root, upstream: v.upstream, fetch: !v["no-fetch"] });
     console.log(r.log.join("\n"));
     if (!r.conflicts.length) {
       console.log("no conflicts left; run `pnpm sync:upstream --finish`");
