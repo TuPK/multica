@@ -56,5 +56,11 @@
     "server/cmd/server/router.go": "S5 (partly done: fork-owned sections moved to router_fork.go)",
     "apps/desktop/src/renderer/src/routes.tsx": "S6",
     "packages/core/paths/paths.ts": "S6"
-  }
+  },
+  "finishChecks": [
+    {
+      "name": "golden route table, currency inventory and entitlement fixtures",
+      "command": "cd server && DATABASE_URL=\"$(grep -E '^DATABASE_URL=' ../.env | cut -d= -f2- | sed 's#/multica?#/multica_test?#')\" go test ./cmd/server ./internal/currencyinventory ./internal/entitlement"
+    }
+  ]
 }

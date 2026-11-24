@@ -42,6 +42,13 @@ export function describeConflicts(files, policy) {
   return files.map((f) => ({ file: f, seam: policy.hotFiles?.[f] ?? null }));
 }
 
+/** Paths upstream added since base that the fork also has, new on both sides: git would merge them as add/add. */
+export function addedOnBothSides(root, base, pre, up) {
+  const added = (ref) => new Set(git(root, "diff", "--name-only", "--diff-filter=A", base, ref).split("\n").filter(Boolean));
+  const fork = added(pre);
+  return [...added(up)].filter((f) => fork.has(f));
+}
+
 export function start({ root, upstream = "upstream/main", fetch = true, skipDoctor = false, policy = loadPolicy(), date = new Date().toISOString().slice(0, 10) }) {
   const log = [];
   if (git(root, "status", "--porcelain").trim()) throw new Error("working tree is not clean; commit or stash first");
@@ -57,6 +64,8 @@ export function start({ root, upstream = "upstream/main", fetch = true, skipDoct
   const pre = git(root, "rev-parse", "HEAD").trim();
   const up = git(root, "rev-parse", upstream).trim();
   const base = git(root, "merge-base", pre, up).trim();
+  const collisions = addedOnBothSides(root, base, pre, up);
+  if (collisions.length) log.push(`same path added by fork and upstream (move the fork copy to a *_fork file): ${collisions.join(", ")}`);
   let syncBranch = `chore/sync-upstream-${date}`;
   for (let n = 2; git(root, "branch", "--list", syncBranch).trim(); n++) syncBranch = `chore/sync-upstream-${date}-${n}`;
   git(root, "checkout", "-b", syncBranch);
@@ -103,6 +112,8 @@ export function finish({ root, policy = loadPolicy(), run = sh, skipRegenerate =
   step("vi locale covers every English key", vi, vi ? "" : `translate ${worklist}, then node scripts/sync/vi-worklist.mjs --apply ${worklist}`);
   step("sync-audit (review every hit)", run(root, `node scripts/sync-audit.mjs --fork ${state.pre} --upstream ${state.upstream}`));
   step("sync:contract", run(root, "node scripts/sync/contract.mjs"));
+  // Tests that read fork files by path or by shape and break silently after a seam move or an upstream addition.
+  for (const c of policy.finishChecks ?? []) step(c.name, run(root, c.command), c.command);
   return { steps, ok: steps.every((s) => s.ok), state };
 }
 

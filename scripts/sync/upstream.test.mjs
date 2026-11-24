@@ -89,3 +89,29 @@ test("finish without a started sync says so", () => {
   assert.throws(() => finish({ root: r.dir, policy: POLICY, run: () => true }), /no sync in progress/);
   r.cleanup();
 });
+
+test("start warns when fork and upstream both added the same path", () => {
+  const r = build();
+  r.write("dup.go", "package fork\n");
+  r.commit("fork adds dup");
+  r.git("checkout", "-q", "upstream");
+  r.write("dup.go", "package upstream\n");
+  r.commit("upstream adds dup");
+  r.git("checkout", "-q", "main");
+  r.git("update-ref", "refs/remotes/upstream/main", r.git("rev-parse", "upstream").trim());
+  const res = start({ root: r.dir, fetch: false, skipDoctor: true, policy: POLICY, date: "2026-01-03" });
+  assert.ok(res.log.some((l) => l.includes("same path added by fork and upstream") && l.includes("dup.go")));
+  r.cleanup();
+});
+
+test("finish runs the policy's extra checks after the contract", () => {
+  const r = build();
+  start({ root: r.dir, fetch: false, skipDoctor: true, policy: POLICY, date: "2026-01-04" });
+  r.write("hot.go", "package x\n// merged\n");
+  r.git("add", "-A");
+  const ran = [];
+  const res = finish({ root: r.dir, policy: { ...POLICY, finishChecks: [{ name: "golden", command: "run-golden" }] }, run: (_root, cmd) => (ran.push(cmd), true) });
+  assert.equal(ran.at(-1), "run-golden");
+  assert.equal(res.steps.at(-1).name, "golden");
+  r.cleanup();
+});

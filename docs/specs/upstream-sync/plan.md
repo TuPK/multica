@@ -252,3 +252,12 @@ Mục tiêu ở bảng này do mô phỏng quá khứ cho phép kiểm chứng (
 ## 4. Việc cần người dùng quyết định để bắt đầu
 
 Đã chốt 2026-11-24: không chạy định kỳ trên CI, hợp đồng tính năng do tôi dựng đầy đủ, commit tài liệu lên `main`. P0 và P1 bắt đầu ngay.
+
+
+## Sau sync #5 (2026-11-24): việc chờ điều kiện
+
+Sync #5 còn 27 conflict: ~11 là hai bên cùng thêm vào một chỗ (không đáng tách), ~10 ở file fork sửa nặng, 3 là phần dư của seam S2/S4, 4 là va chạm mới (đã xử lý bằng đổi tên `*_fork.go`). Đã làm: cảnh báo trùng đường dẫn trong `sync:upstream`, và `finishChecks` chạy golden route, kiểm kê tiền tệ, fixture entitlement.
+
+Chờ điều kiện (làm khi file đó lại conflict ở lần sync kế tiếp, ghi vào `ledger.md`):
+- S7: `billing-tab.tsx` và `squad-detail-page.tsx`: tách phần fork thành `billing-tab.fork.tsx`, `squad-sections.fork.tsx`; file upstream chỉ còn một dòng gọi.
+- S8: `entitlement/types.go` và `client.go`: gom danh sách cổng fork vào `entitlement/gates_fork.go`.
