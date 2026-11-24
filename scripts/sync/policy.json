@@ -1,0 +1,32 @@
+{
+  "_doc": "Inputs of the upstream-sync tooling. See docs/specs/upstream-sync/spec.md sections 3.3 and 3.4.",
+  "excluded": ["server/ee", "packages/ee"],
+  "regenerate": [
+    {
+      "name": "dependencies",
+      "paths": ["pnpm-lock.yaml"],
+      "command": "pnpm install --no-frozen-lockfile",
+      "order": 1
+    },
+    {
+      "name": "reserved slugs",
+      "paths": ["packages/core/paths/reserved-slugs.ts"],
+      "command": "pnpm generate:reserved-slugs",
+      "order": 2
+    },
+    {
+      "name": "catalog",
+      "paths": ["packages/core/catalog/generated", "server/internal/catalog/generated"],
+      "command": "pnpm catalog:build",
+      "order": 3
+    },
+    {
+      "name": "sqlc",
+      "paths": ["server/pkg/db/generated"],
+      "command": "make sqlc",
+      "order": 4,
+      "after": "queries and migrations are merged"
+    }
+  ],
+  "keepFork": ["packages/views/test/shard-timings.json"]
+}

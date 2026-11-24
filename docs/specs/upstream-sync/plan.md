@@ -47,7 +47,7 @@ Xong khi: chạy với `--merge 0ecf290b7 --drivers off` ra đúng **85** và c�
 
 Làm gì: mục 3.8. Đếm file A/M/D của `main` so với `upstream/main`, theo thư mục cấp hai, và "chỉ khác brand" (cùng quy tắc ở 2.6). Ghi/kiểm `docs/specs/upstream-sync/surface-baseline.json`.
 
-Xong khi: chạy ra gần số ở 2.6 (7.460/1.576/86 tại `0b5302a8d` nếu `upstream/main` là `6368504e1`) và `--check` báo xanh khi chưa đổi gì.
+Xong khi: chạy ra gần số ở 2.6 (7.544 thêm, 1.732 sửa gồm 758 chỉ-brand và 974 sửa thật, 94 xóa) và `--check` báo xanh khi chưa đổi gì.
 
 ### T0.3 Sổ và baseline (S)
 
@@ -229,7 +229,7 @@ Xong khi: một sync kết thúc mà `sync:contract` xanh và sổ có dòng m�
 | Phát hiện mất tính năng | làm tay | `sync:contract` + `sync-audit` chạy trong `--finish` |
 | Khóa `vi` thiếu sau sync | làm tay (132 khóa ở sync #4) | danh sách tự sinh |
 | Hot file lặp lại (≥2/3 merge) | 10 file | giảm sau P3, ghi vào sổ mỗi lần sync |
-| Bề mặt file sửa so với upstream | 1.576 | không tăng (baseline T0.2) |
+| Bề mặt file sửa thật so với upstream | 974 | không tăng (baseline T0.2) |
 
 Mục tiêu ở bảng này do mô phỏng quá khứ cho phép kiểm chứng (P1). Mục tiêu ở P3 chỉ kiểm chứng được qua các lần sync sau; tôi sẽ không báo cáo P3 là "đã giảm conflict" khi chưa có số của một lần sync thật.
 

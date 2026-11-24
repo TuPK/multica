@@ -4,3 +4,26 @@ docker/entrypoint.sh text eol=lf
 
 # Default behavior
 * text=auto
+
+# Upstream-sync merge drivers (docs/specs/upstream-sync/spec.md). Defined by
+# `bash scripts/sync/install.sh`; without it git falls back to its default text merge.
+# Later lines win, so the specific rules come after the extension rules.
+*.md merge=brand
+*.mdx merge=brand
+*.go merge=brand
+*.ts merge=brand
+*.tsx merge=brand
+*.mjs merge=brand
+*.jsonc merge=brand
+*.yml merge=brand
+*.yaml merge=brand
+*.sh merge=brand
+packages/views/locales/**/*.json merge=jsonmerge
+apps/mobile/locales/**/*.json merge=jsonmerge
+apps/docs/content/**/meta*.json merge=jsonmerge
+server/internal/handler/reserved_slugs.json merge=jsonmerge
+# Generated or measured files: keep the fork's copy, then regenerate (scripts/sync/policy.json).
+server/pkg/db/generated/** merge=ours
+pnpm-lock.yaml merge=ours
+packages/core/paths/reserved-slugs.ts merge=ours
+packages/views/test/shard-timings.json merge=ours

@@ -79,10 +79,31 @@ Còn lại 31–41 file/lần phần lớn là conflict thật do cùng một lo
 
 ### 2.6 Bề mặt fork chồng lên upstream (so `main` với `upstream/main`)
 
-- 7.460 file thêm mới (không bao giờ conflict), 1.576 file sửa, 86 file xóa.
-- Trong 1.576 file sửa: 701 nằm trong `locales/` hoặc `apps/docs/`; 413 file (không tính `pnpm-lock.yaml`) chỉ khác upstream tối đa 2 dòng sau khi coi Delegora và Multica là một; riêng nhóm sửa thật ngoài docs, locale, JSON là 853 file. Các nhóm chồng lên nhau nên không cộng được.
+- Đo bằng `pnpm sync:surface` (`HEAD` = `316f1aa63`, `upstream/main` = `6368504e1`): **7.544 file thêm mới** (không bao giờ conflict), **1.732 file sửa**, 94 file xóa. Trong 1.732 file sửa, **758 chỉ khác chữ brand** (so sánh chặt: sau khi đổi Delegora thành Multica thì tập dòng đổi hai phía bằng nhau) và **974 là sửa thật**. Bốn thư mục có nhiều file sửa thật nhất: `packages/views/locales` (122), `server/internal/handler` (114), `apps/docs/content` (105), `server/pkg/db` (58).
+- Lần đo thô đầu tiên (lệnh `git diff --name-status` loại thư mục locale) cho 7.460/1.576/86; con số đúng là số ở trên vì đã tính cả locale.
 - `packages/core/api/client.ts`: 249 khối thay đổi rải khắp một class 9.909 dòng (+4.193/−887). `schemas.ts`: 90 khối (+2.306/−319). `server/cmd/server/router.go`: 94 khối (+676/−53). `handler/issue.go`: 70 khối (+594/−31). `service/task.go`: 58 khối. Fork **chèn xen kẽ**, không nối đuôi, nên mỗi lần upstream sửa gần đó là một conflict.
 - Các số "−" lớn (client.ts −887) cho thấy fork cũng **xóa** mã upstream. Xóa trong khi upstream sửa chính đoạn đó là loại conflict modify/delete.
+
+### 2.7 Kết quả nghiệm thu P1 (công cụ trong repo, chạy ngày 2026-11-24)
+
+`pnpm sync:simulate --merge <commit> --compare`, driver lấy từ `scripts/sync/`:
+
+| Merge | Gốc | Với driver (nguyên mẫu) | Với driver (trong repo) | Cổng ở plan T1.6 |
+|---|---|---|---|---|
+| `7b6a1ab8f` | 97 | 31 | **29** | ≤ 34 |
+| `ce85c3b61` | 75 | 41 | **38** | ≤ 45 |
+| `0ecf290b7` | 85 | 35 | **36** | ≤ 39 |
+
+Kiểm tính đúng, hai phép so:
+
+1. Với file git tự merge được cả khi không có driver (781, 415 và 857 file), kết quả có driver và không driver **giống nhau** sau khi coi Delegora = Multica và bỏ qua thứ tự key JSON: 0 khác biệt ở cả ba merge. Nghĩa là driver không làm đổi kết quả ở nơi git vốn đã đúng.
+2. Với file chỉ nhờ driver mới hết conflict (68, 38 và 49 file), so với merge commit thật: `ce85c3b61` và `0ecf290b7` 0 khác biệt; `7b6a1ab8f` 14 khác, **toàn bộ là file locale JSON**. Nguyên nhân đã rõ:
+   - Khóa `tab_body.composio_mcp.*` (14 khóa mỗi ngôn ngữ ở các file `agents.json`): merge thật `7b6a1ab8f` **bỏ mất khóa này ở cả bản `en`**; ở `main` hiện nay khóa này có đủ (đã khôi phục sau). Driver giữ đúng ngay từ đầu. Đây là ví dụ thật về việc merge tay làm mất nội dung và phải vá sau.
+   - Dấu `…` (upstream, driver giữ) so với `...` (người sửa sau merge theo `copy-hygiene`).
+
+Giới hạn: 59 file khác nhau tổng cộng trong `--compare` còn lại là file git tự merge sạch nhưng merge commit thật có sửa thêm (sửa ngữ nghĩa sau merge, ví dụ thêm import, đổi chữ ký hàm). Đó là việc của người, không phải lỗi driver.
+
+Phân loại các dòng fork giữ `Multica` có chủ ý (kiểm trên HEAD với `brand-rules.mjs`; 69 file, 246 dòng không thỏa `brand(canon(x)) == x`): tên giấy phép `Multica License` (ngoại lệ trong quy tắc), dòng ví dụ `@Multica /help` và vài đoạn docs ngôn ngữ ko/ja/fr/zh mà fork chưa đổi (nợ brand, `brand:check` sẽ báo), và các tệp trong `docs/` tự mô tả quy tắc. Đường dẫn `Delegora.app` được quy tắc xử lý (`/Multica.app` → `Delegora.app`).
 
 ## 3. Thiết kế
 
@@ -239,7 +260,7 @@ Chưa biết: thứ tự áp dụng thực tế khi một DB đã chạy migrati
 | Phương án | Vì sao loại |
 |---|---|
 | Đổi brand lúc chạy (loader `applyBrand`) thay cho sửa chữ trong file | Đo cho thấy locale conflict là do thêm/xóa key sát nhau, không phải do chữ Delegora (2.3). Đổi brand lúc chạy không xử lý được phần này, lại đụng vào mã sản phẩm và phải xử lý mobile, landing, docs riêng. Có thể xem lại sau khi ba driver đã chạy. |
-| Patch-stack (rebase fork lên từng bản upstream) | 1.576 file sửa; mỗi lần rebase phải giải lại cả chồng patch |
+| Patch-stack (rebase fork lên từng bản upstream) | 1.732 file sửa; mỗi lần rebase phải giải lại cả chồng patch |
 | Upstream làm vendor/submodule + lớp phủ | Tái cấu trúc cả repo, rủi ro lớn, không tương thích cách `catalog/`, `packages/*` tham chiếu nhau |
 | Hard fork (ngừng sync) | Mất mọi tính năng và bản vá bảo mật mới của upstream |
 | `merge=union` của git cho các map đăng ký | Có thể ghép sai ngoặc hoặc trùng dòng; seam S1 an toàn hơn |
