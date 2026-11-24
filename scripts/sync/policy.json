@@ -55,7 +55,11 @@
     "packages/core/api/schemas.ts": "S4",
     "server/cmd/server/router.go": "S5 (partly done: fork-owned sections moved to router_fork.go)",
     "apps/desktop/src/renderer/src/routes.tsx": "S6",
-    "packages/core/paths/paths.ts": "S6"
+    "packages/core/paths/paths.ts": "S6",
+    "packages/views/settings/components/billing-tab.tsx": "S7 declined: fork billing is a different component; port upstream's diff by hand (git diff <base> upstream/main -- file)",
+    "packages/views/squads/components/squad-detail-page.tsx": "S7 declined: fork hooks and JSX are interleaved; port upstream's diff by hand",
+    "server/internal/entitlement/types.go": "S8 (done: fork gates in gates_fork.go)",
+    "server/internal/entitlement/client.go": "S8 (done: fork gates in gates_fork.go)"
   },
   "finishChecks": [
     {

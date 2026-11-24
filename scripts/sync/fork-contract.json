@@ -12,6 +12,15 @@
       ]
     },
     {
+      "id": "entitlement-fork-gates",
+      "why": "The fork's plan gates live in gates_fork.go; types.go and client.go only call into it.",
+      "checks": [
+        { "kind": "matches", "path": "server/internal/entitlement/gates_fork.go", "pattern": "func normalizeForkGates" },
+        { "kind": "matches", "path": "server/internal/entitlement/client.go", "pattern": "normalizeForkGates\\(" },
+        { "kind": "matches", "path": "server/internal/entitlement/types.go", "pattern": "forkGateValid\\(" }
+      ]
+    },
+    {
       "id": "billing-ui",
       "why": "Settings billing tab, return pages and limit-recovery dialog are fork code.",
       "checks": [

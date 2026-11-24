@@ -258,6 +258,6 @@ Mục tiêu ở bảng này do mô phỏng quá khứ cho phép kiểm chứng (
 
 Sync #5 còn 27 conflict: ~11 là hai bên cùng thêm vào một chỗ (không đáng tách), ~10 ở file fork sửa nặng, 3 là phần dư của seam S2/S4, 4 là va chạm mới (đã xử lý bằng đổi tên `*_fork.go`). Đã làm: cảnh báo trùng đường dẫn trong `sync:upstream`, và `finishChecks` chạy golden route, kiểm kê tiền tệ, fixture entitlement.
 
-Chờ điều kiện (làm khi file đó lại conflict ở lần sync kế tiếp, ghi vào `ledger.md`):
-- S7: `billing-tab.tsx` và `squad-detail-page.tsx`: tách phần fork thành `billing-tab.fork.tsx`, `squad-sections.fork.tsx`; file upstream chỉ còn một dòng gọi.
-- S8: `entitlement/types.go` và `client.go`: gom danh sách cổng fork vào `entitlement/gates_fork.go`.
+Kết quả (2026-11-24, ngay sau sync #5):
+- S8 **đã làm**: `entitlement/types.go` và `client.go` giờ chỉ lệch upstream 3 và 1 dòng (hook `forkGateValid`, `normalizeForkGates`); cổng của fork nằm ở `gates_fork.go`. Test entitlement, kiểm kê tiền tệ, golden route đạt.
+- S7 **không làm**, theo đúng quy tắc dừng: (a) `billing-tab.tsx` của fork là một thành phần khác hẳn (+1.471/−1.259 so với upstream) và dựa trên kiểu và hook billing đã phân kỳ trong `core` (`planChange`, `trial`, `checkPlanChange`...), nên không thể giữ nguyên file upstream bên cạnh: thử rồi, upstream `billing-tab.tsx` và test của nó không biên dịch được trong cây fork; (b) `squad-detail-page.tsx` của fork đổi cấu trúc (`SquadDetailPage` → `SquadDetailView`, thêm props) và xen hook lẫn JSX của upstream, nên không có khối nguyên để chuyển. Hai file này đánh dấu trong `policy.json` (`hotFiles`) để lần sau báo rõ là phải mang diff của upstream sang bằng tay.
