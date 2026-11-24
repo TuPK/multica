@@ -178,6 +178,14 @@
       ]
     },
     {
+      "id": "fork-api-schemas",
+      "why": "The fork's response schemas live in schemas.fork.ts (seam S4) and schemas.ts re-exports them.",
+      "checks": [
+        { "kind": "exists", "path": "packages/core/api/schemas.fork.ts" },
+        { "kind": "matches", "path": "packages/core/api/schemas.ts", "pattern": "export \\* from \"./schemas.fork\"" }
+      ]
+    },
+    {
       "id": "fork-issue-handlers",
       "why": "Workflow choice and batch rules of issues live in issue_fork.go (seam S2).",
       "checks": [
