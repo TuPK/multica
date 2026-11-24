@@ -94,10 +94,12 @@ SELECT pg_advisory_xact_lock(
 -- ON CONFLICT keeps AddIssueSubscriber's two rules: never resurrect a
 -- tombstone, and upgrade an active 'delegated' row when the user becomes
 -- directly involved.
-WITH RECURSIVE ancestors(node_id, parent_id, depth) AS (
-    SELECT root.id, root.parent_issue_id, 0 FROM issue root WHERE root.id = $1
-    UNION ALL
-    SELECT i.id, i.parent_issue_id, a.depth + 1
+-- UNION drops repeated rows, so a parent loop an older server stored still
+-- ends the walk.
+WITH RECURSIVE ancestors(node_id, parent_id, is_root) AS (
+    SELECT root.id, root.parent_issue_id, true FROM issue root WHERE root.id = $1
+    UNION
+    SELECT i.id, i.parent_issue_id, false
     FROM issue i JOIN ancestors a ON i.id = a.parent_id
 ),
 active_member AS (
@@ -114,7 +116,7 @@ WHERE NOT EXISTS (
     JOIN ancestors a ON a.node_id = s.issue_id
     WHERE s.user_type = 'member' AND s.user_id = $2
       AND s.unsubscribed_at IS NOT NULL
-      AND (a.depth = 0 OR s.opt_out_scope = 'subtree')
+      AND (a.is_root OR s.opt_out_scope = 'subtree')
 )
 ON CONFLICT (issue_id, user_type, user_id) DO UPDATE
 SET reason = EXCLUDED.reason
@@ -256,9 +258,11 @@ SELECT
 -- Returns every issue id it actually tombstoned so the caller can broadcast one
 -- subscriber:removed per issue; publishing only the root left other open tabs
 -- showing a stale subscription on the children.
+-- UNION drops repeated rows, so a parent loop an older server stored still
+-- ends the walk.
 WITH RECURSIVE subtree(node_id) AS (
     SELECT root.id FROM issue root WHERE root.id = $1
-    UNION ALL
+    UNION
     SELECT i.id FROM issue i JOIN subtree s ON i.parent_issue_id = s.node_id
 ),
 retire_descendants AS (
@@ -292,10 +296,12 @@ SELECT issue_id FROM retire_root;
 --
 -- An 'issue'-scoped tombstone on an ancestor deliberately does NOT match: the
 -- user declined that one issue, not everything the agent files beneath it.
-WITH RECURSIVE ancestors(node_id, parent_id, depth) AS (
-    SELECT root.id, root.parent_issue_id, 0 FROM issue root WHERE root.id = $1
-    UNION ALL
-    SELECT i.id, i.parent_issue_id, a.depth + 1 FROM issue i JOIN ancestors a ON i.id = a.parent_id
+-- UNION drops repeated rows, so a parent loop an older server stored still
+-- ends the walk.
+WITH RECURSIVE ancestors(node_id, parent_id, is_root) AS (
+    SELECT root.id, root.parent_issue_id, true FROM issue root WHERE root.id = $1
+    UNION
+    SELECT i.id, i.parent_issue_id, false FROM issue i JOIN ancestors a ON i.id = a.parent_id
 )
 SELECT EXISTS(
     SELECT 1
@@ -303,7 +309,7 @@ SELECT EXISTS(
     JOIN ancestors a ON a.node_id = s.issue_id
     WHERE s.user_type = $2 AND s.user_id = $3
       AND s.unsubscribed_at IS NOT NULL
-      AND (a.depth = 0 OR s.opt_out_scope = 'subtree')
+      AND (a.is_root OR s.opt_out_scope = 'subtree')
 ) AS opted_out;
 
 -- name: ListIssueSubscribers :many

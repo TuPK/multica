@@ -211,6 +211,9 @@ type AgentTaskQueue struct {
 	BranchMergeError          pgtype.Text `json:"branch_merge_error"`
 	// Squad UUID for usage attribution and unified execution avatar grouping. Separate from squad_id (which carries leader/worker routing authority). NULL for standalone non-squad runs.
 	UsageSquadID          pgtype.UUID `json:"usage_squad_id"`
+	DocID                 pgtype.UUID `json:"doc_id"`
+	DocThreadID           pgtype.UUID `json:"doc_thread_id"`
+	DocCommentID          pgtype.UUID `json:"doc_comment_id"`
 	BudgetAccountedMicros int64       `json:"budget_accounted_micros"`
 	ReplyChatSessionID    pgtype.UUID `json:"reply_chat_session_id"`
 	ChatRoute             pgtype.Text `json:"chat_route"`
@@ -278,6 +281,18 @@ type AppToolCall struct {
 	RequestID          pgtype.UUID        `json:"request_id"`
 	Error              pgtype.Text        `json:"error"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	MeteredPeriodStart pgtype.Timestamptz `json:"metered_period_start"`
+}
+
+type AppToolCallQuotaPeriod struct {
+	WorkspaceID             pgtype.UUID        `json:"workspace_id"`
+	PeriodStart             pgtype.Timestamptz `json:"period_start"`
+	PeriodEnd               pgtype.Timestamptz `json:"period_end"`
+	UsedCount               int64              `json:"used_count"`
+	RejectionNotifiedAt     pgtype.Timestamptz `json:"rejection_notified_at"`
+	RejectionNotifiedLimits []int64            `json:"rejection_notified_limits"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 }
 
 type AppToolClassOverride struct {
@@ -1130,6 +1145,7 @@ type DocComment struct {
 	ResolvedByID   pgtype.UUID        `json:"resolved_by_id"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	SourceTaskID   pgtype.UUID        `json:"source_task_id"`
 }
 
 type DocFolder struct {
@@ -1166,6 +1182,13 @@ type DocVersion struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 	Contributors []byte             `json:"contributors"`
+}
+
+type EffectiveIssueBlocker struct {
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+	IssueID        pgtype.UUID `json:"issue_id"`
+	BlockerIssueID pgtype.UUID `json:"blocker_issue_id"`
+	Via            string      `json:"via"`
 }
 
 type EinvoiceIssuance struct {
@@ -1566,6 +1589,15 @@ type Issue struct {
 	FlowStep            pgtype.Text        `json:"flow_step"`
 	FlowTask            pgtype.Text        `json:"flow_task"`
 	FlowRound           pgtype.Int4        `json:"flow_round"`
+}
+
+type IssueBlocker struct {
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	IssueID        pgtype.UUID        `json:"issue_id"`
+	BlockerIssueID pgtype.UUID        `json:"blocker_issue_id"`
+	CreatedByType  string             `json:"created_by_type"`
+	CreatedByID    pgtype.UUID        `json:"created_by_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type IssueChildEvent struct {
@@ -3100,6 +3132,7 @@ type Squad struct {
 	Instructions     string             `json:"instructions"`
 	FloorID          pgtype.UUID        `json:"floor_id"`
 	CompanySlot      pgtype.Int2        `json:"company_slot"`
+	HandoffMode      string             `json:"handoff_mode"`
 	AutonomyLevel    int32              `json:"autonomy_level"`
 	TemplateKey      pgtype.Text        `json:"template_key"`
 	ActiveWorkflowID pgtype.UUID        `json:"active_workflow_id"`

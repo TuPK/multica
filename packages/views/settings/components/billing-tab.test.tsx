@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -11,6 +11,7 @@ import { BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG } from "@multica/core/feature-flag
 import { setCurrentWorkspace } from "@multica/core/platform";
 import type {
   AutopilotQuotaUsage,
+  AppCallUsage,
   IssueLimitUsage,
   QuotaRequest,
   WorkspaceBillingProfile,
@@ -39,6 +40,8 @@ const mocks = vi.hoisted(() => ({
   refetchOrderDetail: vi.fn(),
   refetchOrderUsage: vi.fn(),
   refetchIssueLimitUsage: vi.fn(),
+  appCallUsage: { action: "off", used: null, limit: null, reached: null, resetAt: null, members: [] } as AppCallUsage,
+  members: [] as { user_id: string; name: string }[],
   refetchPrices: vi.fn(),
   refetchPlans: vi.fn(),
   refetchQuotaRequests: vi.fn(),
@@ -170,7 +173,11 @@ vi.mock("@multica/core/api", async (importOriginal) => {
   };
 });
 
-vi.mock("@multica/core/billing", () => ({
+vi.mock("@multica/core/billing", async (importOriginal) => ({
+  resolveAppCallRow: (await importOriginal<typeof import("@multica/core/billing")>()).resolveAppCallRow,
+  appCallUsageOptions: (wsId: string) => ({
+    queryKey: ["workspace-app-call-usage", wsId],
+  }),
   workspaceBillingProfileOptions: (wsId: string) => ({
     queryKey: ["workspace-subscriptions", wsId, "billing-profile"],
   }),
@@ -459,8 +466,16 @@ describe("BillingTab", () => {
       reset_at: "2030-02-01T00:00:00Z",
       blocked_counts: {},
     });
+    mocks.appCallUsage = { action: "off", used: null, limit: null, reached: null, resetAt: null, members: [] };
+    mocks.members = [];
     mocks.useQuery.mockImplementation((options: unknown) => {
       const queryKey = (options as { queryKey?: readonly unknown[] }).queryKey;
+      if (queryKey?.[0] === "workspace-app-call-usage") {
+        return { data: mocks.appCallUsage, isPending: false, isError: false, isFetching: false, refetch: vi.fn() };
+      }
+      if (queryKey?.length === 3 && queryKey[0] === "workspaces" && queryKey[2] === "members") {
+        return { data: mocks.members, isPending: false, isError: false };
+      }
       if (
         queryKey?.[0] === "workspace-plans" ||
         queryKey?.[queryKey.length - 1] === "plans"
@@ -680,6 +695,42 @@ describe("BillingTab", () => {
     expect(
       screen.queryByRole("button", { name: "Retry" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows this month's app calls against the plan's limit, for every person (MUL-10047)", () => {
+    const names = ["Ada", "Ben", "Cy", "Di", "Ed", "Flo"];
+    mocks.members = names.map((name) => ({ user_id: `user-${name}`, name }));
+    mocks.appCallUsage = {
+      action: "observe",
+      used: 230,
+      limit: 1500,
+      reached: null,
+      resetAt: "2030-02-01T00:00:00Z",
+      members: [
+        ...names.map((name, i) => ({ userId: `user-${name}`, calls: 60 - i * 10 })),
+        { userId: null, calls: 20 },
+      ],
+    };
+    renderWithI18n(<BillingTab />);
+
+    expect(screen.getByText("App calls")).toBeInTheDocument();
+    expect(screen.getByText("230 / 1,500")).toBeInTheDocument();
+    const byPerson = screen.getByRole("list", { name: "App calls by person" });
+    expect(within(byPerson).getAllByRole("listitem")).toHaveLength(7);
+    for (const name of names) expect(within(byPerson).getByText(name)).toBeInTheDocument();
+    expect(within(byPerson).getByText("Automated runs")).toBeInTheDocument();
+  });
+
+  it("reports enforced app calls as reached, and hides them without a limit", () => {
+    mocks.appCallUsage = { action: "enforce", used: 100, limit: 100, reached: true, resetAt: null, members: [] };
+    const { unmount } = renderWithI18n(<BillingTab />);
+    expect(screen.getByText("100 / 100")).toBeInTheDocument();
+    expect(screen.getAllByText("Limit reached").length).toBeGreaterThan(0);
+    unmount();
+
+    mocks.appCallUsage = { action: "off", used: null, limit: null, reached: null, resetAt: null, members: [] };
+    renderWithI18n(<BillingTab />);
+    expect(screen.queryByText("App calls")).not.toBeInTheDocument();
   });
 
   it("formats minor units with the digits of the shared currency table", () => {

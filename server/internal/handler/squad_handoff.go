@@ -1,333 +1,315 @@
 package handler
 
 import (
-	"errors"
+	"context"
+	"encoding/json"
 	"log/slog"
-	"net/http"
+	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/multica-ai/multica/server/internal/logger"
-	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
-// Handoff between squads: the rule a squad hands its finished requests by, and the
-// handoff of one request. The service decides; these handlers resolve the caller.
+// A squad in direct handoff mode lets members pass the issue to each other by
+// @mention without waking the leader. Every pass is recorded as a
+// squad_handoff activity; the round and daily guards below read those rows, so
+// the guards only ever see handoffs this server actually routed.
+//
+// The limits and mode names live in the service package so the failure
+// recovery path, which hands a failed member run to the leader, shares them.
 
-// SquadHandoffService is the handoff service wired to this handler's stores, for the listeners that close the loop.
-func (h *Handler) SquadHandoffService() *service.SquadHandoffService { return h.squadHandoffService() }
+const squadHandoffHistoryLimit = 50
 
-func (h *Handler) squadHandoffService() *service.SquadHandoffService {
-	return &service.SquadHandoffService{Queries: h.Queries, TxStarter: h.TxStarter, Issues: h.IssueService, Bus: h.Bus}
+// Handoff kinds stored in squad_handoff details. Only "member" counts toward
+// the round and daily guards; "dispatch" is the leader handing out a step and
+// resets the back-and-forth count.
+const (
+	squadHandoffKindDispatch = "dispatch"
+	squadHandoffKindMember   = "member"
+	squadHandoffKindHuman    = "human"
+	squadHandoffKindLeader   = "leader"
+)
+
+// Reasons for a handoff that a guard sent back to the leader. A member reply
+// that names no next owner goes back without one: it may be a finished issue
+// as much as a stuck one.
+const (
+	squadHandoffReasonRoundLimit = "round_limit"
+	squadHandoffReasonDailyLimit = "daily_limit"
+)
+
+// squadHandoffAuthor is an agent comment written by a run of a direct-mode
+// squad's own leader or member on an issue assigned to that squad.
+type squadHandoffAuthor struct {
+	squad    db.Squad
+	agentID  pgtype.UUID
+	isLeader bool
 }
 
-// SquadHandoffRuleResponse is a squad's rule. A squad with no rule reports mode off and no target.
-type SquadHandoffRuleResponse struct {
-	SquadID         string  `json:"squad_id"`
-	TargetSquadID   *string `json:"target_squad_id"`
-	TargetSquadName *string `json:"target_squad_name"`
-	Mode            string  `json:"mode"`
+// squadHandoffRecord is one handoff the comment will record once its routing
+// has been enqueued. Records whose target agent did not end up with a run are
+// dropped at write time.
+type squadHandoffRecord struct {
+	kind    string
+	toType  string
+	toID    pgtype.UUID
+	round   int
+	reason  string
+	agentID pgtype.UUID // the agent whose run carries this handoff, if any
 }
 
-// SetSquadHandoffRuleRequest sets the rule. A missing target_squad_id removes the rule.
-type SetSquadHandoffRuleRequest struct {
-	TargetSquadID *string `json:"target_squad_id"`
-	Mode          *string `json:"mode"`
+type squadHandoffPlan struct {
+	author  *squadHandoffAuthor
+	records []squadHandoffRecord
 }
 
-// IssueHandoffResponse is what a request's handoff looks like: the rule that applies to
-// its squad and the handoff row, when there is one.
-type IssueHandoffResponse struct {
-	Rule    *SquadHandoffRuleResponse `json:"rule"`
-	Handoff *HandoffResponse          `json:"handoff"`
-	// Status is none, off, pending, handed_off or declined: what a caller does next.
-	Status string `json:"status"`
-	Reason string `json:"reason,omitempty"`
-}
-
-// HandoffResponse is one handoff row with the squad and issue it reached.
-type HandoffResponse struct {
-	ID              string  `json:"id"`
-	SourceIssueID   string  `json:"source_issue_id"`
-	TargetIssueID   *string `json:"target_issue_id"`
-	TargetSquadID   string  `json:"target_squad_id"`
-	TargetSquadName *string `json:"target_squad_name"`
-	Mode            string  `json:"mode"`
-	Status          string  `json:"status"`
-	CreatedAt       string  `json:"created_at"`
-	DecidedAt       *string `json:"decided_at"`
-}
-
-func (h *Handler) handoffRuleResponse(r *http.Request, ws pgtype.UUID, squad pgtype.UUID, rule *db.SquadHandoffRule) SquadHandoffRuleResponse {
-	out := SquadHandoffRuleResponse{SquadID: uuidToString(squad), Mode: service.HandoffModeOff}
-	if rule == nil {
-		return out
+func (p *squadHandoffPlan) add(r squadHandoffRecord) {
+	if p != nil {
+		p.records = append(p.records, r)
 	}
-	out.Mode = rule.Mode
-	target := uuidToString(rule.TargetSquadID)
-	out.TargetSquadID = &target
-	if sq, err := h.Queries.GetSquadInWorkspace(r.Context(), db.GetSquadInWorkspaceParams{ID: rule.TargetSquadID, WorkspaceID: ws}); err == nil {
-		name := sq.Name
-		out.TargetSquadName = &name
-	}
-	return out
 }
 
-// handoffResponse omits target_issue_id when the target request sits in a project the viewer cannot see.
-func (h *Handler) handoffResponse(r *http.Request, ws pgtype.UUID, row *db.SquadHandoff, scope projectaccess.Hidden) *HandoffResponse {
-	if row == nil {
+// directSquadHandoffAuthor resolves the squad context of an agent comment on a
+// direct-mode squad issue. It fails closed to nil — today's routing — whenever
+// the authoring run cannot be proven to be the squad's leader turn or a member
+// turn on this very issue.
+func (h *Handler) directSquadHandoffAuthor(ctx context.Context, issue db.Issue, actorType, actorID string, authoringTaskID pgtype.UUID) *squadHandoffAuthor {
+	if actorType != "agent" || !authoringTaskID.Valid ||
+		!issue.AssigneeType.Valid || issue.AssigneeType.String != "squad" || !issue.AssigneeID.Valid {
 		return nil
 	}
-	out := &HandoffResponse{
-		ID:            uuidToString(row.ID),
-		SourceIssueID: uuidToString(row.SourceIssueID),
-		TargetSquadID: uuidToString(row.TargetSquadID),
-		Mode:          row.Mode,
-		Status:        row.Status,
-		CreatedAt:     row.CreatedAt.Time.UTC().Format(time.RFC3339),
+	squad, err := h.Queries.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{
+		ID:          issue.AssigneeID,
+		WorkspaceID: issue.WorkspaceID,
+	})
+	if err != nil || squad.ArchivedAt.Valid || squad.HandoffMode != service.SquadHandoffModeDirect {
+		return nil
 	}
-	if row.TargetIssueID.Valid {
-		target, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: row.TargetIssueID, WorkspaceID: ws})
-		if err == nil && scope.CanSeeProject(target.ProjectID) {
-			id := uuidToString(row.TargetIssueID)
-			out.TargetIssueID = &id
+	task, err := h.Queries.GetAgentTask(ctx, authoringTaskID)
+	if err != nil || !task.AgentID.Valid || uuidToString(task.AgentID) != actorID || task.IssueID != issue.ID {
+		return nil
+	}
+	if task.AgentID == squad.LeaderID {
+		if !task.IsLeaderTask || task.SquadID != squad.ID {
+			return nil
 		}
+		return &squadHandoffAuthor{squad: squad, agentID: task.AgentID, isLeader: true}
 	}
-	if row.DecidedAt.Valid {
-		at := row.DecidedAt.Time.UTC().Format(time.RFC3339)
-		out.DecidedAt = &at
+	if task.IsLeaderTask || !h.isSquadAgentMember(ctx, squad, task.AgentID) {
+		return nil
 	}
-	if sq, err := h.Queries.GetSquadInWorkspace(r.Context(), db.GetSquadInWorkspaceParams{ID: row.TargetSquadID, WorkspaceID: ws}); err == nil {
-		name := sq.Name
-		out.TargetSquadName = &name
-	}
-	return out
+	return &squadHandoffAuthor{squad: squad, agentID: task.AgentID}
 }
 
-// GetSquadHandoffRule returns a squad's handoff rule. Any member may read it.
-func (h *Handler) GetSquadHandoffRule(w http.ResponseWriter, r *http.Request) {
-	workspaceID := h.resolveWorkspaceID(r)
-	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
-		return
+func (h *Handler) isSquadAgentMember(ctx context.Context, squad db.Squad, agentID pgtype.UUID) bool {
+	if agentID == squad.LeaderID {
+		return false
 	}
-	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
-	if !ok {
-		return
-	}
-	squadID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "squad id")
-	if !ok {
-		return
-	}
-	if _, err := h.Queries.GetSquadInWorkspace(r.Context(), db.GetSquadInWorkspaceParams{ID: squadID, WorkspaceID: wsUUID}); err != nil {
-		writeError(w, http.StatusNotFound, "squad not found")
-		return
-	}
-	rule, err := h.squadHandoffService().GetRule(r.Context(), wsUUID, squadID)
-	if err != nil {
-		slog.Warn("read squad handoff rule failed", append(logger.RequestAttrs(r), "error", err)...)
-		writeError(w, http.StatusInternalServerError, "failed to read the handoff rule")
-		return
-	}
-	writeJSON(w, http.StatusOK, h.handoffRuleResponse(r, wsUUID, squadID, rule))
+	ok, err := h.Queries.IsSquadMember(ctx, db.IsSquadMemberParams{SquadID: squad.ID, MemberType: "agent", MemberID: agentID})
+	return err == nil && ok
 }
 
-// SetSquadHandoffRule saves a squad's handoff rule, or removes it when no target is sent.
-// Owners and admins only: it decides who receives the squad's finished work.
-func (h *Handler) SetSquadHandoffRule(w http.ResponseWriter, r *http.Request) {
-	workspaceID := h.resolveWorkspaceID(r)
-	actor, ok := h.governanceBossFor(w, r, workspaceID)
-	if !ok {
-		return
-	}
-	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
-	if !ok {
-		return
-	}
-	squadID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "squad id")
-	if !ok {
-		return
-	}
-	var req SetSquadHandoffRuleRequest
-	if !decodeInitiativeBody(w, r, &req) {
-		return
-	}
-	svc := h.squadHandoffService()
-	if req.TargetSquadID == nil || *req.TargetSquadID == "" {
-		if err := svc.ClearRule(r.Context(), wsUUID, squadID, actor); err != nil {
-			slog.Warn("clear squad handoff rule failed", append(logger.RequestAttrs(r), "error", err)...)
-			writeError(w, http.StatusInternalServerError, "failed to remove the handoff rule")
-			return
+// applyDirectSquadHandoff records the handoffs in an explicit-mention comment
+// and enforces the member guards: a pass between two members that would start
+// a round past the limit, or the issue's daily member-handoff budget running
+// out, goes to the leader instead of the named member.
+func (h *Handler) applyDirectSquadHandoff(ctx context.Context, issue db.Issue, author *squadHandoffAuthor, triggers []commentAgentTrigger, targets []commentMentionTarget, opts commentTriggerComputeOptions) ([]commentAgentTrigger, []commentMentionTarget) {
+	plan := opts.handoffPlan
+	if author.isLeader {
+		for _, trigger := range triggers {
+			if h.isSquadAgentMember(ctx, author.squad, trigger.Agent.ID) {
+				plan.add(squadHandoffRecord{kind: squadHandoffKindDispatch, toType: "agent", toID: trigger.Agent.ID, agentID: trigger.Agent.ID})
+			}
 		}
-		writeJSON(w, http.StatusOK, h.handoffRuleResponse(r, wsUUID, squadID, nil))
-		return
+		return triggers, targets
 	}
-	if req.Mode == nil {
-		writeError(w, http.StatusBadRequest, "mode is required: off, ask or auto")
-		return
-	}
-	targetID, ok := parseUUIDOrBadRequest(w, *req.TargetSquadID, "target_squad_id")
-	if !ok {
-		return
-	}
-	rule, err := svc.SetRule(r.Context(), wsUUID, squadID, targetID, *req.Mode, actor)
-	switch {
-	case errors.Is(err, service.ErrHandoffModeInvalid), errors.Is(err, service.ErrHandoffTargetInvalid):
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	case errors.Is(err, service.ErrHandoffSquadNotFound):
-		writeError(w, http.StatusNotFound, "squad not found")
-		return
-	case errors.Is(err, service.ErrGovernanceActorNotBoss):
-		writeError(w, http.StatusForbidden, err.Error())
-		return
-	case err != nil:
-		slog.Warn("set squad handoff rule failed", append(logger.RequestAttrs(r), "error", err)...)
-		writeError(w, http.StatusInternalServerError, "failed to save the handoff rule")
-		return
-	}
-	writeJSON(w, http.StatusOK, h.handoffRuleResponse(r, wsUUID, squadID, &rule))
-}
 
-// GetIssueHandoff returns the handoff state of a request: the rule that applies to the
-// squad holding it, and its handoff when one was filed. Any member may read it.
-func (h *Handler) GetIssueHandoff(w http.ResponseWriter, r *http.Request) {
-	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
-	if !ok {
-		return
-	}
-	scope, ok := h.requestHiddenProjects(w, r, uuidToString(issue.WorkspaceID))
-	if !ok {
-		return
-	}
-	svc := h.squadHandoffService()
-	out := IssueHandoffResponse{Status: "none"}
-	if issue.AssigneeType.Valid && issue.AssigneeType.String == "squad" && issue.AssigneeID.Valid {
-		rule, err := svc.GetRule(r.Context(), issue.WorkspaceID, issue.AssigneeID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to read the handoff rule")
-			return
+	var history []db.ActivityLog
+	historyLoaded := false
+	var memberHandoffsToday int64 = -1
+	redirect := ""
+	kept := triggers[:0:0]
+	for _, trigger := range triggers {
+		if trigger.Source != commentTriggerSourceMentionAgent || trigger.Agent.ID == author.agentID ||
+			!h.isSquadAgentMember(ctx, author.squad, trigger.Agent.ID) {
+			kept = append(kept, trigger)
+			continue
 		}
-		if rule != nil {
-			resp := h.handoffRuleResponse(r, issue.WorkspaceID, issue.AssigneeID, rule)
-			out.Rule = &resp
-			out.Status = service.HandoffStatusOff
-			if rule.Mode != service.HandoffModeOff {
-				out.Status = "none"
+		if !historyLoaded {
+			history, _ = h.Queries.ListRecentSquadHandoffs(ctx, db.ListRecentSquadHandoffsParams{IssueID: issue.ID, RowLimit: squadHandoffHistoryLimit})
+			historyLoaded = true
+		}
+		round := squadHandoffRound(history, author.agentID, trigger.Agent.ID)
+		reason := ""
+		if round > service.SquadHandoffRoundLimit {
+			reason = squadHandoffReasonRoundLimit
+		} else {
+			if memberHandoffsToday < 0 {
+				memberHandoffsToday, _ = h.Queries.CountSquadMemberHandoffsSince(ctx, db.CountSquadMemberHandoffsSinceParams{
+					IssueID: issue.ID,
+					Since:   pgtype.Timestamptz{Time: time.Now().Add(-24 * time.Hour), Valid: true},
+				})
+			}
+			if memberHandoffsToday >= service.SquadHandoffDailyLimit {
+				reason = squadHandoffReasonDailyLimit
+			}
+		}
+		if reason == "" {
+			plan.add(squadHandoffRecord{kind: squadHandoffKindMember, toType: "agent", toID: trigger.Agent.ID, round: round, agentID: trigger.Agent.ID})
+			kept = append(kept, trigger)
+			memberHandoffsToday++
+			continue
+		}
+		if redirect == "" {
+			redirect = reason
+		}
+		agentID := uuidToString(trigger.Agent.ID)
+		for i := range targets {
+			if targets[i].ExecAgentID == agentID {
+				targets[i].ExecAgentID = ""
+				targets[i].Status = DispatchBlocked
+				targets[i].ReasonCode = ReasonHandedToLeader
 			}
 		}
 	}
-	row, err := svc.Get(r.Context(), issue.WorkspaceID, issue.ID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to read the handoff")
-		return
+	if redirect == "" {
+		for _, trigger := range kept {
+			if trigger.Source == commentTriggerSourceMentionAgent && trigger.Agent.ID == author.squad.LeaderID {
+				plan.add(squadHandoffRecord{kind: squadHandoffKindLeader, toType: "agent", toID: author.squad.LeaderID, agentID: author.squad.LeaderID})
+				break
+			}
+		}
+		return kept, targets
 	}
-	if row != nil {
-		out.Handoff = h.handoffResponse(r, issue.WorkspaceID, row, scope)
-		out.Status = row.Status
+	for _, trigger := range kept {
+		if trigger.Agent.ID == author.squad.LeaderID {
+			plan.add(squadHandoffRecord{kind: squadHandoffKindLeader, toType: "agent", toID: author.squad.LeaderID, reason: redirect, agentID: author.squad.LeaderID})
+			return kept, targets
+		}
 	}
-	writeJSON(w, http.StatusOK, out)
+	if leader, ok := h.routeAssignedSquadLeaderFallback(ctx, issue, "agent", uuidToString(author.agentID), opts); ok {
+		leader.NonLeaderAgentReply = true
+		kept = append(kept, leader)
+		plan.add(squadHandoffRecord{kind: squadHandoffKindLeader, toType: "agent", toID: author.squad.LeaderID, reason: redirect, agentID: author.squad.LeaderID})
+	}
+	return kept, targets
 }
 
-// RequestIssueHandoff hands a request to the squad its holder's rule names. The squad's
-// lead asks for it when its work is done, and the rule decides what happens (off,
-// ask, auto). An owner or admin hands it off now, as the boss's decision.
-func (h *Handler) RequestIssueHandoff(w http.ResponseWriter, r *http.Request) {
-	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
-	if !ok {
+// squadHandoffRound is the round a new from→to member handoff would start:
+// one more than the from→to passes in the unbroken streak of member handoffs
+// between the same two agents at the head of the history. Any other record —
+// a leader dispatch, a third member, a pass to a human — ends the streak.
+func squadHandoffRound(history []db.ActivityLog, from, to pgtype.UUID) int {
+	round := 1
+	for _, row := range history {
+		var d struct {
+			Kind string `json:"kind"`
+			ToID string `json:"to_id"`
+		}
+		if json.Unmarshal(row.Details, &d) != nil || d.Kind != squadHandoffKindMember {
+			break
+		}
+		rowFrom, rowTo := uuidToString(row.ActorID), d.ToID
+		switch {
+		case rowFrom == uuidToString(from) && rowTo == uuidToString(to):
+			round++
+		case rowFrom == uuidToString(to) && rowTo == uuidToString(from):
+		default:
+			return round
+		}
+	}
+	return round
+}
+
+// recordSquadHandoffs writes the plan's squad_handoff rows after the comment's
+// routing ran. A record whose agent did not get a run (refused, unchecked in
+// the composer) is not a handoff. Re-routing the same comment — an edit — does
+// not record it twice.
+func (h *Handler) recordSquadHandoffs(ctx context.Context, issue db.Issue, comment db.Comment, plan *squadHandoffPlan, enqueued map[string]commentEnqueueResult) {
+	if plan == nil || plan.author == nil || len(plan.records) == 0 {
 		return
 	}
-	workspaceID := uuidToString(issue.WorkspaceID)
-	c, ok := h.initiativeCallerFor(w, r, workspaceID)
-	if !ok {
+	history, err := h.Queries.ListRecentSquadHandoffs(ctx, db.ListRecentSquadHandoffsParams{IssueID: issue.ID, RowLimit: squadHandoffHistoryLimit})
+	if err != nil {
+		slog.Warn("squad handoff: load history failed", "issue_id", uuidToString(issue.ID), "error", err)
 		return
 	}
-	actor := service.HandoffActor{Type: c.actor.Type, ID: c.actor.ID}
-	svc := h.squadHandoffService()
-	var (
-		res service.HandoffResult
-		err error
-	)
-	switch {
-	case c.actor.Type == service.GovernanceActorAgent:
-		if !h.isLeaderOfIssueSquad(r, issue, c.actor.ID) {
-			writeError(w, http.StatusForbidden, "only the leader of the squad holding this request can ask for its handoff")
+	commentID := uuidToString(comment.ID)
+	for _, row := range history {
+		var d struct {
+			CommentID string `json:"comment_id"`
+		}
+		if json.Unmarshal(row.Details, &d) == nil && d.CommentID == commentID {
 			return
 		}
-		res, err = svc.Request(r.Context(), issue.WorkspaceID, issue, actor)
-	case c.admin:
-		res, err = svc.HandOff(r.Context(), issue.WorkspaceID, issue, actor)
-	default:
-		writeError(w, http.StatusForbidden, "only the owner or an admin can hand a request off")
-		return
 	}
-	h.writeHandoffResult(w, r, issue, res, err)
+	for _, rec := range plan.records {
+		if rec.agentID.Valid {
+			res, ok := enqueued[uuidToString(rec.agentID)]
+			if !ok || res.status == DispatchBlocked {
+				continue
+			}
+		}
+		details := map[string]string{
+			"squad_id":   uuidToString(plan.author.squad.ID),
+			"comment_id": commentID,
+			"kind":       rec.kind,
+			"to_type":    rec.toType,
+			"to_id":      uuidToString(rec.toID),
+		}
+		if rec.round > 1 {
+			details["round"] = strconv.Itoa(rec.round)
+		}
+		if rec.reason != "" {
+			details["reason"] = rec.reason
+		}
+		h.createSquadHandoffActivity(ctx, issue, plan.author.agentID, details)
+	}
 }
 
-// DeclineIssueHandoff closes a pending handoff without running it. Owners and admins only.
-func (h *Handler) DeclineIssueHandoff(w http.ResponseWriter, r *http.Request) {
-	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
-	if !ok {
+func (h *Handler) createSquadHandoffActivity(ctx context.Context, issue db.Issue, actorID pgtype.UUID, details map[string]string) {
+	raw, _ := json.Marshal(details)
+	activity, err := h.Queries.CreateActivity(ctx, db.CreateActivityParams{
+		ID:          dbid.NewV7(),
+		WorkspaceID: issue.WorkspaceID,
+		IssueID:     issue.ID,
+		ActorType:   pgtype.Text{String: "agent", Valid: true},
+		ActorID:     actorID,
+		Action:      service.SquadHandoffAction,
+		Details:     raw,
+	})
+	if err != nil {
+		slog.Warn("squad handoff: record failed", "issue_id", uuidToString(issue.ID), "error", err)
 		return
 	}
-	actor, ok := h.governanceBossFor(w, r, uuidToString(issue.WorkspaceID))
-	if !ok {
-		return
-	}
-	var req struct {
-		Note string `json:"note"`
-	}
-	if !decodeInitiativeBody(w, r, &req) {
-		return
-	}
-	res, err := h.squadHandoffService().Decline(r.Context(), issue.WorkspaceID, issue, service.HandoffActor{Type: actor.Type, ID: actor.ID}, req.Note)
-	h.writeHandoffResult(w, r, issue, res, err)
+	h.publish(protocol.EventActivityCreated, uuidToString(issue.WorkspaceID), "agent", uuidToString(actorID), map[string]any{
+		"issue_id": uuidToString(issue.ID),
+		"entry": map[string]any{
+			"type":       "activity",
+			"id":         uuidToString(activity.ID),
+			"actor_type": "agent",
+			"actor_id":   uuidToString(actorID),
+			"action":     activity.Action,
+			"details":    json.RawMessage(raw),
+			"created_at": timestampToString(activity.CreatedAt),
+		},
+	})
 }
 
-// isLeaderOfIssueSquad reports whether the agent leads the squad holding the issue.
-func (h *Handler) isLeaderOfIssueSquad(r *http.Request, issue db.Issue, agentID pgtype.UUID) bool {
-	if !issue.AssigneeType.Valid || issue.AssigneeType.String != "squad" || !issue.AssigneeID.Valid {
-		return false
+// firstMemberMention is the human an agent comment hands the issue to.
+func firstMemberMention(mentions []util.Mention) (pgtype.UUID, bool) {
+	for _, m := range mentions {
+		if m.Type != "member" {
+			continue
+		}
+		if id, err := util.ParseUUID(m.ID); err == nil {
+			return id, true
+		}
 	}
-	squad, err := h.Queries.GetSquadInWorkspace(r.Context(), db.GetSquadInWorkspaceParams{ID: issue.AssigneeID, WorkspaceID: issue.WorkspaceID})
-	return err == nil && util.UUIDToString(squad.LeaderID) == util.UUIDToString(agentID)
-}
-
-func (h *Handler) writeHandoffResult(w http.ResponseWriter, r *http.Request, issue db.Issue, res service.HandoffResult, err error) {
-	switch {
-	case errors.Is(err, service.ErrHandoffNotAssigned), errors.Is(err, service.ErrHandoffNoRule),
-		errors.Is(err, service.ErrHandoffChained), errors.Is(err, service.ErrHandoffNothingPending):
-		writeErrorCode(w, http.StatusConflict, "handoff_not_applicable", err.Error())
-		return
-	case errors.Is(err, service.ErrHandoffPacketMissing):
-		writeErrorCode(w, http.StatusUnprocessableEntity, "handoff_packet_missing", err.Error())
-		return
-	case errors.Is(err, service.ErrHandoffNoProject), errors.Is(err, service.ErrHandoffTargetInvalid):
-		writeErrorCode(w, http.StatusUnprocessableEntity, "handoff_target_unavailable", err.Error())
-		return
-	case errors.Is(err, service.ErrGovernanceActorNotBoss):
-		writeError(w, http.StatusForbidden, err.Error())
-		return
-	case isRoomWorkflowRefusal(err):
-		writeRoomWorkflowError(w, err)
-		return
-	case err != nil:
-		slog.Warn("squad handoff failed", append(logger.RequestAttrs(r), "error", err, "issue_id", uuidToString(issue.ID))...)
-		writeError(w, http.StatusInternalServerError, "failed to hand the request off")
-		return
-	}
-	scope, ok := h.requestHiddenProjects(w, r, uuidToString(issue.WorkspaceID))
-	if !ok {
-		return
-	}
-	out := IssueHandoffResponse{Status: res.Status, Reason: res.Reason, Handoff: h.handoffResponse(r, issue.WorkspaceID, res.Handoff, scope)}
-	if rule, rerr := h.squadHandoffService().GetRule(r.Context(), issue.WorkspaceID, issue.AssigneeID); rerr == nil && rule != nil {
-		resp := h.handoffRuleResponse(r, issue.WorkspaceID, issue.AssigneeID, rule)
-		out.Rule = &resp
-	}
-	writeJSON(w, http.StatusOK, out)
+	return pgtype.UUID{}, false
 }

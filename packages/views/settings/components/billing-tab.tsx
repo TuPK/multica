@@ -39,6 +39,8 @@ import {
   useUpdateWorkspaceBillingProfile,
   useUpdateWorkspaceOrderInvoiceBuyer,
   issueLimitUsageOptions,
+  appCallUsageOptions,
+  resolveAppCallRow,
   workspaceBillingProfileOptions,
   workspaceOrderOptions,
   workspaceOrdersOptions,
@@ -146,6 +148,7 @@ import {
   SettingsSection,
   SettingsTab,
 } from "./settings-layout";
+import { AppCallsLimitRow } from "./app-calls-limit-row";
 import {
   hasActiveWorkspaceSeatCapacity,
   resolveAutopilotUsage,
@@ -630,6 +633,7 @@ function BillingTabContent() {
     enabled: wsId.length > 0 && summaryQuery.data != null,
   });
   const quotaUsageQuery = useQuery(autopilotQuotaUsageOptions(wsId));
+  const appCallUsageQuery = useQuery(appCallUsageOptions(wsId));
   const issueLimitUsageQuery = useQuery({
     ...issueLimitUsageOptions(wsId),
     enabled:
@@ -1431,6 +1435,11 @@ function BillingTabContent() {
       ? formatDateTime(quotaUsage.resetAt, locale)
       : null;
   const numberFormatter = new Intl.NumberFormat(locale);
+  const appCallRow = resolveAppCallRow(
+    appCallUsageQuery.data,
+    appCallUsageQuery.isError,
+    entitlements.limits.appToolCalls,
+  );
   const issueCountLimit = entitlements.limits.issueCount;
   const issueLimitUsage = issueLimitUsageQuery.data;
   const issueLimitValue =
@@ -2176,6 +2185,14 @@ function BillingTabContent() {
           >
             <span className="tabular-nums">{issueLimitValue}</span>
           </SettingsRow>
+          {appCallRow ? (
+            <AppCallsLimitRow
+              wsId={wsId}
+              row={appCallRow}
+              retrying={appCallUsageQuery.isFetching}
+              onRetry={() => void appCallUsageQuery.refetch()}
+            />
+          ) : null}
           <SettingsRow
             label={t(($) => $.workspace.limits.autopilots)}
           >

@@ -112,6 +112,21 @@
     "visibility": "Khả năng hiển thị",
     "visibility_workspace": "Không gian làm việc"
   },
+  "handoff": {
+    "section_title": "Phối hợp",
+    "mode_leader_title": "Leader phân việc",
+    "mode_leader_description": "Mọi bước đều quay về leader, {{leader}}, người chọn bước tiếp theo. Mặc định cho các squad hiện có.",
+    "mode_direct_title": "Thành viên chuyển giao trực tiếp",
+    "mode_direct_description": "Leader giao bước đầu và xử lý ngoại lệ. Thành viên tự chọn bước tiếp theo; chuyển để duyệt hoặc hỏi một người sẽ không đánh thức leader nữa.",
+    "guard_rounds": "Qua lại: tối đa {{limit}} vòng",
+    "guard_daily": "Tối đa {{limit}} lần chuyển giao mỗi issue mỗi ngày",
+    "guard_failed": "Lượt chạy thất bại → về lại leader",
+    "guard_no_next": "Không có bước tiếp theo → về lại leader",
+    "saved": "Đã cập nhật chế độ phối hợp",
+    "brief_title": "Nội dung thành viên nhận được",
+    "brief_hint": "Được thêm vào mọi lượt chạy trên issue giao cho squad này",
+    "brief_empty": "Chưa có agent thành viên"
+  },
   "toasts": {
     "member_added": "Đã thêm thành viên",
     "member_add_failed": "Không thể thêm thành viên",

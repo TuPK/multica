@@ -1,375 +1,336 @@
 package handler
 
 import (
-	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/testutil"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
-// handoffFx is a planning squad with a request, and the SDLC build squad with an open project to hand it to.
-type handoffFx struct {
-	iniWorkspace
-	Planning string
-	Lead     string
-	LeadTask string
-	Project  string
+func TestSquadHandoffRound(t *testing.T) {
+	a, b, c := parseUUID("00000000-0000-0000-0000-00000000000a"), parseUUID("00000000-0000-0000-0000-00000000000b"), parseUUID("00000000-0000-0000-0000-00000000000c")
+	row := func(kind string, from, to pgtype.UUID) db.ActivityLog {
+		details, _ := json.Marshal(map[string]string{"kind": kind, "to_id": uuidToString(to)})
+		return db.ActivityLog{ActorID: from, Details: details}
+	}
+	cases := []struct {
+		name    string
+		history []db.ActivityLog // newest first
+		want    int
+	}{
+		{name: "first handoff", want: 1},
+		{name: "after a leader dispatch", history: []db.ActivityLog{row(squadHandoffKindDispatch, c, a)}, want: 1},
+		{name: "reply after one round", history: []db.ActivityLog{row(squadHandoffKindMember, b, a), row(squadHandoffKindMember, a, b)}, want: 2},
+		{name: "third round", history: []db.ActivityLog{
+			row(squadHandoffKindMember, b, a), row(squadHandoffKindMember, a, b),
+			row(squadHandoffKindMember, b, a), row(squadHandoffKindMember, a, b),
+		}, want: 3},
+		{name: "a third member breaks the streak", history: []db.ActivityLog{
+			row(squadHandoffKindMember, b, a), row(squadHandoffKindMember, c, b), row(squadHandoffKindMember, a, b),
+		}, want: 1},
+		{name: "a person in between breaks the streak", history: []db.ActivityLog{
+			row(squadHandoffKindMember, b, a), row(squadHandoffKindHuman, a, c), row(squadHandoffKindMember, a, b),
+		}, want: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := squadHandoffRound(tc.history, a, b); got != tc.want {
+				t.Fatalf("round = %d, want %d", got, tc.want)
+			}
+		})
+	}
 }
 
-func newHandoffFx(t *testing.T) handoffFx {
-	t.Helper()
-	fx := newIniWorkspace(t)
-	// The fixtures insert issues with numbers of their own, so the counter starts above them.
-	dbfx.Exec(t, `UPDATE workspace SET issue_counter = 1000 WHERE id = $1`, fx.ID)
-	squad, lead := planningSquad(t, fx, "Planning")
-	project := dbfxProject(t, fx, "Build repo")
-	// The build squad is the room a handed-off request lands in; it needs a workflow.
-	giveSquadDefaultWorkflow(t, fx.ID, fx.Build)
-	dbfx.Exec(t, `UPDATE project SET squad_ids = ARRAY[$1::uuid] WHERE id = $2`, fx.Build, project)
-	return handoffFx{iniWorkspace: fx, Planning: squad, Lead: lead, LeadTask: createHandlerTestTaskForAgent(t, lead), Project: project}
+type squadHandoffFixture struct {
+	issueID, squadID                  string
+	leaderID, memberA, memberB        string
+	leaderRuntime, runtimeA, runtimeB string
+	memberATask                       string
 }
 
-// request makes a request held by the planning squad.
-func (fx handoffFx) request(t *testing.T, title string) string {
+func newSquadHandoffFixture(t *testing.T, mode string) squadHandoffFixture {
 	t.Helper()
-	return dbfx.Issue(t, title, testutil.Cols{
-		"workspace_id": fx.ID, "assignee_type": "squad", "assignee_id": fx.Planning,
+	var f squadHandoffFixture
+	f.leaderRuntime = dbfx.Runtime(t, "Handoff leader runtime")
+	f.leaderID = dbfx.Agent(t, "Handoff Leader", f.leaderRuntime)
+	f.runtimeA = dbfx.Runtime(t, "Handoff A runtime")
+	f.memberA = dbfx.Agent(t, "Handoff Builder", f.runtimeA)
+	f.runtimeB = dbfx.Runtime(t, "Handoff B runtime")
+	f.memberB = dbfx.Agent(t, "Handoff Reviewer", f.runtimeB)
+	f.squadID = dbfx.Squad(t, "Handoff squad", f.leaderID, testutil.Cols{"handoff_mode": mode})
+	dbfx.SquadMember(t, f.squadID, "agent", f.memberA)
+	dbfx.SquadMember(t, f.squadID, "agent", f.memberB)
+	f.issueID = dbfx.Issue(t, "Squad handoff", testutil.Cols{
+		"status": "in_progress", "assignee_type": "squad", "assignee_id": f.squadID,
 	})
+	f.memberATask = dbfx.Task(t, f.memberA, testutil.Cols{
+		"runtime_id": f.runtimeA, "issue_id": f.issueID, "status": "running",
+		"originator_user_id": testUserID, "accountable_user_id": testUserID,
+	})
+	return f
 }
 
-const testHandoffPacket = "## Planning handoff\nRequest: X\nOutcome: planned\nReadiness verdict: PASS (review issue T-1)\nDelivered and untouched: none"
-
-func (fx handoffFx) packet(t *testing.T, issueID string) {
+func (f squadHandoffFixture) postAsMemberA(t *testing.T, content string) {
 	t.Helper()
-	dbfx.Comment(t, issueID, testHandoffPacket, testutil.Cols{"workspace_id": fx.ID, "author_type": "agent", "author_id": fx.Lead})
+	req := withURLParam(newRequest(http.MethodPost, "/api/issues/"+f.issueID+"/comments", map[string]any{
+		"content": content,
+	}), "id", f.issueID)
+	req.Header.Set("X-Agent-ID", f.memberA)
+	req.Header.Set("X-Task-ID", f.memberATask)
+	testutil.Call(t, testHandler.CreateComment, req).Want(http.StatusCreated)
 }
 
-func (fx handoffFx) setRule(t *testing.T, mode string) *testutil.Response {
-	t.Helper()
-	req := fx.as(newRequest("PUT", "/api/squads/"+fx.Planning+"/handoff-rule",
-		map[string]any{"target_squad_id": fx.Build, "mode": mode}), fx.AdminID)
-	return testutil.Call(t, testHandler.SetSquadHandoffRule, withURLParams(req, "id", fx.Planning))
-}
-
-// leadAsks is the planning lead asking for the handoff of a request.
-func (fx handoffFx) leadAsks(t *testing.T, issueID string) *testutil.Response {
-	t.Helper()
-	req := fx.asAgent(newRequest("POST", "/api/issues/"+issueID+"/handoff", nil), fx.Lead, fx.LeadTask)
-	return testutil.Call(t, testHandler.RequestIssueHandoff, withURLParams(req, "id", issueID))
-}
-
-func (fx handoffFx) bossHandsOff(t *testing.T, issueID string) *testutil.Response {
-	t.Helper()
-	req := fx.as(newRequest("POST", "/api/issues/"+issueID+"/handoff", nil), fx.AdminID)
-	return testutil.Call(t, testHandler.RequestIssueHandoff, withURLParams(req, "id", issueID))
-}
-
-type handoffOut struct {
-	Status  string `json:"status"`
-	Reason  string `json:"reason"`
-	Handoff *struct {
-		Status        string  `json:"status"`
-		TargetIssueID *string `json:"target_issue_id"`
-	} `json:"handoff"`
-}
-
-func countBuildRequests(t *testing.T, fx handoffFx) int {
+func (f squadHandoffFixture) queuedTasks(t *testing.T, agentID string) int {
 	t.Helper()
 	var n int
-	dbfx.QueryRow(t, `SELECT count(*) FROM issue WHERE workspace_id = $1 AND project_id = $2`, fx.ID, fx.Project).Scan(&n)
+	dbfx.QueryRow(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1 AND agent_id = $2 AND status = 'queued'`, f.issueID, agentID).Scan(&n)
 	return n
 }
 
-// TestSquadHandoffRuleIsBossOnlyAndRefusesLoops: owners and admins set the rule; a squad cannot hand
-// to itself or to a squad that hands back.
-func TestSquadHandoffRuleIsBossOnlyAndRefusesLoops(t *testing.T) {
-	fx := newHandoffFx(t)
-
-	req := fx.as(newRequest("PUT", "/api/squads/"+fx.Planning+"/handoff-rule",
-		map[string]any{"target_squad_id": fx.Build, "mode": "auto"}), fx.MemberID)
-	testutil.Call(t, testHandler.SetSquadHandoffRule, withURLParams(req, "id", fx.Planning)).Want(http.StatusForbidden)
-
-	fx.setRule(t, "auto").Want(http.StatusOK)
-	fx.setRule(t, "sometimes").Want(http.StatusBadRequest)
-
-	self := fx.as(newRequest("PUT", "/api/squads/"+fx.Planning+"/handoff-rule",
-		map[string]any{"target_squad_id": fx.Planning, "mode": "auto"}), fx.AdminID)
-	testutil.Call(t, testHandler.SetSquadHandoffRule, withURLParams(self, "id", fx.Planning)).Want(http.StatusBadRequest)
-
-	back := fx.as(newRequest("PUT", "/api/squads/"+fx.Build+"/handoff-rule",
-		map[string]any{"target_squad_id": fx.Planning, "mode": "auto"}), fx.AdminID)
-	testutil.Call(t, testHandler.SetSquadHandoffRule, withURLParams(back, "id", fx.Build)).Want(http.StatusBadRequest)
-
-	get := fx.as(newRequest("GET", "/api/squads/"+fx.Planning+"/handoff-rule", nil), fx.MemberID)
-	var rule struct {
-		Mode          string  `json:"mode"`
-		TargetSquadID *string `json:"target_squad_id"`
+func (f squadHandoffFixture) handoffs(t *testing.T) []map[string]string {
+	t.Helper()
+	rows, err := testHandler.Queries.ListRecentSquadHandoffs(t.Context(), db.ListRecentSquadHandoffsParams{IssueID: parseUUID(f.issueID), RowLimit: 50})
+	if err != nil {
+		t.Fatal(err)
 	}
-	testutil.Call(t, testHandler.GetSquadHandoffRule, withURLParams(get, "id", fx.Planning)).Want(http.StatusOK).JSON(&rule)
-	if rule.Mode != "auto" || rule.TargetSquadID == nil || *rule.TargetSquadID != fx.Build {
-		t.Fatalf("rule = %+v, want auto to the build squad", rule)
-	}
-}
-
-// TestSquadHandoffOffHandsNothingOver: with no rule or with mode off, the lead is told off and nothing is created.
-func TestSquadHandoffOffHandsNothingOver(t *testing.T) {
-	fx := newHandoffFx(t)
-	issue := fx.request(t, "Add feature X")
-	fx.packet(t, issue)
-
-	var out handoffOut
-	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&out)
-	if out.Status != "off" {
-		t.Fatalf("no rule: status = %q, want off", out.Status)
-	}
-	fx.setRule(t, "off").Want(http.StatusOK)
-	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&out)
-	if out.Status != "off" || countBuildRequests(t, fx) != 0 {
-		t.Fatalf("mode off: status = %q, build requests = %d, want off and none", out.Status, countBuildRequests(t, fx))
-	}
-}
-
-// TestSquadHandoffAutoNeedsThePacketThenHandsOverOnce: auto refuses a request with no packet, then
-// creates one request in the build squad's project, and asking again returns the same one.
-func TestSquadHandoffAutoNeedsThePacketThenHandsOverOnce(t *testing.T) {
-	fx := newHandoffFx(t)
-	fx.setRule(t, "auto").Want(http.StatusOK)
-	issue := fx.request(t, "Add feature X")
-
-	resp := fx.leadAsks(t, issue).Want(http.StatusUnprocessableEntity)
-	if !strings.Contains(resp.Text(), "handoff_packet_missing") {
-		t.Fatalf("body = %s, want handoff_packet_missing", resp.Text())
-	}
-
-	fx.packet(t, issue)
-	var first, second handoffOut
-	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&first)
-	if first.Status != "handed_off" || first.Handoff == nil || first.Handoff.TargetIssueID == nil {
-		t.Fatalf("first answer = %+v, want handed_off with a target issue", first)
-	}
-	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&second)
-	if second.Handoff == nil || second.Handoff.TargetIssueID == nil || *second.Handoff.TargetIssueID != *first.Handoff.TargetIssueID {
-		t.Fatalf("second answer = %+v, want the same target issue %v", second, *first.Handoff.TargetIssueID)
-	}
-	if n := countBuildRequests(t, fx); n != 1 {
-		t.Fatalf("build requests = %d, want exactly 1", n)
-	}
-
-	var assigneeType, assigneeID, origin, originID, title string
-	dbfx.QueryRow(t, `SELECT assignee_type, assignee_id::text, origin_type, origin_id::text, title FROM issue WHERE id = $1`,
-		*first.Handoff.TargetIssueID).Scan(&assigneeType, &assigneeID, &origin, &originID, &title)
-	if assigneeType != "squad" || assigneeID != fx.Build || origin != "squad_request" || originID != issue {
-		t.Fatalf("target issue = %s %s origin %s %s, want the build squad and a squad_request from the source", assigneeType, assigneeID, origin, originID)
-	}
-	if !strings.HasPrefix(title, "[Planning handoff] ") {
-		t.Fatalf("target title = %q", title)
-	}
-	var packetInBody int
-	dbfx.QueryRow(t, `SELECT count(*) FROM issue WHERE id = $1 AND description LIKE '%Readiness verdict: PASS%'`, *first.Handoff.TargetIssueID).Scan(&packetInBody)
-	if packetInBody != 1 {
-		t.Fatalf("the packet is not in the target request's description")
-	}
-	// The source request keeps its status and its assignee.
-	var status, assignee string
-	dbfx.QueryRow(t, `SELECT status, assignee_id::text FROM issue WHERE id = $1`, issue).Scan(&status, &assignee)
-	if status != "todo" || assignee != fx.Planning {
-		t.Fatalf("source issue = %s %s, want it untouched", status, assignee)
-	}
-}
-
-// TestSquadHandoffAskWaitsForTheBoss: ask files a pending handoff; the boss approves it, or declines it.
-func TestSquadHandoffAskWaitsForTheBoss(t *testing.T) {
-	fx := newHandoffFx(t)
-	fx.setRule(t, "ask").Want(http.StatusOK)
-
-	approved := fx.request(t, "Add feature X")
-	fx.packet(t, approved)
-	var out handoffOut
-	fx.leadAsks(t, approved).Want(http.StatusOK).JSON(&out)
-	if out.Status != "pending" || countBuildRequests(t, fx) != 0 {
-		t.Fatalf("ask: status = %q, build requests = %d, want pending and none", out.Status, countBuildRequests(t, fx))
-	}
-	fx.bossHandsOff(t, approved).Want(http.StatusOK).JSON(&out)
-	if out.Status != "handed_off" || countBuildRequests(t, fx) != 1 {
-		t.Fatalf("approve: status = %q, build requests = %d, want handed_off and 1", out.Status, countBuildRequests(t, fx))
-	}
-
-	declined := fx.request(t, "Add feature Y")
-	fx.packet(t, declined)
-	fx.leadAsks(t, declined).Want(http.StatusOK)
-	req := fx.as(newRequest("POST", "/api/issues/"+declined+"/handoff/decline", map[string]any{"note": "not now"}), fx.AdminID)
-	testutil.Call(t, testHandler.DeclineIssueHandoff, withURLParams(req, "id", declined)).Want(http.StatusOK).JSON(&out)
-	if out.Status != "declined" || countBuildRequests(t, fx) != 1 {
-		t.Fatalf("decline: status = %q, build requests = %d, want declined and still 1", out.Status, countBuildRequests(t, fx))
-	}
-	// A declined request is not handed off again when the lead asks once more.
-	fx.leadAsks(t, declined).Want(http.StatusOK).JSON(&out)
-	if out.Status != "declined" {
-		t.Fatalf("asking again after a decline: status = %q, want declined", out.Status)
-	}
-}
-
-// TestSquadHandoffBossHandsOffByHandWhenOff: with the rule off the boss can still hand a request over.
-func TestSquadHandoffBossHandsOffByHandWhenOff(t *testing.T) {
-	fx := newHandoffFx(t)
-	fx.setRule(t, "off").Want(http.StatusOK)
-	issue := fx.request(t, "Add feature X")
-
-	var out handoffOut
-	fx.bossHandsOff(t, issue).Want(http.StatusOK).JSON(&out)
-	if out.Status != "handed_off" || countBuildRequests(t, fx) != 1 {
-		t.Fatalf("status = %q, build requests = %d, want handed_off and 1", out.Status, countBuildRequests(t, fx))
-	}
-}
-
-// TestSquadHandoffRefusesWhoIsNotTheLeaderOrBoss: a plain member and an agent outside the squad cannot ask.
-func TestSquadHandoffRefusesWhoIsNotTheLeaderOrBoss(t *testing.T) {
-	fx := newHandoffFx(t)
-	fx.setRule(t, "auto").Want(http.StatusOK)
-	issue := fx.request(t, "Add feature X")
-	fx.packet(t, issue)
-
-	req := fx.as(newRequest("POST", "/api/issues/"+issue+"/handoff", nil), fx.MemberID)
-	testutil.Call(t, testHandler.RequestIssueHandoff, withURLParams(req, "id", issue)).Want(http.StatusForbidden)
-
-	other := fx.asAgent(newRequest("POST", "/api/issues/"+issue+"/handoff", nil), fx.Leader, fx.Task)
-	testutil.Call(t, testHandler.RequestIssueHandoff, withURLParams(other, "id", issue)).Want(http.StatusForbidden)
-	if n := countBuildRequests(t, fx); n != 0 {
-		t.Fatalf("build requests = %d, want none", n)
-	}
-}
-
-// TestSquadHandoffNeedsAnOpenProjectAndDoesNotChain: the target squad must have a project, and a request
-// that came from a handoff is not handed on.
-func TestSquadHandoffNeedsAnOpenProjectAndDoesNotChain(t *testing.T) {
-	fx := newHandoffFx(t)
-	fx.setRule(t, "auto").Want(http.StatusOK)
-	issue := fx.request(t, "Add feature X")
-	fx.packet(t, issue)
-
-	dbfx.Exec(t, `UPDATE project SET squad_ids = '{}' WHERE id = $1`, fx.Project)
-	resp := fx.leadAsks(t, issue).Want(http.StatusUnprocessableEntity)
-	if !strings.Contains(resp.Text(), "handoff_target_unavailable") {
-		t.Fatalf("body = %s, want handoff_target_unavailable", resp.Text())
-	}
-
-	dbfx.Exec(t, `UPDATE project SET squad_ids = ARRAY[$1::uuid] WHERE id = $2`, fx.Build, fx.Project)
-	var out handoffOut
-	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&out)
-	if out.Status != "handed_off" {
-		t.Fatalf("after assigning the project: status = %q, want handed_off", out.Status)
-	}
-
-	// The request the build squad received is itself held by a squad with no rule, but a handoff
-	// created it, so even a manual handoff from it is refused.
-	dbfx.Exec(t, `UPDATE issue SET assignee_id = $1 WHERE id = $2`, fx.Planning, *out.Handoff.TargetIssueID)
-	req := fx.as(newRequest("POST", "/api/issues/"+*out.Handoff.TargetIssueID+"/handoff", nil), fx.AdminID)
-	testutil.Call(t, testHandler.RequestIssueHandoff, withURLParams(req, "id", *out.Handoff.TargetIssueID)).Want(http.StatusConflict)
-}
-
-// TestSquadHandoffApprovedTwiceAtOnceCreatesOneRequest: the boss approving a pending handoff from two
-// windows, or the lead asking while the boss approves, hands the request over once.
-func TestSquadHandoffApprovedTwiceAtOnceCreatesOneRequest(t *testing.T) {
-	fx := newHandoffFx(t)
-	fx.setRule(t, "ask").Want(http.StatusOK)
-	issue := fx.request(t, "Add feature X")
-	fx.packet(t, issue)
-	fx.leadAsks(t, issue).Want(http.StatusOK)
-
-	const callers = 4
-	codes := make([]int, callers)
-	var wg sync.WaitGroup
-	for i := 0; i < callers; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			req := fx.as(newRequest("POST", "/api/issues/"+issue+"/handoff", nil), fx.AdminID)
-			w := httptest.NewRecorder()
-			testHandler.RequestIssueHandoff(w, withURLParams(req, "id", issue))
-			codes[i] = w.Code
-		}(i)
-	}
-	wg.Wait()
-	for i, code := range codes {
-		if code != http.StatusOK {
-			t.Fatalf("caller %d: status %d, want 200", i, code)
+	out := make([]map[string]string, 0, len(rows))
+	for _, row := range rows {
+		var d map[string]string
+		if err := json.Unmarshal(row.Details, &d); err != nil {
+			t.Fatal(err)
 		}
+		d["actor_id"] = uuidToString(row.ActorID)
+		out = append(out, d)
 	}
-	if n := countBuildRequests(t, fx); n != 1 {
-		t.Fatalf("build requests = %d, want exactly 1", n)
-	}
+	return out
 }
 
-// TestSquadHandoffAdoptsARequestAnEarlierAttemptLeft: a create that landed before its handoff could be
-// settled is found again and adopted, not created a second time.
-func TestSquadHandoffAdoptsARequestAnEarlierAttemptLeft(t *testing.T) {
-	fx := newHandoffFx(t)
-	fx.setRule(t, "auto").Want(http.StatusOK)
-	issue := fx.request(t, "Add feature X")
-	fx.packet(t, issue)
-	orphan := dbfx.Issue(t, "[Planning handoff] Add feature X", testutil.Cols{
-		"workspace_id": fx.ID, "project_id": fx.Project, "assignee_type": "squad", "assignee_id": fx.Build,
-		"origin_type": "squad_request", "origin_id": issue,
+func (f squadHandoffFixture) seedMemberHandoff(t *testing.T, from, to string) {
+	t.Helper()
+	dbfx.Insert(t, "activity_log", testutil.Cols{
+		"workspace_id": testWorkspaceID, "issue_id": f.issueID, "actor_type": "agent", "actor_id": from,
+		"action":  service.SquadHandoffAction,
+		"details": fmt.Sprintf(`{"kind":"member","to_type":"agent","to_id":%q}`, to),
+	})
+}
+
+func handoffMention(kind, name, id string) string {
+	return fmt.Sprintf("[@%s](mention://%s/%s)", name, kind, id)
+}
+
+func TestDirectSquadHandoffRouting(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+
+	t.Run("member to member skips the leader", func(t *testing.T) {
+		f := newSquadHandoffFixture(t, service.SquadHandoffModeDirect)
+		f.postAsMemberA(t, handoffMention("agent", "Reviewer", f.memberB)+" please review the PR")
+		if f.queuedTasks(t, f.memberB) != 1 || f.queuedTasks(t, f.leaderID) != 0 {
+			t.Fatal("a member handoff must wake only the named member")
+		}
+		got := f.handoffs(t)
+		if len(got) != 1 || got[0]["kind"] != "member" || got[0]["to_id"] != f.memberB || got[0]["actor_id"] != f.memberA || got[0]["round"] != "" {
+			t.Fatalf("handoff records = %+v", got)
+		}
 	})
 
-	var out handoffOut
-	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&out)
-	if out.Status != "handed_off" || out.Handoff == nil || out.Handoff.TargetIssueID == nil || *out.Handoff.TargetIssueID != orphan {
-		t.Fatalf("answer = %+v, want handed_off to the request already there (%s)", out, orphan)
+	t.Run("member to a person does not wake the leader", func(t *testing.T) {
+		f := newSquadHandoffFixture(t, service.SquadHandoffModeDirect)
+		f.postAsMemberA(t, handoffMention("member", "Owner", testUserID)+" which option should ship?")
+		if f.queuedTasks(t, f.leaderID) != 0 {
+			t.Fatal("asking a person must not wake the leader in direct mode")
+		}
+		got := f.handoffs(t)
+		if len(got) != 1 || got[0]["kind"] != "human" || got[0]["to_id"] != testUserID {
+			t.Fatalf("handoff records = %+v", got)
+		}
+	})
+
+	t.Run("no next owner goes back to the leader", func(t *testing.T) {
+		f := newSquadHandoffFixture(t, service.SquadHandoffModeDirect)
+		f.postAsMemberA(t, "Done: the change is merged-ready.")
+		if f.queuedTasks(t, f.leaderID) != 1 {
+			t.Fatal("a reply naming no next owner must reach the leader")
+		}
+		got := f.handoffs(t)
+		if len(got) != 1 || got[0]["kind"] != "leader" || got[0]["to_id"] != f.leaderID || got[0]["reason"] != "" {
+			t.Fatalf("handoff records = %+v", got)
+		}
+	})
+
+	t.Run("mentioning the leader is recorded and ends the round", func(t *testing.T) {
+		f := newSquadHandoffFixture(t, service.SquadHandoffModeDirect)
+		f.seedMemberHandoff(t, f.memberA, f.memberB)
+		f.seedMemberHandoff(t, f.memberB, f.memberA)
+		f.postAsMemberA(t, handoffMention("agent", "Leader", f.leaderID)+" the spec contradicts itself, please decide")
+		if f.queuedTasks(t, f.leaderID) != 1 {
+			t.Fatal("an explicit leader mention must reach the leader")
+		}
+		got := f.handoffs(t)
+		if got[0]["kind"] != "leader" || got[0]["to_id"] != f.leaderID || got[0]["reason"] != "" {
+			t.Fatalf("handoff records = %+v", got)
+		}
+		f.postAsMemberA(t, handoffMention("agent", "Reviewer", f.memberB)+" decided, please review")
+		if got := f.handoffs(t); got[0]["kind"] != "member" || got[0]["round"] != "" {
+			t.Fatalf("a pass after going to the leader must start at round 1, got %+v", got[0])
+		}
+	})
+
+	t.Run("second round is recorded", func(t *testing.T) {
+		f := newSquadHandoffFixture(t, service.SquadHandoffModeDirect)
+		f.seedMemberHandoff(t, f.memberA, f.memberB)
+		f.seedMemberHandoff(t, f.memberB, f.memberA)
+		f.postAsMemberA(t, handoffMention("agent", "Reviewer", f.memberB)+" fixed, please re-review")
+		got := f.handoffs(t)
+		if f.queuedTasks(t, f.memberB) != 1 || got[0]["kind"] != "member" || got[0]["round"] != "2" {
+			t.Fatalf("handoff records = %+v", got)
+		}
+	})
+
+	t.Run("round limit sends the issue to the leader", func(t *testing.T) {
+		f := newSquadHandoffFixture(t, service.SquadHandoffModeDirect)
+		for i := 0; i < service.SquadHandoffRoundLimit; i++ {
+			f.seedMemberHandoff(t, f.memberA, f.memberB)
+			f.seedMemberHandoff(t, f.memberB, f.memberA)
+		}
+		f.postAsMemberA(t, handoffMention("agent", "Reviewer", f.memberB)+" one more pass please")
+		if f.queuedTasks(t, f.memberB) != 0 || f.queuedTasks(t, f.leaderID) != 1 {
+			t.Fatal("a handoff past the round limit must go to the leader instead")
+		}
+		got := f.handoffs(t)
+		if got[0]["kind"] != "leader" || got[0]["reason"] != "round_limit" {
+			t.Fatalf("handoff records = %+v", got)
+		}
+	})
+
+	t.Run("daily limit sends the issue to the leader", func(t *testing.T) {
+		f := newSquadHandoffFixture(t, service.SquadHandoffModeDirect)
+		other := dbfx.Agent(t, "Handoff Third", f.runtimeB)
+		dbfx.SquadMember(t, f.squadID, "agent", other)
+		// Alternate pairs so no single pair reaches the round limit.
+		for i := 0; i < service.SquadHandoffDailyLimit; i++ {
+			if i%2 == 0 {
+				f.seedMemberHandoff(t, other, f.memberB)
+			} else {
+				f.seedMemberHandoff(t, f.memberB, other)
+			}
+			f.seedMemberHandoff(t, f.memberA, other)
+		}
+		f.postAsMemberA(t, handoffMention("agent", "Reviewer", f.memberB)+" please review")
+		if f.queuedTasks(t, f.memberB) != 0 || f.queuedTasks(t, f.leaderID) != 1 {
+			t.Fatal("a handoff past the daily limit must go to the leader instead")
+		}
+		if got := f.handoffs(t); got[0]["reason"] != "daily_limit" {
+			t.Fatalf("handoff records = %+v", got[0])
+		}
+	})
+
+	t.Run("leader mode keeps today's routing", func(t *testing.T) {
+		f := newSquadHandoffFixture(t, service.SquadHandoffModeLeader)
+		f.postAsMemberA(t, handoffMention("member", "Owner", testUserID)+" which option should ship?")
+		if f.queuedTasks(t, f.leaderID) != 1 {
+			t.Fatal("leader mode must still wake the leader on a member reply")
+		}
+		if got := f.handoffs(t); len(got) != 0 {
+			t.Fatalf("leader mode must not record handoffs, got %+v", got)
+		}
+	})
+}
+
+func TestClaim_SquadMemberTaskGetsMemberBrief(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
 	}
-	if n := countBuildRequests(t, fx); n != 1 {
-		t.Fatalf("build requests = %d, want exactly 1", n)
+	for _, mode := range []string{service.SquadHandoffModeLeader, service.SquadHandoffModeDirect} {
+		t.Run(mode, func(t *testing.T) {
+			f := newSquadHandoffFixture(t, mode)
+			dbfx.Exec(t, `UPDATE squad SET instructions = 'Every change needs a second review.' WHERE id = $1`, f.squadID)
+			dbfx.Exec(t, `UPDATE squad_member SET role = 'reviews PRs' WHERE squad_id = $1 AND member_id = $2`, f.squadID, f.memberB)
+			want := dbfx.Task(t, f.memberB, testutil.Cols{
+				"runtime_id": f.runtimeB, "issue_id": f.issueID, "status": "queued",
+				"originator_user_id": testUserID, "accountable_user_id": testUserID,
+			})
+			got, instr, isLeader, raw := claimAgentInstructionsForTest(t, f.runtimeB)
+			if got != want || isLeader {
+				t.Fatalf("claimed %q leader=%v, want member task %q: %s", got, isLeader, want, raw)
+			}
+			for _, part := range []string{"## Squad Member Brief", `Your role in this squad: "reviews PRs"`, "Every change needs a second review.", "mention://agent/" + f.memberA} {
+				if !strings.Contains(instr, part) {
+					t.Fatalf("member brief misses %q:\n%s", part, instr)
+				}
+			}
+			if strings.Contains(instr, "## Squad Operating Protocol") || strings.Contains(instr, "mention://agent/"+f.memberB) {
+				t.Fatalf("member brief must not carry the leader protocol or offer the member itself:\n%s", instr)
+			}
+			direct := strings.Contains(instr, "hand the issue to each other directly")
+			if direct != (mode == service.SquadHandoffModeDirect) {
+				t.Fatalf("handoff section does not follow mode %s:\n%s", mode, instr)
+			}
+		})
 	}
 }
 
-// TestSquadHandoffNotesTheSourceWhenTheBuildRequestFinishes: when the request the handoff made is done,
-// the source request gets one system note that links it; a status that is not finished adds none.
-func TestSquadHandoffNotesTheSourceWhenTheBuildRequestFinishes(t *testing.T) {
-	fx := newHandoffFx(t)
-	fx.setRule(t, "auto").Want(http.StatusOK)
-	issue := fx.request(t, "Add feature X")
-	fx.packet(t, issue)
-	var out handoffOut
-	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&out)
-	target := *out.Handoff.TargetIssueID
-
-	closing := func() int {
-		var n int
-		dbfx.QueryRow(t, `SELECT count(*) FROM comment WHERE issue_id = $1 AND type = 'system' AND content LIKE '%'||$2||'%'`, issue, target).Scan(&n)
-		return n
+func TestUpdateSquadHandoffMode(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
 	}
-	closeLoop := func() {
-		row, err := testHandler.Queries.GetIssue(context.Background(), parseUUID(target))
-		if err != nil {
-			t.Fatalf("load target: %v", err)
+	f := newSquadHandoffFixture(t, service.SquadHandoffModeLeader)
+	put := func(mode string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		testHandler.UpdateSquad(w, squadScopeReq("", http.MethodPut, "/api/squads/"+f.squadID, map[string]any{"handoff_mode": mode}, map[string]string{"id": f.squadID}))
+		return w
+	}
+	if w := put("sometimes"); w.Code != http.StatusBadRequest {
+		t.Fatalf("unknown mode: got %d", w.Code)
+	}
+	w := put(service.SquadHandoffModeDirect)
+	var resp SquadResponse
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &resp) != nil || resp.HandoffMode != service.SquadHandoffModeDirect {
+		t.Fatalf("set direct: %d %s", w.Code, w.Body.String())
+	}
+	// A write that leaves the mode out keeps it.
+	w = httptest.NewRecorder()
+	testHandler.UpdateSquad(w, squadScopeReq("", http.MethodPut, "/api/squads/"+f.squadID, map[string]any{"description": "kept"}, map[string]string{"id": f.squadID}))
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &resp) != nil || resp.HandoffMode != service.SquadHandoffModeDirect {
+		t.Fatalf("partial update changed the mode: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestListSquadBriefs(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	f := newSquadHandoffFixture(t, service.SquadHandoffModeDirect)
+	w := httptest.NewRecorder()
+	testHandler.ListSquadBriefs(w, squadScopeReq("", http.MethodGet, "/api/squads/"+f.squadID+"/briefs", nil, map[string]string{"id": f.squadID}))
+	var resp SquadBriefsResponse
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &resp) != nil {
+		t.Fatalf("list briefs: %d %s", w.Code, w.Body.String())
+	}
+	if resp.HandoffMode != service.SquadHandoffModeDirect || len(resp.Briefs) != 3 {
+		t.Fatalf("briefs = %+v", resp)
+	}
+	if !resp.Briefs[0].IsLeader || resp.Briefs[0].MemberID != f.leaderID || !strings.Contains(resp.Briefs[0].Brief, "## Handoff Mode: Direct") {
+		t.Fatalf("leader brief = %+v", resp.Briefs[0])
+	}
+	for _, b := range resp.Briefs[1:] {
+		if b.IsLeader || !strings.Contains(b.Brief, "## Squad Member Brief") {
+			t.Fatalf("member brief = %+v", b)
 		}
-		if err := testHandler.SquadHandoffService().CloseLoop(context.Background(), row); err != nil {
-			t.Fatalf("CloseLoop: %v", err)
-		}
 	}
 
-	dbfx.Exec(t, `UPDATE issue SET status = 'in_progress' WHERE id = $1`, target)
-	closeLoop()
-	if n := closing(); n != 0 {
-		t.Fatalf("an unfinished build request left %d notes, want none", n)
-	}
-	dbfx.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, target)
-	closeLoop()
-	if n := closing(); n != 1 {
-		t.Fatalf("a finished build request left %d notes, want 1", n)
-	}
-
-	// An issue no handoff made is never noted.
-	other := dbfx.Issue(t, "Unrelated", testutil.Cols{"workspace_id": fx.ID, "status": "done", "origin_type": "squad_request", "origin_id": issue})
-	row, _ := testHandler.Queries.GetIssue(context.Background(), parseUUID(other))
-	if err := testHandler.SquadHandoffService().CloseLoop(context.Background(), row); err != nil {
-		t.Fatalf("CloseLoop on an unrelated issue: %v", err)
-	}
-	if n := closing(); n != 1 {
-		t.Fatalf("notes = %d after an unrelated issue, want still 1", n)
+	stranger := createPlainMember(t, "squad-briefs-stranger@multica.test")
+	w = httptest.NewRecorder()
+	testHandler.ListSquadBriefs(w, squadScopeReq(stranger, http.MethodGet, "/api/squads/"+f.squadID+"/briefs", nil, map[string]string{"id": f.squadID}))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("a member who cannot edit the squad: got %d", w.Code)
 	}
 }

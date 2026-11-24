@@ -769,7 +769,7 @@ type proposalDecision struct {
 // service's, unwrapped, for the caller to map.
 func (h *Handler) settleProposalDecision(ctx context.Context, actorUserID string, in proposalDecision) (ProposalResponse, error) {
 	prefix := h.getIssuePrefix(ctx, in.WorkspaceID)
-	fillKickoff := h.newStatusCategoryFiller(ctx, in.WorkspaceID, projectaccess.Hidden{})
+	fillKickoff := h.newStatusCategoryFiller(ctx, in.WorkspaceID, projectaccess.Hidden{}, nil)
 	res, err := h.proposalService().Decide(ctx, service.ProposalDecideParams{
 		WorkspaceID: in.WorkspaceID,
 		ProposalID:  in.ProposalID,

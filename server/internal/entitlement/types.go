@@ -32,6 +32,10 @@ const (
 	// GateDashboardHistoryDays caps how many calendar days back the workspace
 	// dashboard can read. Limit is a day count with no period.
 	GateDashboardHistoryDays GateName = "dashboard_history_days"
+	// GateAppToolCalls caps the app tool calls a workspace sends to the
+	// provider in a period. Like autopilot_runs it is a budget with a
+	// Cloud-defined period that resets.
+	GateAppToolCalls GateName = "app_tool_calls"
 
 	// Plan values. The API rate limit and the audit retention job read the
 	// limit; the feature flags below are `off` when the plan includes the
@@ -74,12 +78,12 @@ var optionalGates = []GateName{
 // leniantGates are read on their own: a missing or malformed one is off for
 // that gate alone and records why, so a bad value cannot turn the autopilot
 // quota off.
-var leniantGates = []GateName{GateMembers, GateStorageBytes, GateDashboardHistoryDays}
+var leniantGates = []GateName{GateMembers, GateStorageBytes, GateDashboardHistoryDays, GateAppToolCalls}
 
 func (n GateName) valid() bool {
 	switch n {
 	case GateAutopilotRuns, GateIssueCount, GateAgents, GateRuntimes,
-		GateMembers, GateStorageBytes, GateDashboardHistoryDays,
+		GateMembers, GateStorageBytes, GateDashboardHistoryDays, GateAppToolCalls,
 		GateAPIRatePerMinute, GateAuditRetentionDays,
 		GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport,
 		GateMemberGroups, GateMaxWorkspaces:

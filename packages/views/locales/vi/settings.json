@@ -2389,7 +2389,8 @@
       "pending": "Đang chờ",
       "approved": "Đã duyệt",
       "rejected": "Đã từ chối",
-      "rate_limited": "Bị giới hạn tần suất"
+      "rate_limited": "Bị giới hạn tần suất",
+      "quota_exceeded": "Đã đạt giới hạn tháng"
     },
     "scopes": {
       "team": "Tài khoản nhóm",

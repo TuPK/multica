@@ -266,7 +266,8 @@
     "advanced_group_match_trailing": "trong các điều kiện này",
     "advanced_group_hint": "Các điều kiện trong nhóm này được nối bằng “{{word}}”",
     "advanced_add_to_group": "Thêm vào nhóm",
-    "advanced_turn_into_group": "Chuyển thành nhóm"
+    "advanced_turn_into_group": "Chuyển thành nhóm",
+    "relation_blocked": "Bị chặn"
   },
   "display": {
     "tooltip": "Cài đặt hiển thị",
@@ -637,6 +638,13 @@
     "squad_leader_no_action_reason": "đã đánh giá: không cần hành động ({{reason}})",
     "squad_leader_failed": "đánh giá thất bại",
     "squad_leader_failed_reason": "đánh giá thất bại: {{reason}}",
+    "squad_handoff_to": "đã chuyển cho {{name}}",
+    "squad_handoff_human": "đã nhờ {{name}} quyết định",
+    "squad_handoff_leader": "đã chuyển lại cho {{name}}",
+    "squad_handoff_round": "vòng {{round}}",
+    "squad_handoff_reason_round_limit": "đã đạt giới hạn {{limit}} vòng",
+    "squad_handoff_reason_daily_limit": "đã đạt giới hạn chuyển giao trong ngày",
+    "squad_handoff_reason_run_failed": "lượt chạy thất bại",
     "coalesced_badge": "×{{count}}",
     "activity_count_other": "{{count}} hoạt động",
     "show_more_activities_other": "Hiện thêm {{count}} hoạt động",
@@ -846,6 +854,7 @@
   },
   "agent_live": {
     "is_working": "{{name}} đang làm việc",
+    "is_working_round": "{{label}} · vòng {{round}}",
     "is_queued": "{{name}} đang chờ",
     "is_waiting_local_directory": "{{name}} đang chờ thư mục cục bộ",
     "queued_elapsed_prefix": "đã chờ {{elapsed}}",
@@ -1068,6 +1077,7 @@
     "remove_parent_issue": "Gỡ nhiệm vụ cha",
     "remove_parent_issue_success": "Đã gỡ nhiệm vụ cha",
     "add_sub_issue": "Thêm nhiệm vụ con...",
+    "add_blocker": "Thêm tác vụ chặn...",
     "delete_issue": "Xóa nhiệm vụ",
     "mark_duplicate": "Đánh dấu là trùng lặp...",
     "save_to_knowledge": "Lưu vào kiến thức",
@@ -2497,7 +2507,8 @@
       "pending": "Đang chờ",
       "approved": "Đã duyệt",
       "rejected": "Đã từ chối",
-      "rate_limited": "Bị giới hạn tần suất"
+      "rate_limited": "Bị giới hạn tần suất",
+      "quota_exceeded": "Đã đạt giới hạn tháng"
     }
   },
   "environments": {
@@ -2607,5 +2618,28 @@
     "focus_failed": "Không thể chuyển sang {{name}}",
     "retry": "Thử lại",
     "dismiss": "Bỏ qua"
+  },
+  "waiting": {
+    "title": "Đang chờ",
+    "add": "Thêm tác vụ chặn",
+    "remove": "Gỡ {{identifier}}",
+    "count": "Đang chờ {{count}} tác vụ",
+    "stage": "Các giai đoạn trước · {{finished}}/{{total}} đã kết thúc",
+    "hint": "Khi các tác vụ này kết thúc, người được giao sẽ tự động bắt đầu hoặc nhận thông báo.",
+    "hint_backlog": "Tác vụ này đang ở Backlog nên sẽ không tự bắt đầu khi các tác vụ này kết thúc. Nó chỉ bắt đầu sau khi rời Backlog.",
+    "empty": "Không có tác vụ nào để chờ",
+    "picker_hint": "Chọn tác vụ phải kết thúc trước khi tác vụ này có thể bắt đầu.",
+    "restricted": "{{count}} điều kiện tiên quyết bị hạn chế",
+    "ended": "Các tác vụ đang chờ đã kết thúc",
+    "count_other": "Đang chờ {{count}} tác vụ",
+    "marker_title": "Bị chặn bởi {{count}} tác vụ",
+    "marker_title_other": "Bị chặn bởi {{count}} tác vụ",
+    "marker_ended": "{{finished}}/{{total}} đã kết thúc",
+    "marker_more": "thêm {{count}}",
+    "marker_more_other": "thêm {{count}}",
+    "marker_auto_start": "{{name}} sẽ tự động bắt đầu khi các tác vụ này kết thúc.",
+    "marker_notify": "{{name}} sẽ được thông báo khi các tác vụ này kết thúc.",
+    "marker_unavailable": "{{name}} hiện không chạy được nên sẽ không có gì bắt đầu khi các tác vụ này kết thúc.",
+    "marker_unassigned": "Chưa có người được giao nên sẽ không có gì bắt đầu khi các tác vụ này kết thúc."
   }
 }

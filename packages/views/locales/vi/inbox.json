@@ -70,6 +70,8 @@
     "retry_with_context": "Thử lại với ngữ cảnh",
     "edit_advanced": "Mở biểu mẫu đầy đủ",
     "autopilot_quota_exceeded_body": "Không gian làm việc này đã đạt giới hạn {{limit}} lần chạy tự động hóa trong kỳ hiện tại. Các lần chạy tự động hóa tiếp theo sẽ không bắt đầu cho đến khi hạn mức được đặt lại vào {{resetAt}}, hoặc cho đến khi không gian làm việc được nâng cấp hoặc mua thêm lần chạy.",
+    "app_tool_calls_quota_exceeded_body": "Workspace này đã dùng hết {{limit}} lệnh gọi ứng dụng của tháng này. Agent không thể chạy công cụ ứng dụng cho đến khi hạn mức đặt lại {{resetAt}}, hoặc khi workspace nâng cấp hay thêm chỗ.",
+    "app_tool_calls_quota_action": "Quản lý thanh toán",
     "project_owner_joined_body": "{{name}} là chủ sở hữu không gian làm việc và đã tự thêm mình vào dự án riêng tư này. Giờ họ có thể xem nhiệm vụ, bình luận và tệp đính kèm của dự án.",
     "open_project": "Mở dự án",
     "open_app": "Mở ứng dụng",
@@ -108,6 +110,7 @@
     "children_done": "Nhiệm vụ con đã xong",
     "brief_ready": "Bản tóm tắt đã sẵn sàng",
     "autopilot_quota_exceeded": "Đã đạt giới hạn lần chạy tự động hóa",
+    "app_tool_calls_quota_exceeded": "Đã đạt giới hạn lệnh gọi ứng dụng",
     "issue_created": "Nhiệm vụ mới",
     "project_owner_joined": "Chủ sở hữu đã tham gia dự án",
     "app_action_requested": "Cần bạn xác nhận",
@@ -115,7 +118,8 @@
     "app_connect_requested": "Kết nối một ứng dụng",
     "app_action_result": "Kết quả thao tác ứng dụng",
     "doc_comment": "Bình luận mới trong tài liệu",
-    "doc_mentioned": "Được nhắc đến trong tài liệu"
+    "doc_mentioned": "Được nhắc đến trong tài liệu",
+    "blockers_done": "Các tác vụ đang chờ đã kết thúc"
   },
   "labels": {
     "set_status_to": "Đặt trạng thái thành",
@@ -131,6 +135,7 @@
     "created_with_agent": "Đã tạo cùng tác nhân: {{identifier}}",
     "failed_with_detail": "Thất bại: {{detail}}",
     "autopilot_quota_blocked": "Lần chạy bị chặn vì đã đạt giới hạn",
+    "app_tool_calls_quota_blocked": "Agent không còn chạy được công cụ ứng dụng trong tháng này",
     "children_done_stage": "Nhiệm vụ con của giai đoạn {{stage}} đã xong"
   },
   "toasts": {

@@ -16,7 +16,7 @@ UPDATE agent_task_queue
 SET status = 'cancelled', completed_at = now(), prepare_lease_expires_at = NULL,
     cancelled_by_type = 'system', cancelled_by_id = NULL, cancelled_by_name = NULL
 WHERE agent_id = $1 AND status IN ('queued', 'deferred')
-RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, chat_session_id, autopilot_run_id, attempt, max_attempts, parent_task_id, failure_reason, trigger_summary, force_fresh_session, is_leader_task, wait_reason, initiator_user_id, handoff_note, prepare_lease_expires_at, squad_id, runtime_mcp_overlay, escalation_for_task_id, fire_at, originator_user_id, runtime_connected_apps, coalesced_comment_ids, delivered_comment_ids, chat_input_task_id, chat_finalize_deferred_at, originator_source, delegated_from_task_id, retry_of_task_id, rerun_of_task_id, rule_version_id, trigger_evidence_kind, trigger_evidence_ref_id, accountable_user_id, session_rollout_missing, retired_session_id, quick_actions_disabled, regenerate_quick_actions_for, branch_name, durable_work_dir, channel_context_revision, comment_thread_id, cancelled_by_type, cancelled_by_id, cancelled_by_name, issue_snapshot, workflow_step, branch_merge_status, branch_merge_error, usage_squad_id, budget_accounted_micros, reply_chat_session_id, chat_route
+RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, chat_session_id, autopilot_run_id, attempt, max_attempts, parent_task_id, failure_reason, trigger_summary, force_fresh_session, is_leader_task, wait_reason, initiator_user_id, handoff_note, prepare_lease_expires_at, squad_id, runtime_mcp_overlay, escalation_for_task_id, fire_at, originator_user_id, runtime_connected_apps, coalesced_comment_ids, delivered_comment_ids, chat_input_task_id, chat_finalize_deferred_at, originator_source, delegated_from_task_id, retry_of_task_id, rerun_of_task_id, rule_version_id, trigger_evidence_kind, trigger_evidence_ref_id, accountable_user_id, session_rollout_missing, retired_session_id, quick_actions_disabled, regenerate_quick_actions_for, branch_name, durable_work_dir, channel_context_revision, comment_thread_id, cancelled_by_type, cancelled_by_id, cancelled_by_name, issue_snapshot, workflow_step, branch_merge_status, branch_merge_error, usage_squad_id, doc_id, doc_thread_id, doc_comment_id, budget_accounted_micros, reply_chat_session_id, chat_route
 `
 
 // Retiring an agent cancels what it has not started. Running work finishes.
@@ -93,6 +93,9 @@ func (q *Queries) CancelQueuedTasksByAgent(ctx context.Context, agentID pgtype.U
 			&i.BranchMergeStatus,
 			&i.BranchMergeError,
 			&i.UsageSquadID,
+			&i.DocID,
+			&i.DocThreadID,
+			&i.DocCommentID,
 			&i.BudgetAccountedMicros,
 			&i.ReplyChatSessionID,
 			&i.ChatRoute,
@@ -112,7 +115,7 @@ UPDATE agent_task_queue
 SET status = 'cancelled', completed_at = now(), prepare_lease_expires_at = NULL,
     cancelled_by_type = 'system', cancelled_by_id = NULL, cancelled_by_name = NULL
 WHERE squad_id = $1 AND status IN ('queued', 'deferred')
-RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, chat_session_id, autopilot_run_id, attempt, max_attempts, parent_task_id, failure_reason, trigger_summary, force_fresh_session, is_leader_task, wait_reason, initiator_user_id, handoff_note, prepare_lease_expires_at, squad_id, runtime_mcp_overlay, escalation_for_task_id, fire_at, originator_user_id, runtime_connected_apps, coalesced_comment_ids, delivered_comment_ids, chat_input_task_id, chat_finalize_deferred_at, originator_source, delegated_from_task_id, retry_of_task_id, rerun_of_task_id, rule_version_id, trigger_evidence_kind, trigger_evidence_ref_id, accountable_user_id, session_rollout_missing, retired_session_id, quick_actions_disabled, regenerate_quick_actions_for, branch_name, durable_work_dir, channel_context_revision, comment_thread_id, cancelled_by_type, cancelled_by_id, cancelled_by_name, issue_snapshot, workflow_step, branch_merge_status, branch_merge_error, usage_squad_id, budget_accounted_micros, reply_chat_session_id, chat_route
+RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, chat_session_id, autopilot_run_id, attempt, max_attempts, parent_task_id, failure_reason, trigger_summary, force_fresh_session, is_leader_task, wait_reason, initiator_user_id, handoff_note, prepare_lease_expires_at, squad_id, runtime_mcp_overlay, escalation_for_task_id, fire_at, originator_user_id, runtime_connected_apps, coalesced_comment_ids, delivered_comment_ids, chat_input_task_id, chat_finalize_deferred_at, originator_source, delegated_from_task_id, retry_of_task_id, rerun_of_task_id, rule_version_id, trigger_evidence_kind, trigger_evidence_ref_id, accountable_user_id, session_rollout_missing, retired_session_id, quick_actions_disabled, regenerate_quick_actions_for, branch_name, durable_work_dir, channel_context_revision, comment_thread_id, cancelled_by_type, cancelled_by_id, cancelled_by_name, issue_snapshot, workflow_step, branch_merge_status, branch_merge_error, usage_squad_id, doc_id, doc_thread_id, doc_comment_id, budget_accounted_micros, reply_chat_session_id, chat_route
 `
 
 func (q *Queries) CancelQueuedTasksBySquad(ctx context.Context, squadID pgtype.UUID) ([]AgentTaskQueue, error) {
@@ -188,6 +191,9 @@ func (q *Queries) CancelQueuedTasksBySquad(ctx context.Context, squadID pgtype.U
 			&i.BranchMergeStatus,
 			&i.BranchMergeError,
 			&i.UsageSquadID,
+			&i.DocID,
+			&i.DocThreadID,
+			&i.DocCommentID,
 			&i.BudgetAccountedMicros,
 			&i.ReplyChatSessionID,
 			&i.ChatRoute,
@@ -637,7 +643,7 @@ func (q *Queries) SetOrgChangeRollbackProposal(ctx context.Context, arg SetOrgCh
 const unarchiveSquad = `-- name: UnarchiveSquad :one
 UPDATE squad SET archived_at = NULL, archived_by = NULL, updated_at = now()
 WHERE id = $1 AND workspace_id = $2
-RETURNING id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, autonomy_level, template_key, active_workflow_id
+RETURNING id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, handoff_mode, autonomy_level, template_key, active_workflow_id
 `
 
 type UnarchiveSquadParams struct {
@@ -663,6 +669,7 @@ func (q *Queries) UnarchiveSquad(ctx context.Context, arg UnarchiveSquadParams) 
 		&i.Instructions,
 		&i.FloorID,
 		&i.CompanySlot,
+		&i.HandoffMode,
 		&i.AutonomyLevel,
 		&i.TemplateKey,
 		&i.ActiveWorkflowID,

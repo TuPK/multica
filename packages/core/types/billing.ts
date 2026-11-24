@@ -213,6 +213,12 @@ export interface WorkspaceSubscriptionEntitlements {
   limits: {
     issueCount: WorkspaceEntitlementLimit;
     autopilotRuns: WorkspaceEntitlementLimit;
+    /** Attachment storage in bytes (MUL-9489); absent from older Cloud. */
+    storageBytes?: WorkspaceEntitlementLimit | null;
+    /** Dashboard history range in days. Null when Cloud did not send it. */
+    dashboardHistoryDays?: WorkspaceEntitlementLimit | null;
+    /** Monthly app calls (MUL-10047); absent from older Cloud. */
+    appToolCalls?: WorkspaceEntitlementLimit | null;
   };
   currentPeriodEnd: string | null;
   snapshotExpiresAt: string | null;
@@ -542,6 +548,28 @@ export interface StorageUsage {
   limitBytes: number | null;
   /** Set only under enforce: observe never refuses an upload. */
   reached: boolean | null;
+}
+
+/**
+ * The plan's monthly app call limit (MUL-10047): calls agents send to
+ * connected apps, shared by the workspace. `off` means no limit applies,
+ * which is also every self-hosted workspace; the figures are null then.
+ */
+export interface AppCallUsage {
+  action: "off" | "observe" | "enforce";
+  used: number | null;
+  limit: number | null;
+  /** Set only under enforce: observe never refuses a call. */
+  reached: boolean | null;
+  resetAt: string | null;
+  /** This period's calls per person, for owners and admins; empty otherwise. */
+  members: AppCallMemberUsage[];
+}
+
+export interface AppCallMemberUsage {
+  /** Null for runs no person started. */
+  userId: string | null;
+  calls: number;
 }
 
 export interface MemberLimit {

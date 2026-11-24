@@ -11,6 +11,7 @@ import { FeedbackModal } from "./feedback";
 import { SetParentIssueModal } from "./set-parent-issue";
 import { MarkDuplicateIssueModal } from "./mark-duplicate-issue";
 import { AddChildIssueModal } from "./add-child-issue";
+import { AddBlockerIssueModal } from "./add-blocker-issue";
 import { AddProjectIssueModal } from "./add-project-issue";
 import { RenameIssueModal } from "./rename-issue";
 import { RenameProjectModal } from "./rename-project";
@@ -178,6 +179,17 @@ export function ModalRegistry() {
       case "issue-add-child":
         activeModal = (
           <AddChildIssueModal
+            key={sessionKey}
+            open={isOpen}
+            onClose={close}
+            onOpenChangeComplete={handleOpenChangeComplete}
+            data={currentData}
+          />
+        );
+        break;
+      case "issue-add-blocker":
+        activeModal = (
+          <AddBlockerIssueModal
             key={sessionKey}
             open={isOpen}
             onClose={close}

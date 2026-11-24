@@ -375,6 +375,13 @@ describe("useIssueActions", () => {
     });
 
     act(() => {
+      result.current.openAddBlocker();
+    });
+    expect(mockOpenModal).toHaveBeenLastCalledWith("issue-add-blocker", {
+      issueId: "issue-1",
+    });
+
+    act(() => {
       result.current.openCreateSubIssue();
     });
     expect(mockOpenModal).toHaveBeenLastCalledWith("create-issue", {

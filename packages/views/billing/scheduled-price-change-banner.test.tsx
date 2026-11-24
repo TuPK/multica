@@ -64,6 +64,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
 }));
 
 vi.mock("@multica/core/billing", () => ({
+  appCallUsageOptions: (wsId: string) => ({ queryKey: ["workspace-app-call-usage", wsId] }),
+  resolveAppCallRow: () => null,
   workspaceBillingProfileOptions: (wsId: string) => ({
     queryKey: ["workspace-subscriptions", wsId, "billing-profile"],
   }),

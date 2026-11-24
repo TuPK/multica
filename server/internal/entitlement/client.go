@@ -497,7 +497,8 @@ func normalizeGate(name GateName, wire wireGate) (Gate, error) {
 	if periodFields != 0 && periodFields != 3 {
 		return Gate{}, ErrInvalidPolicy
 	}
-	if name == GateAutopilotRuns && periodFields != 3 {
+	// A budget that resets needs its period.
+	if (name == GateAutopilotRuns || name == GateAppToolCalls) && periodFields != 3 {
 		return Gate{}, ErrInvalidPolicy
 	}
 	// A day count: positive, within the product's range, never a period.

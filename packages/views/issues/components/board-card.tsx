@@ -34,6 +34,7 @@ import { LabelChip } from "../../labels/label-chip";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { AgentRunTranscriptButton } from "./agent-run-transcript-button";
 import { CustomStatusChip, useIsCustomStatus } from "./custom-status-chip";
+import { IssueBlockedMarker } from "./issue-blockers";
 import { IssueDuplicateOfMarker } from "./issue-duplicates";
 import { RunQueueControl, RunQueueWaitingLabel } from "./run-queue-control";
 import { IssuePullRequestChips, useIssuePullRequestSummaries } from "./pull-request-chips";
@@ -240,7 +241,8 @@ export const BoardCardContent = memo(function BoardCardContent({
         <div className="flex items-center gap-1.5 min-w-0">
           {priorityIconNode}
           <p className="text-caption text-muted-foreground truncate">{issue.identifier}</p>
-          <IssueDuplicateOfMarker issue={issue} insideLink />
+          <IssueBlockedMarker issue={issue} />
+            <IssueDuplicateOfMarker issue={issue} insideLink />
         </div>
         <div className="flex items-center gap-1">
           {assigneeAgentId && (

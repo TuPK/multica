@@ -95,13 +95,14 @@ func TestPlatformPolicyFixturesPassNormalizePolicy(t *testing.T) {
 		if fetched.snapshot.policyRevision <= 0 || fetched.snapshot.cloudValidUntil.IsZero() {
 			t.Errorf("%s: snapshot = %+v", name, fetched.snapshot)
 		}
-		// The platform serves the fork's gates and storage_bytes, not members or
+		// The platform serves the fork's gates and storage_bytes, not members,
+		// app_tool_calls or
 		// dashboard_history_days.
 		if want := len(requiredGates) + len(optionalGates) + 1; len(wire.Gates) != want {
 			t.Errorf("%s: %d gates, want the %d the client reads", name, len(wire.Gates), want)
 		}
 		for gate := range fetched.snapshot.gates {
-			if gate == GateMembers || gate == GateDashboardHistoryDays {
+			if gate == GateMembers || gate == GateDashboardHistoryDays || gate == GateAppToolCalls {
 				continue
 			}
 			if _, ok := wire.Gates[string(gate)]; !ok {

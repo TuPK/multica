@@ -4,6 +4,7 @@ import type { MemberRole } from "./workspace";
 import type { Project, ProjectStatus } from "./project";
 import type { IssueOutcome } from "./issue-workflow";
 export interface CreateIssueRequest {
+ blocked_by?: string[];
   title: string;
   description?: string;
   status?: IssueStatus;
@@ -57,6 +58,8 @@ export type CreateCommentSubIssueRequest =
   | CreateCommentSubIssueAgentRequest;
 
 export interface UpdateIssueRequest {
+ blocked_by?: string[];
+ remove_blocked_by?: string[];
   /** Legacy aggregate compare-and-swap token. New text editors use field
    * baselines so unrelated issue activity does not reject their edits. */
   expected_revision?: number;
@@ -197,6 +200,7 @@ export interface IssueTriggerPreview {
 }
 
 export interface ListIssuesParams {
+ blocked?: boolean;
   limit?: number;
   offset?: number;
   workspace_id?: string;
@@ -359,7 +363,7 @@ export type IssueTableScope =
   | { kind: "creator"; actor: IssueActorRef }
   | { kind: "my"; relation: "assigned" | "created" | "involved" | "any" };
 
-export type IssueTableRelation = "assigned" | "created" | "my_agents" | "subscribed";
+export type IssueTableRelation = "assigned" | "created" | "my_agents" | "subscribed" | "blocked";
 
 export type IssueTableNegatableFilter =
   | "statuses"
