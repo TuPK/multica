@@ -410,24 +410,22 @@ func normalizePolicy(wire wirePolicy) (fetchedPolicy, error) {
 		return fetchedPolicy{}, ErrInvalidPolicy
 	}
 	// Unknown gates are ignored for additive compatibility.
-	gates := make(map[GateName]Gate, len(requiredGates)+len(optionalGates)+len(leniantGates))
-	for _, name := range requiredGates {
-		wireGate, ok := wire.Gates[string(name)]
-		if !ok {
-			return fetchedPolicy{}, ErrInvalidPolicy
-		}
-		gate, err := normalizeGate(name, wireGate)
-		if err != nil {
-			return fetchedPolicy{}, err
-		}
-		gates[name] = gate
+	gates := make(map[GateName]Gate, 5)
+	wireAutopilot, ok := wire.Gates[string(GateAutopilotRuns)]
+	if !ok {
+		return fetchedPolicy{}, ErrInvalidPolicy
 	}
-	// Gates added after autopilot_runs by upstream are read on their own, like
-	// features: a missing or malformed one is off for that gate alone, so Cloud
-	// and Delegora can deploy in either order and a bad value cannot turn the
-	// autopilot quota off.
+	autopilot, err := normalizeGate(GateAutopilotRuns, wireAutopilot)
+	if err != nil {
+		return fetchedPolicy{}, err
+	}
+	gates[GateAutopilotRuns] = autopilot
+	// Gates added after autopilot_runs are optional and read on their own,
+	// like features: a missing or malformed one is off for that gate alone, so
+	// Cloud and Multica can deploy in either order and a bad value cannot turn
+	// the autopilot quota off.
 	gateReasons := make(map[GateName]Reason)
-	for _, name := range leniantGates {
+	for _, name := range []GateName{GateMembers, GateStorageBytes, GateDashboardHistoryDays, GateAppToolCalls} {
 		if wire.undecodableGates[string(name)] {
 			gates[name] = Gate{Action: ActionOff}
 			gateReasons[name] = ReasonGateInvalid
@@ -447,19 +445,8 @@ func normalizePolicy(wire wirePolicy) (fetchedPolicy, error) {
 		}
 		gates[name] = gate
 	}
-	// A gate name this client does not know is never read, so an older client
-	// parses a newer policy. A known optional gate that is absent is off.
-	for _, name := range optionalGates {
-		wireGate, ok := wire.Gates[string(name)]
-		if !ok {
-			gates[name] = Gate{Action: ActionOff}
-			continue
-		}
-		gate, err := normalizeGate(name, wireGate)
-		if err != nil {
-			return fetchedPolicy{}, err
-		}
-		gates[name] = gate
+	if err := normalizeForkGates(wire, gates); err != nil {
+		return fetchedPolicy{}, err
 	}
 	return fetchedPolicy{
 		snapshot: policySnapshot{

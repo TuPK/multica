@@ -13,16 +13,6 @@ type GateName string
 
 const (
 	GateAutopilotRuns GateName = "autopilot_runs"
-
-	// GateIssueCount limits the issue rows of a workspace. Upstream removed
-	// it; the fork's platform still serves it.
-	GateIssueCount GateName = "issue_count"
-
-	// Resource gates, counted by the enforcement point when it creates the
-	// resource.
-	GateAgents   GateName = "agents"
-	GateRuntimes GateName = "runtimes"
-
 	// GateMembers caps a workspace's members. Guests take no slot. It has no
 	// period: the limit is a ceiling on headcount, not a budget that resets.
 	GateMembers GateName = "members"
@@ -36,66 +26,24 @@ const (
 	// provider in a period. Like autopilot_runs it is a budget with a
 	// Cloud-defined period that resets.
 	GateAppToolCalls GateName = "app_tool_calls"
-
-	// Plan values. The API rate limit and the audit retention job read the
-	// limit; the feature flags below are `off` when the plan includes the
-	// feature and `enforce` with limit 0 when it does not.
-	GateAPIRatePerMinute   GateName = "api_rate_per_minute"
-	GateAuditRetentionDays GateName = "audit_retention_days"
-	GateSSO                GateName = "sso"
-	GateWorkspacePolicies  GateName = "workspace_policies"
-	GateViewerRole         GateName = "viewer_role"
-	GateAuditExport        GateName = "audit_export"
-
-	// GateMemberGroups caps the account groups of a workspace (spec 7b.2). The
-	// group routes count it when a group is created.
-	GateMemberGroups GateName = "member_groups"
-
-	// GateMaxWorkspaces caps the workspaces of a tenant (spec R6 section 5.7).
-	// The platform serves the tenant's limit in the policy of every workspace of
-	// the tenant; CreateWorkspace counts it when a workspace joins a tenant.
-	GateMaxWorkspaces GateName = "max_workspaces"
 )
 
 // MaxDashboardHistoryDays is the largest dashboard_history_days limit Cloud
 // may send. A larger value is a malformed gate.
 const MaxDashboardHistoryDays = 365
 
-// requiredGates must be present in every policy. An absent one makes the
-// policy invalid.
-var requiredGates = []GateName{GateAutopilotRuns}
-
-// optionalGates are the fork's added gates. Cloud and older platform builds do
-// not send them, and an absent gate is `off`. A malformed one invalidates the
-// policy.
-var optionalGates = []GateName{
-	GateIssueCount, GateAgents, GateRuntimes,
-	GateAPIRatePerMinute, GateAuditRetentionDays,
-	GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport,
-	GateMemberGroups, GateMaxWorkspaces,
-}
-
-// leniantGates are read on their own: a missing or malformed one is off for
-// that gate alone and records why, so a bad value cannot turn the autopilot
-// quota off.
-var leniantGates = []GateName{GateMembers, GateStorageBytes, GateDashboardHistoryDays, GateAppToolCalls}
-
 func (n GateName) valid() bool {
 	switch n {
-	case GateAutopilotRuns, GateIssueCount, GateAgents, GateRuntimes,
-		GateMembers, GateStorageBytes, GateDashboardHistoryDays, GateAppToolCalls,
-		GateAPIRatePerMinute, GateAuditRetentionDays,
-		GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport,
-		GateMemberGroups, GateMaxWorkspaces:
+	case GateAutopilotRuns, GateMembers, GateStorageBytes, GateDashboardHistoryDays, GateAppToolCalls:
 		return true
 	default:
-		return false
+		return forkGateValid(n)
 	}
 }
 
 type Action string
 
-// Cloud chooses one of these per gate. ActionObserve is also Delegora's local
+// Cloud chooses one of these per gate. ActionObserve is also Multica's local
 // downgrade of a stale cached ActionEnforce.
 const (
 	ActionOff     Action = "off"
