@@ -152,6 +152,7 @@ import type {
   ChatMessagesPage,
   ChatDraftRestoresResponse,
   ChatWakeup,
+  ChatWakeupTiming,
   ChatPendingTask,
   PrioritizeQueuedChatTaskResponse,
   PendingChatTasksResponse,
@@ -5160,6 +5161,13 @@ export class ApiClient extends ForkApiMethods {
     }
     return parseWithFallback(raw, ChatWakeupListSchema, EMPTY_CHAT_WAKEUP_LIST, {
       endpoint: "GET /api/chat/sessions/{id}/wakeups",
+    });
+  }
+
+  async rescheduleChatWakeup(sessionId: string, wakeupId: string, timing: ChatWakeupTiming): Promise<void> {
+    await this.fetch(`/api/chat/sessions/${sessionId}/wakeups/${wakeupId}`, {
+      method: "PATCH",
+      body: JSON.stringify(timing),
     });
   }
 

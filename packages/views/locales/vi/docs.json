@@ -98,6 +98,6 @@
       "delete": "Không thể xóa bình luận",
       "resolve": "Không thể cập nhật bình luận"
     },
-    "run_waiting_runtime": "Đang chờ runtime hoạt động trở lại"
+    "run_waiting_retry": "Đang chờ thử lại"
   }
 }

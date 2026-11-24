@@ -42,6 +42,7 @@ export interface UseIssueActionsResult {
   openAddChild: () => void;
   openMarkDuplicate: () => void;
   openAddBlocker: () => void;
+  openAddBlocking: () => void;
   openDeleteConfirm: (opts?: { onDeletedFallbackPath?: string }) => void;
   /** False until company knowledge is ready; the save entry is hidden then. */
   canSaveToKnowledge: boolean;
@@ -341,6 +342,11 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     openModal("issue-add-blocker", { issueId });
   }, [openModal, issueId]);
 
+  const openAddBlocking = useCallback(() => {
+    if (!issueId) return;
+    openModal("issue-add-blocking", { issueId });
+  }, [openModal, issueId]);
+
   const openDeleteConfirm = useCallback(
     (opts?: { onDeletedFallbackPath?: string }) => {
       if (!issueId) return;
@@ -370,6 +376,7 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     openAddChild,
     openMarkDuplicate,
     openAddBlocker,
+    openAddBlocking,
     openDeleteConfirm,
     canSaveToKnowledge,
     openSaveToKnowledge,

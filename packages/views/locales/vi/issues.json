@@ -593,14 +593,20 @@
       "wakeups": "Thêm lịch đánh thức",
       "pull_requests": "Thêm pull request",
       "environments": "Thêm môi trường",
-      "wakeups_pull_requests": "Thêm lịch đánh thức hoặc pull request",
-      "wakeups_environments": "Thêm lịch đánh thức hoặc môi trường",
-      "pull_requests_environments": "Thêm pull request hoặc môi trường",
-      "all": "Thêm lịch đánh thức, pull request hoặc môi trường",
+      "relations": "Thêm quan hệ",
+      "pair": "Thêm {{first}} hoặc {{second}}",
+      "many": "Thêm...",
+      "noun": {
+        "wakeups": "lượt đánh thức",
+        "pull_requests": "pull request",
+        "environments": "môi trường",
+        "relations": "quan hệ"
+      },
       "menu": {
         "wakeups": "Lịch đánh thức",
         "pull_requests": "Pull request",
-        "environments": "Môi trường"
+        "environments": "Môi trường",
+        "relations": "Quan hệ"
       }
     },
     "footer": {
@@ -1078,6 +1084,7 @@
     "remove_parent_issue_success": "Đã gỡ nhiệm vụ cha",
     "add_sub_issue": "Thêm nhiệm vụ con...",
     "add_blocker": "Thêm tác vụ chặn...",
+    "add_blocking": "Chặn tác vụ khác...",
     "delete_issue": "Xóa nhiệm vụ",
     "mark_duplicate": "Đánh dấu là trùng lặp...",
     "save_to_knowledge": "Lưu vào kiến thức",
@@ -2619,15 +2626,25 @@
     "retry": "Thử lại",
     "dismiss": "Bỏ qua"
   },
+  "relations": {
+    "title": "Quan hệ",
+    "add": "Thêm quan hệ",
+    "wait_title": "Chờ tác vụ khác",
+    "block_title": "Chặn tác vụ khác",
+    "blocked_by": "Bị chặn bởi",
+    "blocking": "Đang chặn",
+    "stage_tag": "Giai đoạn",
+    "stage_tag_hint": "Do các giai đoạn của issue cha đặt",
+    "add_blocker_hint": "Tác vụ này bắt đầu sau khi tác vụ kia kết thúc",
+    "add_blocking_hint": "Tác vụ kia bắt đầu sau khi tác vụ này kết thúc",
+    "mark_duplicate_hint": "Hủy tác vụ này",
+    "blocking_picker_hint": "Chọn tác vụ không thể bắt đầu cho đến khi tác vụ này kết thúc."
+  },
   "waiting": {
-    "title": "Đang chờ",
-    "add": "Thêm tác vụ chặn",
     "remove": "Gỡ {{identifier}}",
     "count": "Đang chờ {{count}} tác vụ",
-    "stage": "Các giai đoạn trước · {{finished}}/{{total}} đã kết thúc",
     "hint": "Khi các tác vụ này kết thúc, người được giao sẽ tự động bắt đầu hoặc nhận thông báo.",
     "hint_backlog": "Tác vụ này đang ở Backlog nên sẽ không tự bắt đầu khi các tác vụ này kết thúc. Nó chỉ bắt đầu sau khi rời Backlog.",
-    "empty": "Không có tác vụ nào để chờ",
     "picker_hint": "Chọn tác vụ phải kết thúc trước khi tác vụ này có thể bắt đầu.",
     "restricted": "{{count}} điều kiện tiên quyết bị hạn chế",
     "ended": "Các tác vụ đang chờ đã kết thúc",

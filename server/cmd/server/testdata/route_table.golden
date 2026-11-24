@@ -463,6 +463,7 @@ PATCH /api/budgets/{id} mw=13 github.com/multica-ai/multica/server/internal/hand
 PATCH /api/chat/sessions/{sessionId}/ mw=13 github.com/multica-ai/multica/server/internal/handler.(*Handler).UpdateChatSession-fm
 PATCH /api/chat/sessions/{sessionId}/archive mw=13 github.com/multica-ai/multica/server/internal/handler.(*Handler).SetChatSessionArchived-fm
 PATCH /api/chat/sessions/{sessionId}/pin mw=13 github.com/multica-ai/multica/server/internal/handler.(*Handler).SetChatSessionPinned-fm
+PATCH /api/chat/sessions/{sessionId}/wakeups/{wakeupId} mw=13 github.com/multica-ai/multica/server/internal/handler.(*Handler).RescheduleChatSessionWakeup-fm
 PATCH /api/doc-folders/{id}/ mw=14 github.com/multica-ai/multica/server/internal/handler.(*Handler).UpdateDocFolder-fm
 PATCH /api/docs/{id}/ mw=14 github.com/multica-ai/multica/server/internal/handler.(*Handler).UpdateDoc-fm
 PATCH /api/goals/{id}/ mw=13 github.com/multica-ai/multica/server/internal/handler.(*Handler).UpdateGoal-fm

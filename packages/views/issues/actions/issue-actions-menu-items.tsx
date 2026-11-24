@@ -147,6 +147,7 @@ export function IssueActionsMenuItems({
     openAddChild,
     openMarkDuplicate,
     openAddBlocker,
+    openAddBlocking,
     openDeleteConfirm,
     canSaveToKnowledge,
     openSaveToKnowledge,
@@ -509,6 +510,10 @@ export function IssueActionsMenuItems({
               <P.Item onClick={openAddBlocker}>
                 <Flag className="h-3.5 w-3.5" />
                 {t(($) => $.actions.add_blocker)}
+              </P.Item>
+              <P.Item onClick={openAddBlocking}>
+                <Flag className="h-3.5 w-3.5" />
+                {t(($) => $.actions.add_blocking)}
               </P.Item>
               {/* Marking a duplicate cancels the issue. (MUL-7420) */}
               {workflowAllowsStatus(workflow, "cancelled") && (
