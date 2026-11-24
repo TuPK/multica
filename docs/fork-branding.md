@@ -35,7 +35,7 @@ The desktop app now uses `productName`/`package.json` `name` = **Delegora**, `ap
 
 ## Rules for future syncs and merges from upstream
 
-Sync with `pnpm sync:upstream` (see `docs/specs/upstream-sync/spec.md`); first run `bash scripts/sync/install.sh` once per checkout. The tooling applies the rules below for you; they are listed so a conflict you resolve by hand follows them.
+Sync by following `docs/specs/upstream-sync/runbook.md` (`pnpm sync:upstream`; rationale in `spec.md`); first run `bash scripts/sync/install.sh` once per checkout. The tooling applies the rules below for you; they are listed so a conflict you resolve by hand follows them.
 
 1. A line upstream adds that says `Multica` in display text becomes `Delegora` (merge driver `merge-brand`, post-merge rebrand, and `pnpm brand:check`). The rule itself lives in `scripts/sync/brand-rules.mjs`.
 2. Where this fork already wrote `Delegora` or deliberately kept `Multica`, keep its wording and take upstream's logic, identifiers and protocol changes.

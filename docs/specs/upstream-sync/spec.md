@@ -1,6 +1,6 @@
 # Giảm conflict khi sync upstream mà không mất tính năng fork: đặc tả
 
-Trạng thái: **đặc tả đã chốt hướng, chưa có mã.** Kế hoạch từng bước: [plan.md](plan.md). Hai tài liệu này là nguồn duy nhất cho việc triển khai.
+Trạng thái: **đã triển khai (2026-11-24).** Các bước thực hiện một lần sync: [runbook.md](runbook.md). Kế hoạch và trạng thái từng bước: [plan.md](plan.md). Các mục dưới đây là lý do và số liệu; tên `scripts/sync/*` là công cụ thật trong repo.
 
 Ngày rà soát: 2026-11-24. Đọc mã ở `main` = `origin/main` = `0b5302a8d` (sync #4), `upstream/main` = `6368504e1`. Mọi con số dưới đây do tôi đo bằng lệnh ở mục 9; số nào là ước tính thì ghi "ước tính".
 
