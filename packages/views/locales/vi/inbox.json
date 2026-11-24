@@ -170,6 +170,8 @@
   },
   "kept": {
     "archived": "Đã lưu trữ",
+    "undo_archive": "Hoàn tác lưu trữ",
+    "unsubscribed": "Đã hủy theo dõi",
     "leaves": "Sẽ rời khỏi Hộp thư đến khi bạn chuyển sang việc khác",
     "filtered": "Không còn khớp với bộ lọc",
     "changed_status": "Đã đổi thành {{status}}",

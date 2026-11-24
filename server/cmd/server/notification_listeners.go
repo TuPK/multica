@@ -1316,7 +1316,11 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 		notifyBriefReady(ctx, queries, bus, e)
 	})
 
-	// task:completed — no inbox notification (completion is visible from status change)
+	// task:completed — no notification of its own; a squad leader run that
+	// ends its squad's chain delivers the handoff that woke it
+	bus.Subscribe(protocol.EventTaskCompleted, func(e events.Event) {
+		deliverSquadResult(ctx, queries, bus, e)
+	})
 
 	// task:failed — notify all subscribers except the agent. A failed attempt
 	// with a retry pending is not the run's outcome: its retry child reports

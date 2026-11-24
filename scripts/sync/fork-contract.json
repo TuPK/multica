@@ -21,6 +21,16 @@
       ]
     },
     {
+      "id": "worktree-auto-merge",
+      "why": "Opt-in merge of finished worktree runs into the checked-out branch: daemon merge, completion report, project resource flag and its two UI toggles.",
+      "checks": [
+        { "kind": "exists", "path": "server/internal/daemon/execenv/local_worktree_merge.go" },
+        { "kind": "matches", "path": "server/internal/daemon/daemon.go", "pattern": "branchMergeStatus" },
+        { "kind": "matches", "path": "packages/views/projects/components/project-resources-section.tsx", "pattern": "pending\\.autoMerge" },
+        { "kind": "matches", "path": "packages/views/projects/components/project-resources-section.tsx", "pattern": "saveAutoMerge" }
+      ]
+    },
+    {
       "id": "billing-ui",
       "why": "Settings billing tab, return pages and limit-recovery dialog are fork code.",
       "checks": [
