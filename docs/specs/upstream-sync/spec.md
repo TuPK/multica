@@ -206,11 +206,11 @@ Quy tắc cho mã fork mới và cho việc dọn dần mã cũ:
 | # | Mục tiêu | Cách tách | Ghi chú |
 |---|---|---|---|
 | S1 | `server/cmd/migrate/main.go` (3/3) | map `concurrentIndexCleanups` của fork sang `fork_index_cleanups.go`, gộp lúc khởi tạo | **Đã làm (2026-11-24).** 186 mục chuyển nguyên văn sang `fork_index_cleanups.go`, `main.go` giờ trùng upstream từng byte. Gộp bằng `var _ = mergeForkIndexCleanups()`, **không** dùng `init()`: `preMigrationHooks` được dựng trong bộ khởi tạo biến, chạy trước mọi `init()`, nên dùng `init()` làm hook bị thiếu (test `TestConcurrentIndexCleanupsMatchTheirMigrations` đã bắt lỗi này) |
-| S2 | `handler/issue.go` (3/3), `service/task.go` (2) | tách logic flow/workflow của fork ra `issue_fork.go`, `task_fork.go`; chỗ còn lại là một dòng gọi | cần đọc từng khối; có test DB, chạy trên `multica_test` |
-| S3 | `issue-detail.tsx` (3/3), `chat-page.tsx`, `work-panel.tsx`, `settings-layout.tsx`, `settings-page.tsx` | đăng ký phần fork vào registry (hàng thuộc tính, tab) thay vì chèn JSX | thiết kế registry cần thử trên `issue-detail.tsx` trước, rồi mới nhân rộng |
-| S4 | `packages/core/api/client.ts`, `schemas.ts` | phương thức và schema của fork sang `client.fork.ts`, `schemas.fork.ts`; ghép bằng khai báo `interface ApiClient` + gán prototype | cần kiểm `sideEffects`, kiểu `this`, và mọi chỗ gọi (~746 phương thức `async` trong class; bao nhiêu cái của fork **chưa đếm**, T3.4 đếm trước) |
-| S5 | `server/cmd/server/router.go` | route fork vào `router_fork.go`, upstream chỉ gọi `registerForkRoutes` | 94 khối; làm sau S2 |
-| S6 | `packages/core/paths/*`, `routes.tsx` | đường dẫn và route fork vào file fork | |
+| S2 | `handler/issue.go` (3/3), `service/task.go` (2) | tách logic flow/workflow của fork ra `issue_fork.go`, `task_fork.go`; chỗ còn lại là một dòng gọi | **Đã làm một phần (2026-11-24).** Chuyển 6 khai báo nguyên khối và 2 khối trong hàm (`chooseCreateFlow`, `checkBatchFlow`) của `issue.go` (+594 → +314 dòng so với upstream), 10 khai báo của `task.go`. Test handler và service đầy đủ trên `multica_test` đều đạt. Phần còn lại là các sửa nhỏ nằm giữa logic upstream, không tách được mà không đổi cấu trúc |
+| S3 | `issue-detail.tsx` (3/3), `chat-page.tsx`, `work-panel.tsx`, `settings-layout.tsx`, `settings-page.tsx` | đăng ký phần fork vào registry (hàng thuộc tính, tab) thay vì chèn JSX | **Không làm (theo quy tắc dừng của plan).** Đo lại: phần fork trong từng file chỉ là +200/−23 (`issue-detail.tsx`), +38/−183, +20, +20/−49, +131/−28 dòng, toàn là sửa nhỏ nằm trong JSX và hook của component upstream, không có khai báo nguyên khối nào để tách. Một registry sẽ thêm cấu trúc cho từng chỗ cắm mà không bỏ được chỗ cắm. Xem lại nếu sổ cho thấy các file này vẫn conflict ở các lần sync sau |
+| S4 | `packages/core/api/client.ts`, `schemas.ts` | **Đã làm (2026-11-24).** Không dùng gộp khai báo hay gán prototype mà dùng kế thừa: `ApiClient extends ForkApiMethods` (`client.fork.ts`), 258 phương thức fork nguyên khối và 6 hàm/kiểu phụ trợ chuyển sang, kèm khai báo `abstract` cho các thành viên truyền tải (`fetch`, `fetchRaw`, `authHeaders`, `baseUrl`, ...) mà `client.ts` đổi từ `private` sang `protected`. `schemas.ts` đẩy 176 khai báo sang `schemas.fork.ts` và re-export bằng một dòng | Vòng phụ thuộc `client.ts`↔`client.fork.ts` chỉ dùng ở thời điểm gọi hàm, nên an toàn khi nạp; `schemas.fork.ts` không import giá trị từ `schemas.ts`. Phần còn lại trong `client.ts` (+1.638 dòng, trước là +4.193) là sửa xen giữa phương thức upstream. 15/15 typecheck, 446 file test của `core` đạt |
+| S5 | `server/cmd/server/router.go` | route fork vào `router_fork.go`, upstream chỉ gọi `registerForkRoutes` | **Đã làm một phần (2026-11-24).** Ba khối nguyên của fork (knowledge; pipeline, mục tiêu, công ty, quản trị, ngân sách, duyệt, brief; hub) sang `registerForkWorkspaceRoutes`, `router.go` giảm +676 → +426 dòng. Một test vàng `TestRouteTableMatchesGolden` ghi 907 dòng (phương thức, mẫu đường, số middleware, handler), đã khớp trước và sau; xem `testdata/route_table.golden`. Phần còn lại là route chèn giữa các nhóm của upstream |
+| S6 | `packages/core/paths/*`, `routes.tsx` | đường dẫn và route fork vào file fork | **Không làm.** Đo: `paths.ts` +26 dòng, `routes.tsx` +27, rải thành các dòng đơn lẻ trong bảng của upstream; không có khối nguyên để tách |
 
 Lợi ích của S1–S6 **không đo được bằng mô phỏng quá khứ** (lịch sử cũ không có seam); chỉ xác nhận được qua các lần sync sau. Vì vậy mỗi lần sync ghi lại số conflict vào sổ (mục 3.10) để thấy xu hướng, và S1–S6 chỉ làm cho các file thực sự lặp lại.
 
@@ -224,16 +224,22 @@ Lợi ích của S1–S6 **không đo được bằng mô phỏng quá khứ** (
 
 Bật `rerere.enabled` trong `scripts/sync/install.sh`. Kỳ vọng thấp: nó chỉ giúp khi cùng một cặp hunk quay lại, mà upstream luôn đổi. Chi phí gần bằng 0 nên vẫn bật.
 
-### 3.12 Số hiệu migration (điều tra, chưa quyết)
+### 3.12 Số hiệu migration (kết quả điều tra, 2026-11-24)
 
-Dữ kiện đã kiểm:
+Dữ kiện đã kiểm bằng thử nghiệm, không suy đoán:
 
-- Upstream đang ở `742` (sync #4 thêm 732–742). Fork có 358 số riêng trong dải 595–1040; 125 số trùng số của upstream nhưng khác tên tệp (ví dụ `604_office_floor_workspace_position_idx` của fork và `604_wecom_install_session_begin_rate_idx` của upstream).
-- Phiên bản migration là tên tệp bỏ hậu tố (`migrations.ExtractVersion`), nên hai tệp cùng số vẫn khác phiên bản; `migrations.go` sắp tên theo **chuỗi** (`sort.Strings`), không theo số.
-- Test `TestMigrationNumericPrefixesAreUnique` của upstream bắt số trùng từ 129; fork đã sửa `migrations_lint_test.go` (+238 dòng) để chạy được.
-- Upstream chạy ~4 migration mỗi ngày trong đợt sync này (11 trong 114 commit); dải 743–1040 của fork sẽ bị upstream đi vào trong vài tháng (ước tính, chưa theo dõi tốc độ dài hạn).
+- Phiên bản migration là tên tệp bỏ hậu tố (`migrations.ExtractVersion`); `schema_migrations` khóa theo phiên bản đó. Hai tệp cùng số nhưng khác tên là hai phiên bản khác nhau và đều được áp dụng. Fork có 358 số riêng trong dải 595–1040, 125 số trùng số của upstream nhưng khác tên (ví dụ `604_office_floor_workspace_position_idx` của fork và `604_wecom_install_session_begin_rate_idx` của upstream). Upstream đang ở `742`.
+- Runner sắp xếp tên tệp theo **chuỗi** (`sort.Strings` trong `migrations.Files`), không theo số. Hệ quả đo được: `1000_member_removal` đứng thứ 128, **trước** `100_user_timezone` (thứ 138). Trên DB trống, mọi migration `1000`–`1040` của fork chạy ngay sau nhóm `09x` và trước phần lớn nhóm `1xx`–`9xx`.
+- Thử cài mới: tạo DB trống `multica_p4_probe`, `go run ./cmd/migrate up`: áp dụng 1.127 migration, kết thúc `Done.`, rồi xóa DB thử. Nghĩa là cài mới hiện chạy đúng, vì các migration số lớn của fork không phụ thuộc bảng do migration số nhỏ tạo ra.
+- DB đã có sẵn: runner áp mọi tệp chưa có trong `schema_migrations` theo thứ tự chuỗi, kể cả tệp có số thấp hơn tệp đã áp (`AllVersions` ghi rõ trường hợp "out-of-order"). Nên migration `743_y` của upstream đến sau khi fork đã áp `800_x` vẫn được áp.
+- Test `TestMigrationNumericPrefixesAreUnique` của fork cho phép số trùng trong 713–899. Upstream ở 742 và thêm khoảng 4 migration mỗi ngày trong đợt sync #4, nên sẽ đi vào dải 900–1040 (nơi fork cũng có số) sau khoảng vài tuần đến vài tháng. Lúc đó test này đỏ dù runner không hề lỗi.
 
-Chưa biết: thứ tự áp dụng thực tế khi một DB đã chạy migration fork `800_x` rồi nhận migration upstream `743_y` sau đó; test lint đã sửa cho phép gì; số `1000+` sắp xếp trước `7xx` theo chuỗi có gây vấn đề không. T4.1 điều tra và đưa ra quyết định có kèm thử nghiệm trên `multica_test`, không đoán ở đây. Không đổi tên migration đã chạy ở bất kỳ DB nào.
+Quyết định:
+
+1. **Đã làm:** nới `forkSyncDuplicateLast` từ 899 lên 1999 (`server/internal/migrations/migrations_lint_test.go`), vì runner khóa theo tên đầy đủ. Test của upstream vẫn bắt trùng ở dải dưới 713 và từ 2000 trở lên.
+2. **Không đổi tên migration đã áp dụng** ở bất kỳ DB nào, và **không** chuyển fork sang dải số riêng: thứ tự chuỗi làm mọi số có tiền tố dài hơn nằm sai chỗ so với ý định, và dải riêng không cho thêm bảo đảm nào mà cài mới đã có.
+3. **Quy tắc cho migration mới của fork:** số mới = số cao nhất đang có trong repo + 1 (như `AGENTS.md`), viết idempotent, **không phụ thuộc** bảng do migration khác tạo trừ khi chắc nó sắp xếp theo chuỗi *trước* migration này; kiểm bằng cài mới trên DB trống (lệnh nằm trong checklist của `sync:upstream --finish`).
+4. **Rủi ro còn lại, thuộc upstream:** khi upstream đến `1000`, họ cũng sẽ gặp thứ tự chuỗi (`1000_` đứng trước `100_`). Cách họ sửa (đổi sang sắp theo số) cần được xem lại ở lần sync đó; fork đã đang sống với thứ tự chuỗi nên cần chạy thử cài mới trước khi nhận.
 
 ## 4. Rủi ro và cách chặn
 

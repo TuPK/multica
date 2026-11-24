@@ -110,7 +110,7 @@ export const CHECKLIST = [
   "pnpm test (serial on a loaded machine: turbo --concurrency=1)",
   "make test (go test -p 1 when the machine is loaded; DB tests use multica_test only)",
   "pnpm test:scripts",
-  "check new migrations are registered in server/cmd/migrate/main.go",
+  "check new migrations: concurrent-index ones registered (fork ones in server/cmd/migrate/fork_index_cleanups.go), and a fresh install works: scratch DB + `cd server && DATABASE_URL=<scratch> go run ./cmd/migrate up`, then drop it",
   "git add -A && git commit, push the branch, fast-forward main (docs/fork-branding.md, ledger.md)",
 ];
 

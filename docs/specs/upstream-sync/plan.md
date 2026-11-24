@@ -15,11 +15,11 @@ Ngôn ngữ: tiếng Việt; tên tệp, lệnh, mã giữ tiếng Anh.
 
 ## Trạng thái (2026-11-24)
 
-- Xong: P0 (T0.1 đến T0.3), P1 (T1.1 đến T1.6), P2 (T2.1 `sync:upstream`, T2.2 `brand:check` và rebrand, T2.3 `sync:vi`, T2.4 `sync:contract`). Số nghiệm thu ở spec mục 2.7 và 2.8: 29/37/30 conflict còn lại ở ba merge cũ.
-- Đã bỏ: T2.5 (không chạy định kỳ trên CI).
-- P3: T3.1 (S1) xong 2026-11-24. Chưa làm T3.2 đến T3.6.
-- Chưa làm: P4 (điều tra migration), P5 (cập nhật `docs/fork-branding.md`, `AGENTS.md`, bộ nhớ; sync thật đầu tiên).
-- Lệch so với kế hoạch: `.github/ci-paths.json` nhóm `scripts` có thêm `scripts/sync/**` và `.gitattributes`; `shard-timings.json` dùng `ours` và không cần tái sinh; driver JSON phủ thêm mọi `package.json` và hợp mảng chèn; `brand:check` dùng tệp nợ `scripts/sync/brand-debt.json` (66 file, 240 dòng còn `Multica` có sẵn) nên chỉ chặn chỗ **mới**, và nó chưa được thêm vào CI; `--finish` thêm bước kiểm marker conflict.
+- **Xong:** P0, P1, P2 (T2.1 đến T2.4), P3 (T3.1 S1 đủ; T3.2 S2, T3.4 S4, T3.5 S5 một phần hoặc đủ như ghi ở spec 3.9), P4 (T4.1, kết quả ở spec 3.12), P5 (T5.1; T5.2 phụ thuộc có commit mới của upstream).
+- **Không làm theo quy tắc dừng:** T3.3 (S3, registry UI) và T3.6 (S6, paths và routes): phần fork trong từng file chỉ là vài chục dòng sửa nhỏ giữa mã upstream, không có khối nguyên để tách; lý do đo được ghi ở spec 3.9. T2.5 (CI định kỳ) bỏ theo quyết định của người dùng.
+- **Còn lại:** T5.2, tức lần sync thật đầu tiên bằng quy trình mới. Chỉ làm khi người dùng yêu cầu sync. Sau lần đó điền `ledger.md` và xem file nào trong danh sách "hot" còn lặp lại.
+- Số đo bề mặt (`pnpm sync:surface`): 7.582 thêm, 1.732 sửa (758 chỉ-brand, 974 sửa thật), 94 xóa.
+- Lệch so với kế hoạch: `.github/ci-paths.json` nhóm `scripts` có thêm `scripts/sync/**` và `.gitattributes`; `shard-timings.json` dùng `ours`; driver JSON phủ thêm mọi `package.json` và hợp mảng chèn; `brand:check` dùng tệp nợ `brand-debt.json` (66 file, 240 dòng) và chưa vào CI; `--finish` kiểm marker conflict; S4 dùng kế thừa thay cho gộp khai báo; S1 gộp bằng biến khởi tạo thay vì `init()`.
 - Driver đã được định nghĩa trong cấu hình git của checkout này (`bash scripts/sync/install.sh`).
 
 ## 1. Tổng quan thứ tự

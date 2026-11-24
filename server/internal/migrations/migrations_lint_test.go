@@ -236,7 +236,7 @@ var legacyDuplicateMigrationStems = map[string]bool{
 
 const (
 	forkSyncDuplicateFirst = 713
-	forkSyncDuplicateLast  = 899
+	forkSyncDuplicateLast  = 1999
 )
 
 func TestMigrationNumericPrefixesAreUnique(t *testing.T) {

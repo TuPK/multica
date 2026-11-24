@@ -35,14 +35,16 @@ The desktop app now uses `productName`/`package.json` `name` = **Delegora**, `ap
 
 ## Rules for future syncs and merges from upstream
 
-1. When upstream changes a display string that is now `Multica`, keep the
-   Delegora text. Resolve the conflict in favor of this fork's display text and
-   keep upstream's logic, identifiers, and protocol changes.
-2. Do not rename identifiers while resolving a merge to "match" the display text.
+Sync with `pnpm sync:upstream` (see `docs/specs/upstream-sync/spec.md`); first run `bash scripts/sync/install.sh` once per checkout. The tooling applies the rules below for you; they are listed so a conflict you resolve by hand follows them.
+
+1. A line upstream adds that says `Multica` in display text becomes `Delegora` (merge driver `merge-brand`, post-merge rebrand, and `pnpm brand:check`). The rule itself lives in `scripts/sync/brand-rules.mjs`.
+2. Where this fork already wrote `Delegora` or deliberately kept `Multica`, keep its wording and take upstream's logic, identifiers and protocol changes.
+3. Do not rename identifiers while resolving a merge to "match" the display text.
    A rename of `@multica/*`, `MULTICA_*`, or the Go module path is a separate,
    explicitly approved decision.
-3. Any new user-facing copy added in this fork says **Delegora**, not `Multica`.
-4. Tests that assert on display text use the Delegora text too.
+4. Any new user-facing copy added in this fork says **Delegora**, not `Multica`.
+5. Tests that assert on display text use the Delegora text too.
+6. Fork-only code goes in fork-owned files (`*_fork.go`, `*.fork.ts`, `router_fork.go`); edit an upstream file only to add a one-line hook, so the next merge does not conflict.
 
 ## Why
 
