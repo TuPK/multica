@@ -214,6 +214,7 @@ Kind values: `field` (struct field, column, JSON key or TS property that holds a
 | `packages/views/locales/fr/runtimes.json` | `usd` | `unit_hint` | text | UI copy | exempt | Locale string: unit hint for AI token rates; not platform billing. |
 | `packages/views/locales/ja/runtimes.json` | `usd` | `unit_hint` | text | UI copy | exempt | Locale string: unit hint for AI token rates; not platform billing. |
 | `packages/views/locales/ko/runtimes.json` | `usd` | `unit_hint` | text | UI copy | exempt | Locale string: unit hint for AI token rates; not platform billing. |
+| `packages/views/locales/vi/runtimes.json` | `usd` | `unit_hint` | text | UI copy | exempt | Locale string: unit hint for AI token rates; not platform billing. |
 | `platform-management/internal/plan/catalogue.json` | `currency` | `currency` | literal | code | ruled | Seed validates each catalogue plan with plan.ValidateCurrency before any insert; a currency outside the enabled set returns an error and writes no row (TestSeedRefusesCurrencyOutsideEnabledSet). |
 | `platform-management/internal/plan/catalogue.json` | `vnd` | `currency` | literal | code | ruled | Seed validates each catalogue plan with plan.ValidateCurrency before any insert; a currency outside the enabled set returns an error and writes no row (TestSeedRefusesCurrencyOutsideEnabledSet). The value "vnd" is unchanged. |
 

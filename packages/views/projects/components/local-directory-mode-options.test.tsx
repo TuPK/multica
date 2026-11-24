@@ -64,7 +64,7 @@ describe("LocalDirectoryModeOptions", () => {
 
     const option = worktreeOption();
     expect(option.hasAttribute("disabled")).toBe(true);
-    expect(screen.getByText(/Multica server is too old/i).textContent).toMatch(
+    expect(screen.getByText(/Delegora server is too old/i).textContent).toMatch(
       /Update the server/i,
     );
     fireEvent.click(option);

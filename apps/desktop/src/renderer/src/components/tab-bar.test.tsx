@@ -779,7 +779,7 @@ describe("TabBar locale", () => {
       closeOthers: "Đóng các thẻ khác",
       openWindow: "Mở trong cửa sổ mới",
       newTab: "Thẻ mới",
-      pinned: "Nhiệm vụ (đã ghim)",
+      pinned: "Issues (đã ghim)",
     },
   } as const satisfies Record<
     Exclude<SupportedLocale, "en">,

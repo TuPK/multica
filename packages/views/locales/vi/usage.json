@@ -8,7 +8,11 @@
   "filter": {
     "project_label": "Dự án",
     "all_projects": "Tất cả dự án",
-    "period_label": "Khoảng thời gian"
+    "period_label": "Khoảng thời gian",
+    "attribution_label": "Ghi nhận",
+    "all_attribution": "Tất cả ghi nhận",
+    "standalone_only": "Chỉ agent độc lập",
+    "squads_group": "Squad"
   },
   "history_limit": {
     "note": "Gói của bạn bao gồm {{days}} ngày gần nhất. Hãy nâng cấp để xem dữ liệu cũ hơn. Không có dữ liệu nào bị xóa.",
@@ -27,7 +31,9 @@
     "run_time_label": "Thời gian chạy · {{days}} ngày",
     "run_time_hint": "Trên {{tasks}} lần chạy",
     "tasks_label": "Lần chạy · {{days}} ngày",
-    "tasks_hint": "{{failed}} lỗi"
+    "tasks_hint": "{{failed}} lỗi",
+    "cost_squad_hint": "Tổng của {{name}} (gồm các thành viên được ủy quyền)",
+    "cost_squad_share_hint": "Do squad kích hoạt {{cost}} ({{pct}}%)"
   },
   "dim": {
     "label": "Khoảng",
@@ -90,7 +96,8 @@
     "show_reasons": "Hiện mã lỗi",
     "hide_reasons": "Ẩn mã lỗi",
     "show_all": "Hiện tất cả {{count}}",
-    "show_less": "Chỉ hiện {{count}} đầu"
+    "show_less": "Chỉ hiện {{count}} đầu",
+    "by_squad": "Lỗi theo squad"
   },
   "leaderboard": {
     "title": "Bảng xếp hạng",
@@ -109,7 +116,19 @@
     "usage_totals_pending": "Tổng mức sử dụng vẫn đang được xử lý",
     "show_all": "Hiện tất cả",
     "show_less": "Chỉ hiện {{count}} đầu",
-    "no_data": "Không có hoạt động của tác nhân trong khoảng thời gian này."
+    "no_data": "Không có hoạt động của tác nhân trong khoảng thời gian này.",
+    "group_label": "Nhóm bảng xếp hạng theo",
+    "group_agent": "Agent",
+    "group_squad": "Squad",
+    "header_squad": "Squad / Ghi nhận",
+    "squad_caption": "{{count}} squad",
+    "squad_caption_with_standalone": "{{count}} squad · gồm cả agent độc lập",
+    "squad_members_title": "Chi tiết thành viên của {{name}}",
+    "squad_members_count": "{{count}} thành viên tham gia",
+    "standalone_agents": "Agent độc lập (không thuộc squad)",
+    "standalone_agents_hint": "@mention hoặc giao trực tiếp · {{count}} agent",
+    "deleted_squads": "Squad đã xóa",
+    "toggle_squad_members": "Bật/tắt thành viên của {{name}}"
   },
   "empty": {
     "title": "Chưa có mức sử dụng",

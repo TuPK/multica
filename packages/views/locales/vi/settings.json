@@ -263,6 +263,18 @@
         "label": "Tạm ẩn thông báo",
         "description": "Tạm ẩn nhiệm vụ trong hộp thư đến đang mở, hoặc hiện lại ngay nếu đang bị tạm ẩn."
       },
+      "markInboxUnread": {
+        "label": "Đánh dấu thông báo chưa đọc",
+        "description": "Chuyển đổi đã đọc hoặc chưa đọc cho thông báo đang mở trong hộp thư mà không cần rời khỏi nó."
+      },
+      "nextInboxItem": {
+        "label": "Thông báo tiếp theo",
+        "description": "Mở thông báo tiếp theo trong danh sách hộp thư đang dùng."
+      },
+      "prevInboxItem": {
+        "label": "Thông báo trước đó",
+        "description": "Mở thông báo trước đó trong danh sách hộp thư đang dùng."
+      },
       "undoInboxAction": {
         "label": "Hoàn tác thao tác hộp thư đến",
         "description": "Hoàn tác thao tác lưu trữ, tạm ẩn hoặc bỏ theo dõi gần nhất khi thông báo còn hiển thị; sau đó, đưa lại thông báo đang mở khi đã được lưu trữ, hoặc những gì Hộp thư đến đã dọn dẹp."
@@ -755,10 +767,6 @@
         "dates": "Đổi ngày",
         "labels": "Đổi nhãn"
       },
-      "after_label": "Sau khi lưu trữ",
-      "after_description": "Khi thông báo bạn đang đọc được lưu trữ theo cách này. Lưu trữ thủ công (E) vẫn mở mục tiếp theo.",
-      "after_stay": "Ở lại nhiệm vụ",
-      "after_next": "Mở mục tiếp theo",
       "archived_label": "Thông báo đã lưu trữ",
       "archived_description": "Tìm lại và bỏ lưu trữ",
       "archived_action": "Xem đã lưu trữ"
@@ -776,6 +784,10 @@
       "comments": {
         "label": "Bình luận",
         "description": "Bình luận mới trên các nhiệm vụ bạn theo dõi"
+      },
+      "squad_handoffs": {
+        "label": "Gồm cả bàn giao trong squad",
+        "description": "Các bình luận mà leader và agent của squad dùng để giao việc cho nhau. @mention bạn, lần chạy agent thất bại và trạng thái cần chú ý vẫn được gửi đến."
       },
       "mentions": {
         "label": "Nhắc đến",
@@ -1351,6 +1363,7 @@
     "github_load_more": "Tải thêm",
     "github_selected_count": "Đã chọn {{count}}",
     "github_cancel": "Hủy",
+    "github_import": "Thêm {{count}} kho mã",
     "github_import_other": "Thêm {{count}} kho mã",
     "save": "Lưu",
     "saving": "Đang lưu...",
@@ -1371,8 +1384,7 @@
     "url_label": "URL kho mã",
     "description_label": "Mô tả",
     "duplicate": "Kho mã này đã được thêm.",
-    "actions_aria": "Thao tác cho {{url}}",
-    "github_import": "Thêm {{count}} kho mã"
+    "actions_aria": "Thao tác cho {{url}}"
   },
   "desktop": {
     "tabs": {
@@ -2513,7 +2525,76 @@
       "empty_attention": "Không có gì cần bạn chú ý.",
       "no_matches": "Không có ứng dụng nào khớp với tìm kiếm.",
       "unavailable": "Ứng dụng không khả dụng trên máy chủ này.",
-      "retry": "Thử lại"
+      "retry": "Thử lại",
+      "category_all": "Tất cả",
+      "category_curated": "Nổi bật",
+      "categories_label": "Danh mục",
+      "categories_nav": "Danh mục ứng dụng",
+      "connect_oauth": "Đăng nhập bằng OAuth",
+      "connect_key": "Dùng khóa API",
+      "show_more": "Xem thêm",
+      "categories": {
+        "ai_ml": "AI & Học máy",
+        "developer_tools": "Công cụ lập trình & DevOps",
+        "data_analytics": "Dữ liệu & Phân tích",
+        "productivity": "Năng suất & Quản lý dự án",
+        "collaboration": "Cộng tác & Giao tiếp",
+        "marketing_social": "Marketing & Mạng xã hội",
+        "documents": "Tài liệu & Tệp",
+        "sales_support": "Bán hàng & Hỗ trợ khách hàng",
+        "crm": "CRM",
+        "finance": "Tài chính & Kế toán",
+        "workflow_automation": "Tự động hóa quy trình",
+        "design": "Thiết kế & Công cụ sáng tạo",
+        "ecommerce": "Thương mại điện tử",
+        "advertising": "Quảng cáo",
+        "scheduling": "Lên lịch & Đặt chỗ",
+        "entertainment": "Giải trí & Truyền thông",
+        "hr_recruiting": "Nhân sự & Tuyển dụng",
+        "education": "Giáo dục",
+        "model_context_protocol": "Máy chủ MCP",
+        "marketing_automation": "Tự động hóa marketing",
+        "email": "Email",
+        "security_identity_tools": "Bảo mật & Danh tính",
+        "forms_surveys": "Biểu mẫu & Khảo sát",
+        "databases": "Cơ sở dữ liệu",
+        "web_scraping_browser": "Thu thập web & Trình duyệt",
+        "email_newsletters": "Bản tin email",
+        "business_intelligence": "Business Intelligence",
+        "ai_web_scraping": "Thu thập web bằng AI",
+        "ai_agents": "Agent AI",
+        "web_search_research": "Tìm kiếm web & Nghiên cứu",
+        "ai_sales_tools": "Công cụ bán hàng AI",
+        "ai_content_generation": "Tạo nội dung bằng AI",
+        "payment_processing": "Xử lý thanh toán",
+        "server_monitoring": "Giám sát máy chủ",
+        "video_audio": "Video & Âm thanh",
+        "signatures": "Chữ ký điện tử",
+        "phone_sms": "Điện thoại & SMS",
+        "audio_speech": "Âm thanh & Giọng nói",
+        "ai_chatbots": "Chatbot AI",
+        "ai_document_extraction": "Trích xuất tài liệu bằng AI",
+        "url_shortener": "Rút gọn URL",
+        "people_contact_data": "Dữ liệu người & Liên hệ",
+        "notifications": "Thông báo",
+        "event_management": "Quản lý sự kiện",
+        "places_weather": "Địa điểm & Thời tiết",
+        "market_data": "Dữ liệu thị trường",
+        "it_operations": "Vận hành CNTT",
+        "internet_of_things": "Internet vạn vật",
+        "spreadsheets": "Bảng tính",
+        "fundraising": "Gây quỹ",
+        "website_builders": "Trình tạo website & ứng dụng",
+        "reviews": "Đánh giá",
+        "company_data": "Dữ liệu công ty",
+        "ai_meeting_assistants": "Trợ lý họp bằng AI",
+        "bookmark_managers": "Quản lý dấu trang",
+        "social_creator_data": "Dữ liệu mạng xã hội & Nhà sáng tạo",
+        "seo_ai_visibility": "SEO & Hiển thị AI",
+        "legal_public_records": "Pháp lý & Hồ sơ công khai",
+        "ai_safety": "An toàn & Tuân thủ AI",
+        "other": "Khác"
+      }
     },
     "app_page": {
       "agents_title": "Tác nhân",

@@ -1102,6 +1102,19 @@ function BillingTabContent() {
           await summaryQuery.refetch();
           return;
         }
+        if (
+          purchaseErrorCode === "plan_change_in_progress" ||
+          purchaseErrorCode === "plan_change_unresolved"
+        ) {
+          blockSeatPurchase();
+          setSeatPurchaseError(
+            purchaseErrorCode === "plan_change_unresolved"
+              ? t(($) => $.workspace.seat_purchase.plan_change_unresolved)
+              : t(($) => $.workspace.seat_purchase.plan_change_in_progress),
+          );
+          await summaryQuery.refetch();
+          return;
+        }
         setSeatPurchaseError(t(($) => $.workspace.seat_purchase.quote_changed));
         await summaryQuery.refetch();
         setSeatPreviewRevision((revision) => revision + 1);

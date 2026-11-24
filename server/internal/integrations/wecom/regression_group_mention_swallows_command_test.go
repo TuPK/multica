@@ -4,7 +4,7 @@ package wecom
 // after an @-mention has to still be a command.
 //
 // In a WeCom group the ONLY way to reach the bot is to @-mention it, and the
-// mention is delivered as part of the message text: "@Multica Bot /issue 登录
+// mention is delivered as part of the message text: "@Delegora Bot /issue 登录
 // 失败". The shared command parsers read the first non-empty line and want the
 // directive at the start of it, so with the mention still in front they see
 // "@Multica" and decide this is ordinary prose. Every slash command in every
@@ -110,7 +110,7 @@ func TestAFreshSessionCommandAfterAMentionIsStillACommand(t *testing.T) {
 }
 
 // TestAMultiWordBotNameDoesNotSwallowTheCommand: a bot named "Delegora Bot" is
-// mentioned as "@Multica Bot", and cutting the mention at the first space
+// mentioned as "@Delegora Bot", and cutting the mention at the first space
 // leaves "Bot /issue …", which is not a command either. The configured name is
 // the only way to know where the mention ends — the callback carries no
 // structured mention list, and the smart bot exposes no REST surface to ask.
@@ -122,11 +122,11 @@ func TestAMultiWordBotNameDoesNotSwallowTheCommand(t *testing.T) {
 		in      string
 		want    string
 	}{
-		{"two-word name", "Delegora Bot", "@Multica Bot /new 重新分析这批数据", "/new 重新分析这批数据"},
+		{"two-word name", "Delegora Bot", "@Delegora Bot /new 重新分析这批数据", "/new 重新分析这批数据"},
 		{"three-word name", "Acme Support Bot", "@Acme Support Bot /issue 登录失败", "/issue 登录失败"},
 		{"one-word name still works", "Andrew", "@Andrew /new 重新分析", "/new 重新分析"},
 		{"chinese name", "小助手", "@小助手 /issue 报销单不对", "/issue 报销单不对"},
-		{"a colleague's mention before ours", "Delegora Bot", "@李雷 @Multica Bot /new 分析", "/new 分析"},
+		{"a colleague's mention before ours", "Delegora Bot", "@李雷 @Delegora Bot /new 分析", "/new 分析"},
 		{"no name configured falls back to the space", "", "@Andrew /new 重新分析", "/new 重新分析"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -142,7 +142,7 @@ func TestAMultiWordBotNameDoesNotSwallowTheCommand(t *testing.T) {
 // where the mention is recognised, or the table above proves nothing.
 func TestAMultiWordBotNameReachesTheParser(t *testing.T) {
 	t.Parallel()
-	msg := dispatchGroupMessage(t, "Delegora Bot", "@Multica Bot /issue 登录失败")
+	msg := dispatchGroupMessage(t, "Delegora Bot", "@Delegora Bot /issue 登录失败")
 	cmd, ok := engine.ParseIssueCommand(msg.CommandText)
 	if !ok || cmd.Title != "登录失败" {
 		t.Fatalf("CommandText = %q — the bot's configured name never reached the mention strip", msg.CommandText)
@@ -203,7 +203,7 @@ func TestAWholeMessageOfNothingButAMentionIsLeftAlone(t *testing.T) {
 // TestSessionBinder_AdapterCommandTextWins: the binder is the last link. It
 // used to overwrite the adapter's command source with the stored body, which
 // threw away the mention-stripped line just above and handed the /issue parser
-// "@Multica Bot /issue …" again. Same two lines as
+// "@Delegora Bot /issue …" again. Same two lines as
 // lark/feishu_resolvers.go:206 and slack/resolvers.go:337.
 func TestSessionBinder_AdapterCommandTextWins(t *testing.T) {
 	t.Parallel()
@@ -212,7 +212,7 @@ func TestSessionBinder_AdapterCommandTextWins(t *testing.T) {
 	_, err := b.AppendMessage(context.Background(), engine.AppendParams{
 		SessionID: mustTestUUID(t),
 		Message: channel.InboundMessage{
-			Text:        "@Multica Bot /issue 登录失败",
+			Text:        "@Delegora Bot /issue 登录失败",
 			CommandText: "/issue 登录失败",
 			MessageID:   "m9",
 		},
@@ -220,7 +220,7 @@ func TestSessionBinder_AdapterCommandTextWins(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AppendMessage: %v", err)
 	}
-	if fb.appendIn.Body != "@Multica Bot /issue 登录失败" {
+	if fb.appendIn.Body != "@Delegora Bot /issue 登录失败" {
 		t.Errorf("stored body = %q, want the message exactly as it arrived", fb.appendIn.Body)
 	}
 	if fb.appendIn.CommandText != "/issue 登录失败" {

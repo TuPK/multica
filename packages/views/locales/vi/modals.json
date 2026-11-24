@@ -278,6 +278,8 @@
       "created_by": "Tạo bởi",
       "select_agent_aria": "Chọn tác nhân",
       "pick_an_agent": "Chọn một tác nhân...",
+      "all_actors": "Tất cả agent và squad",
+      "frequent_actors_aria": "Thường dùng",
       "no_agents": "Không có tác nhân hoặc nhóm nào khả dụng.",
       "search_placeholder": "Tìm tác nhân và nhóm...",
       "agents_group": "Tác nhân",

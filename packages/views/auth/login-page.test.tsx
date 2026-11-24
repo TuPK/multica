@@ -154,7 +154,7 @@ describe("LoginPage", () => {
   it("renders email form with 'Sign in to Delegora' title", () => {
     renderWithI18n(<LoginPage onSuccess={onSuccess} />);
     expect(
-      screen.getByText(/sign in to multica/i),
+      screen.getByText(/sign in to delegora/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/enter your email to get a sign-in code/i),
@@ -562,7 +562,7 @@ describe("LoginPage", () => {
     );
 
     expect(
-      screen.getByText(/sign in to multica/i),
+      screen.getByText(/sign in to delegora/i),
     ).toBeInTheDocument();
   });
 
@@ -750,7 +750,7 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /back/i }));
 
     expect(
-      screen.getByText(/sign in to multica/i),
+      screen.getByText(/sign in to delegora/i),
     ).toBeInTheDocument();
   });
 
@@ -857,7 +857,7 @@ describe("LoginPage", () => {
       await user.click(screen.getByRole("button", { name: /verify/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/sign in to multica/i)).toBeInTheDocument();
+        expect(screen.getByText(/sign in to delegora/i)).toBeInTheDocument();
       });
       expect(screen.getByText(/expired.*sign in again/i)).toBeInTheDocument();
       expect(onSuccess).not.toHaveBeenCalled();
@@ -893,7 +893,7 @@ describe("LoginPage", () => {
       await user.click(screen.getByRole("button", { name: /verify/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/sign in to multica/i)).toBeInTheDocument();
+        expect(screen.getByText(/sign in to delegora/i)).toBeInTheDocument();
       });
       expect(screen.getByText(/too many failed attempts/i)).toBeInTheDocument();
       expect(onSuccess).not.toHaveBeenCalled();
@@ -954,7 +954,7 @@ describe("LoginPage", () => {
 
       await user.click(screen.getByRole("button", { name: /back/i }));
 
-      expect(screen.getByText(/sign in to multica/i)).toBeInTheDocument();
+      expect(screen.getByText(/sign in to delegora/i)).toBeInTheDocument();
     });
 
     it("CLI path with a challenge shows mfa step, calls verifyMFALogin, and redirects to CLI callback", async () => {

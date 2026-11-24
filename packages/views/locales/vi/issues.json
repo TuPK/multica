@@ -482,7 +482,6 @@
     "section_parent_issue": "Nhiệm vụ cha",
     "section_pull_requests": "Pull request",
     "section_metadata": "Siêu dữ liệu",
-    "section_details": "Chi tiết",
     "sidebar_settings": {
       "open": "Tùy chỉnh thanh bên",
       "title": "Thanh bên",
@@ -537,9 +536,6 @@
     "prop_project": "Dự án",
     "prop_labels": "Nhãn",
     "add_property_action": "Thêm thuộc tính",
-    "prop_created_by": "Người tạo",
-    "prop_created": "Ngày tạo",
-    "prop_updated": "Cập nhật",
     "activity_section": "Hoạt động",
     "subscribe": "Theo dõi",
     "unsubscribe": "Bỏ theo dõi",
@@ -566,8 +562,6 @@
     "quick_jump_label": "Điều hướng nhanh",
     "description_nav_label": "Mô tả nhiệm vụ",
     "sub_issues_nav_progress": "{{done}}/{{total}} đã hoàn thành",
-    "sub_issues_show_more_other": "Hiện thêm {{count}}",
-    "sub_issues_show_less": "Thu gọn",
     "thread_nav_label": "Đến chuỗi bình luận",
     "thread_nav_resolved_label": "{{title}} (đã giải quyết)",
     "thread_nav_reply_label": "{{author}}: {{title}}",
@@ -592,7 +586,28 @@
     "workdir_path_copy_failed": "Không thể sao chép đường dẫn thư mục làm việc",
     "workdir_path_unavailable": "Chưa có thư mục làm việc cục bộ — nhiệm vụ này chưa được tác nhân cục bộ chạy",
     "pull_requests_empty_title": "Không có pull request nào được liên kết.",
-    "guest_readonly_note": "Khách có thể xem và bình luận, nhưng không thể thay đổi thuộc tính nhiệm vụ."
+    "guest_readonly_note": "Khách có thể xem và bình luận, nhưng không thể thay đổi thuộc tính nhiệm vụ.",
+    "open_issue_page": "Mở trang issue",
+    "add_row": {
+      "wakeups": "Thêm lịch đánh thức",
+      "pull_requests": "Thêm pull request",
+      "environments": "Thêm môi trường",
+      "wakeups_pull_requests": "Thêm lịch đánh thức hoặc pull request",
+      "wakeups_environments": "Thêm lịch đánh thức hoặc môi trường",
+      "pull_requests_environments": "Thêm pull request hoặc môi trường",
+      "all": "Thêm lịch đánh thức, pull request hoặc môi trường",
+      "menu": {
+        "wakeups": "Lịch đánh thức",
+        "pull_requests": "Pull request",
+        "environments": "Môi trường"
+      }
+    },
+    "footer": {
+      "created": "Tạo bởi {{creator}} · {{date}}",
+      "created_for": "Tạo bởi {{creator}} cho {{requester}} · {{date}}",
+      "created_at": "Đã tạo {{time}}",
+      "updated_at": "Đã cập nhật {{time}}"
+    }
   },
   "timeline": {
     "loading": "Đang tải...",
@@ -890,8 +905,6 @@
     "summary_runs_other": "{{count}} lần chạy",
     "open_timeline": "Mở dòng thời gian",
     "more_runs_other": "Hiện thêm {{count}}",
-    "strip_aria": "Chi phí mỗi lần chạy — mở dòng thời gian lần chạy",
-    "strip_no_usage": "Không ghi nhận mức sử dụng",
     "queued_count_other": "{{count}} đang chờ"
   },
   "runs_timeline": {
@@ -1431,12 +1444,6 @@
       "badge": "Hệ thống",
       "title_stage": "Khi các nhiệm vụ con của giai đoạn {{stage}} đều hoàn thành",
       "title_all": "Khi mọi nhiệm vụ con hoàn thành",
-      "wake_assignee": "Đánh thức người được giao {{name}}",
-      "remaining_other": "còn {{count}}",
-      "blocked_backlog": "Nhiệm vụ đang ở Backlog; tạm thời không có đánh thức",
-      "blocked_member": "Người được giao là thành viên; họ nhận thông báo trong hộp thư đến",
-      "blocked_none": "Không có tác nhân được giao; không ai được đánh thức",
-      "turned_off": "Đã tắt cho nhiệm vụ này",
       "target_title": "Đánh thức",
       "target_current": "Người được giao (hiện là {{name}})",
       "target_none": "Người được giao: một tác nhân hoặc nhóm được đánh thức, một thành viên được thông báo",
@@ -1451,14 +1458,19 @@
       "save_error": "Không thể lưu quy tắc hệ thống.",
       "default_on": "Mặc định bật trong không gian làm việc này.",
       "default_off": "Mặc định tắt trong không gian làm việc này.",
-      "notify_member": "Thông báo cho {{name}} trong hộp thư đến",
       "instruction": "Làm gì khi được đánh thức",
       "instruction_edit": "Chỉnh sửa hướng dẫn",
       "instruction_default": "Chưa đặt cho nhiệm vụ này; dùng mặc định:",
       "instruction_placeholder": "Để trống để dùng mặc định",
       "instruction_invalid": "Hướng dẫn phải dưới 4.000 byte.",
       "paused": "Đã tạm dừng: {{reason}}",
-      "default_change": "Đổi mặc định"
+      "default_change": "Đổi mặc định",
+      "chip_wake": "Đánh thức {{name}} khi tất cả hoàn tất",
+      "chip_notify": "Thông báo cho {{name}} khi tất cả hoàn tất",
+      "chip_assignee": "Đánh thức người được giao khi tất cả hoàn tất",
+      "chip_off": "Đã tắt đánh thức issue con",
+      "blocked_backlog": "Nhiệm vụ đang ở Backlog; tạm thời không có đánh thức",
+      "blocked_none": "Không có tác nhân được giao; không ai được đánh thức"
     },
     "cond": {
       "status": "Khi nhiệm vụ này chuyển sang {{status}}",
@@ -1531,7 +1543,14 @@
       "loop": "nó liên tục đánh thức các quy tắc khiến nó được đánh thức lại",
       "rate": "hơn 12 lần chạy trong một giờ"
     },
-    "upcoming_other": "{{count}} quy tắc đánh thức đã bật"
+    "upcoming_other": "{{count}} quy tắc đánh thức đã bật",
+    "short": {
+      "at_time": "{{time}}",
+      "scheduled_time": "Vào giờ đã hẹn",
+      "hourly": "Mỗi giờ",
+      "every_hours": "Mỗi {{hours}} giờ",
+      "every_seconds": "Mỗi {{seconds}} giây"
+    }
   },
   "handoff": {
     "title": "Bàn giao",
@@ -1590,7 +1609,8 @@
     "not_merged_action": "Xóa",
     "all_merged_to": "Mọi PR đã được hợp nhất. PR được hợp nhất tiếp theo sẽ chuyển nhiệm vụ này sang {{status}}.",
     "issue_disabled": "Việc hợp nhất PR sẽ không đổi nhiệm vụ này",
-    "issue_disabled_action": "Bật"
+    "issue_disabled_action": "Bật",
+    "on_merge_to": "Khi merge → {{status}}"
   },
   "deliverables": {
     "section_title": "Sản phẩm bàn giao",
@@ -1712,7 +1732,6 @@
       "target_squad": "Nhóm · trưởng nhóm điều phối",
       "target_member": "Thành viên",
       "instructions_hint": "Gửi cho người xử lý cùng lần chạy này, kèm mô tả và bình luận nhiệm vụ.",
-      "next_hint": "Người xử lý cập nhật trạng thái trực tiếp và chỉ gửi lại để làm lại, không phải để chặn. Kết thúc một lần chạy không bao giờ tự động đổi trạng thái.",
       "preview_brief": "Xem trước bản hướng dẫn của tác nhân",
       "preview_title": "Hướng dẫn cho bước “{{status}}”",
       "preview_description": "Lần chạy của người xử lý nhận những gì khi một nhiệm vụ vào bước này. Không cần lưu thay đổi để xem trước.",
@@ -2341,8 +2360,7 @@
       "all_issues": "Tất cả nhiệm vụ",
       "my_work": "Công việc của tôi",
       "working": "Đang làm việc",
-      "subscribed": "Đã theo dõi",
-      "snoozed": "Tạm ẩn"
+      "subscribed": "Đã theo dõi"
     },
     "untitled": "Chế độ xem chưa có tên",
     "copy_name": "{{name}} (bản sao)",

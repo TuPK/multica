@@ -26,6 +26,21 @@ vi.mock("@multica/core/issues", () => ({
 }));
 vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({ data: rules }),
+  useQueryClient: () => ({}),
+}));
+vi.mock("../../editor/attachable-textarea", () => ({
+  AttachableTextarea: ({
+    onValueChange,
+    issueId: _issueId,
+    onUploadingChange: _onUploadingChange,
+    ...props
+  }: {
+    onValueChange: (value: string) => void;
+    issueId: string;
+    onUploadingChange?: (uploading: boolean) => void;
+  } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
+    <textarea {...props} onChange={(event) => onValueChange(event.target.value)} />
+  ),
 }));
 vi.mock("../../common/use-viewing-timezone", () => ({
   useViewingTimezone: () => "UTC",

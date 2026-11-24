@@ -54,6 +54,7 @@
       "days": "{{count}} ngày"
     },
     "archived_title": "Đã lưu trữ",
+    "snoozed_title": "Đã tạm hoãn",
     "archived_empty": "Không có thông báo đã lưu trữ",
     "unarchive_tooltip": "Bỏ lưu trữ",
     "actions_aria": "Thao tác thông báo",
@@ -63,6 +64,8 @@
   },
   "detail": {
     "select_prompt": "Chọn một thông báo để xem chi tiết",
+    "restore": "Chuyển lại vào Hộp thư",
+    "more_actions": "Thêm thao tác với thông báo",
     "original_input": "Nội dung gốc",
     "retry_with_context": "Thử lại với ngữ cảnh",
     "edit_advanced": "Mở biểu mẫu đầy đủ",
@@ -164,11 +167,12 @@
     "archived": "Đã lưu trữ",
     "leaves": "Sẽ rời khỏi Hộp thư đến khi bạn chuyển sang việc khác",
     "filtered": "Không còn khớp với bộ lọc",
-    "notification_archived": "Đã lưu trữ thông báo",
     "changed_status": "Đã đổi thành {{status}}",
     "reassigned": "Đã giao lại cho {{name}}",
     "unassigned": "Đã bỏ giao",
     "ran_quick_action": "Đã chạy {{name}}",
+    "agent_triggered": "Đã kích hoạt agent",
+    "returns_on_activity": "Trở lại Hộp thư khi có hoạt động mới",
     "next": "Tiếp theo",
     "next_tooltip": "Mở mục tiếp theo: {{title}}"
   },
@@ -178,6 +182,13 @@
     "issue_description": "Thao tác này xóa vĩnh viễn các thông báo của nhiệm vụ này trong chế độ xem này. Nhiệm vụ và các lần chạy của nó vẫn được giữ lại.",
     "cancel": "Hủy",
     "active_issue_description": "Thao tác này xóa vĩnh viễn các thông báo đang hoạt động của nhiệm vụ này trong hộp thư đến. Các thông báo đã lưu trữ trước đó, nhiệm vụ và các lần chạy của nó vẫn được giữ lại."
+  },
+  "archive_all_dialog": {
+    "title": "Lưu trữ tất cả thông báo?",
+    "description": "Mọi thông báo đang hoạt động trong hộp thư sẽ chuyển sang Đã lưu trữ. Các issue đã tạm hoãn vẫn giữ nguyên trạng thái tạm hoãn, và bạn có thể khôi phục thông báo bất cứ lúc nào.",
+    "description_count_other": "Cả {{count}} thông báo đang hoạt động trong hộp thư sẽ chuyển sang Đã lưu trữ. Các issue đã tạm hoãn vẫn giữ nguyên trạng thái tạm hoãn, và bạn có thể khôi phục chúng bất cứ lúc nào.",
+    "cancel": "Hủy",
+    "confirm": "Lưu trữ tất cả"
   },
   "unsubscribe": {
     "title": "Bỏ theo dõi và lưu trữ. Cập nhật của nhiệm vụ này sẽ không còn gửi đến bạn; lần @nhắc đến vẫn sẽ gửi.",
@@ -213,9 +224,7 @@
     "failed": "Không thể tạm ẩn",
     "unsnooze_failed": "Không thể hiện lại",
     "view_empty": "Không có mục nào đang tạm ẩn",
-    "view_empty_description": "Tạm ẩn một nhiệm vụ từ hộp thư đến và nó sẽ chờ ở đây cho đến lúc quay lại.",
-    "col_updates": "Trong lúc tạm ẩn",
-    "col_back": "Hiện lại"
+    "view_empty_description": "Tạm ẩn một nhiệm vụ từ hộp thư đến và nó sẽ chờ ở đây cho đến lúc quay lại."
   },
   "auto_archive_prompt": {
     "title": "Lưu trữ thông báo sau khi bạn đã xử lý",
@@ -235,8 +244,6 @@
     "just_unsubscribed": "Đã bỏ theo dõi {{label}}",
     "just_archived_many_other": "Đã lưu trữ {{count}} thông báo",
     "snoozed_summary_other": "{{count}} đang tạm ẩn · lần hiện lại tiếp theo {{time}}",
-    "bar_snoozed_other": "{{count}} đang tạm ẩn",
-    "go_to_my_work": "Đến công việc của tôi",
     "filtered_title": "Đã xử lý hết theo bộ lọc này",
     "filtered_remaining_other": "{{count}} thông báo khác trong hộp thư đến của bạn",
     "clear_and_continue": "Xóa bộ lọc và tiếp tục",

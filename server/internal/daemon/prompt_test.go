@@ -2224,7 +2224,7 @@ func TestPromptPointsSubIssueRunsAtTheirParent(t *testing.T) {
 	}
 	parent := decoded.ParentIssue
 
-	header := "[Parent issue]\nThis issue is a sub-issue of MUL-9 \"Merge PRs from Multica\" (status: in_progress)."
+	header := "[Parent issue]\nThis issue is a sub-issue of MUL-9 \"Merge PRs from Delegora\" (status: in_progress)."
 	readCmds := []string{
 		"`multica issue get parent-uuid --output json`",
 		"`multica issue comment list parent-uuid --roots-only --summary --compact --output json`",

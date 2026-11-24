@@ -588,15 +588,15 @@ func TestIssueAfterAnImageIsStillFiled(t *testing.T) {
 // test. It fails if EITHER half is lost.
 //
 // In a group the @-mention is how the bot is reached, so it arrives glued to
-// the front of the text run: "@Multica Bot /issue 登录坏了". main strips that
+// the front of the text run: "@Delegora Bot /issue 登录坏了". main strips that
 // (stripLeadingMentions) and this PR keeps the placeholders out of the
 // command source, and the parser needs both to see "/issue" on the line it
 // reads. Take main's version of ws_frame.go wholesale and the strip goes and
-// the parser sees "@Multica Bot"; derive the command from the resolved body
+// the parser sees "@Delegora Bot"; derive the command from the resolved body
 // and it sees "[Image]". Either way no issue is filed, and this is the
 // assertion that says so.
 func TestGroupMentionedIssueAfterAnImageIsStillFiled(t *testing.T) {
-	issues, body := runMixedIssueThroughTheRouter(t, "Delegora Bot", "group", "GROUP-BIND-1", "@Multica Bot /issue 登录坏了", false)
+	issues, body := runMixedIssueThroughTheRouter(t, "Delegora Bot", "group", "GROUP-BIND-1", "@Delegora Bot /issue 登录坏了", false)
 
 	filed := issues.filed()
 	if len(filed) != 1 {
@@ -605,7 +605,7 @@ func TestGroupMentionedIssueAfterAnImageIsStillFiled(t *testing.T) {
 	if filed[0].Title != "登录坏了" {
 		t.Errorf("issue title = %q, want 登录坏了 (a title carrying the bot's own name means the mention strip was lost)", filed[0].Title)
 	}
-	if want := "[Image]\n@Multica Bot /issue 登录坏了"; body != want {
+	if want := "[Image]\n@Delegora Bot /issue 登录坏了"; body != want {
 		t.Errorf("durable body = %q, want %q — the transcript keeps who was addressed", body, want)
 	}
 }
@@ -620,7 +620,7 @@ func TestGroupMentionedIssueAfterAnImageIsStillFiled(t *testing.T) {
 // unlike the dispatch-level test this one asks the database whether an issue
 // exists.
 func TestGroupMentionedSpokenIssueAfterAnImageIsStillFiled(t *testing.T) {
-	issues, body := runMixedIssueThroughTheRouter(t, "Delegora Bot", "group", "GROUP-BIND-2", "@Multica Bot /issue 登录坏了", true)
+	issues, body := runMixedIssueThroughTheRouter(t, "Delegora Bot", "group", "GROUP-BIND-2", "@Delegora Bot /issue 登录坏了", true)
 
 	filed := issues.filed()
 	if len(filed) != 1 {
@@ -629,7 +629,7 @@ func TestGroupMentionedSpokenIssueAfterAnImageIsStillFiled(t *testing.T) {
 	if filed[0].Title != "登录坏了" {
 		t.Errorf("issue title = %q, want 登录坏了", filed[0].Title)
 	}
-	if want := "[Image]\n@Multica Bot /issue 登录坏了"; body != want {
+	if want := "[Image]\n@Delegora Bot /issue 登录坏了"; body != want {
 		t.Errorf("durable body = %q, want %q — a spoken run reads into the body like a typed one", body, want)
 	}
 }

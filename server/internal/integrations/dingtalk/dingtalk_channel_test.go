@@ -403,7 +403,7 @@ func TestOnMessage_ReturnsBeforeBotNameLookupAndQueuesCallbackSnapshot(t *testin
 	data := &botCallbackData{
 		ConversationId: "cid-1", ConversationType: convTypeGroup, IsInAtList: true,
 		SenderStaffId: "staff-1", MsgId: "msg-1", Msgtype: "text",
-		Text: botCallbackText{Content: "@Multica Bot - Local /new inspect this"},
+		Text: botCallbackText{Content: "@Delegora Bot - Local /new inspect this"},
 	}
 	returned := make(chan struct{})
 	go func() {

@@ -192,7 +192,7 @@ describe("McpConfigTab", () => {
     expect(screen.getByLabelText("Streamable HTTP")).toBeInTheDocument();
     expect(screen.getByText("STDIO")).toBeVisible();
     expect(screen.getByText("Streamable HTTP")).toBeVisible();
-    expect(screen.getByRole("heading", { name: /managed by multica/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /managed by delegora/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /inherited from runtime/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/MCP config JSON editor/i)).not.toBeInTheDocument();
   });
