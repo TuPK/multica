@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS acceptance_criterion_system_check_idx;

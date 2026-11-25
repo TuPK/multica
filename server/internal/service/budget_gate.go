@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -80,7 +79,7 @@ func NewBudgetGate(bus *events.Bus) *BudgetGate {
 // admitted, which is already in flight inside its own claim transaction and
 // must not count against itself; the zero UUID excludes nothing.
 func (g *BudgetGate) Admit(ctx context.Context, q *db.Queries, ws, excludeTask pgtype.UUID, class RunClass, scopeOf func(context.Context) (budgetScope, error), now time.Time) (budgetAdmission, error) {
-	if class != RunClassRoutine && class != RunClassDelegated {
+	if !heldRunClasses()[class] {
 		return budgetAdmission{Admit: true}, nil
 	}
 	states, err := q.ListWorkspaceBudgetStates(ctx, db.ListWorkspaceBudgetStatesParams{
@@ -91,7 +90,7 @@ func (g *BudgetGate) Admit(ctx context.Context, q *db.Queries, ws, excludeTask p
 	}
 	var holding []db.ListWorkspaceBudgetStatesRow
 	for _, b := range states {
-		if b.Status == BudgetStatusActive && b.Mode == BudgetModeHold && slices.Contains(b.Classes, string(class)) {
+		if b.Status == BudgetStatusActive && b.Mode == BudgetModeHold && budgetHoldsClass(b.Classes, class) {
 			holding = append(holding, b)
 		}
 	}

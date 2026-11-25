@@ -226,6 +226,27 @@ describe("squad validation", () => {
     assert.match(text, /squad\.skills\.byRole names role "ghost", which is not a role of this squad/);
   });
 
+  it("accepts outcome criteria that name the squad's roles and a known check kind", () => {
+    const outcomeCriteria = [
+      { role: "demo_lead", text: "The plan names every step.", check_kind: "agent_judgment", check_spec: { rubric: "Is every step named?" } },
+      { role: "demo_lead", text: "The suite passes.", check_kind: "command", check_spec: { run: "pnpm test", expect_exit: 0 } },
+    ];
+    assert.deepEqual(check(squadFixture({ ...squadManifest(), squad: { ...squadManifest().squad, outcomeCriteria } })).errors, []);
+  });
+
+  it("rejects outcome criteria with a role that is not in the squad, an unknown check kind, or no text", () => {
+    const outcomeCriteria = [
+      { role: "ghost", text: "x", check_kind: "agent_judgment", check_spec: {} },
+      { role: "demo_lead", text: "", check_kind: "vibes" },
+      { role: "demo_lead", text: "ok", check_kind: "manual", check_spec: "not an object" },
+    ];
+    const text = check(squadFixture({ ...squadManifest(), squad: { ...squadManifest().squad, outcomeCriteria } })).errors.join("\n");
+    assert.match(text, /outcomeCriteria\[0\]\.role "ghost" is not one of the squad's roles/);
+    assert.match(text, /outcomeCriteria\[1\]\.text must be 1 to 500 characters/);
+    assert.match(text, /outcomeCriteria\[1\]\.check_kind must be one of manual, agent_judgment, command, artifact, metric/);
+    assert.match(text, /outcomeCriteria\[2\]\.check_spec must be an object/);
+  });
+
   it("requires a role several squads share to be defined the same way", () => {
     const other = squadManifest();
     other.id = "other_squad";

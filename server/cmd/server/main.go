@@ -905,8 +905,13 @@ func main() {
 		slog.Error("scheduler: register issue queue sweep", "error", err)
 	}
 	// Every minute: a transition into done opens a work outcome, and due outcomes are settled (durable spec 2.4).
-	if err := schedulerMgr.Register(scheduler.DurableOutcomeJob(&service.OutcomeService{Queries: queries, TxStarter: pool, Flags: flags})); err != nil {
+	durableChecks := &service.VerificationService{Queries: queries, TxStarter: pool, Tasks: taskSvc}
+	durableOutcomes := &service.OutcomeService{Queries: queries, TxStarter: pool, Flags: flags, Verification: durableChecks}
+	if err := schedulerMgr.Register(scheduler.DurableOutcomeJob(durableOutcomes)); err != nil {
 		slog.Error("scheduler: register durable outcome", "error", err)
+	}
+	if err := schedulerMgr.Register(scheduler.DurableMetricJob(durableOutcomes)); err != nil {
+		slog.Error("scheduler: register durable metric", "error", err)
 	}
 	if err := schedulerMgr.Register(scheduler.FlowSweepJob(h)); err != nil {
 		slog.Error("scheduler: register flow sweep", "error", err)

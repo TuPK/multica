@@ -9,7 +9,13 @@ import (
 // methods return without writing while durable_outcomes is off (durable spec 2.4).
 type OutcomeRunner interface {
 	ProcessTransitions(ctx context.Context) (int, error)
+	ScheduleChecks(ctx context.Context) (int, error)
 	Settle(ctx context.Context, now time.Time) (int, error)
+}
+
+// MetricChecker decides the metric criteria of outcomes (durable spec 2.5).
+type MetricChecker interface {
+	CheckMetrics(ctx context.Context, now time.Time) (int, error)
 }
 
 // DurableOutcomeJob reads new status transitions into work outcomes and settles the
@@ -24,7 +30,24 @@ func DurableOutcomeJob(runner OutcomeRunner) JobSpec {
 			if _, err := runner.ProcessTransitions(ctx); err != nil {
 				return HandlerResult{}, err
 			}
+			if _, err := runner.ScheduleChecks(ctx); err != nil {
+				return HandlerResult{}, err
+			}
 			_, err := runner.Settle(ctx, time.Now())
+			return HandlerResult{}, err
+		},
+	}
+}
+
+// DurableMetricJob checks the metric criteria of current outcomes once an hour (spec 2.5).
+// A criterion is decided once, so a run that finds nothing new writes nothing.
+func DurableMetricJob(checker MetricChecker) JobSpec {
+	return JobSpec{
+		Name: "durable_metric", Cadence: time.Hour, CatchUpMode: CatchUpLatestOnly, CatchUpWindow: 24 * time.Hour,
+		RunTimeout: 50 * time.Second, StaleTimeout: 2 * time.Minute, HeartbeatInterval: 10 * time.Second,
+		AllowStaleReentry: true, MaxAttempts: 1, Scopes: StaticScopes(ScopeGlobal),
+		Handler: func(ctx context.Context, _ HandlerInput) (HandlerResult, error) {
+			_, err := checker.CheckMetrics(ctx, time.Now())
 			return HandlerResult{}, err
 		},
 	}

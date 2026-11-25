@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,6 +14,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
@@ -45,6 +47,9 @@ type OutcomeService struct {
 	Flags     *featureflag.Service
 	// Now is the clock for settle_at. Nil means time.Now.
 	Now func() time.Time
+	// Verification gives the current outcomes their checks (A3). Nil leaves them
+	// unchecked, and they settle as unverified.
+	Verification *VerificationService
 }
 
 func (s *OutcomeService) enabled(ctx context.Context) bool {
@@ -264,6 +269,24 @@ func (s *OutcomeService) enterDone(ctx context.Context, q *db.Queries, r db.List
 	return nil
 }
 
+// ScheduleChecks gives the current outcomes their checks (spec 2.5). It is a no-op while
+// durable_outcomes is off, and when no VerificationService is wired.
+func (s *OutcomeService) ScheduleChecks(ctx context.Context) (int, error) {
+	if !s.enabled(ctx) || s.Verification == nil {
+		return 0, nil
+	}
+	return s.Verification.ScheduleChecks(ctx)
+}
+
+// CheckMetrics decides the metric criteria (spec 2.5). The hourly job calls it; it is a
+// no-op while durable_outcomes is off.
+func (s *OutcomeService) CheckMetrics(ctx context.Context, now time.Time) (int, error) {
+	if !s.enabled(ctx) || s.Verification == nil {
+		return 0, nil
+	}
+	return s.Verification.CheckMetrics(ctx, now)
+}
+
 // Settle decides the verdict of every unsettled outcome whose settle_at is at or
 // before now (spec 2.6). It returns how many it settled.
 func (s *OutcomeService) Settle(ctx context.Context, now time.Time) (int, error) {
@@ -280,24 +303,129 @@ func (s *OutcomeService) Settle(ctx context.Context, now time.Time) (int, error)
 			return total, fmt.Errorf("list due outcomes: %w", err)
 		}
 		for _, o := range due {
-			// TODO(A3): pass the latest outcome_verification per criterion here.
-			// Until checks are written, a sampled outcome has no results and settles
-			// as unverified.
-			v := DecideVerdict(VerdictInput{Sampled: o.Sampled, Reopened: o.FailCause == "reopened"})
-			n, err := s.Queries.SettleWorkOutcome(ctx, db.SettleWorkOutcomeParams{
-				ID:        o.ID,
-				Verdict:   v.Verdict,
-				Severity:  v.Severity,
-				FailCause: v.FailCause,
-				SettledAt: dueAt,
-			})
+			n, err := s.settleOne(ctx, o, dueAt)
 			if err != nil {
-				return total, fmt.Errorf("settle outcome %s: %w", util.UUIDToString(o.ID), err)
+				return total, err
 			}
-			total += int(n)
+			total += n
 		}
 		if len(due) < outcomeBatchSize {
 			return total, nil
 		}
 	}
+}
+
+// settleOne decides one outcome from the newest check of each criterion, writes the
+// verdict, and for a fail or partial leaves the system note on the issue. All of it is
+// one transaction, so a verdict never settles without its note.
+func (s *OutcomeService) settleOne(ctx context.Context, o db.WorkOutcome, at pgtype.Timestamptz) (int, error) {
+	tx, err := s.TxStarter.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("begin settle: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	q := s.Queries.WithTx(tx)
+
+	results, notMet, err := s.criterionResults(ctx, q, o)
+	if err != nil {
+		return 0, err
+	}
+	v := DecideVerdict(VerdictInput{Sampled: o.Sampled, Reopened: o.FailCause == "reopened", Results: results})
+	n, err := q.SettleWorkOutcome(ctx, db.SettleWorkOutcomeParams{
+		ID:        o.ID,
+		Verdict:   v.Verdict,
+		Severity:  v.Severity,
+		FailCause: v.FailCause,
+		SettledAt: at,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("settle outcome %s: %w", util.UUIDToString(o.ID), err)
+	}
+	if n == 1 && (v.Verdict == "fail" || v.Verdict == "partial") {
+		if err := s.postSettledNote(ctx, q, o, v, notMet); err != nil {
+			return 0, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit settle: %w", err)
+	}
+	return int(n), nil
+}
+
+// criterionResults reads the newest check of each open criterion of the outcome's issue.
+// A criterion with no check is unable and does not count (spec 2.6). An artifact that is
+// still unpublished at settle time is a fail: the document it needs is missing. notMet
+// names the criteria that failed or were partly met, for the note.
+func (s *OutcomeService) criterionResults(ctx context.Context, q *db.Queries, o db.WorkOutcome) ([]CriterionResult, []string, error) {
+	criteria, err := q.ListIssueAcceptanceCriteria(ctx, db.ListIssueAcceptanceCriteriaParams{WorkspaceID: o.WorkspaceID, IssueID: o.IssueID})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list criteria: %w", err)
+	}
+	latest, err := q.ListLatestCriterionVerifications(ctx, o.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list checks: %w", err)
+	}
+	byCriterion := make(map[string]db.OutcomeVerification, len(latest))
+	for _, v := range latest {
+		byCriterion[util.UUIDToString(v.CriterionID)] = v
+	}
+	var results []CriterionResult
+	var notMet []string
+	for _, c := range criteria {
+		if c.ArchivedAt.Valid {
+			continue
+		}
+		if v, ok := byCriterion[util.UUIDToString(c.ID)]; ok {
+			results = append(results, CriterionResult{Result: v.Result, Severity: v.Severity})
+			if v.Result == "fail" || v.Result == "partial" {
+				notMet = append(notMet, c.Text)
+			}
+			continue
+		}
+		if c.CheckKind == CheckKindArtifact {
+			if _, err := q.InsertOutcomeVerification(ctx, verificationParams(o.WorkspaceID, o.ID, VerificationInput{
+				CriterionID: c.ID, Result: "fail", Severity: "medium",
+				Note: "No published document of the required kind when the outcome settled.",
+			}, verifierTypeSystem, pgtype.UUID{}, pgtype.UUID{})); err != nil {
+				return nil, nil, fmt.Errorf("record missing artifact: %w", err)
+			}
+			results = append(results, CriterionResult{Result: "fail", Severity: "medium"})
+			notMet = append(notMet, c.Text)
+			continue
+		}
+		results = append(results, CriterionResult{Result: "unable"})
+	}
+	return results, notMet, nil
+}
+
+// postSettledNote leaves the system comment on the issue that tells the doer a fail or
+// partial was settled. A doer that is an agent is mentioned, so the mention path reaches
+// it. The issue is not reopened.
+func (s *OutcomeService) postSettledNote(ctx context.Context, q *db.Queries, o db.WorkOutcome, v VerdictResult, notMet []string) error {
+	content := fmt.Sprintf("Outcome settled: %s", v.Verdict)
+	if v.FailCause != "" {
+		content += " (" + v.FailCause + ")"
+	}
+	content += "."
+	if len(notMet) > 0 {
+		content += " Not met: " + strings.Join(notMet, "; ") + "."
+	}
+	if o.AgentID.Valid {
+		if agent, err := q.GetAgent(ctx, o.AgentID); err == nil {
+			content = fmt.Sprintf("[@%s](mention://agent/%s) %s", agent.Name, util.UUIDToString(agent.ID), content)
+		}
+	}
+	if _, err := q.CreateComment(ctx, db.CreateCommentParams{
+		ID:          dbid.NewV7(),
+		IssueID:     o.IssueID,
+		WorkspaceID: o.WorkspaceID,
+		AuthorType:  "system",
+		AuthorID:    pgtype.UUID{Valid: true},
+		Content:     content,
+		Type:        "system",
+		ParentID:    pgtype.UUID{},
+	}); err != nil {
+		return fmt.Errorf("post settled note: %w", err)
+	}
+	return nil
 }

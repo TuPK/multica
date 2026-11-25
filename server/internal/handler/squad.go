@@ -1569,6 +1569,7 @@ func (h *Handler) enqueueSquadLeaderTask(ctx context.Context, issue db.Issue, au
 	if err != nil {
 		return DispatchBlocked, ReasonTargetUnavailable
 	}
+	service.ApplySquadCriteriaOnReceipt(ctx, h.Queries, h.TxStarter, issue, squad)
 
 	// The gate must judge the SAME top-of-chain human the enqueue path will
 	// persist on the leader task row, or it drifts: an agent-created issue that

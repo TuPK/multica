@@ -17,6 +17,18 @@ export const CATALOG_COLLECTIONS: readonly { id: SquadTemplateCategory }[] = ${J
 `;
 }
 
+// The outcome criteria each squad template gives an issue it receives, by template id
+// (durable spec 2.5). Only squads that declare some are listed.
+export function squadOutcomeCriteriaById(entries) {
+  const out = {};
+  for (const e of entries.filter((x) => x.kind === "squad")) {
+    const criteria = e.manifest.squad?.outcomeCriteria;
+    if (!Array.isArray(criteria) || criteria.length === 0) continue;
+    out[e.manifest.id] = criteria.map(({ role, text, check_kind, check_spec }) => ({ role, text, check_kind, check_spec: check_spec ?? {} }));
+  }
+  return out;
+}
+
 export function squadRecords(entries) {
   const collectionOrder = new Map(entries.filter((e) => e.kind === "collection").sort(byOrder).map((e, i) => [e.manifest.id, i]));
   return entries

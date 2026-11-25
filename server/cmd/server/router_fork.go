@@ -266,4 +266,18 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 			r.Post("/sync", h.SyncHubSource)
 		})
 	})
+
+	// Work outcomes, acceptance criteria and checks (durable spec 2.7). Reads are for
+	// members and agents. A criterion is written by a member or an agent; a check is
+	// recorded by a member, or by an agent through its verification task (the handler
+	// refuses any other task). An override is for owners and admins, as a person.
+	r.Get("/api/outcomes", h.ListWorkOutcomes)
+	r.Get("/api/outcomes/summary", h.SummarizeWorkOutcomes)
+	r.Get("/api/outcomes/{id}", h.GetWorkOutcome)
+	r.Post("/api/outcomes/{id}/verifications", h.RecordOutcomeVerification)
+	r.With(handler.RequireHumanActor).Post("/api/outcomes/{id}/override", h.OverrideOutcome)
+	r.Get("/api/issues/{id}/outcome", h.GetIssueOutcome)
+	r.Get("/api/issues/{id}/criteria", h.ListIssueCriteria)
+	r.Post("/api/issues/{id}/criteria", h.CreateIssueCriterion)
+	r.Patch("/api/issues/{id}/criteria/{cid}", h.UpdateIssueCriterion)
 }

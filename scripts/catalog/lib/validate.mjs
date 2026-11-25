@@ -292,6 +292,21 @@ function validateIncludes(entry, context, err) {
   }
 }
 
+// The criteria a squad template gives an issue it receives (durable spec 2.5). A criterion
+// names the role whose work it judges; the kinds are the outcome check kinds.
+const OUTCOME_CHECK_KINDS = ["manual", "agent_judgment", "command", "artifact", "metric"];
+
+function validateOutcomeCriteria(criteria, roleKeys, err) {
+  if (!Array.isArray(criteria)) return err("squad.outcomeCriteria must be an array");
+  criteria.forEach((c, i) => {
+    if (!isObject(c)) return err(`squad.outcomeCriteria[${i}] must be an object`);
+    if (!roleKeys.has(c.role)) err(`squad.outcomeCriteria[${i}].role "${c.role}" is not one of the squad's roles`);
+    if (!isNonEmptyString(c.text) || c.text.length > 500) err(`squad.outcomeCriteria[${i}].text must be 1 to 500 characters`);
+    if (!OUTCOME_CHECK_KINDS.includes(c.check_kind)) err(`squad.outcomeCriteria[${i}].check_kind must be one of ${OUTCOME_CHECK_KINDS.join(", ")}`);
+    if (c.check_spec !== undefined && !isObject(c.check_spec)) err(`squad.outcomeCriteria[${i}].check_spec must be an object`);
+  });
+}
+
 function validateSquad(entry, problems, context) {
   const { manifest, path } = entry;
   const err = (message) => problems.errors.push(`${path}: ${message}`);
@@ -325,6 +340,7 @@ function validateSquad(entry, problems, context) {
     else if (!seen) context.roleDefinitions.set(role.key, { role, path });
   }
   if (!keys.has(squad.leader)) err(`squad.leader "${squad.leader}" is not one of its roles`);
+  if (squad.outcomeCriteria !== undefined) validateOutcomeCriteria(squad.outcomeCriteria, keys, err);
   if (kitviet) {
     if (squad.skills !== undefined) err("squad.skills comes from the Kit Viet pack for a Kit Viet squad");
   } else {

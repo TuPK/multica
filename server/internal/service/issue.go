@@ -1147,6 +1147,7 @@ func (s *IssueService) enqueueSquadLeaderTask(ctx context.Context, issue db.Issu
 	if err != nil {
 		return
 	}
+	ApplySquadCriteriaOnReceipt(ctx, s.Queries, s.TxStarter, issue, squad)
 	hasPending, err := s.Queries.HasPendingTaskForIssueAndAgent(ctx, db.HasPendingTaskForIssueAndAgentParams{
 		IssueID: issue.ID,
 		AgentID: squad.LeaderID,

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS outcome_check_task_outcome_criterion_uidx;

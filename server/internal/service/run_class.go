@@ -80,6 +80,9 @@ func ResolveRunClass(in RunClassInput) RunClass {
 // that an autopilot run enqueued costs a second read, so the claim path pays
 // for one indexed lookup at most.
 func RunClassOfTask(ctx context.Context, q *db.Queries, task db.AgentTaskQueue) (RunClass, error) {
+	if class := durableRunClassOf(task.Context); class != "" {
+		return class, nil
+	}
 	in := RunClassInput{
 		OriginatorSource: task.OriginatorSource.String,
 		HasChatSession:   task.ChatSessionID.Valid,

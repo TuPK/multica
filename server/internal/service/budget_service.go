@@ -73,7 +73,7 @@ func validateBudgetFields(amount int64, soft int32, classes []string) error {
 		return ErrBudgetInvalid
 	}
 	for _, c := range classes {
-		if c != string(RunClassRoutine) && c != string(RunClassDelegated) {
+		if !heldRunClasses()[RunClass(c)] {
 			return ErrBudgetInvalid
 		}
 	}
@@ -107,7 +107,7 @@ func createBudgetIn(ctx context.Context, q *db.Queries, ws pgtype.UUID, actor Go
 		return db.Budget{}, err
 	}
 	if in.Classes == nil {
-		in.Classes = []string{string(RunClassRoutine), string(RunClassDelegated)}
+		in.Classes = []string{string(RunClassRoutine), string(RunClassDelegated), string(RunClassVerification), string(RunClassShadow)}
 	}
 	if err := validateBudgetFields(in.AmountMicros, in.SoftPercent, in.Classes); err != nil {
 		return db.Budget{}, err

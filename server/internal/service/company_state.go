@@ -114,7 +114,7 @@ func quietWindowOpen(qh QuietHours, now time.Time) bool {
 func companyVerdict(setting string, qh QuietHours, class RunClass, now time.Time) Verdict {
 	switch effectiveState(setting, qh, now) {
 	case CompanyStatePaused:
-		if class == RunClassRoutine || class == RunClassDelegated {
+		if heldRunClasses()[class] {
 			return Verdict{Reason: VerdictReasonCompanyPaused}
 		}
 	case CompanyStateQuiet:
@@ -228,7 +228,7 @@ func (s *CompanyStateService) PauseAndStop(ctx context.Context, ws pgtype.UUID, 
 			errs = append(errs, err)
 			continue
 		}
-		if class != RunClassRoutine && class != RunClassDelegated {
+		if !heldRunClasses()[class] {
 			continue
 		}
 		if _, err := s.Tasks.CancelTaskWithReason(ctx, task.ID,

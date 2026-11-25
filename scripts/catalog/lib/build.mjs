@@ -8,6 +8,7 @@ import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync
 import { dirname, join, resolve } from "node:path";
 import { catalogDir, repoRoot } from "./paths.mjs";
 import { chunkSkillsets, renderSkillsBuiltin, renderSkillsChunk, renderSkillsets } from "./build-skills.mjs";
+import { squadOutcomeCriteriaById } from "./build-squads.mjs";
 import { buildPackBundle, catalogSkillDirsOf, packDirs, renderPackIndex } from "./build-packs.mjs";
 import { renderCollections, renderI18n, renderRoleInstructions, renderSquads } from "./build-squads.mjs";
 import { companyForGo, renderAgents, renderCompany } from "./build-company.mjs";
@@ -83,6 +84,7 @@ export function buildAll({ entries, config, target, tsOutDir, goOutDir }) {
     written += write(join(goOutDir, "flows.json"), `${JSON.stringify(flowsById(entries))}\n`);
     written += write(join(goOutDir, "designer-workflows.json"), `${JSON.stringify(designerTemplates(entries))}\n`);
     written += write(join(goOutDir, "contracts.json"), `${JSON.stringify(contractsIndex(entries))}\n`);
+    written += write(join(goOutDir, "squad-outcome-criteria.json"), `${JSON.stringify(squadOutcomeCriteriaById(entries))}\n`);
     const bundle = entries.find((e) => e.kind === "bundle" && e.manifest.id === "quickstart");
     if (!bundle) throw new Error("catalog/bundles/quickstart is missing");
     written += write(join(goOutDir, "quickstart-bundle.json"), `${JSON.stringify(bundle.manifest.bundle)}\n`);

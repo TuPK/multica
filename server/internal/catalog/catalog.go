@@ -42,3 +42,8 @@ func DesignerWorkflowsJSON() []byte { return read("designer-workflows.json") }
 // FlowsJSON holds the enforced flows (catalog/workflows/flow_*) by manifest id, each with its revision.
 // Empty when the catalog has not been built.
 func FlowsJSON() []byte { return read("flows.json") }
+
+// SquadOutcomeCriteriaJSON maps a squad template id to the outcome criteria its issues
+// get when the squad receives them (durable spec 2.5). Empty when the catalog has not been
+// built; {} when no squad declares criteria.
+func SquadOutcomeCriteriaJSON() []byte { return read("squad-outcome-criteria.json") }

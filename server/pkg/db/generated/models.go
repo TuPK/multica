@@ -2424,6 +2424,14 @@ type OrgChangeApplication struct {
 	RollbackProposalID pgtype.UUID        `json:"rollback_proposal_id"`
 }
 
+type OutcomeCheckTask struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	OutcomeID   pgtype.UUID        `json:"outcome_id"`
+	CriterionID pgtype.UUID        `json:"criterion_id"`
+	TaskID      pgtype.UUID        `json:"task_id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type OutcomeVerification struct {
 	ID           pgtype.UUID        `json:"id"`
 	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
