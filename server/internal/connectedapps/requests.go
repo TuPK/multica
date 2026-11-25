@@ -77,6 +77,7 @@ func (s *Service) createRequest(ctx context.Context, rn *run, kind string, app d
 	if err != nil {
 		return db.AppActionRequest{}, err
 	}
+	s.admitAttention(ctx, req)
 	switch {
 	case isTeamConnect(req):
 		s.notifyAdmins(ctx, req)

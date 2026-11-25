@@ -269,6 +269,9 @@ type Digest struct {
 	// Inquiries are the Secretary's questions to squad leaders asked today or
 	// yesterday (UTC), newest first. The daily cap keeps the list short.
 	Inquiries []DigestInquiry `json:"inquiries"`
+	// QueuedAsks are the questions the squads' attention share holds back (spec 7.3), the
+	// reasons that block a decision first.
+	QueuedAsks []QueuedAsk `json:"queued_asks"`
 	// Pipeline lists each initiative that is active or operating (spec 3.7).
 	Pipeline []DigestInitiative `json:"pipeline"`
 	// OverdueRequests are squad requests the receiving squad has not answered
@@ -691,6 +694,13 @@ func (s *DigestService) Compute(ctx context.Context, workspaceID pgtype.UUID, si
 	if err != nil {
 		return Digest{}, err
 	}
+	queued, err := QueuedAttentionAsks(ctx, s.Queries, workspaceID)
+	if err != nil {
+		return Digest{}, err
+	}
+	if sc.floor {
+		queued = filterQueuedToSquads(queued, sc.squads)
+	}
 	pipeline, err := s.computePipeline(ctx, workspaceID, now)
 	if err != nil {
 		return Digest{}, err
@@ -771,6 +781,7 @@ func (s *DigestService) Compute(ctx context.Context, workspaceID pgtype.UUID, si
 		Quiet:                quiet,
 		Knowledge:            know,
 		Inquiries:            inquiries,
+		QueuedAsks:           queued,
 		Pipeline:             pipeline,
 		OverdueRequests:      overdue,
 		BlockedDirectives:    blockedDirectives,

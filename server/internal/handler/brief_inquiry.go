@@ -21,6 +21,11 @@ type AskBriefInquiryRequest struct {
 	SquadID  string `json:"squad_id"`
 	IssueID  string `json:"issue_id"`
 	Question string `json:"question"`
+	// Reason, WhyNotDecide and Searched are the attention rules of an agent's question
+	// (durable spec 7.4), required while durable_principal is on.
+	Reason       string   `json:"reason"`
+	WhyNotDecide string   `json:"why_not_decide"`
+	Searched     []string `json:"searched"`
 }
 
 // BriefInquiryResponse is one question the Secretary put to a squad leader.
@@ -128,6 +133,9 @@ func (h *Handler) AskBriefInquiry(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "question must be at most "+strconv.Itoa(service.BriefInquiryQuestionMax)+" characters")
 		return
 	}
+	if !h.allowAgentAsk(w, r, req.Reason, req.WhyNotDecide, req.Searched) {
+		return
+	}
 
 	res, err := service.AskBriefInquiry(r.Context(), h.TxStarter, h.Queries, service.BriefInquiryAskParams{
 		WorkspaceID: wsUUID,
@@ -168,5 +176,6 @@ func (h *Handler) AskBriefInquiry(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("brief inquiry asked", append(logger.RequestAttrs(r),
 		"inquiry_id", uuidToString(res.Inquiry.ID), "squad_id", req.SquadID)...)
+	h.admitInquiry(r.Context(), wsUUID, squadUUID, req, res.Inquiry.ID)
 	writeJSON(w, http.StatusCreated, briefInquiryToResponse(res.Inquiry))
 }

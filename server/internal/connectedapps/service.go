@@ -106,6 +106,9 @@ type Config struct {
 	// Intents turns a call the policy rehearses into an intent a person approves
 	// (durable spec 5.2). Nil refuses such calls without making an intent.
 	Intents IntentGate
+	// Attention puts an app action request in the attention ledger (durable spec 7.3).
+	// Nil records nothing.
+	Attention AttentionGate
 	// SecretBox seals remote app tokens at rest and DB runs their refresh.
 	// Remote MCP apps are off unless both are set.
 	SecretBox Sealer
@@ -134,6 +137,7 @@ type Service struct {
 	remote     *remoteSupport
 	effects    EffectGate
 	intents    IntentGate
+	attention  AttentionGate
 }
 
 // New returns a Service, or an error when a required dependency is missing.
@@ -169,6 +173,7 @@ func New(cfg Config) (*Service, error) {
 		remote:     newRemoteSupport(cfg, base),
 		effects:    cfg.Effects,
 		intents:    cfg.Intents,
+		attention:  cfg.Attention,
 	}, nil
 }
 

@@ -906,7 +906,7 @@ func main() {
 	}
 	// Every minute: a transition into done opens a work outcome, and due outcomes are settled (durable spec 2.4).
 	durableJury := service.NewJuryService(queries, pool, taskSvc)
-	durableChecks := &service.VerificationService{Queries: queries, TxStarter: pool, Tasks: taskSvc, Jury: durableJury}
+	durableChecks := &service.VerificationService{Queries: queries, TxStarter: pool, Tasks: taskSvc, Jury: durableJury, Flags: flags}
 	trackRecords := &service.TrackRecordService{Queries: queries, TxStarter: pool, Flags: flags}
 	durableOutcomes := &service.OutcomeService{Queries: queries, TxStarter: pool, Flags: flags, Verification: durableChecks, TrackRecords: trackRecords}
 	if err := schedulerMgr.Register(scheduler.DurableOutcomeJob(durableOutcomes)); err != nil {

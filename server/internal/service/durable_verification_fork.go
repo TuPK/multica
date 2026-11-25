@@ -17,6 +17,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // Acceptance criteria, the checks that decide an outcome, and the verifier that makes
@@ -120,6 +121,8 @@ type VerificationService struct {
 	Jury *JuryService
 	// Now is the clock for windows. Nil means time.Now.
 	Now func() time.Time
+	// Flags decides durable_principal: with it on, a manual check waits in the attention ledger.
+	Flags *featureflag.Service
 }
 
 func (s *VerificationService) now() time.Time {
@@ -719,6 +722,8 @@ func (s *VerificationService) Schedule(ctx context.Context, o db.WorkOutcome) er
 			if err := s.checkArtifact(ctx, o, c); err != nil {
 				return err
 			}
+		case CheckKindManual:
+			s.admitManualCheck(ctx, o)
 		case CheckKindAgentJudgment, CheckKindCommand:
 			if s.Jury != nil {
 				eligible, err := s.Jury.Eligible(ctx, o, c)
