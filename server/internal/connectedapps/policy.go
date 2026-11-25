@@ -19,7 +19,7 @@ func strictness(policy string) int {
 	case PolicyConfirm:
 		return 1
 	default:
-		return 2
+		return strictnessFork(policy)
 	}
 }
 
