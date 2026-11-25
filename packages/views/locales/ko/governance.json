@@ -118,7 +118,20 @@
       "floors": "층"
     },
     "digest_note": "자동은 활성 스쿼드가 {{threshold}}개를 넘으면 층 브리프를 읽습니다. 현재 {{count}}개이므로 비서는 지금 {{resolved}}을(를) 읽습니다.",
-    "digest_save_failed": "요약 소스를 바꾸지 못했습니다. 다시 시도하세요."
+    "digest_save_failed": "요약 소스를 바꾸지 못했습니다. 다시 시도하세요.",
+    "attention_heading": "주의 예산",
+    "attention_minutes": "주당 분",
+    "attention_split": "squad 간 배분",
+    "attention_split_options": {
+      "equal": "균등 배분",
+      "goals": "활성 목표 수 기준"
+    },
+    "attention_spent": "이번 주 {{spent}} / {{budget}}분 사용.",
+    "attention_hint": "squad가 이번 주 몫을 다 쓰면 그 squad의 질문은 브리핑으로 보류됩니다. 긴급 질문과 상시 승인으로 내린 결정은 보류되지 않습니다.",
+    "attention_invalid": "0부터 {{max}} 사이의 정수 분을 입력하세요.",
+    "attention_save": "예산 저장",
+    "attention_saved": "주의 예산을 저장했습니다",
+    "attention_save_failed": "주의 예산을 저장하지 못했습니다. 다시 시도하세요."
   },
   "log": {
     "filter_kind": "종류",
@@ -186,7 +199,8 @@
     "stalled": "멈춘 이니셔티브 {{count}}개",
     "routines_late": "지연된 루틴 {{count}}개",
     "runtimes_offline": "오프라인 런타임 {{count}}개",
-    "quiet": "지금 처리할 것이 없습니다"
+    "quiet": "지금 처리할 것이 없습니다",
+    "attention": "내 시간: 이번 주 {{spent}} / {{budget}}분"
   },
   "health": {
     "heading": "시스템 상태",

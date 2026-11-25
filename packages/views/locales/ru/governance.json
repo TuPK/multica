@@ -118,7 +118,20 @@
       "floors": "Floors"
     },
     "digest_note": "Automatic reads floor briefs above {{threshold}} active squads. You have {{count}}, so the Secretary reads {{resolved}} now.",
-    "digest_save_failed": "Could not change the digest source. Try again."
+    "digest_save_failed": "Could not change the digest source. Try again.",
+    "attention_heading": "Бюджет внимания",
+    "attention_minutes": "Минут в неделю",
+    "attention_split": "Распределение между squad",
+    "attention_split_options": {
+      "equal": "Поровну",
+      "goals": "По числу активных целей"
+    },
+    "attention_spent": "Израсходовано на этой неделе: {{spent}} из {{budget}} мин.",
+    "attention_hint": "Если squad исчерпал свою долю недели, его вопросы придерживаются для брифа. Срочные вопросы и решения по постоянному разрешению никогда не придерживаются.",
+    "attention_invalid": "Введите целое число минут от 0 до {{max}}.",
+    "attention_save": "Сохранить бюджет",
+    "attention_saved": "Бюджет внимания сохранён",
+    "attention_save_failed": "Не удалось сохранить бюджет внимания. Попробуйте ещё раз."
   },
   "log": {
     "filter_kind": "Kind",
@@ -186,7 +199,8 @@
     "stalled": "{{count}} stalled initiatives",
     "routines_late": "{{count}} routines late",
     "runtimes_offline": "{{count}} runtimes offline",
-    "quiet": "Nothing needs you"
+    "quiet": "Nothing needs you",
+    "attention": "Ваше время: {{spent}} / {{budget}} мин на этой неделе"
   },
   "health": {
     "heading": "System health",

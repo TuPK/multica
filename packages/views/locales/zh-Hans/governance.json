@@ -118,7 +118,20 @@
       "floors": "楼层"
     },
     "digest_note": "自动模式在活跃小队超过 {{threshold}} 个时读取楼层简报。当前有 {{count}} 个，因此秘书现在读取{{resolved}}。",
-    "digest_save_failed": "无法更改摘要来源，请重试。"
+    "digest_save_failed": "无法更改摘要来源，请重试。",
+    "attention_heading": "注意力预算",
+    "attention_minutes": "每周分钟数",
+    "attention_split": "各 squad 之间的分配",
+    "attention_split_options": {
+      "equal": "平均分配",
+      "goals": "按活跃目标数"
+    },
+    "attention_spent": "本周已用 {{spent}} / {{budget}} 分钟。",
+    "attention_hint": "某个 squad 本周的份额用完后，它的问题会留给简报。紧急问题和标准授权下的决定永不被留存。",
+    "attention_invalid": "请输入 0 到 {{max}} 之间的整数分钟数。",
+    "attention_save": "保存预算",
+    "attention_saved": "注意力预算已保存",
+    "attention_save_failed": "无法保存注意力预算，请重试。"
   },
   "log": {
     "filter_kind": "类型",
@@ -186,7 +199,8 @@
     "stalled": "{{count}} 个停滞的项目",
     "routines_late": "{{count}} 个例行任务逾期",
     "runtimes_offline": "{{count}} 个运行时离线",
-    "quiet": "暂无需要你处理的事"
+    "quiet": "暂无需要你处理的事",
+    "attention": "你的时间：本周 {{spent}} / {{budget}} 分钟"
   },
   "health": {
     "heading": "系统健康",

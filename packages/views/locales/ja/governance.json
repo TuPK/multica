@@ -118,7 +118,20 @@
       "floors": "フロア"
     },
     "digest_note": "自動は有効なチームが{{threshold}}を超えるとフロアのブリーフを読みます。現在{{count}}チームのため、秘書は今{{resolved}}を読みます。",
-    "digest_save_failed": "ダイジェストの元データを変更できませんでした。もう一度お試しください。"
+    "digest_save_failed": "ダイジェストの元データを変更できませんでした。もう一度お試しください。",
+    "attention_heading": "注意の予算",
+    "attention_minutes": "週あたりの分数",
+    "attention_split": "squad 間の配分",
+    "attention_split_options": {
+      "equal": "均等配分",
+      "goals": "進行中の目標数に応じて"
+    },
+    "attention_spent": "今週 {{spent}} / {{budget}} 分を使用。",
+    "attention_hint": "squad が今週の配分を使い切ると、その質問はブリーフに回されます。緊急の質問と、常設の承認に基づく決定は保留されません。",
+    "attention_invalid": "0 から {{max}} までの整数の分を入力してください。",
+    "attention_save": "予算を保存",
+    "attention_saved": "注意の予算を保存しました",
+    "attention_save_failed": "注意の予算を保存できませんでした。もう一度お試しください。"
   },
   "log": {
     "filter_kind": "種類",
@@ -186,7 +199,8 @@
     "stalled": "停滞しているイニシアチブ {{count}} 件",
     "routines_late": "遅延しているルーティン {{count}} 件",
     "runtimes_offline": "オフラインのランタイム {{count}} 件",
-    "quiet": "対応が必要なものはありません"
+    "quiet": "対応が必要なものはありません",
+    "attention": "あなたの時間：今週 {{spent}} / {{budget}} 分"
   },
   "health": {
     "heading": "システムの健全性",

@@ -118,7 +118,20 @@
       "floors": "Floors"
     },
     "digest_note": "Automatic reads floor briefs above {{threshold}} active squads. You have {{count}}, so the Secretary reads {{resolved}} now.",
-    "digest_save_failed": "Could not change the digest source. Try again."
+    "digest_save_failed": "Could not change the digest source. Try again.",
+    "attention_heading": "Attention budget",
+    "attention_minutes": "Minutes per week",
+    "attention_split": "Split between squads",
+    "attention_split_options": {
+      "equal": "Equal shares",
+      "goals": "By active goals"
+    },
+    "attention_spent": "{{spent}} of {{budget}} minutes used this week.",
+    "attention_hint": "A squad that has used its share of the week has its questions held for the brief. Urgent questions and decisions made under standing approval are never held.",
+    "attention_invalid": "Enter a whole number of minutes from 0 to {{max}}.",
+    "attention_save": "Save budget",
+    "attention_saved": "Attention budget saved",
+    "attention_save_failed": "Could not save the attention budget. Try again."
   },
   "log": {
     "filter_kind": "Kind",
@@ -186,7 +199,8 @@
     "stalled": "{{count}} stalled initiatives",
     "routines_late": "{{count}} routines late",
     "runtimes_offline": "{{count}} runtimes offline",
-    "quiet": "Nothing needs you"
+    "quiet": "Nothing needs you",
+    "attention": "Your time: {{spent}} / {{budget}} min this week"
   },
   "health": {
     "heading": "System health",

@@ -118,7 +118,20 @@
       "floors": "Étages"
     },
     "digest_note": "Le mode automatique lit les briefs d'étage au-delà de {{threshold}} escouades actives. Vous en avez {{count}}, donc le Secrétaire lit {{resolved}} maintenant.",
-    "digest_save_failed": "Impossible de changer la source du résumé. Réessayez."
+    "digest_save_failed": "Impossible de changer la source du résumé. Réessayez.",
+    "attention_heading": "Budget d'attention",
+    "attention_minutes": "Minutes par semaine",
+    "attention_split": "Répartition entre les squads",
+    "attention_split_options": {
+      "equal": "Parts égales",
+      "goals": "Selon les objectifs actifs"
+    },
+    "attention_spent": "Utilisé cette semaine : {{spent}} sur {{budget}} minutes.",
+    "attention_hint": "Un squad qui a épuisé sa part de la semaine voit ses questions retenues pour le brief. Les questions urgentes et les décisions prises sous approbation permanente ne sont jamais retenues.",
+    "attention_invalid": "Saisissez un nombre entier de minutes entre 0 et {{max}}.",
+    "attention_save": "Enregistrer le budget",
+    "attention_saved": "Budget d'attention enregistré",
+    "attention_save_failed": "Impossible d'enregistrer le budget d'attention. Réessayez."
   },
   "log": {
     "filter_kind": "Type",
@@ -186,7 +199,8 @@
     "stalled": "{{count}} initiatives bloquées",
     "routines_late": "{{count}} routines en retard",
     "runtimes_offline": "{{count}} runtimes hors ligne",
-    "quiet": "Rien ne requiert votre attention"
+    "quiet": "Rien ne requiert votre attention",
+    "attention": "Votre temps : {{spent}} / {{budget}} min cette semaine"
   },
   "health": {
     "heading": "Santé du système",
