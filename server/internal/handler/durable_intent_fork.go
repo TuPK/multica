@@ -19,16 +19,19 @@ import (
 // IntentResponse is one rehearsed action as the API shows it (durable spec 5.2). The
 // preview is what the person reads; the call's hash is what an approval binds to.
 type IntentResponse struct {
-	ID           string          `json:"id"`
-	CreatedAt    time.Time       `json:"created_at"`
-	ExpiresAt    time.Time       `json:"expires_at"`
-	AgentID      *string         `json:"agent_id"`
-	IssueID      *string         `json:"issue_id"`
-	Source       string          `json:"source"`
-	Target       string          `json:"target"`
-	EffectClass  string          `json:"effect_class"`
-	State        string          `json:"state"`
-	CallSHA256   string          `json:"call_sha256"`
+	ID          string    `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	AgentID     *string   `json:"agent_id"`
+	IssueID     *string   `json:"issue_id"`
+	Source      string    `json:"source"`
+	Target      string    `json:"target"`
+	EffectClass string    `json:"effect_class"`
+	State       string    `json:"state"`
+	CallSHA256  string    `json:"call_sha256"`
+	// Call is the call an approval runs, so the person can edit its text before approving
+	// (durable spec 5.3). The server rejects an edit that changes anything else.
+	Call         json.RawMessage `json:"call"`
 	Preview      json.RawMessage `json:"preview"`
 	Rationale    string          `json:"rationale"`
 	DecisionNote string          `json:"decision_note"`
@@ -45,6 +48,7 @@ func intentResponseOf(it db.EffectIntent) IntentResponse {
 		EffectClass:  it.EffectClass,
 		State:        it.State,
 		CallSHA256:   it.CallSha256,
+		Call:         json.RawMessage(it.Call),
 		Preview:      json.RawMessage(it.Preview),
 		Rationale:    it.Rationale,
 		DecisionNote: it.DecisionNote,
