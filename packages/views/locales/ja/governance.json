@@ -149,6 +149,7 @@
       "goal_imported": "目標をインポート",
       "review_published": "レビューを公開",
       "squad_handoff": "スクワッド引き継ぎ",
+      "verification_mode_changed": "検証モードの変更",
       "unknown": "不明なイベント"
     },
     "actor_type": {

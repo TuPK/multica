@@ -149,6 +149,7 @@
       "goal_imported": "Objectif importé",
       "review_published": "Évaluation publiée",
       "squad_handoff": "Transfert entre équipes",
+      "verification_mode_changed": "Mode de vérification modifié",
       "unknown": "Événement inconnu"
     },
     "actor_type": {

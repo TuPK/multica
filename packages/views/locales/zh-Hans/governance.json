@@ -149,6 +149,7 @@
       "goal_imported": "目标已导入",
       "review_published": "评审已发布",
       "squad_handoff": "小队移交",
+      "verification_mode_changed": "验证模式已更改",
       "unknown": "未知事件"
     },
     "actor_type": {

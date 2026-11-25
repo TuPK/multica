@@ -149,6 +149,7 @@
       "goal_imported": "Goal imported",
       "review_published": "Review published",
       "squad_handoff": "Squad handoff",
+      "verification_mode_changed": "Verification mode changed",
       "unknown": "Unknown event"
     },
     "actor_type": {
