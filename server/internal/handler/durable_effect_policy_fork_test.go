@@ -74,8 +74,15 @@ func TestIntentResponseCarriesTheCall(t *testing.T) {
 		t.Fatalf("call = %+v", got)
 	}
 
-	declared := intentResponseOf(db.EffectIntent{Preview: []byte(`{}`)})
-	if string(declared.Call) != "null" {
-		t.Fatalf("declared call = %s, want null", declared.Call)
+	declared, err := json.Marshal(intentResponseOf(db.EffectIntent{Preview: []byte(`{}`)}))
+	if err != nil {
+		t.Fatalf("encode declared intent: %v", err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(declared, &fields); err != nil {
+		t.Fatalf("decode declared intent: %v", err)
+	}
+	if string(fields["call"]) != "null" {
+		t.Fatalf("declared call = %s, want null", fields["call"])
 	}
 }
