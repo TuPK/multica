@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/integrations/channel"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -41,6 +42,7 @@ type Router struct {
 	tasks     TaskEnqueuer
 	reader    SessionReader
 	lifecycle ChannelChatLifecycle
+	effects   connectedapps.EffectGate
 
 	batcher *pendingBatcher
 
@@ -78,6 +80,8 @@ type RouterConfig struct {
 	MediaConcurrency int
 	Logger           *slog.Logger
 	Lifecycle        ChannelChatLifecycle
+	// Effects logs each outbound reply (durable spec 4.5). Nil sends without logging.
+	Effects connectedapps.EffectGate
 }
 
 // NewRouter builds a Router around the shared (platform-agnostic) services:
@@ -104,6 +108,7 @@ func NewRouter(issues IssueCreator, tasks TaskEnqueuer, reader SessionReader, cf
 		tasks:        tasks,
 		reader:       reader,
 		lifecycle:    cfg.Lifecycle,
+		effects:      cfg.Effects,
 		replyTimeout: cfg.ReplyTimeout,
 		mediaTimeout: cfg.MediaTimeout,
 		mediaCtx:     mediaCtx,
@@ -1140,6 +1145,10 @@ func (r *Router) emitFlushReply(ctx context.Context, set ResolverSet, inst Resol
 	if set.Replier == nil {
 		return
 	}
+	ticket, ok := r.gateReply(ctx, inst)
+	if !ok {
+		return
+	}
 	set.Replier.Reply(ctx, inst, msg, Result{
 		Outcome:              outcome,
 		InstallationID:       inst.ID,
@@ -1148,6 +1157,7 @@ func (r *Router) emitFlushReply(ctx context.Context, set ResolverSet, inst Resol
 		ChannelRouteRevision: routeRevision,
 		Sender:               msg.Source.SenderID,
 	})
+	r.settleReply(ctx, ticket)
 }
 
 // scheduleReply detaches the OutboundReplier from the ACK critical path. The
@@ -1163,7 +1173,12 @@ func (r *Router) scheduleReply(set ResolverSet, inst ResolvedInstallation, msg c
 		defer r.replyWg.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), r.replyTimeout)
 		defer cancel()
+		ticket, ok := r.gateReply(ctx, inst)
+		if !ok {
+			return
+		}
 		set.Replier.Reply(ctx, inst, msg, res)
+		r.settleReply(ctx, ticket)
 		if ctx.Err() == context.DeadlineExceeded {
 			r.logger.Warn("channel router: outbound reply timed out",
 				"event_id", msg.EventID, "outcome", string(res.Outcome),

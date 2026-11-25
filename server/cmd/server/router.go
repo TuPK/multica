@@ -630,7 +630,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// is the single shared inbound handler injected into every Channel.
 	channelRegistry := channel.NewRegistry()
 	channelRouter := engine.NewRouter(h.IssueService, h.TaskService, queries, engine.RouterConfig{
-		Logger: slog.Default(), Lifecycle: h,
+		Logger: slog.Default(), Lifecycle: h, Effects: h.Effects,
 	})
 	// Debounce the per-session run trigger so a burst of messages collapses
 	// into one agent run instead of one per message (MUL-2968).
