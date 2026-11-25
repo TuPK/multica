@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -20,6 +21,8 @@ const (
 	outcomeCursorName = "outcome"
 	// outcomeBatchSize bounds the rows one transaction reads or settles.
 	outcomeBatchSize = 200
+	// outcomeOverlap is how far before the cursor each run starts reading (spec 2.4).
+	outcomeOverlap = 5 * time.Minute
 	// defaultOutcomeSettleWindow is settle_days = 7 (spec 2.4). The workspace
 	// setting, 1 to 60 days, replaces it when the setting exists.
 	defaultOutcomeSettleWindow = 7 * 24 * time.Hour
@@ -55,74 +58,137 @@ func (s *OutcomeService) now() time.Time {
 	return time.Now()
 }
 
-// ProcessTransitions applies the transitions after the cursor, one batch per
-// transaction, until none are left. It returns how many transitions it read.
+// ProcessTransitions applies the transitions the cursor has not moved past, one
+// page per transaction, until none are left. It returns how many transitions it read.
 //
-// The cursor orders by created_at, which is the start of the writing transaction.
-// A transaction that commits after a later one started can therefore land behind
-// the cursor and be skipped; see the A2 report for the overlap that would close it.
+// A run starts outcomeOverlap before the cursor and reads forward by (created_at, id).
+// A transaction that commits after a later one was read can carry an earlier
+// created_at, and this overlap reads it. durable_outcome_applied keeps a rereading
+// from applying a transition twice. Transactions longer than outcomeOverlap can still
+// be skipped (spec 2.4; see the A2 report).
 func (s *OutcomeService) ProcessTransitions(ctx context.Context) (int, error) {
 	if !s.enabled(ctx) {
 		return 0, nil
 	}
+	cursor, found, err := s.readCursor(ctx)
+	if err != nil {
+		return 0, err
+	}
+	after := outcomeEpochKey()
+	if found {
+		after = outcomeKey{At: pgtype.Timestamptz{Time: cursor.At.Time.Add(-outcomeOverlap), Valid: true}, ID: outcomeZeroID()}
+	}
 	total := 0
 	for {
-		n, err := s.processBatch(ctx)
-		total += n
-		if err != nil || n < outcomeBatchSize {
+		page, err := s.applyPage(ctx, after, cursor)
+		if err != nil {
 			return total, err
 		}
+		total += page.read
+		cursor = page.cursor
+		if page.read < outcomeBatchSize {
+			return total, nil
+		}
+		after = page.last
 	}
 }
 
-func (s *OutcomeService) processBatch(ctx context.Context) (int, error) {
+// outcomeKey orders transitions by (created_at, id), the order the job reads in.
+type outcomeKey struct {
+	At pgtype.Timestamptz
+	ID pgtype.UUID
+}
+
+func outcomeEpochKey() outcomeKey {
+	return outcomeKey{At: pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, ID: outcomeZeroID()}
+}
+
+// outcomeZeroID is a valid, zero UUID. A NULL id would make the row comparison match
+// nothing.
+func outcomeZeroID() pgtype.UUID {
+	return pgtype.UUID{Valid: true}
+}
+
+// after reports whether a comes after b in (created_at, id) order.
+func (a outcomeKey) after(b outcomeKey) bool {
+	if !a.At.Time.Equal(b.At.Time) {
+		return a.At.Time.After(b.At.Time)
+	}
+	return bytes.Compare(a.ID.Bytes[:], b.ID.Bytes[:]) > 0
+}
+
+// readCursor returns the stored cursor. found is false before the first run that
+// read a transition.
+func (s *OutcomeService) readCursor(ctx context.Context) (outcomeKey, bool, error) {
+	cur, err := s.Queries.GetDurableOutcomeCursor(ctx, outcomeCursorName)
+	switch {
+	case err == nil:
+		return outcomeKey{At: cur.CreatedAt, ID: cur.TransitionID}, true, nil
+	case errors.Is(err, pgx.ErrNoRows):
+		return outcomeKey{}, false, nil
+	default:
+		return outcomeKey{}, false, fmt.Errorf("read outcome cursor: %w", err)
+	}
+}
+
+// outcomePage is the result of one transaction over a page of transitions.
+type outcomePage struct {
+	read   int        // transitions read in this page
+	last   outcomeKey // key of the last transition read, where the next page starts
+	cursor outcomeKey // the cursor after this page: the furthest transition read
+}
+
+// applyPage reads one page after the key and applies each transition not yet in
+// durable_outcome_applied, moving the cursor to the furthest transition read. All of
+// it, including the cursor, commits or rolls back together.
+func (s *OutcomeService) applyPage(ctx context.Context, after, cursor outcomeKey) (outcomePage, error) {
 	tx, err := s.TxStarter.Begin(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("begin outcome batch: %w", err)
+		return outcomePage{}, fmt.Errorf("begin outcome page: %w", err)
 	}
 	defer tx.Rollback(ctx)
 	q := s.Queries.WithTx(tx)
 
-	// Before any cursor row exists, every transition is unread. The zero UUID is
-	// valid, not NULL: a NULL id would make the row comparison match nothing.
-	after := db.ListIssueTransitionsAfterCursorParams{
-		AfterAt:  pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true},
-		AfterID:  pgtype.UUID{Valid: true},
+	rows, err := q.ListIssueTransitionsAfterCursor(ctx, db.ListIssueTransitionsAfterCursorParams{
+		AfterAt:  after.At,
+		AfterID:  after.ID,
 		RowLimit: outcomeBatchSize,
-	}
-	cur, err := q.GetDurableOutcomeCursor(ctx, outcomeCursorName)
-	switch {
-	case err == nil:
-		after.AfterAt = cur.CreatedAt
-		after.AfterID = cur.TransitionID
-	case errors.Is(err, pgx.ErrNoRows):
-	default:
-		return 0, fmt.Errorf("read outcome cursor: %w", err)
-	}
-
-	rows, err := q.ListIssueTransitionsAfterCursor(ctx, after)
+	})
 	if err != nil {
-		return 0, fmt.Errorf("list transitions after cursor: %w", err)
+		return outcomePage{}, fmt.Errorf("list transitions: %w", err)
 	}
+	page := outcomePage{read: len(rows), cursor: cursor}
 	for _, r := range rows {
+		key := outcomeKey{At: r.CreatedAt, ID: r.ID}
+		if key.after(page.cursor) {
+			page.cursor = key
+		}
+		page.last = key
+
+		claimed, err := q.ClaimOutcomeTransition(ctx, r.ID)
+		if err != nil {
+			return outcomePage{}, fmt.Errorf("claim transition %s: %w", util.UUIDToString(r.ID), err)
+		}
+		if claimed == 0 {
+			continue
+		}
 		if err := s.apply(ctx, q, r); err != nil {
-			return 0, fmt.Errorf("apply transition %s: %w", util.UUIDToString(r.ID), err)
+			return outcomePage{}, fmt.Errorf("apply transition %s: %w", util.UUIDToString(r.ID), err)
 		}
 	}
-	if len(rows) > 0 {
-		last := rows[len(rows)-1]
+	if page.read > 0 {
 		if err := q.UpsertDurableOutcomeCursor(ctx, db.UpsertDurableOutcomeCursorParams{
 			Name:         outcomeCursorName,
-			CreatedAt:    last.CreatedAt,
-			TransitionID: last.ID,
+			CreatedAt:    page.cursor.At,
+			TransitionID: page.cursor.ID,
 		}); err != nil {
-			return 0, fmt.Errorf("move outcome cursor: %w", err)
+			return outcomePage{}, fmt.Errorf("move outcome cursor: %w", err)
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit outcome batch: %w", err)
+		return outcomePage{}, fmt.Errorf("commit outcome page: %w", err)
 	}
-	return len(rows), nil
+	return page, nil
 }
 
 // apply reads one transition by lifecycle category (D32). Entering done opens an

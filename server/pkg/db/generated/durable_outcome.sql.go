@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimOutcomeTransition = `-- name: ClaimOutcomeTransition :execrows
+INSERT INTO durable_outcome_applied (transition_id)
+VALUES ($1)
+ON CONFLICT (transition_id) DO NOTHING
+`
+
+// Returns 1 when this transaction applies the transition, 0 when an earlier run
+// already did. The caller skips the transition on 0 (durable spec 2.4).
+func (q *Queries) ClaimOutcomeTransition(ctx context.Context, transitionID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, claimOutcomeTransition, transitionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createWorkOutcome = `-- name: CreateWorkOutcome :one
 INSERT INTO work_outcome (
     workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id,

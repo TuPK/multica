@@ -72,3 +72,10 @@ UPDATE work_outcome
 SET verdict = sqlc.arg(verdict), severity = sqlc.arg(severity), fail_cause = sqlc.arg(fail_cause),
     settled_at = sqlc.arg(settled_at), updated_at = now()
 WHERE id = sqlc.arg(id) AND settled_at IS NULL;
+
+-- name: ClaimOutcomeTransition :execrows
+-- Returns 1 when this transaction applies the transition, 0 when an earlier run
+-- already did. The caller skips the transition on 0 (durable spec 2.4).
+INSERT INTO durable_outcome_applied (transition_id)
+VALUES (sqlc.arg(transition_id))
+ON CONFLICT (transition_id) DO NOTHING;

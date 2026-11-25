@@ -334,3 +334,73 @@ func TestOutcomeFlagOffStopsWrites(t *testing.T) {
 		t.Fatalf("flag back on: the due outcome was not settled")
 	}
 }
+
+// TestLateCommitIsPickedUpInOverlap: a transaction that is still open when the job
+// reads another transaction's commit can commit later. The overlap read must still
+// apply its transition, and only once.
+func TestLateCommitIsPickedUpInOverlap(t *testing.T) {
+	f, _ := companyWorkspace(t)
+	svc, _ := outcomeService(t, f, true)
+	ctx := context.Background()
+	late := outcomeIssue(t, f, "todo")
+	other := outcomeIssue(t, f, "todo")
+
+	tx, err := f.Pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `UPDATE issue SET status = 'done' WHERE id = $1`, late); err != nil {
+		t.Fatalf("open transaction update: %v", err)
+	}
+
+	// Committed while the first transaction is still open, so its created_at is later.
+	f.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, other)
+	runOutcomeJob(t, svc)
+	if got := outcomesOf(t, f, late); len(got) != 0 {
+		t.Fatalf("uncommitted transition was read: %+v", got)
+	}
+	if got := outcomesOf(t, f, other); len(got) != 1 {
+		t.Fatalf("committed transition: want one outcome, got %d", len(got))
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit late transaction: %v", err)
+	}
+	lateDone := latestTransitionTo(t, f, late, "done")
+	runOutcomeJob(t, svc)
+	runOutcomeJob(t, svc)
+
+	if got := outcomesOf(t, f, late); len(got) != 1 {
+		t.Fatalf("late commit: want one outcome, got %d: %+v", len(got), got)
+	}
+	if n := f.Count(t, `SELECT count(*) FROM durable_outcome_applied WHERE transition_id = $1`, lateDone); n != 1 {
+		t.Fatalf("late commit: applied %d times, want once", n)
+	}
+}
+
+// TestReplayedOverlapAppliesOnce: rereading transitions the job already applied, as
+// a restarted job does after it loses its position, creates no further outcome.
+func TestReplayedOverlapAppliesOnce(t *testing.T) {
+	f, _ := companyWorkspace(t)
+	svc, _ := outcomeService(t, f, true)
+	issue := outcomeIssue(t, f, "todo")
+	f.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, issue)
+	doneID := latestTransitionTo(t, f, issue, "done")
+	runOutcomeJob(t, svc)
+
+	// Rewind the cursor to just before the transition; the next run rereads it.
+	f.Exec(t, `UPDATE durable_outcome_cursor
+		SET created_at = (SELECT created_at - interval '1 second' FROM issue_status_transition WHERE id = $1),
+		    transition_id = '00000000-0000-0000-0000-000000000000'
+		WHERE name = 'outcome'`, doneID)
+	runOutcomeJob(t, svc)
+	runOutcomeJob(t, svc)
+
+	if got := outcomesOf(t, f, issue); len(got) != 1 {
+		t.Fatalf("replayed overlap: want one outcome, got %d: %+v", len(got), got)
+	}
+	if n := f.Count(t, `SELECT count(*) FROM durable_outcome_applied WHERE transition_id = $1`, doneID); n != 1 {
+		t.Fatalf("replayed overlap: applied %d times, want once", n)
+	}
+}

@@ -1199,6 +1199,11 @@ type DocVersion struct {
 	Contributors []byte             `json:"contributors"`
 }
 
+type DurableOutcomeApplied struct {
+	TransitionID pgtype.UUID        `json:"transition_id"`
+	AppliedAt    pgtype.Timestamptz `json:"applied_at"`
+}
+
 type DurableOutcomeCursor struct {
 	Name         string             `json:"name"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`

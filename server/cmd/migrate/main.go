@@ -150,6 +150,7 @@ var concurrentIndexCleanups = map[string]string{
 	"1054_acceptance_criterion_issue_idx":                       "acceptance_criterion_issue_position_idx",
 	"1055_issue_status_transition_created_idx":                  "issue_status_transition_created_idx",
 	"1056_durable_outcome_cursor_name_uidx":                     "durable_outcome_cursor_name_uidx",
+	"1059_durable_outcome_applied_uidx":                         "durable_outcome_applied_uidx",
 	"753_agent_task_queue_doc_idx":                              "idx_agent_task_queue_doc",
 	"749_app_tool_call_quota_period_scope_idx":                  "uq_app_tool_call_quota_period_scope",
 	"751_app_tool_call_workspace_metered_idx":                   "idx_app_tool_call_workspace_metered",
