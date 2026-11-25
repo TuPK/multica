@@ -165,6 +165,8 @@ var concurrentIndexCleanups = map[string]string{
 	"1081_squad_autonomy_envelope_key_uidx":                     "squad_autonomy_envelope_key_uidx",
 	"1091_jury_panel_outcome_criterion_uidx":                    "jury_panel_outcome_criterion_uidx",
 	"1092_jury_panel_open_idx":                                  "jury_panel_open_created_idx",
+	"1097_seat_dossier_entry_agent_status_idx":                  "seat_dossier_entry_agent_status_idx",
+	"1098_seat_dossier_entry_id_uidx":                           "seat_dossier_entry_id_uidx",
 	"753_agent_task_queue_doc_idx":                              "idx_agent_task_queue_doc",
 	"749_app_tool_call_quota_period_scope_idx":                  "uq_app_tool_call_quota_period_scope",
 	"751_app_tool_call_workspace_metered_idx":                   "idx_app_tool_call_workspace_metered",

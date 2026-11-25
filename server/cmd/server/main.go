@@ -908,9 +908,13 @@ func main() {
 	durableJury := service.NewJuryService(queries, pool, taskSvc)
 	durableChecks := &service.VerificationService{Queries: queries, TxStarter: pool, Tasks: taskSvc, Jury: durableJury}
 	trackRecords := &service.TrackRecordService{Queries: queries, TxStarter: pool, Flags: flags}
-	durableOutcomes := &service.OutcomeService{Queries: queries, TxStarter: pool, Flags: flags, Verification: durableChecks, TrackRecords: trackRecords}
+	durableDossier := &service.DossierService{Queries: queries, TxStarter: pool, Issues: h.IssueService, Flags: flags}
+	durableOutcomes := &service.OutcomeService{Queries: queries, TxStarter: pool, Flags: flags, Verification: durableChecks, TrackRecords: trackRecords, Dossier: durableDossier}
 	if err := schedulerMgr.Register(scheduler.DurableOutcomeJob(durableOutcomes)); err != nil {
 		slog.Error("scheduler: register durable outcome", "error", err)
+	}
+	if err := schedulerMgr.Register(scheduler.DurableSeatCleanupJob(durableDossier)); err != nil {
+		slog.Error("scheduler: register durable seat cleanup", "error", err)
 	}
 	if err := schedulerMgr.Register(scheduler.DurableMetricJob(durableOutcomes)); err != nil {
 		slog.Error("scheduler: register durable metric", "error", err)
@@ -996,7 +1000,7 @@ func main() {
 	}
 	// Hourly: the retrospective triggers (spec 4.7). A subject that trips one
 	// gets a retrospective issue for its leader, once per 14-day window.
-	if err := schedulerMgr.Register(scheduler.RetroTriggerJob(&service.RetroService{Queries: queries, Issues: h.IssueService})); err != nil {
+	if err := schedulerMgr.Register(scheduler.RetroTriggerJob(&service.RetroService{Queries: queries, Issues: h.IssueService, Flags: flags})); err != nil {
 		slog.Error("scheduler: register retro triggers", "error", err)
 	}
 	// Weekly: the policy section of the weekly review, which lists the

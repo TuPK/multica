@@ -16,6 +16,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // Retrospectives (spec 4.7). Five triggers look at what the company already
@@ -203,6 +204,8 @@ type RetroService struct {
 	Issues  *IssueService
 	// Now is the clock; nil means time.Now. Tests pin it.
 	Now func() time.Time
+	// Flags reads durable_seats for the lesson task that a retrospective files (spec 9.2).
+	Flags *featureflag.Service
 }
 
 func (s *RetroService) now() time.Time {
@@ -386,6 +389,7 @@ func (s *RetroService) fire(ctx context.Context, workspaceID pgtype.UUID, c Retr
 	}); err != nil {
 		return false, fmt.Errorf("record retro trigger: %w", err)
 	}
+	s.afterFireDossier(ctx, workspaceID, assignee, res.Issue.ID, c.Name)
 	return true, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
@@ -49,6 +50,9 @@ type OutcomeService struct {
 	// TrackRecords gives a new outcome its verification mode (A6). Nil reads the track
 	// record through Queries.
 	TrackRecords *TrackRecordService
+	// Dossier files the lesson task of a seat whose outcome settles fail or partial (spec
+	// 9.2). Nil files none.
+	Dossier *DossierService
 }
 
 func (s *OutcomeService) trackRecords() *TrackRecordService {
@@ -405,6 +409,15 @@ func (s *OutcomeService) settleOne(ctx context.Context, o db.WorkOutcome, at pgt
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return 0, fmt.Errorf("commit settle: %w", err)
+	}
+	if n == 1 && s.Dossier != nil {
+		// The lesson task comes after the verdict commits. A failure is logged, not returned,
+		// because the verdict stands either way.
+		settled := o
+		settled.Verdict = v.Verdict
+		if err := s.Dossier.OnOutcomeSettled(ctx, settled); err != nil {
+			slog.Warn("seat lesson task: outcome settled", "outcome_id", util.UUIDToString(o.ID), "error", err)
+		}
 	}
 	return int(n), nil
 }

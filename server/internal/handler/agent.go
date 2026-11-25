@@ -2908,6 +2908,13 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A runtime or model change is a change of the seat's occupant (durable spec 9.3).
+	if err := service.RecordSeatModelChange(r.Context(), updateQueries, h.FeatureFlags, h.seatChangeActor(r, uuidToString(existing.WorkspaceID)), existing, updated); err != nil {
+		slog.Warn("update agent: seat change event failed", append(logger.RequestAttrs(r), "error", err, "agent_id", id)...)
+		writeError(w, http.StatusInternalServerError, "failed to record the seat change")
+		return
+	}
+
 	if replacePermissionTargets {
 		if err := replaceInvocationTargetsWithQueries(r.Context(), updateQueries, updated.ID, parseUUID(requestUserID(r)), resolvedPerm.targets); err != nil {
 			slog.Warn("update agent: persist invocation targets failed", append(logger.RequestAttrs(r), "error", err, "agent_id", id)...)

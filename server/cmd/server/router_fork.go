@@ -287,6 +287,14 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	r.With(handler.RequireHumanActor).Put("/api/track-records/pin", h.PinTrackRecord)
 }
 
+// registerDurableSeatRoutes mounts an agent's seat dossier (durable spec 9.2). Reads and writes
+// go by the caller: the seat's own agent, or a member. Only a member retires a member's entry.
+func registerDurableSeatRoutes(r chi.Router, h *handler.Handler) {
+	r.Get("/dossier", h.ListSeatDossier)
+	r.Post("/dossier", h.AddSeatDossierEntries)
+	r.Post("/dossier/{entryId}/retire", h.RetireSeatDossierEntry)
+}
+
 // registerDurableSquadEnvelopeRoutes mounts a squad's autonomy envelope (durable spec 3.5).
 // Reads are for members; only an owner or an admin, as a person, writes it.
 func registerDurableSquadEnvelopeRoutes(r chi.Router, h *handler.Handler) {
