@@ -40,10 +40,25 @@ type CuratedApp struct {
 	Scope string
 	// Overrides pins the class of specific tools, keyed by upper-case tool slug.
 	Overrides map[string]string
+	// Tools sets the reversibility and undo of specific tools (durable spec 4.2),
+	// keyed by upper-case tool slug. Other tools use DefaultReversibility.
+	Tools map[string]ToolRule
+}
+
+// ToolRule is what the platform knows about one curated tool's effect.
+type ToolRule struct {
+	Reversibility string
+	// Undo is the tool that takes this call back, when one exists.
+	Undo *UndoSpec
 }
 
 var curatedApps = []CuratedApp{
-	{Slug: "gmail", Name: "Gmail", Scope: ScopePersonal},
+	{Slug: "gmail", Name: "Gmail", Scope: ScopePersonal, Tools: map[string]ToolRule{
+		"GMAIL_CREATE_DRAFT": {
+			Reversibility: ReversibilityReversible,
+			Undo:          &UndoSpec{Tool: "GMAIL_DELETE_DRAFT", Args: map[string]any{"draft_id": "result.id"}},
+		},
+	}},
 	{Slug: "googlecalendar", Name: "Google Calendar", Scope: ScopePersonal, Overrides: map[string]string{
 		"GOOGLECALENDAR_CREATE_EVENT":    ClassSend,
 		"GOOGLECALENDAR_UPDATE_EVENT":    ClassSend,
@@ -113,4 +128,15 @@ func DefaultLevel(_ string) string {
 // ValidLevel reports whether level is an agent permission level.
 func ValidLevel(level string) bool {
 	return level == LevelRead || level == LevelConfirmWrites || level == LevelWrite
+}
+
+// ToolEffect returns the reversibility and undo of a tool: the curated rule when
+// there is one, otherwise the default for its effect class.
+func ToolEffect(slug, tool, effect string) (string, *UndoSpec) {
+	if app, ok := Curated(slug); ok {
+		if rule, ok := app.Tools[strings.ToUpper(tool)]; ok && rule.Reversibility != "" {
+			return rule.Reversibility, rule.Undo
+		}
+	}
+	return DefaultReversibility(effect), nil
 }

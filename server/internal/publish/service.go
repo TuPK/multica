@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/connectedapps"
 
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/util/secretbox"
@@ -45,6 +46,9 @@ const maxKeyLen = 512
 // and profiles, and the publisher that sends approved posts.
 type Service struct {
 	Queries *db.Queries
+	// Effects logs and decides each post before it is sent (durable spec 4.5). Nil
+	// sends without logging.
+	Effects connectedapps.EffectGate
 	// Box seals each workspace's keys at rest. Nil means no key can be stored or
 	// read, and every workspace reports not configured.
 	Box *secretbox.Box

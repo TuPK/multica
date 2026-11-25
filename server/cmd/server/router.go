@@ -525,6 +525,12 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	h.Metrics = opts.BusinessMetrics
 	h.InboxReads.Metrics = opts.InboxReadMetrics
 	h.FeatureFlags = opts.FeatureFlags
+	// The effect log and gate (durable spec 4.4) serve every source that acts outside
+	// the platform; each one wires it through h.Effects.
+	h.Effects = &service.EffectService{Queries: queries, Flags: opts.FeatureFlags}
+	// Rehearsed actions wait here for a person's decision (durable spec 5.2). The
+	// connected apps gateway is set below, once it exists.
+	h.Intents = &service.IntentService{Queries: queries, TxStarter: pool, Flags: opts.FeatureFlags, Tasks: h.TaskService}
 	collabClient, err := collab.NewClient(os.Getenv("COLLAB_INTERNAL_URL"), os.Getenv("COLLAB_SECRET"))
 	if err != nil {
 		slog.Error("live doc editing disabled", "error", err)
@@ -1513,6 +1519,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 							TokenSecret:   connectedapps.DeriveTokenSecret(stateSecret),
 							PublicBaseURL: callbackBase,
 							Bus:           bus,
+							Effects:       h.Effects,
+							Intents:       h.Intents,
 						}
 						// Monthly app calls (MUL-10047) are metered only
 						// while Delegora Cloud is connected.
@@ -1540,6 +1548,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 							appsSvc.SetResumer(h)
 							appsSvc.SetTeamConnectGate(h.TeamAppConnectGate)
 							h.ConnectedApps = appsSvc
+							h.Intents.Apps = appsSvc
 						}
 						// Stage 3 (MUL-3721) hook: feed the per-task MCP
 						// overlay builder into TaskService so every Enqueue*
@@ -1579,6 +1588,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			slog.Info("publishing: MULTICA_PUBLISH_SECRET_KEY not set; publishing keys cannot be stored")
 		}
 		h.Publish = publish.NewService(queries, publishBox)
+		h.Publish.Effects = h.Effects
 	}
 
 	// Research Lab source settings. The service is always built. MULTICA_RESEARCH_SECRET_KEY seals the
@@ -2012,6 +2022,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(queries, patCache, cloudPATVerifier, cfSigner, accountGuard))
 		r.Use(middleware.RefreshCloudFrontCookies(cfSigner))
+		// Writes from the multica CLI are logged as effects (durable spec 4.5). The
+		// group is authenticated, so the requesting member is known.
+		r.Use(h.EffectCLIMiddleware)
 
 		// Plugin Action API. Called by the HOST PAGE on the signed-in user's
 		// session after a surface asks for something over the postMessage
@@ -2758,6 +2771,19 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			})
 
 			// Projects
+			// The effect log and declared actions (durable spec 4.4, 4.5, 4.6).
+			r.Route("/api/effects", func(r chi.Router) {
+				r.Get("/", h.ListEffects)
+				r.Post("/declare", h.DeclareEffect)
+				r.Post("/{id}/undo", h.UndoEffect)
+			})
+			// Rehearsed actions awaiting a decision (durable spec 5.3).
+			r.Route("/api/intents", func(r chi.Router) {
+				r.Get("/", h.ListIntents)
+				r.Post("/approve-batch", h.ApproveIntentBatch)
+				r.Post("/{id}/approve", h.ApproveIntent)
+				r.Post("/{id}/reject", h.RejectIntent)
+			})
 			r.Route("/api/projects", func(r chi.Router) {
 				r.Get("/search", h.SearchProjects)
 				// Workspace owner only: every private project, joined or not.

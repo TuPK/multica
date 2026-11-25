@@ -107,6 +107,7 @@ func init() {
 	rootCmd.AddCommand(metricCmd)
 	rootCmd.AddCommand(companyCmd)
 	rootCmd.AddCommand(briefCmd)
+	rootCmd.AddCommand(effectCmd)
 	rootCmd.AddCommand(knowledgeCmd)
 	rootCmd.AddCommand(chatCmd)
 	rootCmd.AddCommand(secretaryCmd)

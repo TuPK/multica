@@ -913,6 +913,11 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.DurableMetricJob(durableOutcomes)); err != nil {
 		slog.Error("scheduler: register durable metric", "error", err)
 	}
+	if h.Intents != nil {
+		if err := schedulerMgr.Register(scheduler.DurableIntentExpiryJob(h.Intents)); err != nil {
+			slog.Error("scheduler: register durable intent expiry", "error", err)
+		}
+	}
 	if err := schedulerMgr.Register(scheduler.FlowSweepJob(h)); err != nil {
 		slog.Error("scheduler: register flow sweep", "error", err)
 	}

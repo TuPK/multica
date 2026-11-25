@@ -101,6 +101,11 @@ type Config struct {
 	// CallsPerMinute caps the calls one account runs per minute;
 	// DefaultCallsPerMinute when zero.
 	CallsPerMinute int
+	// Effects logs and decides each call (durable spec 4.4). Nil logs nothing.
+	Effects EffectGate
+	// Intents turns a call the policy rehearses into an intent a person approves
+	// (durable spec 5.2). Nil refuses such calls without making an intent.
+	Intents IntentGate
 	// SecretBox seals remote app tokens at rest and DB runs their refresh.
 	// Remote MCP apps are off unless both are set.
 	SecretBox Sealer
@@ -127,6 +132,8 @@ type Service struct {
 	perMinute  int
 	quota      CallQuota
 	remote     *remoteSupport
+	effects    EffectGate
+	intents    IntentGate
 }
 
 // New returns a Service, or an error when a required dependency is missing.
@@ -160,6 +167,8 @@ func New(cfg Config) (*Service, error) {
 		perMinute:  perMinute,
 		quota:      cfg.CallQuota,
 		remote:     newRemoteSupport(cfg, base),
+		effects:    cfg.Effects,
+		intents:    cfg.Intents,
 	}, nil
 }
 

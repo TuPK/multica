@@ -413,6 +413,7 @@ func (v *validator) checkTasks() {
 			v.checkTaskBasics(tp, s, t)
 			v.checkFiles(tp, t)
 			v.checkDeadline(tp, t)
+			v.checkEffects(tp, t)
 		}
 		v.checkAfter(sk, s)
 		v.checkAvailability(sk, s)
