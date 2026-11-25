@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS work_outcome_settled_agent_at_idx;

@@ -3513,6 +3513,25 @@ type ThemeStoreDownload struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type TrackRecord struct {
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	AgentID          pgtype.UUID        `json:"agent_id"`
+	WorkClass        string             `json:"work_class"`
+	WindowDays       int32              `json:"window_days"`
+	Model            string             `json:"model"`
+	NPass            int32              `json:"n_pass"`
+	NPartial         int32              `json:"n_partial"`
+	NFail            int32              `json:"n_fail"`
+	NUnverified      int32              `json:"n_unverified"`
+	NHighFail        int32              `json:"n_high_fail"`
+	ScoreLower       float64            `json:"score_lower"`
+	LastHighFailAt   pgtype.Timestamptz `json:"last_high_fail_at"`
+	VerificationMode string             `json:"verification_mode"`
+	ModePinned       bool               `json:"mode_pinned"`
+	ModeChangedAt    pgtype.Timestamptz `json:"mode_changed_at"`
+	ComputedAt       pgtype.Timestamptz `json:"computed_at"`
+}
+
 type UsageCharge struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Day         pgtype.Date        `json:"day"`
