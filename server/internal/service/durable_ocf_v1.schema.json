@@ -1,0 +1,1631 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ocf:v1",
+  "title": "Open Company Format ocf/1",
+  "description": "Schema for an ocf/1 package. The root describes manifest.json. The other files of the package are validated by the $defs of this document: structure.json by $defs/structure, each line of history/*.ndjson by its $defs entry, and attestations/*.json by $defs/attestation. Every object is closed (additionalProperties false) except $defs/structure/properties/governance, which is reserved for sections a later step adds. The rules a JSON Schema cannot express are listed in README.md, section 'Rules outside the schema'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "generator",
+    "exported_at",
+    "workspace",
+    "parts"
+  ],
+  "properties": {
+    "format": {
+      "const": "ocf/1",
+      "description": "The format and major version. A reader that does not know ocf/1 refuses the package."
+    },
+    "generator": {
+      "type": "string",
+      "pattern": "^delegora/[^\\s]+$",
+      "description": "The product and version that wrote the package, for example delegora/0.9.0."
+    },
+    "exported_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "workspace": {
+      "$ref": "#/$defs/workspace"
+    },
+    "parts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": {
+        "const": "structure"
+      },
+      "items": {
+        "enum": [
+          "structure",
+          "history/outcomes",
+          "history/track_records",
+          "history/governance",
+          "history/dossiers",
+          "history/principals",
+          "attestations"
+        ]
+      },
+      "description": "The parts this package carries. 'structure' is always present. Each history part is present only when the export was asked for history; 'history/principals' only when every exported person consented. 'attestations' names the attestations/ folder."
+    }
+  },
+  "$defs": {
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "slug"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 1
+        }
+      }
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "dateOrEmpty": {
+      "anyOf": [
+        {
+          "const": ""
+        },
+        {
+          "$ref": "#/$defs/date"
+        }
+      ],
+      "description": "A calendar date, or the empty string when the field is not set."
+    },
+    "structure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "exported_at",
+        "retention_note",
+        "excluded",
+        "floors",
+        "squads",
+        "agents",
+        "floor_chiefs",
+        "pipelines",
+        "initiatives",
+        "knowledge_kinds",
+        "goals",
+        "budgets",
+        "approval_policies",
+        "governance"
+      ],
+      "description": "structure.json: the organisation as data. Field names match the existing company export (GET /api/company/export). envelopes and effect_policy_overrides are added by F2 and F3 and are optional until those flags ship.",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "description": "Same value as the existing export. Kept so the current importer reads structure.json unchanged."
+        },
+        "exported_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "retention_note": {
+          "type": "string"
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "What this export never carries. Descriptive: readers keep unknown names."
+        },
+        "floors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/floor"
+          }
+        },
+        "squads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/squad"
+          }
+        },
+        "agents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agent"
+          }
+        },
+        "floor_chiefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/floorChief"
+          }
+        },
+        "pipelines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pipeline"
+          }
+        },
+        "initiatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/initiative"
+          }
+        },
+        "knowledge_kinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/knowledgeKind"
+          }
+        },
+        "goals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/goal"
+          }
+        },
+        "budgets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/budget"
+          }
+        },
+        "approval_policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/approvalPolicy"
+          }
+        },
+        "envelopes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/envelope"
+          },
+          "description": "Autonomy envelopes per squad (F2). Optional until F2 ships."
+        },
+        "effect_policy_overrides": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/effectPolicyOverride"
+          },
+          "description": "Workspace overrides of the effect policy table (F3). Optional until F3 ships."
+        },
+        "governance": {
+          "type": "object",
+          "description": "Governance sections a later step provides, keyed by section name. v1 writers emit {}. This is the one open map in the schema; a reader keeps the sections it knows and reports the others as not imported."
+        }
+      }
+    },
+    "floor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "position"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer"
+        }
+      }
+    },
+    "squad": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "floor",
+        "company_slot",
+        "leader",
+        "autonomy_level",
+        "status",
+        "members",
+        "charter",
+        "routines"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "floor": {
+          "type": "string",
+          "description": "Floor name, or empty when the squad has no floor."
+        },
+        "company_slot": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 5,
+          "description": "The seat on the floor, 0 to 5 (migration 605), or null."
+        },
+        "leader": {
+          "type": "string",
+          "description": "Agent name, or empty."
+        },
+        "autonomy_level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "status": {
+          "enum": [
+            "active",
+            "archived"
+          ]
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/squadMember"
+          }
+        },
+        "charter": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/charter"
+            }
+          ]
+        },
+        "routines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/routine"
+          }
+        }
+      }
+    },
+    "squadMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent",
+        "role"
+      ],
+      "properties": {
+        "agent": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "charter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mission",
+        "responsibilities",
+        "outputs",
+        "boundaries",
+        "escalation",
+        "intake",
+        "response_hours",
+        "operating_review_enabled"
+      ],
+      "properties": {
+        "mission": {
+          "type": "string"
+        },
+        "responsibilities": {
+          "type": "array"
+        },
+        "outputs": {
+          "type": "array"
+        },
+        "boundaries": {
+          "type": "string"
+        },
+        "escalation": {
+          "type": "string"
+        },
+        "intake": {
+          "type": "string"
+        },
+        "response_hours": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "operating_review_enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "routine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "purpose",
+        "expected_output",
+        "required",
+        "grace_hours",
+        "cron",
+        "timezone",
+        "status"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "expected_output": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "grace_hours": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cron": {
+          "type": "string",
+          "description": "Cron expression, or empty when the routine has no schedule."
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "paused"
+          ],
+          "description": "The autopilot's status in the source. The importer creates the routine paused regardless."
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "instructions",
+        "home_squad",
+        "template"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "home_squad": {
+          "type": "string",
+          "description": "Squad name, or empty."
+        },
+        "template": {
+          "type": "string",
+          "description": "Id of the starter instruction template whose text these instructions are unchanged, or empty."
+        }
+      }
+    },
+    "floorChief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "floor",
+        "agent"
+      ],
+      "properties": {
+        "floor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "is_default",
+        "stages"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "is_default": {
+          "type": "boolean"
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pipelineStage"
+          }
+        }
+      }
+    },
+    "pipelineStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "name",
+        "owner_squad_id",
+        "objective",
+        "instructions",
+        "artifacts",
+        "exit",
+        "sla_days"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner_squad_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The owner squad's NAME, not an id, despite the field name (the export rewrites ids to names). Null for an unowned stage."
+        },
+        "objective": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "required"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A knowledge kind key."
+              },
+              "required": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "exit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "criteria"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "auto",
+                "attest",
+                "gate"
+              ]
+            },
+            "criteria": {
+              "type": "string"
+            }
+          }
+        },
+        "sla_days": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "initiativeRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pipeline",
+        "stage",
+        "title"
+      ],
+      "description": "An initiative named by identity: pipeline name, stage key and title. Pipeline ids are per workspace and never travel.",
+      "properties": {
+        "pipeline": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "initiative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pipeline",
+        "stage",
+        "title",
+        "owner_squad",
+        "status"
+      ],
+      "description": "An initiative that is not closed. Closed initiatives are history and are not exported.",
+      "properties": {
+        "pipeline": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner_squad": {
+          "type": "string",
+          "description": "Squad name, or empty."
+        },
+        "status": {
+          "enum": [
+            "active",
+            "shelved",
+            "operating"
+          ]
+        }
+      }
+    },
+    "knowledgeKind": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "name",
+        "default_base_key",
+        "template",
+        "review_days",
+        "required_sections"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "default_base_key": {
+          "type": "string"
+        },
+        "template": {
+          "type": "string"
+        },
+        "review_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "required_sections": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scopeRule": {
+      "type": "object",
+      "description": "Ties scope_type, scope and initiative together. company: scope is empty, no initiative. floor or squad: scope is the name, no initiative. initiative: scope is empty and the initiative reference is present.",
+      "if": {
+        "type": "object",
+        "properties": {
+          "scope_type": {
+            "const": "company"
+          }
+        },
+        "required": [
+          "scope_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "scope": {
+            "const": ""
+          },
+          "initiative": false
+        }
+      },
+      "else": {
+        "if": {
+          "type": "object",
+          "properties": {
+            "scope_type": {
+              "const": "initiative"
+            }
+          },
+          "required": [
+            "scope_type"
+          ]
+        },
+        "then": {
+          "required": [
+            "initiative"
+          ],
+          "properties": {
+            "scope": {
+              "const": ""
+            },
+            "initiative": {
+              "$ref": "#/$defs/initiativeRef"
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "scope": {
+              "type": "string",
+              "minLength": 1
+            },
+            "initiative": false
+          }
+        }
+      }
+    },
+    "goal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "why",
+        "scope_type",
+        "scope",
+        "parent",
+        "period_start",
+        "period_end",
+        "owner_type",
+        "owner",
+        "status",
+        "key_results"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/$defs/scopeRule"
+        }
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "why": {
+          "type": "string"
+        },
+        "scope_type": {
+          "enum": [
+            "company",
+            "floor",
+            "squad",
+            "initiative"
+          ]
+        },
+        "scope": {
+          "type": "string"
+        },
+        "initiative": {
+          "$ref": "#/$defs/initiativeRef"
+        },
+        "parent": {
+          "type": "string",
+          "description": "Title of the parent goal, or empty. Titles are not unique; see README."
+        },
+        "period_start": {
+          "$ref": "#/$defs/dateOrEmpty"
+        },
+        "period_end": {
+          "$ref": "#/$defs/dateOrEmpty"
+        },
+        "owner_type": {
+          "enum": [
+            "squad",
+            "member",
+            "agent"
+          ]
+        },
+        "owner": {
+          "type": "string",
+          "description": "Squad or agent name. Empty for a member owner: the importer makes the importing person the owner."
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "active",
+            "achieved",
+            "missed",
+            "dropped"
+          ]
+        },
+        "key_results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/keyResult"
+          }
+        }
+      }
+    },
+    "keyResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "metric_key",
+        "scope_type",
+        "scope",
+        "start_value",
+        "target_value",
+        "weight"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/$defs/scopeRule"
+        }
+      ],
+      "description": "A key result's definition. Progress and readings are not exported. target_value must differ from start_value; the schema cannot compare the two, so the importer checks it.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "metric_key": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_.]{0,63}$"
+        },
+        "scope_type": {
+          "enum": [
+            "company",
+            "floor",
+            "squad",
+            "initiative"
+          ]
+        },
+        "scope": {
+          "type": "string"
+        },
+        "initiative": {
+          "$ref": "#/$defs/initiativeRef"
+        },
+        "start_value": {
+          "type": "number"
+        },
+        "target_value": {
+          "type": "number"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_type",
+        "scope",
+        "period",
+        "amount_micros",
+        "soft_percent",
+        "mode",
+        "classes",
+        "status"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/$defs/scopeRule"
+        }
+      ],
+      "description": "A budget's definition. Spend is history and is not exported. Amounts are in millionths of a dollar.",
+      "properties": {
+        "scope_type": {
+          "enum": [
+            "company",
+            "floor",
+            "squad",
+            "initiative"
+          ]
+        },
+        "scope": {
+          "type": "string"
+        },
+        "initiative": {
+          "$ref": "#/$defs/initiativeRef"
+        },
+        "period": {
+          "enum": [
+            "week",
+            "month",
+            "quarter"
+          ]
+        },
+        "amount_micros": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "soft_percent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "mode": {
+          "enum": [
+            "warn",
+            "hold"
+          ]
+        },
+        "classes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "routine",
+              "delegated",
+              "verification",
+              "shadow"
+            ]
+          },
+          "description": "The run classes the budget holds (D24)."
+        },
+        "status": {
+          "enum": [
+            "active",
+            "paused"
+          ]
+        }
+      }
+    },
+    "approvalPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "kind",
+        "status",
+        "match",
+        "max_per_week",
+        "valid_until"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A proposal kind key, for example a standing approval's kind."
+        },
+        "status": {
+          "enum": [
+            "active",
+            "revoked"
+          ],
+          "description": "A revoked policy is imported revoked and approves nothing."
+        },
+        "match": {
+          "$ref": "#/$defs/policyMatch"
+        },
+        "max_per_week": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "valid_until": {
+          "$ref": "#/$defs/dateOrEmpty"
+        }
+      }
+    },
+    "policyMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "squads": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Squad names."
+        },
+        "floors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Floor names."
+        },
+        "max_cost_micros": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "payload_equals": {
+          "type": "object"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "squad",
+        "floor_level",
+        "ceiling_level",
+        "reason"
+      ],
+      "description": "A squad's autonomy envelope (F2). The floor must not exceed the ceiling; the schema cannot compare the two, so the importer checks it.",
+      "properties": {
+        "squad": {
+          "type": "string",
+          "minLength": 1
+        },
+        "floor_level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "ceiling_level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "effectPolicyOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "autonomy_level",
+        "effect_class",
+        "reversibility",
+        "decision"
+      ],
+      "description": "One overridden cell of the effect policy table (F3, section 4.3).",
+      "properties": {
+        "autonomy_level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "effect_class": {
+          "enum": [
+            "read",
+            "write_internal",
+            "write",
+            "send",
+            "share",
+            "delete",
+            "spend"
+          ]
+        },
+        "reversibility": {
+          "enum": [
+            "reversible",
+            "compensable",
+            "irreversible"
+          ]
+        },
+        "decision": {
+          "enum": [
+            "allow",
+            "confirm",
+            "rehearse",
+            "block"
+          ]
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "history/outcomes.ndjson, one settled work outcome per line. No issue title, body, comment, criterion text or evidence: those stay in the workspace.",
+      "required": [
+        "agent",
+        "squad",
+        "work_class",
+        "runtime_provider",
+        "model",
+        "verification_mode",
+        "sampled",
+        "verdict",
+        "severity",
+        "fail_cause",
+        "cost_micros",
+        "verification_cost_micros",
+        "settled_at",
+        "superseded"
+      ],
+      "properties": {
+        "agent": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Agent name, or null when a member did the work."
+        },
+        "squad": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Squad name, or null."
+        },
+        "work_class": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "runtime_provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "verification_mode": {
+          "enum": [
+            "full",
+            "sampled",
+            "spot"
+          ]
+        },
+        "sampled": {
+          "type": "boolean"
+        },
+        "verdict": {
+          "enum": [
+            "pass",
+            "partial",
+            "fail",
+            "unverified"
+          ],
+          "description": "A settled verdict. 'pending' is never settled."
+        },
+        "severity": {
+          "enum": [
+            "none",
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "fail_cause": {
+          "enum": [
+            "",
+            "criteria",
+            "reopened",
+            "reverted",
+            "metric",
+            "jury",
+            "member"
+          ]
+        },
+        "cost_micros": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verification_cost_micros": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "settled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "superseded": {
+          "type": "boolean",
+          "description": "True when a later outcome for the same work replaced this one (D4)."
+        }
+      }
+    },
+    "trackRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "history/track_records.ndjson, one row per agent, work class, window and model. An empty model is the total over every model. Imported records are for viewing only and grant no verification mode (spec 12.2).",
+      "required": [
+        "agent",
+        "work_class",
+        "window_days",
+        "model",
+        "n_pass",
+        "n_partial",
+        "n_fail",
+        "n_unverified",
+        "n_high_fail",
+        "score_lower",
+        "verification_mode",
+        "mode_pinned",
+        "computed_at"
+      ],
+      "properties": {
+        "agent": {
+          "type": "string",
+          "minLength": 1
+        },
+        "work_class": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "window_days": {
+          "enum": [
+            30,
+            90
+          ]
+        },
+        "model": {
+          "type": "string"
+        },
+        "n_pass": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "n_partial": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "n_fail": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "n_unverified": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "n_high_fail": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "score_lower": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Wilson lower bound of the pass rate (spec 3.2)."
+        },
+        "verification_mode": {
+          "enum": [
+            "full",
+            "sampled",
+            "spot"
+          ]
+        },
+        "mode_pinned": {
+          "type": "boolean"
+        },
+        "computed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "governanceEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "history/governance.ndjson, one governance event per line. actor_id and actor names are left out: the event keeps its actor_type, and the summary says what happened.",
+      "required": [
+        "kind",
+        "actor_type",
+        "subject_type",
+        "summary",
+        "details",
+        "created_at"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actor_type": {
+          "enum": [
+            "member",
+            "agent",
+            "system",
+            "policy",
+            "track_record",
+            "principal",
+            "jury",
+            "shadow"
+          ],
+          "description": "The first four exist today. track_record, principal, jury and shadow are added by the durable program (spec 1.3)."
+        },
+        "subject_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "details": {
+          "type": "object"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "dossierEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "history/dossiers.ndjson, one active seat dossier entry per line (spec 9.2). Retired entries are not exported.",
+      "required": [
+        "agent",
+        "kind",
+        "text",
+        "work_class",
+        "evidence",
+        "origin",
+        "uses",
+        "created_at"
+      ],
+      "properties": {
+        "agent": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "lesson",
+            "pitfall",
+            "preference",
+            "context",
+            "contact"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 800
+        },
+        "work_class": {
+          "type": "string",
+          "description": "Empty applies to every work class."
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "ref"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "outcome",
+                  "retro",
+                  "comment",
+                  "document"
+                ]
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "description": "An identifier from the source workspace, kept as provenance. It resolves only in that workspace."
+              }
+            }
+          }
+        },
+        "origin": {
+          "enum": [
+            "outcome",
+            "retro",
+            "agent",
+            "member"
+          ]
+        },
+        "uses": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "history/principals.ndjson, one line per person whose profile was exported. Present only when that person consented to export (spec 6.6). Predictions, delegations and the attention ledger are not exported.",
+      "required": [
+        "member",
+        "consent_at",
+        "status",
+        "share_with_owners",
+        "version",
+        "summary",
+        "traits"
+      ],
+      "properties": {
+        "member": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The person's display name in the source workspace."
+        },
+        "consent_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "paused"
+          ]
+        },
+        "share_with_owners": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/principalTrait"
+          }
+        }
+      }
+    },
+    "principalTrait": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_kind",
+        "statement",
+        "origin",
+        "created_at"
+      ],
+      "description": "An active trait only.",
+      "properties": {
+        "decision_kind": {
+          "type": "string",
+          "pattern": "^(proposal:[a-z0-9_]+|effect:[a-z0-9_]+|outcome|inquiry|general)$"
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "origin": {
+          "enum": [
+            "learned",
+            "interview",
+            "edited"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "attestations/*.json, the signed track record of spec 13.2. The signature covers the RFC 8785 canonical form of the document without the signature field. The schema does not check the signature; the verifier does.",
+      "required": [
+        "format",
+        "subject",
+        "issuer",
+        "period",
+        "work_classes",
+        "models",
+        "issued_at",
+        "signature"
+      ],
+      "properties": {
+        "format": {
+          "const": "ocf-attestation/1"
+        },
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "template_ref",
+            "seat_label"
+          ],
+          "properties": {
+            "template_ref": {
+              "type": "string",
+              "pattern": "^hub:[^@]+@.+$"
+            },
+            "seat_label": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "issuer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "host",
+            "key_id"
+          ],
+          "properties": {
+            "host": {
+              "type": "string",
+              "minLength": 1
+            },
+            "key_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "period": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "from",
+            "to"
+          ],
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/date"
+            },
+            "to": {
+              "$ref": "#/$defs/date"
+            }
+          }
+        },
+        "work_classes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/attestationWorkClass"
+          }
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ed25519 signature, base64."
+        }
+      }
+    },
+    "attestationWorkClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "class",
+        "n",
+        "pass",
+        "partial",
+        "fail",
+        "score_lower",
+        "verification"
+      ],
+      "description": "The class is coarse, at area level, so no internal id leaks. The agent's total of at least 30 settled outcomes is a rule of the issuer, not of this schema.",
+      "properties": {
+        "class": {
+          "type": "string",
+          "pattern": "^area:[^\\s]+$"
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pass": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partial": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fail": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "score_lower": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "full",
+            "sampled",
+            "jury"
+          ],
+          "properties": {
+            "full": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sampled": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jury": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    }
+  }
+}

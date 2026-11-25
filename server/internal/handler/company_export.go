@@ -22,6 +22,9 @@ type CompanyImportRequest struct {
 //
 //	GET /api/company/export
 func (h *Handler) ExportCompany(w http.ResponseWriter, r *http.Request) {
+	if h.serveOCFExport(w, r) {
+		return
+	}
 	workspaceID := h.resolveWorkspaceID(r)
 	if _, ok := h.companyActorFor(w, r, workspaceID); !ok {
 		return
@@ -44,6 +47,9 @@ func (h *Handler) ExportCompany(w http.ResponseWriter, r *http.Request) {
 //
 //	POST /api/company/import?dry_run=true {document, runtime_id}
 func (h *Handler) ImportCompany(w http.ResponseWriter, r *http.Request) {
+	if h.importOCFRequested(w, r) {
+		return
+	}
 	workspaceID := h.resolveWorkspaceID(r)
 	actor, ok := h.companyActorFor(w, r, workspaceID)
 	if !ok {
