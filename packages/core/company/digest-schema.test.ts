@@ -84,6 +84,30 @@ describe("DigestSchema", () => {
     });
   });
 
+  it("reads the attention section and treats an older server as none", () => {
+    const withAttention = parseWithFallback(
+      {
+        since: "x",
+        queued_asks: [
+          { subject_type: "proposal", subject_id: "p1", squad_id: "s1", reason: "judgment", estimated_minutes: 4, created_at: "2026-11-25T09:00:00Z" },
+          { subject_id: "bad", squad_id: 7 },
+        ],
+        attention_minutes_per_done: 12.5,
+      },
+      DigestSchema,
+      FALLBACK_DIGEST,
+      { endpoint: "t" },
+    );
+    expect(withAttention.queued_asks).toHaveLength(2);
+    expect(withAttention.queued_asks[0]).toMatchObject({ subject_id: "p1", squad_id: "s1", estimated_minutes: 4 });
+    expect(withAttention.queued_asks[1]!.squad_id).toBeNull();
+    expect(withAttention.attention_minutes_per_done).toBe(12.5);
+
+    const older = parseWithFallback({ since: "x" }, DigestSchema, FALLBACK_DIGEST, { endpoint: "t" });
+    expect(older.queued_asks).toEqual([]);
+    expect(older.attention_minutes_per_done).toBeNull();
+  });
+
   it("treats a null knowledge list as empty and keeps the counts", () => {
     const d = parseWithFallback(
       { ...full, knowledge: { stale_published: { count: 2, items: null }, pending_drafts: 1, auto_published: { count: 0, items: null } } },

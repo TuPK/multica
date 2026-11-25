@@ -142,5 +142,12 @@
   "summary_agents_few": "{{count}} agents",
   "summary_agents_many": "{{count}} agents",
   "member_count_few": "{{count}} members",
-  "member_count_many": "{{count}} members"
+  "member_count_many": "{{count}} members",
+  "insights_attention": "Ваше время",
+  "insights_attention_spent": "Израсходовано на этой неделе: {{spent}} из {{budget}} мин",
+  "insights_attention_per_done": "{{minutes}} мин вашего времени на каждую завершённую задачу",
+  "insights_attention_no_done": "Пока нет завершённых задач для измерения",
+  "insights_attention_held_empty": "Ничего не придержано из-за вашего времени",
+  "insights_attention_held": "Ждут, потому что ваше время исчерпано: {{count}}",
+  "insights_attention_row": "{{minutes}} мин, спрошено {{date}}"
 }

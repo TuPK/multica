@@ -5,7 +5,13 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { useWorkspaceId } from "@multica/core/hooks";
 import type { Agent, AgentStatus, ProjectStatus, Squad } from "@multica/core/types";
 import { projectListOptions } from "@multica/core/projects/queries";
-import { budgetPace, budgetsOptions, type Budget, type BudgetState } from "@multica/core/governance";
+import {
+  attentionBudgetOptions,
+  budgetPace,
+  budgetsOptions,
+  type Budget,
+  type BudgetState,
+} from "@multica/core/governance";
 import { digestOptions, projectSquadIds } from "@multica/core/company";
 import {
   dashboardAgentRunTimeOptions,
@@ -178,6 +184,7 @@ export function CompanyInsights({
   const { data: allProjects = [], isPending: projectsPending } = useQuery(projectListOptions(wsId));
   const { data: budgetList } = useQuery(budgetsOptions(wsId));
   const { data: digest } = useQuery(digestOptions(wsId, { since }));
+  const { data: attention } = useQuery(attentionBudgetOptions(wsId));
   const { data: byAgent = [], isPending: costPending } = useQuery(dashboardUsageByAgentOptions(wsId, days, null, tz, null));
   const { data: runTime = [] } = useQuery(dashboardAgentRunTimeOptions(wsId, days, null, tz, null));
   const companyWide = department === null;
@@ -269,6 +276,12 @@ export function CompanyInsights({
   const overdue = useMemo(
     () => (digest?.overdue_requests ?? []).filter((r) => inScope(scope, r.squad_id)),
     [digest, scope],
+  );
+  // A system question has no squad: it belongs to the company view, not to one department.
+  const queuedAsks = useMemo(
+    () =>
+      (digest?.queued_asks ?? []).filter((a) => (a.squad_id ? inScope(scope, a.squad_id) : department === null)),
+    [digest, department, scope],
   );
 
   const totals = useMemo(() => budgetTotals(budgets), [budgets]);
@@ -616,6 +629,43 @@ export function CompanyInsights({
             </ul>
           )}
         </Card>
+
+        {attention?.enabled ? (
+          <Card title={t(($) => $.insights_attention)}>
+            <p className="text-sm tabular-nums">
+              {t(($) => $.insights_attention_spent, {
+                spent: Math.round(attention.spent_minutes),
+                budget: attention.minutes_per_week,
+              })}
+            </p>
+            <p className="text-sm">
+              {digest?.attention_minutes_per_done == null
+                ? t(($) => $.insights_attention_no_done)
+                : t(($) => $.insights_attention_per_done, { minutes: digest.attention_minutes_per_done.toFixed(1) })}
+            </p>
+            {queuedAsks.length === 0 ? (
+              <Empty>{t(($) => $.insights_attention_held_empty)}</Empty>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {t(($) => $.insights_attention_held, { count: queuedAsks.length })}
+                </p>
+                <ul className="flex flex-col gap-1.5 text-sm">
+                  {queuedAsks.slice(0, TOP_ROWS).map((ask) => (
+                    <li key={ask.subject_id} className="flex items-baseline justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {t(($) => $.insights_attention_row, {
+                          minutes: ask.estimated_minutes,
+                          date: new Date(ask.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+                        })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Card>
+        ) : null}
 
         <Card title={t(($) => $.insights_budgets)} className="xl:col-span-2">
           {budgets.length === 0 ? (

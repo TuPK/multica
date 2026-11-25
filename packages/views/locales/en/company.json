@@ -134,5 +134,12 @@
   "insights_goals_empty": "No goals at risk",
   "insights_overdue": "Overdue squad requests",
   "insights_overdue_empty": "Nothing overdue",
-  "insights_overdue_hours": "{{hours}}h late"
+  "insights_overdue_hours": "{{hours}}h late",
+  "insights_attention": "Your time",
+  "insights_attention_spent": "{{spent}} of {{budget}} minutes used this week",
+  "insights_attention_per_done": "{{minutes}} minutes of your time per finished issue",
+  "insights_attention_no_done": "No finished issue to measure yet",
+  "insights_attention_held_empty": "Nothing held for your time",
+  "insights_attention_held": "Waiting because your time is used up: {{count}}",
+  "insights_attention_row": "{{minutes}} min, asked {{date}}"
 }

@@ -130,5 +130,12 @@
   "insights_goals_empty": "沒有風險中的目標",
   "insights_overdue": "逾期的小隊請求",
   "insights_overdue_empty": "沒有逾期",
-  "insights_overdue_hours": "逾期 {{hours}} 小時"
+  "insights_overdue_hours": "逾期 {{hours}} 小時",
+  "insights_attention": "你的時間",
+  "insights_attention_spent": "本週已用 {{spent}} / {{budget}} 分鐘",
+  "insights_attention_per_done": "每個完成的 issue 耗費你 {{minutes}} 分鐘",
+  "insights_attention_no_done": "還沒有可衡量的已完成 issue",
+  "insights_attention_held_empty": "沒有因你的時間而被保留的問題",
+  "insights_attention_held": "因你的時間已用完而排隊：{{count}}",
+  "insights_attention_row": "{{minutes}} 分鐘，提問於 {{date}}"
 }
