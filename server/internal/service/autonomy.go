@@ -177,6 +177,9 @@ func ApplyAutonomyChange(ctx context.Context, q *db.Queries, ws, squadID pgtype.
 		return AutonomyChange{}, fmt.Errorf("set autonomy level: %w", err)
 	}
 	out.Changed = true
+	if err := widenEnvelopeForLevel(ctx, q, ws, squadID, level); err != nil {
+		return AutonomyChange{}, err
+	}
 	if err := NewGovernanceLog().Record(ctx, q, GovernanceEvent{
 		WorkspaceID: ws,
 		Kind:        GovernanceKindAutonomyChanged,

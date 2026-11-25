@@ -545,6 +545,11 @@ func (s *VerificationService) Override(ctx context.Context, ws pgtype.UUID, acto
 		if err := recordTrack(ctx, q, ws, o.AgentID, o.WorkClass, s.now()); err != nil {
 			return err
 		}
+		changed := o
+		changed.Verdict, changed.Severity = in.Result, severity
+		if err := (&EnvelopeService{Now: s.now}).OnHighFail(ctx, q, changed); err != nil {
+			return err
+		}
 		if err := NewGovernanceLog().Record(ctx, q, GovernanceEvent{
 			WorkspaceID: ws,
 			Kind:        GovernanceKindOutcomeOverridden,

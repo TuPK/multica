@@ -214,6 +214,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"skill_version":                      workspaceDelete,
 	"squad":                              workspaceDelete,
 	"squad_attention":                    workspaceDelete,
+	"squad_autonomy_envelope":            workspaceDelete,
 	"squad_charter":                      workspaceDelete,
 	"squad_member":                       workspaceDelete,
 	"squad_pack_install":                 workspaceDelete,

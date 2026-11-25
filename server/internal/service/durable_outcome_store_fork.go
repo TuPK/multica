@@ -391,6 +391,12 @@ func (s *OutcomeService) settleOne(ctx context.Context, o db.WorkOutcome, at pgt
 		if err := recordTrack(ctx, q, o.WorkspaceID, o.AgentID, o.WorkClass, s.now()); err != nil {
 			return 0, err
 		}
+		// A settled high fail drops its squad one level in this transaction (spec 3.4).
+		settled := o
+		settled.Verdict, settled.Severity = v.Verdict, v.Severity
+		if err := (&EnvelopeService{Now: s.now}).OnHighFail(ctx, q, settled); err != nil {
+			return 0, err
+		}
 	}
 	if n == 1 && (v.Verdict == "fail" || v.Verdict == "partial") {
 		if err := s.postSettledNote(ctx, q, o, v, notMet); err != nil {

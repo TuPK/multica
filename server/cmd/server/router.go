@@ -2874,6 +2874,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// Squad autonomy level (spec 4.3): reads for members; changes for owners and admins.
 					r.Get("/autonomy", h.GetSquadAutonomy)
 					r.Put("/autonomy", h.SetSquadAutonomy)
+					registerDurableSquadEnvelopeRoutes(r, h)
 					// Handoff rule: where the squad hands its finished requests, and how. Reads for members; changes for owners and admins.
 					r.Get("/handoff-rule", h.GetSquadHandoffRule)
 					r.Put("/handoff-rule", h.SetSquadHandoffRule)

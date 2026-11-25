@@ -286,3 +286,11 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	r.Get("/api/track-records", h.ListTrackRecords)
 	r.With(handler.RequireHumanActor).Put("/api/track-records/pin", h.PinTrackRecord)
 }
+
+// registerDurableSquadEnvelopeRoutes mounts a squad's autonomy envelope (durable spec 3.5).
+// Reads are for members; only an owner or an admin, as a person, writes it.
+func registerDurableSquadEnvelopeRoutes(r chi.Router, h *handler.Handler) {
+	r.Get("/autonomy/envelope", h.GetSquadEnvelope)
+	r.Put("/autonomy/envelope", h.SetSquadEnvelope)
+	r.Delete("/autonomy/envelope", h.ClearSquadEnvelope)
+}

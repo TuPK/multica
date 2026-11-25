@@ -284,6 +284,9 @@ type Digest struct {
 	// AutoApproved are proposals a standing approval decided in the window. The
 	// brief's FYI names each one as "Auto-approved by policy" (spec 4.4).
 	AutoApproved []DigestAutoApproval `json:"auto_approved"`
+	// AutonomyAutoChanges are the levels the autonomy envelope moved on evidence since the
+	// window opened (durable spec 3.4).
+	AutonomyAutoChanges DigestAutonomyAutoChanges `json:"autonomy_auto_changes"`
 	// Budget is the brief's Budget section: budgets at or above their soft line
 	// and the holds in force (spec 4.2).
 	Budget DigestBudget `json:"budget"`
@@ -708,6 +711,10 @@ func (s *DigestService) Compute(ctx context.Context, workspaceID pgtype.UUID, si
 	if err != nil {
 		return Digest{}, err
 	}
+	autonomyChanges, err := s.computeAutonomyAutoChanges(ctx, workspaceID, since)
+	if err != nil {
+		return Digest{}, err
+	}
 
 	if sc.floor {
 		routinesOffTrack := 0
@@ -770,6 +777,7 @@ func (s *DigestService) Compute(ctx context.Context, workspaceID pgtype.UUID, si
 		RequestsPastDeadline: requestsPastDeadline,
 		People:               people,
 		AutoApproved:         autoApproved,
+		AutonomyAutoChanges:  autonomyChanges,
 		Budget:               budget,
 		Mode:                 mode,
 		Scope:                scope,
