@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -631,5 +632,49 @@ func TestParseSquadOutcomeCriteria(t *testing.T) {
 	}
 	if _, err := ParseSquadOutcomeCriteria([]byte(`{"kv_demo":`)); err == nil {
 		t.Fatal("a broken file must be an error, not an empty catalog")
+	}
+}
+
+// TestLegacyBudgetRowHoldsVerificationAndNewBudgetListsAllFour, on real rows: a budget
+// written before the verification and shadow classes existed (routine and delegated only)
+// still holds both, and a budget created now stores all four classes. No migration updates
+// the old rows: a four-digit migration cannot touch budget (see migrations_order_test.go).
+func TestLegacyBudgetRowHoldsVerificationAndNewBudgetListsAllFour(t *testing.T) {
+	f, _ := companyWorkspace(t)
+	ws := util.MustParseUUID(f.WorkspaceID)
+	f.Insert(t, "budget", testutil.Cols{
+		"workspace_id": f.WorkspaceID, "scope_type": "company", "period": "month",
+		"amount_micros": 0, "soft_percent": 80, "mode": "hold",
+		"classes": "{routine,delegated}", "status": "active",
+	})
+	gate := NewBudgetGate(events.New())
+	scope := func(context.Context) (budgetScope, error) { return budgetScope{}, nil }
+	admit := func(class RunClass) bool {
+		t.Helper()
+		a, err := gate.Admit(context.Background(), f.q, ws, pgtype.UUID{}, class, scope, time.Now())
+		if err != nil {
+			t.Fatalf("admit %s: %v", class, err)
+		}
+		return a.Admit
+	}
+	if admit(RunClassVerification) || admit(RunClassShadow) {
+		t.Fatal("a legacy budget row that lists routine let a verification or shadow task through")
+	}
+	if !admit(RunClassHuman) {
+		t.Fatal("a legacy budget row held a human run")
+	}
+
+	// A budget created now lists all four classes, stored as such.
+	other, _ := companyWorkspace(t)
+	created, err := (&BudgetService{Queries: other.q, TxStarter: other.Pool}).Create(context.Background(),
+		util.MustParseUUID(other.WorkspaceID), GovernanceActor{Type: GovernanceActorMember, ID: util.MustParseUUID(other.UserID)},
+		BudgetInput{ScopeType: BudgetScopeCompany, Period: BudgetPeriodMonth, AmountMicros: 1, SoftPercent: 80, Mode: BudgetModeWarn})
+	if err != nil {
+		t.Fatalf("create budget: %v", err)
+	}
+	got := created.Classes
+	slices.Sort(got)
+	if want := []string{"delegated", "routine", "shadow", "verification"}; !slices.Equal(got, want) {
+		t.Fatalf("new budget classes = %v, want %v", got, want)
 	}
 }
