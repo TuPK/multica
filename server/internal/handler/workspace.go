@@ -2096,6 +2096,10 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 			run:  func() error { return qtx.DeleteWorkspaceSquadAttention(ctx, wsID) },
 		},
 		{
+			name: "delete squad autonomy envelopes",
+			run:  func() error { return qtx.DeleteWorkspaceSquadAutonomyEnvelope(ctx, wsID) },
+		},
+		{
 			name: "delete squads and skills",
 			run:  func() error { return qtx.DeleteWorkspaceSquadsAndSkills(ctx, wsID) },
 		},

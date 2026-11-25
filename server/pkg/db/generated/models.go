@@ -3268,6 +3268,18 @@ type SquadAttention struct {
 	ComputedAt       pgtype.Timestamptz `json:"computed_at"`
 }
 
+type SquadAutonomyEnvelope struct {
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	SquadID          pgtype.UUID        `json:"squad_id"`
+	FloorLevel       int32              `json:"floor_level"`
+	CeilingLevel     int32              `json:"ceiling_level"`
+	SetBy            pgtype.UUID        `json:"set_by"`
+	Reason           string             `json:"reason"`
+	LastAutoChangeAt pgtype.Timestamptz `json:"last_auto_change_at"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type SquadCharter struct {
 	SquadID                pgtype.UUID        `json:"squad_id"`
 	WorkspaceID            pgtype.UUID        `json:"workspace_id"`
@@ -3567,6 +3579,25 @@ type ThemeStoreDownload struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type TrackRecord struct {
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	AgentID          pgtype.UUID        `json:"agent_id"`
+	WorkClass        string             `json:"work_class"`
+	WindowDays       int32              `json:"window_days"`
+	Model            string             `json:"model"`
+	NPass            int32              `json:"n_pass"`
+	NPartial         int32              `json:"n_partial"`
+	NFail            int32              `json:"n_fail"`
+	NUnverified      int32              `json:"n_unverified"`
+	NHighFail        int32              `json:"n_high_fail"`
+	ScoreLower       float64            `json:"score_lower"`
+	LastHighFailAt   pgtype.Timestamptz `json:"last_high_fail_at"`
+	VerificationMode string             `json:"verification_mode"`
+	ModePinned       bool               `json:"mode_pinned"`
+	ModeChangedAt    pgtype.Timestamptz `json:"mode_changed_at"`
+	ComputedAt       pgtype.Timestamptz `json:"computed_at"`
+}
+
 type UsageCharge struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Day         pgtype.Date        `json:"day"`
@@ -3768,25 +3799,6 @@ type WeixinLoginSession struct {
 	LeaseExpiresAt  pgtype.Timestamptz `json:"lease_expires_at"`
 	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-}
-
-type TrackRecord struct {
-	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
-	AgentID          pgtype.UUID        `json:"agent_id"`
-	WorkClass        string             `json:"work_class"`
-	WindowDays       int32              `json:"window_days"`
-	Model            string             `json:"model"`
-	NPass            int32              `json:"n_pass"`
-	NPartial         int32              `json:"n_partial"`
-	NFail            int32              `json:"n_fail"`
-	NUnverified      int32              `json:"n_unverified"`
-	NHighFail        int32              `json:"n_high_fail"`
-	ScoreLower       float64            `json:"score_lower"`
-	LastHighFailAt   pgtype.Timestamptz `json:"last_high_fail_at"`
-	VerificationMode string             `json:"verification_mode"`
-	ModePinned       bool               `json:"mode_pinned"`
-	ModeChangedAt    pgtype.Timestamptz `json:"mode_changed_at"`
-	ComputedAt       pgtype.Timestamptz `json:"computed_at"`
 }
 
 type WorkOutcome struct {

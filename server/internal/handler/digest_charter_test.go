@@ -146,11 +146,12 @@ func TestDigest_CharterSectionAndWorkspaceCounts(t *testing.T) {
 
 	d := e.digestRaw(t)
 	// The phase 4 keys (goals, people, auto_approved, budget, mode, floors, scope,
-	// system_risks) are spec-intended; see digest.go's Digest struct.
+	// system_risks) are spec-intended; see digest.go's Digest struct. The envelope's
+	// automatic changes (durable spec 3.4) are the last.
 	assertDigestKeys(t, "digest", d,
 		"since", "until", "workspace", "squads", "omitted_squad_count", "quiet", "knowledge",
 		"inquiries", "pipeline", "goals", "overdue_requests", "blocked_directives", "requests_past_deadline", "people", "auto_approved", "budget",
-		"mode", "scope", "floors", "system_risks")
+		"mode", "scope", "floors", "system_risks", "autonomy_auto_changes")
 
 	ws := digestObjectAt(t, "workspace", d["workspace"])
 	off := digestObjectAt(t, "workspace.routines_not_on_time", ws["routines_not_on_time"])
