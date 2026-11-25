@@ -327,6 +327,9 @@ func attentionBudget(perWeek float64, split string, squads []db.ListLiveSquadAtt
 // Answered records that a person decided a question, with the seconds from opening it to
 // deciding. The seconds are cut at 30 minutes; a question with no row is left alone.
 func (s *AttentionService) Answered(ctx context.Context, subjectType string, subjectID pgtype.UUID, actualSeconds *int) error {
+	if !s.on(ctx) {
+		return nil
+	}
 	var seconds pgtype.Int4
 	if actualSeconds != nil {
 		seconds = pgtype.Int4{Int32: int32(min(max(*actualSeconds, 0), attentionMaxSeconds)), Valid: true}
@@ -338,6 +341,11 @@ func (s *AttentionService) Answered(ctx context.Context, subjectType string, sub
 		return fmt.Errorf("record attention answer: %w", err)
 	}
 	return nil
+}
+
+// AnswerAppRequest records that a person decided an app action request.
+func (s *AttentionService) AnswerAppRequest(ctx context.Context, id pgtype.UUID) error {
+	return s.Answered(ctx, "app_action_request", id, nil)
 }
 
 // AdmitAppRequest puts an app action request in the ledger. A connect request is missing

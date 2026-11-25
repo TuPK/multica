@@ -607,6 +607,9 @@ func (h *Handler) RecordOutcomeVerification(w http.ResponseWriter, r *http.Reque
 		writeOutcomeFailure(w, r, "record check", err)
 		return
 	}
+	if !caller.agent {
+		h.answerAttention(r.Context(), "outcome_check", outcomeID)
+	}
 	writeJSON(w, http.StatusCreated, verificationResponse(v))
 }
 

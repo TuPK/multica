@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -13,6 +15,7 @@ import (
 // package cannot import the service, which imports it.
 type AttentionGate interface {
 	AdmitAppRequest(ctx context.Context, req db.AppActionRequest) error
+	AnswerAppRequest(ctx context.Context, id pgtype.UUID) error
 }
 
 // admitAttention is the hook createRequest calls once a request is stored. A ledger failure
@@ -24,5 +27,16 @@ func (s *Service) admitAttention(ctx context.Context, req db.AppActionRequest) {
 	if err := s.attention.AdmitAppRequest(ctx, req); err != nil {
 		slog.Warn("attention ledger: app action request not admitted",
 			"request_id", util.UUIDToString(req.ID), "error", err)
+	}
+}
+
+// answerAttention is the hook Approve and Reject call once a person has decided a request.
+func (s *Service) answerAttention(ctx context.Context, id pgtype.UUID) {
+	if s.attention == nil {
+		return
+	}
+	if err := s.attention.AnswerAppRequest(ctx, id); err != nil {
+		slog.Warn("attention ledger: app action answer not recorded",
+			"request_id", util.UUIDToString(id), "error", err)
 	}
 }

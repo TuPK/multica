@@ -411,6 +411,48 @@ func TestAnsweredRecordsTheMeasuredTime(t *testing.T) {
 	}
 }
 
+// TestAnswerAppRequestMarksAnswered: a person's decision on an app action request closes its
+// row, and with the flag off the decision writes nothing to the ledger.
+func TestAnswerAppRequestMarksAnswered(t *testing.T) {
+	f := newAttentionFixture(t, true)
+	ctx := context.Background()
+	ask := f.outcomeAsk()
+	ask.SubjectType, ask.Reason = "app_action_request", "policy"
+	if _, err := f.attention.Admit(ctx, ask); err != nil {
+		t.Fatalf("admit: %v", err)
+	}
+	if err := f.attention.AnswerAppRequest(ctx, ask.SubjectID); err != nil {
+		t.Fatalf("answer app request: %v", err)
+	}
+	var state string
+	if err := f.Pool.QueryRow(ctx,
+		`SELECT state FROM attention_ledger WHERE subject_id = $1`, ask.SubjectID).Scan(&state); err != nil {
+		t.Fatalf("read row: %v", err)
+	}
+	if state != "answered" {
+		t.Fatalf("state = %q, want answered", state)
+	}
+
+	provider := featureflag.NewStaticProvider()
+	provider.Set(featureflags.DurablePrincipal, featureflag.Rule{Default: false})
+	off := &AttentionService{Queries: f.q, Flags: featureflag.NewService(provider)}
+	pending := f.outcomeAsk()
+	pending.SubjectType, pending.Reason = "app_action_request", "policy"
+	if _, err := f.attention.Admit(ctx, pending); err != nil {
+		t.Fatalf("admit pending: %v", err)
+	}
+	if err := off.AnswerAppRequest(ctx, pending.SubjectID); err != nil {
+		t.Fatalf("answer with the flag off: %v", err)
+	}
+	if err := f.Pool.QueryRow(ctx,
+		`SELECT state FROM attention_ledger WHERE subject_id = $1`, pending.SubjectID).Scan(&state); err != nil {
+		t.Fatalf("read pending row: %v", err)
+	}
+	if state == "answered" {
+		t.Fatalf("flag off changed the ledger row to answered")
+	}
+}
+
 // TestAttentionBudgetSplit: the squad's share of the week, equal or by active goals.
 func TestAttentionBudgetSplit(t *testing.T) {
 	squads := make([]db.ListLiveSquadAttentionWeightsRow, 3)

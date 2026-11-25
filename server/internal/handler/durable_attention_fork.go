@@ -78,6 +78,15 @@ func (h *Handler) admitInquiry(ctx context.Context, ws, squad pgtype.UUID, req A
 	}
 }
 
+// answerAttention records that a person decided a question. A failure is logged; the decision
+// stands. It records no measured time: the decision handlers do not know when the person opened
+// the question.
+func (h *Handler) answerAttention(ctx context.Context, subject string, id pgtype.UUID) {
+	if err := h.attentionService().Answered(ctx, subject, id, nil); err != nil {
+		slog.Warn("attention ledger: answer not recorded", "subject_type", subject, "subject_id", util.UUIDToString(id), "error", err)
+	}
+}
+
 func logAttentionFailure(subject string, id pgtype.UUID, err error) {
 	slog.Warn("attention ledger: question not admitted", "subject_type", subject, "subject_id", util.UUIDToString(id), "error", err)
 }
