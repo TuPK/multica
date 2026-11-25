@@ -933,52 +933,6 @@ func mapNoRows(err error, missing error, what string) error {
 	return fmt.Errorf("%s: %w", what, err)
 }
 
-// VerificationBrief is the briefing of a verification task (spec 2.8). It names the
-// issue, the criteria this verifier checks, and the command that records each check. It
-// carries no verdict: a verifier never sees another's.
-func VerificationBrief(o db.WorkOutcome, issueTitle string, criteria []db.AcceptanceCriterion) string {
-	var b strings.Builder
-	outcome := util.UUIDToString(o.ID)
-	fmt.Fprintf(&b, "## Verification task\n\n")
-	fmt.Fprintf(&b, "You check the work on the issue %q. You did not do that work. Check each criterion below separately.\n\n", issueTitle)
-	fmt.Fprintf(&b, "Outcome: %s\n\nCriteria:\n", outcome)
-	for _, c := range criteria {
-		if c.ArchivedAt.Valid || (c.CheckKind != CheckKindAgentJudgment && c.CheckKind != CheckKindCommand) {
-			continue
-		}
-		fmt.Fprintf(&b, "- criterion %s (%s): %s\n", util.UUIDToString(c.ID), c.CheckKind, c.Text)
-		var spec map[string]any
-		if json.Unmarshal(c.CheckSpec, &spec) == nil {
-			if rubric, ok := spec["rubric"].(string); ok && rubric != "" {
-				fmt.Fprintf(&b, "  rubric: %s\n", rubric)
-			}
-			if run, ok := spec["run"].(string); ok && run != "" {
-				fmt.Fprintf(&b, "  run in the pull request worktree: %s (the platform does not run it for you)\n", run)
-			}
-		}
-	}
-	fmt.Fprintf(&b, "\nRecord each check once, with the criterion id:\n\n")
-	fmt.Fprintf(&b, "    multica outcome verify --outcome %s --criterion <criterion-id> --result pass|partial|fail|unable --note \"<why>\"\n\n", outcome)
-	fmt.Fprintf(&b, "Use unable when you cannot make the check. Do not change the issue status.\n")
-	return b.String()
-}
-
-// CriteriaBrief is the block a doer's briefing carries when its issue has criteria, so
-// the doer knows how the work will be checked (spec 2.8).
-func CriteriaBrief(criteria []db.AcceptanceCriterion) string {
-	var b strings.Builder
-	for _, c := range criteria {
-		if c.ArchivedAt.Valid {
-			continue
-		}
-		if b.Len() == 0 {
-			b.WriteString("## Acceptance criteria for this issue\n\nThe work is checked against these:\n")
-		}
-		fmt.Fprintf(&b, "- %s\n", c.Text)
-	}
-	return b.String()
-}
-
 // GovernanceKindOutcomeOverridden is written when a person changes a settled conclusion
 // (spec 2.6). The kind joins the governance log's set below, not the upstream list.
 const GovernanceKindOutcomeOverridden = "outcome_overridden"

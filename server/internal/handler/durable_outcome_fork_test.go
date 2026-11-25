@@ -254,15 +254,14 @@ func TestClaimBriefCarriesTheChecksNotTheVerdicts(t *testing.T) {
 	o.wsfx.Exec(t, `INSERT INTO outcome_verification (workspace_id, outcome_id, criterion_id, verifier_type, verifier_id, result, note)
 		VALUES ($1, $2, $3, 'agent', $4, 'fail', 'OTHER-VERDICT-TEXT')`, o.fx.ID, o.outcome, c, o.doer)
 	ctx := context.Background()
-	issue, err := testHandler.Queries.GetIssue(ctx, util.MustParseUUID(o.issue))
-	if err != nil {
-		t.Fatal(err)
-	}
+	previousFlags := testHandler.FeatureFlags
+	testHandler.FeatureFlags = featureflag.NewService(onFlag())
+	t.Cleanup(func() { testHandler.FeatureFlags = previousFlags })
 
-	verifierTask := db.AgentTaskQueue{ID: util.MustParseUUID(o.verifierTask(t, c)),
+	verifierTask := db.AgentTaskQueue{ID: util.MustParseUUID(o.verifierTask(t, c)), IssueID: util.MustParseUUID(o.issue),
 		Context: []byte(fmt.Sprintf(`{"durable_kind":"verification","outcome_id":"%s"}`, o.outcome))}
 	resp := AgentTaskResponse{Agent: &TaskAgentData{Instructions: "persona"}}
-	testHandler.applyDurableClaimBrief(ctx, verifierTask, issue, &resp)
+	testHandler.applyDurableClaimBrief(ctx, verifierTask, &resp)
 	brief := resp.Agent.Instructions
 	if strings.Contains(brief, "OTHER-VERDICT-TEXT") {
 		t.Fatalf("the verifier's briefing shows another verdict:\n%s", brief)
@@ -273,10 +272,10 @@ func TestClaimBriefCarriesTheChecksNotTheVerdicts(t *testing.T) {
 		}
 	}
 
-	doerTask := db.AgentTaskQueue{ID: util.MustParseUUID(o.wsfx.Task(t, o.doer, testutil.Cols{"issue_id": o.issue, "status": "queued", "runtime_id": o.runtime}))}
+	doerTask := db.AgentTaskQueue{ID: util.MustParseUUID(o.wsfx.Task(t, o.doer, testutil.Cols{"issue_id": o.issue, "status": "queued", "runtime_id": o.runtime})), IssueID: util.MustParseUUID(o.issue)}
 	resp = AgentTaskResponse{Agent: &TaskAgentData{}}
-	testHandler.applyDurableClaimBrief(ctx, doerTask, issue, &resp)
-	if !strings.Contains(resp.Agent.Instructions, "Acceptance criteria for this issue") || strings.Contains(resp.Agent.Instructions, "multica outcome verify") {
+	testHandler.applyDurableClaimBrief(ctx, doerTask, &resp)
+	if !strings.Contains(resp.Agent.Instructions, "Tiêu chí nghiệm thu của issue này") || strings.Contains(resp.Agent.Instructions, "multica outcome verify") {
 		t.Fatalf("doer briefing = %q, want the criteria and no verification brief", resp.Agent.Instructions)
 	}
 }

@@ -693,52 +693,24 @@ func (h *Handler) SummarizeWorkOutcomes(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]any{"group_by": groupBy, "groups": groups})
 }
 
-// applyDurableClaimBrief adds the outcome briefing to a claim (durable spec 2.8). A
-// verification task gets the checks it must make and the command that records them, and
-// nothing of the verdicts already given. Any other task on an issue with criteria gets the
-// criteria, so the doer knows how the work will be checked.
-func (h *Handler) applyDurableClaimBrief(ctx context.Context, task db.AgentTaskQueue, issue db.Issue, resp *AgentTaskResponse) {
+// applyDurableClaimBrief adds the outcome blocks to a claim's instructions (durable spec 2.8).
+// The blocks come from service.DurableBriefingBlocks, which owns what each task is shown.
+func (h *Handler) applyDurableClaimBrief(ctx context.Context, task db.AgentTaskQueue, resp *AgentTaskResponse) {
 	if resp.Agent == nil {
 		return
 	}
-	criteria, err := h.Queries.ListIssueAcceptanceCriteria(ctx, db.ListIssueAcceptanceCriteriaParams{WorkspaceID: issue.WorkspaceID, IssueID: issue.ID})
-	if err != nil {
-		slog.Warn("claim briefing: list criteria failed", "task_id", uuidToString(task.ID), "error", err)
+	blocks := service.DurableBriefingBlocks(ctx, h.Queries, h.FeatureFlags, task)
+	if len(blocks) == 0 {
 		return
 	}
-	var brief string
-	if outcomeID := durableVerificationOutcome(task.Context); outcomeID != "" {
-		id, err := util.ParseUUID(outcomeID)
-		if err != nil {
-			return
-		}
-		o, err := h.Queries.GetWorkOutcomeInWorkspace(ctx, db.GetWorkOutcomeInWorkspaceParams{ID: id, WorkspaceID: issue.WorkspaceID})
-		if err != nil {
-			slog.Warn("claim briefing: load outcome failed", "task_id", uuidToString(task.ID), "error", err)
-			return
-		}
-		brief = service.VerificationBrief(o, issue.Title, criteria)
-	} else {
-		brief = service.CriteriaBrief(criteria)
+	sections := make([]string, 0, len(blocks))
+	for _, b := range blocks {
+		sections = append(sections, b.Markdown())
 	}
-	if brief == "" {
-		return
-	}
+	brief := strings.Join(sections, "\n\n")
 	if strings.TrimSpace(resp.Agent.Instructions) == "" {
 		resp.Agent.Instructions = brief
 	} else {
 		resp.Agent.Instructions = resp.Agent.Instructions + "\n\n" + brief
 	}
-}
-
-// durableVerificationOutcome is the outcome a task was marked with, "" for any other task.
-func durableVerificationOutcome(taskContext []byte) string {
-	var marker struct {
-		DurableKind string `json:"durable_kind"`
-		OutcomeID   string `json:"outcome_id"`
-	}
-	if len(taskContext) == 0 || json.Unmarshal(taskContext, &marker) != nil || marker.DurableKind != "verification" {
-		return ""
-	}
-	return marker.OutcomeID
 }

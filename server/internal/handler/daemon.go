@@ -3593,7 +3593,7 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 			}
 		}
 
-		h.applyDurableClaimBrief(r.Context(), *task, issue, &resp)
+		h.applyDurableClaimBrief(r.Context(), *task, &resp)
 		projectCtx, projectErr := h.resolveClaimProjectContext(r.Context(), issue.ProjectID, issue.WorkspaceID)
 		if projectErr != nil {
 			slog.Error("issue claim: load project context failed; preserving task for redelivery",
