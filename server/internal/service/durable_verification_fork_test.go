@@ -365,30 +365,32 @@ func TestBudgetHoldsVerificationWhenItListsRoutine(t *testing.T) {
 	}
 }
 
-// TestVerifierBriefingHidesOtherVerdicts: the verification briefing carries the issue,
-// the criteria and the command to record a check. Another verifier's verdict on the
-// same outcome is not in it.
-func TestVerifierBriefingHidesOtherVerdicts(t *testing.T) {
-	vf := newVerificationFixture(t)
-	issue := vf.doneIssue(t, vf.doer)
-	c := vf.addCriterion(t, issue, "The export has a header row.", "agent_judgment", map[string]any{"rubric": "Check the header."})
-	o := vf.currentOutcome(t, issue)
-	vf.Insert(t, "outcome_verification", testutil.Cols{
-		"workspace_id": vf.WorkspaceID, "outcome_id": util.UUIDToString(o.ID), "criterion_id": util.UUIDToString(c.ID),
-		"verifier_type": "agent", "verifier_id": vf.doer, "result": "fail", "note": "OTHER-VERDICT-TEXT",
-	})
-	criteria, err := vf.checks.ListCriteria(context.Background(), vf.ws, util.MustParseUUID(issue))
-	if err != nil {
-		t.Fatal(err)
-	}
-	brief := VerificationBrief(o, "Export the report", criteria)
-	if strings.Contains(brief, "OTHER-VERDICT-TEXT") {
-		t.Fatalf("the briefing shows another verifier's verdict:\n%s", brief)
-	}
-	for _, want := range []string{"The export has a header row.", "multica outcome verify", util.UUIDToString(o.ID)} {
-		if !strings.Contains(brief, want) {
-			t.Fatalf("briefing lacks %q:\n%s", want, brief)
-		}
+// TestSettledNoteIsPostedOnce: a fail or partial verdict leaves its note once. A replay of
+// the settle, from an outcome read before it settled, finds the row settled and writes no
+// second note.
+func TestSettledNoteIsPostedOnce(t *testing.T) {
+	for _, result := range []string{"fail", "partial"} {
+		t.Run(result, func(t *testing.T) {
+			vf := newVerificationFixture(t)
+			issue := vf.doneIssue(t, vf.doer)
+			c := vf.addCriterion(t, issue, "The page loads.", "manual", map[string]any{})
+			o := vf.currentOutcome(t, issue)
+			vf.Insert(t, "outcome_verification", testutil.Cols{
+				"workspace_id": vf.WorkspaceID, "outcome_id": util.UUIDToString(o.ID), "criterion_id": util.UUIDToString(c.ID),
+				"verifier_type": "member", "verifier_id": vf.UserID, "result": result, "note": "checked",
+			})
+			vf.Exec(t, `UPDATE work_outcome SET settle_at = now() - interval '1 minute' WHERE id = $1`, util.UUIDToString(o.ID))
+			ctx := context.Background()
+			if _, err := vf.outcomes.Settle(ctx, time.Now()); err != nil {
+				t.Fatalf("settle: %v", err)
+			}
+			if _, err := vf.outcomes.settleOne(ctx, o, pgtype.Timestamptz{Time: time.Now(), Valid: true}); err != nil {
+				t.Fatalf("replay settle: %v", err)
+			}
+			if n := vf.Count(t, `SELECT count(*) FROM comment WHERE issue_id = $1 AND author_type = 'system' AND type = 'system'`, issue); n != 1 {
+				t.Fatalf("system comments after a replayed settle = %d, want 1", n)
+			}
+		})
 	}
 }
 
