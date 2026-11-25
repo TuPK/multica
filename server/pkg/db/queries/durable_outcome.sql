@@ -24,13 +24,15 @@ ORDER BY l.name;
 
 -- name: CreateWorkOutcome :one
 -- A transition yields at most one outcome (unique done_transition_id). A replay
--- gets the existing row back and writes nothing new.
+-- gets the existing row back and writes nothing new. The caller passes the id, so the
+-- verification sample (spec 3.3) is chosen from it before the row exists.
 INSERT INTO work_outcome (
-    workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id,
-    work_class, verification_mode, sampled, settle_at
+    id, workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id,
+    runtime_provider, model, work_class, verification_mode, sampled, settle_at
 ) VALUES (
-    sqlc.arg(workspace_id), sqlc.arg(issue_id), sqlc.arg(done_transition_id),
+    sqlc.arg(id), sqlc.arg(workspace_id), sqlc.arg(issue_id), sqlc.arg(done_transition_id),
     sqlc.narg(agent_id), sqlc.narg(member_id), sqlc.narg(squad_id),
+    sqlc.arg(runtime_provider), sqlc.arg(model),
     sqlc.arg(work_class), sqlc.arg(verification_mode), sqlc.arg(sampled), sqlc.arg(settle_at)
 )
 ON CONFLICT (done_transition_id) DO UPDATE SET done_transition_id = EXCLUDED.done_transition_id

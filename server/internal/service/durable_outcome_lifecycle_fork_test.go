@@ -142,8 +142,7 @@ func TestWorkOutcomeCreatedOnceForDone(t *testing.T) {
 	if o.WorkClass != "general" {
 		t.Fatalf("work_class = %q, want general (no flow, label or squad)", o.WorkClass)
 	}
-	// TODO(A6): TestOutcomeSampledFollowsTrackRecord replaces this fixed mode. Until
-	// then every outcome is verified in full.
+	// A pair with no track record is verified in full (spec 3.3).
 	if o.VerificationMode != "full" || !o.Sampled {
 		t.Fatalf("verification = %s sampled=%v, want full and sampled", o.VerificationMode, o.Sampled)
 	}

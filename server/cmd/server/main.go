@@ -906,7 +906,8 @@ func main() {
 	}
 	// Every minute: a transition into done opens a work outcome, and due outcomes are settled (durable spec 2.4).
 	durableChecks := &service.VerificationService{Queries: queries, TxStarter: pool, Tasks: taskSvc}
-	durableOutcomes := &service.OutcomeService{Queries: queries, TxStarter: pool, Flags: flags, Verification: durableChecks}
+	trackRecords := &service.TrackRecordService{Queries: queries, TxStarter: pool, Flags: flags}
+	durableOutcomes := &service.OutcomeService{Queries: queries, TxStarter: pool, Flags: flags, Verification: durableChecks, TrackRecords: trackRecords}
 	if err := schedulerMgr.Register(scheduler.DurableOutcomeJob(durableOutcomes)); err != nil {
 		slog.Error("scheduler: register durable outcome", "error", err)
 	}
@@ -917,6 +918,10 @@ func main() {
 		if err := schedulerMgr.Register(scheduler.DurableIntentExpiryJob(h.Intents)); err != nil {
 			slog.Error("scheduler: register durable intent expiry", "error", err)
 		}
+	}
+	// Daily: every pair with a settled outcome in 90 days is recomputed (durable spec 3.2).
+	if err := schedulerMgr.Register(scheduler.DurableTrackRecordJob(trackRecords)); err != nil {
+		slog.Error("scheduler: register durable track record", "error", err)
 	}
 	if err := schedulerMgr.Register(scheduler.FlowSweepJob(h)); err != nil {
 		slog.Error("scheduler: register flow sweep", "error", err)

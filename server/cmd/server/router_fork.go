@@ -280,4 +280,9 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	r.Get("/api/issues/{id}/criteria", h.ListIssueCriteria)
 	r.Post("/api/issues/{id}/criteria", h.CreateIssueCriterion)
 	r.Patch("/api/issues/{id}/criteria/{cid}", h.UpdateIssueCriterion)
+
+	// Track records and verification modes (durable spec 3.5). Reads are for members and
+	// agents. Only an owner or an admin pins a mode, as a person.
+	r.Get("/api/track-records", h.ListTrackRecords)
+	r.With(handler.RequireHumanActor).Put("/api/track-records/pin", h.PinTrackRecord)
 }

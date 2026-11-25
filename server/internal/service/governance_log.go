@@ -41,6 +41,7 @@ const (
 	GovernanceKindGoalImported      = "goal_imported"
 	GovernanceKindReviewPublished   = "review_published"
 	GovernanceKindSquadHandoff      = "squad_handoff"
+	GovernanceKindVerificationMode  = "verification_mode_changed"
 )
 
 // Actor types the log records. A policy acts as policy:<id>, a system writer
@@ -50,6 +51,9 @@ const (
 	GovernanceActorAgent  = "agent"
 	GovernanceActorSystem = "system"
 	GovernanceActorPolicy = "policy"
+	// GovernanceActorTrackRecord is the nightly job or a settlement that moves a pair's
+	// verification mode (durable spec 3.3).
+	GovernanceActorTrackRecord = "track_record"
 )
 
 // GovernanceSummaryMax is the longest summary the log stores, in characters.
@@ -76,6 +80,7 @@ var governanceKinds = map[string]bool{
 	GovernanceKindReviewPublished:   true,
 	GovernanceKindSquadHandoff:      true,
 	GovernanceKindEffectPolicy:      true,
+	GovernanceKindVerificationMode:  true,
 }
 
 // GovernanceKinds lists every kind the log accepts, for filters and the CLI.
@@ -87,7 +92,7 @@ func GovernanceKinds() []string {
 		GovernanceKindAutonomyChanged, GovernanceKindOrgChangeApplied, GovernanceKindOrgChangeReverted,
 		GovernanceKindAutoPublish, GovernanceKindInitiativeForced, GovernanceKindCompanyPaused,
 		GovernanceKindCompanyResumed, GovernanceKindGoalActivated, GovernanceKindReviewPublished,
-		GovernanceKindSquadHandoff,
+		GovernanceKindSquadHandoff, GovernanceKindVerificationMode,
 	} {
 		if governanceKinds[k] {
 			out = append(out, k)
@@ -130,7 +135,7 @@ func (GovernanceLog) Record(ctx context.Context, q *db.Queries, ev GovernanceEve
 		return fmt.Errorf("%w: %q", ErrGovernanceKindUnknown, ev.Kind)
 	}
 	switch ev.ActorType {
-	case GovernanceActorMember, GovernanceActorAgent, GovernanceActorSystem, GovernanceActorPolicy:
+	case GovernanceActorMember, GovernanceActorAgent, GovernanceActorSystem, GovernanceActorPolicy, GovernanceActorTrackRecord:
 	default:
 		return fmt.Errorf("%w: actor type %q", ErrGovernanceEventInvalid, ev.ActorType)
 	}

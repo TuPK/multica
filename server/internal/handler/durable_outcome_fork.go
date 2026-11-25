@@ -169,6 +169,8 @@ func writeOutcomeError(w http.ResponseWriter, err error) bool {
 		{service.ErrOverrideWindowClosed, mapped{http.StatusConflict, "override_window_closed"}},
 		{service.ErrVerifierIsDoer, mapped{http.StatusForbidden, "verifier_is_doer"}},
 		{service.ErrNotVerificationTask, mapped{http.StatusForbidden, "not_verification_task"}},
+		{service.ErrTrackModeInvalid, mapped{http.StatusBadRequest, "verification_mode_invalid"}},
+		{service.ErrTrackAgentNotFound, mapped{http.StatusNotFound, "agent_not_found"}},
 	}
 	for _, row := range table {
 		if errors.Is(err, row.target) {

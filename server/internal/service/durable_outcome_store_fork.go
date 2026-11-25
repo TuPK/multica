@@ -30,10 +30,6 @@ const (
 	defaultOutcomeSettleWindow = 7 * 24 * time.Hour
 	// outcomeSkipLabel keeps an issue out of outcomes (spec 2.4).
 	outcomeSkipLabel = "wc:skip"
-	// TODO(A6): TestOutcomeSampledFollowsTrackRecord replaces this fixed mode and the
-	// fixed sampled = true with the mode the track record gives (spec 3.3). Until
-	// then every outcome is verified in full.
-	outcomeVerificationMode = "full"
 )
 
 // OutcomeService opens a work outcome when an issue enters done, closes the current
@@ -50,6 +46,16 @@ type OutcomeService struct {
 	// Verification gives the current outcomes their checks (A3). Nil leaves them
 	// unchecked, and they settle as unverified.
 	Verification *VerificationService
+	// TrackRecords gives a new outcome its verification mode (A6). Nil reads the track
+	// record through Queries.
+	TrackRecords *TrackRecordService
+}
+
+func (s *OutcomeService) trackRecords() *TrackRecordService {
+	if s.TrackRecords != nil {
+		return s.TrackRecords
+	}
+	return &TrackRecordService{Queries: s.Queries, TxStarter: s.TxStarter}
 }
 
 func (s *OutcomeService) enabled(ctx context.Context) bool {
@@ -209,10 +215,12 @@ func (s *OutcomeService) apply(ctx context.Context, q *db.Queries, r db.ListIssu
 	case to == "done" && from != "done":
 		return s.enterDone(ctx, q, r)
 	case from == "done" && to == "closed":
-		_, err := q.RevertCurrentWorkOutcome(ctx, db.RevertCurrentWorkOutcomeParams{
+		if _, err := q.RevertCurrentWorkOutcome(ctx, db.RevertCurrentWorkOutcomeParams{
 			WorkspaceID: r.WorkspaceID, IssueID: r.IssueID,
-		})
-		return err
+		}); err != nil {
+			return err
+		}
+		return s.recordCurrentTrack(ctx, q, r.WorkspaceID, r.IssueID)
 	case from == "done" && to != "done":
 		_, err := q.ReopenCurrentWorkOutcome(ctx, db.ReopenCurrentWorkOutcomeParams{
 			WorkspaceID: r.WorkspaceID, IssueID: r.IssueID,
@@ -233,11 +241,10 @@ func (s *OutcomeService) enterDone(ctx context.Context, q *db.Queries, r db.List
 
 	in := WorkClassInput{LabelNames: labels}
 	params := db.CreateWorkOutcomeParams{
+		ID:               dbid.NewV7(),
 		WorkspaceID:      r.WorkspaceID,
 		IssueID:          r.IssueID,
 		DoneTransitionID: r.ID,
-		VerificationMode: outcomeVerificationMode,
-		Sampled:          true,
 		SettleAt:         pgtype.Timestamptz{Time: s.now().Add(defaultOutcomeSettleWindow), Valid: true},
 	}
 	// The doer is the issue's assignee. A member's outcome keeps no agent id, so it
@@ -253,6 +260,30 @@ func (s *OutcomeService) enterDone(ctx context.Context, q *db.Queries, r db.List
 	}
 	params.WorkClass = WorkClassFor(in)
 
+	// Only an agent has a track record, so a member's or squad's outcome is checked in full.
+	// The model and provider are the agent's now: the outcome keeps them when the agent
+	// changes later (spec 2.3). The sample is chosen from the id the row is created with
+	// (spec 3.3).
+	params.VerificationMode = VerificationModeFull
+	if params.AgentID.Valid {
+		mode, err := s.trackRecords().ModeFor(ctx, r.WorkspaceID, params.AgentID, params.WorkClass)
+		if err != nil {
+			return err
+		}
+		params.VerificationMode = mode
+		m, err := q.GetAgentRuntimeModel(ctx, db.GetAgentRuntimeModelParams{ID: params.AgentID, WorkspaceID: r.WorkspaceID})
+		switch {
+		case err == nil:
+			params.RuntimeProvider = m.Provider
+			params.Model = m.Model
+		case errors.Is(err, pgx.ErrNoRows):
+			// The agent is gone; the outcome keeps no model. Failing here would stall the cursor.
+		default:
+			return fmt.Errorf("read agent model: %w", err)
+		}
+	}
+	params.Sampled = Sampled(util.UUIDToString(params.ID), params.VerificationMode)
+
 	outcome, err := q.CreateWorkOutcome(ctx, params)
 	if err != nil {
 		return fmt.Errorf("create outcome: %w", err)
@@ -267,6 +298,19 @@ func (s *OutcomeService) enterDone(ctx context.Context, q *db.Queries, r db.List
 		return fmt.Errorf("supersede previous outcome: %w", err)
 	}
 	return nil
+}
+
+// recordCurrentTrack recomputes the pair of the issue's current outcome, when it has one.
+// A revert settles that outcome (spec 2.4), so its pair moves too.
+func (s *OutcomeService) recordCurrentTrack(ctx context.Context, q *db.Queries, ws, issue pgtype.UUID) error {
+	o, err := q.GetCurrentWorkOutcomeForIssue(ctx, db.GetCurrentWorkOutcomeForIssueParams{WorkspaceID: ws, IssueID: issue})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read current outcome: %w", err)
+	}
+	return recordTrack(ctx, q, o.WorkspaceID, o.AgentID, o.WorkClass, s.now())
 }
 
 // ScheduleChecks gives the current outcomes their checks (spec 2.5). It is a no-op while
@@ -340,6 +384,13 @@ func (s *OutcomeService) settleOne(ctx context.Context, o db.WorkOutcome, at pgt
 	})
 	if err != nil {
 		return 0, fmt.Errorf("settle outcome %s: %w", util.UUIDToString(o.ID), err)
+	}
+	if n == 1 {
+		// A settled result moves its pair's record and mode at once, so a high fail
+		// takes effect with the verdict (spec 3.2).
+		if err := recordTrack(ctx, q, o.WorkspaceID, o.AgentID, o.WorkClass, s.now()); err != nil {
+			return 0, err
+		}
 	}
 	if n == 1 && (v.Verdict == "fail" || v.Verdict == "partial") {
 		if err := s.postSettledNote(ctx, q, o, v, notMet); err != nil {

@@ -541,6 +541,10 @@ func (s *VerificationService) Override(ctx context.Context, ws pgtype.UUID, acto
 		if n == 0 {
 			return ErrOverrideWindowClosed
 		}
+		// An override can make a high fail, so the pair's record moves with it (spec 3.2).
+		if err := recordTrack(ctx, q, ws, o.AgentID, o.WorkClass, s.now()); err != nil {
+			return err
+		}
 		if err := NewGovernanceLog().Record(ctx, q, GovernanceEvent{
 			WorkspaceID: ws,
 			Kind:        GovernanceKindOutcomeOverridden,
