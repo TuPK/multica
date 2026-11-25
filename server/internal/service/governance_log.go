@@ -75,6 +75,7 @@ var governanceKinds = map[string]bool{
 	GovernanceKindGoalImported:      true,
 	GovernanceKindReviewPublished:   true,
 	GovernanceKindSquadHandoff:      true,
+	GovernanceKindEffectPolicy:      true,
 }
 
 // GovernanceKinds lists every kind the log accepts, for filters and the CLI.

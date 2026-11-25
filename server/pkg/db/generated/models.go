@@ -1211,6 +1211,60 @@ type DurableOutcomeCursor struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
+type EffectEvent struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	TaskID        pgtype.UUID        `json:"task_id"`
+	AgentID       pgtype.UUID        `json:"agent_id"`
+	MemberID      pgtype.UUID        `json:"member_id"`
+	Source        string             `json:"source"`
+	Target        string             `json:"target"`
+	EffectClass   string             `json:"effect_class"`
+	Reversibility string             `json:"reversibility"`
+	Decision      string             `json:"decision"`
+	Status        string             `json:"status"`
+	Summary       string             `json:"summary"`
+	Undo          []byte             `json:"undo"`
+	UndoUntil     pgtype.Timestamptz `json:"undo_until"`
+	IntentID      pgtype.UUID        `json:"intent_id"`
+	AppToolCallID pgtype.UUID        `json:"app_tool_call_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+type EffectIntent struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	TaskID        pgtype.UUID        `json:"task_id"`
+	AgentID       pgtype.UUID        `json:"agent_id"`
+	IssueID       pgtype.UUID        `json:"issue_id"`
+	Source        string             `json:"source"`
+	Target        string             `json:"target"`
+	EffectClass   string             `json:"effect_class"`
+	Reversibility string             `json:"reversibility"`
+	Call          []byte             `json:"call"`
+	CallSha256    string             `json:"call_sha256"`
+	Preview       []byte             `json:"preview"`
+	Rationale     string             `json:"rationale"`
+	Predicted     []byte             `json:"predicted"`
+	State         string             `json:"state"`
+	DecidedBy     pgtype.UUID        `json:"decided_by"`
+	DecidedAt     pgtype.Timestamptz `json:"decided_at"`
+	DecisionNote  string             `json:"decision_note"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	BatchKey      string             `json:"batch_key"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+type EffectPolicyOverride struct {
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	AutonomyLevel int32              `json:"autonomy_level"`
+	EffectClass   string             `json:"effect_class"`
+	Reversibility string             `json:"reversibility"`
+	Decision      string             `json:"decision"`
+	SetBy         pgtype.UUID        `json:"set_by"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type EffectiveIssueBlocker struct {
 	WorkspaceID    pgtype.UUID `json:"workspace_id"`
 	IssueID        pgtype.UUID `json:"issue_id"`
