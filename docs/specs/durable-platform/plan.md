@@ -37,6 +37,8 @@ Những trường hợp spec ngầm định mà dễ hỏng nhất với ngườ
 
 Mục đích: xác nhận các giả định U1 đến U10 của spec mục 15 và ghi nền kiểm tra trước khi xây. Không đổi mã sản phẩm.
 
+**Trạng thái: xong.** Kết quả ở [p0-findings.md](p0-findings.md). Các đề xuất đã được áp dụng thành D26 đến D31 (spec mục 0 và 15).
+
 ### Task P0.1: Ghi nền kiểm tra
 
 - [ ] Chạy và lưu kết quả vào scratchpad: `pnpm catalog:build`, `pnpm typecheck`, `pnpm --filter @multica/core exec vitest run governance`, `pnpm --filter @multica/views exec vitest run governance`, và Go: `go test ./internal/service -run 'Autonomy|Scorecard|ApprovalPolicy|Governance|Probation|Budget' -count=1` trên DB test.
@@ -49,8 +51,8 @@ Ghi kết quả từng mục vào `docs/specs/durable-platform/p0-findings.md` (
 - [ ] **U1**: `rg -n "UpdateIssueStatus|SetIssueStatus|status_id" server/internal/service server/internal/handler server/internal/issueworkflow` và liệt kê mọi hàm ghi `issue.status_id`. Kết luận: một hàm chung hay nhiều.
 - [ ] **U2**: đọc `server/migrations/001_init.up.sql` phần `activity_log` và các nơi ghi action trạng thái; kết luận backfill được hay không.
 - [ ] **U3**: `rg -n "func .*Call|ExecuteTool" server/internal/connectedapps` và đường remote gateway; kết luận một điểm hay nhiều.
-- [ ] **U4, U5, U6**: đọc `server/internal/handler/daemon_start_claim.go`, `worktree_claim_gate.go`, payload claim ở `server/pkg/agent` và daemon; kết luận về runtime khác, thư mục tạm, trường lạ.
-- [ ] **U7**: đọc manifest flow (`catalog/workflows/*/template.json`, `server/internal/handler/flow_manifest_rules.go`) cho trường hệ quả.
+- [ ] **U4, U5, U6**: đọc `server/internal/handler/daemon.go` (`ClaimTasksByRuntime`, `buildClaimedTaskResponse`), payload claim ở `server/pkg/agent` và daemon; kết luận về runtime khác, thư mục tạm, trường lạ.
+- [ ] **U7**: đọc manifest flow (`catalog/workflows/*/template.json`, `server/internal/issueworkflow/flowdoc_validate*.go`) cho trường hệ quả.
 - [ ] **U8**: `rg -n "revert" server/internal/handler/vcs*.go server/internal/service`.
 - [ ] **U9**: đọc runtime tuỳ chỉnh trong `server/pkg/agent/builtin_runtimes.go` và tài liệu runtime.
 - [ ] **U10**: `rg -n "secret" server/internal/service/*secret*` cho kho bí mật máy chủ.
@@ -77,14 +79,14 @@ Ghi kết quả từng mục vào `docs/specs/durable-platform/p0-findings.md` (
 ### Task A1: Lịch sử chuyển trạng thái issue
 
 **Files:**
-- Create: `server/migrations/<n>_durable_issue_status_transition.{up,down}.sql`, hai file chỉ mục `<n+1>`, `<n+2>`; `server/pkg/db/queries/durable_transition.sql`; `server/internal/service/durable_transition_fork.go`
-- Modify: hàm đổi trạng thái tìm được ở P0 U1 (một dòng `s.recordStatusTransition(ctx, tx, before, after, actor)` mỗi đường); `server/cmd/migrate/main.go`
+- Create: `server/migrations/<n>_durable_issue_status_transition.{up,down}.sql`, hai file chỉ mục `<n+1>`, `<n+2>`, file trigger `<n+3>` (`issue_status_transition_ai`, D26); `server/pkg/db/queries/durable_transition.sql`; `server/internal/service/durable_transition_fork.go`
+- Modify: `server/cmd/migrate/main.go`. Không sửa từng đường ghi (D26).
 - Test: `server/internal/service/durable_transition_fork_test.go`
 
 **Interfaces:**
-- Produces: `func (s *IssueService) recordStatusTransition(ctx context.Context, q *db.Queries, issue db.Issue, fromStatusID pgtype.UUID, fromCategory, toCategory string, actor GovernanceActor, taskID pgtype.UUID) (db.IssueStatusTransition, error)`; truy vấn sqlc `InsertIssueStatusTransition`, `ListIssueStatusTransitions(issue_id)`, `LatestDoneTransition(issue_id)`; sự kiện nội bộ `IssueEnteredDone{Transition}` và `IssueLeftDone{Transition}` phát sau commit.
+- Produces: `func WithActorSession(ctx context.Context, q *db.Queries, actor GovernanceActor, taskID pgtype.UUID) error` (đặt `SET LOCAL multica.actor_type|actor_id|task_id`); ; truy vấn sqlc `InsertIssueStatusTransition`, `ListIssueStatusTransitions(issue_id)`, `LatestDoneTransition(issue_id)`; sự kiện nội bộ `IssueEnteredDone{Transition}` và `IssueLeftDone{Transition}` phát sau commit.
 
-- [ ] Test đỏ `TestEveryStatusWriterRecordsOneTransition`: bảng các đường ghi trạng thái từ P0 U1 (API cập nhật, CLI, batch, flow advance, workflow transition, PR auto-complete, channel action); mỗi đường đổi một issue fixture và khẳng định đúng một dòng với `from_category`, `to_category`, `actor_type` đúng.
+- [ ] Test đỏ `TestEveryStatusWriterRecordsOneTransition`: bảng các đường ghi (API cập nhật, CLI, batch, flow advance, workflow transition, PR auto-complete, channel action), cùng `TestStatusTriggerCatchesRawSQL` (UPDATE thô, như sweeper, vẫn để lại đúng một dòng với `system`) và `TestEveryWriterSetsActorSession` (test tĩnh, 24 điểm ghi từ P0 U1); mỗi đường đổi một issue fixture và khẳng định đúng một dòng với `from_category`, `to_category`, `actor_type` đúng.
 - [ ] Test đỏ `TestTransitionNotRecordedWhenFlagOff`.
 - [ ] Test đỏ `TestReopenDetected`: `done → started` phát `IssueLeftDone` với cờ `reopened = true`; `done → cancelled` có `reopened = false`.
 - [ ] Viết migration, truy vấn, `make sqlc`, cài hook; chạy test; xanh.
@@ -280,7 +282,7 @@ Ghi kết quả từng mục vào `docs/specs/durable-platform/p0-findings.md` (
 
 Chỉ làm nếu P0 U7 xác nhận được trường manifest; nếu không, ghi lại vào `p0-findings.md` và bỏ task (spec 5.4 thu hẹp).
 
-**Files:** Modify `server/internal/handler/flow_manifest_rules.go` (một dòng), `scripts/catalog/lib/validate.mjs` (trường `effects`); Create `server/internal/service/durable_flow_effects_fork.go`; Test tương ứng và `scripts/catalog/catalog.test.mjs`.
+**Files:** Modify `server/internal/issueworkflow/flowdoc_validate*.go` (một dòng), `scripts/catalog/lib/validate.mjs` (trường `effects`); Create `server/internal/service/durable_flow_effects_fork.go`; Test tương ứng và `scripts/catalog/catalog.test.mjs`.
 
 - [ ] Test đỏ: bước `effects: external` tạo ý định `declared` trước khi chạy và chỉ chạy sau khi duyệt; cổng Launch không đổi.
 - [ ] Cài đặt; `pnpm catalog:check`; chạy; xanh. Commit `feat(durable): rehearse external flow steps`.
@@ -414,8 +416,8 @@ Chỉ làm nếu P0 U7 xác nhận được trường manifest; nếu không, gh
 ### Task D3: Shadow run
 
 **Files:**
-- Create: migration `shadow_config`, `shadow_pair` + chỉ mục; `server/internal/service/durable_shadow_fork.go`; handler route shadow; job so sánh
-- Modify (theo P0 U4 đến U6): payload claim (trường `shadow`, `omit_skills`), daemon chạy thư mục tạm, `worktree_claim_gate` (một dòng từ chối task bóng), middleware lệnh `multica` (một dòng 403 `shadow_task`)
+- Create: migration `shadow_config`, `shadow_pair` + chỉ mục, và cột `agent.shadow_of_agent_id` (D27); `server/internal/service/durable_shadow_fork.go`; handler route shadow; job so sánh
+- Modify: claim trong `server/internal/handler/daemon.go` (`ClaimTasksByRuntime`) thêm điều kiện capability `DaemonCapabilityShadowV1` qua hàm trong file fork (một dòng hook; D30); payload claim (`shadow`, `omit_skills`) chỉ gửi cho daemon có capability; daemon chạy task bóng trong thư mục tạm; middleware lệnh `multica` (một dòng 403 `shadow_task`). Test thêm: `TestShadowAgentHidden`, `TestShadowInPlaceRefused`, `TestShadowClaimRequiresCapability`.
 - Test: `durable_shadow_fork_test.go`, test daemon tương ứng
 
 **Interfaces:**
@@ -423,7 +425,7 @@ Chỉ làm nếu P0 U7 xác nhận được trường manifest; nếu không, gh
 - Produces: `func ShadowSelected(issueID, configID uuid.UUID, rate float64) bool`; `func (s *ShadowService) OnPrimaryClaimed(ctx, task db.AgentTaskQueue) error`; `Compare(ctx, pair db.ShadowPair) error` (A/B ngẫu nhiên); `Report(ctx, configID) ShadowReport`.
 
 - [ ] Test đỏ `TestShadowSelectionDeterministic`; `TestShadowTaskCliMutation403`; `TestShadowGatewayWriteBlocked`; `TestShadowNoWorktreeClaim`; `TestShadowNoWriteMcpOrAppTokens`; `TestComparisonBlindAB` (briefing của juror không có tên model, nhãn đổi ngẫu nhiên giữa các cặp); `TestShadowHeldByBudget`; `TestShadowFlagOffStopsWrites`; `TestShadowCostEstimateWarns`.
-- [ ] Test daemon: client daemon cũ bỏ qua trường lạ (U6).
+- [ ] Test daemon: client không khai báo `DaemonCapabilityShadowV1` không bao giờ nhận task bóng (`TestShadowClaimRequiresCapability`, D30).
 - [ ] Cài đặt; chạy; xanh. Commit `feat(durable): shadow runs with isolation`.
 
 ### Task D4: Vào ghế (`runtime_change`)
@@ -499,7 +501,7 @@ Chỉ làm nếu P0 U7 xác nhận được trường manifest; nếu không, gh
 - Produces: `func ExportOCF(ctx, ws, opts ExportOptions) (io.Reader, error)`; `func ImportOCF(ctx, ws, r io.ReaderAt) (ImportReport, error)`; `func ValidateOCF(manifest, parts) []ValidationError`.
 
 - [ ] Test đỏ `TestExportHistoryValidatesAgainstSchema`; `TestImportMarksHistoryImported`; `TestImportedTrackRecordsGiveNoMode` (mọi chế độ `full`); `TestImportLegacyExport`; `TestUnknownFieldRejectedWithPath`; `TestPrincipalsExportedOnlyWithConsent`; `TestEmbeddedSchemaMatchesDocs`.
-- [ ] Nếu P0 U9 kết luận cần adapter: thêm task con tạo runtime HTTP tham chiếu; nếu không, ghi lý do vào `worker-protocol.md`.
+- [ ] Adapter CLI tham chiếu (D29): `server/cmd/multica-ocf-adapter/` (mới) nói giao thức `worker-protocol.md`, chạy được như runtime tuỳ chỉnh hiện có; test end-to-end với một worker giả.
 - [ ] Cài đặt; chạy; xanh. Commit `feat(durable): open company format v1`.
 
 ### Task E3: Attestation
@@ -513,6 +515,7 @@ Chỉ làm nếu P0 U7 xác nhận được trường manifest; nếu không, gh
 
 - [ ] Test đơn vị đỏ `TestCanonicalizeRFC8785Vectors` (bộ vector của RFC); `TestSignVerifyRoundTrip`; `TestTamperFails` (sửa một chữ số); `TestRotatedKeyStillVerifies`; `TestForeignKeyRejected`.
 - [ ] Test đỏ `TestIssueRequires30`; `TestWorkClassCoarsenedToArea`; `TestWorkspaceHiddenByDefault`; `TestVerifyRateLimited`.
+- [ ] Test `TestIssueDisabledWithoutKey`: không có `MULTICA_ATTESTATION_KEY` thì API phát hành trả 503 `attestation_disabled`, còn xác minh và khoá công khai vẫn chạy (D28).
 - [ ] Cài đặt; chạy; xanh. Commit `feat(durable): signed track record attestations`.
 
 ### Task E4: Seat offer trên Hub

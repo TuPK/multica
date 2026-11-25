@@ -58,6 +58,12 @@ Người dùng giao toàn quyền thiết kế. Các quyết định dưới đ�
 | D23 | Attestation của track record được ký bằng khoá Ed25519 của máy chủ. Khoá công khai xuất bản ở `/.well-known/multica-attestation-keys.json`. V1 không có thanh toán hay ký quỹ giữa các tổ chức: mọi việc tiêu tiền ra ngoài là quyết định của người | 13.4 |
 | D24 | Thêm hai run class: `verification` (task kiểm chứng, task của Jury) và `shadow` (task bóng). Cả hai bị budget giữ như `routine`, và bị dừng khi công ty `paused` | 1.4 |
 | D25 | Mọi mã Go mới nằm trong file `*_fork.go`; route ở `server/cmd/server/router_fork.go`; mã TypeScript mới ở thư mục mới `packages/core/durable/` và `packages/views/durable/`. File upstream chỉ nhận hook một dòng, mỗi hook được ghi vào `pnpm sync:contract` | 14.2 |
+| D26 | Ghi chuyển trạng thái issue bằng **trigger PostgreSQL** `AFTER UPDATE OF status_id` (chỉ khi giá trị đổi), không hook từng đường. Actor đến từ biến phiên `multica.actor_type`, `multica.actor_id`, `multica.task_id` do ứng dụng đặt bằng `SET LOCAL` trong cùng transaction (`WithActorSession`); không đặt thì `system`. Test tĩnh đối chiếu 24 điểm ghi với việc đã đặt biến phiên (P0 U1) | 2.2, 15 |
+| D27 | Shadow dùng **agent bóng**: agent ẩn (`agent.shadow_of_agent_id`) cùng vai và hồ sơ ghế, còn runtime và model là ứng viên (P0 U4). Shadow không chạy ở chế độ `in_place`, và runtime có quyền push bị từ chối (P0 U5) | 9.4, 15 |
+| D28 | Khoá attestation đọc từ `MULTICA_ATTESTATION_KEY`. Thiếu khoá thì **tắt tính năng phát hành** (503 `attestation_disabled`); xác minh và khoá công khai vẫn chạy. Không sinh khoá tự động, không lưu khoá trong DB. Tên biến không mang tên thương hiệu, theo quy tắc nhãn hiệu của repo (P0 U10 đề xuất `MULTICA_DELEGORA_ATTEST_KEY`, bị bỏ vì lý do này) | 13.2, 15 |
+| D29 | Worker của F11 là **adapter CLI tham chiếu** chạy như runtime tuỳ chỉnh hiện có. Không xây backend HTTP worker trong v1 (P0 U9) | 12.3, 15 |
+| D30 | Shadow và danh sách skill bị bỏ được gate bằng capability `DaemonCapabilityShadowV1` trong header `X-Client-Capabilities`. Daemon không khai báo capability thì không nhận task bóng (P0 U6) | 9.4, 14.4, 15 |
+| D31 | Không có sự kiện revert PR: `fail_cause = reverted` chỉ đến từ `done → cancelled` (P0 U8). Backfill từ `activity_log` chỉ best-effort (P0 U2), đánh dấu cột `source = 'activity_backfill'`; dữ liệu trước khi bật vẫn `history_partial = true` | 2.2, 2.4, 15 |
 
 ## 1. Khái niệm chung
 
@@ -132,15 +138,16 @@ CREATE TABLE issue_status_transition (
     actor_type TEXT NOT NULL,           -- member | agent | system
     actor_id UUID,
     task_id UUID,                       -- task đang chạy của agent nếu agent đổi
+    source TEXT NOT NULL DEFAULT 'live' CHECK (source IN ('live', 'activity_backfill')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 -- index (workspace_id, issue_id, created_at)        CONCURRENTLY, file riêng
 -- index (workspace_id, to_category, created_at)     CONCURRENTLY, file riêng
 ```
 
-- Ghi bằng **một** hook trong service cập nhật trạng thái issue, trong cùng transaction với cập nhật, cho mọi đường đổi trạng thái (API, CLI, batch, flow, workflow, PR auto-complete). Test liệt kê mọi đường gọi tới hàm đổi trạng thái và khẳng định mỗi đường để lại đúng một dòng.
+- Ghi bằng **trigger PostgreSQL** `AFTER UPDATE OF status_id ON issue` (khi giá trị đổi, D26), nên mọi đường ghi, kể cả SQL trực tiếp của sweeper, để lại đúng một dòng. Actor lấy từ biến phiên đặt bằng `WithActorSession` ở đầu mỗi transaction ghi issue của ứng dụng; không đặt thì `actor_type = system`. Hai bài test: `TestStatusTriggerCatchesRawSQL` (UPDATE thô vẫn có dòng) và `TestEveryWriterSetsActorSession` (test tĩnh: mỗi trong 24 điểm ghi, theo P0 U1, đã gọi `WithActorSession`).
 - **Mở lại** là chuyển từ `done` sang nhóm khác `done` và khác `cancelled`.
-- Không backfill. Dữ liệu trước khi bật được scorecard đánh dấu `history_partial = true` trong `metrics`.
+- Backfill từ `activity_log` chỉ best-effort, vì dữ liệu `status_changed` có khoảng trống (P0 U2, D31): dòng backfill có `source = 'activity_backfill'`. Dữ liệu trước khi bật vẫn được scorecard đánh dấu `history_partial = true` trong `metrics`.
 - Sửa hai dòng lệch của Phase 4: `delivery.cycle_time_days` (từ lần đầu vào `started` tới lần vào `done`) và `delivery.rework_rate` (số lần mở lại / số lần vào `done`) giờ tính được và được thêm vào job metric nội tại. Proxy `issue.updated_at` trong scorecard được thay bằng thời điểm vào `done`.
 
 ### 2.3 Tiêu chí và kết quả
@@ -223,7 +230,6 @@ issue vào done ──► tạo work_outcome (pending, settle_at = now + settle_
         │
         ├─ mở lại trong cửa sổ ─► verdict = fail, fail_cause = reopened; khi issue vào done lần nữa
         │                         thì tạo bản mới và bản cũ có superseded_by
-        ├─ PR bị revert trong cửa sổ (sự kiện VCS có sẵn) ─► fail, fail_cause = reverted
         └─ tới settle_at ─► chốt: verdict theo bảng 2.6, settled_at = now
 ```
 
@@ -945,8 +951,8 @@ CREATE TABLE shadow_pair (
 );   -- index (config_id) CONCURRENTLY
 ```
 
-- Khi task chính của ghế được claim và issue khớp `work_class_prefix`, chọn mẫu tất định theo `sha256(issue_id || config_id) < sample_rate`. Được chọn thì enqueue một task `shadow` trên runtime ứng viên với cùng briefing (cùng issue, cùng hồ sơ ghế), cờ `shadow = true` trên payload của claim.
-- **Cách ly**: (a) Effect Registry chặn mọi thứ trừ `read` (D18); (b) task bóng không nhận MCP overlay có quyền ghi và không nhận token connected apps có mức ghi; (c) daemon chạy task bóng trong thư mục làm việc tạm, không claim worktree (`worktree_claim_gate`), không có biến môi trường bí mật của agent trừ khoá runtime; (d) mọi lệnh `multica` có tác động gọi từ task bóng bị server từ chối 403 `shadow_task`. Đầu ra của task bóng là văn bản cuối và các tệp trong thư mục tạm, được lưu làm tệp đính kèm riêng tư của `shadow_pair`.
+- Khi task chính của ghế được claim và issue khớp `work_class_prefix`, chọn mẫu tất định theo `sha256(issue_id || config_id) < sample_rate`. Được chọn thì enqueue một task `shadow` cho **agent bóng** (D27): agent ẩn có cùng vai và cùng hồ sơ ghế, còn runtime và model là ứng viên; briefing giống hệt (cùng issue, cùng hồ sơ ghế). Claim chỉ trao task bóng cho daemon có capability `DaemonCapabilityShadowV1` (D30).
+- **Cách ly**: (a) Effect Registry chặn mọi thứ trừ `read` (D18); (b) task bóng không nhận MCP overlay có quyền ghi và không nhận token connected apps có mức ghi; (c) daemon chạy task bóng trong thư mục làm việc tạm, không claim worktree, không chạy ở chế độ `in_place`, và runtime có quyền push bị từ chối (D27); không có biến môi trường bí mật của agent trừ khoá runtime; (d) mọi lệnh `multica` có tác động gọi từ task bóng bị server từ chối 403 `shadow_task`. Đầu ra của task bóng là văn bản cuối và các tệp trong thư mục tạm, được lưu làm tệp đính kèm riêng tư của `shadow_pair`.
 - **Giới hạn trung thực**: runtime ứng viên vẫn có thể gọi mạng bằng khoá của chính nó. Giao diện bật shadow nói rõ: "Chỉ dùng runtime không có khoá truy cập hệ thống thật ngoài khoá mô hình".
 - **So sánh**: khi cả hai task xong, một task `verification` mù (juror ngẫu nhiên từ `jury_pool`, khác cả hai model nếu có thể) nhận hai đầu ra được gán nhãn A/B ngẫu nhiên và trả `A`, `B`, `tie` hoặc `unable` kèm lý do. Khi kết quả chính đã chốt, nếu kết quả chính là `fail` thì cặp được tính `shadow` thắng chỉ khi juror chọn bóng; không đổi gì khác.
 - **Kết thúc**: đủ `target_pairs` cặp có so sánh. Báo cáo: thắng, hoà, thua, cận dưới Wilson của tỷ lệ bóng không thua (`(shadow + tie)/n`), chi phí trung bình mỗi bên.
@@ -1113,7 +1119,7 @@ attestations/*.json                F12
 
 ### 12.3 Giao thức worker
 
-Đặc tả `docs/specs/durable-platform/ocf/worker-protocol.md` (mới): mô tả bằng ngôn ngữ trung lập các thao tác một worker bên ngoài cần, ánh xạ 1-1 sang API daemon hiện có: đăng ký, nhận task (claim), báo tiến độ (task message), báo xong, khai báo hệ quả (F3), ghi kiểm chứng (F1). Không thêm endpoint mới cho v1; giao thức là tài liệu hoá có version của những gì đã có, cộng các lệnh mới của chương trình. Adapter tham chiếu: một runtime tuỳ chỉnh dạng HTTP (một worker gọi lại một URL), chỉ làm nếu P0 xác nhận runtime tuỳ chỉnh hiện có không đủ (mục 15).
+Đặc tả `docs/specs/durable-platform/ocf/worker-protocol.md` (mới): mô tả bằng ngôn ngữ trung lập các thao tác một worker bên ngoài cần, ánh xạ 1-1 sang API daemon hiện có: đăng ký, nhận task (claim), báo tiến độ (task message), báo xong, khai báo hệ quả (F3), ghi kiểm chứng (F1). Không thêm endpoint mới cho v1; giao thức là tài liệu hoá có version của những gì đã có, cộng các lệnh mới của chương trình. Adapter tham chiếu (D29): một **adapter CLI** (`multica-ocf-adapter`, mới) đóng gói worker theo giao thức này dưới dạng binary CLI, để chạy được như runtime tuỳ chỉnh hiện có. Không xây backend HTTP worker trong v1.
 
 ### 12.4 Nghiệm thu F11
 
@@ -1149,7 +1155,7 @@ Hub tiến hoá từ chợ skill và template thành chợ lao động có bảo
 ```
 
 - Chỉ owner, admin phát hành, cho một agent có `n ≥ 30` kết quả đã chốt trong kỳ. `work_class` được làm thô tới mức `area:` để không lộ id nội bộ; không có tên workspace (trừ khi người phát hành chọn hiện).
-- Khoá: Ed25519 sinh khi khởi động lần đầu nếu chưa có (`MULTICA_ATTESTATION_KEY` hoặc lưu trong bảng bí mật máy chủ), khoá công khai ở `GET /.well-known/multica-attestation-keys.json`. Xoay khoá giữ khoá cũ ở danh sách để xác minh.
+- Khoá: Ed25519, seed 32 byte đọc từ `MULTICA_ATTESTATION_KEY` (D28). Thiếu biến thì tính năng phát hành tắt: API phát hành trả 503 `attestation_disabled`; xác minh và khoá công khai `GET /.well-known/multica-attestation-keys.json` vẫn chạy. Không sinh khoá tự động, không lưu khoá trong DB. Xoay khoá giữ khoá cũ ở danh sách để xác minh.
 - `POST /api/attestations/verify` (công khai, giới hạn tốc độ) và `multica attestation verify <file>` xác minh chữ ký với khoá của host trong `issuer` (tải qua HTTPS).
 
 ### 13.3 Đăng tuyển ghế và nộp đơn
@@ -1212,6 +1218,7 @@ Mỗi hook vào file upstream được thêm vào hợp đồng `pnpm sync:contr
 
 - Mọi JSON giao diện dùng đi qua schema zod và `parseWithFallback` (`packages/core/api/schema.ts` hoặc schema cục bộ trong `packages/core/durable/`); enum lạ có giá trị dự phòng (`verdict` lạ → `unverified`, `effect_class` lạ → `write`, `decision` lạ → `confirm`).
 - Mỗi endpoint mới có test phản hồi sai dạng.
+- Capability của daemon: `DaemonCapabilityShadowV1` gửi qua header `X-Client-Capabilities`. Task bóng và danh sách skill bị bỏ (`omit_skills`) chỉ gửi cho daemon có capability này (D30). Không dựa vào trường lạ trong payload.
 - Danh sách phân trang con trỏ, tối đa 100. Thân yêu cầu tối đa 16 KiB (32 KiB cho preview của ý định).
 - Lỗi có `code` máy đọc được: `outcome_settled`, `verifier_is_doer`, `envelope_violation`, `effect_blocked`, `intent_not_pending`, `profile_consent_required`, `delegation_forbidden_kind`, `attention_reason_required`, `shadow_task`, `attestation_sample_too_small`.
 
@@ -1236,22 +1243,24 @@ Mỗi hook vào file upstream được thêm vào hợp đồng `pnpm sync:contr
 - Chính sách hệ quả là hàm thuần trên dữ liệu đã cache (mức tự chủ squad cache 60 giây như budget gate); không truy vấn thêm ở đường nóng của gateway ngoài một `INSERT` vào `effect_event`.
 - Job đêm phân trang theo workspace, không quét chéo workspace trong một giao dịch.
 
-## 15. Chưa kiểm chứng
+## 15. Giả định đã kiểm ở P0
 
-Các điểm dưới đây được giả định khi viết và phải được P0 của kế hoạch xác nhận. Điểm nào sai thì sửa spec trước khi xây phần phụ thuộc.
+P0 kiểm mười giả định khi viết (bằng chứng ở [p0-findings.md](p0-findings.md)). Mỗi kết luận được áp dụng bằng một quyết định trong mục 0.
 
-| # | Giả định | Ảnh hưởng nếu sai |
-| --- | --- | --- |
-| U1 | Mọi đường đổi trạng thái issue đi qua một hàm service, đủ để một hook bắt hết (cần liệt kê bằng `rg`, gồm flow, workflow, batch, PR auto-complete, channel action) | F1 cần nhiều hook; test liệt kê đường gọi càng quan trọng |
-| U2 | `activity_log` (migration `001`) không có sẵn lịch sử trạng thái đáng tin; nếu có thì backfill được | Có thể backfill `issue_status_transition` |
-| U3 | Gateway `internal/connectedapps` là điểm duy nhất của lời gọi tool connected apps (kể cả remote gateway) | F3 có lỗ ở nguồn `connected_app` |
-| U4 | Daemon chạy được một task trên runtime khác runtime của agent (cho shadow) mà không cần agent thứ hai; nếu không, shadow dùng một agent "bóng" ẩn tạo tạm | F8 cần agent bóng |
-| U5 | Daemon có thể chạy task trong thư mục tạm không claim worktree | F8 cách ly yếu hơn; phải chặn runtime có quyền push |
-| U6 | Payload claim có chỗ cho cờ `shadow` và danh sách skill bị bỏ mà không đổi giao thức daemon cũ (client daemon cũ bỏ qua trường lạ) | F8, F9 cần version giao thức |
-| U7 | Manifest flow có hoặc thêm được trường đánh dấu bước có hệ quả ngoài | F4 mục 5.4 thu hẹp về khai báo thủ công |
-| U8 | Có sự kiện VCS cho revert PR | `fail_cause = reverted` chỉ dựa vào `done → cancelled` |
-| U9 | Runtime tuỳ chỉnh hiện có đủ cho worker HTTP bên ngoài | F11 cần adapter tham chiếu |
-| U10 | Có chỗ lưu bí mật máy chủ cho khoá Ed25519 | F12 dùng biến môi trường bắt buộc |
+| # | Kết luận P0 | Quyết định | Mục bị ảnh hưởng |
+| --- | --- | --- | --- |
+| U1 | Sai: 24 điểm ghi `issue.status`, không có hàm chung | D26: trigger PostgreSQL | 2.2 |
+| U2 | Một phần: có `status_changed` nhưng không đủ để backfill đầy đủ | D31: backfill best-effort, cột `source` | 2.2 |
+| U3 | Đúng: `internal/connectedapps` là điểm vào của tool connected apps | — | F3 |
+| U4 | Sai: claim chỉ trả task cho runtime của chính agent | D27: agent bóng | 9.4 |
+| U5 | Đúng: task tạm không claim worktree; runtime có quyền push phải bị từ chối | D27: không chạy `in_place` | 9.4 |
+| U6 | Một phần: daemon cũ bỏ qua trường lạ nhưng vẫn chạy task bóng như việc thật | D30: capability | 9.4, 14.4 |
+| U7 | Đúng: manifest flow thêm được trường đánh dấu hệ quả | — | B5 |
+| U8 | Sai: không có sự kiện revert PR | D31 | 2.4 |
+| U9 | Sai: runtime tuỳ chỉnh là binary CLI, không có backend HTTP | D29: adapter CLI | 12.3 |
+| U10 | Đúng: có chỗ lưu bí mật, nhưng không có khoá sẵn cho attestation | D28: tắt khi thiếu khoá | 13.2 |
+
+Còn chưa kiểm: dữ liệu thật của `activity_log` (U2, cần truy vấn chỉ đọc trên DB thật), luồng đầy đủ của PR auto-complete và channel action đến câu lệnh ghi cuối (thuộc A1), và hành vi thực tế của daemon cũ với trường `shadow` (U6, cần kiểm trên daemon thật).
 
 ## 16. Ngoài phạm vi
 
