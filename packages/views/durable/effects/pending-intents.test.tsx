@@ -7,7 +7,10 @@ import { PendingIntents } from "./pending-intents";
 
 const { flag } = vi.hoisted(() => ({ flag: { on: false } }));
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
-vi.mock("@multica/core/feature-flags", () => ({ useFlag: () => flag.on }));
+vi.mock("@multica/core/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/config")>()),
+  useFeatureEnabled: () => flag.on,
+}));
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
   api: { request: vi.fn() },
