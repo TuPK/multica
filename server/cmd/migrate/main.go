@@ -163,6 +163,8 @@ var concurrentIndexCleanups = map[string]string{
 	"1065_track_record_key_uidx":                                "track_record_key_uidx",
 	"1066_work_outcome_settled_agent_at_idx":                    "work_outcome_settled_agent_at_idx",
 	"1081_squad_autonomy_envelope_key_uidx":                     "squad_autonomy_envelope_key_uidx",
+	"1091_jury_panel_outcome_criterion_uidx":                    "jury_panel_outcome_criterion_uidx",
+	"1092_jury_panel_open_idx":                                  "jury_panel_open_created_idx",
 	"753_agent_task_queue_doc_idx":                              "idx_agent_task_queue_doc",
 	"749_app_tool_call_quota_period_scope_idx":                  "uq_app_tool_call_quota_period_scope",
 	"751_app_tool_call_workspace_metered_idx":                   "idx_app_tool_call_workspace_metered",

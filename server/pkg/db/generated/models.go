@@ -2055,6 +2055,20 @@ type JobStatus struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
+type JuryPanel struct {
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	OutcomeID      pgtype.UUID        `json:"outcome_id"`
+	CriterionID    pgtype.UUID        `json:"criterion_id"`
+	JurorAgentIds  []pgtype.UUID      `json:"juror_agent_ids"`
+	Diversity      string             `json:"diversity"`
+	State          string             `json:"state"`
+	Verdict        pgtype.Text        `json:"verdict"`
+	ResolvedByType pgtype.Text        `json:"resolved_by_type"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ClosedAt       pgtype.Timestamptz `json:"closed_at"`
+}
+
 type KeyResult struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`

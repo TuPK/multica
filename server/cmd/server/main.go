@@ -905,7 +905,8 @@ func main() {
 		slog.Error("scheduler: register issue queue sweep", "error", err)
 	}
 	// Every minute: a transition into done opens a work outcome, and due outcomes are settled (durable spec 2.4).
-	durableChecks := &service.VerificationService{Queries: queries, TxStarter: pool, Tasks: taskSvc}
+	durableJury := service.NewJuryService(queries, pool, taskSvc)
+	durableChecks := &service.VerificationService{Queries: queries, TxStarter: pool, Tasks: taskSvc, Jury: durableJury}
 	trackRecords := &service.TrackRecordService{Queries: queries, TxStarter: pool, Flags: flags}
 	durableOutcomes := &service.OutcomeService{Queries: queries, TxStarter: pool, Flags: flags, Verification: durableChecks, TrackRecords: trackRecords}
 	if err := schedulerMgr.Register(scheduler.DurableOutcomeJob(durableOutcomes)); err != nil {
@@ -913,6 +914,9 @@ func main() {
 	}
 	if err := schedulerMgr.Register(scheduler.DurableMetricJob(durableOutcomes)); err != nil {
 		slog.Error("scheduler: register durable metric", "error", err)
+	}
+	if err := schedulerMgr.Register(scheduler.DurableJuryTimeoutJob(durableJury)); err != nil {
+		slog.Error("scheduler: register durable jury timeout", "error", err)
 	}
 	if h.Intents != nil {
 		if err := schedulerMgr.Register(scheduler.DurableIntentExpiryJob(h.Intents)); err != nil {

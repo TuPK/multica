@@ -426,13 +426,25 @@ func (s *OutcomeService) criterionResults(ctx context.Context, q *db.Queries, o 
 	for _, v := range latest {
 		byCriterion[util.UUIDToString(v.CriterionID)] = v
 	}
+	// A jury's juror checks are latest until the panel decides; only a decided panel
+	// counts (durable spec 8.3).
+	panels, err := q.ListJuryPanelsForOutcome(ctx, db.ListJuryPanelsForOutcomeParams{WorkspaceID: o.WorkspaceID, OutcomeID: o.ID})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list jury panels: %w", err)
+	}
+	undecided := map[string]bool{}
+	for _, p := range panels {
+		if p.State != juryStateUnanimous && p.State != juryStateResolved {
+			undecided[util.UUIDToString(p.CriterionID)] = true
+		}
+	}
 	var results []CriterionResult
 	var notMet []string
 	for _, c := range criteria {
 		if c.ArchivedAt.Valid {
 			continue
 		}
-		if v, ok := byCriterion[util.UUIDToString(c.ID)]; ok {
+		if v, ok := byCriterion[util.UUIDToString(c.ID)]; ok && !undecided[util.UUIDToString(c.ID)] {
 			results = append(results, CriterionResult{Result: v.Result, Severity: v.Severity})
 			if v.Result == "fail" || v.Result == "partial" {
 				notMet = append(notMet, c.Text)

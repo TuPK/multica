@@ -115,6 +115,9 @@ type VerificationService struct {
 	Queries   *db.Queries
 	TxStarter TxStarter
 	Tasks     *TaskService
+	// Jury takes the agent_judgment criteria a jury checks (durable spec 8.2). Nil means
+	// every criterion has one verifier.
+	Jury *JuryService
 	// Now is the clock for windows. Nil means time.Now.
 	Now func() time.Time
 }
@@ -416,7 +419,15 @@ func (s *VerificationService) Record(ctx context.Context, ws pgtype.UUID, actor 
 		out, err = q.InsertOutcomeVerification(ctx, verificationParams(ws, o.ID, in, verifierType, verifierID, taskID))
 		return err
 	})
-	return out, err
+	if err != nil {
+		return out, err
+	}
+	if out.VerifierType == verifierTypeAgent && out.CriterionID.Valid && s.Jury != nil {
+		if err := s.Jury.OnVote(ctx, out); err != nil {
+			return out, fmt.Errorf("jury vote: %w", err)
+		}
+	}
+	return out, nil
 }
 
 // authorizeAgentCheck refuses an agent that is not the verifier of this criterion on
@@ -434,6 +445,9 @@ func (s *VerificationService) authorizeAgentCheck(ctx context.Context, q *db.Que
 	}
 	if (o.AgentID.Valid && o.AgentID == actor.ID) || (criterion.CreatedByType == GovernanceActorAgent && criterion.CreatedByID == actor.ID) {
 		return ErrVerifierIsDoer
+	}
+	if panelID := juryPanelIDOf(task.Context); panelID != "" {
+		return authorizeJuror(ctx, q, ws, o, in.CriterionID, actor, panelID)
 	}
 	assigned, err := q.GetOutcomeCheckTaskForCriterion(ctx, db.GetOutcomeCheckTaskForCriterionParams{
 		WorkspaceID: ws, OutcomeID: o.ID, CriterionID: in.CriterionID,
@@ -706,6 +720,18 @@ func (s *VerificationService) Schedule(ctx context.Context, o db.WorkOutcome) er
 				return err
 			}
 		case CheckKindAgentJudgment, CheckKindCommand:
+			if s.Jury != nil {
+				eligible, err := s.Jury.Eligible(ctx, o, c)
+				if err != nil {
+					return err
+				}
+				if eligible {
+					if err := s.Jury.Open(ctx, o, c); err != nil {
+						return err
+					}
+					continue
+				}
+			}
 			agentChecks = append(agentChecks, c)
 		}
 	}
@@ -757,6 +783,13 @@ func (s *VerificationService) handledCriteria(ctx context.Context, o db.WorkOutc
 	}
 	for _, v := range checked {
 		handled[util.UUIDToString(v.CriterionID)] = true
+	}
+	panels, err := s.Queries.ListJuryPanelsForOutcome(ctx, db.ListJuryPanelsForOutcomeParams{WorkspaceID: o.WorkspaceID, OutcomeID: o.ID})
+	if err != nil {
+		return nil, fmt.Errorf("list jury panels: %w", err)
+	}
+	for _, p := range panels {
+		handled[util.UUIDToString(p.CriterionID)] = true
 	}
 	return handled, nil
 }
