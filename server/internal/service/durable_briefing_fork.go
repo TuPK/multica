@@ -34,26 +34,50 @@ const (
 	briefingRunLimit     = 10
 )
 
-// DurableBriefingBlocks returns the outcome blocks a claim of task gets (spec 2.8).
+// DurableBriefingBlocks returns the blocks a claim of task gets (spec 2.8 and 4.5).
 //
-// A verification task gets the issue, the people's comments, the checks it must make, the
-// doer's runs by id, and the command that records each check. It never gets another
-// verifier's verdict. Any other task on an issue with open criteria gets the criteria and
-// how each will be checked. It returns nothing while durable_outcomes is off. A failed read
-// is logged and its block is left out, so the claim still goes through.
+// While durable_effects is on, every agent's briefing gets the declaration block: declare
+// an action outside the platform before taking it (spec 4.5). The outcome blocks are
+// described below. A verification task gets the issue, the people's comments, the checks it
+// must make, the doer's runs by id, and the command that records each check. It never gets
+// another verifier's verdict. Any other task on an issue with open criteria gets the
+// criteria and how each will be checked. The outcome blocks return nothing while
+// durable_outcomes is off. A failed read is logged and its block is left out, so the claim
+// still goes through.
 func DurableBriefingBlocks(ctx context.Context, q *db.Queries, flags *featureflag.Service, task db.AgentTaskQueue) []BriefingBlock {
+	var blocks []BriefingBlock
+	if featureflags.DurableEffectsEnabled(ctx, flags) {
+		blocks = append(blocks, effectDeclarationBriefing())
+	}
 	if !task.IssueID.Valid || !featureflags.DurableOutcomesEnabled(ctx, flags) {
-		return nil
+		return blocks
 	}
 	issue, err := q.GetIssue(ctx, task.IssueID)
 	if err != nil {
 		slog.Warn("durable briefing: load issue failed", "task_id", util.UUIDToString(task.ID), "error", err)
-		return nil
+		return blocks
 	}
 	if outcomeID := durableOutcomeOf(task); outcomeID != "" {
-		return verificationBriefing(ctx, q, task, issue, outcomeID)
+		return append(blocks, verificationBriefing(ctx, q, task, issue, outcomeID)...)
 	}
-	return criteriaBriefing(ctx, q, issue)
+	return append(blocks, criteriaBriefing(ctx, q, issue)...)
+}
+
+const briefingEffectsTitle = "Khai báo hành động ra ngoài nền tảng"
+
+// effectDeclarationBriefing tells the agent to declare an action with an outside result
+// before it takes it, and what each decision means. The rule is an agreement, not a
+// barrier: the platform cannot stop what it does not run (spec 4.5).
+func effectDeclarationBriefing() BriefingBlock {
+	body := "Trước mọi hành động có kết quả ra ngoài nền tảng thuộc lớp send, share, delete, spend, " +
+		"hoặc không hoàn tác được, khai báo trước bằng lệnh:\n\n" +
+		"    multica effect declare --class <lớp> --reversibility <reversible|compensable|irreversible> " +
+		"--target \"<hệ thống:đối tượng>\" --summary \"<một dòng cho người đọc>\"\n\n" +
+		"Làm theo quyết định của lệnh: exit 0 thì làm; exit 3 thì chờ người duyệt, không làm; " +
+		"exit 4 thì không làm và báo người.\n\n" +
+		"Khai báo là thoả thuận, không phải hàng rào. Không khai báo thì hành động vẫn không bị " +
+		"chặn, và sẽ không được ghi là đã kiểm soát."
+	return BriefingBlock{Title: briefingEffectsTitle, Body: body}
 }
 
 // criteriaBriefing lists the open criteria of the issue and how each will be checked.
