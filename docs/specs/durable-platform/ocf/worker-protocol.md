@@ -26,7 +26,9 @@ Runtime tuỳ chỉnh không thêm giao thức mới. Hồ sơ runtime (`custom 
 - Daemon chỉ chấp nhận `protocol_family` nằm trong `SupportedTypes` (`server/pkg/agent/agent.go`, dòng 447). Kiểm tra ở `server/internal/daemon/daemon.go`, quanh dòng 3201.
 - Họ đó quyết định cách daemon gọi lệnh (tham số, stdin) và cách đọc đầu ra (luồng sự kiện). Adapter phải nói đúng cách đó.
 
-**Quyết định cần xác minh khi làm E2:** chọn họ nào cho adapter. Đề xuất là `pi`: đầu ra là luồng sự kiện JSON không tương tác (`-p --mode json`, `server/pkg/agent/pi.go`, dòng 1230). Đây là giả định, chưa đối chiếu đầy đủ với mọi sự kiện. Nếu họ khác, cần sửa mục 3 và 4 theo họ đó.
+Adapter chọn họ `pi`. Đã kiểm bằng `TestAdapterRunsUnderThePiBackend` (`server/cmd/multica-ocf-adapter/adapter_pi_test.go`): adapter được dựng và chạy qua chính backend `pi` của daemon, gồm lệnh (`-p --mode json --session <path>` cộng `custom_args`), prompt trên stdin, và luồng sự kiện (`agent_start`, `message_update` với `text_delta`, `error`, `agent_end` có `stopReason`). Daemon chấp nhận họ `pi` cho runtime tuỳ chỉnh (`agent.RuntimeProtocolFamily`).
+
+Chi tiết cần biết khi cấu hình: `--worker <lệnh>` phải nằm trong `custom_args` của agent. Backend `pi` chỉ đưa `custom_args` vào argv (`server/pkg/agent/pi.go`, `buildPiArgs`), không đưa tham số cố định của hồ sơ runtime. Đặt worker bằng biến môi trường `MULTICA_OCF_WORKER` chưa được kiểm qua daemon.
 
 ## 2. Biến môi trường
 
@@ -73,7 +75,7 @@ Ghi chú theo từng dòng:
 
 - Lệnh `criteria` và `outcome` thoát khác 0 khi server trả 4xx hoặc 5xx (`cmd_outcome_fork.go`). Các lệnh khác chưa kiểm.
 - `multica effect declare` (F3) thoát theo quyết định: `0` cho `allow`, `3` cho `confirm` hoặc `rehearse`, `4` cho `block`. Đầu ra là JSON `{ "event_id", "decision", "intent_id" }`. Đây là đặc tả của F3, chưa có mã.
-- Adapter thoát `0` khi sự kiện kết thúc hợp lệ đã được in. *Giả định, chưa kiểm:* thoát khác 0 hoặc không có sự kiện kết thúc thì daemon báo `fail`. Cần xác minh với một runtime tuỳ chỉnh thật khi làm E2.
+- Adapter thoát `0` khi sự kiện kết thúc hợp lệ đã được in. Thoát khác 0 thì backend `pi` ghi kết quả `failed` và giữ thông báo lỗi. Đã kiểm bằng `TestAdapterRunsUnderThePiBackend` (worker thoát `3`). Chưa kiểm: việc daemon chuyển kết quả đó thành lệnh `fail` trên server (cần chạy daemon đầy đủ).
 
 ## 5. Vòng đời của một task
 
@@ -93,9 +95,10 @@ Hủy task: server có endpoint `POST /api/daemon/tasks/{taskId}/cancel-ack` (`A
 - Không có backend HTTP worker. Adapter là tiến trình con của daemon, không phải dịch vụ.
 - Lệnh `effect declare` và endpoint của nó thuộc F3. Trước khi F3 có mặt, worker không khai báo được hệ quả; kết quả đó phải nói rõ trong báo cáo.
 - Adapter không tự đăng ký nhiều runtime. Một hồ sơ runtime tuỳ chỉnh là một cặp (lệnh, họ).
+- Adapter không tiếp tục phiên. Tham số `--session` do backend `pi` truyền vào bị bỏ qua, nên mỗi task chạy worker mới, không nhớ task trước.
 
 ## 7. Chưa rõ
 
-1. Họ `protocol_family` cho adapter (mục 1). Phải chốt và kiểm trên một worker thật khi làm E2.
+1. Hủy task (mục 5) chưa đối chiếu với mã daemon. Adapter dừng worker khi context bị huỷ, nhưng nếu daemon chỉ giết adapter bằng SIGKILL thì worker có thể còn chạy. Cần kiểm trên daemon thật.
 2. Có cần `multica effect declare` trong v1 của worker, hay để F3 quyết định. Đặc tả hiện tại để F3 quyết.
 3. Thông điệp `--help` của `multica outcome verify` về nguồn id task (mục 3, dòng 12).
