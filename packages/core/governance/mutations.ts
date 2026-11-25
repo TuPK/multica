@@ -1,4 +1,5 @@
 import type { DigestSetting, DigestModeInfo } from "./digest-mode";
+import type { AttentionBudget, AttentionBudgetInput } from "./attention";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { governanceKeys } from "./queries";
@@ -46,6 +47,20 @@ export function useSetDigestMode(wsId: string) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: governanceKeys.digestMode(wsId) });
+    },
+  });
+}
+
+/** Saves the weekly attention budget and its split (durable spec 7.3). */
+export function useSetAttentionBudget(wsId: string) {
+  const qc = useQueryClient();
+  return useMutation<AttentionBudget, Error, AttentionBudgetInput>({
+    mutationFn: (input) => api.setAttentionBudget(input),
+    onSuccess: (budget) => {
+      qc.setQueryData(governanceKeys.attention(wsId), budget);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: governanceKeys.attention(wsId) });
     },
   });
 }
