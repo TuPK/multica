@@ -49,6 +49,7 @@ export function letSidebarSettingsDragKeysThrough(event: KeyboardEvent & { preve
 
 export function useIssueSidebarSectionLabels(): Record<IssueSidebarSection, string> {
   const { t } = useT("issues");
+  const { t: tDurable } = useT("durable");
   return {
     properties: t(($) => $.detail.section_properties),
     quick_actions: t(($) => $.detail.section_quick_actions),
@@ -60,6 +61,7 @@ export function useIssueSidebarSectionLabels(): Record<IssueSidebarSection, stri
     pull_requests: t(($) => $.detail.section_pull_requests),
     environments: t(($) => $.environments.section_title),
     deliverables: t(($) => $.deliverables.section_title),
+    acceptance: tDurable(($) => $.outcomes.acceptance.title),
     apps: t(($) => $.app_calls.section_title),
     execution_log: t(($) => $.execution_log.section),
     metadata: t(($) => $.detail.section_metadata),

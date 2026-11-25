@@ -105,5 +105,101 @@
     "saved": "Decision saved.",
     "save_failed": "Could not save the decision.",
     "load_failed": "Could not load the effect policy."
+  },
+  "outcomes": {
+    "verdict": {
+      "pass": "Passed",
+      "partial": "Partly passed",
+      "fail": "Failed",
+      "unverified": "Not verified",
+      "pending": "Pending"
+    },
+    "result": {
+      "pass": "Passed",
+      "partial": "Partly passed",
+      "fail": "Failed",
+      "unable": "Not checked"
+    },
+    "check_kind": {
+      "manual": "Manual",
+      "agent_judgment": "Agent judgment",
+      "command": "Command",
+      "artifact": "Artifact",
+      "metric": "Metric"
+    },
+    "mode": {
+      "full": "Every outcome",
+      "sampled": "Sampled",
+      "spot": "Spot checks"
+    },
+    "remaining": {
+      "days_hours": "{{days}}d {{hours}}h",
+      "hours": "{{hours}}h",
+      "minutes": "{{minutes}}m"
+    },
+    "cancel": "Cancel",
+    "acceptance": {
+      "title": "Acceptance",
+      "add": "Add criterion",
+      "criterion_label": "Criterion",
+      "criterion_placeholder": "What must be true when this is done",
+      "check_kind_label": "Check",
+      "submit": "Add",
+      "added": "Criterion added.",
+      "add_failed": "Could not add the criterion.",
+      "empty": "No criteria yet.",
+      "load_failed": "Could not load the criteria.",
+      "pending": "Pending · settles in {{time}}",
+      "pending_now": "Pending · settles soon"
+    },
+    "tab": {
+      "coverage": "Verified coverage",
+      "coverage_hint": "Last 7 days: passed, partly passed and failed, out of all outcomes.",
+      "agent": "Agent",
+      "squad": "Squad",
+      "verdict": "Verdict",
+      "all": "All",
+      "empty": "No outcomes match these filters.",
+      "load_failed": "Could not load outcomes.",
+      "limit_note": "Showing the latest 100 outcomes."
+    },
+    "track_record": {
+      "title": "Track record",
+      "empty": "No outcomes yet.",
+      "load_failed": "Could not load the track record.",
+      "column_work": "Work",
+      "column_mode": "Check mode",
+      "column_pin": "Pin",
+      "column_pass": "Passed",
+      "column_partial": "Partly",
+      "column_fail": "Failed",
+      "column_unverified": "Not verified",
+      "column_high_fail": "High fails",
+      "column_score": "Lower bound",
+      "pin_label": "Check mode for {{work}}",
+      "pin_automatic": "Automatic",
+      "pinned": "Mode saved.",
+      "pin_failed": "Could not save the mode."
+    },
+    "envelope": {
+      "column": "Range",
+      "reputation_column": "Reputation (90 days)",
+      "set": "Set range",
+      "none": "No range set",
+      "range": "L{{floor}}–L{{ceiling}}",
+      "dialog_title": "Set the range",
+      "dialog_hint": "The squad moves inside this range on its own evidence. Only you move it outside.",
+      "floor": "Floor",
+      "ceiling": "Ceiling",
+      "reason": "Reason",
+      "reason_placeholder": "Why this range",
+      "save": "Save range",
+      "floor_above_ceiling": "The floor cannot be above the ceiling.",
+      "saved": "Range saved.",
+      "save_failed": "Could not save the range.",
+      "reputation": "{{n}} outcomes · lower bound {{score}}%",
+      "reputation_none": "No outcomes yet",
+      "high_fail": "High-severity fail in the last 90 days"
+    }
   }
 }

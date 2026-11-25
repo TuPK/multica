@@ -1,11 +1,15 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
 import { toQueryString } from "../query-string";
-import { parseTrackRecordList } from "./schemas";
+import { parseSquadEnvelope, parseTrackRecordList } from "./schemas";
 
 export const trackRecordKeys = {
   all: (wsId: string) => ["durable", wsId, "track-records"] as const,
   list: (wsId: string, filters: TrackRecordFilters) => [...trackRecordKeys.all(wsId), "list", filters] as const,
+};
+
+export const envelopeKeys = {
+  squad: (wsId: string, squadId: string) => ["durable", wsId, "envelope", squadId] as const,
 };
 
 export type TrackRecordFilters = {
@@ -27,4 +31,21 @@ export function trackRecordListOptions(wsId: string, filters: TrackRecordFilters
 
 export function useTrackRecords(wsId: string, filters: TrackRecordFilters = {}) {
   return useQuery(trackRecordListOptions(wsId, filters));
+}
+
+/** A squad's envelope (null when none is set) and the reputation it reads. */
+export function squadEnvelopeOptions(wsId: string, squadId: string) {
+  return queryOptions({
+    queryKey: envelopeKeys.squad(wsId, squadId),
+    queryFn: async () =>
+      parseSquadEnvelope(
+        await api.request(`/api/squads/${encodeURIComponent(squadId)}/autonomy/envelope`),
+        "GET /api/squads/:id/autonomy/envelope",
+      ),
+    enabled: !!wsId && !!squadId,
+  });
+}
+
+export function useSquadEnvelope(wsId: string, squadId: string) {
+  return useQuery(squadEnvelopeOptions(wsId, squadId));
 }

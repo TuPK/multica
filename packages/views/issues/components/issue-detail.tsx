@@ -142,6 +142,8 @@ import { HandoffSection } from "./handoff-section";
 import { QuickActionsSection } from "./quick-actions-section";
 import { PluginPanelSection } from "../../plugins";
 import { PullRequestsSection } from "./pull-requests-section";
+import { IssueAcceptancePanel } from "../../durable/outcomes/issue-acceptance-panel";
+import { useOutcomesEnabled } from "../../durable/outcomes/use-outcomes-enabled";
 import { IssueEnvironmentsSection } from "./issue-environments-section";
 import { useGitHubSettings } from "@multica/core/github";
 import { useFeatureEnabled } from "@multica/core/config";
@@ -1499,6 +1501,7 @@ export function IssueDetail({ issueId, onDelete, inbox, defaultSidebarOpen = tru
   const [pullRequestsOpen, setPullRequestsOpen] = useState(true);
   const githubSettings = useGitHubSettings();
   const pluginsEnabled = useFeatureEnabled(PLUGINS_V1_FLAG, false);
+  const outcomesOn = useOutcomesEnabled();
 
   // Per-issue, per-session set of optional properties currently visible in
   // the sidebar Properties section. Seeded on issue switch with whichever
@@ -3726,6 +3729,8 @@ export function IssueDetail({ issueId, onDelete, inbox, defaultSidebarOpen = tru
         onCopyLink={copyDeliverableLink}
       />
     ),
+    // The acceptance criteria and the verdict. Hidden while the durable_outcomes flag is off.
+    acceptance: <IssueAcceptancePanel wsId={wsId} issueId={id} />,
     // Apps the issue's runs used. Hidden until one makes a call.
     apps: <IssueAppsSection issueId={id} />,
     // Execution summary owns its query, realtime updates and disclosure.
@@ -3742,7 +3747,9 @@ export function IssueDetail({ issueId, onDelete, inbox, defaultSidebarOpen = tru
         (section) =>
           guest
             ? GUEST_SIDEBAR_SECTIONS.has(section)
-            : (section !== "pull_requests" || githubSettings.prSidebar) && (section !== "plugins" || pluginsEnabled),
+            : (section !== "pull_requests" || githubSettings.prSidebar) &&
+              (section !== "plugins" || pluginsEnabled) &&
+              (section !== "acceptance" || outcomesOn),
       )}
       addRow={<IssueSidebarAddRow items={sidebarAddables.filter((item) => item !== sidebarReveal)} onPick={setSidebarReveal} issue={issue} />}
       footer={guest ? undefined : <IssueSidebarFooter issue={issue} />}

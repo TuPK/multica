@@ -16,6 +16,8 @@ import { GovernanceLogTab } from "./governance-log-tab";
 import { GovernanceReviewsTab } from "./governance-reviews-tab";
 import { GovernanceEffectsTab } from "../durable/effects/governance-effects-tab";
 import { useEffectsEnabled } from "../durable/effects/use-effects-enabled";
+import { GovernanceOutcomesTab } from "../durable/outcomes/governance-outcomes-tab";
+import { useOutcomesEnabled } from "../durable/outcomes/use-outcomes-enabled";
 
 /**
  * Governance: how the company is steered. Six tabs, selected by the URL's
@@ -27,6 +29,7 @@ export function GovernancePage() {
   const { pathname, searchParams, replace } = useNavigation();
   const tab = parseGovernanceTab(searchParams.get("tab"));
   const effectsOn = useEffectsEnabled();
+  const outcomesOn = useOutcomesEnabled();
 
   const selectTab = (next: GovernanceTab) => {
     const params = new URLSearchParams(searchParams);
@@ -51,6 +54,7 @@ export function GovernancePage() {
             <TabsTrigger value="log">{t(($) => $.tabs.log)}</TabsTrigger>
             <TabsTrigger value="controls">{t(($) => $.tabs.controls)}</TabsTrigger>
             {effectsOn ? <TabsTrigger value="effects">{t(($) => $.tabs.effects)}</TabsTrigger> : null}
+            {outcomesOn ? <TabsTrigger value="outcomes">{t(($) => $.tabs.outcomes)}</TabsTrigger> : null}
           </TabsList>
         </div>
         <TabsContent value="goals" className="min-h-0 flex-1 overflow-y-auto">
@@ -74,6 +78,11 @@ export function GovernancePage() {
         {effectsOn ? (
           <TabsContent value="effects" className="min-h-0 flex-1 overflow-y-auto">
             <GovernanceEffectsTab />
+          </TabsContent>
+        ) : null}
+        {outcomesOn ? (
+          <TabsContent value="outcomes" className="min-h-0 flex-1 overflow-y-auto">
+            <GovernanceOutcomesTab />
           </TabsContent>
         ) : null}
       </Tabs>

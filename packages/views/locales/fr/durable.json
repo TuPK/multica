@@ -105,5 +105,101 @@
     "saved": "Décision enregistrée.",
     "save_failed": "Impossible d'enregistrer la décision.",
     "load_failed": "Impossible de charger la politique des effets."
+  },
+  "outcomes": {
+    "verdict": {
+      "pass": "Validé",
+      "partial": "Partiellement validé",
+      "fail": "Échoué",
+      "unverified": "Non vérifié",
+      "pending": "En attente"
+    },
+    "result": {
+      "pass": "Validé",
+      "partial": "Partiellement validé",
+      "fail": "Échoué",
+      "unable": "Non vérifié"
+    },
+    "check_kind": {
+      "manual": "Manuel",
+      "agent_judgment": "Jugement de l'agent",
+      "command": "Commande",
+      "artifact": "Livrable",
+      "metric": "Indicateur"
+    },
+    "mode": {
+      "full": "Chaque résultat",
+      "sampled": "Par échantillon",
+      "spot": "Contrôles aléatoires"
+    },
+    "remaining": {
+      "days_hours": "{{days}} j {{hours}} h",
+      "hours": "{{hours}} h",
+      "minutes": "{{minutes}} min"
+    },
+    "cancel": "Annuler",
+    "acceptance": {
+      "title": "Recette",
+      "add": "Ajouter un critère",
+      "criterion_label": "Critère",
+      "criterion_placeholder": "Ce qui doit être vrai à la fin",
+      "check_kind_label": "Vérification",
+      "submit": "Ajouter",
+      "added": "Critère ajouté.",
+      "add_failed": "Impossible d'ajouter le critère.",
+      "empty": "Aucun critère pour l'instant.",
+      "load_failed": "Impossible de charger les critères.",
+      "pending": "En attente · clôture dans {{time}}",
+      "pending_now": "En attente · clôture imminente"
+    },
+    "tab": {
+      "coverage": "Couverture vérifiée",
+      "coverage_hint": "7 derniers jours : validés, partiellement validés et échoués, sur l'ensemble des résultats.",
+      "agent": "Agent",
+      "squad": "Équipe",
+      "verdict": "Verdict",
+      "all": "Tous",
+      "empty": "Aucun résultat ne correspond à ces filtres.",
+      "load_failed": "Impossible de charger les résultats.",
+      "limit_note": "Affichage des 100 derniers résultats."
+    },
+    "track_record": {
+      "title": "Historique",
+      "empty": "Aucun résultat pour l'instant.",
+      "load_failed": "Impossible de charger l'historique.",
+      "column_work": "Type de travail",
+      "column_mode": "Mode de contrôle",
+      "column_pin": "Épingler",
+      "column_pass": "Validés",
+      "column_partial": "Partiels",
+      "column_fail": "Échoués",
+      "column_unverified": "Non vérifiés",
+      "column_high_fail": "Échecs graves",
+      "column_score": "Borne basse",
+      "pin_label": "Mode de contrôle pour {{work}}",
+      "pin_automatic": "Automatique",
+      "pinned": "Mode enregistré.",
+      "pin_failed": "Impossible d'enregistrer le mode."
+    },
+    "envelope": {
+      "column": "Plage",
+      "reputation_column": "Réputation (90 jours)",
+      "set": "Définir la plage",
+      "none": "Aucune plage",
+      "range": "L{{floor}}–L{{ceiling}}",
+      "dialog_title": "Définir la plage",
+      "dialog_hint": "L'équipe évolue dans cette plage selon ses résultats. Seul vous pouvez la faire sortir de la plage.",
+      "floor": "Plancher",
+      "ceiling": "Plafond",
+      "reason": "Raison",
+      "reason_placeholder": "Pourquoi cette plage",
+      "save": "Enregistrer la plage",
+      "floor_above_ceiling": "Le plancher ne peut pas dépasser le plafond.",
+      "saved": "Plage enregistrée.",
+      "save_failed": "Impossible d'enregistrer la plage.",
+      "reputation": "{{n}} résultats · borne basse {{score}} %",
+      "reputation_none": "Aucun résultat pour l'instant",
+      "high_fail": "Échec grave au cours des 90 derniers jours"
+    }
   }
 }

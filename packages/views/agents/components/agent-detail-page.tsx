@@ -101,6 +101,8 @@ import { AgentChannelLinks, AgentChannelsSection } from "./agent-channels-sectio
 import { AgentSkillsSection } from "./agent-skills-section";
 import { AgentWorkDialog } from "./agent-work-dialog";
 import { AgentWorkSections } from "./tabs/activity-tab";
+import { AgentTrackRecordTab } from "../../durable/outcomes/agent-track-record-tab";
+import { useOutcomesEnabled } from "../../durable/outcomes/use-outcomes-enabled";
 
 const AGENT_DETAIL_LAYOUT_ID = "multica_agent_detail_layout";
 
@@ -126,6 +128,7 @@ interface AgentDetailPageProps {
 
 export function AgentDetailPage({ agentId, onArchived }: AgentDetailPageProps) {
   const { t } = useT("agents");
+  const outcomesOn = useOutcomesEnabled();
   const { t: tIssues } = useT("issues");
   const wsId = useWorkspaceId();
   const [scrollParent, setScrollParent] = useState<HTMLDivElement | null>(null);
@@ -719,6 +722,8 @@ export function AgentDetailPage({ agentId, onArchived }: AgentDetailPageProps) {
             scrollParent={scrollParent}
             onViewAll={() => openWork(true)}
           />
+
+          {outcomesOn ? <AgentTrackRecordTab agentId={agent.id} /> : null}
 
           <AgentChannelsSection agent={agent} />
 

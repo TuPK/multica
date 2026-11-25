@@ -7,7 +7,8 @@
     "reviews": "Đánh giá",
     "log": "Nhật ký",
     "controls": "Điều khiển",
-    "effects": "Hệ quả"
+    "effects": "Hệ quả",
+    "outcomes": "Kết quả"
   },
   "placeholder": {
     "title": "Chưa có gì để hiển thị"
@@ -78,7 +79,8 @@
     "create_max_cost": "Chi phí lớn nhất, tính bằng micro-đơn vị (không bắt buộc)",
     "create_submit": "Tạo phê duyệt thường trực",
     "create_done": "Đã tạo phê duyệt thường trực",
-    "create_failed": "Không thể tạo phê duyệt thường trực. Hãy kiểm tra các trường và thử lại."
+    "create_failed": "Không thể tạo phê duyệt thường trực. Hãy kiểm tra các trường và thử lại.",
+    "platform_scope": "Delegora chỉ kiểm soát những gì đi qua nền tảng."
   },
   "controls": {
     "state_heading": "Trạng thái công ty",

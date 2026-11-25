@@ -7,7 +7,8 @@
     "reviews": "Revisiones",
     "log": "Registro",
     "controls": "Controles",
-    "effects": "Efectos"
+    "effects": "Efectos",
+    "outcomes": "Resultados"
   },
   "placeholder": {
     "title": "Aún no hay nada que mostrar"
@@ -78,7 +79,8 @@
     "create_max_cost": "Coste máximo, en microunidades (opcional)",
     "create_submit": "Crear aprobación permanente",
     "create_done": "Aprobación permanente creada",
-    "create_failed": "No se pudo crear la aprobación permanente. Revisa los campos e inténtalo de nuevo."
+    "create_failed": "No se pudo crear la aprobación permanente. Revisa los campos e inténtalo de nuevo.",
+    "platform_scope": "Delegora solo controla lo que pasa por la plataforma."
   },
   "controls": {
     "state_heading": "Estado de la empresa",

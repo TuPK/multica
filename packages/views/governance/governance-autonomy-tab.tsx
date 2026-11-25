@@ -12,6 +12,7 @@ import { useT } from "../i18n";
 import { GovernancePoliciesSection } from "./governance-policies-section";
 import { AUTONOMY_LEVEL_KEYS } from "./autonomy-levels";
 import { SquadAutonomyEditor } from "./squad-autonomy-editor";
+import { SquadEnvelopeControl } from "../durable/outcomes/envelope-dialog";
 
 /**
  * The i18n key of the autonomy note (spec 4.3). The note must stay on this tab:
@@ -37,6 +38,7 @@ export function GovernanceAutonomyTab() {
   return (
     <div className={cn(PAGE_GUTTER, "flex flex-col gap-8 py-4")}>
       <p className="max-w-prose text-body text-muted-foreground">{t(($) => $.autonomy.note)}</p>
+      <p className="max-w-prose text-body font-medium">{t(($) => $.autonomy.platform_scope)}</p>
 
       <section aria-label={t(($) => $.autonomy.levels_heading)} className="flex flex-col gap-2">
         <h2 className="text-heading">{t(($) => $.autonomy.levels_heading)}</h2>
@@ -80,6 +82,7 @@ function SquadAutonomyRow({ wsId, squad, editable }: { wsId: string; squad: Squa
     <li className="flex flex-col gap-3 px-4 py-3">
       <span className="min-w-0 truncate text-body font-medium">{squad.name}</span>
       <SquadAutonomyEditor wsId={wsId} squad={squad} editable={editable} />
+      <SquadEnvelopeControl wsId={wsId} squadId={squad.id} editable={editable} />
     </li>
   );
 }

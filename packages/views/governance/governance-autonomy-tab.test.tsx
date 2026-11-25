@@ -92,6 +92,17 @@ describe("GovernanceAutonomyTab", () => {
     expect(screen.getByText("L0 Suggest")).toBeTruthy();
   });
 
+  it("states the scope of the platform in the Vietnamese copy the spec requires", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderWithI18n(
+      <QueryClientProvider client={queryClient}>
+        <GovernanceAutonomyTab />
+      </QueryClientProvider>,
+      { locale: "vi" },
+    );
+    expect(await screen.findByText(/Delegora chỉ kiểm soát những gì đi qua nền tảng\./)).toBeTruthy();
+  });
+
   it("shows each squad's level with the reason of its last change", async () => {
     renderTab();
     const levels = await screen.findByRole("region", { name: "Squad levels" });

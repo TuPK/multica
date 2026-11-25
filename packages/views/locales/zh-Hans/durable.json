@@ -105,5 +105,101 @@
     "saved": "决定已保存。",
     "save_failed": "无法保存决定。",
     "load_failed": "无法加载影响策略。"
+  },
+  "outcomes": {
+    "verdict": {
+      "pass": "通过",
+      "partial": "部分通过",
+      "fail": "未通过",
+      "unverified": "未验证",
+      "pending": "待定"
+    },
+    "result": {
+      "pass": "通过",
+      "partial": "部分通过",
+      "fail": "未通过",
+      "unable": "未检查"
+    },
+    "check_kind": {
+      "manual": "人工",
+      "agent_judgment": "Agent 判断",
+      "command": "命令",
+      "artifact": "产出物",
+      "metric": "指标"
+    },
+    "mode": {
+      "full": "每个结果",
+      "sampled": "抽样",
+      "spot": "随机抽查"
+    },
+    "remaining": {
+      "days_hours": "{{days}}天{{hours}}小时",
+      "hours": "{{hours}}小时",
+      "minutes": "{{minutes}}分钟"
+    },
+    "cancel": "取消",
+    "acceptance": {
+      "title": "验收",
+      "add": "添加标准",
+      "criterion_label": "标准",
+      "criterion_placeholder": "完成时必须满足什么",
+      "check_kind_label": "检查方式",
+      "submit": "添加",
+      "added": "已添加标准。",
+      "add_failed": "无法添加标准。",
+      "empty": "还没有标准。",
+      "load_failed": "无法加载标准。",
+      "pending": "待定 · {{time}}后结算",
+      "pending_now": "待定 · 即将结算"
+    },
+    "tab": {
+      "coverage": "验证覆盖率",
+      "coverage_hint": "最近 7 天：通过、部分通过和未通过的结果，占全部结果的比例。",
+      "agent": "Agent",
+      "squad": "小组",
+      "verdict": "结论",
+      "all": "全部",
+      "empty": "没有符合筛选条件的结果。",
+      "load_failed": "无法加载结果。",
+      "limit_note": "显示最新的 100 条结果。"
+    },
+    "track_record": {
+      "title": "履历",
+      "empty": "还没有结果。",
+      "load_failed": "无法加载履历。",
+      "column_work": "工作类型",
+      "column_mode": "检查方式",
+      "column_pin": "固定",
+      "column_pass": "通过",
+      "column_partial": "部分",
+      "column_fail": "未通过",
+      "column_unverified": "未验证",
+      "column_high_fail": "严重失败",
+      "column_score": "置信下界",
+      "pin_label": "{{work}} 的检查方式",
+      "pin_automatic": "自动",
+      "pinned": "已保存检查方式。",
+      "pin_failed": "无法保存检查方式。"
+    },
+    "envelope": {
+      "column": "区间",
+      "reputation_column": "信誉（90 天）",
+      "set": "设置区间",
+      "none": "未设置区间",
+      "range": "L{{floor}}–L{{ceiling}}",
+      "dialog_title": "设置区间",
+      "dialog_hint": "小组依据证据在此区间内移动。超出区间，只有你能调整。",
+      "floor": "下限",
+      "ceiling": "上限",
+      "reason": "理由",
+      "reason_placeholder": "为何选这个区间",
+      "save": "保存区间",
+      "floor_above_ceiling": "下限不能高于上限。",
+      "saved": "已保存区间。",
+      "save_failed": "无法保存区间。",
+      "reputation": "{{n}} 条结果 · 置信下界 {{score}}%",
+      "reputation_none": "还没有结果",
+      "high_fail": "90 天内有严重失败"
+    }
   }
 }
