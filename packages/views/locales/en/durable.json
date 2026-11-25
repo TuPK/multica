@@ -1,0 +1,109 @@
+{
+  "intent": {
+    "title": "Waiting for approval",
+    "source": {
+      "connected_app": "Connected app",
+      "plugin_action": "Plugin",
+      "cli": "CLI",
+      "channel": "Chat channel",
+      "webhook": "Webhook",
+      "publish_channel": "Publish channel",
+      "declared": "Declared by the agent"
+    },
+    "effect_class": {
+      "read": "Read",
+      "write_internal": "Change in Delegora",
+      "write": "Change outside",
+      "send": "Send",
+      "share": "Share access",
+      "delete": "Delete",
+      "spend": "Spend"
+    },
+    "kind": {
+      "email": "Email",
+      "post": "Post",
+      "record": "Record",
+      "generic": "Action"
+    },
+    "rationale": "Why the agent wants this",
+    "recipients": "To",
+    "field_before": "Before",
+    "field_after": "After",
+    "approve": "Approve",
+    "edit": "Edit and approve",
+    "edit_label": "Message text",
+    "approve_edited": "Approve edited version",
+    "reject": "Reject",
+    "reject_label": "Reason (the agent reads it)",
+    "reject_confirm": "Send rejection",
+    "cancel": "Cancel",
+    "approved": "Approved. The action runs once.",
+    "approve_failed": "Could not approve this action.",
+    "rejected": "Rejected. The agent gets the reason.",
+    "reject_failed": "Could not reject this action.",
+    "already_decided": "This action was already decided."
+  },
+  "batch": {
+    "title": "{{count}} actions of the same kind",
+    "approve_all": "Approve all",
+    "approved_all": "{{count}} actions approved.",
+    "approved_partial": "{{approved}} approved, {{failed}} could not be approved.",
+    "approve_all_failed": "Could not approve these actions."
+  },
+  "effects": {
+    "controlled": "Controlled by the platform",
+    "declared": "Declared by agents",
+    "declared_hint": "The platform recorded these but could not stop them.",
+    "empty": "No effects yet.",
+    "load_failed": "Could not load effects.",
+    "undo": "Undo",
+    "undo_done": "Effect undone.",
+    "undo_failed": "Could not undo this effect.",
+    "undo_closed": "The undo window for this effect has closed.",
+    "undo_until": "Undo until {{time}}",
+    "decision": {
+      "allow": "Allowed",
+      "confirm": "Confirm",
+      "rehearse": "Held for approval",
+      "block": "Blocked"
+    },
+    "status": {
+      "executed": "Done",
+      "blocked": "Blocked",
+      "awaiting": "Awaiting approval",
+      "failed": "Failed",
+      "undone": "Undone",
+      "declared": "Declared"
+    }
+  },
+  "run": {
+    "label": "Effects of this run",
+    "title": "Effects",
+    "empty": "This run recorded no effects."
+  },
+  "policy": {
+    "title": "Effect policy",
+    "rows": {
+      "read": "Read",
+      "write_internal": "Change in Delegora",
+      "write_reversible": "Change outside, reversible",
+      "write_compensable": "Change outside, compensable",
+      "send": "Send",
+      "share": "Share access",
+      "delete": "Delete",
+      "spend": "Spend"
+    },
+    "changed": "Changed",
+    "locked": "Locked",
+    "reason": {
+      "loosen_needs_l3": "A looser decision needs L3.",
+      "never_allow": "Spend and share are never allowed.",
+      "no_cell": "No policy for this cell.",
+      "invalid_decision": "Not a decision."
+    },
+    "read_only": "Only owners and admins can change the policy.",
+    "saved": "Decision saved.",
+    "save_failed": "Could not save the decision.",
+    "load_failed": "Could not load the effect policy."
+  }
+}

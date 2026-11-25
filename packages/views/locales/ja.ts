@@ -29,6 +29,7 @@ import jaHub from "./ja/hub.json";
 import jaKnowledge from "./ja/knowledge.json";
 import jaPipeline from "./ja/pipeline.json";
 import jaGovernance from "./ja/governance.json";
+import jaDurable from "./ja/durable.json";
 import jaCompany from "./ja/company.json";
 import jaWorkflow from "./ja/workflow.json";
 
@@ -63,6 +64,7 @@ const resources: LocaleResources = {
   knowledge: jaKnowledge,
   pipeline: jaPipeline,
   governance: jaGovernance,
+  durable: jaDurable,
   company: jaCompany,
   workflow: jaWorkflow,
 };

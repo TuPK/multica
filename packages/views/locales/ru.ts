@@ -29,6 +29,7 @@ import ruHub from "./ru/hub.json";
 import ruKnowledge from "./ru/knowledge.json";
 import ruPipeline from "./ru/pipeline.json";
 import ruGovernance from "./ru/governance.json";
+import ruDurable from "./ru/durable.json";
 import ruCompany from "./ru/company.json";
 import ruWorkflow from "./ru/workflow.json";
 
@@ -63,6 +64,7 @@ const resources: LocaleResources = {
   knowledge: ruKnowledge,
   pipeline: ruPipeline,
   governance: ruGovernance,
+  durable: ruDurable,
   company: ruCompany,
   workflow: ruWorkflow,
 };

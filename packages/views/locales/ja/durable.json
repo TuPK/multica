@@ -1,0 +1,109 @@
+{
+  "intent": {
+    "title": "承認待ちのアクション",
+    "source": {
+      "connected_app": "接続アプリ",
+      "plugin_action": "プラグイン",
+      "cli": "CLI",
+      "channel": "チャットチャネル",
+      "webhook": "Webhook",
+      "publish_channel": "公開チャネル",
+      "declared": "エージェントが申告"
+    },
+    "effect_class": {
+      "read": "読み取り",
+      "write_internal": "Delegora 内の変更",
+      "write": "外部への変更",
+      "send": "送信",
+      "share": "アクセス共有",
+      "delete": "削除",
+      "spend": "支出"
+    },
+    "kind": {
+      "email": "メール",
+      "post": "投稿",
+      "record": "レコード",
+      "generic": "アクション"
+    },
+    "rationale": "エージェントがこれを行う理由",
+    "recipients": "宛先",
+    "field_before": "変更前",
+    "field_after": "変更後",
+    "approve": "承認",
+    "edit": "編集して承認",
+    "edit_label": "メッセージ本文",
+    "approve_edited": "編集版を承認",
+    "reject": "却下",
+    "reject_label": "理由（エージェントが読みます）",
+    "reject_confirm": "却下を送信",
+    "cancel": "キャンセル",
+    "approved": "承認しました。アクションは一度だけ実行されます。",
+    "approve_failed": "このアクションを承認できませんでした。",
+    "rejected": "却下しました。エージェントに理由が伝わります。",
+    "reject_failed": "このアクションを却下できませんでした。",
+    "already_decided": "このアクションはすでに決定済みです。"
+  },
+  "batch": {
+    "title": "同じ種類のアクション {{count}} 件",
+    "approve_all": "すべて承認",
+    "approved_all": "{{count}} 件のアクションを承認しました。",
+    "approved_partial": "{{approved}} 件を承認、{{failed}} 件は承認できませんでした。",
+    "approve_all_failed": "これらのアクションを承認できませんでした。"
+  },
+  "effects": {
+    "controlled": "プラットフォームが管理",
+    "declared": "エージェントが申告",
+    "declared_hint": "プラットフォームは記録しましたが、止めることはできませんでした。",
+    "empty": "まだ影響はありません。",
+    "load_failed": "影響を読み込めませんでした。",
+    "undo": "取り消す",
+    "undo_done": "影響を取り消しました。",
+    "undo_failed": "この影響を取り消せませんでした。",
+    "undo_closed": "この影響の取り消し期限が過ぎています。",
+    "undo_until": "{{time}} まで取り消し可能",
+    "decision": {
+      "allow": "許可",
+      "confirm": "確認",
+      "rehearse": "承認待ち",
+      "block": "ブロック"
+    },
+    "status": {
+      "executed": "完了",
+      "blocked": "ブロック済み",
+      "awaiting": "承認待ち",
+      "failed": "失敗",
+      "undone": "取り消し済み",
+      "declared": "申告済み"
+    }
+  },
+  "run": {
+    "label": "この実行の影響",
+    "title": "影響",
+    "empty": "この実行では影響は記録されていません。"
+  },
+  "policy": {
+    "title": "影響ポリシー",
+    "rows": {
+      "read": "読み取り",
+      "write_internal": "Delegora 内の変更",
+      "write_reversible": "外部への変更（取り消し可能）",
+      "write_compensable": "外部への変更（補償可能）",
+      "send": "送信",
+      "share": "アクセス共有",
+      "delete": "削除",
+      "spend": "支出"
+    },
+    "changed": "変更済み",
+    "locked": "ロック",
+    "reason": {
+      "loosen_needs_l3": "既定より緩い判断には L3 が必要です。",
+      "never_allow": "支出と共有は許可できません。",
+      "no_cell": "このセルのポリシーはありません。",
+      "invalid_decision": "判断として無効です。"
+    },
+    "read_only": "ポリシーを変更できるのはオーナーと管理者だけです。",
+    "saved": "判断を保存しました。",
+    "save_failed": "判断を保存できませんでした。",
+    "load_failed": "影響ポリシーを読み込めませんでした。"
+  }
+}

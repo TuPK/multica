@@ -29,6 +29,7 @@ import enHub from "./en/hub.json";
 import enKnowledge from "./en/knowledge.json";
 import enPipeline from "./en/pipeline.json";
 import enGovernance from "./en/governance.json";
+import enDurable from "./en/durable.json";
 import enCompany from "./en/company.json";
 import enWorkflow from "./en/workflow.json";
 
@@ -63,6 +64,7 @@ const resources: LocaleResources = {
   knowledge: enKnowledge,
   pipeline: enPipeline,
   governance: enGovernance,
+  durable: enDurable,
   company: enCompany,
   workflow: enWorkflow,
 };

@@ -1,0 +1,109 @@
+{
+  "intent": {
+    "title": "待审批操作",
+    "source": {
+      "connected_app": "已连接应用",
+      "plugin_action": "插件",
+      "cli": "CLI",
+      "channel": "聊天渠道",
+      "webhook": "Webhook",
+      "publish_channel": "发布渠道",
+      "declared": "智能体自行申报"
+    },
+    "effect_class": {
+      "read": "读取",
+      "write_internal": "Delegora 内变更",
+      "write": "外部变更",
+      "send": "发送",
+      "share": "共享权限",
+      "delete": "删除",
+      "spend": "支出"
+    },
+    "kind": {
+      "email": "邮件",
+      "post": "帖子",
+      "record": "记录",
+      "generic": "操作"
+    },
+    "rationale": "智能体想做这件事的原因",
+    "recipients": "收件人",
+    "field_before": "变更前",
+    "field_after": "变更后",
+    "approve": "批准",
+    "edit": "修改后批准",
+    "edit_label": "消息内容",
+    "approve_edited": "批准修改后的版本",
+    "reject": "拒绝",
+    "reject_label": "拒绝理由（智能体会看到）",
+    "reject_confirm": "提交拒绝",
+    "cancel": "取消",
+    "approved": "已批准。该操作只执行一次。",
+    "approve_failed": "无法批准此操作。",
+    "rejected": "已拒绝。智能体会收到理由。",
+    "reject_failed": "无法拒绝此操作。",
+    "already_decided": "此操作已经处理过。"
+  },
+  "batch": {
+    "title": "{{count}} 个同类操作",
+    "approve_all": "全部批准",
+    "approved_all": "已批准 {{count}} 个操作。",
+    "approved_partial": "已批准 {{approved}} 个，{{failed}} 个无法批准。",
+    "approve_all_failed": "无法批准这些操作。"
+  },
+  "effects": {
+    "controlled": "由平台控制",
+    "declared": "智能体自行申报",
+    "declared_hint": "平台已记录，但无法阻止这些操作。",
+    "empty": "暂无影响记录。",
+    "load_failed": "无法加载影响记录。",
+    "undo": "撤销",
+    "undo_done": "已撤销该影响。",
+    "undo_failed": "无法撤销该影响。",
+    "undo_closed": "该影响的撤销期限已过。",
+    "undo_until": "可撤销至 {{time}}",
+    "decision": {
+      "allow": "允许",
+      "confirm": "确认",
+      "rehearse": "等待批准",
+      "block": "阻止"
+    },
+    "status": {
+      "executed": "已完成",
+      "blocked": "已阻止",
+      "awaiting": "等待批准",
+      "failed": "失败",
+      "undone": "已撤销",
+      "declared": "已申报"
+    }
+  },
+  "run": {
+    "label": "本次运行的影响",
+    "title": "影响",
+    "empty": "本次运行没有记录影响。"
+  },
+  "policy": {
+    "title": "影响策略",
+    "rows": {
+      "read": "读取",
+      "write_internal": "Delegora 内变更",
+      "write_reversible": "外部变更（可逆）",
+      "write_compensable": "外部变更（可补偿）",
+      "send": "发送",
+      "share": "共享权限",
+      "delete": "删除",
+      "spend": "支出"
+    },
+    "changed": "已修改",
+    "locked": "已锁定",
+    "reason": {
+      "loosen_needs_l3": "比默认更宽松的决定需要 L3。",
+      "never_allow": "支出和共享永远不能允许。",
+      "no_cell": "此格没有对应策略。",
+      "invalid_decision": "不是有效的决定。"
+    },
+    "read_only": "只有所有者和管理员可以修改策略。",
+    "saved": "决定已保存。",
+    "save_failed": "无法保存决定。",
+    "load_failed": "无法加载影响策略。"
+  }
+}

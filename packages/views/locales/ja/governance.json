@@ -6,7 +6,8 @@
     "autonomy": "自律性",
     "reviews": "レビュー",
     "log": "ログ",
-    "controls": "管理"
+    "controls": "管理",
+    "effects": "影響"
   },
   "placeholder": {
     "title": "まだ表示するものはありません"

@@ -1,0 +1,109 @@
+{
+  "intent": {
+    "title": "Pendiente de aprobación",
+    "source": {
+      "connected_app": "App conectada",
+      "plugin_action": "Plugin",
+      "cli": "CLI",
+      "channel": "Canal de chat",
+      "webhook": "Webhook",
+      "publish_channel": "Canal de publicación",
+      "declared": "Declarada por el agente"
+    },
+    "effect_class": {
+      "read": "Lectura",
+      "write_internal": "Cambio en Delegora",
+      "write": "Cambio externo",
+      "send": "Envío",
+      "share": "Compartir acceso",
+      "delete": "Eliminar",
+      "spend": "Gasto"
+    },
+    "kind": {
+      "email": "Correo",
+      "post": "Publicación",
+      "record": "Registro",
+      "generic": "Acción"
+    },
+    "rationale": "Por qué el agente quiere hacer esto",
+    "recipients": "Para",
+    "field_before": "Antes",
+    "field_after": "Después",
+    "approve": "Aprobar",
+    "edit": "Editar y aprobar",
+    "edit_label": "Texto del mensaje",
+    "approve_edited": "Aprobar la versión editada",
+    "reject": "Rechazar",
+    "reject_label": "Motivo (el agente lo lee)",
+    "reject_confirm": "Enviar rechazo",
+    "cancel": "Cancelar",
+    "approved": "Aprobada. La acción se ejecuta una vez.",
+    "approve_failed": "No se pudo aprobar esta acción.",
+    "rejected": "Rechazada. El agente recibe el motivo.",
+    "reject_failed": "No se pudo rechazar esta acción.",
+    "already_decided": "Esta acción ya fue decidida."
+  },
+  "batch": {
+    "title": "{{count}} acciones del mismo tipo",
+    "approve_all": "Aprobar todas",
+    "approved_all": "{{count}} acciones aprobadas.",
+    "approved_partial": "{{approved}} aprobadas, {{failed}} no se pudieron aprobar.",
+    "approve_all_failed": "No se pudieron aprobar estas acciones."
+  },
+  "effects": {
+    "controlled": "Controlado por la plataforma",
+    "declared": "Declarado por agentes",
+    "declared_hint": "La plataforma registró estas acciones, pero no pudo detenerlas.",
+    "empty": "Aún no hay efectos.",
+    "load_failed": "No se pudieron cargar los efectos.",
+    "undo": "Deshacer",
+    "undo_done": "Efecto deshecho.",
+    "undo_failed": "No se pudo deshacer este efecto.",
+    "undo_closed": "Se cerró el plazo para deshacer este efecto.",
+    "undo_until": "Deshacer hasta {{time}}",
+    "decision": {
+      "allow": "Permitido",
+      "confirm": "Confirmar",
+      "rehearse": "En espera de aprobación",
+      "block": "Bloqueado"
+    },
+    "status": {
+      "executed": "Hecho",
+      "blocked": "Bloqueado",
+      "awaiting": "Esperando aprobación",
+      "failed": "Fallido",
+      "undone": "Deshecho",
+      "declared": "Declarado"
+    }
+  },
+  "run": {
+    "label": "Efectos de esta ejecución",
+    "title": "Efectos",
+    "empty": "Esta ejecución no registró efectos."
+  },
+  "policy": {
+    "title": "Política de efectos",
+    "rows": {
+      "read": "Lectura",
+      "write_internal": "Cambio en Delegora",
+      "write_reversible": "Cambio externo, reversible",
+      "write_compensable": "Cambio externo, compensable",
+      "send": "Envío",
+      "share": "Compartir acceso",
+      "delete": "Eliminar",
+      "spend": "Gasto"
+    },
+    "changed": "Modificado",
+    "locked": "Bloqueado",
+    "reason": {
+      "loosen_needs_l3": "Una decisión más laxa requiere L3.",
+      "never_allow": "El gasto y compartir nunca se permiten.",
+      "no_cell": "No hay política para esta celda.",
+      "invalid_decision": "No es una decisión válida."
+    },
+    "read_only": "Solo los propietarios y administradores pueden cambiar la política.",
+    "saved": "Decisión guardada.",
+    "save_failed": "No se pudo guardar la decisión.",
+    "load_failed": "No se pudo cargar la política de efectos."
+  }
+}

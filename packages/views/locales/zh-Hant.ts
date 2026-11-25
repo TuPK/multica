@@ -29,6 +29,7 @@ import zhHantHub from "./zh-Hant/hub.json";
 import zhHantKnowledge from "./zh-Hant/knowledge.json";
 import zhHantPipeline from "./zh-Hant/pipeline.json";
 import zhHantGovernance from "./zh-Hant/governance.json";
+import zhHantDurable from "./zh-Hant/durable.json";
 import zhHantCompany from "./zh-Hant/company.json";
 import zhHantWorkflow from "./zh-Hant/workflow.json";
 
@@ -63,6 +64,7 @@ const resources: LocaleResources = {
   knowledge: zhHantKnowledge,
   pipeline: zhHantPipeline,
   governance: zhHantGovernance,
+  durable: zhHantDurable,
   company: zhHantCompany,
   workflow: zhHantWorkflow,
 };

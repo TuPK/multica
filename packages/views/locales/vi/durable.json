@@ -1,0 +1,109 @@
+{
+  "intent": {
+    "title": "Chờ duyệt hành động",
+    "source": {
+      "connected_app": "Ứng dụng kết nối",
+      "plugin_action": "Plugin",
+      "cli": "CLI",
+      "channel": "Kênh chat",
+      "webhook": "Webhook",
+      "publish_channel": "Kênh xuất bản",
+      "declared": "Agent tự khai báo"
+    },
+    "effect_class": {
+      "read": "Đọc",
+      "write_internal": "Thay đổi trong Delegora",
+      "write": "Thay đổi bên ngoài",
+      "send": "Gửi",
+      "share": "Mở quyền truy cập",
+      "delete": "Xoá",
+      "spend": "Chi tiền"
+    },
+    "kind": {
+      "email": "Email",
+      "post": "Bài đăng",
+      "record": "Bản ghi",
+      "generic": "Hành động"
+    },
+    "rationale": "Lý do agent muốn làm việc này",
+    "recipients": "Người nhận",
+    "field_before": "Trước",
+    "field_after": "Sau",
+    "approve": "Duyệt",
+    "edit": "Sửa rồi duyệt",
+    "edit_label": "Nội dung tin nhắn",
+    "approve_edited": "Duyệt bản đã sửa",
+    "reject": "Từ chối",
+    "reject_label": "Lý do (agent sẽ đọc)",
+    "reject_confirm": "Gửi từ chối",
+    "cancel": "Huỷ",
+    "approved": "Đã duyệt. Hành động chạy đúng một lần.",
+    "approve_failed": "Không duyệt được hành động này.",
+    "rejected": "Đã từ chối. Agent nhận được lý do.",
+    "reject_failed": "Không từ chối được hành động này.",
+    "already_decided": "Hành động này đã được quyết định."
+  },
+  "batch": {
+    "title": "{{count}} hành động cùng loại",
+    "approve_all": "Duyệt tất cả",
+    "approved_all": "Đã duyệt {{count}} hành động.",
+    "approved_partial": "Đã duyệt {{approved}}, {{failed}} hành động không duyệt được.",
+    "approve_all_failed": "Không duyệt được các hành động này."
+  },
+  "effects": {
+    "controlled": "Nền tảng kiểm soát",
+    "declared": "Agent tự khai báo",
+    "declared_hint": "Nền tảng ghi nhận các việc này nhưng không chặn được.",
+    "empty": "Chưa có hệ quả nào.",
+    "load_failed": "Không tải được hệ quả.",
+    "undo": "Hoàn tác",
+    "undo_done": "Đã hoàn tác hệ quả.",
+    "undo_failed": "Không hoàn tác được hệ quả này.",
+    "undo_closed": "Đã hết thời hạn hoàn tác hệ quả này.",
+    "undo_until": "Hoàn tác đến {{time}}",
+    "decision": {
+      "allow": "Cho phép",
+      "confirm": "Xác nhận",
+      "rehearse": "Chờ duyệt",
+      "block": "Chặn"
+    },
+    "status": {
+      "executed": "Đã thực hiện",
+      "blocked": "Đã chặn",
+      "awaiting": "Chờ duyệt",
+      "failed": "Thất bại",
+      "undone": "Đã hoàn tác",
+      "declared": "Đã khai báo"
+    }
+  },
+  "run": {
+    "label": "Hệ quả của run",
+    "title": "Hệ quả",
+    "empty": "Run này không ghi nhận hệ quả nào."
+  },
+  "policy": {
+    "title": "Chính sách hệ quả",
+    "rows": {
+      "read": "Đọc",
+      "write_internal": "Thay đổi trong Delegora",
+      "write_reversible": "Thay đổi bên ngoài, hoàn lại được",
+      "write_compensable": "Thay đổi bên ngoài, có thể bù",
+      "send": "Gửi",
+      "share": "Mở quyền truy cập",
+      "delete": "Xoá",
+      "spend": "Chi tiền"
+    },
+    "changed": "Đã đổi",
+    "locked": "Khoá",
+    "reason": {
+      "loosen_needs_l3": "Nới lỏng hơn mặc định chỉ được ở L3.",
+      "never_allow": "Chi tiền và mở quyền không bao giờ được cho phép.",
+      "no_cell": "Không có chính sách cho ô này.",
+      "invalid_decision": "Không phải quyết định hợp lệ."
+    },
+    "read_only": "Chỉ chủ sở hữu và quản trị viên được đổi chính sách.",
+    "saved": "Đã lưu quyết định.",
+    "save_failed": "Không lưu được quyết định.",
+    "load_failed": "Không tải được chính sách hệ quả."
+  }
+}

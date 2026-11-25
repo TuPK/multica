@@ -86,6 +86,7 @@ import {
 import { buildRunOutcome } from "./run-outcome";
 import { RunTimeline } from "./run-timeline";
 import { ContextReceiptButton } from "./context-receipt";
+import { RunEffectsButton } from "../../durable/effects/run-effects-button";
 import {
   base64ByteLength,
   readImageResult,
@@ -980,6 +981,7 @@ export function AgentTranscriptDialog({
               {/* What the agent was handed (MUL-9013). Renders nothing for
                   runs whose daemon predates the receipt. */}
               <ContextReceiptButton taskId={task.id} open={open} />
+              <RunEffectsButton taskId={task.id} open={open} />
               {hasRunDetails && (
                 <Popover>
                   <PopoverTrigger

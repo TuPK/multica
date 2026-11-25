@@ -1,0 +1,109 @@
+{
+  "intent": {
+    "title": "待審批操作",
+    "source": {
+      "connected_app": "已連接應用",
+      "plugin_action": "外掛",
+      "cli": "CLI",
+      "channel": "聊天頻道",
+      "webhook": "Webhook",
+      "publish_channel": "發布頻道",
+      "declared": "智慧代理自行申報"
+    },
+    "effect_class": {
+      "read": "讀取",
+      "write_internal": "Delegora 內變更",
+      "write": "外部變更",
+      "send": "發送",
+      "share": "共享權限",
+      "delete": "刪除",
+      "spend": "支出"
+    },
+    "kind": {
+      "email": "郵件",
+      "post": "貼文",
+      "record": "紀錄",
+      "generic": "操作"
+    },
+    "rationale": "智慧代理想做這件事的原因",
+    "recipients": "收件人",
+    "field_before": "變更前",
+    "field_after": "變更後",
+    "approve": "核准",
+    "edit": "修改後核准",
+    "edit_label": "訊息內容",
+    "approve_edited": "核准修改後的版本",
+    "reject": "拒絕",
+    "reject_label": "拒絕理由（智慧代理會看到）",
+    "reject_confirm": "提交拒絕",
+    "cancel": "取消",
+    "approved": "已核准。此操作只會執行一次。",
+    "approve_failed": "無法核准此操作。",
+    "rejected": "已拒絕。智慧代理會收到理由。",
+    "reject_failed": "無法拒絕此操作。",
+    "already_decided": "此操作已經處理過。"
+  },
+  "batch": {
+    "title": "{{count}} 個同類操作",
+    "approve_all": "全部核准",
+    "approved_all": "已核准 {{count}} 個操作。",
+    "approved_partial": "已核准 {{approved}} 個，{{failed}} 個無法核准。",
+    "approve_all_failed": "無法核准這些操作。"
+  },
+  "effects": {
+    "controlled": "由平台控管",
+    "declared": "智慧代理自行申報",
+    "declared_hint": "平台已記錄，但無法阻止這些操作。",
+    "empty": "暫無影響紀錄。",
+    "load_failed": "無法載入影響紀錄。",
+    "undo": "復原",
+    "undo_done": "已復原該影響。",
+    "undo_failed": "無法復原該影響。",
+    "undo_closed": "該影響的復原期限已過。",
+    "undo_until": "可復原至 {{time}}",
+    "decision": {
+      "allow": "允許",
+      "confirm": "確認",
+      "rehearse": "等待核准",
+      "block": "阻擋"
+    },
+    "status": {
+      "executed": "已完成",
+      "blocked": "已阻擋",
+      "awaiting": "等待核准",
+      "failed": "失敗",
+      "undone": "已復原",
+      "declared": "已申報"
+    }
+  },
+  "run": {
+    "label": "本次執行的影響",
+    "title": "影響",
+    "empty": "本次執行沒有紀錄影響。"
+  },
+  "policy": {
+    "title": "影響政策",
+    "rows": {
+      "read": "讀取",
+      "write_internal": "Delegora 內變更",
+      "write_reversible": "外部變更（可逆）",
+      "write_compensable": "外部變更（可補償）",
+      "send": "發送",
+      "share": "共享權限",
+      "delete": "刪除",
+      "spend": "支出"
+    },
+    "changed": "已修改",
+    "locked": "已鎖定",
+    "reason": {
+      "loosen_needs_l3": "比預設更寬鬆的決定需要 L3。",
+      "never_allow": "支出和共享永遠不能允許。",
+      "no_cell": "此格沒有對應政策。",
+      "invalid_decision": "不是有效的決定。"
+    },
+    "read_only": "只有擁有者和管理員可以修改政策。",
+    "saved": "決定已儲存。",
+    "save_failed": "無法儲存決定。",
+    "load_failed": "無法載入影響政策。"
+  }
+}

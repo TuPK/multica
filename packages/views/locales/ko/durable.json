@@ -1,0 +1,109 @@
+{
+  "intent": {
+    "title": "승인 대기 작업",
+    "source": {
+      "connected_app": "연결된 앱",
+      "plugin_action": "플러그인",
+      "cli": "CLI",
+      "channel": "채팅 채널",
+      "webhook": "웹훅",
+      "publish_channel": "게시 채널",
+      "declared": "에이전트가 신고"
+    },
+    "effect_class": {
+      "read": "읽기",
+      "write_internal": "Delegora 내부 변경",
+      "write": "외부 변경",
+      "send": "전송",
+      "share": "접근 공유",
+      "delete": "삭제",
+      "spend": "지출"
+    },
+    "kind": {
+      "email": "이메일",
+      "post": "게시물",
+      "record": "레코드",
+      "generic": "작업"
+    },
+    "rationale": "에이전트가 이 작업을 원하는 이유",
+    "recipients": "받는 사람",
+    "field_before": "이전",
+    "field_after": "이후",
+    "approve": "승인",
+    "edit": "수정 후 승인",
+    "edit_label": "메시지 내용",
+    "approve_edited": "수정본 승인",
+    "reject": "거절",
+    "reject_label": "사유 (에이전트가 읽습니다)",
+    "reject_confirm": "거절 보내기",
+    "cancel": "취소",
+    "approved": "승인했습니다. 작업은 한 번 실행됩니다.",
+    "approve_failed": "이 작업을 승인하지 못했습니다.",
+    "rejected": "거절했습니다. 에이전트에 사유가 전달됩니다.",
+    "reject_failed": "이 작업을 거절하지 못했습니다.",
+    "already_decided": "이 작업은 이미 결정되었습니다."
+  },
+  "batch": {
+    "title": "같은 종류의 작업 {{count}}건",
+    "approve_all": "모두 승인",
+    "approved_all": "작업 {{count}}건을 승인했습니다.",
+    "approved_partial": "{{approved}}건 승인, {{failed}}건은 승인하지 못했습니다.",
+    "approve_all_failed": "이 작업들을 승인하지 못했습니다."
+  },
+  "effects": {
+    "controlled": "플랫폼이 관리",
+    "declared": "에이전트 신고",
+    "declared_hint": "플랫폼이 기록했지만 막을 수는 없었던 작업입니다.",
+    "empty": "아직 효과가 없습니다.",
+    "load_failed": "효과를 불러오지 못했습니다.",
+    "undo": "실행 취소",
+    "undo_done": "효과를 실행 취소했습니다.",
+    "undo_failed": "이 효과를 실행 취소하지 못했습니다.",
+    "undo_closed": "이 효과의 실행 취소 기간이 지났습니다.",
+    "undo_until": "{{time}}까지 실행 취소 가능",
+    "decision": {
+      "allow": "허용",
+      "confirm": "확인",
+      "rehearse": "승인 대기",
+      "block": "차단"
+    },
+    "status": {
+      "executed": "완료",
+      "blocked": "차단됨",
+      "awaiting": "승인 대기",
+      "failed": "실패",
+      "undone": "실행 취소됨",
+      "declared": "신고됨"
+    }
+  },
+  "run": {
+    "label": "이 실행의 효과",
+    "title": "효과",
+    "empty": "이 실행에는 기록된 효과가 없습니다."
+  },
+  "policy": {
+    "title": "효과 정책",
+    "rows": {
+      "read": "읽기",
+      "write_internal": "Delegora 내부 변경",
+      "write_reversible": "외부 변경, 되돌릴 수 있음",
+      "write_compensable": "외부 변경, 보상 가능",
+      "send": "전송",
+      "share": "접근 공유",
+      "delete": "삭제",
+      "spend": "지출"
+    },
+    "changed": "변경됨",
+    "locked": "잠김",
+    "reason": {
+      "loosen_needs_l3": "기본값보다 느슨한 결정은 L3에서만 가능합니다.",
+      "never_allow": "지출과 공유는 허용할 수 없습니다.",
+      "no_cell": "이 칸에 대한 정책이 없습니다.",
+      "invalid_decision": "유효한 결정이 아닙니다."
+    },
+    "read_only": "소유자와 관리자만 정책을 바꿀 수 있습니다.",
+    "saved": "결정을 저장했습니다.",
+    "save_failed": "결정을 저장하지 못했습니다.",
+    "load_failed": "효과 정책을 불러오지 못했습니다."
+  }
+}
