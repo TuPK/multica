@@ -333,3 +333,50 @@ func TestDossierInBriefingOnlyWhenFlagOn(t *testing.T) {
 		}
 	}
 }
+
+// TestCleanupMonthlyOncePerSeat: the monthly cleanup files one issue for a seat that holds two
+// or more active entries, waits until the second day of the month, and files the seat's issue
+// once per month.
+func TestCleanupMonthlyOncePerSeat(t *testing.T) {
+	df := newDossierFixture(t, true)
+	ctx := context.Background()
+	cleanup := func() {
+		df.Cleanup(t, `DELETE FROM agent_task_queue WHERE issue_id IN (SELECT id FROM issue WHERE workspace_id = $1 AND title LIKE 'Seat dossier cleanup%')`, df.WorkspaceID)
+		df.Cleanup(t, `DELETE FROM issue WHERE workspace_id = $1 AND title LIKE 'Seat dossier cleanup%'`, df.WorkspaceID)
+	}
+	cleanup()
+	cleanupIssues := func() int {
+		return df.Count(t, `SELECT COUNT(*) FROM issue WHERE workspace_id = $1 AND assignee_id = $2 AND title LIKE 'Seat dossier cleanup%'`,
+			df.WorkspaceID, df.seat)
+	}
+	seat := util.MustParseUUID(df.seat)
+	if _, err := df.svc.Add(ctx, df.ws, seat, df.owner,
+		[]DossierEntryInput{dossierInput("lesson", "first"), dossierInput("lesson", "second")}); err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	at := func(day int) func() time.Time {
+		return func() time.Time { return time.Date(2026, 11, day, 9, 0, 0, 0, time.UTC) }
+	}
+
+	df.svc.Now = at(1)
+	if _, err := df.svc.CleanupMonthly(ctx); err != nil {
+		t.Fatalf("cleanup on the first: %v", err)
+	}
+	if got := cleanupIssues(); got != 0 {
+		t.Fatalf("cleanup on the first day filed %d issues, want 0", got)
+	}
+
+	df.svc.Now = at(2)
+	if _, err := df.svc.CleanupMonthly(ctx); err != nil {
+		t.Fatalf("cleanup on the second: %v", err)
+	}
+	if got := cleanupIssues(); got != 1 {
+		t.Fatalf("cleanup on the second day filed %d issues, want 1", got)
+	}
+	if _, err := df.svc.CleanupMonthly(ctx); err != nil {
+		t.Fatalf("cleanup again: %v", err)
+	}
+	if got := cleanupIssues(); got != 1 {
+		t.Errorf("a second run in the month filed a second issue: %d issues, want 1", got)
+	}
+}
