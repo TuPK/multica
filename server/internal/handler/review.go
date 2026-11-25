@@ -418,7 +418,7 @@ func (h *Handler) CreateReview(w http.ResponseWriter, r *http.Request) {
 
 // RunNightlyScorecards computes the scorecards of every workspace.
 func (h *Handler) RunNightlyScorecards(ctx context.Context) (int, error) {
-	return service.NewScorecardService(h.Queries).RunNightly(ctx)
+	return service.NewScorecardService(h.Queries, h.FeatureFlags).RunNightly(ctx)
 }
 
 // CheckDueProbations judges the probation windows that have ended.
@@ -426,7 +426,7 @@ func (h *Handler) CheckDueProbations(ctx context.Context) (int, error) {
 	svc := &service.ProbationService{
 		Queries:    h.Queries,
 		Changes:    h.orgChanges(),
-		Scorecards: service.NewScorecardService(h.Queries),
+		Scorecards: service.NewScorecardService(h.Queries, h.FeatureFlags),
 		Proposals:  h.proposalService(),
 	}
 	return svc.CheckDue(ctx)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -59,6 +60,7 @@ func (s *MetricService) RollupBuiltinMetrics(ctx context.Context, ws pgtype.UUID
 	if err := s.EnsureBuiltinMetrics(ctx, q, ws); err != nil {
 		return 0, err
 	}
+	durable := featureflags.DurableOutcomesEnabled(ctx, s.Flags)
 	pipeline, err := NewDigestService(q).computePipeline(ctx, ws, now)
 	if err != nil {
 		return 0, err
@@ -88,7 +90,7 @@ func (s *MetricService) RollupBuiltinMetrics(ctx context.Context, ws pgtype.UUID
 
 	var readings []builtinReading
 	for _, sc := range scopes {
-		readings = append(readings, s.windowReadings(ctx, q, ws, sc, yesterday, today)...)
+		readings = append(readings, s.windowReadings(ctx, q, ws, sc, yesterday, today, durable)...)
 		readings = append(readings, snapshotReadings(sc, pipeline, routines, today)...)
 		readings = append(readings, knowledgeReadings(sc, knowledgeBySquad, yesterday, today)...)
 	}
@@ -152,7 +154,7 @@ func (s *MetricService) builtinScopes(ctx context.Context, q *db.Queries, ws pgt
 
 // windowReadings are the day's readings for one scope: runs, proposals, delivery.
 // An initiative scope has none of them.
-func (s *MetricService) windowReadings(ctx context.Context, q *db.Queries, ws pgtype.UUID, sc builtinScope, yesterday, today time.Time) []builtinReading {
+func (s *MetricService) windowReadings(ctx context.Context, q *db.Queries, ws pgtype.UUID, sc builtinScope, yesterday, today time.Time, durable bool) []builtinReading {
 	if sc.scopeType == ScopeInitiative {
 		return nil
 	}
@@ -187,7 +189,9 @@ func (s *MetricService) windowReadings(ctx context.Context, q *db.Queries, ws pg
 	delivery, err := q.BuiltinIssueDeliveryStats(ctx, db.BuiltinIssueDeliveryStatsParams{WorkspaceID: ws, Since: since, Until: until, SquadIds: sc.squadIDs})
 	if err == nil {
 		add("delivery.issues_done", float64(delivery.Done), true)
-		if delivery.Done > 0 {
+		if durable {
+			out = append(out, durableDeliveryReadings(ctx, q, ws, sc, yesterday, today)...)
+		} else if delivery.Done > 0 {
 			add("delivery.cycle_time_days", delivery.CycleDaysTotal/float64(delivery.Done), true)
 			// Rework is issues reopened out of done over issues done, in the same window.
 			reopened, err := q.BuiltinIssuesReopened(ctx, db.BuiltinIssuesReopenedParams{WorkspaceID: ws, Since: since, Until: until, SquadIds: sc.squadIDs})

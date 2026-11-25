@@ -117,6 +117,8 @@ type ScorecardInputs struct {
 	Knowledge ScorecardKnowledgeInputs
 	Routines  *ScorecardRoutineInputs
 	Brief     *ScorecardBriefInputs
+	// Durable is set only while durable_outcomes is on (scorecard_metrics_fork.go).
+	Durable *ScorecardDurableInputs
 }
 
 // ScorecardResult is a computed scorecard, ready to store.
@@ -190,6 +192,7 @@ func ComputeScorecard(in ScorecardInputs) ScorecardResult {
 	if in.Brief != nil {
 		res.Metrics[MetricBriefUsefulness] = ratio(in.Brief.Useful, in.Brief.Total)
 	}
+	durableScorecardMetrics(in, &res)
 	return res
 }
 
