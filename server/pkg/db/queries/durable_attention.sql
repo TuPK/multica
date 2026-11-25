@@ -73,3 +73,10 @@ SELECT COUNT(*)::int AS asks,
 FROM attention_ledger
 WHERE workspace_id = sqlc.arg(workspace_id)
   AND created_at >= sqlc.arg(since) AND created_at < sqlc.arg(until);
+
+-- name: SetWorkspaceAttentionBudget :one
+-- The workspace's weekly attention budget and how it is split between squads (spec 7.3).
+UPDATE workspace
+SET attention_minutes_per_week = sqlc.arg(minutes_per_week), attention_split = sqlc.arg(split)
+WHERE id = sqlc.arg(workspace_id)
+RETURNING attention_minutes_per_week, attention_split;

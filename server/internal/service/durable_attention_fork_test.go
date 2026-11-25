@@ -453,6 +453,42 @@ func TestAnswerAppRequestMarksAnswered(t *testing.T) {
 	}
 }
 
+// TestAttentionBudgetSetAndRead: the budget is saved and read back with the week's spend; a budget
+// outside a week or a split that is neither equal nor goals is refused and saves nothing.
+func TestAttentionBudgetSetAndRead(t *testing.T) {
+	f := newAttentionFixture(t, true)
+	ctx := context.Background()
+	ask := f.outcomeAsk()
+	if _, err := f.attention.Admit(ctx, ask); err != nil {
+		t.Fatalf("admit: %v", err)
+	}
+
+	got, err := f.attention.SetBudget(ctx, f.ws, 90, attentionSplitGoals)
+	if err != nil {
+		t.Fatalf("set budget: %v", err)
+	}
+	if !got.Enabled || got.MinutesPerWeek != 90 || got.Split != attentionSplitGoals {
+		t.Fatalf("budget = %+v, want enabled, 90 minutes, goals", got)
+	}
+	if got.SpentMinutes != 4 {
+		t.Fatalf("spent = %v, want the outcome check's 4 minutes", got.SpentMinutes)
+	}
+
+	if _, err := f.attention.SetBudget(ctx, f.ws, attentionMaxMinutesPerWeek+1, attentionSplitEqual); !errors.Is(err, ErrAttentionBudgetRange) {
+		t.Fatalf("over a week: err = %v, want ErrAttentionBudgetRange", err)
+	}
+	if _, err := f.attention.SetBudget(ctx, f.ws, 60, "bogus"); !errors.Is(err, ErrAttentionSplit) {
+		t.Fatalf("bad split: err = %v, want ErrAttentionSplit", err)
+	}
+	after, err := f.attention.Budget(ctx, f.ws)
+	if err != nil {
+		t.Fatalf("read budget: %v", err)
+	}
+	if after.MinutesPerWeek != 90 || after.Split != attentionSplitGoals {
+		t.Fatalf("refused writes changed the budget: %+v", after)
+	}
+}
+
 // TestAttentionBudgetSplit: the squad's share of the week, equal or by active goals.
 func TestAttentionBudgetSplit(t *testing.T) {
 	squads := make([]db.ListLiveSquadAttentionWeightsRow, 3)

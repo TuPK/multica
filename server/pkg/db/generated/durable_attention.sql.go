@@ -209,6 +209,32 @@ func (q *Queries) MarkAttentionAnswered(ctx context.Context, arg MarkAttentionAn
 	return result.RowsAffected(), nil
 }
 
+const setWorkspaceAttentionBudget = `-- name: SetWorkspaceAttentionBudget :one
+UPDATE workspace
+SET attention_minutes_per_week = $1, attention_split = $2
+WHERE id = $3
+RETURNING attention_minutes_per_week, attention_split
+`
+
+type SetWorkspaceAttentionBudgetParams struct {
+	MinutesPerWeek int32       `json:"minutes_per_week"`
+	Split          string      `json:"split"`
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+}
+
+type SetWorkspaceAttentionBudgetRow struct {
+	AttentionMinutesPerWeek int32  `json:"attention_minutes_per_week"`
+	AttentionSplit          string `json:"attention_split"`
+}
+
+// The workspace's weekly attention budget and how it is split between squads (spec 7.3).
+func (q *Queries) SetWorkspaceAttentionBudget(ctx context.Context, arg SetWorkspaceAttentionBudgetParams) (SetWorkspaceAttentionBudgetRow, error) {
+	row := q.db.QueryRow(ctx, setWorkspaceAttentionBudget, arg.MinutesPerWeek, arg.Split, arg.WorkspaceID)
+	var i SetWorkspaceAttentionBudgetRow
+	err := row.Scan(&i.AttentionMinutesPerWeek, &i.AttentionSplit)
+	return i, err
+}
+
 const sumAttentionMinutesSince = `-- name: SumAttentionMinutesSince :one
 SELECT COUNT(*)::int AS asks,
        COALESCE(SUM(CASE WHEN state IN ('delivered', 'answered') THEN estimated_minutes ELSE 0 END), 0)::float8 AS minutes

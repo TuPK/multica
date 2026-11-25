@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -32,6 +33,58 @@ func (h *Handler) allowAgentAsk(w http.ResponseWriter, r *http.Request, reason, 
 	}
 	writeErrorCode(w, http.StatusUnprocessableEntity, service.AttentionErrorCode(err), err.Error())
 	return false
+}
+
+// GetAttentionBudget returns the workspace's attention budget and this week's spend. Any
+// workspace member may read it.
+//
+//	GET /api/company/attention
+func (h *Handler) GetAttentionBudget(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
+		return
+	}
+	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
+	if !ok {
+		return
+	}
+	out, err := h.attentionService().Budget(r.Context(), wsUUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to read the attention budget")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// SetAttentionBudget saves the weekly budget and its split. Owners and admins only.
+//
+//	PUT /api/company/attention {minutes_per_week, split}
+func (h *Handler) SetAttentionBudget(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	if _, ok := h.companyActorFor(w, r, workspaceID); !ok {
+		return
+	}
+	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
+	if !ok {
+		return
+	}
+	var req struct {
+		MinutesPerWeek int32  `json:"minutes_per_week"`
+		Split          string `json:"split"`
+	}
+	if !decodeInitiativeBody(w, r, &req) {
+		return
+	}
+	out, err := h.attentionService().SetBudget(r.Context(), wsUUID, req.MinutesPerWeek, req.Split)
+	switch {
+	case errors.Is(err, service.ErrAttentionBudgetRange), errors.Is(err, service.ErrAttentionSplit):
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	case err != nil:
+		writeError(w, http.StatusInternalServerError, "failed to save the attention budget")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // admitProposal puts a filed proposal in the attention ledger: the filing is the question.

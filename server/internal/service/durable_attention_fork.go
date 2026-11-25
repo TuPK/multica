@@ -114,7 +114,10 @@ const (
 	// attentionDefaultReason is a person's question with no reason given.
 	attentionDefaultReason = "judgment"
 
+	attentionSplitEqual = "equal"
 	attentionSplitGoals = "goals"
+	// attentionMaxMinutesPerWeek is a whole week: the budget cannot be more than every minute of it.
+	attentionMaxMinutesPerWeek = 7 * 24 * 60
 )
 
 var (
@@ -125,6 +128,10 @@ var (
 	ErrAttentionSearchedRequired = errors.New("missing_info needs the sources searched: knowledge, issues, comments, web or attachments")
 	// ErrAttentionWhyTooLong: why_not_decide is over attentionWhyMax characters.
 	ErrAttentionWhyTooLong = errors.New("why_not_decide must be at most 500 characters")
+	// ErrAttentionBudgetRange: minutes_per_week is outside 0..one week.
+	ErrAttentionBudgetRange = errors.New("minutes_per_week must be between 0 and 10080")
+	// ErrAttentionSplit: split is neither equal nor goals.
+	ErrAttentionSplit = errors.New("split must be equal or goals")
 )
 
 // attentionReasons are the reasons of spec 7.3; attentionSources the sources of spec 7.4.
@@ -322,6 +329,57 @@ func attentionBudget(perWeek float64, split string, squads []db.ListLiveSquadAtt
 		return perWeek / float64(len(squads)), true
 	}
 	return perWeek * mine / total, true
+}
+
+// AttentionBudget is a workspace's weekly attention budget and the minutes its people spent this
+// week (spec 7.3, 7.5). Enabled mirrors durable_principal: with the flag off there is no ledger to
+// show, so the budget is not shown either.
+type AttentionBudget struct {
+	Enabled        bool    `json:"enabled"`
+	MinutesPerWeek int32   `json:"minutes_per_week"`
+	Split          string  `json:"split"`
+	WeekStart      string  `json:"week_start"`
+	SpentMinutes   float64 `json:"spent_minutes"`
+}
+
+// Budget reads the workspace's attention budget and this week's spend.
+func (s *AttentionService) Budget(ctx context.Context, ws pgtype.UUID) (AttentionBudget, error) {
+	settings, err := s.Queries.GetWorkspaceAttentionSettings(ctx, ws)
+	if err != nil {
+		return AttentionBudget{}, fmt.Errorf("load attention settings: %w", err)
+	}
+	week := attentionWeekStart(s.now())
+	spent, err := s.Queries.SumAttentionMinutesSince(ctx, db.SumAttentionMinutesSinceParams{
+		WorkspaceID: ws,
+		Since:       pgtype.Timestamptz{Time: week, Valid: true},
+		Until:       pgtype.Timestamptz{Time: week.AddDate(0, 0, 7), Valid: true},
+	})
+	if err != nil {
+		return AttentionBudget{}, fmt.Errorf("sum attention minutes: %w", err)
+	}
+	return AttentionBudget{
+		Enabled:        s.on(ctx),
+		MinutesPerWeek: settings.AttentionMinutesPerWeek,
+		Split:          settings.AttentionSplit,
+		WeekStart:      week.Format(time.DateOnly),
+		SpentMinutes:   spent.Minutes,
+	}, nil
+}
+
+// SetBudget saves the workspace's weekly budget and split, then reads it back.
+func (s *AttentionService) SetBudget(ctx context.Context, ws pgtype.UUID, minutesPerWeek int32, split string) (AttentionBudget, error) {
+	if minutesPerWeek < 0 || minutesPerWeek > attentionMaxMinutesPerWeek {
+		return AttentionBudget{}, ErrAttentionBudgetRange
+	}
+	if split != attentionSplitEqual && split != attentionSplitGoals {
+		return AttentionBudget{}, ErrAttentionSplit
+	}
+	if _, err := s.Queries.SetWorkspaceAttentionBudget(ctx, db.SetWorkspaceAttentionBudgetParams{
+		WorkspaceID: ws, MinutesPerWeek: minutesPerWeek, Split: split,
+	}); err != nil {
+		return AttentionBudget{}, fmt.Errorf("save attention budget: %w", err)
+	}
+	return s.Budget(ctx, ws)
 }
 
 // Answered records that a person decided a question, with the seconds from opening it to
