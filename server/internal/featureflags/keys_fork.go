@@ -2,6 +2,10 @@ package featureflags
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"sort"
 
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
@@ -15,6 +19,10 @@ const (
 	DurableSeats     = "durable_seats"
 	DurableOpen      = "durable_open"
 )
+
+// durableFrontendFlags are published to the web and desktop clients so their
+// views can gate the durable screens. A missing key reads as off on the client.
+var durableFrontendFlags = []string{DurableOutcomes, DurableEffects, DurablePrincipal, DurableSeats, DurableOpen}
 
 // DurableDependencies maps each durable flag to the flags it needs on. The
 // server refuses to turn a flag on while one of its dependencies is off; that
@@ -50,4 +58,46 @@ func DurableSeatsEnabled(ctx context.Context, flags *featureflag.Service) bool {
 
 func DurableOpenEnabled(ctx context.Context, flags *featureflag.Service) bool {
 	return flags.IsEnabled(ctx, DurableOpen, false)
+}
+
+// ValidateDurableFlags refuses a configuration that turns a durable flag on
+// while one of its dependencies is off. The server calls it once at startup:
+// flags are read from configuration, not written by an API, so the refusal is
+// a startup error like any other misconfigured flag file.
+func ValidateDurableFlags(ctx context.Context, flags *featureflag.Service) error {
+	return CheckDurableDependencies(func(key string) bool {
+		return flags.IsEnabled(ctx, key, false)
+	})
+}
+
+// CheckDurableDependencies is ValidateDurableFlags over a plain lookup, so the
+// rule can be tested without a flag service. Keys are visited in sorted order so
+// the first error is the same on every start.
+func CheckDurableDependencies(enabled func(key string) bool) error {
+	deps := DurableDependencies()
+	keys := make([]string, 0, len(deps))
+	for k := range deps {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if !enabled(key) {
+			continue
+		}
+		for _, dep := range deps[key] {
+			if !enabled(dep) {
+				return fmt.Errorf("feature flag %s is on but its dependency %s is off", key, dep)
+			}
+		}
+	}
+	return nil
+}
+
+// RequireDurableDependencies is the startup form of ValidateDurableFlags: a
+// refused configuration logs the reason and exits, as a malformed flag file does.
+func RequireDurableDependencies(ctx context.Context, flags *featureflag.Service) {
+	if err := ValidateDurableFlags(ctx, flags); err != nil {
+		slog.Error("durable feature flags refused", "error", err)
+		os.Exit(1)
+	}
 }

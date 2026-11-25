@@ -22,6 +22,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/dbreader"
 	"github.com/multica-ai/multica/server/internal/dbstartup"
 	"github.com/multica-ai/multica/server/internal/events"
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/handler"
 	"github.com/multica-ai/multica/server/internal/inbox"
 	"github.com/multica-ai/multica/server/internal/integrations/wecom"
@@ -388,6 +389,7 @@ func main() {
 		slog.Error("feature flag configuration failed to load", "error", err)
 		os.Exit(1)
 	}
+	featureflags.RequireDurableDependencies(context.Background(), flags)
 	_ = flags // adopted by the router (opts.FeatureFlags) and server-side toggle points; see server/pkg/featureflag
 
 	dbURL := os.Getenv("DATABASE_URL")

@@ -100,12 +100,12 @@ const (
 	projectWorkflowsCompat = "project_workflows_v1"
 )
 
-var frontendPublicFlags = []string{
+var frontendPublicFlags = append([]string{
 	BillingWorkspaceSubscriptions,
 	ComposioMCPApps,
 	PluginsV1,
 	DocsV1,
-}
+}, durableFrontendFlags...)
 
 func BillingWorkspaceSubscriptionsEnabled(ctx context.Context, flags *featureflag.Service) bool {
 	return flags.IsEnabled(ctx, BillingWorkspaceSubscriptions, false)

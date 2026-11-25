@@ -239,7 +239,8 @@
     "./skills/stores": "./skills/stores/index.ts",
     "./autopilots/stores": "./autopilots/stores/index.ts",
     "./runtimes/qoder": "./runtimes/qoder.ts",
-    "./docs": "./docs/index.ts"
+    "./docs": "./docs/index.ts",
+    "./durable": "./durable/index.ts"
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "catalog:",

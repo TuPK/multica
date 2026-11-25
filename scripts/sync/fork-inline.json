@@ -252,6 +252,11 @@
      "kind": "matches",
      "path": "server/cmd/server/main.go",
      "pattern": "if\\s+err\\s+:=\\s+schedulerMgr\\.Register\\(scheduler\\.LibrarianBackfillJob\\(service\\.NewCompanyTemplateService\\(queries,\\s+pool,\\s+h\\.Knowle"
+    },
+    {
+     "kind": "matches",
+     "path": "server/cmd/server/main.go",
+     "pattern": "featureflags\\.RequireDurableDependencies\\("
     }
    ]
   },
@@ -1387,6 +1392,11 @@
      "kind": "matches",
      "path": "server/internal/featureflags/keys.go",
      "pattern": "\\bFlowAuthoringEnabled\\b"
+    },
+    {
+     "kind": "matches",
+     "path": "server/internal/featureflags/keys.go",
+     "pattern": "durableFrontendFlags\\.\\.\\."
     }
    ]
   },
