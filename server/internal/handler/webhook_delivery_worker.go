@@ -189,6 +189,7 @@ func (w *WebhookDeliveryWorker) ProcessNext(ctx context.Context) (bool, error) {
 		}
 	}
 
+	settleEffect := w.h.gateWebhookDispatch(ctx, delivery.WorkspaceID)
 	run, dispatchErr := w.h.AutopilotService.DispatchAutopilotForWebhookDelivery(
 		ctx,
 		autopilot,
@@ -196,6 +197,7 @@ func (w *WebhookDeliveryWorker) ProcessNext(ctx context.Context) (bool, error) {
 		payload,
 		delivery.ID,
 	)
+	settleEffect(dispatchErr == nil)
 	if dispatchErr != nil {
 		var quotaErr *service.AutopilotQuotaExceededError
 		if errors.As(dispatchErr, &quotaErr) {

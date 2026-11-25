@@ -110,6 +110,7 @@ func (s *Service) remoteToolList(ctx context.Context, rn *run, app RemoteApp) []
 }
 
 func (s *Service) remoteRun(ctx context.Context, rn *run, app RemoteApp, name string, args map[string]any) any {
+	rationale := takeRationale(args)
 	agentApp, ok := rn.apps[app.Slug]
 	if !ok {
 		return textResult(fmt.Sprintf("%s is not available to you in this run", app.Name), true)
@@ -154,7 +155,12 @@ func (s *Service) remoteRun(ctx context.Context, rn *run, app RemoteApp, name st
 	if err != nil {
 		return textResult("could not resolve the account for this app", true)
 	}
-	if refusal := s.refuseCall(ctx, rn, agentApp, &call, policy); refusal != nil {
+	effect := s.gateEffect(ctx, rn, app.Slug, tool.Name, class, app.Name+" "+tool.Name, policy)
+	if effect.policy == PolicyRehearse {
+		return s.rehearseCall(ctx, effect, app.Slug, tool.Name, acct.connectedAccountID, args, rationale)
+	}
+	if refusal := s.refuseCall(ctx, rn, agentApp, &call, effect.policy); refusal != nil {
+		s.settleRefusal(ctx, effect)
 		return refusal
 	}
 	var result json.RawMessage
@@ -164,6 +170,9 @@ func (s *Service) remoteRun(ctx context.Context, rn *run, app RemoteApp, name st
 		return err
 	})
 	s.touch(ctx, rn.workspaceID, acct)
+	if err != nil {
+		s.settleEffect(ctx, effect, "failed", nil)
+	}
 	if errors.Is(err, ErrAccountMissing) {
 		call.outcome, call.err = "error", "sign-in expired"
 		s.recordCall(ctx, call)
@@ -180,6 +189,13 @@ func (s *Service) remoteRun(ctx context.Context, rn *run, app RemoteApp, name st
 		IsError bool `json:"isError"`
 	}
 	_ = json.Unmarshal(result, &outcome)
+	if outcome.IsError {
+		s.settleEffect(ctx, effect, "failed", nil)
+	} else {
+		var data map[string]any
+		_ = json.Unmarshal(result, &data)
+		s.settleEffect(ctx, effect, "executed", data)
+	}
 	call.outcome = "ok"
 	if outcome.IsError {
 		call.outcome, call.err = "error", "the tool returned an error"

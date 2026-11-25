@@ -433,6 +433,12 @@ func (h *Handler) PatchPluginIssue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	rec, settle, allowed := h.pluginWriteGate(w, r, caller.WorkspaceID, "PATCH issue")
+	if !allowed {
+		return
+	}
+	defer settle()
+	w = rec
 	issue, ok := h.pluginIssueForUser(w, r, caller, actor, chi.URLParam(r, "issue_ref"))
 	if !ok {
 		return
@@ -723,6 +729,12 @@ func (h *Handler) CreatePluginComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	rec, settle, allowed := h.pluginWriteGate(w, r, caller.WorkspaceID, "POST issue comment")
+	if !allowed {
+		return
+	}
+	defer settle()
+	w = rec
 	issue, ok := h.pluginIssueForUser(w, r, caller, actor, chi.URLParam(r, "issue_ref"))
 	if !ok {
 		return

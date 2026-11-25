@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -58,7 +59,22 @@ func (s *Service) ProcessNext(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("claim publish attempt: %w", err)
 	}
 
+	gate, gateErr := s.gateAttempt(ctx, attempt)
+	if gateErr != nil || gate.Decision != connectedapps.PolicyAllow {
+		reason := "held by the effect policy: the post was not sent"
+		if gateErr != nil {
+			reason = "could not record the effect of this post: " + gateErr.Error()
+		}
+		if err := s.Queries.MarkPublishAttemptFailed(ctx, db.MarkPublishAttemptFailedParams{
+			ID: attempt.ID, Error: truncate(reason, maxErrorLen),
+		}); err != nil {
+			return false, fmt.Errorf("mark held publish attempt failed: %w", err)
+		}
+		return true, nil
+	}
+
 	res, sendErr := s.send(ctx, attempt)
+	s.settleAttempt(ctx, attempt, gate, sendErr)
 	if ctx.Err() != nil {
 		// Shutting down mid-send. Queue the attempt now, so the next run sends it
 		// without waiting out the stale timeout. Its write uses a context that

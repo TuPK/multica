@@ -484,6 +484,7 @@ func (s *Service) toolRun(ctx context.Context, rn *run, toolSlug string, args ma
 	if !ok {
 		return textResult("this tool does not belong to an app you can use in this run", true)
 	}
+	rationale := takeRationale(args)
 	slug := NormalizeSlug(app.ToolkitSlug)
 	if remote, ok := s.RemoteApp(slug); ok {
 		return remoteServerHint(remote)
@@ -506,23 +507,31 @@ func (s *Service) toolRun(ctx context.Context, rn *run, toolSlug string, args ma
 		}
 		return textResult("could not resolve the account for this app", true)
 	}
-	if refusal := s.refuseCall(ctx, rn, app, &call, policy); refusal != nil {
+	effect := s.gateEffect(ctx, rn, slug, tool.Slug, class, summary, policy)
+	if effect.policy == PolicyRehearse {
+		return s.rehearseCall(ctx, effect, slug, tool.Slug, acct.connectedAccountID, args, rationale)
+	}
+	if refusal := s.refuseCall(ctx, rn, app, &call, effect.policy); refusal != nil {
+		s.settleRefusal(ctx, effect)
 		return refusal
 	}
 	resp, err := s.composio.ExecuteTool(ctx, acct.connectedAccountID, acct.composioUserID, *tool, args)
 	s.touch(ctx, rn.workspaceID, acct)
 	if err != nil {
+		s.settleEffect(ctx, effect, "failed", nil)
 		call.outcome, call.err = "error", truncate(err.Error(), 500)
 		logExecutionFailure(ctx, call, "request_failed")
 		s.recordCall(ctx, call)
 		return textResult("the app call failed: "+truncate(err.Error(), 500), true)
 	}
 	if !resp.Successful {
+		s.settleEffect(ctx, effect, "failed", nil)
 		call.outcome, call.err = "error", truncate(resp.Error, 500)
 		logExecutionFailure(ctx, call, "tool_unsuccessful")
 		s.recordCall(ctx, call)
 		return textResult("the app returned an error: "+truncate(resp.Error, 2000), true)
 	}
+	s.settleEffect(ctx, effect, "executed", resp.Data)
 	call.outcome = "ok"
 	s.recordCall(ctx, call)
 	return jsonResult(resp.Data)
@@ -533,6 +542,9 @@ func (s *Service) toolRun(ctx context.Context, rn *run, toolSlug string, args ma
 // the workspace's monthly app call allowance.
 // It records and returns the refusal, or nil when the call may run.
 func (s *Service) refuseCall(ctx context.Context, rn *run, app db.AgentApp, call *toolCall, policy string) map[string]any {
+	if policy == PolicyRehearse || policy == PolicyConfirm {
+		return textResult(fmt.Sprintf("this %s call needs the person's approval before it runs, so it was not sent. Do not retry; tell the person what you would have done.", call.tool), true)
+	}
 	if policy == PolicyBlock {
 		call.outcome = "blocked"
 		first := s.firstBlock(ctx, *call)

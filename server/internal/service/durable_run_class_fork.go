@@ -34,8 +34,11 @@ func durableRunClassOf(taskContext []byte) RunClass {
 	if len(taskContext) == 0 || json.Unmarshal(taskContext, &marker) != nil {
 		return ""
 	}
-	if marker.DurableKind == "verification" {
+	switch marker.DurableKind {
+	case "verification":
 		return RunClassVerification
+	case "shadow":
+		return RunClassShadow
 	}
 	return ""
 }
