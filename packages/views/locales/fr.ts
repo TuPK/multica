@@ -29,6 +29,7 @@ import frHub from "./fr/hub.json";
 import frKnowledge from "./fr/knowledge.json";
 import frPipeline from "./fr/pipeline.json";
 import frGovernance from "./fr/governance.json";
+import frDurable from "./fr/durable.json";
 import frCompany from "./fr/company.json";
 import frWorkflow from "./fr/workflow.json";
 
@@ -63,6 +64,7 @@ const resources: LocaleResources = {
   knowledge: frKnowledge,
   pipeline: frPipeline,
   governance: frGovernance,
+  durable: frDurable,
   company: frCompany,
   workflow: frWorkflow,
 };

@@ -6,7 +6,8 @@
     "autonomy": "Autonomie",
     "reviews": "Évaluations",
     "log": "Journal",
-    "controls": "Contrôles"
+    "controls": "Contrôles",
+    "effects": "Effets"
   },
   "placeholder": {
     "title": "Rien à afficher pour l'instant"

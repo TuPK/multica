@@ -29,6 +29,7 @@ import esHub from "./es/hub.json";
 import esKnowledge from "./es/knowledge.json";
 import esPipeline from "./es/pipeline.json";
 import esGovernance from "./es/governance.json";
+import esDurable from "./es/durable.json";
 import esCompany from "./es/company.json";
 import esWorkflow from "./es/workflow.json";
 
@@ -63,6 +64,7 @@ const resources: LocaleResources = {
   knowledge: esKnowledge,
   pipeline: esPipeline,
   governance: esGovernance,
+  durable: esDurable,
   company: esCompany,
   workflow: esWorkflow,
 };

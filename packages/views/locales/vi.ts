@@ -29,6 +29,7 @@ import viHub from "./vi/hub.json";
 import viKnowledge from "./vi/knowledge.json";
 import viPipeline from "./vi/pipeline.json";
 import viGovernance from "./vi/governance.json";
+import viDurable from "./vi/durable.json";
 import viCompany from "./vi/company.json";
 import viWorkflow from "./vi/workflow.json";
 
@@ -63,6 +64,7 @@ const resources: LocaleResources = {
   knowledge: viKnowledge,
   pipeline: viPipeline,
   governance: viGovernance,
+  durable: viDurable,
   company: viCompany,
   workflow: viWorkflow,
 };

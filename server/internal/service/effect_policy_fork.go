@@ -102,6 +102,12 @@ func findOverride(overrides []Override, level int, effect, rev string) (Override
 	return Override{}, false
 }
 
+// CellOverride returns the decision the workspace saved for one cell, if any.
+func CellOverride(overrides []Override, level int, effect, rev string) (string, bool) {
+	o, ok := findOverride(overrides, level, effect, rev)
+	return o.Decision, ok
+}
+
 // ValidateOverride reports whether a workspace may save decision for one cell.
 // Stricter decisions are always allowed. Looser ones are allowed only at L3,
 // and spend and share may never become allow.
@@ -161,4 +167,54 @@ func taskClassForbids(runClass, effect string) bool {
 		return effect != connectedapps.EffectRead && effect != connectedapps.EffectWriteInternal
 	}
 	return false
+}
+
+// Lock codes name why a workspace may not save a decision to a cell. The policy grid
+// shows the code beside the locked option; LockNone means the decision can be saved.
+const (
+	LockNone       = ""
+	LockNoCell     = "no_cell"
+	LockInvalid    = "invalid_decision"
+	LockNeverAllow = "never_allow"
+	LockLooserAtL3 = "loosen_needs_l3"
+)
+
+// OverrideLock returns the lock code for saving decision to one cell. It agrees with
+// ValidateOverride: a decision is locked exactly when ValidateOverride refuses it.
+func OverrideLock(level int, effect, rev, decision string) string {
+	if _, ok := baseDecision(level, effect, rev); !ok {
+		return LockNoCell
+	}
+	if !validDecision(decision) {
+		return LockInvalid
+	}
+	if decision == connectedapps.PolicyAllow && (effect == connectedapps.EffectSpend || effect == connectedapps.EffectShare) {
+		return LockNeverAllow
+	}
+	if ValidateOverride(level, effect, rev, decision) != nil {
+		return LockLooserAtL3
+	}
+	return LockNone
+}
+
+// PolicyRow is one row of the effect policy table as the policy grid shows it. Only
+// write has two rows, one per reversibility; the other classes ignore reversibility, so
+// each is stored under the reversibility that suits it.
+type PolicyRow struct {
+	Effect        string
+	Reversibility string
+}
+
+// PolicyRows lists the table's rows in the order the grid shows them.
+func PolicyRows() []PolicyRow {
+	return []PolicyRow{
+		{connectedapps.EffectRead, connectedapps.ReversibilityReversible},
+		{connectedapps.EffectWriteInternal, connectedapps.ReversibilityReversible},
+		{connectedapps.EffectWrite, connectedapps.ReversibilityReversible},
+		{connectedapps.EffectWrite, connectedapps.ReversibilityCompensable},
+		{connectedapps.EffectSend, connectedapps.ReversibilityIrreversible},
+		{connectedapps.EffectShare, connectedapps.ReversibilityIrreversible},
+		{connectedapps.EffectDelete, connectedapps.ReversibilityIrreversible},
+		{connectedapps.EffectSpend, connectedapps.ReversibilityIrreversible},
+	}
 }

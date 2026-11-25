@@ -6,7 +6,8 @@
     "autonomy": "자율성",
     "reviews": "검토",
     "log": "로그",
-    "controls": "제어"
+    "controls": "제어",
+    "effects": "효과"
   },
   "placeholder": {
     "title": "아직 표시할 내용이 없습니다"

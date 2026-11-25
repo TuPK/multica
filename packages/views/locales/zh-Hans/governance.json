@@ -6,7 +6,8 @@
     "autonomy": "自主级别",
     "reviews": "评审",
     "log": "日志",
-    "controls": "控制"
+    "controls": "控制",
+    "effects": "影响"
   },
   "placeholder": {
     "title": "暂无内容"

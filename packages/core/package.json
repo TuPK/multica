@@ -242,6 +242,8 @@
     "./docs": "./docs/index.ts",
     "./durable": "./durable/index.ts",
     "./durable/outcomes": "./durable/outcomes/index.ts",
+    "./durable/effects": "./durable/effects/index.ts",
+    "./durable/intents": "./durable/intents/index.ts",
     "./durable/track-records": "./durable/track-records/index.ts"
   },
   "dependencies": {

@@ -6,7 +6,8 @@
     "autonomy": "Autonomy",
     "reviews": "Reviews",
     "log": "Log",
-    "controls": "Controls"
+    "controls": "Controls",
+    "effects": "Effects"
   },
   "placeholder": {
     "title": "Nothing to show yet"

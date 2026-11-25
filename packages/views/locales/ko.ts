@@ -29,6 +29,7 @@ import koHub from "./ko/hub.json";
 import koKnowledge from "./ko/knowledge.json";
 import koPipeline from "./ko/pipeline.json";
 import koGovernance from "./ko/governance.json";
+import koDurable from "./ko/durable.json";
 import koCompany from "./ko/company.json";
 import koWorkflow from "./ko/workflow.json";
 
@@ -63,6 +64,7 @@ const resources: LocaleResources = {
   knowledge: koKnowledge,
   pipeline: koPipeline,
   governance: koGovernance,
+  durable: koDurable,
   company: koCompany,
   workflow: koWorkflow,
 };

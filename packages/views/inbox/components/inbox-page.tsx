@@ -97,6 +97,7 @@ import { useTimeAgo } from "./inbox-list-item";
 import { InboxList } from "./inbox-list";
 import { InboxFilterMenu } from "./inbox-filter-menu";
 import { InboxFilterChipsBar } from "./inbox-filter-options";
+import { PendingIntents } from "../../durable/effects/pending-intents";
 import { InboxContextMenuProvider } from "./inbox-context-menu";
 import { useInboxUnsubscribable, useUnsubscribeArchive } from "./use-unsubscribe-archive";
 import { inboxTabFromParam, inboxTabHref, type InboxTab, type InboxView } from "./inbox-view";
@@ -1034,6 +1035,7 @@ export function InboxPage() {
     <>
       {listHeader}
       {!isSnoozedView && <InboxFilterChipsBar wsId={wsId} filters={effectiveFilters} />}
+      {!isArchivedView && !isSnoozedView && <PendingIntents />}
       {lookupLoading && (
         <p role="status" className="shrink-0 border-b px-3 py-2 text-caption text-muted-foreground">
           {t(($) => $.list.loading_selection)}

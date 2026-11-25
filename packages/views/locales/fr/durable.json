@@ -1,0 +1,109 @@
+{
+  "intent": {
+    "title": "En attente d'approbation",
+    "source": {
+      "connected_app": "Application connectée",
+      "plugin_action": "Plugin",
+      "cli": "CLI",
+      "channel": "Canal de discussion",
+      "webhook": "Webhook",
+      "publish_channel": "Canal de publication",
+      "declared": "Déclarée par l'agent"
+    },
+    "effect_class": {
+      "read": "Lecture",
+      "write_internal": "Modification dans Delegora",
+      "write": "Modification externe",
+      "send": "Envoi",
+      "share": "Partage d'accès",
+      "delete": "Suppression",
+      "spend": "Dépense"
+    },
+    "kind": {
+      "email": "E-mail",
+      "post": "Publication",
+      "record": "Enregistrement",
+      "generic": "Action"
+    },
+    "rationale": "Pourquoi l'agent veut le faire",
+    "recipients": "Destinataires",
+    "field_before": "Avant",
+    "field_after": "Après",
+    "approve": "Approuver",
+    "edit": "Modifier et approuver",
+    "edit_label": "Texte du message",
+    "approve_edited": "Approuver la version modifiée",
+    "reject": "Refuser",
+    "reject_label": "Motif (l'agent le lit)",
+    "reject_confirm": "Envoyer le refus",
+    "cancel": "Annuler",
+    "approved": "Approuvée. L'action s'exécute une fois.",
+    "approve_failed": "Impossible d'approuver cette action.",
+    "rejected": "Refusée. L'agent reçoit le motif.",
+    "reject_failed": "Impossible de refuser cette action.",
+    "already_decided": "Cette action a déjà été décidée."
+  },
+  "batch": {
+    "title": "{{count}} actions du même type",
+    "approve_all": "Tout approuver",
+    "approved_all": "{{count}} actions approuvées.",
+    "approved_partial": "{{approved}} approuvées, {{failed}} impossibles à approuver.",
+    "approve_all_failed": "Impossible d'approuver ces actions."
+  },
+  "effects": {
+    "controlled": "Contrôlées par la plateforme",
+    "declared": "Déclarées par les agents",
+    "declared_hint": "La plateforme les a enregistrées sans pouvoir les arrêter.",
+    "empty": "Aucun effet pour l'instant.",
+    "load_failed": "Impossible de charger les effets.",
+    "undo": "Annuler",
+    "undo_done": "Effet annulé.",
+    "undo_failed": "Impossible d'annuler cet effet.",
+    "undo_closed": "La période d'annulation de cet effet est écoulée.",
+    "undo_until": "Annulable jusqu'au {{time}}",
+    "decision": {
+      "allow": "Autorisé",
+      "confirm": "Confirmation",
+      "rehearse": "En attente d'approbation",
+      "block": "Bloqué"
+    },
+    "status": {
+      "executed": "Effectué",
+      "blocked": "Bloqué",
+      "awaiting": "En attente d'approbation",
+      "failed": "Échec",
+      "undone": "Annulé",
+      "declared": "Déclaré"
+    }
+  },
+  "run": {
+    "label": "Effets de cette exécution",
+    "title": "Effets",
+    "empty": "Cette exécution n'a enregistré aucun effet."
+  },
+  "policy": {
+    "title": "Politique des effets",
+    "rows": {
+      "read": "Lecture",
+      "write_internal": "Modification dans Delegora",
+      "write_reversible": "Modification externe, réversible",
+      "write_compensable": "Modification externe, compensable",
+      "send": "Envoi",
+      "share": "Partage d'accès",
+      "delete": "Suppression",
+      "spend": "Dépense"
+    },
+    "changed": "Modifié",
+    "locked": "Verrouillé",
+    "reason": {
+      "loosen_needs_l3": "Une décision plus souple exige L3.",
+      "never_allow": "La dépense et le partage ne sont jamais autorisés.",
+      "no_cell": "Aucune politique pour cette case.",
+      "invalid_decision": "Ce n'est pas une décision."
+    },
+    "read_only": "Seuls les propriétaires et les administrateurs peuvent modifier la politique.",
+    "saved": "Décision enregistrée.",
+    "save_failed": "Impossible d'enregistrer la décision.",
+    "load_failed": "Impossible de charger la politique des effets."
+  }
+}

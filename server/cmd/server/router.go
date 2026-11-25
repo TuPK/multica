@@ -531,6 +531,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// Rehearsed actions wait here for a person's decision (durable spec 5.2). The
 	// connected apps gateway is set below, once it exists.
 	h.Intents = &service.IntentService{Queries: queries, TxStarter: pool, Flags: opts.FeatureFlags, Tasks: h.TaskService}
+	h.EffectPolicy = &service.EffectPolicyStore{Queries: queries, TxStarter: pool}
 	collabClient, err := collab.NewClient(os.Getenv("COLLAB_INTERNAL_URL"), os.Getenv("COLLAB_SECRET"))
 	if err != nil {
 		slog.Error("live doc editing disabled", "error", err)
@@ -2776,6 +2777,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Get("/", h.ListEffects)
 				r.Post("/declare", h.DeclareEffect)
 				r.Post("/{id}/undo", h.UndoEffect)
+				r.Get("/policy", h.GetEffectPolicy)
+				r.Put("/policy", h.SaveEffectPolicy)
 			})
 			// Rehearsed actions awaiting a decision (durable spec 5.3).
 			r.Route("/api/intents", func(r chi.Router) {
