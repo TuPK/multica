@@ -9,7 +9,7 @@ import { renderWithI18n } from "../../test/i18n";
 import { NavigationProvider, type NavigationAdapter } from "../../navigation";
 import { CompanyPulseStrip } from "./company-pulse-strip";
 
-const api = vi.hoisted(() => ({ getCompanyPulse: vi.fn() }));
+const api = vi.hoisted(() => ({ getCompanyPulse: vi.fn(), getAttentionBudget: vi.fn() }));
 
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
@@ -60,6 +60,14 @@ function renderStrip() {
 describe("CompanyPulseStrip", () => {
   beforeEach(() => {
     api.getCompanyPulse.mockReset();
+    api.getAttentionBudget.mockReset();
+    api.getAttentionBudget.mockResolvedValue({
+      enabled: false,
+      minutes_per_week: 60,
+      split: "equal",
+      week_start: "2026-11-23",
+      spent_minutes: 0,
+    });
   });
   afterEach(cleanup);
 
@@ -96,6 +104,37 @@ describe("CompanyPulseStrip", () => {
     // Decisions have no Governance tab: the chip is shown, not linked.
     const decisions = screen.getByText("4 waiting for you");
     expect(decisions.closest("a")).toBeNull();
+  });
+
+  it("shows the week's attention spend and opens the Controls tab when durable_principal is on", async () => {
+    api.getCompanyPulse.mockResolvedValue({ ...QUIET, goals_at_risk: 1 });
+    api.getAttentionBudget.mockResolvedValue({
+      enabled: true,
+      minutes_per_week: 60,
+      split: "equal",
+      week_start: "2026-11-23",
+      spent_minutes: 23.4,
+    });
+    renderStrip();
+
+    const chip = await screen.findByText("Your time: 23 / 60 min this week");
+    expect(chip.closest("a")?.getAttribute("href")).toBe("/acme/governance?tab=controls");
+    expect(screen.getByText("1 goals at risk")).toBeTruthy();
+  });
+
+  it("keeps the quiet line and adds the spend when nothing waits", async () => {
+    api.getCompanyPulse.mockResolvedValue(QUIET);
+    api.getAttentionBudget.mockResolvedValue({
+      enabled: true,
+      minutes_per_week: 60,
+      split: "equal",
+      week_start: "2026-11-23",
+      spent_minutes: 0,
+    });
+    renderStrip();
+
+    expect(await screen.findByText("Nothing needs you")).toBeTruthy();
+    expect(await screen.findByText("Your time: 0 / 60 min this week")).toBeTruthy();
   });
 
   it("reads the pulse of the workspace", async () => {
