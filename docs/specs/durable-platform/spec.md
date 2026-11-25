@@ -1017,7 +1017,7 @@ Bước flow không chạy bóng trong v1 vì bước có cổng và hệ quả.
 ### 10.5 Nghiệm thu F9
 
 1. Task bóng của bài kiểm tra skill không có skill đó trong danh sách nạp; task chính có.
-2. Dữ liệu giả 40 cặp hoà cho `not_needed` và tạo đúng một proposal; 40 cặp bóng thua 30% cho `needed` và không tạo proposal.
+2. Dữ liệu giả 80 cặp hoà ở biên 0.05 cho `not_needed` và tạo đúng một proposal; 40 cặp bóng thua 30% cho `needed` và không tạo proposal. (Đã sửa từ 40 cặp: với n = 40 và biên 0.05, cận trên 95% của d là 0.0876, nên không thể ra `not_needed`; 40 cặp hoà ở biên 0.05 cho `inconclusive`. Xem `durable_necessity_fork_test.go`.)
 3. Job tuần không chạy quá 2 bài kiểm tra mỗi squad.
 4. Không có đường nào gỡ skill mà không qua proposal được duyệt.
 

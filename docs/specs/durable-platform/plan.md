@@ -449,7 +449,7 @@ Chỉ làm nếu P0 U7 xác nhận được trường manifest; nếu không, gh
 - Consumes: `ShadowService` (D3) với `purpose = necessity_test` và `omit_skills`/cắt khối chỉ dẫn.
 - Produces: `func NewcombeDiffCI(lossA, winA, n int) (lo, hi float64)`; `func NecessityVerdict(pairs []Comparison, margin float64, minPairs int) string`; `func (s *NecessityService) WeeklySchedule(ctx, ws) error` (tối đa 2 mỗi squad); `FlowStageCandidates(ctx, ws) []StageStat`.
 
-- [ ] Test đơn vị đỏ `TestNewcombeKnownValues` (so với giá trị tính sẵn trong bảng test); `TestNecessityVerdictTable` (40 hoà → `not_needed`; bóng thua 30% → `needed`; giữa → `inconclusive` sau `2 × minPairs`).
+- [ ] Test đơn vị đỏ `TestNewcombeKnownValues` (so với giá trị tính sẵn trong bảng test); `TestNecessityVerdictTable` (80 hoà ở biên 0.05 → `not_needed`; 40 hoà ở biên 0.05 → `inconclusive`; bóng thua 30% → `needed`; giữa → `inconclusive` sau `2 × minPairs`).
 - [ ] Test đỏ `TestShadowOmitsSkillUnderTest`; `TestWeeklyMaxTwoPerSquad`; `TestNotNeededFilesOneProposal`; `TestNoSkillRemovalWithoutApproval`; `TestFlowStageCandidateThreshold` (≥ 95% trên ≥ 30 lượt).
 - [ ] Cài đặt; chạy; xanh. Commit `feat(durable): necessity tests for scaffolding`.
 

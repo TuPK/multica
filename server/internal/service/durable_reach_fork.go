@@ -77,9 +77,6 @@ type SurfaceStats struct {
 	AllowedAgent       bool // có hệ quả của agent được allow trong 30 ngày
 	GapAsks30d         int  // câu hỏi missing_access | missing_info
 	MissingAccess      bool // có câu hỏi missing_access cho bề mặt này
-	// HumanOnly không được ReachState đọc: bảng 11.2 chỉ dựa vào MissingAccess.
-	// Giữ trường theo đầu vào đã định; chưa có chỗ dùng.
-	HumanOnly bool
 }
 
 // ReachState trả trạng thái của bề mặt theo thứ tự ưu tiên của bảng 11.2.
