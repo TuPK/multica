@@ -25,6 +25,16 @@ var (
 // tenant migrations of spec R6. Earlier four-digit files predate the rule.
 const firstFourDigitMigration = 1016
 
+// triggerKeywords are SQL words the touchedTable pattern reads as a table name:
+// "UPDATE OF status" in a trigger definition gives "of", and "IS DISTINCT FROM
+// NEW.status" gives "new". None of them is a table, so a valid trigger in a
+// four-digit migration is not reported. A real write to a table created later
+// is still reported (TestOrderScanFlagsATableCreatedLater).
+var triggerKeywords = map[string]bool{
+	"of": true, "new": true, "old": true, "only": true, "when": true,
+	"for": true, "each": true, "row": true, "function": true,
+}
+
 // orderViolations returns, for each four-digit migration in files (name to
 // content), the tables it touches that no earlier file in sort order creates.
 func orderViolations(files map[string]string) []string {
@@ -45,6 +55,9 @@ func orderViolations(files map[string]string) []string {
 		if n, err := strconv.Atoi(prefix); err == nil && len(prefix) == 4 && n >= firstFourDigitMigration {
 			for _, m := range touchedTable.FindAllStringSubmatch(body, -1) {
 				table := strings.ToLower(m[1])
+				if triggerKeywords[table] {
+					continue
+				}
 				if !created[table] && !own[table] {
 					out = append(out, name+" touches "+table)
 				}
@@ -100,5 +113,20 @@ func TestOrderScanFlagsATableCreatedLater(t *testing.T) {
 	})
 	if len(clean) != 0 {
 		t.Fatalf("violations = %v, want none", clean)
+	}
+}
+
+// A trigger definition is DDL on an existing table, so it is not a write to a
+// later table. Its keywords (OF, NEW, OLD, ...) must not be read as table names.
+func TestOrderScanIgnoresTriggerKeywords(t *testing.T) {
+	got := orderViolations(map[string]string{
+		"001_init.up.sql": "CREATE TABLE issue (id uuid, status text);",
+		"1044_trigger.up.sql": `CREATE OR REPLACE FUNCTION f() RETURNS trigger LANGUAGE plpgsql AS $$
+			BEGIN RETURN NEW; END; $$;
+			CREATE TRIGGER t_ai AFTER UPDATE OF status ON issue FOR EACH ROW
+			WHEN (OLD.status IS DISTINCT FROM NEW.status) EXECUTE FUNCTION f();`,
+	})
+	if len(got) != 0 {
+		t.Fatalf("trigger keywords reported as tables: %v", got)
 	}
 }

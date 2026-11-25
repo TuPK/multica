@@ -1801,6 +1801,19 @@ type IssueStatus struct {
 	Icon        string             `json:"icon"`
 }
 
+type IssueStatusTransition struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	IssueID       pgtype.UUID        `json:"issue_id"`
+	FromStatusKey pgtype.Text        `json:"from_status_key"`
+	ToStatusKey   string             `json:"to_status_key"`
+	ActorType     string             `json:"actor_type"`
+	ActorID       pgtype.UUID        `json:"actor_id"`
+	TaskID        pgtype.UUID        `json:"task_id"`
+	Source        string             `json:"source"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type IssueSubscriber struct {
 	IssueID        pgtype.UUID        `json:"issue_id"`
 	UserType       string             `json:"user_type"`

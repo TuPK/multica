@@ -58,12 +58,13 @@ Người dùng giao toàn quyền thiết kế. Các quyết định dưới đ�
 | D23 | Attestation của track record được ký bằng khoá Ed25519 của máy chủ. Khoá công khai xuất bản ở `/.well-known/multica-attestation-keys.json`. V1 không có thanh toán hay ký quỹ giữa các tổ chức: mọi việc tiêu tiền ra ngoài là quyết định của người | 13.4 |
 | D24 | Thêm hai run class: `verification` (task kiểm chứng, task của Jury) và `shadow` (task bóng). Cả hai bị budget giữ như `routine`, và bị dừng khi công ty `paused` | 1.4 |
 | D25 | Mọi mã Go mới nằm trong file `*_fork.go`; route ở `server/cmd/server/router_fork.go`; mã TypeScript mới ở thư mục mới `packages/core/durable/` và `packages/views/durable/`. File upstream chỉ nhận hook một dòng, mỗi hook được ghi vào `pnpm sync:contract` | 14.2 |
-| D26 | Ghi chuyển trạng thái issue bằng **trigger PostgreSQL** `AFTER UPDATE OF status_id` (chỉ khi giá trị đổi), không hook từng đường. Actor đến từ biến phiên `multica.actor_type`, `multica.actor_id`, `multica.task_id` do ứng dụng đặt bằng `SET LOCAL` trong cùng transaction (`WithActorSession`); không đặt thì `system`. Test tĩnh đối chiếu 24 điểm ghi với việc đã đặt biến phiên (P0 U1) | 2.2, 15 |
+| D26 | Ghi chuyển trạng thái issue bằng **trigger PostgreSQL** `AFTER UPDATE OF status` (chỉ khi giá trị đổi; cột `issue.status` là khoá TEXT, không có `status_id`), không hook từng đường. Actor đến từ biến phiên `multica.actor_type`, `multica.actor_id`, `multica.task_id` do ứng dụng đặt bằng `SET LOCAL` trong cùng transaction (`WithActorSession`); không đặt thì `system`. Test tĩnh đối chiếu 24 điểm ghi với việc đã đặt biến phiên (P0 U1) | 2.2, 15 |
 | D27 | Shadow dùng **agent bóng**: agent ẩn (`agent.shadow_of_agent_id`) cùng vai và hồ sơ ghế, còn runtime và model là ứng viên (P0 U4). Shadow không chạy ở chế độ `in_place`, và runtime có quyền push bị từ chối (P0 U5) | 9.4, 15 |
 | D28 | Khoá attestation đọc từ `MULTICA_ATTESTATION_KEY`. Thiếu khoá thì **tắt tính năng phát hành** (503 `attestation_disabled`); xác minh và khoá công khai vẫn chạy. Không sinh khoá tự động, không lưu khoá trong DB. Tên biến không mang tên thương hiệu, theo quy tắc nhãn hiệu của repo (P0 U10 đề xuất `MULTICA_DELEGORA_ATTEST_KEY`, bị bỏ vì lý do này) | 13.2, 15 |
 | D29 | Worker của F11 là **adapter CLI tham chiếu** chạy như runtime tuỳ chỉnh hiện có. Không xây backend HTTP worker trong v1 (P0 U9) | 12.3, 15 |
 | D30 | Shadow và danh sách skill bị bỏ được gate bằng capability `DaemonCapabilityShadowV1` trong header `X-Client-Capabilities`. Daemon không khai báo capability thì không nhận task bóng (P0 U6) | 9.4, 14.4, 15 |
 | D31 | Không có sự kiện revert PR: `fail_cause = reverted` chỉ đến từ `done → cancelled` (P0 U8). Backfill từ `activity_log` chỉ best-effort (P0 U2), đánh dấu cột `source = 'activity_backfill'`; dữ liệu trước khi bật vẫn `history_partial = true` | 2.2, 2.4, 15 |
+| D32 | Trigger ghi chuyển trạng thái chỉ đọc bảng của chính nó và các cột của `issue`. Trigger không tham chiếu bảng tạo sau (`issue_status`), vì migration số 4 chữ số sort trước migration tạo bảng đó. Bảng lưu khoá (`from_status_key`, `to_status_key`), không lưu nhóm trạng thái. Nhóm (`unstarted`, `started`, `done`, `closed`) suy ra khi đọc: join `issue_status`, và hàm Go `LifecycleCategoryOf` cho khoá built-in chưa có dòng catalog | 2.2, 15 |
 
 ## 1. Khái niệm chung
 
@@ -131,22 +132,22 @@ CREATE TABLE issue_status_transition (
     id UUID NOT NULL DEFAULT gen_random_uuid(),
     workspace_id UUID NOT NULL,
     issue_id UUID NOT NULL,
-    from_status_id UUID,
-    to_status_id UUID NOT NULL,
-    from_category TEXT,                 -- nhóm trạng thái lúc trước, NULL khi tạo issue
-    to_category TEXT NOT NULL,          -- backlog | unstarted | started | done | cancelled (theo category hiện có)
+    from_status_key TEXT,               -- khoá lúc trước (issue.status), NULL khi tạo issue
+    to_status_key TEXT NOT NULL,        -- khoá mới (issue.status)
     actor_type TEXT NOT NULL,           -- member | agent | system
     actor_id UUID,
     task_id UUID,                       -- task đang chạy của agent nếu agent đổi
     source TEXT NOT NULL DEFAULT 'live' CHECK (source IN ('live', 'activity_backfill')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- index (workspace_id, issue_id, created_at)        CONCURRENTLY, file riêng
--- index (workspace_id, to_category, created_at)     CONCURRENTLY, file riêng
+-- index (workspace_id, issue_id, created_at)        CONCURRENTLY, migration 1042
+-- index (workspace_id, to_status_key, created_at)   CONCURRENTLY, migration 1043
+-- Không có cột nhóm: nhóm được suy ra khi đọc (D32).
 ```
 
-- Ghi bằng **trigger PostgreSQL** `AFTER UPDATE OF status_id ON issue` (khi giá trị đổi, D26), nên mọi đường ghi, kể cả SQL trực tiếp của sweeper, để lại đúng một dòng. Actor lấy từ biến phiên đặt bằng `WithActorSession` ở đầu mỗi transaction ghi issue của ứng dụng; không đặt thì `actor_type = system`. Hai bài test: `TestStatusTriggerCatchesRawSQL` (UPDATE thô vẫn có dòng) và `TestEveryWriterSetsActorSession` (test tĩnh: mỗi trong 24 điểm ghi, theo P0 U1, đã gọi `WithActorSession`).
-- **Mở lại** là chuyển từ `done` sang nhóm khác `done` và khác `cancelled`.
+- Ghi bằng **trigger PostgreSQL** `AFTER UPDATE OF status ON issue` (migration 1044, khi giá trị đổi, D26), nên mọi đường ghi, kể cả SQL trực tiếp của sweeper, để lại đúng một dòng. Trigger chỉ đọc `OLD.status`, `NEW.status` và biến phiên (D32). Actor lấy từ biến phiên đặt bằng `WithActorSession` ở đầu mỗi transaction ghi issue của ứng dụng; không đặt thì `actor_type = system`. Hai bài test: `TestStatusTriggerCatchesRawSQL` (UPDATE thô vẫn có dòng) và `TestEveryWriterSetsActorSession` (test tĩnh: mỗi trong 24 điểm ghi, theo P0 U1, đã gọi `WithActorSession`).
+- Nhóm trạng thái (`unstarted`, `started`, `done`, `closed`) của mỗi khoá: dòng catalog trong `issue_status` quyết định; không có dòng thì khoá built-in map theo bảng migration 469 (`LifecycleCategoryOf`). Mọi đọc lịch sử đi qua hàm này, không đọc khoá thô.
+- **Mở lại** là chuyển từ nhóm `done` sang nhóm khác `done` và khác `closed` (`cancelled`).
 - Backfill từ `activity_log` chỉ best-effort, vì dữ liệu `status_changed` có khoảng trống (P0 U2, D31): dòng backfill có `source = 'activity_backfill'`. Dữ liệu trước khi bật vẫn được scorecard đánh dấu `history_partial = true` trong `metrics`.
 - Sửa hai dòng lệch của Phase 4: `delivery.cycle_time_days` (từ lần đầu vào `started` tới lần vào `done`) và `delivery.rework_rate` (số lần mở lại / số lần vào `done`) giờ tính được và được thêm vào job metric nội tại. Proxy `issue.updated_at` trong scorecard được thay bằng thời điểm vào `done`.
 

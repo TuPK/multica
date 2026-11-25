@@ -86,7 +86,7 @@ Ghi kết quả từng mục vào `docs/specs/durable-platform/p0-findings.md` (
 **Interfaces:**
 - Produces: `func WithActorSession(ctx context.Context, q *db.Queries, actor GovernanceActor, taskID pgtype.UUID) error` (đặt `SET LOCAL multica.actor_type|actor_id|task_id`); ; truy vấn sqlc `InsertIssueStatusTransition`, `ListIssueStatusTransitions(issue_id)`, `LatestDoneTransition(issue_id)`; sự kiện nội bộ `IssueEnteredDone{Transition}` và `IssueLeftDone{Transition}` phát sau commit.
 
-- [ ] Test đỏ `TestEveryStatusWriterRecordsOneTransition`: bảng các đường ghi (API cập nhật, CLI, batch, flow advance, workflow transition, PR auto-complete, channel action), cùng `TestStatusTriggerCatchesRawSQL` (UPDATE thô, như sweeper, vẫn để lại đúng một dòng với `system`) và `TestEveryWriterSetsActorSession` (test tĩnh, 24 điểm ghi từ P0 U1); mỗi đường đổi một issue fixture và khẳng định đúng một dòng với `from_category`, `to_category`, `actor_type` đúng.
+- [ ] Test đỏ `TestEveryStatusWriterRecordsOneTransition`: bảng các đường ghi (API cập nhật, CLI, batch, flow advance, workflow transition, PR auto-complete, channel action), cùng `TestStatusTriggerCatchesRawSQL` (UPDATE thô, như sweeper, vẫn để lại đúng một dòng với `system`) và `TestEveryWriterSetsActorSession` (test tĩnh, 24 điểm ghi từ P0 U1); mỗi đường đổi một issue fixture và khẳng định đúng một dòng với khoá (`from_status_key`, `to_status_key`), nhóm đọc qua `ListIssueStatusTransitionRecords` (D32), và `actor_type` đúng.
 - [ ] Test đỏ `TestTransitionNotRecordedWhenFlagOff`.
 - [ ] Test đỏ `TestReopenDetected`: `done → started` phát `IssueLeftDone` với cờ `reopened = true`; `done → cancelled` có `reopened = false`.
 - [ ] Viết migration, truy vấn, `make sqlc`, cài hook; chạy test; xanh.
