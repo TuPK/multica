@@ -2055,6 +2055,20 @@ type JobStatus struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
+type JuryPanel struct {
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	OutcomeID      pgtype.UUID        `json:"outcome_id"`
+	CriterionID    pgtype.UUID        `json:"criterion_id"`
+	JurorAgentIds  []pgtype.UUID      `json:"juror_agent_ids"`
+	Diversity      string             `json:"diversity"`
+	State          string             `json:"state"`
+	Verdict        pgtype.Text        `json:"verdict"`
+	ResolvedByType pgtype.Text        `json:"resolved_by_type"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ClosedAt       pgtype.Timestamptz `json:"closed_at"`
+}
+
 type KeyResult struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
@@ -3567,6 +3581,25 @@ type ThemeStoreDownload struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type TrackRecord struct {
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	AgentID          pgtype.UUID        `json:"agent_id"`
+	WorkClass        string             `json:"work_class"`
+	WindowDays       int32              `json:"window_days"`
+	Model            string             `json:"model"`
+	NPass            int32              `json:"n_pass"`
+	NPartial         int32              `json:"n_partial"`
+	NFail            int32              `json:"n_fail"`
+	NUnverified      int32              `json:"n_unverified"`
+	NHighFail        int32              `json:"n_high_fail"`
+	ScoreLower       float64            `json:"score_lower"`
+	LastHighFailAt   pgtype.Timestamptz `json:"last_high_fail_at"`
+	VerificationMode string             `json:"verification_mode"`
+	ModePinned       bool               `json:"mode_pinned"`
+	ModeChangedAt    pgtype.Timestamptz `json:"mode_changed_at"`
+	ComputedAt       pgtype.Timestamptz `json:"computed_at"`
+}
+
 type UsageCharge struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Day         pgtype.Date        `json:"day"`
@@ -3768,25 +3801,6 @@ type WeixinLoginSession struct {
 	LeaseExpiresAt  pgtype.Timestamptz `json:"lease_expires_at"`
 	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-}
-
-type TrackRecord struct {
-	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
-	AgentID          pgtype.UUID        `json:"agent_id"`
-	WorkClass        string             `json:"work_class"`
-	WindowDays       int32              `json:"window_days"`
-	Model            string             `json:"model"`
-	NPass            int32              `json:"n_pass"`
-	NPartial         int32              `json:"n_partial"`
-	NFail            int32              `json:"n_fail"`
-	NUnverified      int32              `json:"n_unverified"`
-	NHighFail        int32              `json:"n_high_fail"`
-	ScoreLower       float64            `json:"score_lower"`
-	LastHighFailAt   pgtype.Timestamptz `json:"last_high_fail_at"`
-	VerificationMode string             `json:"verification_mode"`
-	ModePinned       bool               `json:"mode_pinned"`
-	ModeChangedAt    pgtype.Timestamptz `json:"mode_changed_at"`
-	ComputedAt       pgtype.Timestamptz `json:"computed_at"`
 }
 
 type WorkOutcome struct {

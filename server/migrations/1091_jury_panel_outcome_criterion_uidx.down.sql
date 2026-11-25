@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS jury_panel_outcome_criterion_uidx;

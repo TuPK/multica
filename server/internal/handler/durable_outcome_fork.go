@@ -144,7 +144,10 @@ func (h *Handler) outcomeCallerFor(w http.ResponseWriter, r *http.Request, works
 
 // outcomeService returns the verification service over the handler's queries.
 func (h *Handler) outcomeService() *service.VerificationService {
-	return &service.VerificationService{Queries: h.Queries, TxStarter: h.TxStarter, Tasks: h.TaskService}
+	return &service.VerificationService{
+		Queries: h.Queries, TxStarter: h.TxStarter, Tasks: h.TaskService,
+		Jury: service.NewJuryService(h.Queries, h.TxStarter, h.TaskService),
+	}
 }
 
 // writeOutcomeError maps a service error to its status and machine code (spec 2.7).
