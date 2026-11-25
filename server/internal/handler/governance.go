@@ -25,7 +25,7 @@ import (
 // governanceActorTypes are the actor types a filter may name.
 var governanceActorTypes = []string{
 	service.GovernanceActorMember, service.GovernanceActorAgent,
-	service.GovernanceActorSystem, service.GovernanceActorPolicy,
+	service.GovernanceActorSystem, service.GovernanceActorPolicy, service.GovernanceActorTrackRecord,
 }
 
 // governanceSubjectTypeMax bounds the subject_type filter.

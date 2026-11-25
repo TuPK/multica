@@ -29,24 +29,28 @@ func (q *Queries) ClaimOutcomeTransition(ctx context.Context, transitionID pgtyp
 
 const createWorkOutcome = `-- name: CreateWorkOutcome :one
 INSERT INTO work_outcome (
-    workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id,
-    work_class, verification_mode, sampled, settle_at
+    id, workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id,
+    runtime_provider, model, work_class, verification_mode, sampled, settle_at
 ) VALUES (
-    $1, $2, $3,
-    $4, $5, $6,
-    $7, $8, $9, $10
+    $1, $2, $3, $4,
+    $5, $6, $7,
+    $8, $9,
+    $10, $11, $12, $13
 )
 ON CONFLICT (done_transition_id) DO UPDATE SET done_transition_id = EXCLUDED.done_transition_id
 RETURNING id, workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id, runtime_provider, model, work_class, verification_mode, sampled, verdict, severity, fail_cause, criteria_results, evidence, cost_micros, verification_cost_micros, settle_at, settled_at, superseded_by, created_at, updated_at
 `
 
 type CreateWorkOutcomeParams struct {
+	ID               pgtype.UUID        `json:"id"`
 	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
 	IssueID          pgtype.UUID        `json:"issue_id"`
 	DoneTransitionID pgtype.UUID        `json:"done_transition_id"`
 	AgentID          pgtype.UUID        `json:"agent_id"`
 	MemberID         pgtype.UUID        `json:"member_id"`
 	SquadID          pgtype.UUID        `json:"squad_id"`
+	RuntimeProvider  string             `json:"runtime_provider"`
+	Model            string             `json:"model"`
 	WorkClass        string             `json:"work_class"`
 	VerificationMode string             `json:"verification_mode"`
 	Sampled          bool               `json:"sampled"`
@@ -54,15 +58,19 @@ type CreateWorkOutcomeParams struct {
 }
 
 // A transition yields at most one outcome (unique done_transition_id). A replay
-// gets the existing row back and writes nothing new.
+// gets the existing row back and writes nothing new. The caller passes the id, so the
+// verification sample (spec 3.3) is chosen from it before the row exists.
 func (q *Queries) CreateWorkOutcome(ctx context.Context, arg CreateWorkOutcomeParams) (WorkOutcome, error) {
 	row := q.db.QueryRow(ctx, createWorkOutcome,
+		arg.ID,
 		arg.WorkspaceID,
 		arg.IssueID,
 		arg.DoneTransitionID,
 		arg.AgentID,
 		arg.MemberID,
 		arg.SquadID,
+		arg.RuntimeProvider,
+		arg.Model,
 		arg.WorkClass,
 		arg.VerificationMode,
 		arg.Sampled,
