@@ -11,6 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AcceptanceCriterion struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	IssueID       pgtype.UUID        `json:"issue_id"`
+	Position      int32              `json:"position"`
+	Text          string             `json:"text"`
+	CheckKind     string             `json:"check_kind"`
+	CheckSpec     []byte             `json:"check_spec"`
+	Source        string             `json:"source"`
+	CreatedByType string             `json:"created_by_type"`
+	CreatedByID   pgtype.UUID        `json:"created_by_id"`
+	ArchivedAt    pgtype.Timestamptz `json:"archived_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type ActivityLog struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
@@ -1182,6 +1197,13 @@ type DocVersion struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 	Contributors []byte             `json:"contributors"`
+}
+
+type DurableOutcomeCursor struct {
+	Name         string             `json:"name"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	TransitionID pgtype.UUID        `json:"transition_id"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type EffectiveIssueBlocker struct {
@@ -2395,6 +2417,21 @@ type OrgChangeApplication struct {
 	ProbationNote      string             `json:"probation_note"`
 	ProbationCheckedAt pgtype.Timestamptz `json:"probation_checked_at"`
 	RollbackProposalID pgtype.UUID        `json:"rollback_proposal_id"`
+}
+
+type OutcomeVerification struct {
+	ID           pgtype.UUID        `json:"id"`
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	OutcomeID    pgtype.UUID        `json:"outcome_id"`
+	CriterionID  pgtype.UUID        `json:"criterion_id"`
+	VerifierType string             `json:"verifier_type"`
+	VerifierID   pgtype.UUID        `json:"verifier_id"`
+	TaskID       pgtype.UUID        `json:"task_id"`
+	Result       string             `json:"result"`
+	Severity     string             `json:"severity"`
+	Note         string             `json:"note"`
+	Evidence     []byte             `json:"evidence"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 type PaymentNotice struct {
@@ -3664,6 +3701,33 @@ type WeixinLoginSession struct {
 	LeaseExpiresAt  pgtype.Timestamptz `json:"lease_expires_at"`
 	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+type WorkOutcome struct {
+	ID                     pgtype.UUID        `json:"id"`
+	WorkspaceID            pgtype.UUID        `json:"workspace_id"`
+	IssueID                pgtype.UUID        `json:"issue_id"`
+	DoneTransitionID       pgtype.UUID        `json:"done_transition_id"`
+	AgentID                pgtype.UUID        `json:"agent_id"`
+	MemberID               pgtype.UUID        `json:"member_id"`
+	SquadID                pgtype.UUID        `json:"squad_id"`
+	RuntimeProvider        string             `json:"runtime_provider"`
+	Model                  string             `json:"model"`
+	WorkClass              string             `json:"work_class"`
+	VerificationMode       string             `json:"verification_mode"`
+	Sampled                bool               `json:"sampled"`
+	Verdict                string             `json:"verdict"`
+	Severity               string             `json:"severity"`
+	FailCause              string             `json:"fail_cause"`
+	CriteriaResults        []byte             `json:"criteria_results"`
+	Evidence               []byte             `json:"evidence"`
+	CostMicros             int64              `json:"cost_micros"`
+	VerificationCostMicros int64              `json:"verification_cost_micros"`
+	SettleAt               pgtype.Timestamptz `json:"settle_at"`
+	SettledAt              pgtype.Timestamptz `json:"settled_at"`
+	SupersededBy           pgtype.UUID        `json:"superseded_by"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Workspace struct {

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS work_outcome_due_idx;

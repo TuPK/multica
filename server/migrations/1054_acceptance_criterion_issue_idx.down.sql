@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS acceptance_criterion_issue_position_idx;
