@@ -63,3 +63,13 @@ LIMIT sqlc.arg(row_limit);
 -- The squad an agent works for, which is the squad an agent's question is charged to.
 SELECT home_squad_id FROM agent
 WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id);
+
+-- name: SumAttentionMinutesSince :one
+-- The minutes people spent deciding in [since, until) across the workspace, and how many
+-- questions were admitted in it. Delivered and answered questions spend minutes; a window with
+-- no question has no reading.
+SELECT COUNT(*)::int AS asks,
+       COALESCE(SUM(CASE WHEN state IN ('delivered', 'answered') THEN estimated_minutes ELSE 0 END), 0)::float8 AS minutes
+FROM attention_ledger
+WHERE workspace_id = sqlc.arg(workspace_id)
+  AND created_at >= sqlc.arg(since) AND created_at < sqlc.arg(until);

@@ -209,6 +209,35 @@ func (q *Queries) MarkAttentionAnswered(ctx context.Context, arg MarkAttentionAn
 	return result.RowsAffected(), nil
 }
 
+const sumAttentionMinutesSince = `-- name: SumAttentionMinutesSince :one
+SELECT COUNT(*)::int AS asks,
+       COALESCE(SUM(CASE WHEN state IN ('delivered', 'answered') THEN estimated_minutes ELSE 0 END), 0)::float8 AS minutes
+FROM attention_ledger
+WHERE workspace_id = $1
+  AND created_at >= $2 AND created_at < $3
+`
+
+type SumAttentionMinutesSinceParams struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Since       pgtype.Timestamptz `json:"since"`
+	Until       pgtype.Timestamptz `json:"until"`
+}
+
+type SumAttentionMinutesSinceRow struct {
+	Asks    int32   `json:"asks"`
+	Minutes float64 `json:"minutes"`
+}
+
+// The minutes people spent deciding in [since, until) across the workspace, and how many
+// questions were admitted in it. Delivered and answered questions spend minutes; a window with
+// no question has no reading.
+func (q *Queries) SumAttentionMinutesSince(ctx context.Context, arg SumAttentionMinutesSinceParams) (SumAttentionMinutesSinceRow, error) {
+	row := q.db.QueryRow(ctx, sumAttentionMinutesSince, arg.WorkspaceID, arg.Since, arg.Until)
+	var i SumAttentionMinutesSinceRow
+	err := row.Scan(&i.Asks, &i.Minutes)
+	return i, err
+}
+
 const sumSquadAttentionMinutes = `-- name: SumSquadAttentionMinutes :one
 SELECT COALESCE(SUM(estimated_minutes), 0)::float8 AS minutes FROM attention_ledger
 WHERE workspace_id = $1 AND squad_id = $2

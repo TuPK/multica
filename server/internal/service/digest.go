@@ -272,6 +272,9 @@ type Digest struct {
 	// QueuedAsks are the questions the squads' attention share holds back (spec 7.3), the
 	// reasons that block a decision first.
 	QueuedAsks []QueuedAsk `json:"queued_asks"`
+	// AttentionMinutesPerDone is the minutes people spent deciding per issue done in the window
+	// (spec 7.5). Null when the window has no question or no done issue, and for a floor brief.
+	AttentionMinutesPerDone *float64 `json:"attention_minutes_per_done"`
 	// Pipeline lists each initiative that is active or operating (spec 3.7).
 	Pipeline []DigestInitiative `json:"pipeline"`
 	// OverdueRequests are squad requests the receiving squad has not answered
@@ -701,6 +704,16 @@ func (s *DigestService) Compute(ctx context.Context, workspaceID pgtype.UUID, si
 	if sc.floor {
 		queued = filterQueuedToSquads(queued, sc.squads)
 	}
+	var attentionPerDone *float64
+	if !sc.floor {
+		perDone, ok, err := AttentionMinutesPerDone(ctx, s.Queries, workspaceID, since, now)
+		if err != nil {
+			return Digest{}, err
+		}
+		if ok {
+			attentionPerDone = &perDone
+		}
+	}
 	pipeline, err := s.computePipeline(ctx, workspaceID, now)
 	if err != nil {
 		return Digest{}, err
@@ -773,28 +786,29 @@ func (s *DigestService) Compute(ctx context.Context, workspaceID pgtype.UUID, si
 		Budgets: budgetCount, Goals: goalCount,
 	}
 	return Digest{
-		Since:                since.UTC().Format(time.RFC3339),
-		Until:                now.UTC().Format(time.RFC3339),
-		Workspace:            ws,
-		Squads:               squads,
-		OmittedSquadCount:    omitted,
-		Quiet:                quiet,
-		Knowledge:            know,
-		Inquiries:            inquiries,
-		QueuedAsks:           queued,
-		Pipeline:             pipeline,
-		OverdueRequests:      overdue,
-		BlockedDirectives:    blockedDirectives,
-		RequestsPastDeadline: requestsPastDeadline,
-		People:               people,
-		AutoApproved:         autoApproved,
-		AutonomyAutoChanges:  autonomyChanges,
-		Budget:               budget,
-		Mode:                 mode,
-		Scope:                scope,
-		Floors:               floors,
-		Goals:                goals,
-		SystemRisks:          risks,
+		Since:                   since.UTC().Format(time.RFC3339),
+		Until:                   now.UTC().Format(time.RFC3339),
+		Workspace:               ws,
+		Squads:                  squads,
+		OmittedSquadCount:       omitted,
+		Quiet:                   quiet,
+		Knowledge:               know,
+		Inquiries:               inquiries,
+		QueuedAsks:              queued,
+		AttentionMinutesPerDone: attentionPerDone,
+		Pipeline:                pipeline,
+		OverdueRequests:         overdue,
+		BlockedDirectives:       blockedDirectives,
+		RequestsPastDeadline:    requestsPastDeadline,
+		People:                  people,
+		AutoApproved:            autoApproved,
+		AutonomyAutoChanges:     autonomyChanges,
+		Budget:                  budget,
+		Mode:                    mode,
+		Scope:                   scope,
+		Floors:                  floors,
+		Goals:                   goals,
+		SystemRisks:             risks,
 	}, nil
 }
 

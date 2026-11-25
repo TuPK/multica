@@ -472,3 +472,32 @@ func filterQueuedToSquads(asks []QueuedAsk, squads map[string]bool) []QueuedAsk 
 	}
 	return out
 }
+
+// AttentionMinutesPerDone is the attention.minutes_per_done reading of [since, until) (spec 7.5):
+// the minutes people spent deciding in the window, per issue of the workspace that reached done
+// in it. ok is false when the window holds no question or no done issue, so no reading is shown.
+func AttentionMinutesPerDone(ctx context.Context, q *db.Queries, ws pgtype.UUID, since, until time.Time) (float64, bool, error) {
+	spent, err := q.SumAttentionMinutesSince(ctx, db.SumAttentionMinutesSinceParams{
+		WorkspaceID: ws,
+		Since:       pgtype.Timestamptz{Time: since, Valid: true},
+		Until:       pgtype.Timestamptz{Time: until, Valid: true},
+	})
+	if err != nil {
+		return 0, false, fmt.Errorf("sum attention minutes: %w", err)
+	}
+	if spent.Asks == 0 {
+		return 0, false, nil
+	}
+	done, err := q.BuiltinIssueDeliveryStats(ctx, db.BuiltinIssueDeliveryStatsParams{
+		WorkspaceID: ws,
+		Since:       pgtype.Timestamptz{Time: since, Valid: true},
+		Until:       pgtype.Timestamptz{Time: until, Valid: true},
+	})
+	if err != nil {
+		return 0, false, fmt.Errorf("count done issues: %w", err)
+	}
+	if done.Done == 0 {
+		return 0, false, nil
+	}
+	return spent.Minutes / float64(done.Done), true, nil
+}

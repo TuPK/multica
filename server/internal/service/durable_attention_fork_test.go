@@ -208,6 +208,44 @@ func TestSquadShareExhaustedQueues(t *testing.T) {
 	if listed[attentionIDString(fits.SubjectID)] {
 		t.Fatalf("a delivered question must not be listed as queued")
 	}
+	// A queued question reaches neither the inbox nor the chat: the fixture has no other inbox rows.
+	var inbox int
+	if err := f.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM inbox_item WHERE workspace_id = $1`, f.ws).Scan(&inbox); err != nil {
+		t.Fatalf("count inbox items: %v", err)
+	}
+	if inbox != 0 {
+		t.Fatalf("queued questions reached the inbox: %d items", inbox)
+	}
+}
+
+// TestAttentionMinutesPerDone: the minutes the window spent over the issues it finished. No
+// reading while the window has no question or no done issue.
+func TestAttentionMinutesPerDone(t *testing.T) {
+	f := newAttentionFixture(t, true)
+	ctx := context.Background()
+	now := time.Now()
+	since, until := now.Add(-time.Hour), now.Add(time.Hour)
+
+	if _, ok, err := AttentionMinutesPerDone(ctx, f.q, f.ws, since, until); err != nil || ok {
+		t.Fatalf("no question in the window: ok=%v err=%v, want no reading", ok, err)
+	}
+	for i := 0; i < 2; i++ {
+		if _, err := f.attention.Admit(ctx, f.outcomeAsk()); err != nil {
+			t.Fatalf("admit: %v", err)
+		}
+	}
+	if _, ok, err := AttentionMinutesPerDone(ctx, f.q, f.ws, since, until); err != nil || ok {
+		t.Fatalf("no issue done in the window: ok=%v err=%v, want no reading", ok, err)
+	}
+
+	// Two manual checks of 4 minutes each, and one issue done in the window: 8 minutes per done.
+	f.Issue(t, "attention done", testutil.Cols{
+		"status": "done", "assignee_type": "squad", "assignee_id": attentionIDString(f.squad), "done_at": testutil.Raw("now()"),
+	})
+	perDone, ok, err := AttentionMinutesPerDone(ctx, f.q, f.ws, since, until)
+	if err != nil || !ok || perDone != 8 {
+		t.Fatalf("minutes per done = (%v, %v, %v), want (8, true, nil)", perDone, ok, err)
+	}
 }
 
 // TestUrgentNotQueued: an urgent question is delivered even past the squad's share.
