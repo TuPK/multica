@@ -312,7 +312,7 @@ func ocfHistoryFiles(ctx context.Context, q *db.Queries, ws pgtype.UUID, princip
 		})
 	}
 
-	events, err := q.ListGovernanceEventsForOCF(ctx, ws)
+	events, err := ocfAllGovernanceEvents(ctx, q, ws)
 	if err != nil {
 		return nil, fmt.Errorf("export governance: %w", err)
 	}
@@ -344,6 +344,32 @@ func ocfHistoryFiles(ctx context.Context, q *db.Queries, ws pgtype.UUID, princip
 		}
 	}
 	return files, nil
+}
+
+// ocfAllGovernanceEvents returns every governance event of ws, oldest first, by
+// paging through ListGovernanceEvents (the log is append-only and has no other
+// full read).
+func ocfAllGovernanceEvents(ctx context.Context, q *db.Queries, ws pgtype.UUID) ([]db.GovernanceEvent, error) {
+	const pageSize = 1000
+	params := db.ListGovernanceEventsParams{WorkspaceID: ws, RowLimit: pageSize}
+	var newestFirst []db.GovernanceEvent
+	for {
+		rows, err := q.ListGovernanceEvents(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		newestFirst = append(newestFirst, rows...)
+		if len(rows) < pageSize {
+			break
+		}
+		last := rows[len(rows)-1]
+		params.BeforeCreatedAt = last.CreatedAt
+		params.BeforeID = last.ID
+	}
+	for i, j := 0, len(newestFirst)-1; i < j; i, j = i+1, j-1 {
+		newestFirst[i], newestFirst[j] = newestFirst[j], newestFirst[i]
+	}
+	return newestFirst, nil
 }
 
 // ndjson encodes rows, one JSON object per line.

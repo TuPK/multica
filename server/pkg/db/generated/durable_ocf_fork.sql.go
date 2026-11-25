@@ -11,43 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listGovernanceEventsForOCF = `-- name: ListGovernanceEventsForOCF :many
-SELECT id, workspace_id, kind, actor_type, actor_id, subject_type, subject_id, summary, details, created_at FROM governance_event
-WHERE workspace_id = $1::uuid
-ORDER BY created_at, id
-`
-
-func (q *Queries) ListGovernanceEventsForOCF(ctx context.Context, workspaceID pgtype.UUID) ([]GovernanceEvent, error) {
-	rows, err := q.db.Query(ctx, listGovernanceEventsForOCF, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GovernanceEvent{}
-	for rows.Next() {
-		var i GovernanceEvent
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.Kind,
-			&i.ActorType,
-			&i.ActorID,
-			&i.SubjectType,
-			&i.SubjectID,
-			&i.Summary,
-			&i.Details,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listSettledWorkOutcomesForOCF = `-- name: ListSettledWorkOutcomesForOCF :many
 
 SELECT id, workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id, runtime_provider, model, work_class, verification_mode, sampled, verdict, severity, fail_cause, criteria_results, evidence, cost_micros, verification_cost_micros, settle_at, settled_at, superseded_by, created_at, updated_at FROM work_outcome

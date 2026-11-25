@@ -122,7 +122,7 @@ func importOCF(t *testing.T, f principalFixture, runtimeID string, data []byte) 
 // ocfGovernanceByKind counts the governance events of ws by kind.
 func ocfGovernanceByKind(t *testing.T, f principalFixture) map[string][]map[string]any {
 	t.Helper()
-	events, err := f.q.ListGovernanceEventsForOCF(context.Background(), util.MustParseUUID(f.WorkspaceID))
+	events, err := ocfAllGovernanceEvents(context.Background(), f.q, util.MustParseUUID(f.WorkspaceID))
 	if err != nil {
 		t.Fatalf("list governance: %v", err)
 	}

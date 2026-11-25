@@ -14,8 +14,3 @@ ORDER BY settled_at, id;
 SELECT * FROM track_record
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
 ORDER BY agent_id, work_class, window_days, model;
-
--- name: ListGovernanceEventsForOCF :many
-SELECT * FROM governance_event
-WHERE workspace_id = sqlc.arg('workspace_id')::uuid
-ORDER BY created_at, id;
