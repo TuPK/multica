@@ -11,7 +11,10 @@ import { renderWithI18n } from "../../test/i18n";
 import { EnvelopeDialog, SquadEnvelopeControl } from "./envelope-dialog";
 
 const flag = vi.hoisted(() => ({ on: true }));
-vi.mock("@multica/core/feature-flags", () => ({ useFlag: () => flag.on }));
+vi.mock("@multica/core/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/config")>()),
+  useFeatureEnabled: () => flag.on,
+}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),

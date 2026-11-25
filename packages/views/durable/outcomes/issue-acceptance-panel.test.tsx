@@ -10,7 +10,10 @@ import { renderWithI18n } from "../../test/i18n";
 import { IssueAcceptancePanel } from "./issue-acceptance-panel";
 
 const flag = vi.hoisted(() => ({ on: true }));
-vi.mock("@multica/core/feature-flags", () => ({ useFlag: () => flag.on }));
+vi.mock("@multica/core/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/config")>()),
+  useFeatureEnabled: () => flag.on,
+}));
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
   api: { request: vi.fn() },
