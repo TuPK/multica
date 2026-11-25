@@ -150,7 +150,10 @@
       "empty": "Aucun critère pour l'instant.",
       "load_failed": "Impossible de charger les critères.",
       "pending": "En attente · clôture dans {{time}}",
-      "pending_now": "En attente · clôture imminente"
+      "pending_now": "En attente · clôture imminente",
+      "archive": "Archiver le critère",
+      "archived": "Critère archivé.",
+      "archive_failed": "Impossible d'archiver le critère."
     },
     "tab": {
       "coverage": "Couverture vérifiée",
@@ -161,7 +164,11 @@
       "all": "Tous",
       "empty": "Aucun résultat ne correspond à ces filtres.",
       "load_failed": "Impossible de charger les résultats.",
-      "limit_note": "Affichage des 100 derniers résultats."
+      "limit_note": "Affichage des 100 derniers résultats.",
+      "weekly_title": "Taux de réussite par semaine",
+      "weekly_hint": "Validés parmi les résultats vérifiés, par semaine de création. Les 100 derniers résultats.",
+      "weekly_row": "{{week}} : {{rate}} % ({{pass}} sur {{verified}} vérifiés)",
+      "weekly_none": "{{week}} : aucun résultat vérifié"
     },
     "track_record": {
       "title": "Historique",
@@ -199,7 +206,10 @@
       "save_failed": "Impossible d'enregistrer la plage.",
       "reputation": "{{n}} résultats · borne basse {{score}} %",
       "reputation_none": "Aucun résultat pour l'instant",
-      "high_fail": "Échec grave au cours des 90 derniers jours"
+      "high_fail": "Échec grave au cours des 90 derniers jours",
+      "clear": "Retirer la plage",
+      "cleared": "Plage retirée.",
+      "clear_failed": "Impossible de retirer la plage."
     }
   }
 }

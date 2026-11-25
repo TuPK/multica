@@ -37,7 +37,23 @@ const outcome = (id: string, verdict: string) => ({
   created_at: "2026-11-18T10:00:00Z",
 });
 
+const DAY = 24 * 60 * 60 * 1000;
+
 function route(path: string) {
+  // The weekly chart asks for the outcomes since eight weeks back; those are the rows the chart counts.
+  if (path.includes("since=")) {
+    const now = Date.now();
+    return Promise.resolve({
+      outcomes: [
+        { ...outcome("w-1", "pass"), work_class: "weekly", created_at: new Date(now).toISOString() },
+        { ...outcome("w-2", "fail"), work_class: "weekly", created_at: new Date(now).toISOString() },
+        { ...outcome("w-3", "pass"), work_class: "weekly", created_at: new Date(now).toISOString() },
+        { ...outcome("w-4", "partial"), work_class: "weekly", created_at: new Date(now - 8 * DAY).toISOString() },
+        { ...outcome("w-5", "pending"), work_class: "weekly", created_at: new Date(now).toISOString() },
+      ],
+      next_cursor: "",
+    });
+  }
   if (path.startsWith("/api/outcomes/summary")) {
     return Promise.resolve({
       group_by: "work_class",
@@ -74,6 +90,15 @@ describe("GovernanceOutcomesTab", () => {
 
     const coverage = await screen.findByRole("region", { name: "Verified coverage" });
     expect(await within(coverage).findByText("63%")).toBeInTheDocument();
+  });
+
+  it("charts the pass rate of checked outcomes for each of the last eight weeks", async () => {
+    renderTab();
+
+    const chart = await screen.findByRole("region", { name: "Pass rate by week" });
+    // This week: two passed of three checked, the pending one left out. Eight days back: none passed of one.
+    expect(await within(chart).findByText(/67% \(2 of 3 checked\)/)).toBeInTheDocument();
+    expect(within(chart).getByText(/0% \(0 of 1 checked\)/)).toBeInTheDocument();
   });
 
   it("filters the outcomes by verdict through the server", async () => {

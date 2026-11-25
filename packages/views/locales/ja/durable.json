@@ -150,7 +150,10 @@
       "empty": "基準はまだありません。",
       "load_failed": "基準を読み込めませんでした。",
       "pending": "保留中 · {{time}}後に確定",
-      "pending_now": "保留中 · まもなく確定"
+      "pending_now": "保留中 · まもなく確定",
+      "archive": "基準をアーカイブ",
+      "archived": "基準をアーカイブしました。",
+      "archive_failed": "基準をアーカイブできませんでした。"
     },
     "tab": {
       "coverage": "検証カバー率",
@@ -161,7 +164,11 @@
       "all": "すべて",
       "empty": "条件に合う結果がありません。",
       "load_failed": "結果を読み込めませんでした。",
-      "limit_note": "最新の100件を表示しています。"
+      "limit_note": "最新の100件を表示しています。",
+      "weekly_title": "週ごとの合格率",
+      "weekly_hint": "作成された週ごとに、確認済みの結果のうち合格の割合です。直近100件。",
+      "weekly_row": "{{week}}: {{rate}}%（合格 {{pass}}、確認済み {{verified}}）",
+      "weekly_none": "{{week}}: 確認済みの結果なし"
     },
     "track_record": {
       "title": "実績",
@@ -199,7 +206,10 @@
       "save_failed": "範囲を保存できませんでした。",
       "reputation": "結果 {{n}} 件 · 下限スコア {{score}}%",
       "reputation_none": "結果はまだありません",
-      "high_fail": "直近90日に重大な失敗あり"
+      "high_fail": "直近90日に重大な失敗あり",
+      "clear": "範囲を解除",
+      "cleared": "範囲を解除しました。",
+      "clear_failed": "範囲を解除できませんでした。"
     }
   }
 }

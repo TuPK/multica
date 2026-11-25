@@ -18,6 +18,10 @@ vi.mock("@multica/core/api", async (importOriginal) => ({
 
 const request = vi.mocked(api.request);
 
+// What the server holds: an archived criterion drops out of the list on the next read.
+let criterionArchived = false;
+let outcomeVerdict = "pending";
+
 const criterion = {
   id: "c-1",
   issue_id: "i-1",
@@ -54,11 +58,14 @@ const outcome = {
 };
 
 function route(path: string) {
-  if (path === "/api/issues/i-1/criteria") return Promise.resolve({ criteria: [criterion] });
-  if (path === "/api/issues/i-1/outcome") return Promise.resolve(outcome);
+  if (path === "/api/issues/i-1/criteria") {
+    return Promise.resolve({ criteria: [{ ...criterion, archived_at: criterionArchived ? "2026-11-25T10:00:00Z" : null }] });
+  }
+  if (path === "/api/issues/i-1/outcome") return Promise.resolve({ ...outcome, verdict: outcomeVerdict });
   if (path === "/api/outcomes/o-1") {
     return Promise.resolve({
       ...outcome,
+      verdict: outcomeVerdict,
       verifications: [
         {
           id: "v-1",
@@ -90,6 +97,8 @@ function renderPanel() {
 
 beforeEach(() => {
   flag.on = true;
+  criterionArchived = false;
+  outcomeVerdict = "pending";
   request.mockReset();
   request.mockImplementation((path) => route(String(path)));
 });
@@ -136,5 +145,37 @@ describe("IssueAcceptancePanel", () => {
       ),
     );
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add criterion" })).not.toBeInTheDocument());
+  });
+
+  it("archives a criterion and removes its row", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderPanel();
+    await screen.findByText("Unit tests pass");
+
+    request.mockImplementation((path, init) => {
+      if (init?.method === "PATCH") {
+        criterionArchived = true;
+        return Promise.resolve({ ...criterion, archived_at: "2026-11-25T10:00:00Z" });
+      }
+      return route(String(path));
+    });
+
+    await user.click(screen.getByRole("button", { name: "Archive criterion" }));
+
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith(
+        "/api/issues/i-1/criteria/c-1",
+        expect.objectContaining({ method: "PATCH", body: JSON.stringify({ archived: true }) }),
+      ),
+    );
+    await waitFor(() => expect(screen.queryByText("Unit tests pass")).not.toBeInTheDocument());
+  });
+
+  it("does not offer to archive once the outcome has settled", async () => {
+    outcomeVerdict = "pass";
+    renderPanel();
+
+    expect(await screen.findByText("Unit tests pass")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Archive criterion" })).toBeDisabled());
   });
 });

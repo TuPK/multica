@@ -150,7 +150,10 @@
       "empty": "No criteria yet.",
       "load_failed": "Could not load the criteria.",
       "pending": "Pending · settles in {{time}}",
-      "pending_now": "Pending · settles soon"
+      "pending_now": "Pending · settles soon",
+      "archive": "Archive criterion",
+      "archived": "Criterion archived.",
+      "archive_failed": "Could not archive the criterion."
     },
     "tab": {
       "coverage": "Verified coverage",
@@ -161,7 +164,11 @@
       "all": "All",
       "empty": "No outcomes match these filters.",
       "load_failed": "Could not load outcomes.",
-      "limit_note": "Showing the latest 100 outcomes."
+      "limit_note": "Showing the latest 100 outcomes.",
+      "weekly_title": "Pass rate by week",
+      "weekly_hint": "Passed out of checked outcomes, by the week each one was created. The latest 100 outcomes.",
+      "weekly_row": "{{week}}: {{rate}}% ({{pass}} of {{verified}} checked)",
+      "weekly_none": "{{week}}: none checked"
     },
     "track_record": {
       "title": "Track record",
@@ -199,7 +206,10 @@
       "save_failed": "Could not save the range.",
       "reputation": "{{n}} outcomes · lower bound {{score}}%",
       "reputation_none": "No outcomes yet",
-      "high_fail": "High-severity fail in the last 90 days"
+      "high_fail": "High-severity fail in the last 90 days",
+      "clear": "Clear range",
+      "cleared": "Range cleared.",
+      "clear_failed": "Could not clear the range."
     }
   }
 }

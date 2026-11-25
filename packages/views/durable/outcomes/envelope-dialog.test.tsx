@@ -8,8 +8,10 @@ import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { api } from "@multica/core/api";
 import { renderWithI18n } from "../../test/i18n";
-import { EnvelopeDialog } from "./envelope-dialog";
+import { EnvelopeDialog, SquadEnvelopeControl } from "./envelope-dialog";
 
+const flag = vi.hoisted(() => ({ on: true }));
+vi.mock("@multica/core/feature-flags", () => ({ useFlag: () => flag.on }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
@@ -78,5 +80,58 @@ describe("EnvelopeDialog", () => {
     );
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(toast.success).toHaveBeenCalled();
+  });
+});
+
+const setEnvelope = {
+  squad_id: "s-1",
+  floor_level: 1,
+  ceiling_level: 2,
+  reason: "Trial",
+  set_by: "u-1",
+  last_auto_change_at: null,
+  updated_at: "2026-11-24T02:00:00Z",
+};
+const reputation = { n: 0, score_lower: 0, window_days: 90, high_fail_30: false, high_fail_90: false, acceptance_rate: null };
+
+describe("SquadEnvelopeControl", () => {
+  beforeEach(() => {
+    flag.on = true;
+    request.mockReset();
+  });
+
+  it("clears a set range with DELETE and then shows that no range is set", async () => {
+    const user = userEvent.setup({ delay: null });
+    request.mockImplementation(async (_path, init) => {
+      if (init?.method === "DELETE") return undefined as never;
+      return { envelope: setEnvelope, reputation } as never;
+    });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    renderWithI18n(
+      <QueryClientProvider client={qc}>
+        <SquadEnvelopeControl wsId="ws-1" squadId="s-1" editable />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Range: L1–L2")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear range" }));
+
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith("/api/squads/s-1/autonomy/envelope", expect.objectContaining({ method: "DELETE" })),
+    );
+    expect(await screen.findByText("Range: No range set")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear range" })).not.toBeInTheDocument();
+  });
+
+  it("shows nothing while the flag is off", () => {
+    flag.on = false;
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = renderWithI18n(
+      <QueryClientProvider client={qc}>
+        <SquadEnvelopeControl wsId="ws-1" squadId="s-1" editable />
+      </QueryClientProvider>,
+    );
+    expect(container).toBeEmptyDOMElement();
+    expect(request).not.toHaveBeenCalled();
   });
 });

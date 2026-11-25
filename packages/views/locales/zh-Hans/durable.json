@@ -150,7 +150,10 @@
       "empty": "还没有标准。",
       "load_failed": "无法加载标准。",
       "pending": "待定 · {{time}}后结算",
-      "pending_now": "待定 · 即将结算"
+      "pending_now": "待定 · 即将结算",
+      "archive": "归档标准",
+      "archived": "已归档标准。",
+      "archive_failed": "无法归档标准。"
     },
     "tab": {
       "coverage": "验证覆盖率",
@@ -161,7 +164,11 @@
       "all": "全部",
       "empty": "没有符合筛选条件的结果。",
       "load_failed": "无法加载结果。",
-      "limit_note": "显示最新的 100 条结果。"
+      "limit_note": "显示最新的 100 条结果。",
+      "weekly_title": "每周通过率",
+      "weekly_hint": "按结果创建的周，统计已检查结果中通过的比例。最近 100 条结果。",
+      "weekly_row": "{{week}}：{{rate}}%（通过 {{pass}}，已检查 {{verified}}）",
+      "weekly_none": "{{week}}：暂无已检查结果"
     },
     "track_record": {
       "title": "履历",
@@ -199,7 +206,10 @@
       "save_failed": "无法保存区间。",
       "reputation": "{{n}} 条结果 · 置信下界 {{score}}%",
       "reputation_none": "还没有结果",
-      "high_fail": "90 天内有严重失败"
+      "high_fail": "90 天内有严重失败",
+      "clear": "清除区间",
+      "cleared": "已清除区间。",
+      "clear_failed": "无法清除区间。"
     }
   }
 }

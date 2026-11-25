@@ -150,7 +150,10 @@
       "empty": "Aún no hay criterios.",
       "load_failed": "No se pudieron cargar los criterios.",
       "pending": "Pendiente · se cierra en {{time}}",
-      "pending_now": "Pendiente · se cierra pronto"
+      "pending_now": "Pendiente · se cierra pronto",
+      "archive": "Archivar criterio",
+      "archived": "Criterio archivado.",
+      "archive_failed": "No se pudo archivar el criterio."
     },
     "tab": {
       "coverage": "Cobertura verificada",
@@ -161,7 +164,11 @@
       "all": "Todos",
       "empty": "Ningún resultado coincide con estos filtros.",
       "load_failed": "No se pudieron cargar los resultados.",
-      "limit_note": "Se muestran los 100 resultados más recientes."
+      "limit_note": "Se muestran los 100 resultados más recientes.",
+      "weekly_title": "Tasa de aprobados por semana",
+      "weekly_hint": "Aprobados entre los resultados revisados, por semana de creación. Los 100 resultados más recientes.",
+      "weekly_row": "{{week}}: {{rate}} % ({{pass}} de {{verified}} revisados)",
+      "weekly_none": "{{week}}: ninguno revisado"
     },
     "track_record": {
       "title": "Historial",
@@ -199,7 +206,10 @@
       "save_failed": "No se pudo guardar el rango.",
       "reputation": "{{n}} resultados · límite inferior {{score}} %",
       "reputation_none": "Aún no hay resultados",
-      "high_fail": "Fallo grave en los últimos 90 días"
+      "high_fail": "Fallo grave en los últimos 90 días",
+      "clear": "Quitar rango",
+      "cleared": "Rango quitado.",
+      "clear_failed": "No se pudo quitar el rango."
     }
   }
 }

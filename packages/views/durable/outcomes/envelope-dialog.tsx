@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { useSetSquadEnvelope, useSquadEnvelope } from "@multica/core/durable/track-records";
+import { useClearSquadEnvelope, useSetSquadEnvelope, useSquadEnvelope } from "@multica/core/durable/track-records";
 import { Button } from "@multica/ui/components/ui/button";
 import {
   Dialog,
@@ -36,6 +36,7 @@ function EnvelopeSummary({ wsId, squadId, editable }: { wsId: string; squadId: s
   const { t } = useT("durable");
   const view = useSquadEnvelope(wsId, squadId);
   const [open, setOpen] = useState(false);
+  const clear = useClearSquadEnvelope(wsId, squadId);
   const envelope = view.data?.envelope ?? null;
   const reputation = view.data?.reputation;
   const score = reputation ? Math.round(reputation.score_lower * 100) : 0;
@@ -56,9 +57,28 @@ function EnvelopeSummary({ wsId, squadId, editable }: { wsId: string; squadId: s
         {reputation?.high_fail_90 ? ` · ${t(($) => $.outcomes.envelope.high_fail)}` : ""}
       </span>
       {editable ? (
-        <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
-          {t(($) => $.outcomes.envelope.set)}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+            {t(($) => $.outcomes.envelope.set)}
+          </Button>
+          {envelope ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={clear.isPending}
+              aria-busy={clear.isPending}
+              onClick={() =>
+                clear.mutateAsync().then(
+                  () => toast.success(t(($) => $.outcomes.envelope.cleared)),
+                  () => toast.error(t(($) => $.outcomes.envelope.clear_failed)),
+                )
+              }
+            >
+              {t(($) => $.outcomes.envelope.clear)}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
       <EnvelopeDialog open={open} onOpenChange={setOpen} wsId={wsId} squadId={squadId} />
     </div>

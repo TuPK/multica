@@ -2,9 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import {
   CHECK_KINDS,
   useAddCriterion,
+  useArchiveCriterion,
   useIssueCriteria,
   useIssueOutcome,
   useOutcome,
@@ -27,7 +29,9 @@ import {
 import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
-import { Plus } from "@multica/ui/icons";
+import { Archive, Plus } from "@multica/ui/icons";
+import { useReducedMotion } from "@multica/core/appearance";
+import { UI_EASE_OUT, UI_MOTION_DURATION } from "@multica/ui/lib/motion";
 import { useT } from "../../i18n";
 import { IssueSidebarSectionHeader } from "../../issues/components/issue-sidebar-section";
 import { VerdictChip } from "./verdict-chip";
@@ -55,8 +59,19 @@ function AcceptanceBlock({ wsId, issueId }: { wsId: string; issueId: string }) {
   const detail = useOutcome(wsId, outcome?.id ?? "");
   const results = latestResults(detail.data?.verifications ?? []);
   const [adding, setAdding] = useState(false);
+  const archive = useArchiveCriterion(wsId, issueId);
 
   const active = (criteria.data ?? []).filter((criterion) => !criterion.archived_at);
+  // The server refuses to change criteria once the outcome has settled or been checked; a pending
+  // outcome with no check yet is the only state where archiving is offered.
+  const canArchive = outcome === null || outcome.verdict === "pending";
+
+  const onArchive = (criterionId: string) => {
+    archive.mutateAsync(criterionId).then(
+      () => toast.success(t(($) => $.outcomes.acceptance.archived)),
+      () => toast.error(t(($) => $.outcomes.acceptance.archive_failed)),
+    );
+  };
 
   return (
     <section aria-label={t(($) => $.outcomes.acceptance.title)} className="flex flex-col gap-2">
@@ -87,10 +102,18 @@ function AcceptanceBlock({ wsId, issueId }: { wsId: string; issueId: string }) {
           <p className="text-caption text-muted-foreground">{t(($) => $.outcomes.acceptance.empty)}</p>
         ) : null}
         {active.length > 0 ? (
-          <ul className="flex flex-col gap-2">
-            {active.map((criterion) => (
-              <CriterionRow key={criterion.id} criterion={criterion} result={results.get(criterion.id)} />
-            ))}
+          <ul className="flex flex-col">
+            <AnimatePresence initial={false}>
+              {active.map((criterion) => (
+                <CriterionRow
+                  key={criterion.id}
+                  criterion={criterion}
+                  result={results.get(criterion.id)}
+                  archiveDisabled={!canArchive || archive.isPending}
+                  onArchive={onArchive}
+                />
+              ))}
+            </AnimatePresence>
           </ul>
         ) : null}
       </div>
@@ -118,16 +141,49 @@ function OutcomeChip({ outcome }: { outcome: Outcome }) {
   return <VerdictChip verdict="pending" label={label} />;
 }
 
-function CriterionRow({ criterion, result }: { criterion: Criterion; result: VerificationResult | undefined }) {
+// A new criterion fades in, and an archived one collapses out (motion.md, list rows). The row reads
+// useIsPresent so a leaving row takes no clicks or focus while it collapses.
+function CriterionRow({
+  criterion,
+  result,
+  archiveDisabled,
+  onArchive,
+}: {
+  criterion: Criterion;
+  result: VerificationResult | undefined;
+  archiveDisabled: boolean;
+  onArchive: (criterionId: string) => void;
+}) {
   const { t } = useT("durable");
+  const isPresent = useIsPresent();
+  const reduceMotion = useReducedMotion();
+  const duration = reduceMotion ? 0 : UI_MOTION_DURATION.fast;
   return (
-    <li className="flex min-w-0 flex-col gap-0.5">
-      <span className="break-words text-body">{criterion.text}</span>
-      <span className="flex min-w-0 flex-wrap gap-x-2 text-caption text-muted-foreground">
-        <span>{t(($) => $.outcomes.check_kind[criterion.check_kind])}</span>
-        <span>{t(($) => $.outcomes.result[result ?? "unable"])}</span>
-      </span>
-    </li>
+    <motion.li
+      inert={!isPresent}
+      initial={{ opacity: 0, y: reduceMotion ? 0 : 4, overflow: "hidden" }}
+      animate={{ opacity: 1, y: 0, transitionEnd: { overflow: "visible" } }}
+      exit={{ opacity: 0, height: 0, paddingBottom: 0, overflow: "hidden" }}
+      transition={{ duration, ease: UI_EASE_OUT }}
+      className="flex min-w-0 items-start gap-2 pb-2"
+    >
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="break-words text-body">{criterion.text}</span>
+        <span className="flex min-w-0 flex-wrap gap-x-2 text-caption text-muted-foreground">
+          <span>{t(($) => $.outcomes.check_kind[criterion.check_kind])}</span>
+          <span>{t(($) => $.outcomes.result[result ?? "unable"])}</span>
+        </span>
+      </div>
+      <IconButton
+        variant="ghost"
+        size="icon-xs"
+        label={t(($) => $.outcomes.acceptance.archive)}
+        disabled={archiveDisabled}
+        onClick={() => onArchive(criterion.id)}
+      >
+        <Archive />
+      </IconButton>
+    </motion.li>
   );
 }
 

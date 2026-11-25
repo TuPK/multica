@@ -38,6 +38,24 @@ export function useSetSquadEnvelope(wsId: string, squadId: string) {
   });
 }
 
+/**
+ * Clears a squad's envelope (DELETE, 204). The squad then moves on the Phase 4 rules alone: only a
+ * person changes its level. The cache keeps the reputation the server still reads.
+ */
+export function useClearSquadEnvelope(wsId: string, squadId: string) {
+  const qc = useQueryClient();
+  return useMutation<void, Error, void>({
+    mutationFn: async () => {
+      await api.request(`/api/squads/${encodeURIComponent(squadId)}/autonomy/envelope`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      qc.setQueryData<SquadEnvelopeView>(envelopeKeys.squad(wsId, squadId), (prev) =>
+        prev ? { ...prev, envelope: null } : prev,
+      );
+    },
+  });
+}
+
 /** Pins a verification mode for one agent and work class, or unpins it with a null mode. */
 export function usePinTrackRecord(wsId: string) {
   const qc = useQueryClient();

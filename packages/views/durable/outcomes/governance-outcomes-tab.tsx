@@ -2,15 +2,23 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   OUTCOME_VERDICTS,
   useOutcomeSummary,
   useOutcomes,
+  type Outcome,
   type OutcomeSummaryGroup,
   type OutcomeVerdict,
 } from "@multica/core/durable/outcomes";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { agentListOptions, squadListOptions } from "@multica/core/workspace/queries";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@multica/ui/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { cn } from "@multica/ui/lib/utils";
 import { PAGE_GUTTER } from "../../layout/page-header";
@@ -21,6 +29,8 @@ import { VerdictChip } from "./verdict-chip";
 // paging silently.
 const PAGE_SIZE = 100;
 const ALL = "all";
+// The chart covers this many weeks, the current one included.
+const CHART_WEEKS = 8;
 
 type SelectItemValue = { value: string; label: string };
 
@@ -45,6 +55,13 @@ export function GovernanceOutcomesTab() {
     limit: PAGE_SIZE,
   });
   const summary = useOutcomeSummary(wsId);
+  // The chart reads its own window, unfiltered by the table. The window is fixed when the tab mounts.
+  const [chartFrom] = useState(() => weekStart(new Date(), -(CHART_WEEKS - 1)));
+  const recent = useOutcomes(wsId, { since: chartFrom.toISOString(), limit: PAGE_SIZE });
+  const weeks = weeklyPassRates(recent.data?.outcomes ?? [], chartFrom, CHART_WEEKS);
+  const chartConfig = {
+    rate: { label: t(($) => $.outcomes.tab.weekly_title), color: "var(--chart-1)" },
+  } satisfies ChartConfig;
 
   const agentNames = useMemo(
     () => new Map((agents.data ?? []).map((agent) => [agent.id, agent.name])),
@@ -68,6 +85,38 @@ export function GovernanceOutcomesTab() {
 
   return (
     <div className={cn(PAGE_GUTTER, "flex flex-col gap-8 py-4")}>
+      <section aria-label={t(($) => $.outcomes.tab.weekly_title)} className="flex flex-col gap-2">
+        <h2 className="text-heading">{t(($) => $.outcomes.tab.weekly_title)}</h2>
+        <p className="max-w-prose text-caption text-muted-foreground">{t(($) => $.outcomes.tab.weekly_hint)}</p>
+        <ChartContainer config={chartConfig} className="aspect-[3/1] w-full">
+          <BarChart
+            data={weeks.map((week) => ({ label: weekLabel(week.start), rate: week.rate }))}
+            margin={{ left: 0, right: 0, top: 4, bottom: 0 }}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} interval="preserveStartEnd" />
+            <YAxis hide domain={[0, 100]} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="rate" fill="var(--color-rate)" radius={4} />
+          </BarChart>
+        </ChartContainer>
+        {/* The same numbers as text, for a screen reader and for anyone who needs the exact values. */}
+        <ul className="sr-only">
+          {weeks.map((week) => (
+            <li key={week.start.getTime()}>
+              {week.rate === null
+                ? t(($) => $.outcomes.tab.weekly_none, { week: weekLabel(week.start) })
+                : t(($) => $.outcomes.tab.weekly_row, {
+                    week: weekLabel(week.start),
+                    rate: week.rate,
+                    pass: week.pass,
+                    verified: week.verified,
+                  })}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section aria-label={t(($) => $.outcomes.tab.coverage)} className="flex max-w-prose flex-col gap-1">
         <h2 className="text-heading">{t(($) => $.outcomes.tab.coverage)}</h2>
         <p className="text-title font-semibold tabular-nums">{percent === null ? "—" : `${percent}%`}</p>
@@ -155,4 +204,49 @@ export function verifiedCoverage(groups: OutcomeSummaryGroup[]): number | null {
   if (total === 0) return null;
   const verified = groups.reduce((sum, group) => sum + group.pass + group.partial + group.fail, 0);
   return Math.round((verified * 100) / total);
+}
+
+export type WeekRate = {
+  start: Date;
+  pass: number;
+  verified: number;
+  /** Passed as a share of the checked outcomes, rounded; null while the week has none checked. */
+  rate: number | null;
+};
+
+/** The Monday at local midnight of the week holding `date`, moved by `weeks` whole weeks. */
+export function weekStart(date: Date, weeks = 0): Date {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7) + 7 * weeks);
+  return start;
+}
+
+/**
+ * Pass rate of each week from `first` on, for `weeks` weeks. An outcome counts in the week it was
+ * created. Pending and unverified outcomes are not checked yet, so they are left out.
+ */
+export function weeklyPassRates(outcomes: Outcome[], first: Date, weeks: number): WeekRate[] {
+  const buckets: WeekRate[] = Array.from({ length: weeks }, (_, i) => ({
+    start: weekStart(first, i),
+    pass: 0,
+    verified: 0,
+    rate: null,
+  }));
+  for (const outcome of outcomes) {
+    if (outcome.verdict === "pending" || outcome.verdict === "unverified") continue;
+    const at = weekStart(new Date(outcome.created_at)).getTime();
+    const bucket = buckets.find((week) => week.start.getTime() === at);
+    if (!bucket) continue;
+    bucket.verified += 1;
+    if (outcome.verdict === "pass") bucket.pass += 1;
+  }
+  return buckets.map((week) => ({
+    ...week,
+    rate: week.verified > 0 ? Math.round((week.pass * 100) / week.verified) : null,
+  }));
+}
+
+function weekLabel(start: Date): string {
+  return start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

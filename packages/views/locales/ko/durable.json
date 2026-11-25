@@ -150,7 +150,10 @@
       "empty": "아직 기준이 없습니다.",
       "load_failed": "기준을 불러오지 못했습니다.",
       "pending": "보류 중 · {{time}} 뒤 확정",
-      "pending_now": "보류 중 · 곧 확정"
+      "pending_now": "보류 중 · 곧 확정",
+      "archive": "기준 보관",
+      "archived": "기준을 보관했습니다.",
+      "archive_failed": "기준을 보관하지 못했습니다."
     },
     "tab": {
       "coverage": "검증 범위",
@@ -161,7 +164,11 @@
       "all": "전체",
       "empty": "조건에 맞는 결과가 없습니다.",
       "load_failed": "결과를 불러오지 못했습니다.",
-      "limit_note": "최근 결과 100개를 표시합니다."
+      "limit_note": "최근 결과 100개를 표시합니다.",
+      "weekly_title": "주간 통과율",
+      "weekly_hint": "생성된 주 기준으로, 검사된 결과 중 통과한 비율입니다. 최근 결과 100개.",
+      "weekly_row": "{{week}}: {{rate}}% (통과 {{pass}}, 검사 {{verified}})",
+      "weekly_none": "{{week}}: 검사된 결과 없음"
     },
     "track_record": {
       "title": "실적",
@@ -199,7 +206,10 @@
       "save_failed": "범위를 저장하지 못했습니다.",
       "reputation": "결과 {{n}}개 · 하한 점수 {{score}}%",
       "reputation_none": "아직 결과가 없습니다",
-      "high_fail": "최근 90일 내 심각한 실패"
+      "high_fail": "최근 90일 내 심각한 실패",
+      "clear": "범위 해제",
+      "cleared": "범위를 해제했습니다.",
+      "clear_failed": "범위를 해제하지 못했습니다."
     }
   }
 }

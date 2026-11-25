@@ -150,7 +150,10 @@
       "empty": "Chưa có tiêu chí.",
       "load_failed": "Không tải được tiêu chí.",
       "pending": "Đang chờ · còn {{time}}",
-      "pending_now": "Đang chờ · sắp chốt"
+      "pending_now": "Đang chờ · sắp chốt",
+      "archive": "Lưu trữ tiêu chí",
+      "archived": "Đã lưu trữ tiêu chí.",
+      "archive_failed": "Không lưu trữ được tiêu chí."
     },
     "tab": {
       "coverage": "Độ phủ kiểm chứng",
@@ -161,7 +164,11 @@
       "all": "Tất cả",
       "empty": "Không có kết quả nào khớp bộ lọc.",
       "load_failed": "Không tải được kết quả.",
-      "limit_note": "Hiện 100 kết quả mới nhất."
+      "limit_note": "Hiện 100 kết quả mới nhất.",
+      "weekly_title": "Tỷ lệ đạt theo tuần",
+      "weekly_hint": "Số đạt trên các kết quả đã kiểm, theo tuần tạo ra kết quả. 100 kết quả gần nhất.",
+      "weekly_row": "{{week}}: {{rate}}% ({{pass}} trên {{verified}} đã kiểm)",
+      "weekly_none": "{{week}}: chưa có kết quả kiểm"
     },
     "track_record": {
       "title": "Thành tích",
@@ -199,7 +206,10 @@
       "save_failed": "Không lưu được khoảng.",
       "reputation": "{{n}} kết quả · cận dưới {{score}}%",
       "reputation_none": "Chưa có kết quả",
-      "high_fail": "Có lỗi nặng trong 90 ngày"
+      "high_fail": "Có lỗi nặng trong 90 ngày",
+      "clear": "Bỏ khoảng",
+      "cleared": "Đã bỏ khoảng.",
+      "clear_failed": "Không bỏ được khoảng."
     }
   }
 }

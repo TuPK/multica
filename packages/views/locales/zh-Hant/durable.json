@@ -150,7 +150,10 @@
       "empty": "尚無標準。",
       "load_failed": "無法載入標準。",
       "pending": "待定 · {{time}}後結算",
-      "pending_now": "待定 · 即將結算"
+      "pending_now": "待定 · 即將結算",
+      "archive": "封存標準",
+      "archived": "已封存標準。",
+      "archive_failed": "無法封存標準。"
     },
     "tab": {
       "coverage": "驗證覆蓋率",
@@ -161,7 +164,11 @@
       "all": "全部",
       "empty": "沒有符合篩選條件的結果。",
       "load_failed": "無法載入結果。",
-      "limit_note": "顯示最新的 100 筆結果。"
+      "limit_note": "顯示最新的 100 筆結果。",
+      "weekly_title": "每週通過率",
+      "weekly_hint": "依結果建立的週，統計已檢查結果中通過的比例。最近 100 筆結果。",
+      "weekly_row": "{{week}}：{{rate}}%（通過 {{pass}}，已檢查 {{verified}}）",
+      "weekly_none": "{{week}}：尚無已檢查結果"
     },
     "track_record": {
       "title": "履歷",
@@ -199,7 +206,10 @@
       "save_failed": "無法儲存區間。",
       "reputation": "{{n}} 筆結果 · 信賴下界 {{score}}%",
       "reputation_none": "尚無結果",
-      "high_fail": "90 天內有嚴重失敗"
+      "high_fail": "90 天內有嚴重失敗",
+      "clear": "清除區間",
+      "cleared": "已清除區間。",
+      "clear_failed": "無法清除區間。"
     }
   }
 }
