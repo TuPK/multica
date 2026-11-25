@@ -1443,6 +1443,8 @@ export function InboxPage() {
       <PageHeader>
         <h1 className="text-body font-semibold">{tabLabel}</h1>
       </PageHeader>
+      {/* The desktop page shows no list (the Work panel holds it), so the decisions waiting for a person sit here. */}
+      {!isArchivedView && !isSnoozedView && <PendingIntents />}
       {liveFailed ? (
         <div className="flex min-h-0 flex-1 flex-col justify-center">{liveLoadFailed}</div>
       ) : (

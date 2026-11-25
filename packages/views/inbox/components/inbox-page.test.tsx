@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import type { AgentTask, InboxItem } from "@multica/core/types";
@@ -176,6 +176,9 @@ const FOLD_INNER_LANDSCAPE = 951;
 const TABLET = 768;
 const DESKTOP = 1440;
 const layout = { width: PHONE };
+vi.mock("../../durable/effects/pending-intents", () => ({
+  PendingIntents: () => <div data-testid="pending-intents" />,
+}));
 vi.mock("@multica/ui/hooks/use-mobile", () => ({
   useIsMobile: () => layout.width < 768,
   useIsCompact: () => layout.width < 768,
@@ -532,6 +535,21 @@ describe("InboxPage", () => {
     expect(within(screen.getByRole("alert")).getByRole("button")).toBeDisabled();
     // Still unknown, so the open notification is not sent to its issue page.
     expect(replace).not.toHaveBeenCalled();
+  });
+
+  // The decisions waiting for a person have no list to sit in on desktop, so the page shows them.
+  it("shows the pending decisions on desktop, but not on the archive", () => {
+    reset();
+    layout.width = DESKTOP;
+    render(<InboxPage />);
+    expect(screen.getByTestId("pending-intents")).toBeInTheDocument();
+    cleanup();
+
+    reset();
+    layout.width = DESKTOP;
+    searchParams = new URLSearchParams("view=archived");
+    render(<InboxPage />);
+    expect(screen.queryByTestId("pending-intents")).toBeNull();
   });
 
   // Every tab lists in the Work panel's Inbox section.

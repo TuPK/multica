@@ -141,7 +141,7 @@ export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: 
       ) : null}
 
       <Collapsible open={panel === "edit"}>
-        <CollapsibleContent className="flex flex-col gap-2 pt-1">
+        <CollapsibleContent className="flex flex-col gap-2">
           <label htmlFor={`intent-${intent.id}-text`} className="text-caption text-muted-foreground">
             {t(($) => $.intent.edit_label)}
           </label>
@@ -164,7 +164,7 @@ export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: 
       </Collapsible>
 
       <Collapsible open={panel === "reject"}>
-        <CollapsibleContent className="flex flex-col gap-2 pt-1">
+        <CollapsibleContent className="flex flex-col gap-2">
           <Textarea
             aria-label={t(($) => $.intent.reject_label)}
             placeholder={t(($) => $.intent.reject_label)}
@@ -190,8 +190,9 @@ export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: 
         </CollapsibleContent>
       </Collapsible>
 
-      {panel === "none" ? (
-        <div className="flex flex-wrap justify-end gap-2">
+      {/* Animated with the panels, not unmounted: an instant swap would make the card jump by the row's height. */}
+      <Collapsible open={panel === "none"}>
+        <CollapsibleContent className="flex flex-wrap justify-end gap-2">
           {editable ? (
             <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => setPanel("edit")}>
               {t(($) => $.intent.edit)}
@@ -203,8 +204,8 @@ export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: 
           <Button type="button" size="sm" disabled={busy} aria-busy={busy} onClick={() => reportApproval()}>
             {t(($) => $.intent.approve)}
           </Button>
-        </div>
-      ) : null}
+        </CollapsibleContent>
+      </Collapsible>
     </article>
   );
 }
