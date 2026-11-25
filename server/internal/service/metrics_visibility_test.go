@@ -73,7 +73,7 @@ func TestScorecardVisibility_InputsExcludeRestrictedProject(t *testing.T) {
 	f := newGovFixture(t)
 	yesterday := f.visibilityDoneIssues(t)
 	scope := ScorecardScope{SubjectType: ScorecardSubjectSquad, SubjectID: f.squadPG(t), SquadID: f.squadPG(t)}
-	in, err := ScorecardInputsFor(context.Background(), f.q, f.ws, scope, yesterday, f.now, f.now)
+	in, err := ScorecardInputsFor(context.Background(), f.q, f.ws, scope, yesterday, f.now, f.now, false)
 	if err != nil {
 		t.Fatal(err)
 	}

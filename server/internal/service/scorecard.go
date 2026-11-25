@@ -11,9 +11,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // Scorecards (spec 4.6). The nightly job computes, for every live agent, every
@@ -38,11 +40,14 @@ type ScorecardScope struct {
 type ScorecardService struct {
 	Queries *db.Queries
 	Now     func() time.Time
+	// Flags decides durable_outcomes, which switches the done time and the A5
+	// metrics to the transition history. Nil reads as off.
+	Flags *featureflag.Service
 }
 
 // NewScorecardService returns the scorecard service over q.
-func NewScorecardService(q *db.Queries) *ScorecardService {
-	return &ScorecardService{Queries: q, Now: time.Now}
+func NewScorecardService(q *db.Queries, flags *featureflag.Service) *ScorecardService {
+	return &ScorecardService{Queries: q, Now: time.Now, Flags: flags}
 }
 
 // ErrScorecardNotFound: no scorecard exists for the subject and period.
@@ -66,8 +71,9 @@ func ScorecardPeriodBounds(period string, now time.Time) (start, end time.Time, 
 	return time.Time{}, time.Time{}, fmt.Errorf("period must be week or month, not %q", period)
 }
 
-// ScorecardInputsFor reads the inputs of one scope over a window through q.
-func ScorecardInputsFor(ctx context.Context, q *db.Queries, ws pgtype.UUID, scope ScorecardScope, start, end time.Time, now time.Time) (ScorecardInputs, error) {
+// ScorecardInputsFor reads the inputs of one scope over a window through q. durable
+// selects the transition-based done rows and A5 inputs (scorecard_durable_fork.go).
+func ScorecardInputsFor(ctx context.Context, q *db.Queries, ws pgtype.UUID, scope ScorecardScope, start, end time.Time, now time.Time, durable bool) (ScorecardInputs, error) {
 	ps := pgtype.Timestamptz{Time: start, Valid: true}
 	pe := pgtype.Timestamptz{Time: end, Valid: true}
 	var in ScorecardInputs
@@ -89,17 +95,23 @@ func ScorecardInputsFor(ctx context.Context, q *db.Queries, ws pgtype.UUID, scop
 		in.Runs.FailuresByCause[c.Cause] = c.Runs
 	}
 
-	doneRows, err := q.ScorecardDoneIssues(ctx, db.ScorecardDoneIssuesParams{
-		WorkspaceID: ws, PeriodStart: ps, PeriodEnd: pe, AgentID: scope.AgentID, SquadID: scope.SquadID,
-	})
-	if err != nil {
-		return in, fmt.Errorf("scorecard done issues: %w", err)
-	}
-	for _, r := range doneRows {
-		in.Done = append(in.Done, ScorecardIssueRow{
-			CreatedAt: r.CreatedAt.Time, DoneAt: r.DoneAt.Time,
-			ReopenCount: int64(r.ReopenCount), CompletedRuns: r.CompletedRuns, HumanAfter: r.HumanAfter,
+	if durable {
+		if err := durableScorecardRead(ctx, q, ws, scope, start, end, &in); err != nil {
+			return in, err
+		}
+	} else {
+		doneRows, err := q.ScorecardDoneIssues(ctx, db.ScorecardDoneIssuesParams{
+			WorkspaceID: ws, PeriodStart: ps, PeriodEnd: pe, AgentID: scope.AgentID, SquadID: scope.SquadID,
 		})
+		if err != nil {
+			return in, fmt.Errorf("scorecard done issues: %w", err)
+		}
+		for _, r := range doneRows {
+			in.Done = append(in.Done, ScorecardIssueRow{
+				CreatedAt: r.CreatedAt.Time, DoneAt: r.DoneAt.Time,
+				ReopenCount: int64(r.ReopenCount), CompletedRuns: r.CompletedRuns, HumanAfter: r.HumanAfter,
+			})
+		}
 	}
 
 	cost, err := q.ScorecardRunCost(ctx, db.ScorecardRunCostParams{
@@ -165,7 +177,8 @@ func (s *ScorecardService) Compute(ctx context.Context, q *db.Queries, ws pgtype
 	if err != nil {
 		return db.Scorecard{}, err
 	}
-	in, err := ScorecardInputsFor(ctx, q, ws, scope, start, end, now)
+	durable := featureflags.DurableOutcomesEnabled(ctx, s.Flags)
+	in, err := ScorecardInputsFor(ctx, q, ws, scope, start, end, now, durable)
 	if err != nil {
 		return db.Scorecard{}, err
 	}

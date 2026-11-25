@@ -308,5 +308,7 @@ func writeMetricError(w http.ResponseWriter, err error) {
 
 // RunMetricNightly is the work of the nightly metric job (see the scheduler).
 func (h *Handler) RunMetricNightly(ctx context.Context) (int, error) {
-	return h.goalService().RunMetricNightly(ctx, time.Now())
+	g := h.goalService()
+	g.Metrics.Flags = h.FeatureFlags
+	return g.RunMetricNightly(ctx, time.Now())
 }

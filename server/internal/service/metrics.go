@@ -15,6 +15,7 @@ import (
 
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // Metrics (spec 4.1). A metric is a named series; a reading is one observed value
@@ -121,6 +122,9 @@ func BuiltinMetricDefs() []BuiltinMetricDef {
 type MetricService struct {
 	Queries   *db.Queries
 	TxStarter TxStarter
+	// Flags decides durable_outcomes, which moves the delivery readings to the
+	// transition history (durable spec 2.2). Nil reads as off.
+	Flags *featureflag.Service
 }
 
 // NewMetricService builds the metric service over the database.
