@@ -394,6 +394,7 @@ Sidecar variables (read by the `knowledge` profile):
 | `KNOWLEDGE_JWT_SECRET` | random per start | WeKnora login signing key (`openssl rand -hex 32`). |
 | `KNOWLEDGE_SYSTEM_SIGNING_KEY` | `KNOWLEDGE_SYSTEM_AES_KEY` | Signs preview and embed links. |
 | `KNOWLEDGE_VERSION` | `v0.9.0` | Tag of the app, UI and docreader images. |
+| `KNOWLEDGE_IMAGE_NAMESPACE` | `wechatopenai` | Docker Hub namespace the app, UI and docreader images are pulled from. |
 | `KNOWLEDGE_API_PORT` / `KNOWLEDGE_UI_PORT` | `8090` / `8085` | Loopback host ports. |
 | `KNOWLEDGE_SSRF_WHITELIST_EXTRA` | `host.docker.internal` | Private hosts WeKnora may call. Replaces WeKnora's own default list. |
 | `KNOWLEDGE_OLLAMA_URL` | `http://host.docker.internal:11434` | Ollama address for WeKnora's own features and the embedding default. |

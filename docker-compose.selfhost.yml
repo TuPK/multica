@@ -488,7 +488,7 @@ services:
 
   knowledge-docreader:
     profiles: ["knowledge"]
-    image: wechatopenai/weknora-docreader:${KNOWLEDGE_VERSION:-v0.9.0}
+    image: ${KNOWLEDGE_IMAGE_NAMESPACE:-wechatopenai}/weknora-docreader:${KNOWLEDGE_VERSION:-v0.9.0}
     environment:
       TZ: ${TZ:-UTC}
       DOCREADER_IMAGE_OUTPUT_DIR: /tmp/docreader
@@ -508,7 +508,7 @@ services:
 
   knowledge-app:
     profiles: ["knowledge"]
-    image: wechatopenai/weknora-app:${KNOWLEDGE_VERSION:-v0.9.0}
+    image: ${KNOWLEDGE_IMAGE_NAMESPACE:-wechatopenai}/weknora-app:${KNOWLEDGE_VERSION:-v0.9.0}
     # Refuse to boot without the at-rest encryption key: WeKnora encrypts API
     # keys and model credentials with it, and losing or changing it later makes
     # them unrecoverable. (A compose `:?` check would also break the default
@@ -602,7 +602,7 @@ services:
 
   knowledge-ui:
     profiles: ["knowledge"]
-    image: wechatopenai/weknora-ui:${KNOWLEDGE_VERSION:-v0.9.0}
+    image: ${KNOWLEDGE_IMAGE_NAMESPACE:-wechatopenai}/weknora-ui:${KNOWLEDGE_VERSION:-v0.9.0}
     depends_on:
       knowledge-app:
         condition: service_healthy
