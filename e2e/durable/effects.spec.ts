@@ -1,4 +1,8 @@
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHmac } from "node:crypto";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { API_BASE, TestApiClient } from "../fixtures";
 
@@ -36,11 +40,13 @@ let slug = "";
 let runtimeId = "";
 let agentId = "";
 let taskId = "";
+let taskToken = "";
 let intentEdited = "";
 let intentRejected = "";
 let draftAgentId = "";
 let shadowRun: { id: string; token: string } | undefined;
 const taskIds: string[] = [];
+const levelAgentIds: string[] = [];
 
 function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -131,16 +137,22 @@ function intentCard(page: Page, subject: string) {
   return page.getByRole("article", { name: subject, exact: true });
 }
 
-/** An agent at autonomy L2 with Gmail attached: its drafts run, where an L1 agent's would wait. */
-async function setUpDraftAgent(): Promise<void> {
-  const agent = await api.createAgent(`Drafts agent ${RUN}`, runtimeId);
-  draftAgentId = agent.id;
-  const squad = await api.createSquad(`Drafts squad ${RUN}`, agent.id);
+/** An agent of its own, alone in a squad at the given autonomy level (spec 4.3). Removed in afterAll. */
+async function agentAtLevel(level: number, label: string): Promise<string> {
+  const agent = await api.createAgent(`${label} ${RUN}`, runtimeId);
+  levelAgentIds.push(agent.id);
+  const squad = await api.createSquad(`${label} squad ${RUN}`, agent.id);
   await api.queryDb(
     `INSERT INTO squad_member (squad_id, member_type, member_id) VALUES ($1, 'agent', $2) ON CONFLICT DO NOTHING`,
     [squad.id, agent.id],
   );
-  await api.queryDb(`UPDATE squad SET autonomy_level = 2 WHERE id = $1`, [squad.id]);
+  await api.queryDb(`UPDATE squad SET autonomy_level = $2 WHERE id = $1`, [squad.id, level]);
+  return agent.id;
+}
+
+/** An agent at autonomy L2 with Gmail attached: its drafts run, where an L1 agent's would wait. */
+async function setUpDraftAgent(): Promise<void> {
+  draftAgentId = await agentAtLevel(2, "Drafts agent");
   const attached = await apiCall("PUT", `/api/agents/${draftAgentId}/apps`, {
     apps: [{ toolkit_slug: "gmail", account_scope: "personal", level: "write" }],
   });
@@ -190,7 +202,9 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
     });
     expect(attached.status, attached.text).toBe(200);
 
-    taskId = (await seedRun(agentId)).id;
+    const main = await seedRun(agentId);
+    taskId = main.id;
+    taskToken = main.token;
   });
 
   test.afterAll(async () => {
@@ -198,8 +212,8 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
       await api.queryDb(`DELETE FROM effect_event WHERE workspace_id = $1`, [workspaceId]);
       await api.queryDb(`DELETE FROM effect_intent WHERE workspace_id = $1`, [workspaceId]);
     }
-    if (draftAgentId) {
-      await api.queryDb(`DELETE FROM squad_member WHERE member_id = $1`, [draftAgentId]);
+    for (const id of levelAgentIds) {
+      await api.queryDb(`DELETE FROM squad_member WHERE member_id = $1`, [id]);
     }
     for (const id of taskIds) {
       await api.queryDb(`DELETE FROM task_token WHERE task_id = $1`, [id]);
@@ -384,5 +398,74 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
 
     const [event] = await api.queryDb(`SELECT decision, status FROM effect_event WHERE task_id = $1`, [shadow.id]);
     expect(event).toMatchObject({ decision: "block", status: "blocked" });
+  });
+
+  test("multica effect declare exits 0 when allowed, 3 when held and 4 when blocked", async () => {
+    test.setTimeout(600000);
+    // The CLI an agent runs, built from this checkout. A temporary HOME keeps the person's own CLI config out.
+    const dir = mkdtempSync(join(tmpdir(), "effects-cli-"));
+    const bin = join(dir, "multica");
+    execFileSync("go", ["build", "-o", bin, "./cmd/multica"], {
+      cwd: join(process.cwd(), "server"),
+      stdio: "pipe",
+      timeout: 540000,
+    });
+
+    const declare = (run: { id: string; token: string }, actor: string, args: string[]) => {
+      const result = spawnSync(bin, ["effect", "declare", ...args], {
+        env: {
+          PATH: process.env.PATH ?? "",
+          HOME: dir,
+          MULTICA_SERVER_URL: API_BASE,
+          MULTICA_WORKSPACE_ID: workspaceId,
+          MULTICA_TOKEN: run.token,
+          MULTICA_TASK_ID: run.id,
+          MULTICA_AGENT_ID: actor,
+        },
+        encoding: "utf8",
+      });
+      return { code: result.status, out: `${result.stdout}${result.stderr}` };
+    };
+    const send = ["--class", "send", "--reversibility", "irreversible", "--target", `smtp:${RECIPIENT}`];
+
+    const read = declare({ id: taskId, token: taskToken }, agentId, [
+      "--class", "read", "--target", "gmail/GMAIL_FETCH_EMAILS", "--summary", `Read ${RUN}`,
+    ]);
+    expect(read.code, read.out).toBe(0);
+
+    const held = declare({ id: taskId, token: taskToken }, agentId, [...send, "--summary", `Declared send ${RUN}`]);
+    expect(held.code, held.out).toBe(3);
+    expect(held.out).toContain('"rehearse"');
+
+    // An L0 agent's send is blocked by the table itself, so the handler answers and the CLI exits 4.
+    const suggestOnly = await agentAtLevel(0, "Suggest-only agent");
+    const suggestRun = await seedRun(suggestOnly);
+    const blocked = declare(suggestRun, suggestOnly, [...send, "--summary", `Blocked declared send ${RUN}`]);
+    expect(blocked.code, blocked.out).toBe(4);
+    expect(blocked.out).toContain('"block"');
+  });
+
+  // Product finding, not yet fixed: a shadow run's `effect declare` is a CLI write, and EffectCLIMiddleware refuses
+  // it with 403 before the handler decides (effect_sources_fork.go). The CLI maps 403 to exit 3, which is also the
+  // code for "held for approval", so the agent cannot tell a block from a hold. Spec 4.5 wants exit 4.
+  test.fixme("a shadow run's declare exits 4", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "effects-cli-shadow-"));
+    const bin = join(dir, "multica");
+    execFileSync("go", ["build", "-o", bin, "./cmd/multica"], { cwd: join(process.cwd(), "server"), stdio: "pipe", timeout: 540000 });
+    const run = shadowRun!;
+    const args = ["--class", "send", "--reversibility", "irreversible", "--target", `smtp:${RECIPIENT}`];
+    const result = spawnSync(bin, ["effect", "declare", ...args, "--summary", `Shadow declared send ${RUN}`], {
+      env: {
+        PATH: process.env.PATH ?? "",
+        HOME: dir,
+        MULTICA_SERVER_URL: API_BASE,
+        MULTICA_WORKSPACE_ID: workspaceId,
+        MULTICA_TOKEN: run.token,
+        MULTICA_TASK_ID: run.id,
+        MULTICA_AGENT_ID: agentId,
+      },
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(4);
   });
 });
