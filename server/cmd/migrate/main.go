@@ -169,6 +169,8 @@ var concurrentIndexCleanups = map[string]string{
 	"1095_attention_ledger_week_idx":                            "attention_ledger_week_idx",
 	"1097_seat_dossier_entry_agent_status_idx":                  "seat_dossier_entry_agent_status_idx",
 	"1098_seat_dossier_entry_id_uidx":                           "seat_dossier_entry_id_uidx",
+	"1101_principal_profile_uidx":                               "principal_profile_member_uidx",
+	"1102_principal_trait_member_idx":                           "principal_trait_member_kind_idx",
 	"753_agent_task_queue_doc_idx":                              "idx_agent_task_queue_doc",
 	"749_app_tool_call_quota_period_scope_idx":                  "uq_app_tool_call_quota_period_scope",
 	"751_app_tool_call_workspace_metered_idx":                   "idx_app_tool_call_workspace_metered",
