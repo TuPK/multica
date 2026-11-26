@@ -105,6 +105,9 @@ func init() {
 }
 
 func runCompanyExport(cmd *cobra.Command, _ []string) error {
+	if handled, err := runCompanyExportOCF(cmd); handled {
+		return err
+	}
 	client, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -139,6 +142,9 @@ func runCompanyImport(cmd *cobra.Command, _ []string) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("read --file: %w", err)
+	}
+	if handled, err := runCompanyImportOCF(cmd, data); handled {
+		return err
 	}
 	if !json.Valid(data) {
 		return fmt.Errorf("--file is not JSON")
