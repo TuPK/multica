@@ -195,6 +195,66 @@ func (q *Queries) ListSettledTrackPairsSince(ctx context.Context, since pgtype.T
 	return items, nil
 }
 
+const listTrackModeChangesBetween = `-- name: ListTrackModeChangesBetween :many
+SELECT tr.agent_id, a.name AS agent_name, tr.work_class, tr.verification_mode, tr.mode_changed_at
+FROM track_record tr
+JOIN agent a ON a.id = tr.agent_id
+WHERE tr.workspace_id = $1::uuid
+    AND tr.window_days = 30
+    AND tr.mode_changed_at >= $2::timestamptz
+    AND tr.mode_changed_at <= $3::timestamptz
+ORDER BY tr.mode_changed_at DESC, tr.agent_id
+LIMIT $4::int
+`
+
+type ListTrackModeChangesBetweenParams struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	PeriodStart pgtype.Timestamptz `json:"period_start"`
+	PeriodEnd   pgtype.Timestamptz `json:"period_end"`
+	RowLimit    int32              `json:"row_limit"`
+}
+
+type ListTrackModeChangesBetweenRow struct {
+	AgentID          pgtype.UUID        `json:"agent_id"`
+	AgentName        string             `json:"agent_name"`
+	WorkClass        string             `json:"work_class"`
+	VerificationMode string             `json:"verification_mode"`
+	ModeChangedAt    pgtype.Timestamptz `json:"mode_changed_at"`
+}
+
+// The pairs whose 30-day verification mode changed in a brief's period, newest first,
+// with the agent's name for the brief (durable spec 3.3).
+func (q *Queries) ListTrackModeChangesBetween(ctx context.Context, arg ListTrackModeChangesBetweenParams) ([]ListTrackModeChangesBetweenRow, error) {
+	rows, err := q.db.Query(ctx, listTrackModeChangesBetween,
+		arg.WorkspaceID,
+		arg.PeriodStart,
+		arg.PeriodEnd,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTrackModeChangesBetweenRow{}
+	for rows.Next() {
+		var i ListTrackModeChangesBetweenRow
+		if err := rows.Scan(
+			&i.AgentID,
+			&i.AgentName,
+			&i.WorkClass,
+			&i.VerificationMode,
+			&i.ModeChangedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTrackRecords = `-- name: ListTrackRecords :many
 SELECT workspace_id, agent_id, work_class, window_days, model, n_pass, n_partial, n_fail, n_unverified, n_high_fail, score_lower, last_high_fail_at, verification_mode, mode_pinned, mode_changed_at, computed_at FROM track_record
 WHERE workspace_id = $1

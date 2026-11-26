@@ -27,6 +27,52 @@ func (q *Queries) ClaimOutcomeTransition(ctx context.Context, transitionID pgtyp
 	return result.RowsAffected(), nil
 }
 
+const countWorkOutcomesSettledBetween = `-- name: CountWorkOutcomesSettledBetween :one
+SELECT
+    COUNT(*)::bigint AS settled,
+    COUNT(*) FILTER (WHERE verdict = 'pass')::bigint AS n_pass,
+    COUNT(*) FILTER (WHERE verdict = 'partial')::bigint AS n_partial,
+    COUNT(*) FILTER (WHERE verdict = 'fail')::bigint AS n_fail,
+    COUNT(*) FILTER (WHERE verdict = 'fail' AND fail_cause = 'reopened')::bigint AS n_reopened,
+    COUNT(*) FILTER (WHERE verdict = 'unverified')::bigint AS n_unverified
+FROM work_outcome
+WHERE workspace_id = $1::uuid
+    AND settled_at IS NOT NULL
+    AND settled_at >= $2::timestamptz
+    AND settled_at <= $3::timestamptz
+`
+
+type CountWorkOutcomesSettledBetweenParams struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	PeriodStart pgtype.Timestamptz `json:"period_start"`
+	PeriodEnd   pgtype.Timestamptz `json:"period_end"`
+}
+
+type CountWorkOutcomesSettledBetweenRow struct {
+	Settled     int64 `json:"settled"`
+	NPass       int64 `json:"n_pass"`
+	NPartial    int64 `json:"n_partial"`
+	NFail       int64 `json:"n_fail"`
+	NReopened   int64 `json:"n_reopened"`
+	NUnverified int64 `json:"n_unverified"`
+}
+
+// The outcomes settled in a brief's period, by verdict. reopened counts the fails that
+// a reopen made, a subset of fail (durable spec 2.6).
+func (q *Queries) CountWorkOutcomesSettledBetween(ctx context.Context, arg CountWorkOutcomesSettledBetweenParams) (CountWorkOutcomesSettledBetweenRow, error) {
+	row := q.db.QueryRow(ctx, countWorkOutcomesSettledBetween, arg.WorkspaceID, arg.PeriodStart, arg.PeriodEnd)
+	var i CountWorkOutcomesSettledBetweenRow
+	err := row.Scan(
+		&i.Settled,
+		&i.NPass,
+		&i.NPartial,
+		&i.NFail,
+		&i.NReopened,
+		&i.NUnverified,
+	)
+	return i, err
+}
+
 const createWorkOutcome = `-- name: CreateWorkOutcome :one
 INSERT INTO work_outcome (
     id, workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id,

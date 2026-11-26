@@ -412,6 +412,7 @@ func (h *Handler) CreateBrief(w http.ResponseWriter, r *http.Request) {
 	}
 	params.PeriodStart = pgtype.Timestamptz{Time: start, Valid: true}
 	params.PeriodEnd = pgtype.Timestamptz{Time: end, Valid: true}
+	params.Body = h.durableBriefBody(r.Context(), wsUUID, scopeType, params.Body, start, end)
 
 	proposalIDs, msg := h.resolveBriefProposalIDs(r, wsUUID, req.ProposalIDs)
 	if msg != "" {
