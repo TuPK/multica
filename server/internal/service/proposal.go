@@ -163,6 +163,8 @@ func proposalExpiryInterval() pgtype.Interval {
 // ProposalService creates, decides and expires proposals.
 type ProposalService struct {
 	Issues *IssueService
+	// Principal, when set, resolves the predictions made for a decided proposal (durable spec 6.4).
+	Principal *PredictionService
 	// Kinds dispatches a filing and its decision to the kind's handler. Nil
 	// means the decision kind alone, which is what phase 1 and 2 callers get.
 	Kinds *proposalkinds.Registry
@@ -513,6 +515,8 @@ type ProposalDecideParams struct {
 	// Policy, when set, makes the decision a standing approval (spec 4.4): the
 	// policy is the decider of record, and DeciderID is its accountable member.
 	Policy *ProposalPolicyDecision
+	// Delegated, when set, makes the decision the person's own by a prediction they delegated (spec 6.5).
+	Delegated *DelegatedDecision
 }
 
 // ProposalPolicyDecision names the policy that approved a proposal.
@@ -561,7 +565,7 @@ type ProposalDecideResult struct {
 func (s *ProposalService) Decide(ctx context.Context, p ProposalDecideParams) (ProposalDecideResult, error) {
 	switch p.Decision {
 	case ProposalDecisionApprove, ProposalDecisionReject:
-		return s.settle(ctx, p)
+		return s.decideSettle(ctx, p)
 	case ProposalDecisionRevise:
 		return s.askForChanges(ctx, p)
 	case ProposalDecisionSnooze:

@@ -325,6 +325,7 @@ func (h *Handler) proposalService() *service.ProposalService {
 		svc.DecisionSearch = h.Knowledge
 	}
 	svc.AppURL = h.cfg.AppURL
+	svc.Principal = &service.PredictionService{Queries: h.Queries, Flags: h.FeatureFlags}
 	// The org_change kind (spec 4.6) is registered per service, as the other
 	// kinds that need the handler's services are.
 	svc.Kinds.Register(proposalkinds.NewOrgChangeKind(h.orgChanges()))
