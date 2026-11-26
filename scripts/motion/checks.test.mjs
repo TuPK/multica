@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { animated, describe, instant, landsOn, monotonic, track } from "./checks.mjs";
+import { animated, describe, instant, landsOn, monotonic, reachesEnd, track } from "./checks.mjs";
 
 const frames = (heights) => heights.map((h, i) => ({ t: i * 16.7, rects: { list: { x: 0, y: 100, w: 240, h } } }));
 
@@ -49,6 +49,22 @@ test("reduced motion: each change lands in one frame, even when it changes twice
   assert.equal(instant([318, 318, 0, 0, 0, 60, 60]).ok, true);
   assert.equal(instant([318, 200, 120, 60]).ok, false);
   assert.equal(animated([318, 318, 60, 60]).ok, false);
+});
+
+test("a collapsing row reaches zero; stopping partway fails", () => {
+  const collapse = [46, 46, 42, 21.7, 7.6, 1.3, 0.1, 0];
+  assert.equal(reachesEnd(collapse, 0).ok, true);
+  assert.equal(reachesEnd(collapse, 0).detail, "46 → 0 over 6 frames; ends at 0, expected 0");
+  const partway = reachesEnd([46, 46, 30, 20], 0);
+  assert.equal(partway.ok, false);
+  assert.equal(partway.detail, "46 → 20 over 2 frames; ends at 20, expected 0");
+});
+
+test("a collapse tracked through a neighbour that takes its slot does not pass as a collapse", () => {
+  // The first-child selector after an archive: the old row shrinks to zero, then the next row sits in its place.
+  const replaced = [46, 46, 21.7, 0, 46, 46, 46];
+  assert.equal(reachesEnd(replaced, 0).ok, false);
+  assert.equal(reachesEnd([], 0).ok, false);
 });
 
 test("landsOn compares the last frame along the requested edges", () => {

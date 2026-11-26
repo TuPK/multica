@@ -17,6 +17,9 @@ const TARGETS = {
   first: `${SECTION} ul > li:first-child`,
   // Every run starts with three criteria, so the fourth row is the one the dialog adds.
   added: `${SECTION} ul > li:nth-child(4)`,
+  // The row the archive action tags before it clicks: once it leaves, the first child is a
+  // different row, so the collapse is tracked on this element alone.
+  archived: `${SECTION} ul > li[data-motion-archived]`,
 };
 const SEED_CRITERIA = ["Unit tests pass", "Docs updated", "Changelog entry"];
 
@@ -52,13 +55,16 @@ async function addCriterion(page, text) {
 }
 
 async function archiveFirst(page) {
+  await page.locator(TARGETS.first).evaluate((row) => {
+    row.dataset.motionArchived = "";
+  });
   const refetch = refetchedCriteria(page);
   await page.getByRole("button", { name: "Archive criterion" }).first().click();
   await refetch;
 }
 
 export default async function acceptanceBlock({ open, sample, record, check, checks, api, log }) {
-  const { track, monotonic, animated, instant } = checks;
+  const { track, monotonic, animated, instant, reachesEnd } = checks;
   const issue = await seed(api, log);
 
   for (const reducedMotion of [false, true]) {
@@ -81,13 +87,16 @@ export default async function acceptanceBlock({ open, sample, record, check, che
     const archiveLabel = `${pass}, archive the first criterion`;
     const archiveFrames = await sample(page, archiveLabel, TARGETS, () => archiveFirst(page), { quietMs: 500 });
     const listHeight = track(archiveFrames, "list", "h");
-    const rowHeight = track(archiveFrames, "first", "h");
+    const archivedHeight = track(archiveFrames, "archived", "h");
     if (reducedMotion) {
       check(`${archiveLabel}: list height changes instantly`, instant(listHeight));
+      check(`${archiveLabel}: archived row closes in one frame`, instant(archivedHeight));
+      check(`${archiveLabel}: archived row ends at zero`, reachesEnd(archivedHeight, 0));
     } else {
       check(`${archiveLabel}: list height changes one way`, monotonic(listHeight));
       check(`${archiveLabel}: list height eases`, animated(listHeight));
-      check(`${archiveLabel}: archived row collapses over several frames`, animated(rowHeight));
+      check(`${archiveLabel}: archived row collapses over several frames`, animated(archivedHeight));
+      check(`${archiveLabel}: archived row ends at zero`, reachesEnd(archivedHeight, 0));
     }
   }
 
