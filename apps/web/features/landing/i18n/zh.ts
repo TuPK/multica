@@ -239,13 +239,13 @@ export function createZhDict(): LandingDict {
       {
         heading: "信息的保留期限",
         paragraphs: [
-          "账户信息和工作区内容会在你的账户或工作区存在期间一直保留。工作区所有者删除工作区后，其中的任务、评论等内容会从 Delegora Cloud 中移除，但用于恢复的备份在之后一段时间内仍可能包含副本。如需从我们的文件存储中清除已删除工作区里上传的文件，请发邮件至 [support@delegora.io.vn](mailto:support@delegora.io.vn)。账单记录按会计和税务规定要求的期限保留；产品分析数据、崩溃报告、联系销售表单和反馈，会在为你提供支持和改进 Delegora 所需的期间内保留。你可以要求我们删除联系销售表单和反馈。",
+          "账户信息和工作区内容会在你的账户或工作区存在期间一直保留。工作区所有者删除工作区后，其中的任务、评论等内容会从 Delegora Cloud 中移除，但用于恢复的备份在之后一段时间内仍可能包含副本。如需从我们的文件存储中清除已删除工作区里上传的文件，请发邮件至 [contact@delegora.io.vn](mailto:contact@delegora.io.vn)。账单记录按会计和税务规定要求的期限保留；产品分析数据、崩溃报告、联系销售表单和反馈，会在为你提供支持和改进 Delegora 所需的期间内保留。你可以要求我们删除联系销售表单和反馈。",
         ],
       },
       {
         heading: "你的选择和权利",
         paragraphs: [
-          "根据你所在地的法律，你可能有权访问、更正、删除或导出你的个人信息，反对或限制某些处理，撤回你已给出的同意（例如接收营销信息的同意），以及向当地的数据保护机构投诉。你可以随时在 Delegora 中更新个人资料，也可以在设置中删除你拥有的工作区。其他请求（包括删除账户），请发邮件至 [support@delegora.io.vn](mailto:support@delegora.io.vn)，我们会在 30 天内回复。",
+          "根据你所在地的法律，你可能有权访问、更正、删除或导出你的个人信息，反对或限制某些处理，撤回你已给出的同意（例如接收营销信息的同意），以及向当地的数据保护机构投诉。你可以随时在 Delegora 中更新个人资料，也可以在设置中删除你拥有的工作区。其他请求（包括删除账户），请发邮件至 [contact@delegora.io.vn](mailto:contact@delegora.io.vn)，我们会在 30 天内回复。",
         ],
       },
       {
@@ -269,7 +269,7 @@ export function createZhDict(): LandingDict {
       {
         heading: "联系我们",
         paragraphs: [
-          "Delegora 负责你的个人信息。如有隐私相关的问题或请求，请发邮件至 [support@delegora.io.vn](mailto:support@delegora.io.vn)。",
+          "Delegora 负责你的个人信息。如有隐私相关的问题或请求，请发邮件至 [contact@delegora.io.vn](mailto:contact@delegora.io.vn)。",
         ],
       },
     ],

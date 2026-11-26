@@ -255,13 +255,13 @@ export function createEnDict(): LandingDict {
       {
         heading: "How long we keep information",
         paragraphs: [
-          "We keep account information and workspace content for as long as your account or workspace exists. When a workspace owner deletes a workspace, its issues, comments, and other content are removed from Delegora Cloud, though backups we keep for recovery may still contain copies for a period afterwards. To have files uploaded to a deleted workspace erased from our file storage, email [support@delegora.io.vn](mailto:support@delegora.io.vn). We keep billing records for as long as accounting and tax rules require, and product analytics, crash reports, Contact Sales inquiries, and feedback for as long as they are useful for supporting you and improving Delegora. We delete inquiries and feedback on request.",
+          "We keep account information and workspace content for as long as your account or workspace exists. When a workspace owner deletes a workspace, its issues, comments, and other content are removed from Delegora Cloud, though backups we keep for recovery may still contain copies for a period afterwards. To have files uploaded to a deleted workspace erased from our file storage, email [contact@delegora.io.vn](mailto:contact@delegora.io.vn). We keep billing records for as long as accounting and tax rules require, and product analytics, crash reports, Contact Sales inquiries, and feedback for as long as they are useful for supporting you and improving Delegora. We delete inquiries and feedback on request.",
         ],
       },
       {
         heading: "Your choices and rights",
         paragraphs: [
-          "Depending on where you live, you may have the right to access, correct, delete, or export your personal information; to object to or restrict certain processing; to withdraw consent you have given, such as for marketing messages; and to complain to your local data protection authority. You can update your profile in Delegora at any time and delete a workspace you own from its settings. For anything else, including deleting your account, email [support@delegora.io.vn](mailto:support@delegora.io.vn). We will respond within 30 days.",
+          "Depending on where you live, you may have the right to access, correct, delete, or export your personal information; to object to or restrict certain processing; to withdraw consent you have given, such as for marketing messages; and to complain to your local data protection authority. You can update your profile in Delegora at any time and delete a workspace you own from its settings. For anything else, including deleting your account, email [contact@delegora.io.vn](mailto:contact@delegora.io.vn). We will respond within 30 days.",
         ],
       },
       {
@@ -285,7 +285,7 @@ export function createEnDict(): LandingDict {
       {
         heading: "Contact us",
         paragraphs: [
-          "Delegora is responsible for your personal information. For privacy questions or requests, email [support@delegora.io.vn](mailto:support@delegora.io.vn).",
+          "Delegora is responsible for your personal information. For privacy questions or requests, email [contact@delegora.io.vn](mailto:contact@delegora.io.vn).",
         ],
       },
     ],

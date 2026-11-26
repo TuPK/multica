@@ -441,6 +441,43 @@ services:
       timeout: 5s
       retries: 5
 
+  # Public entry point (profile "proxy": COMPOSE_PROFILES=proxy with TLS_DOMAIN
+  # and TLS_EMAIL in .env). Routes TLS_DOMAIN to the landing page,
+  # app.TLS_DOMAIN to the web app and API, and platform.TLS_DOMAIN to the platform
+  # console. It is the only service that publishes ports 80 and 443 on all
+  # interfaces; the loopback mappings above stay for local use. See
+  # deploy/nginx/README.md.
+  nginx:
+    image: ${NGINX_IMAGE:-nginx:1.27-alpine}
+    profiles: ["proxy"]
+    entrypoint: ["/bin/sh", "/etc/nginx/deploy/entrypoint.sh"]
+    environment:
+      TLS_DOMAIN: ${TLS_DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx:/etc/nginx/deploy:ro
+      - certbot-www:/var/www/certbot:ro
+      - certbot-conf:/etc/letsencrypt:ro
+    restart: unless-stopped
+
+  # Let's Encrypt client for nginx's HTTP-01 challenge (profile "proxy"). It
+  # obtains the certificate on first start, retries until DNS points here, and
+  # renews it twice a day. nginx picks up renewed files on its own reload.
+  certbot:
+    image: ${CERTBOT_IMAGE:-certbot/certbot:v2.11.0}
+    profiles: ["proxy"]
+    entrypoint: ["/bin/sh", "/deploy/certbot.sh"]
+    environment:
+      TLS_DOMAIN: ${TLS_DOMAIN:-}
+      TLS_EMAIL: ${TLS_EMAIL:-}
+    volumes:
+      - ./deploy/nginx:/deploy:ro
+      - certbot-www:/var/www/certbot
+      - certbot-conf:/etc/letsencrypt
+    restart: unless-stopped
+
   # ---------------------------------------------------------------------------
   # Company knowledge base: a pinned WeKnora sidecar. Opt-in:
   #   docker compose -f docker-compose.selfhost.yml --profile knowledge up -d
@@ -625,6 +662,9 @@ volumes:
   backend_uploads:
   seaweedfs-data:
   redis-data:
+  # Certificate state and the ACME webroot shared by nginx and certbot (profile "proxy").
+  certbot-conf:
+  certbot-www:
   # Knowledge sidecar. Back up knowledge-postgres-data and knowledge-data-files
   # together (and keep KNOWLEDGE_SYSTEM_AES_KEY); see SELF_HOSTING.md.
   knowledge-postgres-data:
