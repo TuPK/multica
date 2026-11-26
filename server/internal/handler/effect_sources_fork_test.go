@@ -6,6 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"encoding/json"
+
+	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/service"
@@ -55,5 +58,43 @@ func TestEffectCLIMiddlewareLogsMutations(t *testing.T) {
 	do(http.MethodPost, "web")
 	if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE workspace_id=$1 AND source='cli' AND target LIKE 'GET %'`, testWorkspaceID); n != 0 {
 		t.Fatalf("CLI GET wrote %d events, want 0", n)
+	}
+}
+
+// TestDeclareFromCLIAnswersWithTheDecision: a CLI declare is a write, but the declare
+// route answers with the policy's decision itself. A shadow task's CLI declare of a send
+// gets 200 with decision block, so the CLI exits 4. The CLI gate must not refuse it
+// with 403 first: the CLI reads 403 as the held code 3, which tells the agent to wait.
+func TestDeclareFromCLIAnswersWithTheDecision(t *testing.T) {
+	f := effectsOnFixture(t)
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM effect_event WHERE task_id = $1`, f.taskID)
+	})
+	if _, err := testPool.Exec(context.Background(),
+		`UPDATE agent_task_queue SET context = '{"durable_kind":"shadow"}'::jsonb WHERE id = $1`, f.taskID); err != nil {
+		t.Fatalf("mark shadow: %v", err)
+	}
+
+	chain := middleware.ClientMetadata(f.h.EffectCLIMiddleware(http.HandlerFunc(f.h.DeclareEffect)))
+	req := effectAPIRequest(t, http.MethodPost, "/api/effects/declare", testUserID, f.taskID, map[string]any{
+		"class": connectedapps.EffectSend, "reversibility": connectedapps.ReversibilityIrreversible,
+		"target": "smtp:customer@example.com", "summary": "test",
+	})
+	req.Header.Set("X-Client-Platform", "cli")
+	w := httptest.NewRecorder()
+	chain.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("CLI declare of a shadow send: %d %s, want 200 with the decision", w.Code, w.Body.String())
+	}
+	var out DeclareEffectResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.Decision != connectedapps.PolicyBlock {
+		t.Fatalf("decision %q, want block", out.Decision)
+	}
+	// The declare records its own event, so the CLI gate must not log a second one.
+	if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE task_id=$1 AND source='cli'`, f.taskID); n != 0 {
+		t.Fatalf("CLI gate logged %d cli events for a declare, want 0", n)
 	}
 }
