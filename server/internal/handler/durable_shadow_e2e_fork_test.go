@@ -48,6 +48,11 @@ func TestShadowRunFromTheClaimToItsVerdictAndCompletion(t *testing.T) {
 	if _, err := testPool.Exec(ctx, `UPDATE agent SET home_squad_id = $2 WHERE id = $1`, seatAgent, squad); err != nil {
 		t.Fatal(err)
 	}
+	// The completed run files a pending runtime change in the workspace. Pending proposals count
+	// against the workspace-wide limit that other tests in this package measure, so remove them.
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(), `DELETE FROM proposal WHERE squad_id = $1`, squad)
+	})
 	candidateRuntime := createClaimReclaimRuntime(t, ctx, "shadow e2e candidate "+suffix)
 	jurorRuntime := createClaimReclaimRuntime(t, ctx, "shadow e2e juror "+suffix)
 	jurorAgent := dbfx.Agent(t, "shadow e2e juror "+suffix, jurorRuntime)
