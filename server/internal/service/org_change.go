@@ -19,6 +19,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // Organisation changes (spec 4.6). A proposal of kind org_change carries one of
@@ -28,8 +29,9 @@ import (
 // the probation check (probation.go) judges the windows whose subject has
 // scorecard figures before and after it.
 
-// The ten change types: the eight of spec 4.6 and the two rollbacks unretire and
-// unmerge, which probation files when a retire or a merge is judged worse.
+// The eleven change types: the eight of spec 4.6, the two rollbacks unretire and
+// unmerge, which probation files when a retire or a merge is judged worse, and
+// runtime_change (durable spec 9.6), which moves a seat to a model its shadow run tested.
 const (
 	OrgChangeInstruction = "instruction_change"
 	OrgChangeSkill       = "skill_change"
@@ -41,6 +43,7 @@ const (
 	OrgChangeMerge       = "merge_squads"
 	OrgChangeUnretire    = "unretire"
 	OrgChangeUnmerge     = "unmerge"
+	OrgChangeRuntime     = "runtime_change"
 )
 
 // OrgChangeProbationWindow is how long an applied change is on probation.
@@ -70,8 +73,8 @@ var (
 	ErrOrgChangeNotFound = errors.New("organisation change not found")
 )
 
-// OrgChangeTypes lists the ten change types.
-var OrgChangeTypes = []string{OrgChangeInstruction, OrgChangeSkill, OrgChangeCharter, OrgChangeAutonomy, OrgChangeHire, OrgChangeRetire, OrgChangeMove, OrgChangeMerge, OrgChangeUnretire, OrgChangeUnmerge}
+// OrgChangeTypes lists the eleven change types.
+var OrgChangeTypes = []string{OrgChangeInstruction, OrgChangeSkill, OrgChangeCharter, OrgChangeAutonomy, OrgChangeHire, OrgChangeRetire, OrgChangeMove, OrgChangeMerge, OrgChangeUnretire, OrgChangeUnmerge, OrgChangeRuntime}
 
 // OrgChangeService validates, applies and reverts organisation changes.
 type OrgChangeService struct {
@@ -81,6 +84,9 @@ type OrgChangeService struct {
 	// Scorecards reads the before and after figures of a probation window.
 	Scorecards *ScorecardService
 	Now        func() time.Time
+	// Flags reads durable_seats, which decides whether a runtime change writes its
+	// seat_model_changed event (durable spec 9.3). Nil writes none.
+	Flags *featureflag.Service
 	// Entitlements supplies the `agents` quota gate for a hire. Nil is off.
 	Entitlements entitlement.Provider
 }
@@ -234,6 +240,9 @@ type orgBefore struct {
 	RehomedToInto  []string       `json:"rehomed_to_into,omitempty"`
 	IntoCharter    *CharterFields `json:"into_charter,omitempty"`
 	ArchivedBefore bool           `json:"archived_before,omitempty"`
+	// Runtime change: the seat's runtime and model before the change.
+	RuntimeID string `json:"runtime_id,omitempty"`
+	Model     string `json:"model,omitempty"`
 }
 
 // probationApplies reports whether an applied change of this type opens a
@@ -245,7 +254,8 @@ type orgBefore struct {
 func probationApplies(changeType string) bool {
 	switch changeType {
 	case OrgChangeInstruction, OrgChangeSkill, OrgChangeCharter, OrgChangeAutonomy,
-		OrgChangeHire, OrgChangeRetire, OrgChangeMove, OrgChangeMerge, OrgChangeUnretire, OrgChangeUnmerge:
+		OrgChangeHire, OrgChangeRetire, OrgChangeMove, OrgChangeMerge, OrgChangeUnretire, OrgChangeUnmerge,
+		OrgChangeRuntime:
 		return true
 	}
 	return false
@@ -340,6 +350,12 @@ func (s *OrgChangeService) ValidateOrgChange(ctx context.Context, q *db.Queries,
 		var p unmergePayload
 		if err = decodeOrgChangeStrict(payload, &p); err == nil {
 			err = validateUnmerge(ctx, q, ws, p)
+			out = p
+		}
+	case OrgChangeRuntime:
+		var p runtimeChangePayload
+		if err = decodeOrgChangeStrict(payload, &p); err == nil {
+			err = validateRuntimeChange(ctx, q, ws, p)
 			out = p
 		}
 	default:
@@ -1001,6 +1017,12 @@ func (s *OrgChangeService) apply(ctx context.Context, q *db.Queries, ws pgtype.U
 			return orgSubject{}, orgBefore{}, err
 		}
 		return s.unmerge(ctx, q, ws, actor, p)
+	case OrgChangeRuntime:
+		var p runtimeChangePayload
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return orgSubject{}, orgBefore{}, err
+		}
+		return s.applyRuntimeChange(ctx, q, ws, actor, p)
 	}
 	return orgSubject{}, orgBefore{}, fmt.Errorf("unknown organisation change %q", changeType)
 }
@@ -1385,6 +1407,8 @@ func (s *OrgChangeService) RevertOrgChange(ctx context.Context, q *db.Queries, w
 func (s *OrgChangeService) revert(ctx context.Context, q *db.Queries, ws pgtype.UUID, app db.OrgChangeApplication, before orgBefore, actor GovernanceActor) error {
 	change := InstructionChange{Source: InstructionSourceRollback, ProposalID: app.ProposalID, Actor: actor}
 	switch app.ChangeType {
+	case OrgChangeRuntime:
+		return s.revertRuntimeChange(ctx, q, ws, app, before, actor)
 	case OrgChangeInstruction:
 		_, _, err := SetAgentInstructions(ctx, q, app.SubjectID, before.Instructions, change)
 		return err

@@ -10,5 +10,6 @@ import (
 func (h *Handler) orgChanges() *service.OrgChangeService {
 	svc := service.NewOrgChangeService()
 	svc.Entitlements = h.Entitlements
+	svc.Flags = h.FeatureFlags
 	return svc
 }

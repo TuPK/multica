@@ -77,6 +77,8 @@ func OrgChangeTypeLabel(t string) string {
 		return "Merge two squads"
 	case "unretire":
 		return "Restore an archived agent or squad"
+	case "runtime_change":
+		return "Change a seat's model after a shadow trial"
 	case "unmerge":
 		return "Unmerge two squads"
 	}

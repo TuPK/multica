@@ -245,6 +245,19 @@ func rollbackPayload(ctx context.Context, q *db.Queries, app db.OrgChangeApplica
 	case OrgChangeUnretire:
 		agentID, squadID := orgSubjectFields(app)
 		out = retirePayload{Type: OrgChangeRetire, AgentID: agentID, SquadID: squadID, Rationale: why}
+	case OrgChangeRuntime:
+		// A runtime change is undone by filing the seat's earlier runtime and model. The
+		// shadow run that tested the change stays the evidence.
+		var after runtimeChangePayload
+		if err := json.Unmarshal(app.AfterState, &after); err != nil {
+			return nil, err
+		}
+		if before.RuntimeID == "" {
+			return nil, errors.New("the seat had no earlier runtime to restore")
+		}
+		out = runtimeChangePayload{Type: OrgChangeRuntime, AgentID: util.UUIDToString(app.SubjectID),
+			ToRuntimeID: before.RuntimeID, ToModel: before.Model, ShadowConfigID: after.ShadowConfigID,
+			Report: after.Report, Rationale: why}
 	case OrgChangeMerge:
 		// The merge is undone by unmerging it, which reads the snapshot the merge kept.
 		out = unmergePayload{Type: OrgChangeUnmerge, ApplicationID: util.UUIDToString(app.ID), Rationale: why}
