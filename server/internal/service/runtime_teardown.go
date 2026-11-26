@@ -6,7 +6,9 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
+
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // OfflineRuntimeTTLSeconds is how long an offline runtime is kept before
@@ -38,6 +40,9 @@ var (
 // active work; automatic GC must fail closed and leave it untouched.
 type RuntimeTeardownOptions struct {
 	CancelNonTerminalTasks bool
+	// SeatFlags gates the seat_model_changed event that an unbound seat writes (durable spec 9.3).
+	// Nil writes no event.
+	SeatFlags *featureflag.Service
 }
 
 // RuntimeTeardownResult reports committed business-object changes so callers
@@ -125,6 +130,17 @@ func TeardownRuntime(ctx context.Context, qtx *db.Queries, runtimeID pgtype.UUID
 		return out, fmt.Errorf("unbind agents: %w", err)
 	}
 	out.UnboundAgents = unbound
+
+	// Unbinding a seat takes it off its runtime, which is a change of the seat's occupant (spec 9.3).
+	before := make(map[pgtype.UUID]db.Agent, len(lockedAgents))
+	for _, agent := range lockedAgents {
+		before[agent.ID] = agent
+	}
+	for _, after := range unbound {
+		if err := RecordSeatModelChange(ctx, qtx, opts.SeatFlags, GovernanceActor{Type: GovernanceActorSystem}, before[after.ID], after); err != nil {
+			return out, fmt.Errorf("record seat change: %w", err)
+		}
+	}
 
 	unboundIDs := make([]pgtype.UUID, len(unbound))
 	for i, agent := range unbound {

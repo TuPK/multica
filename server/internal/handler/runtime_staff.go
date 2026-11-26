@@ -85,7 +85,7 @@ func (h *Handler) DeleteRuntimeForStaff(ctx context.Context, runtimeID string, o
 		return false, &StaffRuntimeError{Code: StaffRuntimeErrHasActiveAgents}
 	}
 
-	teardown, err := service.TeardownRuntime(ctx, qtx, rt.ID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: true})
+	teardown, err := service.TeardownRuntime(ctx, qtx, rt.ID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: true, SeatFlags: h.FeatureFlags})
 	switch {
 	case errors.Is(err, service.ErrRuntimeWorkspaceMismatch):
 		return false, &StaffRuntimeError{Code: StaffRuntimeErrWorkspaceMismatch}

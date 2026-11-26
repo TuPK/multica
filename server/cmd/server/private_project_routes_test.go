@@ -81,6 +81,7 @@ var routeParamsOutsideProjects = map[string]outsideProjectParam{
 	"budgets/{id}":                     {why: "a workspace-level company object, not stored in a project"},
 	"documents/{id}":                   {why: "its project-linked rows are filtered in the handler and covered by the object's own *_visibility tests"},
 	"domains/{domain}":                 {why: "a catalog domain"},
+	"dossier/{entryId}":                {why: "an entry of an agent seat's dossier, a note on the seat rather than an object in a project"},
 	"eval-cases/{id}":                  {why: "a workspace-level company object, not stored in a project"},
 	"exits/{edgeId}":                   {why: "a flow edge of a request; the issue route that carries it is probed", value: func(*privateRouteFixture) string { return "x" }},
 	"exports/{exportId}":               {why: "a workspace export"},

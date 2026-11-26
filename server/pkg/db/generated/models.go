@@ -2085,6 +2085,21 @@ type JuryPanel struct {
 	ClosedAt       pgtype.Timestamptz `json:"closed_at"`
 }
 
+type SeatDossierEntry struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	AgentID     pgtype.UUID        `json:"agent_id"`
+	Kind        string             `json:"kind"`
+	Text        string             `json:"text"`
+	WorkClass   string             `json:"work_class"`
+	Evidence    []byte             `json:"evidence"`
+	Origin      string             `json:"origin"`
+	Status      string             `json:"status"`
+	Uses        int32              `json:"uses"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	RetiredAt   pgtype.Timestamptz `json:"retired_at"`
+}
+
 type KeyResult struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`

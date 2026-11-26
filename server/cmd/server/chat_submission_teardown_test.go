@@ -114,7 +114,7 @@ func TestChatSubmissionProfileAndGCTeardown(t *testing.T) {
 			if path == "profile" {
 				submissionStatus(t, testServer.URL, testToken, testWorkspaceID, "DELETE", "/api/workspaces/"+testWorkspaceID+"/runtime-profiles/"+profileID, nil, http.StatusNoContent)
 			} else {
-				result, err := gcRuntime(context.Background(), testPool, db.New(testPool), parseUUID(runtimeID))
+				result, err := gcRuntime(context.Background(), testPool, db.New(testPool), parseUUID(runtimeID), nil)
 				if err != nil || !result.deleted {
 					t.Fatalf("shared GC teardown result=%+v error=%v", result, err)
 				}

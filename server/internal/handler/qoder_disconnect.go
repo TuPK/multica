@@ -79,7 +79,7 @@ func (h *Handler) DisconnectQoderConnection(w http.ResponseWriter, r *http.Reque
 	}
 	teardowns := make([]service.RuntimeTeardownResult, 0, len(runtimeIDs))
 	for _, runtimeID := range runtimeIDs {
-		teardown, err := service.TeardownRuntime(r.Context(), qtx, runtimeID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: true})
+		teardown, err := service.TeardownRuntime(r.Context(), qtx, runtimeID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: true, SeatFlags: h.FeatureFlags})
 		if err != nil {
 			if errors.Is(err, service.ErrRuntimeNotDrained) {
 				writeError(w, http.StatusConflict, "Qoder still has tasks in flight; retry in a moment")

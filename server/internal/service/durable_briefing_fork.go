@@ -49,6 +49,7 @@ func DurableBriefingBlocks(ctx context.Context, q *db.Queries, flags *featurefla
 	if featureflags.DurableEffectsEnabled(ctx, flags) {
 		blocks = append(blocks, effectDeclarationBriefing())
 	}
+	blocks = append(blocks, dossierBriefing(ctx, q, flags, task)...)
 	if !task.IssueID.Valid || !featureflags.DurableOutcomesEnabled(ctx, flags) {
 		return blocks
 	}

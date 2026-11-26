@@ -2998,6 +2998,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/archive", h.ArchiveAgent)
 					r.Post("/restore", h.RestoreAgent)
 					r.Post("/cancel-tasks", h.CancelAgentTasks)
+					registerDurableSeatRoutes(r, h)
 					r.Get("/tasks", h.ListAgentTasks)
 					r.Get("/dingtalk/groups", h.ListDingTalkGroupsForAgent)
 					r.Get("/skills", h.ListAgentSkills)

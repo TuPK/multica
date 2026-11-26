@@ -181,6 +181,7 @@ func (h *Handler) SetSquadRuntime(w http.ResponseWriter, r *http.Request) {
 	qtx := h.Queries.WithTx(tx)
 
 	updatedAgents := make([]db.Agent, 0, len(plan))
+	seatActor := h.seatChangeActor(r, workspaceID)
 	for _, p := range plan {
 		params := db.UpdateAgentParams{
 			ID:          p.agent.ID,
@@ -193,6 +194,11 @@ func (h *Handler) SetSquadRuntime(w http.ResponseWriter, r *http.Request) {
 		updated, err := qtx.UpdateAgent(r.Context(), params)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to update agent runtime")
+			return
+		}
+		// Moving a squad member to another runtime changes its seat occupant (durable spec 9.3).
+		if err := service.RecordSeatModelChange(r.Context(), qtx, h.FeatureFlags, seatActor, p.agent, updated); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to record the seat change")
 			return
 		}
 		updatedAgents = append(updatedAgents, updated)
