@@ -189,6 +189,39 @@ func TestShadowCostEstimateWarns(t *testing.T) {
 			t.Errorf("estimate = %+v, want 20000000 micros, a warning, and 1000000 left", est)
 		}
 	})
+	t.Run("another squad's budget does not count", func(t *testing.T) {
+		f := newBudgetFixture(t)
+		seatSquad := f.Squad(t, "seat squad", f.Agent(t, "seat squad leader", f.rt))
+		otherSquad := f.Squad(t, "other squad", f.Agent(t, "other squad leader", f.rt))
+		f.Exec(t, `UPDATE agent SET home_squad_id = $2 WHERE id = $1`, f.agent, seatSquad)
+		f.squadBudget(t, otherSquad, 1_000_000)
+		seed := f.queued(t, testutil.Cols{"status": "completed", "completed_at": testutil.Raw("now() - interval '1 day'")})
+		f.usage(t, seed, 10_000_000_000)
+		svc := &ShadowService{Queries: f.q}
+		est, err := svc.Estimate(ctx, f.ws, util.MustParseUUID(f.agent), 1, 20)
+		if err != nil {
+			t.Fatalf("Estimate: %v", err)
+		}
+		if est.Warn || est.RemainingMicros != shadowBudgetUnlimited {
+			t.Errorf("estimate %+v counts a budget of another squad", est)
+		}
+	})
+	t.Run("the seat's squad budget counts", func(t *testing.T) {
+		f := newBudgetFixture(t)
+		seatSquad := f.Squad(t, "seat squad", f.Agent(t, "seat squad leader", f.rt))
+		f.Exec(t, `UPDATE agent SET home_squad_id = $2 WHERE id = $1`, f.agent, seatSquad)
+		f.squadBudget(t, seatSquad, 1_000_000)
+		seed := f.queued(t, testutil.Cols{"status": "completed", "completed_at": testutil.Raw("now() - interval '1 day'")})
+		f.usage(t, seed, 10_000_000_000)
+		svc := &ShadowService{Queries: f.q}
+		est, err := svc.Estimate(ctx, f.ws, util.MustParseUUID(f.agent), 1, 20)
+		if err != nil {
+			t.Fatalf("Estimate: %v", err)
+		}
+		if !est.Warn || est.RemainingMicros != 1_000_000 {
+			t.Errorf("estimate %+v ignores the seat's squad budget", est)
+		}
+	})
 	t.Run("within the budget", func(t *testing.T) {
 		f := newBudgetFixture(t)
 		f.company(t, BudgetModeHold, 100_000_000)
@@ -203,4 +236,15 @@ func TestShadowCostEstimateWarns(t *testing.T) {
 			t.Errorf("estimate %+v warns within a 100 USD budget", est)
 		}
 	})
+}
+
+// squadBudget opens a monthly hold budget on one squad.
+func (f budgetFixture) squadBudget(t *testing.T, squadID string, amount int64) {
+	t.Helper()
+	if _, err := f.budgets.Create(context.Background(), f.ws, f.actor, BudgetInput{
+		ScopeType: BudgetScopeSquad, ScopeID: util.MustParseUUID(squadID), Period: BudgetPeriodMonth, AmountMicros: amount,
+		SoftPercent: 80, Mode: BudgetModeHold,
+	}); err != nil {
+		t.Fatalf("create squad budget: %v", err)
+	}
 }

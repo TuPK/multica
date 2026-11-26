@@ -328,10 +328,16 @@ type ShadowEstimate struct {
 	Warn            bool
 }
 
-// Estimate prices a shadow run for a seat at a sample rate and a target.
-func (s *ShadowService) Estimate(ctx context.Context, ws, seat pgtype.UUID, rate float64, target int) (ShadowEstimate, error) {
+// Estimate prices a shadow run for a seat at a sample rate and a target. The budget it is checked
+// against is the seat's own: the active budgets that cover the seat's squad, the company budget
+// among them, never a budget of another squad (spec 9.5).
+func (s *ShadowService) Estimate(ctx context.Context, ws, seatID pgtype.UUID, rate float64, target int) (ShadowEstimate, error) {
+	seat, err := s.Queries.GetAgent(ctx, seatID)
+	if err != nil {
+		return ShadowEstimate{}, fmt.Errorf("load seat: %w", err)
+	}
 	ids, err := s.Queries.ListSeatCompletedTaskIDs(ctx, db.ListSeatCompletedTaskIDsParams{
-		AgentID: seat, Since: pgtype.Timestamptz{Time: time.Now().Add(-shadowEstimateWindow), Valid: true},
+		AgentID: seatID, Since: pgtype.Timestamptz{Time: time.Now().Add(-shadowEstimateWindow), Valid: true},
 		RowLimit: shadowEstimateRows,
 	})
 	if err != nil {
@@ -358,8 +364,9 @@ func (s *ShadowService) Estimate(ctx context.Context, ws, seat pgtype.UUID, rate
 		return ShadowEstimate{}, fmt.Errorf("list budgets: %w", err)
 	}
 	remaining := shadowBudgetUnlimited
+	scope := budgetScope{squadID: seat.HomeSquadID}
 	for _, b := range budgets {
-		if b.Status != "active" {
+		if b.Status != "active" || !budgetCovers(b.ScopeType, b.ScopeID, scope) {
 			continue
 		}
 		if left := b.AmountMicros - b.SpentMicros; remaining == shadowBudgetUnlimited || left < remaining {

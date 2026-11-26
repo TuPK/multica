@@ -146,3 +146,27 @@ func TestShadowNoWriteMcpOrAppTokens(t *testing.T) {
 		t.Errorf("shadow agent carries mcp_null=%v allowlist_null=%v env=%s; want no MCP overlay, no allowlist, no env", mcpNull, allowNull, env)
 	}
 }
+
+// TestShadowClaimRequiresCapabilitySingle: the single-runtime claim (ClaimTaskForRuntime, the
+// legacy per-runtime endpoint) applies the same capability gate as the batch claim.
+func TestShadowClaimRequiresCapabilitySingle(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	shadow := sf.shadowQueuedTask(t)
+	ctx := context.Background()
+	runtime := util.MustParseUUID(sf.runtime)
+
+	got, err := sf.svc.Tasks.ClaimTaskForRuntime(ctx, runtime)
+	if err != nil {
+		t.Fatalf("claim without the capability: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("a daemon without the capability claimed task %s", util.UUIDToString(got.ID))
+	}
+	got, err = sf.svc.Tasks.ClaimTaskForRuntime(WithShadowCapableClaim(ctx, true), runtime)
+	if err != nil {
+		t.Fatalf("claim with the capability: %v", err)
+	}
+	if got == nil || got.ID != shadow.ID {
+		t.Fatalf("a daemon with the capability got %v, want the shadow task", got)
+	}
+}

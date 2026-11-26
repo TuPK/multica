@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -297,5 +298,63 @@ func TestRuntimeChangeRefusesOtherRuntime(t *testing.T) {
 		util.UUIDToString(re.cfg.ID) + `","report":{"pairs":20},"rationale":"r"}`
 	if _, _, err := re.changes.ValidateOrgChange(ctx, re.q, re.ws, []byte(payload)); err == nil {
 		t.Error("a runtime change to a runtime the shadow run did not test must be refused")
+	}
+}
+
+// TestProbationWorseAutoRevertsThroughJudge: the probation check itself (CheckDue) judges an
+// auto-promoted runtime change worse, and the seat is put back on its earlier runtime and model
+// at once, with no rollback proposal filed (spec 9.6).
+func TestProbationWorseAutoRevertsThroughJudge(t *testing.T) {
+	re := newRuntimeChangeEnv(t, true)
+	ctx := context.Background()
+	squadID := util.UUIDToString(re.squad)
+	subject := util.UUIDToString(re.subject)
+	checkAt := time.Date(2026, 11, 4, 9, 0, 0, 0, time.UTC)
+
+	// The week before the change: six completed runs. The change applies at the environment's
+	// clock, and its before figure is this scorecard.
+	re.squadRuns(subject, squadID, time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC), 6, 0, "")
+	if _, err := re.scorecards(re.now).Compute(ctx, re.q, re.ws, ScorecardScope{SubjectType: ScorecardSubjectAgent, SubjectID: re.subject, AgentID: re.subject}, ScorecardPeriodWeek); err != nil {
+		t.Fatal(err)
+	}
+	if err := re.svc.OnShadowCompleted(ctx, re.cfg, readyReport()); err != nil {
+		t.Fatalf("OnShadowCompleted: %v", err)
+	}
+	app, err := re.q.GetOrgChangeApplicationByProposal(ctx, db.GetOrgChangeApplicationByProposalParams{
+		WorkspaceID: re.ws, ProposalID: mustProposalOf(t, re, ctx),
+	})
+	if err != nil {
+		t.Fatalf("application row: %v", err)
+	}
+	if !app.BeforeScorecardID.Valid {
+		t.Fatal("the runtime change must store the seat's scorecard as its before figure")
+	}
+
+	// The week after: six failed runs, then the judge runs at the check time.
+	re.squadRuns(subject, squadID, time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC), 0, 6, "agent_error")
+	if _, err := re.scorecards(checkAt).Compute(ctx, re.q, re.ws, ScorecardScope{SubjectType: ScorecardSubjectAgent, SubjectID: re.subject, AgentID: re.subject}, ScorecardPeriodWeek); err != nil {
+		t.Fatal(err)
+	}
+	probation := &ProbationService{Queries: re.q, Changes: re.changes, Scorecards: re.scorecards(checkAt), Now: func() time.Time { return checkAt }}
+	if _, err := probation.CheckDue(ctx); err != nil {
+		t.Fatalf("CheckDue: %v", err)
+	}
+
+	judged, err := re.q.GetOrgChangeApplicationInWorkspace(ctx, db.GetOrgChangeApplicationInWorkspaceParams{ID: app.ID, WorkspaceID: re.ws})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if judged.ProbationOutcome.String != ProbationWorse {
+		t.Fatalf("probation outcome = %q, want %q", judged.ProbationOutcome.String, ProbationWorse)
+	}
+	if !judged.RevertedAt.Valid {
+		t.Error("the worse change is not marked reverted")
+	}
+	if rt, model := re.seat(t); rt != re.fromRuntime || model != "claude-seat" {
+		t.Errorf("seat after the judged verdict: runtime %s model %q, want the earlier %s claude-seat", rt, model, re.fromRuntime)
+	}
+	if n := re.fx.Count(t, `SELECT COUNT(*) FROM proposal WHERE workspace_id = $1 AND kind = 'org_change' AND payload->>'type' = 'runtime_change' AND payload->>'rollback_of_application_id' IS NOT NULL`,
+		util.UUIDToString(re.ws)); n != 0 {
+		t.Errorf("rollback proposals = %d, want none for an auto-promotion", n)
 	}
 }
