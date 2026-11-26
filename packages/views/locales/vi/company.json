@@ -130,5 +130,12 @@
   "insights_goals_empty": "Không có mục tiêu nào có rủi ro",
   "insights_overdue": "Yêu cầu nhóm đã quá hạn",
   "insights_overdue_empty": "Không có gì quá hạn",
-  "insights_overdue_hours": "trễ {{hours}} giờ"
+  "insights_overdue_hours": "trễ {{hours}} giờ",
+  "insights_attention": "Thời gian của bạn",
+  "insights_attention_spent": "Đã dùng {{spent}} / {{budget}} phút tuần này",
+  "insights_attention_per_done": "{{minutes}} phút của bạn cho mỗi việc đã xong",
+  "insights_attention_no_done": "Chưa có việc xong nào để đo",
+  "insights_attention_held_empty": "Không có câu hỏi nào đang giữ vì thời gian của bạn",
+  "insights_attention_held": "Đang xếp hàng vì hết thời gian của bạn: {{count}}",
+  "insights_attention_row": "{{minutes}} phút, hỏi ngày {{date}}"
 }

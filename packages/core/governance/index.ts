@@ -23,3 +23,4 @@ export * from "./autonomy-queries";
 export * from "./approval-policy";
 export * from "./approval-policy-queries";
 export * from "./digest-mode";
+export * from "./attention";

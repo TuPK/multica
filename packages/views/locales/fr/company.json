@@ -134,5 +134,12 @@
   "insights_goals_empty": "Aucun objectif à risque",
   "insights_overdue": "Demandes d'escouade en retard",
   "insights_overdue_empty": "Rien en retard",
-  "insights_overdue_hours": "{{hours}} h de retard"
+  "insights_overdue_hours": "{{hours}} h de retard",
+  "insights_attention": "Votre temps",
+  "insights_attention_spent": "{{spent}} sur {{budget}} minutes utilisées cette semaine",
+  "insights_attention_per_done": "{{minutes}} minutes de votre temps par issue terminée",
+  "insights_attention_no_done": "Aucune issue terminée à mesurer pour l'instant",
+  "insights_attention_held_empty": "Rien retenu pour votre temps",
+  "insights_attention_held": "En attente parce que votre temps est épuisé : {{count}}",
+  "insights_attention_row": "{{minutes}} min, demandé le {{date}}"
 }

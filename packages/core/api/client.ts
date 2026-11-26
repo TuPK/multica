@@ -40,6 +40,11 @@ import type {
   WorkspacePlan,
 } from "../billing/workspace-orders-types";
 import { parseDigestMode, type DigestSetting, type DigestModeInfo } from "../governance/digest-mode";
+import {
+  parseAttentionBudget,
+  type AttentionBudget,
+  type AttentionBudgetInput,
+} from "../governance/attention";
 import { AgentRuntimeSchema, EMPTY_RUNTIME } from "../runtimes/schema";
 import type { IssueWakeup, IssueWakeupInput, IssueWakeupSummaryRow, PausedWakeup, SystemWakeup, WakeupRun, WorkspaceSystemWakeup } from "../types/issue-wakeup";
 import type { WorkspaceWakeupPage, WorkspaceWakeupFilters } from "../types/issue-wakeup";
@@ -6703,6 +6708,19 @@ export class ApiClient extends ForkApiMethods {
       body: JSON.stringify({ mode }),
     });
     return parseDigestMode(raw);
+  }
+
+  /** The weekly attention budget and this week's spend (durable spec 7.3). */
+  async getAttentionBudget(): Promise<AttentionBudget> {
+    return parseAttentionBudget(await this.fetch<unknown>("/api/company/attention"));
+  }
+
+  async setAttentionBudget(data: AttentionBudgetInput): Promise<AttentionBudget> {
+    const raw = await this.fetch<unknown>("/api/company/attention", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    return parseAttentionBudget(raw);
   }
 
   async setQuietHours(data: QuietHours): Promise<CompanyStateInfo> {

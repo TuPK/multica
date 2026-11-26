@@ -18,6 +18,7 @@ vi.mock("@multica/core/projects/queries", () => ({ projectListOptions: () => ({ 
 vi.mock("@multica/core/company", () => ({ digestOptions: () => ({ queryKey: ["digest"] }) }));
 vi.mock("@multica/core/governance", () => ({
   budgetsOptions: () => ({ queryKey: ["budgets"] }),
+  attentionBudgetOptions: () => ({ queryKey: ["attention"], queryFn: () => ({ enabled: false }) }),
   budgetPace: () => ({ elapsed: 0, used: 0, overrunAt: null }),
 }));
 vi.mock("@multica/core/dashboard", () => ({

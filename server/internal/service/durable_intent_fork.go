@@ -114,6 +114,7 @@ func (s *IntentService) Rehearse(ctx context.Context, eventID pgtype.UUID, in co
 			return pgtype.UUID{}, fmt.Errorf("link effect to intent: %w", err)
 		}
 	}
+	s.admitIntent(ctx, in, row.ID, call, rationale)
 	return row.ID, nil
 }
 

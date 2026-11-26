@@ -118,7 +118,20 @@
       "floors": "Tầng"
     },
     "digest_note": "Chế độ tự động đọc bản tóm tắt tầng khi có hơn {{threshold}} nhóm đang hoạt động. Bạn có {{count}}, nên Thư ký hiện đọc {{resolved}}.",
-    "digest_save_failed": "Không thể thay đổi nguồn bản tin. Vui lòng thử lại."
+    "digest_save_failed": "Không thể thay đổi nguồn bản tin. Vui lòng thử lại.",
+    "attention_heading": "Ngân sách chú ý",
+    "attention_minutes": "Phút mỗi tuần",
+    "attention_split": "Chia giữa các squad",
+    "attention_split_options": {
+      "equal": "Chia đều",
+      "goals": "Theo số mục tiêu đang hoạt động"
+    },
+    "attention_spent": "Đã dùng {{spent}} / {{budget}} phút trong tuần này.",
+    "attention_hint": "Squad đã dùng hết phần của tuần thì câu hỏi của squad đó được giữ lại cho brief. Câu hỏi khẩn và quyết định theo ủy quyền có sẵn không bao giờ bị giữ.",
+    "attention_invalid": "Nhập số phút nguyên từ 0 đến {{max}}.",
+    "attention_save": "Lưu ngân sách",
+    "attention_saved": "Đã lưu ngân sách chú ý",
+    "attention_save_failed": "Không lưu được ngân sách chú ý. Thử lại."
   },
   "log": {
     "filter_kind": "Loại",
@@ -186,7 +199,8 @@
     "stalled": "{{count}} sáng kiến bị đình trệ",
     "routines_late": "{{count}} tác vụ định kỳ bị trễ",
     "runtimes_offline": "{{count}} môi trường chạy ngoại tuyến",
-    "quiet": "Không có gì cần bạn"
+    "quiet": "Không có gì cần bạn",
+    "attention": "Thời gian của bạn: {{spent}} / {{budget}} phút tuần này"
   },
   "health": {
     "heading": "Tình trạng hệ thống",

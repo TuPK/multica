@@ -1,7 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { companyPulseOptions, type CompanyPulse } from "@multica/core/governance";
+import {
+  attentionBudgetOptions,
+  companyPulseOptions,
+  type AttentionBudget,
+  type CompanyPulse,
+} from "@multica/core/governance";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths, type GovernanceTab } from "@multica/core/paths";
 import { cn } from "@multica/ui/lib/utils";
@@ -18,52 +23,67 @@ interface PulseChip {
 /**
  * The company pulse strip (spec 4.8): what needs the boss, in one line. Each
  * chip that has a Governance tab opens it. Zero counts are left out, so a quiet
- * company shows a single line that says so.
+ * company shows a single line that says so. With durable_principal on, the
+ * week's attention spend (spec 7.5) closes the strip and opens the Controls tab.
  */
 export function CompanyPulseStrip() {
   const { t } = useT("governance");
   const wsId = useWorkspaceId();
   const paths = useWorkspacePaths();
   const pulse = useQuery(companyPulseOptions(wsId));
+  const budget = useQuery(attentionBudgetOptions(wsId));
 
   if (!pulse.data) return null;
   const chips = pulseChips(pulse.data, t);
+  const attention = budget.data?.enabled
+    ? { key: "attention", text: attentionText(budget.data, t), tab: "controls" as const }
+    : null;
 
   if (chips.length === 0) {
     return (
-      <span data-pulse="quiet" className="shrink-0 text-caption text-muted-foreground">
-        {t(($) => $.pulse.quiet)}
-      </span>
+      <div className="flex min-w-0 items-center gap-2">
+        <span data-pulse="quiet" className="shrink-0 text-caption text-muted-foreground">
+          {t(($) => $.pulse.quiet)}
+        </span>
+        {attention ? <PulseChipLink chip={attention} href={paths.governance("controls")} /> : null}
+      </div>
     );
   }
   return (
     <div role="group" aria-label={t(($) => $.pulse.label)} data-pulse="strip" className="flex min-w-0 items-center gap-1">
       {chips.map((chip) =>
         chip.tab ? (
-          <AppLink
-            key={chip.key}
-            href={paths.governance(chip.tab)}
-            className={chipClass}
-            data-pulse-chip={chip.key}
-          >
-            {chip.text}
-          </AppLink>
+          <PulseChipLink key={chip.key} chip={chip} href={paths.governance(chip.tab)} />
         ) : (
           <span key={chip.key} className={chipClass} data-pulse-chip={chip.key}>
             {chip.text}
           </span>
         ),
       )}
+      {attention ? <PulseChipLink chip={attention} href={paths.governance("controls")} /> : null}
     </div>
   );
+}
+
+function PulseChipLink({ chip, href }: { chip: { key: string; text: string }; href: string }) {
+  return (
+    <AppLink href={href} className={chipClass} data-pulse-chip={chip.key}>
+      {chip.text}
+    </AppLink>
+  );
+}
+
+type Translate = ReturnType<typeof useT<"governance">>["t"];
+
+/** The week's attention reading: minutes spent of the budget (spec 7.5). */
+function attentionText(b: AttentionBudget, t: Translate): string {
+  return t(($) => $.pulse.attention, { spent: Math.round(b.spent_minutes), budget: b.minutes_per_week });
 }
 
 const chipClass = cn(
   "inline-flex h-7 shrink-0 items-center rounded-md border px-2 text-caption text-muted-foreground",
   "hover:bg-accent hover:text-foreground",
 );
-
-type Translate = ReturnType<typeof useT<"governance">>["t"];
 
 /** The chips for the non-zero readings, in the order the boss reads them. */
 export function pulseChips(p: CompanyPulse, t: Translate): PulseChip[] {

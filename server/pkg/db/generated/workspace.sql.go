@@ -14,7 +14,7 @@ import (
 const createWorkspace = `-- name: CreateWorkspace :one
 INSERT INTO workspace (name, slug, description, context, issue_prefix)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode
+RETURNING id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, attention_minutes_per_week, attention_split, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode
 `
 
 type CreateWorkspaceParams struct {
@@ -46,6 +46,8 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 		&i.Repos,
 		&i.IssuePrefix,
 		&i.IssueCounter,
+		&i.AttentionMinutesPerWeek,
+		&i.AttentionSplit,
 		&i.AvatarUrl,
 		&i.AttributionFailClosed,
 		&i.SecretaryAgentID,
@@ -253,7 +255,7 @@ func (q *Queries) GetDaemonWorkspace(ctx context.Context, id pgtype.UUID) (GetDa
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode FROM workspace
+SELECT id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, attention_minutes_per_week, attention_split, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode FROM workspace
 WHERE id = $1
 `
 
@@ -272,6 +274,8 @@ func (q *Queries) GetWorkspace(ctx context.Context, id pgtype.UUID) (Workspace, 
 		&i.Repos,
 		&i.IssuePrefix,
 		&i.IssueCounter,
+		&i.AttentionMinutesPerWeek,
+		&i.AttentionSplit,
 		&i.AvatarUrl,
 		&i.AttributionFailClosed,
 		&i.SecretaryAgentID,
@@ -301,7 +305,7 @@ func (q *Queries) GetWorkspaceAttributionFailClosed(ctx context.Context, id pgty
 }
 
 const getWorkspaceBySlug = `-- name: GetWorkspaceBySlug :one
-SELECT id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode FROM workspace
+SELECT id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, attention_minutes_per_week, attention_split, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode FROM workspace
 WHERE slug = $1
 `
 
@@ -320,6 +324,8 @@ func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspac
 		&i.Repos,
 		&i.IssuePrefix,
 		&i.IssueCounter,
+		&i.AttentionMinutesPerWeek,
+		&i.AttentionSplit,
 		&i.AvatarUrl,
 		&i.AttributionFailClosed,
 		&i.SecretaryAgentID,
@@ -427,7 +433,7 @@ func (q *Queries) ListDaemonWorkspaces(ctx context.Context, userID pgtype.UUID) 
 }
 
 const listWorkspaces = `-- name: ListWorkspaces :many
-SELECT w.id, w.name, w.slug, w.description, w.settings, w.created_at, w.updated_at, w.context, w.repos, w.issue_prefix, w.issue_counter, w.avatar_url, w.attribution_fail_closed, w.secretary_agent_id, w.company_state, w.company_state_updated_at, w.quiet_enabled, w.quiet_start, w.quiet_end, w.quiet_timezone, w.digest_mode, m.pinned_at, m.role
+SELECT w.id, w.name, w.slug, w.description, w.settings, w.created_at, w.updated_at, w.context, w.repos, w.issue_prefix, w.issue_counter, w.attention_minutes_per_week, w.attention_split, w.avatar_url, w.attribution_fail_closed, w.secretary_agent_id, w.company_state, w.company_state_updated_at, w.quiet_enabled, w.quiet_start, w.quiet_end, w.quiet_timezone, w.digest_mode, m.pinned_at, m.role
 FROM member m
 JOIN workspace w ON w.id = m.workspace_id
 WHERE m.user_id = $1
@@ -436,29 +442,31 @@ ORDER BY m.pinned_at DESC NULLS LAST, w.created_at ASC
 `
 
 type ListWorkspacesRow struct {
-	ID                    pgtype.UUID        `json:"id"`
-	Name                  string             `json:"name"`
-	Slug                  string             `json:"slug"`
-	Description           pgtype.Text        `json:"description"`
-	Settings              []byte             `json:"settings"`
-	CreatedAt             pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
-	Context               pgtype.Text        `json:"context"`
-	Repos                 []byte             `json:"repos"`
-	IssuePrefix           string             `json:"issue_prefix"`
-	IssueCounter          int32              `json:"issue_counter"`
-	AvatarUrl             pgtype.Text        `json:"avatar_url"`
-	AttributionFailClosed bool               `json:"attribution_fail_closed"`
-	SecretaryAgentID      pgtype.UUID        `json:"secretary_agent_id"`
-	CompanyState          string             `json:"company_state"`
-	CompanyStateUpdatedAt pgtype.Timestamptz `json:"company_state_updated_at"`
-	QuietEnabled          bool               `json:"quiet_enabled"`
-	QuietStart            pgtype.Time        `json:"quiet_start"`
-	QuietEnd              pgtype.Time        `json:"quiet_end"`
-	QuietTimezone         string             `json:"quiet_timezone"`
-	DigestMode            string             `json:"digest_mode"`
-	PinnedAt              pgtype.Timestamptz `json:"pinned_at"`
-	Role                  string             `json:"role"`
+	ID                      pgtype.UUID        `json:"id"`
+	Name                    string             `json:"name"`
+	Slug                    string             `json:"slug"`
+	Description             pgtype.Text        `json:"description"`
+	Settings                []byte             `json:"settings"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
+	Context                 pgtype.Text        `json:"context"`
+	Repos                   []byte             `json:"repos"`
+	IssuePrefix             string             `json:"issue_prefix"`
+	IssueCounter            int32              `json:"issue_counter"`
+	AttentionMinutesPerWeek int32              `json:"attention_minutes_per_week"`
+	AttentionSplit          string             `json:"attention_split"`
+	AvatarUrl               pgtype.Text        `json:"avatar_url"`
+	AttributionFailClosed   bool               `json:"attribution_fail_closed"`
+	SecretaryAgentID        pgtype.UUID        `json:"secretary_agent_id"`
+	CompanyState            string             `json:"company_state"`
+	CompanyStateUpdatedAt   pgtype.Timestamptz `json:"company_state_updated_at"`
+	QuietEnabled            bool               `json:"quiet_enabled"`
+	QuietStart              pgtype.Time        `json:"quiet_start"`
+	QuietEnd                pgtype.Time        `json:"quiet_end"`
+	QuietTimezone           string             `json:"quiet_timezone"`
+	DigestMode              string             `json:"digest_mode"`
+	PinnedAt                pgtype.Timestamptz `json:"pinned_at"`
+	Role                    string             `json:"role"`
 }
 
 // w.* so the row carries every workspace column, including the ones added after
@@ -486,6 +494,8 @@ func (q *Queries) ListWorkspaces(ctx context.Context, userID pgtype.UUID) ([]Lis
 			&i.Repos,
 			&i.IssuePrefix,
 			&i.IssueCounter,
+			&i.AttentionMinutesPerWeek,
+			&i.AttentionSplit,
 			&i.AvatarUrl,
 			&i.AttributionFailClosed,
 			&i.SecretaryAgentID,
@@ -558,7 +568,7 @@ UPDATE workspace
 SET settings = jsonb_set(COALESCE(settings, '{}'::jsonb), '{non_request_workflow}', $1::jsonb),
     updated_at = now()
 WHERE id = $2::uuid
-RETURNING id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode
+RETURNING id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, attention_minutes_per_week, attention_split, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode
 `
 
 type SetWorkspaceNonRequestWorkflowParams struct {
@@ -584,6 +594,8 @@ func (q *Queries) SetWorkspaceNonRequestWorkflow(ctx context.Context, arg SetWor
 		&i.Repos,
 		&i.IssuePrefix,
 		&i.IssueCounter,
+		&i.AttentionMinutesPerWeek,
+		&i.AttentionSplit,
 		&i.AvatarUrl,
 		&i.AttributionFailClosed,
 		&i.SecretaryAgentID,
@@ -641,7 +653,7 @@ UPDATE workspace SET
     secretary_agent_id = CASE WHEN $9::bool THEN $10::uuid ELSE secretary_agent_id END,
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode
+RETURNING id, name, slug, description, settings, created_at, updated_at, context, repos, issue_prefix, issue_counter, attention_minutes_per_week, attention_split, avatar_url, attribution_fail_closed, secretary_agent_id, company_state, company_state_updated_at, quiet_enabled, quiet_start, quiet_end, quiet_timezone, digest_mode
 `
 
 type UpdateWorkspaceParams struct {
@@ -683,6 +695,8 @@ func (q *Queries) UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams
 		&i.Repos,
 		&i.IssuePrefix,
 		&i.IssueCounter,
+		&i.AttentionMinutesPerWeek,
+		&i.AttentionSplit,
 		&i.AvatarUrl,
 		&i.AttributionFailClosed,
 		&i.SecretaryAgentID,

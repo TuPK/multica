@@ -77,6 +77,7 @@ func (s *Service) createRequest(ctx context.Context, rn *run, kind string, app d
 	if err != nil {
 		return db.AppActionRequest{}, err
 	}
+	s.admitAttention(ctx, req)
 	switch {
 	case isTeamConnect(req):
 		s.notifyAdmins(ctx, req)
@@ -216,6 +217,7 @@ func (s *Service) Approve(ctx context.Context, workspaceID, actorID, requestID p
 	if err != nil {
 		return db.AppActionRequest{}, err
 	}
+	s.answerAttention(ctx, decided.ID)
 	if decided.Kind == KindConnect {
 		if isTeamConnect(decided) {
 			s.archiveAdminNotifications(ctx, decided, actorID, "app_request_decided")
@@ -328,6 +330,9 @@ func (s *Service) Reject(ctx context.Context, workspaceID, actorID, requestID pg
 	})
 	if isNoRows(err) {
 		return db.AppActionRequest{}, ErrNotPending
+	}
+	if err == nil {
+		s.answerAttention(ctx, decided.ID)
 	}
 	if err != nil {
 		return db.AppActionRequest{}, err

@@ -118,7 +118,20 @@
       "floors": "樓層"
     },
     "digest_note": "自動模式在活躍小隊超過 {{threshold}} 個時讀取樓層簡報。目前有 {{count}} 個，因此秘書現在讀取{{resolved}}。",
-    "digest_save_failed": "無法變更摘要來源，請重試。"
+    "digest_save_failed": "無法變更摘要來源，請重試。",
+    "attention_heading": "注意力預算",
+    "attention_minutes": "每週分鐘數",
+    "attention_split": "各 squad 之間的分配",
+    "attention_split_options": {
+      "equal": "平均分配",
+      "goals": "依活躍目標數"
+    },
+    "attention_spent": "本週已用 {{spent}} / {{budget}} 分鐘。",
+    "attention_hint": "某個 squad 本週的配額用完後，它的問題會留給簡報。緊急問題與標準授權下的決定永不被保留。",
+    "attention_invalid": "請輸入 0 到 {{max}} 之間的整數分鐘數。",
+    "attention_save": "儲存預算",
+    "attention_saved": "注意力預算已儲存",
+    "attention_save_failed": "無法儲存注意力預算，請再試一次。"
   },
   "log": {
     "filter_kind": "類型",
@@ -186,7 +199,8 @@
     "stalled": "{{count}} 個停滯的專案",
     "routines_late": "{{count}} 個例行任務逾期",
     "runtimes_offline": "{{count}} 個執行環境離線",
-    "quiet": "暫無需要你處理的事"
+    "quiet": "暫無需要你處理的事",
+    "attention": "你的時間：本週 {{spent}} / {{budget}} 分鐘"
   },
   "health": {
     "heading": "系統健康",

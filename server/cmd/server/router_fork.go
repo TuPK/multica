@@ -183,6 +183,9 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	// The digest source (auto, squads or floors) and the company pulse strip.
 	r.Get("/api/company/digest-mode", h.GetDigestMode)
 	r.Put("/api/company/digest-mode", h.SetDigestMode)
+	// The weekly attention budget and this week's spend (durable spec 7.3, 7.5).
+	r.Get("/api/company/attention", h.GetAttentionBudget)
+	r.Put("/api/company/attention", h.SetAttentionBudget)
 	r.Get("/api/company/pulse", h.GetCompanyPulse)
 	// Company as code (spec 4.9): the structure as a document, and its import.
 	r.Get("/api/company/export", h.ExportCompany)

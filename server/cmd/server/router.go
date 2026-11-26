@@ -1522,6 +1522,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 							Bus:           bus,
 							Effects:       h.Effects,
 							Intents:       h.Intents,
+							Attention:     &service.AttentionService{Queries: queries, Flags: opts.FeatureFlags},
 						}
 						// Monthly app calls (MUL-10047) are metered only
 						// while Delegora Cloud is connected.

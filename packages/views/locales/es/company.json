@@ -134,5 +134,12 @@
   "insights_goals_empty": "Sin objetivos en riesgo",
   "insights_overdue": "Solicitudes de squad vencidas",
   "insights_overdue_empty": "Nada vencido",
-  "insights_overdue_hours": "{{hours}} h de retraso"
+  "insights_overdue_hours": "{{hours}} h de retraso",
+  "insights_attention": "Tu tiempo",
+  "insights_attention_spent": "{{spent}} de {{budget}} minutos usados esta semana",
+  "insights_attention_per_done": "{{minutes}} minutos de tu tiempo por cada issue terminado",
+  "insights_attention_no_done": "Aún no hay un issue terminado que medir",
+  "insights_attention_held_empty": "Nada retenido por tu tiempo",
+  "insights_attention_held": "En espera porque tu tiempo se agotó: {{count}}",
+  "insights_attention_row": "{{minutes}} min, preguntado el {{date}}"
 }

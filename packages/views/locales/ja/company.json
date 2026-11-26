@@ -130,5 +130,12 @@
   "insights_goals_empty": "リスクのある目標はありません",
   "insights_overdue": "期限超過のスクワッド依頼",
   "insights_overdue_empty": "期限超過はありません",
-  "insights_overdue_hours": "{{hours}} 時間超過"
+  "insights_overdue_hours": "{{hours}} 時間超過",
+  "insights_attention": "あなたの時間",
+  "insights_attention_spent": "今週 {{spent}} / {{budget}} 分を使用",
+  "insights_attention_per_done": "完了した issue 1 件あたり、あなたの時間 {{minutes}} 分",
+  "insights_attention_no_done": "測定できる完了 issue はまだありません",
+  "insights_attention_held_empty": "あなたの時間のために保留中の質問はありません",
+  "insights_attention_held": "あなたの時間を使い切ったため待機中：{{count}}",
+  "insights_attention_row": "{{minutes}} 分、{{date}} に質問"
 }

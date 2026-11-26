@@ -352,6 +352,22 @@ type Attachment struct {
 	Height          pgtype.Int4        `json:"height"`
 }
 
+type AttentionLedger struct {
+	ID               pgtype.UUID        `json:"id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	MemberID         pgtype.UUID        `json:"member_id"`
+	SquadID          pgtype.UUID        `json:"squad_id"`
+	SubjectType      string             `json:"subject_type"`
+	SubjectID        pgtype.UUID        `json:"subject_id"`
+	Reason           string             `json:"reason"`
+	EstimatedMinutes pgtype.Numeric     `json:"estimated_minutes"`
+	ActualSeconds    pgtype.Int4        `json:"actual_seconds"`
+	State            string             `json:"state"`
+	WeekStart        pgtype.Date        `json:"week_start"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	AnsweredAt       pgtype.Timestamptz `json:"answered_at"`
+}
+
 type AuditEvent struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
@@ -3843,18 +3859,20 @@ type WorkOutcome struct {
 }
 
 type Workspace struct {
-	ID           pgtype.UUID        `json:"id"`
-	Name         string             `json:"name"`
-	Slug         string             `json:"slug"`
-	Description  pgtype.Text        `json:"description"`
-	Settings     []byte             `json:"settings"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	Context      pgtype.Text        `json:"context"`
-	Repos        []byte             `json:"repos"`
-	IssuePrefix  string             `json:"issue_prefix"`
-	IssueCounter int32              `json:"issue_counter"`
-	AvatarUrl    pgtype.Text        `json:"avatar_url"`
+	ID                      pgtype.UUID        `json:"id"`
+	Name                    string             `json:"name"`
+	Slug                    string             `json:"slug"`
+	Description             pgtype.Text        `json:"description"`
+	Settings                []byte             `json:"settings"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
+	Context                 pgtype.Text        `json:"context"`
+	Repos                   []byte             `json:"repos"`
+	IssuePrefix             string             `json:"issue_prefix"`
+	IssueCounter            int32              `json:"issue_counter"`
+	AttentionMinutesPerWeek int32              `json:"attention_minutes_per_week"`
+	AttentionSplit          string             `json:"attention_split"`
+	AvatarUrl               pgtype.Text        `json:"avatar_url"`
 	// When TRUE, an agent run that resolves to no precise accountable human (would be owner_fallback) is refused at enqueue instead of degrading to the agent owner (MUL-4302 §3.5). Default FALSE = owner_fallback. Never affects authorization (originator_user_id).
 	AttributionFailClosed bool               `json:"attribution_fail_closed"`
 	SecretaryAgentID      pgtype.UUID        `json:"secretary_agent_id"`

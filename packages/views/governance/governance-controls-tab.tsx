@@ -43,6 +43,7 @@ import { cn } from "@multica/ui/lib/utils";
 import { PAGE_GUTTER } from "../layout/page-header";
 import { useT } from "../i18n";
 import { GovernanceHealthSection } from "./governance-health-section";
+import { AttentionBudgetSection } from "./attention-budget-section";
 import { EffectPolicyGrid } from "../durable/effects/effect-policy-grid";
 import { useEffectsEnabled } from "../durable/effects/use-effects-enabled";
 
@@ -169,6 +170,8 @@ export function GovernanceControlsTab() {
       ) : null}
 
       <DigestModeSection wsId={wsId} editable={editable} />
+
+      <AttentionBudgetSection wsId={wsId} editable={editable} />
 
       <GovernanceHealthSection />
 

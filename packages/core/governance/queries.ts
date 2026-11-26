@@ -8,6 +8,7 @@ export const governanceKeys = {
   all: (wsId: string) => ["governance", wsId] as const,
   companyState: (wsId: string) => [...governanceKeys.all(wsId), "company-state"] as const,
   digestMode: (wsId: string) => [...governanceKeys.all(wsId), "digest-mode"] as const,
+  attention: (wsId: string) => [...governanceKeys.all(wsId), "attention"] as const,
   events: (wsId: string, filters: GovernanceEventFilters = {}) =>
     [
       ...governanceKeys.all(wsId),
@@ -32,6 +33,15 @@ export function digestModeOptions(wsId: string) {
   return queryOptions({
     queryKey: governanceKeys.digestMode(wsId),
     queryFn: () => api.getDigestMode(),
+    enabled: !!wsId,
+  });
+}
+
+/** The weekly attention budget and this week's spend (durable spec 7.3). */
+export function attentionBudgetOptions(wsId: string) {
+  return queryOptions({
+    queryKey: governanceKeys.attention(wsId),
+    queryFn: () => api.getAttentionBudget(),
     enabled: !!wsId,
   });
 }

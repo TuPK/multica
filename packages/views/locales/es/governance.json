@@ -118,7 +118,20 @@
       "floors": "Departamentos"
     },
     "digest_note": "El modo automático lee los briefs de departamento a partir de {{threshold}} squads activos. Tienes {{count}}, así que la Secretaria lee ahora {{resolved}}.",
-    "digest_save_failed": "No se pudo cambiar el origen del digest. Inténtalo de nuevo."
+    "digest_save_failed": "No se pudo cambiar el origen del digest. Inténtalo de nuevo.",
+    "attention_heading": "Presupuesto de atención",
+    "attention_minutes": "Minutos por semana",
+    "attention_split": "Reparto entre squads",
+    "attention_split_options": {
+      "equal": "Partes iguales",
+      "goals": "Según los objetivos activos"
+    },
+    "attention_spent": "Usado esta semana: {{spent}} de {{budget}} minutos.",
+    "attention_hint": "Un squad que ya usó su parte de la semana tiene sus preguntas retenidas para el resumen. Las preguntas urgentes y las decisiones tomadas con aprobación permanente nunca se retienen.",
+    "attention_invalid": "Escribe un número entero de minutos de 0 a {{max}}.",
+    "attention_save": "Guardar presupuesto",
+    "attention_saved": "Presupuesto de atención guardado",
+    "attention_save_failed": "No se pudo guardar el presupuesto de atención. Inténtalo de nuevo."
   },
   "log": {
     "filter_kind": "Tipo",
@@ -186,7 +199,8 @@
     "stalled": "{{count}} iniciativas estancadas",
     "routines_late": "{{count}} rutinas con retraso",
     "runtimes_offline": "{{count}} runtimes sin conexión",
-    "quiet": "Nada requiere tu atención"
+    "quiet": "Nada requiere tu atención",
+    "attention": "Tu tiempo: {{spent}} / {{budget}} min esta semana"
   },
   "health": {
     "heading": "Salud del sistema",

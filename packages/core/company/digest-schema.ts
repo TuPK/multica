@@ -209,6 +209,21 @@ export interface Digest {
   auto_approved: DigestAutoApproval[];
   /** The brief's Budget section: budgets at or above their soft line, and the holds in force (spec 4.2). */
   budget: DigestBudget;
+  /** Questions held for a squad's share of the person's time, the blocking reasons first (spec 7.5). */
+  queued_asks: DigestQueuedAsk[];
+  /** Minutes people spent deciding per issue done in the window; null when no reading (spec 7.5). */
+  attention_minutes_per_done: number | null;
+}
+
+/** A question the attention budget holds back: its squad's share of the week is used up (spec 7.3). */
+export interface DigestQueuedAsk {
+  subject_type: string;
+  subject_id: string;
+  /** Null for a system question. */
+  squad_id: string | null;
+  reason: string;
+  estimated_minutes: number;
+  created_at: string;
 }
 
 /** One proposal a standing approval approved. */
@@ -503,6 +518,17 @@ const DigestOverdueRequestSchema = z
   })
   .loose();
 
+const DigestQueuedAskSchema = z
+  .object({
+    subject_type: z.string().default(""),
+    subject_id: z.string().default(""),
+    squad_id: z.string().nullable().catch(null).default(null),
+    reason: z.string().default(""),
+    estimated_minutes: num,
+    created_at: z.string().default(""),
+  })
+  .loose();
+
 /** Reads a list item by item: a missing or non-list value is none, a bad item is dropped. */
 function listOfItems<T>(schema: z.ZodType<T>) {
   return z.unknown().transform((value) =>
@@ -541,6 +567,9 @@ export const DigestSchema = z
     auto_approved: listOfItems(DigestAutoApprovalSchema),
     // An older server sends no budget section; it reads as none.
     budget: DigestBudgetSchema,
+    // An older server sends no attention section; it reads as none.
+    queued_asks: listOfItems(DigestQueuedAskSchema),
+    attention_minutes_per_done: z.number().nullable().catch(null).default(null),
   })
   .loose();
 
@@ -559,4 +588,6 @@ export const FALLBACK_DIGEST: Digest = {
   overdue_requests: [],
   auto_approved: [],
   budget: { scopes: [], holds_in_force: 0, holds: [] },
+  queued_asks: [],
+  attention_minutes_per_done: null,
 };

@@ -198,6 +198,11 @@ type CreateProposalRequest struct {
 	// the workspace currency). Optional; a standing approval needs it to fit a
 	// policy's cost limit (spec 4.4).
 	EstimatedCostMicros *int64 `json:"estimated_cost_micros"`
+	// Reason, WhyNotDecide and Searched are the attention rules for a question an agent
+	// asks (durable spec 7.4): required from an agent while durable_principal is on.
+	Reason       string   `json:"reason"`
+	WhyNotDecide string   `json:"why_not_decide"`
+	Searched     []string `json:"searched"`
 }
 
 // cleanProposalText trims a proposal text field and strips the bytes
@@ -380,6 +385,9 @@ func (h *Handler) CreateProposal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if actorType == "agent" && !h.allowAgentAsk(w, r, req.Reason, req.WhyNotDecide, req.Searched) {
+		return
+	}
 	scope, ok := h.requestHiddenProjects(w, r, uuidToString(wsUUID))
 	if !ok {
 		return
@@ -434,6 +442,7 @@ func (h *Handler) CreateProposal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.admitProposal(r.Context(), wsUUID, squadUUID, actorType, req, res)
 	prefix := h.getIssuePrefix(r.Context(), wsUUID)
 	issueResp := issueToResponse(res.Issue, prefix)
 	h.fillStatusCategory(r.Context(), wsUUID, projectaccess.Hidden{}, &issueResp)
@@ -695,6 +704,9 @@ func (h *Handler) DecideProposal(w http.ResponseWriter, r *http.Request) {
 		Until:       until,
 		Outcome:     strings.TrimSpace(req.Outcome),
 	})
+	if err == nil && req.Decision != service.ProposalDecisionSnooze {
+		h.answerAttention(r.Context(), "proposal", proposalID)
+	}
 	if writePlanLimitReached(w, err) {
 		return
 	}
