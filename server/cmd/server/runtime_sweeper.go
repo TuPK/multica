@@ -17,6 +17,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 	"github.com/multica-ai/multica/server/pkg/redact"
 )
@@ -179,9 +180,9 @@ func runDelegatedFailureRecoverySweeper(ctx context.Context, taskSvc *service.Ta
 	})
 }
 
-func runRuntimeGCSweeper(ctx context.Context, txStarter runtimeGCTxStarter, queries *db.Queries, metrics *obsmetrics.BusinessMetrics, publisher runtimeGCEventPublisher) {
+func runRuntimeGCSweeper(ctx context.Context, txStarter runtimeGCTxStarter, queries *db.Queries, metrics *obsmetrics.BusinessMetrics, publisher runtimeGCEventPublisher, flags *featureflag.Service) {
 	runPeriodicSweep(ctx, runtimeGCSweepInterval, func() {
-		gcRuntimes(ctx, txStarter, queries, metrics, publisher)
+		gcRuntimes(ctx, txStarter, queries, metrics, publisher, flags)
 	})
 }
 
@@ -393,15 +394,15 @@ func filterStaleRuntimesByLiveness(ctx context.Context, candidates []db.SelectSt
 // agent_task_queue.runtime_id ON DELETE CASCADE. Candidate discovery is bounded;
 // each runtime then gets an independent transaction so one bad row cannot abort
 // the whole sweep.
-func gcRuntimes(ctx context.Context, txStarter runtimeGCTxStarter, queries *db.Queries, metrics *obsmetrics.BusinessMetrics, publisher runtimeGCEventPublisher) (stats runtimeSweepStageStats) {
+func gcRuntimes(ctx context.Context, txStarter runtimeGCTxStarter, queries *db.Queries, metrics *obsmetrics.BusinessMetrics, publisher runtimeGCEventPublisher, flags *featureflag.Service) (stats runtimeSweepStageStats) {
 	startedAt := time.Now()
 	defer func() {
 		observeRuntimeSweepStage(metrics, obsmetrics.RuntimeSweepStageGC, startedAt, stats)
 	}()
-	return gcRuntimesWithBudget(ctx, txStarter, queries, metrics, publisher, runtimeGCTickTimeout)
+	return gcRuntimesWithBudget(ctx, txStarter, queries, metrics, publisher, flags, runtimeGCTickTimeout)
 }
 
-func gcRuntimesWithBudget(ctx context.Context, txStarter runtimeGCTxStarter, queries *db.Queries, metrics *obsmetrics.BusinessMetrics, publisher runtimeGCEventPublisher, budget time.Duration) (stats runtimeSweepStageStats) {
+func gcRuntimesWithBudget(ctx context.Context, txStarter runtimeGCTxStarter, queries *db.Queries, metrics *obsmetrics.BusinessMetrics, publisher runtimeGCEventPublisher, flags *featureflag.Service, budget time.Duration) (stats runtimeSweepStageStats) {
 	gcCtx, cancelGC := context.WithTimeout(ctx, budget)
 	defer cancelGC()
 
@@ -430,7 +431,7 @@ func gcRuntimesWithBudget(ctx context.Context, txStarter runtimeGCTxStarter, que
 			break
 		}
 		runtimeCtx, cancelRuntime := context.WithTimeout(gcCtx, runtimeGCOperationTimeout)
-		result, err := gcRuntime(runtimeCtx, txStarter, queries, runtimeID)
+		result, err := gcRuntime(runtimeCtx, txStarter, queries, runtimeID, flags)
 		cancelRuntime()
 		if err != nil {
 			if gcCtx.Err() != nil {
@@ -487,7 +488,7 @@ type runtimeGCResult struct {
 // lock_task_owner_rows, so a concurrent enqueue either commits before the
 // checks below and blocks deletion, or waits until deletion commits and then
 // observes that its runtime no longer exists.
-func gcRuntime(ctx context.Context, txStarter runtimeGCTxStarter, queries *db.Queries, runtimeID pgtype.UUID) (runtimeGCResult, error) {
+func gcRuntime(ctx context.Context, txStarter runtimeGCTxStarter, queries *db.Queries, runtimeID pgtype.UUID, flags *featureflag.Service) (runtimeGCResult, error) {
 	var result runtimeGCResult
 	tx, err := txStarter.Begin(ctx)
 	if err != nil {
@@ -553,7 +554,7 @@ func gcRuntime(ctx context.Context, txStarter runtimeGCTxStarter, queries *db.Qu
 		return result, nil
 	}
 
-	teardown, err := service.TeardownRuntime(ctx, qtx, runtimeID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: false})
+	teardown, err := service.TeardownRuntime(ctx, qtx, runtimeID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: false, SeatFlags: flags})
 	if err != nil {
 		if errors.Is(err, service.ErrRuntimeNotDrained) {
 			result.skipReason = obsmetrics.RuntimeGCSkipNonTerminalTask

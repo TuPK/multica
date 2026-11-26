@@ -54,7 +54,7 @@ func TestRuntimeGC_KeepsTerminalTaskHistory(t *testing.T) {
 		t.Fatalf("insert task token: %v", err)
 	}
 
-	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID))
+	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID), nil)
 	if err != nil {
 		t.Fatalf("gcRuntime: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestRuntimeGC_KeepsTerminalTaskHistory(t *testing.T) {
 			t.Fatalf("%s rows = %d, want %d", table, rows, want)
 		}
 	}
-	repeated, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID))
+	repeated, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID), nil)
 	if err != nil || repeated.deleted || repeated.skipReason != "" {
 		t.Fatalf("repeated GC result deleted=%v skip_reason=%q err=%v, want idempotent no-op", repeated.deleted, repeated.skipReason, err)
 	}
@@ -126,7 +126,7 @@ func TestRuntimeGC_ProtectsEveryNonTerminalTaskStatus(t *testing.T) {
 			runtimeID := createRuntimeGCFixtureRuntime(t, ctx, "blocked-"+status)
 			taskID := createRuntimeGCFixtureTask(t, ctx, runtimeID, agentID, status, false)
 
-			result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID))
+			result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID), nil)
 			if err != nil {
 				t.Fatalf("gcRuntime: %v", err)
 			}
@@ -221,7 +221,7 @@ func TestRuntimeGC_ArchivedAgentTaskPinnedToAnotherRuntimeFailsClosed(t *testing
 	}
 	taskID := createRuntimeGCFixtureTask(t, ctx, otherRuntimeID, agentID, "queued", false)
 
-	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(staleRuntimeID))
+	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(staleRuntimeID), nil)
 	if err != nil {
 		t.Fatalf("gcRuntime: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestRuntimeGC_RechecksRuntimeEligibilityUnderLock(t *testing.T) {
 		t.Fatalf("bring fixture runtime online: %v", err)
 	}
 
-	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID))
+	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID), nil)
 	if err != nil {
 		t.Fatalf("gcRuntime: %v", err)
 	}
@@ -280,7 +280,7 @@ func TestRuntimeGC_DeletesSystemAgentAndRuntime(t *testing.T) {
 		t.Fatalf("convert fixture to system agent: %v", err)
 	}
 
-	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID))
+	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID), nil)
 	if err != nil {
 		t.Fatalf("gcRuntime: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestRuntimeGC_ProfileBackedInstanceKeepsProfile(t *testing.T) {
 		t.Fatalf("bind runtime profile: %v", err)
 	}
 
-	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID))
+	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID), nil)
 	if err != nil {
 		t.Fatalf("gcRuntime: %v", err)
 	}
@@ -373,7 +373,7 @@ func TestRuntimeGC_LegacyProfileProtectsOnlyCreatorsMachines(t *testing.T) {
 			if found != tc.wantDeleted {
 				t.Fatalf("GC candidate=%v, want %v", found, tc.wantDeleted)
 			}
-			result, err := gcRuntime(context.Background(), testPool, db.New(testPool), parseUUID(runtime))
+			result, err := gcRuntime(context.Background(), testPool, db.New(testPool), parseUUID(runtime), nil)
 			if err != nil || result.deleted != tc.wantDeleted {
 				t.Fatalf("GC result=%+v, err=%v, want deleted=%v", result, err, tc.wantDeleted)
 			}
@@ -396,7 +396,7 @@ func TestRuntimeGC_CrossWorkspaceAgentReferenceFailsClosed(t *testing.T) {
 		t.Fatalf("archive cross-workspace agent: %v", err)
 	}
 
-	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID))
+	result, err := gcRuntime(ctx, testPool, db.New(testPool), parseUUID(runtimeID), nil)
 	if err != nil {
 		t.Fatalf("gcRuntime: %v", err)
 	}
@@ -426,7 +426,7 @@ func TestRuntimeGCBatch_PublishesSystemActorAndDeduplicatesWorkspaceRefresh(t *t
 	runtimeB := createRuntimeGCFixtureRuntimeForWorkspace(t, ctx, workspaceID, "events-b")
 	publisher := &recordingRuntimeGCPublisher{}
 
-	gcRuntimesWithBudget(ctx, testPool, db.New(testPool), nil, publisher, 5*time.Second)
+	gcRuntimesWithBudget(ctx, testPool, db.New(testPool), nil, publisher, nil, 5*time.Second)
 
 	var teardownCalls, refreshCalls int
 	gone := make(map[string]int)
@@ -471,7 +471,7 @@ func TestRuntimeGC_RollsBackDetachedHistoryWhenDeleteFails(t *testing.T) {
 	taskID := createRuntimeGCFixtureTask(t, ctx, runtimeID, agentID, "completed", true)
 
 	starter := failRuntimeDeleteTxStarter{pool: testPool}
-	result, err := gcRuntime(ctx, starter, db.New(testPool), parseUUID(runtimeID))
+	result, err := gcRuntime(ctx, starter, db.New(testPool), parseUUID(runtimeID), nil)
 	if err == nil || !strings.Contains(err.Error(), "injected runtime delete failure") {
 		t.Fatalf("gcRuntime error = %v, want injected delete failure", err)
 	}
@@ -513,7 +513,7 @@ func TestRuntimeGC_RuntimeLockRejectsConcurrentEnqueue(t *testing.T) {
 	}
 	gcDone := make(chan gcResult, 1)
 	go func() {
-		result, err := gcRuntime(ctx, starter, db.New(testPool), parseUUID(runtimeID))
+		result, err := gcRuntime(ctx, starter, db.New(testPool), parseUUID(runtimeID), nil)
 		gcDone <- gcResult{result: result, err: err}
 	}()
 	select {
@@ -571,7 +571,7 @@ func TestRuntimeGC_TickBudgetBoundsWholeBatch(t *testing.T) {
 	starter := &blockingRuntimeGCTxStarter{}
 
 	startedAt := time.Now()
-	gcRuntimesWithBudget(ctx, starter, db.New(testPool), nil, nil, 250*time.Millisecond)
+	gcRuntimesWithBudget(ctx, starter, db.New(testPool), nil, nil, nil, 250*time.Millisecond)
 	elapsed := time.Since(startedAt)
 
 	if got := starter.begins.Load(); got != 1 {

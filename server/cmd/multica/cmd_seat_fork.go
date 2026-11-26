@@ -72,7 +72,7 @@ func parseSeatEvidence(values []string) ([]map[string]string, error) {
 	out := make([]map[string]string, 0, len(values))
 	for _, v := range values {
 		typ, ref, ok := strings.Cut(strings.TrimSpace(v), ":")
-		if !ok || strings.TrimSpace(ref) == "" {
+		if !ok || strings.TrimSpace(typ) == "" || strings.TrimSpace(ref) == "" {
 			return nil, fmt.Errorf("--evidence %q must be type:ref, for example outcome:<id>", v)
 		}
 		out = append(out, map[string]string{"type": strings.TrimSpace(typ), "ref": strings.TrimSpace(ref)})

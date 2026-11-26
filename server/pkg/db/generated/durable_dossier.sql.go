@@ -58,6 +58,23 @@ func (q *Queries) GetSeatDossierEntry(ctx context.Context, arg GetSeatDossierEnt
 	return i, err
 }
 
+const incrementSeatDossierUses = `-- name: IncrementSeatDossierUses :exec
+UPDATE seat_dossier_entry
+SET uses = uses + 1
+WHERE workspace_id = $1 AND id = ANY($2::uuid[])
+`
+
+type IncrementSeatDossierUsesParams struct {
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+	Ids         []pgtype.UUID `json:"ids"`
+}
+
+// Counts each entry the briefing carried once more (the uses column of spec 9.2).
+func (q *Queries) IncrementSeatDossierUses(ctx context.Context, arg IncrementSeatDossierUsesParams) error {
+	_, err := q.db.Exec(ctx, incrementSeatDossierUses, arg.WorkspaceID, arg.Ids)
+	return err
+}
+
 const insertSeatDossierEntry = `-- name: InsertSeatDossierEntry :one
 INSERT INTO seat_dossier_entry (id, workspace_id, agent_id, kind, text, work_class, evidence, origin)
 VALUES (

@@ -1488,7 +1488,7 @@ func (h *Handler) DeleteAgentRuntime(w http.ResponseWriter, r *http.Request) {
 	// their task history, cancel what was still active, remove only the system
 	// agents. There is no active agent here by definition, but archived ones and
 	// their history can still be bound to this runtime.
-	teardown, err := service.TeardownRuntime(r.Context(), qtx, rt.ID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: true})
+	teardown, err := service.TeardownRuntime(r.Context(), qtx, rt.ID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: true, SeatFlags: h.FeatureFlags})
 	if err != nil {
 		if errors.Is(err, service.ErrRuntimeNotDrained) {
 			slog.Error("runtime delete aborted: tasks not drained",
@@ -1715,7 +1715,7 @@ func (h *Handler) UnbindAgentsAndDeleteRuntime(w http.ResponseWriter, r *http.Re
 	// agent (active and archived) plus their task history, cancel what was
 	// running or queued, and hard-delete only the system agents. Nothing the
 	// user configured is destroyed — the agents just need a new runtime.
-	teardown, err := service.TeardownRuntime(r.Context(), qtx, rt.ID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: true})
+	teardown, err := service.TeardownRuntime(r.Context(), qtx, rt.ID, service.RuntimeTeardownOptions{CancelNonTerminalTasks: true, SeatFlags: h.FeatureFlags})
 	if err != nil {
 		if errors.Is(err, service.ErrRuntimeNotDrained) {
 			slog.Error("runtime delete aborted: tasks not drained",

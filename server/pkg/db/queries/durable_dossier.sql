@@ -40,3 +40,9 @@ WHERE d.status = 'active' AND a.archived_at IS NULL
 GROUP BY a.workspace_id, a.id, a.name
 HAVING COUNT(d.id) >= 2
 ORDER BY a.workspace_id, a.id;
+
+-- name: IncrementSeatDossierUses :exec
+-- Counts each entry the briefing carried once more (the uses column of spec 9.2).
+UPDATE seat_dossier_entry
+SET uses = uses + 1
+WHERE workspace_id = @workspace_id AND id = ANY(@ids::uuid[]);

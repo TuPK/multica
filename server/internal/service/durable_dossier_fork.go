@@ -151,6 +151,13 @@ func dossierBriefing(ctx context.Context, q *db.Queries, flags *featureflag.Serv
 	if len(selected) == 0 {
 		return nil
 	}
+	ids := make([]pgtype.UUID, len(selected))
+	for i, e := range selected {
+		ids[i] = e.ID
+	}
+	if err := q.IncrementSeatDossierUses(ctx, db.IncrementSeatDossierUsesParams{WorkspaceID: seat.WorkspaceID, Ids: ids}); err != nil {
+		slog.Warn("durable briefing: count dossier uses failed", "task_id", util.UUIDToString(task.ID), "error", err)
+	}
 	var b strings.Builder
 	b.WriteString(briefingDossierLead)
 	for _, e := range selected {

@@ -380,3 +380,44 @@ func TestCleanupMonthlyOncePerSeat(t *testing.T) {
 		t.Errorf("a second run in the month filed a second issue: %d issues, want 1", got)
 	}
 }
+
+// TestTeardownUnbindLogsSeatChange: a runtime teardown takes its seats off the runtime, and
+// each unbound seat writes seat_model_changed with the runtime it left as the from side.
+func TestTeardownUnbindLogsSeatChange(t *testing.T) {
+	df := newDossierFixture(t, true)
+	if _, err := TeardownRuntime(context.Background(), df.q, util.MustParseUUID(df.runtime),
+		RuntimeTeardownOptions{SeatFlags: df.flags}); err != nil {
+		t.Fatalf("teardown: %v", err)
+	}
+	if got := df.Count(t, `SELECT COUNT(*) FROM governance_event
+		WHERE workspace_id = $1 AND kind = 'seat_model_changed' AND subject_id = $2`, df.WorkspaceID, df.seat); got != 1 {
+		t.Fatalf("seat_model_changed events = %d, want 1", got)
+	}
+	var from, to string
+	df.QueryRow(t, `SELECT details->>'from_provider', details->>'to_provider' FROM governance_event
+		WHERE workspace_id = $1 AND kind = 'seat_model_changed' AND subject_id = $2`, df.WorkspaceID, df.seat).Scan(&from, &to)
+	if from != "anthropic" || to != "" {
+		t.Errorf("from_provider=%q to_provider=%q, want anthropic and empty", from, to)
+	}
+}
+
+// TestBriefingCountsDossierUses: each briefing that carries an entry counts it once.
+func TestBriefingCountsDossierUses(t *testing.T) {
+	df := newDossierFixture(t, true)
+	ctx := context.Background()
+	seat := util.MustParseUUID(df.seat)
+	if _, err := df.svc.Add(ctx, df.ws, seat, df.owner,
+		[]DossierEntryInput{dossierInput("lesson", "first"), dossierInput("lesson", "second")}); err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	task := db.AgentTaskQueue{AgentID: seat}
+	for i := 0; i < 2; i++ {
+		if blocks := dossierBriefing(ctx, df.q, df.flags, task); len(blocks) != 1 {
+			t.Fatalf("briefing %d: %d blocks, want 1", i+1, len(blocks))
+		}
+	}
+	if got := df.Count(t, `SELECT COALESCE(SUM(uses), 0)::int FROM seat_dossier_entry WHERE workspace_id = $1 AND agent_id = $2`,
+		df.WorkspaceID, df.seat); got != 4 {
+		t.Errorf("total uses = %d, want 4 (two entries, two briefings)", got)
+	}
+}
