@@ -103,3 +103,32 @@ SET context = COALESCE(context, '{}'::jsonb)
         'shadow_pair_id', sqlc.arg(shadow_pair_id)::text)
 WHERE id = sqlc.arg(id)
   AND status IN ('queued', 'dispatched', 'deferred');
+
+-- name: SetShadowPairCosts :execrows
+-- The two sides' cost, written with the verdict (spec 9.4): the report's averages read it.
+UPDATE shadow_pair
+SET primary_cost_micros = @primary_cost_micros, shadow_cost_micros = @shadow_cost_micros
+WHERE id = @id AND workspace_id = @workspace_id;
+
+-- name: SetShadowJurorTaskContext :execrows
+-- Marks a juror's task on a pair: a verification task whose verdict is the pair's. Only a
+-- task not yet claimed is marked.
+UPDATE agent_task_queue
+SET context = COALESCE(context, '{}'::jsonb)
+    || jsonb_build_object(
+        'durable_kind', 'verification',
+        'shadow_pair_id', sqlc.arg(shadow_pair_id)::text)
+WHERE id = sqlc.arg(id)
+  AND status IN ('queued', 'dispatched', 'deferred');
+
+-- name: CountShadowJurorTasksForPair :one
+SELECT COUNT(*)::int FROM agent_task_queue
+WHERE context->>'durable_kind' = 'verification'
+  AND context->>'shadow_pair_id' = @shadow_pair_id::text;
+
+-- name: ListSeatCompletedTaskIDs :many
+-- The seat's completed tasks since a time, newest first, for the cost estimate (spec 9.5).
+SELECT id FROM agent_task_queue
+WHERE agent_id = @agent_id AND status = 'completed' AND completed_at >= @since
+ORDER BY completed_at DESC
+LIMIT @row_limit;

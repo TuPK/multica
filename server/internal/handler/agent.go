@@ -409,6 +409,12 @@ type TaskCancellationActor struct {
 }
 
 type AgentTaskResponse struct {
+	// Shadow and OmitSkills mark a shadow run (durable spec 9.4, D30). A shadow run runs in a
+	// temporary directory without the skills the claim omits; the daemon reads them only when
+	// it advertised DaemonCapabilityShadowV1.
+	Shadow     bool `json:"shadow,omitempty"`
+	OmitSkills bool `json:"omit_skills,omitempty"`
+
 	// Restricted marks a run on an issue in a private project the caller
 	// cannot see (MUL-8472): only identity, status, timing and usage remain.
 	Restricted bool `json:"restricted,omitempty"`

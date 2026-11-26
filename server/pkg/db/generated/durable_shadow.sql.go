@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countShadowJurorTasksForPair = `-- name: CountShadowJurorTasksForPair :one
+SELECT COUNT(*)::int FROM agent_task_queue
+WHERE context->>'durable_kind' = 'verification'
+  AND context->>'shadow_pair_id' = $1::text
+`
+
+func (q *Queries) CountShadowJurorTasksForPair(ctx context.Context, shadowPairID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countShadowJurorTasksForPair, shadowPairID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createShadowAgent = `-- name: CreateShadowAgent :one
 INSERT INTO agent (
     workspace_id, name, description, runtime_mode, runtime_config, runtime_id,
@@ -319,6 +332,40 @@ func (q *Queries) InsertShadowPair(ctx context.Context, arg InsertShadowPairPara
 	return i, err
 }
 
+const listSeatCompletedTaskIDs = `-- name: ListSeatCompletedTaskIDs :many
+SELECT id FROM agent_task_queue
+WHERE agent_id = $1 AND status = 'completed' AND completed_at >= $2
+ORDER BY completed_at DESC
+LIMIT $3
+`
+
+type ListSeatCompletedTaskIDsParams struct {
+	AgentID  pgtype.UUID        `json:"agent_id"`
+	Since    pgtype.Timestamptz `json:"since"`
+	RowLimit int32              `json:"row_limit"`
+}
+
+// The seat's completed tasks since a time, newest first, for the cost estimate (spec 9.5).
+func (q *Queries) ListSeatCompletedTaskIDs(ctx context.Context, arg ListSeatCompletedTaskIDsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSeatCompletedTaskIDs, arg.AgentID, arg.Since, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listShadowPairsForConfig = `-- name: ListShadowPairsForConfig :many
 SELECT id, workspace_id, config_id, issue_id, primary_task_id, shadow_task_id, comparison, comparison_reason, primary_cost_micros, shadow_cost_micros, created_at, compared_at FROM shadow_pair
 WHERE workspace_id = $1 AND config_id = $2
@@ -457,6 +504,31 @@ func (q *Queries) SetShadowConfigState(ctx context.Context, arg SetShadowConfigS
 	return i, err
 }
 
+const setShadowJurorTaskContext = `-- name: SetShadowJurorTaskContext :execrows
+UPDATE agent_task_queue
+SET context = COALESCE(context, '{}'::jsonb)
+    || jsonb_build_object(
+        'durable_kind', 'verification',
+        'shadow_pair_id', $1::text)
+WHERE id = $2
+  AND status IN ('queued', 'dispatched', 'deferred')
+`
+
+type SetShadowJurorTaskContextParams struct {
+	ShadowPairID string      `json:"shadow_pair_id"`
+	ID           pgtype.UUID `json:"id"`
+}
+
+// Marks a juror's task on a pair: a verification task whose verdict is the pair's. Only a
+// task not yet claimed is marked.
+func (q *Queries) SetShadowJurorTaskContext(ctx context.Context, arg SetShadowJurorTaskContextParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setShadowJurorTaskContext, arg.ShadowPairID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setShadowPairComparison = `-- name: SetShadowPairComparison :execrows
 UPDATE shadow_pair
 SET comparison = $1, comparison_reason = $2, compared_at = now()
@@ -475,6 +547,33 @@ func (q *Queries) SetShadowPairComparison(ctx context.Context, arg SetShadowPair
 	result, err := q.db.Exec(ctx, setShadowPairComparison,
 		arg.Comparison,
 		arg.ComparisonReason,
+		arg.ID,
+		arg.WorkspaceID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setShadowPairCosts = `-- name: SetShadowPairCosts :execrows
+UPDATE shadow_pair
+SET primary_cost_micros = $1, shadow_cost_micros = $2
+WHERE id = $3 AND workspace_id = $4
+`
+
+type SetShadowPairCostsParams struct {
+	PrimaryCostMicros int64       `json:"primary_cost_micros"`
+	ShadowCostMicros  int64       `json:"shadow_cost_micros"`
+	ID                pgtype.UUID `json:"id"`
+	WorkspaceID       pgtype.UUID `json:"workspace_id"`
+}
+
+// The two sides' cost, written with the verdict (spec 9.4): the report's averages read it.
+func (q *Queries) SetShadowPairCosts(ctx context.Context, arg SetShadowPairCostsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setShadowPairCosts,
+		arg.PrimaryCostMicros,
+		arg.ShadowCostMicros,
 		arg.ID,
 		arg.WorkspaceID,
 	)

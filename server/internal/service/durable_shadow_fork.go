@@ -152,9 +152,11 @@ type ShadowStartInput struct {
 type ShadowService struct {
 	Queries   *db.Queries
 	TxStarter TxStarter
-	// Tasks gives the shadow agent its task. It is needed to sample a primary.
+	// Tasks gives the shadow agent its task and its juror their check.
 	Tasks *TaskService
-	Flags *featureflag.Service
+	// Runtime files the runtime change a finished run earns (spec 9.6). Nil files none.
+	Runtime *RuntimeChangeService
+	Flags   *featureflag.Service
 	// Now is the clock. Nil means time.Now.
 	Now func() time.Time
 }
@@ -328,14 +330,7 @@ func (s *ShadowService) RecordVerdict(ctx context.Context, ws, pairID pgtype.UUI
 	if err != nil {
 		return fmt.Errorf("load pair: %w", err)
 	}
-	cmp, err := ResolveShadowVerdict(verdict, ShadowPrimaryIsA(util.UUIDToString(pair.ID)))
-	if err != nil {
-		return err
-	}
-	_, err = s.Queries.SetShadowPairComparison(ctx, db.SetShadowPairComparisonParams{
-		ID: pair.ID, WorkspaceID: ws, Comparison: pgtype.Text{String: string(cmp), Valid: true},
-	})
-	return err
+	return s.recordVerdict(ctx, pair, verdict, "")
 }
 
 // Report summarises a run's compared pairs.

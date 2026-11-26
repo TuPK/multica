@@ -80,7 +80,11 @@ type ProjectWorkflowData struct {
 // Agent data (name, skills) is populated by the claim endpoint.
 type Task struct {
 	// StartClaimSupported gates retries when talking to older servers.
-	StartClaimSupported  bool                   `json:"start_claim_supported,omitempty"`
+	StartClaimSupported bool `json:"start_claim_supported,omitempty"`
+	// Shadow marks a shadow run (durable spec 9.4): it runs in a temporary directory that is
+	// removed with the run, never reuses a worktree, and OmitSkills drops its skills (D30).
+	Shadow               bool                   `json:"shadow,omitempty"`
+	OmitSkills           bool                   `json:"omit_skills,omitempty"`
 	DispatchedAt         string                 `json:"dispatched_at,omitempty"`
 	ID                   string                 `json:"id"`
 	AgentID              string                 `json:"agent_id"`

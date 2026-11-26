@@ -8773,6 +8773,17 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	if provider == "reasonix" {
 		reasonixEnv = sanitizeAgentEnv(agentEnvOverrides)
 	}
+	// A shadow run works in a temporary directory that goes with the run (durable spec 9.4 (c)):
+	// it is never given a reused worktree or workspace root.
+	workspacesRoot := d.cfg.WorkspacesRoot
+	if task.Shadow {
+		shadowRoot, err := os.MkdirTemp("", "shadow-run-")
+		if err != nil {
+			return TaskResult{}, asEnvironmentSetupFailure(fmt.Errorf("shadow run directory: %w", err))
+		}
+		defer os.RemoveAll(shadowRoot)
+		workspacesRoot = shadowRoot
+	}
 	envReused := false
 	priorClaim, priorWorkDir, lockedPriorInfo, reusable, reuseErr := d.lockReusablePriorEnvRoot(ctx, task, localAssignment, envClaim.RootDir())
 	if reuseErr != nil {
@@ -8782,7 +8793,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		// nobody is waiting for any more.
 		return TaskResult{}, reuseErr
 	}
-	if reusable {
+	if reusable && !task.Shadow {
 		defer priorClaim.Release()
 		// Deterministic seam for the last-window regression: tests swap the
 		// directory here, after the claim is settled and before Reuse resolves
@@ -8841,7 +8852,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	if env == nil {
 		var err error
 		prepParams := execenv.PrepareParams{
-			WorkspacesRoot:  d.cfg.WorkspacesRoot,
+			WorkspacesRoot:  workspacesRoot,
 			Profile:         d.cfg.Profile,
 			WorkspaceID:     task.WorkspaceID,
 			WorkspaceSlug:   task.WorkspaceSlug,
