@@ -294,6 +294,7 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	r.Post("/api/principal/profile/traits", h.AddPrincipalTrait)
 	r.Patch("/api/principal/profile/traits/{id}", h.EditPrincipalTrait)
 	r.Delete("/api/principal/profile/traits/{id}", h.RetirePrincipalTrait)
+	r.Post("/api/principal/predictions", h.RecordPrincipalPrediction)
 	r.Get("/api/principal/interview", h.GetPrincipalInterview)
 	r.Post("/api/principal/interview/answers", h.AnswerPrincipalInterview)
 

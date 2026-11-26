@@ -305,6 +305,10 @@ func (s *PrincipalService) Delete(ctx context.Context, actor PrincipalActor, ws,
 		if _, err := q.DeletePrincipalTraits(ctx, db.DeletePrincipalTraitsParams{WorkspaceID: ws, MemberID: member}); err != nil {
 			return fmt.Errorf("delete principal traits: %w", err)
 		}
+		// The predictions keep their match counts; what they said goes (spec 6.6).
+		if _, err := q.ForgetPredictionReasons(ctx, db.ForgetPredictionReasonsParams{WorkspaceID: ws, MemberID: member}); err != nil {
+			return fmt.Errorf("forget prediction reasons: %w", err)
+		}
 		n, err := q.DeletePrincipalProfile(ctx, db.DeletePrincipalProfileParams{WorkspaceID: ws, MemberID: member})
 		if err != nil {
 			return fmt.Errorf("delete principal profile: %w", err)
