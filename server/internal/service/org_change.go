@@ -781,6 +781,9 @@ func orgChangeSquads(ctx context.Context, q *db.Queries, ws pgtype.UUID, payload
 func (s *OrgChangeService) ApplyOrgChange(ctx context.Context, q *db.Queries, d proposalkinds.Decision) error {
 	ws := d.WorkspaceID
 	actor := GovernanceActor{Type: GovernanceActorMember, ID: d.DeciderID}
+	if d.ActorType != "" {
+		actor.Type = d.ActorType
+	}
 	changeType := OrgChangeTypeOf(d.Proposal.Payload)
 	subject, before, err := s.apply(ctx, q, ws, actor, d.Proposal.ID, changeType, d.Proposal.Payload)
 	if err != nil {
@@ -801,8 +804,8 @@ func (s *OrgChangeService) ApplyOrgChange(ctx context.Context, q *db.Queries, d 
 		SubjectID:     subject.id,
 		BeforeState:   beforeRaw,
 		AfterState:    afterRaw,
-		AppliedByType: GovernanceActorMember,
-		AppliedByID:   d.DeciderID,
+		AppliedByType: actor.Type,
+		AppliedByID:   actor.ID,
 	}
 	if probationApplies(changeType) {
 		ins.ProbationEndsAt = pgtype.Timestamptz{Time: now.Add(OrgChangeProbationWindow), Valid: true}
@@ -827,8 +830,8 @@ func (s *OrgChangeService) ApplyOrgChange(ctx context.Context, q *db.Queries, d 
 	return NewGovernanceLog().Record(ctx, q, GovernanceEvent{
 		WorkspaceID: ws,
 		Kind:        GovernanceKindOrgChangeApplied,
-		ActorType:   GovernanceActorMember,
-		ActorID:     d.DeciderID,
+		ActorType:   actor.Type,
+		ActorID:     actor.ID,
 		SubjectType: subject.kind,
 		SubjectID:   subject.id,
 		Summary:     fmt.Sprintf("Applied %s.", strings.ToLower(proposalkinds.OrgChangeTypeLabel(changeType))),

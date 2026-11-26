@@ -513,6 +513,9 @@ type ProposalDecideParams struct {
 	// Policy, when set, makes the decision a standing approval (spec 4.4): the
 	// policy is the decider of record, and DeciderID is its accountable member.
 	Policy *ProposalPolicyDecision
+	// ApplyActorType names who applies the change when it is not the decider, for an
+	// auto-promotion (durable spec 9.6): "shadow". Empty means the decider applies it.
+	ApplyActorType string
 }
 
 // ProposalPolicyDecision names the policy that approved a proposal.
@@ -635,7 +638,7 @@ func (s *ProposalService) settleInTx(ctx context.Context, tx pgx.Tx, qtx *db.Que
 	}
 	decision := proposalkinds.Decision{
 		Tx: tx, WorkspaceID: p.WorkspaceID, Proposal: current, Issue: issue,
-		DeciderID: p.DeciderID, Note: p.Note, Outcome: p.Outcome,
+		DeciderID: p.DeciderID, Note: p.Note, Outcome: p.Outcome, ActorType: p.ApplyActorType,
 	}
 	if p.Decision == ProposalDecisionApprove {
 		effect, err := kind.Apply(ctx, qtx, decision)

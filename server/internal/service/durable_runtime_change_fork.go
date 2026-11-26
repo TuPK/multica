@@ -32,6 +32,9 @@ type runtimeChangePayload struct {
 	ShadowConfigID string              `json:"shadow_config_id"`
 	Report         runtimeChangeReport `json:"report"`
 	Rationale      string              `json:"rationale"`
+	// RollbackOf names the application this change undoes, when probation files it (spec
+	// 4.6). Only a rollback may name a runtime other than its shadow run's candidate.
+	RollbackOf string `json:"rollback_of_application_id,omitempty"`
 }
 
 // runtimeChangeReport is the shadow report a runtime change rests on, as the proposal
@@ -81,6 +84,29 @@ func validateRuntimeChange(ctx context.Context, q *db.Queries, ws pgtype.UUID, p
 	}
 	if cfg.State != "completed" {
 		return errors.New("the shadow run has not completed")
+	}
+	if p.RollbackOf == "" {
+		if toRuntime != cfg.CandidateRuntimeID || p.ToModel != cfg.CandidateModel {
+			return errors.New("the change must name the runtime and model its shadow run tested")
+		}
+		return nil
+	}
+	return validateRuntimeRollback(ctx, q, ws, agent.ID, toRuntime, p.RollbackOf)
+}
+
+// validateRuntimeRollback checks that a rollback returns the runtime the named change replaced.
+func validateRuntimeRollback(ctx context.Context, q *db.Queries, ws, agentID, toRuntime pgtype.UUID, rollbackOf string) error {
+	appID, err := util.ParseUUID(rollbackOf)
+	if err != nil {
+		return fmt.Errorf("rollback_of_application_id: %w", err)
+	}
+	app, err := q.GetOrgChangeApplicationInWorkspace(ctx, db.GetOrgChangeApplicationInWorkspaceParams{ID: appID, WorkspaceID: ws})
+	if err != nil || app.ChangeType != OrgChangeRuntime || app.SubjectID != agentID {
+		return errors.New("rollback_of_application_id names no runtime change of this seat")
+	}
+	var before orgBefore
+	if err := json.Unmarshal(app.BeforeState, &before); err != nil || before.RuntimeID != util.UUIDToString(toRuntime) {
+		return errors.New("a rollback must return the runtime the change replaced")
 	}
 	return nil
 }
@@ -208,7 +234,7 @@ func (s *RuntimeChangeService) OnShadowCompleted(ctx context.Context, cfg db.Sha
 	}
 	_, err = s.Proposals.Decide(ctx, ProposalDecideParams{
 		WorkspaceID: cfg.WorkspaceID, ProposalID: res.Proposal.ID, DeciderID: cfg.CreatedBy,
-		Decision: ProposalDecisionApprove,
+		Decision: ProposalDecisionApprove, ApplyActorType: GovernanceActorShadow,
 	})
 	return err
 }

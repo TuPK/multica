@@ -51,6 +51,8 @@ const (
 	GovernanceActorAgent  = "agent"
 	GovernanceActorSystem = "system"
 	GovernanceActorPolicy = "policy"
+	// GovernanceActorShadow is a change a shadow run's auto-promotion applied (durable spec 9.6).
+	GovernanceActorShadow = "shadow"
 	// GovernanceActorTrackRecord is the nightly job or a settlement that moves a pair's
 	// verification mode (durable spec 3.3).
 	GovernanceActorTrackRecord = "track_record"
@@ -135,7 +137,7 @@ func (GovernanceLog) Record(ctx context.Context, q *db.Queries, ev GovernanceEve
 		return fmt.Errorf("%w: %q", ErrGovernanceKindUnknown, ev.Kind)
 	}
 	switch ev.ActorType {
-	case GovernanceActorMember, GovernanceActorAgent, GovernanceActorSystem, GovernanceActorPolicy, GovernanceActorTrackRecord:
+	case GovernanceActorMember, GovernanceActorAgent, GovernanceActorSystem, GovernanceActorPolicy, GovernanceActorTrackRecord, GovernanceActorShadow:
 	default:
 		return fmt.Errorf("%w: actor type %q", ErrGovernanceEventInvalid, ev.ActorType)
 	}

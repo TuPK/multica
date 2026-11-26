@@ -235,3 +235,67 @@ func TestRuntimeChangeValidationRefusesRunningRun(t *testing.T) {
 		t.Error("a runtime change against a running shadow run must be refused")
 	}
 }
+
+// TestAutoPromoteRecordsShadowActor: an auto-promoted change is applied by the shadow run, so
+// its application and its seat_model_changed entry both name actor type shadow (spec 9.6).
+func TestAutoPromoteRecordsShadowActor(t *testing.T) {
+	re := newRuntimeChangeEnv(t, true)
+	ctx := context.Background()
+	if err := re.svc.OnShadowCompleted(ctx, re.cfg, readyReport()); err != nil {
+		t.Fatalf("OnShadowCompleted: %v", err)
+	}
+	app, err := re.q.GetOrgChangeApplicationByProposal(ctx, db.GetOrgChangeApplicationByProposalParams{
+		WorkspaceID: re.ws, ProposalID: mustProposalOf(t, re, ctx),
+	})
+	if err != nil {
+		t.Fatalf("application row: %v", err)
+	}
+	if app.AppliedByType != GovernanceActorShadow {
+		t.Errorf("applied by %q, want %q", app.AppliedByType, GovernanceActorShadow)
+	}
+	if n := re.fx.Count(t, `SELECT COUNT(*) FROM governance_event WHERE workspace_id = $1 AND kind = $2 AND actor_type = $3`,
+		util.UUIDToString(re.ws), GovernanceKindSeatModelChanged, GovernanceActorShadow); n != 1 {
+		t.Errorf("seat_model_changed entries by the shadow = %d, want 1", n)
+	}
+}
+
+// TestProbationWorseAutoRevertsShadowPromotion: a worse verdict on an auto-promoted change puts
+// the seat back at once, with no proposal to approve (spec 9.6).
+func TestProbationWorseAutoRevertsShadowPromotion(t *testing.T) {
+	re := newRuntimeChangeEnv(t, true)
+	ctx := context.Background()
+	if err := re.svc.OnShadowCompleted(ctx, re.cfg, readyReport()); err != nil {
+		t.Fatalf("OnShadowCompleted: %v", err)
+	}
+	app, err := re.q.GetOrgChangeApplicationByProposal(ctx, db.GetOrgChangeApplicationByProposalParams{
+		WorkspaceID: re.ws, ProposalID: mustProposalOf(t, re, ctx),
+	})
+	if err != nil {
+		t.Fatalf("application row: %v", err)
+	}
+
+	probation := &ProbationService{Queries: re.q, Changes: re.changes}
+	probation.fileRollback(ctx, app)
+
+	if rt, model := re.seat(t); rt != re.fromRuntime || model != "claude-seat" {
+		t.Errorf("seat after a worse verdict: runtime %s model %q, want the earlier %s claude-seat", rt, model, re.fromRuntime)
+	}
+	if n := re.fx.Count(t, `SELECT COUNT(*) FROM proposal WHERE workspace_id = $1 AND kind = 'org_change' AND payload->>'type' = 'runtime_change' AND payload->>'rollback_of_application_id' IS NOT NULL`,
+		util.UUIDToString(re.ws)); n != 0 {
+		t.Errorf("rollback proposals = %d, want none for an auto-promotion", n)
+	}
+}
+
+// TestRuntimeChangeRefusesOtherRuntime: a runtime change that names a runtime its shadow run did
+// not test is refused, unless it is a rollback to the runtime the change replaced.
+func TestRuntimeChangeRefusesOtherRuntime(t *testing.T) {
+	re := newRuntimeChangeEnv(t, false)
+	ctx := context.Background()
+	other := re.fx.Runtime(t, "untested runtime", testutil.Cols{"provider": "mistral"})
+	payload := `{"type":"runtime_change","agent_id":"` + util.UUIDToString(re.subject) +
+		`","to_runtime_id":"` + other + `","to_model":"untested","shadow_config_id":"` +
+		util.UUIDToString(re.cfg.ID) + `","report":{"pairs":20},"rationale":"r"}`
+	if _, _, err := re.changes.ValidateOrgChange(ctx, re.q, re.ws, []byte(payload)); err == nil {
+		t.Error("a runtime change to a runtime the shadow run did not test must be refused")
+	}
+}
