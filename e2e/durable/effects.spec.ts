@@ -514,4 +514,31 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
     await new Promise((resolve) => setTimeout(resolve, 90000));
     expect(await wakeups()).toBe(1);
   });
+
+  test("five sends of one kind wait as one batch, and one press approves them as five calls", async ({ page }) => {
+    test.setTimeout(300000);
+    // Same agent, target, class and day: the platform groups them under one batch key.
+    const ids: string[] = [];
+    for (const n of [1, 2, 3, 4, 5]) {
+      ids.push((await askToSend(`Batch ${RUN} ${n}`, BODY_DRAFT)).intentId);
+    }
+
+    await signIn(page);
+    await page.goto(`/${slug}/inbox`, { waitUntil: "domcontentloaded" });
+
+    const batch = page.getByRole("region", { name: "5 actions of the same kind", exact: true });
+    await expect(batch).toBeVisible({ timeout: 120000 });
+    await batch.getByRole("button", { name: "Approve all", exact: true }).click();
+    await expect(page.getByText("5 actions approved.")).toBeVisible({ timeout: 30000 });
+
+    const intents = await api.queryDb(`SELECT state FROM effect_intent WHERE id = ANY($1::uuid[])`, [ids]);
+    expect(intents.map((row) => row.state)).toEqual(Array(5).fill("executed"));
+
+    // One call and one event for each intent, not one for the press.
+    const events = await api.queryDb(
+      `SELECT intent_id FROM effect_event WHERE intent_id = ANY($1::uuid[]) AND status = 'executed'`,
+      [ids],
+    );
+    expect(new Set(events.map((row) => row.intent_id))).toEqual(new Set(ids));
+  });
 });
