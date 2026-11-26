@@ -39,6 +39,7 @@ let taskId = "";
 let intentEdited = "";
 let intentRejected = "";
 let draftAgentId = "";
+let shadowRun: { id: string; token: string } | undefined;
 const taskIds: string[] = [];
 
 function requireEnv(name: string): string {
@@ -362,5 +363,26 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
 
     const [after] = await api.queryDb(`SELECT status FROM effect_event WHERE id = $1`, [draft.id]);
     expect(after).toMatchObject({ status: "executed" });
+  });
+
+  test("a shadow run's draft is blocked, though the agent may write", async () => {
+    const shadow = await seedRun(agentId);
+    shadowRun = shadow;
+    await api.queryDb(`UPDATE agent_task_queue SET context = $2::jsonb WHERE id = $1`, [
+      shadow.id,
+      JSON.stringify({ durable_kind: "shadow" }),
+    ]);
+
+    const refused = await callGateway(
+      shadow.id,
+      "GMAIL_CREATE_DRAFT",
+      { user_id: "me", to: RECIPIENT, subject: `Shadow ${RUN}`, body: BODY_DRAFT },
+      `Shadow draft ${RUN}`,
+    );
+    expect(refused.isError).toBe(true);
+    expect(refused.text).toContain("blocked");
+
+    const [event] = await api.queryDb(`SELECT decision, status FROM effect_event WHERE task_id = $1`, [shadow.id]);
+    expect(event).toMatchObject({ decision: "block", status: "blocked" });
   });
 });
