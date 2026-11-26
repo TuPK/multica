@@ -60,23 +60,22 @@ bypasses UFW for published ports, so the firewall must allow only what you inten
 
 ## What the owner must do
 
-1. **DNS** (at the registrar, or wherever `delegora.io.vn` is hosted). Set these
-   records to this server's public IPv4, `123.25.190.41` (detected 2026-11-26):
+1. **DNS.** `157.10.52.181` is the production host, and `delegora.io.vn` and `www`
+   already point to it. The proxy must run on that host, so the subdomains go there too.
+   The owner adds these records:
 
    | Type | Name | Value | TTL |
    | --- | --- | --- | --- |
-   | A | `@` (delegora.io.vn) | `123.25.190.41` | 300 |
-   | A | `app` | `123.25.190.41` | 300 |
-   | A | `platform` | `123.25.190.41` | 300 |
+   | A | `app` | `157.10.52.181` | 300 |
+   | A | `platform` | `157.10.52.181` | 300 |
 
-   `delegora.io.vn` currently resolves to `157.10.52.181`, not this server. Confirm
-   that host is not in use before you change the apex record, because changing it moves
-   that traffic. Check also for existing `AAAA` records: if they point elsewhere, Let's
-   Encrypt may validate over IPv6 and fail.
+   Leave `@` and `www` as they are. Check also for existing `AAAA` records: if they
+   point elsewhere, Let's Encrypt may validate over IPv6 and fail.
 
-2. **Router / NAT.** This server's LAN address is `10.70.39.196` and the public address
-   is NAT-translated. Forward TCP `80` and `443` on the router to `10.70.39.196`.
-   The host firewall must allow those ports too.
+2. **Host firewall and router.** Ports `80` and `443` on `157.10.52.181` must be
+   reachable from the internet, through the firewall and any NAT in front of it.
+   The development machine that generated this change is not public, so Let's Encrypt
+   cannot validate against it. Test the stack on the production host.
 
 3. **`.env`**, next to the existing values:
 
