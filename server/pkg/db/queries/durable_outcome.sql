@@ -81,3 +81,19 @@ WHERE id = sqlc.arg(id) AND settled_at IS NULL;
 INSERT INTO durable_outcome_applied (transition_id)
 VALUES (sqlc.arg(transition_id))
 ON CONFLICT (transition_id) DO NOTHING;
+
+-- name: CountWorkOutcomesSettledBetween :one
+-- The outcomes settled in a brief's period, by verdict. reopened counts the fails that
+-- a reopen made, a subset of fail (durable spec 2.6).
+SELECT
+    COUNT(*)::bigint AS settled,
+    COUNT(*) FILTER (WHERE verdict = 'pass')::bigint AS n_pass,
+    COUNT(*) FILTER (WHERE verdict = 'partial')::bigint AS n_partial,
+    COUNT(*) FILTER (WHERE verdict = 'fail')::bigint AS n_fail,
+    COUNT(*) FILTER (WHERE verdict = 'fail' AND fail_cause = 'reopened')::bigint AS n_reopened,
+    COUNT(*) FILTER (WHERE verdict = 'unverified')::bigint AS n_unverified
+FROM work_outcome
+WHERE workspace_id = sqlc.arg('workspace_id')::uuid
+    AND settled_at IS NOT NULL
+    AND settled_at >= sqlc.arg('period_start')::timestamptz
+    AND settled_at <= sqlc.arg('period_end')::timestamptz;

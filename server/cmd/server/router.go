@@ -2892,6 +2892,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// and APP_ENV is not production; otherwise they do not exist and answer 404.
 			if handler.TestRoutesEnabled() {
 				r.Post("/api/test/retro/evaluate", h.EvaluateRetrosForTest)
+				r.Post("/api/test/durable/jobs", h.RunDurableJobsForTest)
 			}
 
 			// Fork-owned workspace routes (router_fork.go): knowledge, pipeline, goals, company, governance, hub.

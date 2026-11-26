@@ -100,3 +100,16 @@ SELECT COALESCE(a.model, '')::text AS model, COALESCE(r.provider, '')::text AS p
 FROM agent a
 LEFT JOIN agent_runtime r ON r.id = a.runtime_id
 WHERE a.id = sqlc.arg(id) AND a.workspace_id = sqlc.arg(workspace_id);
+
+-- name: ListTrackModeChangesBetween :many
+-- The pairs whose 30-day verification mode changed in a brief's period, newest first,
+-- with the agent's name for the brief (durable spec 3.3).
+SELECT tr.agent_id, a.name AS agent_name, tr.work_class, tr.verification_mode, tr.mode_changed_at
+FROM track_record tr
+JOIN agent a ON a.id = tr.agent_id
+WHERE tr.workspace_id = sqlc.arg('workspace_id')::uuid
+    AND tr.window_days = 30
+    AND tr.mode_changed_at >= sqlc.arg('period_start')::timestamptz
+    AND tr.mode_changed_at <= sqlc.arg('period_end')::timestamptz
+ORDER BY tr.mode_changed_at DESC, tr.agent_id
+LIMIT sqlc.arg('row_limit')::int;
