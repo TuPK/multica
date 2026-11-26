@@ -2328,6 +2328,22 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 			run:  func() error { return qtx.DetachWorkspaceAuditEvents(ctx, wsID) },
 		},
 		{
+			name: "delete principal data",
+			run: func() error {
+				if _, err := qtx.DeleteWorkspaceDecisionPredictions(ctx, wsID); err != nil {
+					return err
+				}
+				if _, err := qtx.DeleteWorkspacePrincipalDelegations(ctx, wsID); err != nil {
+					return err
+				}
+				if _, err := qtx.DeleteWorkspacePrincipalTraits(ctx, wsID); err != nil {
+					return err
+				}
+				_, err := qtx.DeleteWorkspacePrincipalProfiles(ctx, wsID)
+				return err
+			},
+		},
+		{
 			// Takes the tenant lock, so a deletion queues behind a creation that
 			// is counting the tenant's workspaces, then removes the link and, with
 			// the tenant's last workspace, the tenant. The tables carry no foreign

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
@@ -90,6 +92,9 @@ type DelegationService struct {
 }
 
 func (s *DelegationService) on(ctx context.Context) bool {
+	if s.Flags == nil {
+		return false
+	}
 	return featureflags.DurablePrincipalEnabled(ctx, s.Flags)
 }
 
@@ -138,46 +143,112 @@ func (s *DelegationService) Enable(ctx context.Context, actor PrincipalActor, ws
 	})
 }
 
-// MaybeApply decides whether a prediction is applied as the person's own decision. It is applied when
-// the kind is delegated, the question is not forbidden, and the prediction is confident enough. The
-// caller records the decision; this marks the prediction and logs it, with the "Undo" window of 72
-// hours the FYI shows.
-func (s *DelegationService) MaybeApply(ctx context.Context, pred db.DecisionPrediction, ask AskInput) (bool, error) {
-	if !s.on(ctx) || pred.Predicted == "" || ForbiddenDelegationKind(pred.DecisionKind, ask) {
-		return false, nil
+// DelegatedDecision names the prediction a decision path settles as the person's own (spec 6.5). The
+// decision must be the one predicted, on a question still open, for a kind the person delegated.
+type DelegatedDecision struct {
+	PredictionID pgtype.UUID
+}
+
+// Settle runs one decision on a question and then resolves the predictions made for it. With a
+// delegation, the prediction must be eligible before decide runs, and it is marked applied by
+// delegation once decide succeeds. The person is the actor of the decision; the governance log names
+// the principal as the one who made it (durable spec 6.5). An ineligible decision is refused, and
+// decide does not run.
+func (s *DelegationService) Settle(ctx context.Context, ws pgtype.UUID, d *DelegatedDecision, subjectType string, subjectID, decider pgtype.UUID, decision string, ask AskInput, decide func() error) error {
+	var pred db.DecisionPrediction
+	if d != nil {
+		var err error
+		if pred, err = s.eligible(ctx, ws, d.PredictionID, subjectID, subjectType, decider, decision, ask); err != nil {
+			return err
+		}
 	}
-	delegation, err := s.Queries.GetActivePrincipalDelegation(ctx, db.GetActivePrincipalDelegationParams{
-		WorkspaceID: pred.WorkspaceID, MemberID: pred.MemberID, DecisionKind: pred.DecisionKind,
-	})
+	if err := decide(); err != nil {
+		return err
+	}
+	s.resolve(ctx, ws, subjectType, subjectID, decision)
+	if d == nil {
+		return nil
+	}
+	return s.applied(ctx, pred)
+}
+
+// eligible loads the delegated prediction and checks every rule of delegation: the kind is delegated,
+// not forbidden, the prediction is open and predicts this decision for this question, the decider is
+// the person it was made for, and it is confident enough.
+func (s *DelegationService) eligible(ctx context.Context, ws, predID, subjectID pgtype.UUID, subjectType string, decider pgtype.UUID, decision string, ask AskInput) (db.DecisionPrediction, error) {
+	if !s.on(ctx) {
+		return db.DecisionPrediction{}, ErrPrincipalDisabled
+	}
+	pred, err := s.Queries.GetDecisionPredictionByID(ctx, db.GetDecisionPredictionByIDParams{ID: predID, WorkspaceID: ws})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return db.DecisionPrediction{}, ErrPredictionInvalid
 	}
 	if err != nil {
-		return false, fmt.Errorf("load delegation: %w", err)
+		return db.DecisionPrediction{}, fmt.Errorf("load delegated prediction: %w", err)
+	}
+	if pred.SubjectType != subjectType || !principalSameUUID(pred.SubjectID, subjectID) ||
+		pred.ResolvedAt.Valid || pred.AppliedByDelegation || pred.Predicted != decision ||
+		ForbiddenDelegationKind(pred.DecisionKind, ask) {
+		return db.DecisionPrediction{}, ErrDelegationNotEligible
+	}
+	member, err := s.Queries.GetMemberByUserAndWorkspace(ctx, db.GetMemberByUserAndWorkspaceParams{UserID: decider, WorkspaceID: ws})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !principalSameUUID(member.ID, pred.MemberID)) {
+		return db.DecisionPrediction{}, ErrPrincipalForbidden
+	}
+	if err != nil {
+		return db.DecisionPrediction{}, fmt.Errorf("load decider: %w", err)
+	}
+	delegation, err := s.Queries.GetActivePrincipalDelegation(ctx, db.GetActivePrincipalDelegationParams{
+		WorkspaceID: ws, MemberID: pred.MemberID, DecisionKind: pred.DecisionKind,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.DecisionPrediction{}, ErrDelegationNotEligible
+	}
+	if err != nil {
+		return db.DecisionPrediction{}, fmt.Errorf("load delegation: %w", err)
 	}
 	confidence, err := pred.Confidence.Float64Value()
 	if err != nil {
-		return false, fmt.Errorf("read prediction confidence: %w", err)
+		return db.DecisionPrediction{}, fmt.Errorf("read prediction confidence: %w", err)
 	}
 	minConf, err := delegation.MinConfidence.Float64Value()
 	if err != nil {
-		return false, fmt.Errorf("read delegation confidence: %w", err)
+		return db.DecisionPrediction{}, fmt.Errorf("read delegation confidence: %w", err)
 	}
 	if !confidence.Valid || !minConf.Valid || confidence.Float64 < minConf.Float64 {
-		return false, nil
+		return db.DecisionPrediction{}, ErrDelegationNotEligible
 	}
-	if _, err := s.Queries.MarkPredictionAppliedByDelegation(ctx, db.MarkPredictionAppliedByDelegationParams{
+	return pred, nil
+}
+
+// resolve records the decision against the predictions made for the question. The decision stands
+// if this fails, so the failure is logged and not returned.
+func (s *DelegationService) resolve(ctx context.Context, ws pgtype.UUID, subjectType string, subjectID pgtype.UUID, decision string) {
+	if s.Predictions == nil {
+		return
+	}
+	if err := s.Predictions.Resolve(ctx, ws, subjectType, subjectID, decision); err != nil {
+		slog.Warn("decision predictions not resolved", "subject_type", subjectType, "subject_id", util.UUIDToString(subjectID), "error", err)
+	}
+}
+
+// applied marks a delegated prediction as applied and logs the decision with the principal as the
+// one who made it. The person can revert it for 72 hours from the moment it resolved.
+func (s *DelegationService) applied(ctx context.Context, pred db.DecisionPrediction) error {
+	n, err := s.Queries.MarkPredictionAppliedByDelegation(ctx, db.MarkPredictionAppliedByDelegationParams{
 		ID: pred.ID, WorkspaceID: pred.WorkspaceID,
-	}); err != nil {
-		return false, fmt.Errorf("mark delegated prediction: %w", err)
+	})
+	if err != nil {
+		return fmt.Errorf("mark delegated prediction: %w", err)
 	}
-	if err := s.logEvent(ctx, pred.WorkspaceID, pred.MemberID, GovernanceKindPrincipalDelegated,
+	if n == 0 {
+		return ErrDelegationNotEligible
+	}
+	return s.logEvent(ctx, pred.WorkspaceID, pred.MemberID, GovernanceKindPrincipalDelegated,
 		"decision_prediction", pred.ID, map[string]any{
-			"decision_kind": pred.DecisionKind, "decision": pred.Predicted, "confidence": confidence.Float64,
-		}); err != nil {
-		return false, err
-	}
-	return true, nil
+			"decision_kind": pred.DecisionKind, "decision": pred.Predicted, "subject_type": pred.SubjectType,
+			"acting_as": "principal", "revert_window_hours": int(delegationRevertWindow / time.Hour),
+		})
 }
 
 // OnReverted records that the person undid a delegated decision, within 72 hours of it. Two such
@@ -273,4 +344,63 @@ func (s *DelegationService) logEvent(ctx context.Context, ws, member pgtype.UUID
 		SubjectType: subjectType, SubjectID: subject,
 		Summary: "Principal delegation: " + kind, Details: details,
 	})
+}
+
+// decideSettle settles a proposal's approval or rejection through the delegation gate (spec 6.5).
+func (s *ProposalService) decideSettle(ctx context.Context, p ProposalDecideParams) (ProposalDecideResult, error) {
+	var res ProposalDecideResult
+	err := s.delegation().Settle(ctx, p.WorkspaceID, p.Delegated, "proposal", p.ProposalID, p.DeciderID, p.Decision, AskInput{}, func() error {
+		var err error
+		res, err = s.settle(ctx, p)
+		return err
+	})
+	return res, err
+}
+
+// delegation is the delegation gate for proposals. Without a prediction service, nothing is
+// predicted, so no decision can be delegated.
+func (s *ProposalService) delegation() *DelegationService {
+	if s.Principal == nil {
+		return &DelegationService{Queries: s.Issues.Queries}
+	}
+	return s.Principal.delegation()
+}
+
+// ApproveAsPrincipal approves a pending intent as the person's own decision, when the person delegated
+// its kind (spec 6.5). Irreversible intents are never delegated.
+func (s *IntentService) ApproveAsPrincipal(ctx context.Context, ws, decider, id pgtype.UUID, d DelegatedDecision) (db.EffectIntent, error) {
+	it, err := s.Get(ctx, ws, id)
+	if err != nil {
+		return db.EffectIntent{}, err
+	}
+	var out db.EffectIntent
+	err = s.delegation().Settle(ctx, ws, &d, "effect_intent", id, decider, "approve",
+		AskInput{Irreversible: it.Reversibility == "irreversible"}, func() error {
+			var err error
+			out, err = s.Approve(ctx, ws, decider, id, nil, "")
+			return err
+		})
+	return out, err
+}
+
+// delegation is the delegation gate for intents.
+func (s *IntentService) delegation() *DelegationService {
+	return &DelegationService{Queries: s.Queries, Flags: s.Flags, Predictions: &PredictionService{Queries: s.Queries, Flags: s.Flags}}
+}
+
+// RecordAsPrincipal records a manual check on an outcome as the person's own verdict, when the person
+// delegated checks of that kind (spec 6.5).
+func (s *VerificationService) RecordAsPrincipal(ctx context.Context, ws, decider, outcomeID pgtype.UUID, in VerificationInput, d DelegatedDecision) (db.OutcomeVerification, error) {
+	var out db.OutcomeVerification
+	err := s.delegation().Settle(ctx, ws, &d, "outcome_check", outcomeID, decider, in.Result, AskInput{}, func() error {
+		var err error
+		out, err = s.Record(ctx, ws, GovernanceActor{Type: GovernanceActorMember, ID: decider}, outcomeID, in)
+		return err
+	})
+	return out, err
+}
+
+// delegation is the delegation gate for manual checks.
+func (s *VerificationService) delegation() *DelegationService {
+	return &DelegationService{Queries: s.Queries, Flags: s.Flags, Predictions: &PredictionService{Queries: s.Queries, Flags: s.Flags}}
 }

@@ -515,6 +515,8 @@ type ProposalDecideParams struct {
 	// Policy, when set, makes the decision a standing approval (spec 4.4): the
 	// policy is the decider of record, and DeciderID is its accountable member.
 	Policy *ProposalPolicyDecision
+	// Delegated, when set, makes the decision the person's own by a prediction they delegated (spec 6.5).
+	Delegated *DelegatedDecision
 }
 
 // ProposalPolicyDecision names the policy that approved a proposal.
@@ -563,11 +565,7 @@ type ProposalDecideResult struct {
 func (s *ProposalService) Decide(ctx context.Context, p ProposalDecideParams) (ProposalDecideResult, error) {
 	switch p.Decision {
 	case ProposalDecisionApprove, ProposalDecisionReject:
-		res, err := s.settle(ctx, p)
-		if err == nil {
-			s.resolvePredictions(ctx, p.WorkspaceID, p.ProposalID, p.Decision)
-		}
-		return res, err
+		return s.decideSettle(ctx, p)
 	case ProposalDecisionRevise:
 		return s.askForChanges(ctx, p)
 	case ProposalDecisionSnooze:

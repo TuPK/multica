@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
-	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
@@ -236,15 +235,9 @@ func traitIDsOrEmpty(ids []pgtype.UUID) []pgtype.UUID {
 	return ids
 }
 
-// resolvePredictions resolves the open predictions of a decided proposal, after the decision commits.
-// A failure is logged and never fails the decision.
-func (s *ProposalService) resolvePredictions(ctx context.Context, ws, proposal pgtype.UUID, decision string) {
-	if s.Principal == nil {
-		return
-	}
-	if err := s.Principal.Resolve(ctx, ws, "proposal", proposal, decision); err != nil {
-		slog.Warn("decision predictions not resolved", "proposal_id", util.UUIDToString(proposal), "error", err)
-	}
+// delegation is the delegation service over this prediction service's queries.
+func (s *PredictionService) delegation() *DelegationService {
+	return &DelegationService{Queries: s.Queries, Flags: s.Flags, Predictions: s}
 }
 
 // principalLearningTitle titles the chat where the Secretary posts a person's profile update batches.

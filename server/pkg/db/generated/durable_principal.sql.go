@@ -82,6 +82,32 @@ func (q *Queries) DeletePrincipalTraits(ctx context.Context, arg DeletePrincipal
 	return result.RowsAffected(), nil
 }
 
+const deleteWorkspacePrincipalProfiles = `-- name: DeleteWorkspacePrincipalProfiles :execrows
+DELETE FROM principal_profile WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspacePrincipalProfiles(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkspacePrincipalProfiles, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteWorkspacePrincipalTraits = `-- name: DeleteWorkspacePrincipalTraits :execrows
+DELETE FROM principal_trait WHERE workspace_id = $1
+`
+
+// Workspace teardown (durable spec 6.2). The principal tables carry no foreign key, so the teardown
+// removes the workspace's rows itself, one table per query.
+func (q *Queries) DeleteWorkspacePrincipalTraits(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkspacePrincipalTraits, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const editPrincipalTraitStatement = `-- name: EditPrincipalTraitStatement :one
 UPDATE principal_trait SET statement = $1, origin = 'edited'
 WHERE id = $2 AND workspace_id = $3 AND member_id = $4

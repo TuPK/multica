@@ -98,3 +98,11 @@ WHERE workspace_id = sqlc.arg(workspace_id) AND creator_id = sqlc.arg(member_id)
   AND agent_id = sqlc.arg(agent_id) AND title = sqlc.arg(title)
 ORDER BY created_at DESC
 LIMIT 1;
+
+-- name: DeleteWorkspacePrincipalTraits :execrows
+-- Workspace teardown (durable spec 6.2). The principal tables carry no foreign key, so the teardown
+-- removes the workspace's rows itself, one table per query.
+DELETE FROM principal_trait WHERE workspace_id = sqlc.arg(workspace_id);
+
+-- name: DeleteWorkspacePrincipalProfiles :execrows
+DELETE FROM principal_profile WHERE workspace_id = sqlc.arg(workspace_id);

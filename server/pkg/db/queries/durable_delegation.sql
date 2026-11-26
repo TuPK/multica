@@ -26,11 +26,14 @@ SELECT * FROM decision_prediction
 WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id);
 
 -- name: MarkPredictionAppliedByDelegation :execrows
--- A delegated decision is the prediction, decided now: it resolves with that outcome, and its 72-hour
--- revert window starts from resolved_at.
+-- A delegated decision is the prediction, decided: the decision path has already resolved it with the
+-- decision it made, which is the predicted one. The 72-hour revert window starts from resolved_at.
 UPDATE decision_prediction
-SET applied_by_delegation = true, actual = predicted, matched = true, resolved_at = now()
-WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id) AND resolved_at IS NULL;
+SET applied_by_delegation = true,
+    actual = COALESCE(actual, predicted),
+    matched = COALESCE(matched, true),
+    resolved_at = COALESCE(resolved_at, now())
+WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id) AND applied_by_delegation = false;
 
 -- name: ListRecentDelegatedPredictionIDs :many
 -- The last twenty decisions a delegation made for one kind (spec 6.5).
@@ -45,3 +48,9 @@ LIMIT 20;
 SELECT COUNT(*)::int FROM governance_event
 WHERE workspace_id = sqlc.arg(workspace_id) AND kind = 'principal_delegation_reverted'
   AND subject_type = 'decision_prediction' AND subject_id = ANY(sqlc.arg(subject_ids)::uuid[]);
+
+-- name: DeleteWorkspacePrincipalDelegations :execrows
+DELETE FROM principal_delegation WHERE workspace_id = sqlc.arg(workspace_id);
+
+-- name: DeleteWorkspaceDecisionPredictions :execrows
+DELETE FROM decision_prediction WHERE workspace_id = sqlc.arg(workspace_id);

@@ -6,8 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
 )
 
@@ -46,29 +49,88 @@ func (dt delegationTest) seedResolved(t *testing.T, kind string, ago int, matche
 	}
 }
 
-// applyDelegated makes a prediction at confidence 0.95 and lets the delegation apply it. It returns
-// the prediction row's id, and whether the delegation applied it.
-func (dt delegationTest) applyDelegated(t *testing.T, kind string) (string, bool) {
+// decideEnv is a workspace where the boss has an active profile, the Secretary is the workspace's
+// agent, and the boss has delegated proposal:general on 25 resolved predictions. Proposals filed in it
+// wait for a decision (autonomy level 1), so a delegated approval is the only one made.
+type decideEnv struct {
+	*policyEnv
+	member pgtype.UUID // the boss's member row, which the predictions and the delegation name
+}
+
+func newDecideEnv(t *testing.T) decideEnv {
 	t.Helper()
 	ctx := context.Background()
-	subject := util.MustParseUUID(dt.Issue(t, "a delegated question"))
-	if err := dt.pred().Request(ctx, AskInput{
-		WorkspaceID: dt.ws, SubjectType: "proposal", SubjectID: subject, EstimateKind: kind[len("proposal:"):],
-	}); err != nil {
+	e := newPolicyEnv(t)
+	e.props.Principal = &PredictionService{Queries: e.q, Flags: flagsWith(true)}
+	boss, err := e.q.GetMemberByUserAndWorkspace(ctx, db.GetMemberByUserAndWorkspaceParams{UserID: e.owner, WorkspaceID: e.ws})
+	if err != nil {
+		t.Fatalf("boss member: %v", err)
+	}
+	d := decideEnv{policyEnv: e, member: boss.ID}
+	e.fx.Exec(t, `UPDATE workspace SET secretary_agent_id = $2 WHERE id = $1`, e.wsID, e.agent)
+	e.fx.Exec(t, `INSERT INTO principal_profile (workspace_id, member_id, status, consent_at, share_with_owners) VALUES ($1, $2, 'active', now(), false)`, e.wsID, boss.ID)
+	e.fx.Cleanup(t, `DELETE FROM principal_delegation WHERE workspace_id = $1`, e.wsID)
+	e.fx.Cleanup(t, `DELETE FROM decision_prediction WHERE workspace_id = $1`, e.wsID)
+	e.fx.Cleanup(t, `DELETE FROM principal_profile WHERE workspace_id = $1`, e.wsID)
+	e.fx.Cleanup(t, `DELETE FROM governance_event WHERE workspace_id = $1`, e.wsID)
+	d.seedResolved(t, "proposal:general", 1, trueN(25))
+	if err := d.props.Principal.delegation().Enable(ctx, PrincipalActor{Type: GovernanceActorMember, ID: boss.ID}, e.ws, boss.ID, "proposal:general", 0.9); err != nil {
+		t.Fatalf("enable: %v", err)
+	}
+	return d
+}
+
+// seedResolved inserts resolved predictions of one kind for the boss, newest first: one minute apart,
+// the first starting `ago` minutes back. A true match is a decision of "approve".
+func (d decideEnv) seedResolved(t *testing.T, kind string, ago int, matches []bool) {
+	t.Helper()
+	for i, m := range matches {
+		actual := "reject"
+		if m {
+			actual = "approve"
+		}
+		d.fx.Insert(t, "decision_prediction", testutil.Cols{
+			"workspace_id": d.wsID, "member_id": util.UUIDToString(d.member),
+			"subject_type": "proposal", "subject_id": util.UUIDToString(dbid.NewV7()),
+			"decision_kind": kind, "predicted": "approve", "confidence": 0.9,
+			"actual": actual, "matched": m,
+			"resolved_at": time.Now().Add(-time.Duration(ago+i) * time.Minute),
+		})
+	}
+}
+
+// predicted files a proposal the boss must decide and has the Secretary predict its decision. The
+// prediction is open until the proposal is decided.
+func (d decideEnv) predicted(t *testing.T, decision, kind string, confidence float64) (pgtype.UUID, db.DecisionPrediction) {
+	t.Helper()
+	ctx := context.Background()
+	squad := d.squad("Delegated "+util.UUIDToString(dbid.NewV7()), AutonomyLevelWork)
+	proposal := d.file(squad, "", "{}", false).Proposal.ID
+	if err := d.props.Principal.Request(ctx, AskInput{WorkspaceID: d.ws, SubjectType: "proposal", SubjectID: proposal}); err != nil {
 		t.Fatalf("request: %v", err)
 	}
-	row, err := dt.pred().Record(ctx, dt.secretary, PredictionInput{
-		WorkspaceID: dt.ws, MemberID: dt.owner.ID, SubjectType: "proposal", SubjectID: subject,
-		DecisionKind: kind, Predicted: "approve", Confidence: 0.95,
+	pred, err := d.props.Principal.Record(ctx, PrincipalActor{Type: GovernanceActorAgent, ID: d.agent}, PredictionInput{
+		WorkspaceID: d.ws, MemberID: d.member, SubjectType: "proposal", SubjectID: proposal,
+		DecisionKind: kind, Predicted: decision, Confidence: confidence,
 	})
 	if err != nil {
 		t.Fatalf("record: %v", err)
 	}
-	applied, err := dt.del().MaybeApply(ctx, row, AskInput{WorkspaceID: dt.ws, SubjectType: "proposal", SubjectID: subject})
-	if err != nil {
-		t.Fatalf("maybe apply: %v", err)
+	return proposal, pred
+}
+
+// delegatedApproval has the Secretary predict an approval at 0.95 and the boss's delegation decide
+// it. It returns the prediction, which is the delegated decision.
+func (d decideEnv) delegatedApproval(t *testing.T) db.DecisionPrediction {
+	t.Helper()
+	proposal, pred := d.predicted(t, ProposalDecisionApprove, "proposal:general", 0.95)
+	if _, err := d.props.Decide(context.Background(), ProposalDecideParams{
+		WorkspaceID: d.ws, ProposalID: proposal, DeciderID: d.owner, Decision: ProposalDecisionApprove,
+		Delegated: &DelegatedDecision{PredictionID: pred.ID},
+	}); err != nil {
+		t.Fatalf("delegated approve: %v", err)
 	}
-	return util.UUIDToString(row.ID), applied
+	return pred
 }
 
 func TestEnableRequires20And85(t *testing.T) {
@@ -150,85 +212,112 @@ func TestOnlyProfileOwnerEnables(t *testing.T) {
 }
 
 func TestDelegatedDecisionLogged(t *testing.T) {
-	dt := newDelegationTest(t)
-	const kind = "proposal:hire"
-	dt.seedResolved(t, kind, 1, trueN(25))
+	d := newDecideEnv(t)
 	ctx := context.Background()
-	if err := dt.del().Enable(ctx, dt.owner, dt.ws, dt.owner.ID, kind, 0.9); err != nil {
-		t.Fatalf("enable: %v", err)
-	}
-	predID, applied := dt.applyDelegated(t, kind)
-	if !applied {
-		t.Fatalf("a 0.95 prediction of an enabled kind was not applied")
-	}
-	if n := dt.Count(t, `SELECT COUNT(*) FROM decision_prediction WHERE id = $1 AND applied_by_delegation = true`, predID); n != 1 {
-		t.Fatalf("prediction not marked as applied by delegation")
-	}
-	if n := dt.Count(t, `SELECT COUNT(*) FROM governance_event WHERE workspace_id = $1 AND kind = 'principal_delegated_decision' AND actor_type = 'member' AND actor_id = $2`,
-		dt.WorkspaceID, dt.owner.ID); n != 1 {
-		t.Fatalf("%d delegated-decision events, want 1", n)
-	}
-
-	// A prediction below the minimum confidence is left to the person.
-	subject := util.MustParseUUID(dt.Issue(t, "a low-confidence question"))
-	low, err := dt.pred().Record(ctx, dt.secretary, PredictionInput{
-		WorkspaceID: dt.ws, MemberID: dt.owner.ID, SubjectType: "proposal", SubjectID: subject,
-		DecisionKind: kind, Predicted: "approve", Confidence: 0.5,
+	proposal, pred := d.predicted(t, ProposalDecisionApprove, "proposal:general", 0.95)
+	res, err := d.props.Decide(ctx, ProposalDecideParams{
+		WorkspaceID: d.ws, ProposalID: proposal, DeciderID: d.owner, Decision: ProposalDecisionApprove,
+		Delegated: &DelegatedDecision{PredictionID: pred.ID},
 	})
 	if err != nil {
-		t.Fatalf("record low: %v", err)
+		t.Fatalf("delegated approve: %v", err)
 	}
-	if ok, err := dt.del().MaybeApply(ctx, low, AskInput{SubjectType: "proposal"}); err != nil || ok {
-		t.Fatalf("0.5 prediction applied = %v (err %v), want not applied", ok, err)
+	if res.Proposal.State != ProposalStateApproved {
+		t.Fatalf("proposal state = %q, want approved", res.Proposal.State)
+	}
+	if n := d.fx.Count(t, `SELECT COUNT(*) FROM decision_prediction WHERE id = $1 AND applied_by_delegation = true AND matched = true AND resolved_at IS NOT NULL`, pred.ID); n != 1 {
+		t.Fatalf("prediction not marked applied by delegation and resolved")
+	}
+	if n := d.fx.Count(t, `SELECT COUNT(*) FROM governance_event WHERE workspace_id = $1 AND kind = 'principal_delegated_decision' AND actor_type = 'member' AND actor_id = $2 AND subject_id = $3`,
+		d.wsID, d.member, pred.ID); n != 1 {
+		t.Fatalf("%d delegated-decision events for the principal, want 1", n)
+	}
+	if err := d.props.Principal.delegation().OnReverted(ctx, d.ws, PrincipalActor{Type: GovernanceActorMember, ID: d.member}, pred.ID); err != nil {
+		t.Fatalf("revert inside 72 hours: %v", err)
+	}
+}
+
+// A delegated decision goes through only when every rule holds: the same decision as predicted, a
+// confident prediction, a kind the boss delegated, a kind that may be delegated, and the boss as decider.
+// A refused decision is not made, and its prediction stays open.
+func TestDelegatedDecisionRefusedWhenIneligible(t *testing.T) {
+	ctx := context.Background()
+	cases := []struct {
+		name     string
+		decision string
+		kind     string
+		conf     float64
+		decider  func(d decideEnv) pgtype.UUID
+	}{
+		{"a different decision", ProposalDecisionReject, "proposal:general", 0.95, nil},
+		{"a low confidence", ProposalDecisionApprove, "proposal:general", 0.5, nil},
+		{"a kind never delegated", ProposalDecisionApprove, "proposal:budget", 0.95, nil},
+		{"a decider who is not the boss", ProposalDecisionApprove, "proposal:general", 0.95,
+			func(d decideEnv) pgtype.UUID { return dbid.NewV7() }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			d := newDecideEnv(t)
+			proposal, pred := d.predicted(t, ProposalDecisionApprove, c.kind, c.conf)
+			decider := d.owner
+			if c.decider != nil {
+				decider = c.decider(d)
+			}
+			_, err := d.props.Decide(ctx, ProposalDecideParams{
+				WorkspaceID: d.ws, ProposalID: proposal, DeciderID: decider, Decision: c.decision,
+				Delegated: &DelegatedDecision{PredictionID: pred.ID},
+			})
+			if err == nil {
+				t.Fatalf("the decision was made")
+			}
+			if n := d.fx.Count(t, `SELECT COUNT(*) FROM proposal WHERE id = $1 AND state = 'pending'`, proposal); n != 1 {
+				t.Fatalf("the refused proposal is no longer pending")
+			}
+			if n := d.fx.Count(t, `SELECT COUNT(*) FROM decision_prediction WHERE id = $1 AND applied_by_delegation = false AND resolved_at IS NULL`, pred.ID); n != 1 {
+				t.Fatalf("the refused prediction was resolved or applied")
+			}
+		})
 	}
 }
 
 func TestAutoDisableOnTwoReverts(t *testing.T) {
-	dt := newDelegationTest(t)
-	const kind = "proposal:hire"
-	dt.seedResolved(t, kind, 1, trueN(25))
+	d := newDecideEnv(t)
 	ctx := context.Background()
-	if err := dt.del().Enable(ctx, dt.owner, dt.ws, dt.owner.ID, kind, 0.9); err != nil {
-		t.Fatalf("enable: %v", err)
-	}
-	first, _ := dt.applyDelegated(t, kind)
-	second, _ := dt.applyDelegated(t, kind)
+	del := d.props.Principal.delegation()
+	first := d.delegatedApproval(t)
+	second := d.delegatedApproval(t)
 
-	if err := dt.del().OnReverted(ctx, dt.ws, dt.owner, util.MustParseUUID(first)); err != nil {
+	if err := del.OnReverted(ctx, d.ws, PrincipalActor{Type: GovernanceActorMember, ID: d.member}, first.ID); err != nil {
 		t.Fatalf("first revert: %v", err)
 	}
-	if n := dt.Count(t, `SELECT COUNT(*) FROM principal_delegation WHERE workspace_id = $1 AND disabled_at IS NULL`, dt.WorkspaceID); n != 1 {
+	if n := d.fx.Count(t, `SELECT COUNT(*) FROM principal_delegation WHERE workspace_id = $1 AND disabled_at IS NULL`, d.wsID); n != 1 {
 		t.Fatalf("after one revert the delegation is off")
 	}
-	if err := dt.del().OnReverted(ctx, dt.ws, dt.owner, util.MustParseUUID(second)); err != nil {
+	if err := del.OnReverted(ctx, d.ws, PrincipalActor{Type: GovernanceActorMember, ID: d.member}, second.ID); err != nil {
 		t.Fatalf("second revert: %v", err)
 	}
-	if n := dt.Count(t, `SELECT COUNT(*) FROM principal_delegation WHERE workspace_id = $1 AND disabled_at IS NULL`, dt.WorkspaceID); n != 0 {
+	if n := d.fx.Count(t, `SELECT COUNT(*) FROM principal_delegation WHERE workspace_id = $1 AND disabled_at IS NULL`, d.wsID); n != 0 {
 		t.Fatalf("after two reverts the delegation is still on")
 	}
-	if n := dt.Count(t, `SELECT COUNT(*) FROM principal_delegation WHERE workspace_id = $1 AND disabled_reason <> ''`, dt.WorkspaceID); n != 1 {
+	if n := d.fx.Count(t, `SELECT COUNT(*) FROM principal_delegation WHERE workspace_id = $1 AND disabled_reason <> ''`, d.wsID); n != 1 {
 		t.Fatalf("the disable has no reason")
 	}
-	if n := dt.Count(t, `SELECT COUNT(*) FROM governance_event WHERE workspace_id = $1 AND kind = 'principal_delegation_disabled'`, dt.WorkspaceID); n != 1 {
+	if n := d.fx.Count(t, `SELECT COUNT(*) FROM governance_event WHERE workspace_id = $1 AND kind = 'principal_delegation_disabled'`, d.wsID); n != 1 {
 		t.Fatalf("%d disabled events, want 1", n)
 	}
 }
 
 // A delegated decision can be undone within 72 hours, and only by the person it was made for.
 func TestRevertWindowAndActor(t *testing.T) {
-	dt := newDelegationTest(t)
-	const kind = "proposal:hire"
-	dt.seedResolved(t, kind, 1, trueN(25))
+	d := newDecideEnv(t)
 	ctx := context.Background()
-	if err := dt.del().Enable(ctx, dt.owner, dt.ws, dt.owner.ID, kind, 0.9); err != nil {
-		t.Fatalf("enable: %v", err)
-	}
-	id, _ := dt.applyDelegated(t, kind)
-	if err := dt.del().OnReverted(ctx, dt.ws, dt.other, util.MustParseUUID(id)); !errors.Is(err, ErrPrincipalForbidden) {
+	del := d.props.Principal.delegation()
+	pred := d.delegatedApproval(t)
+	if err := del.OnReverted(ctx, d.ws, PrincipalActor{Type: GovernanceActorMember, ID: dbid.NewV7()}, pred.ID); !errors.Is(err, ErrPrincipalForbidden) {
 		t.Fatalf("another member reverting: err = %v, want ErrPrincipalForbidden", err)
 	}
-	dt.Exec(t, `UPDATE decision_prediction SET resolved_at = now() - interval '73 hours' WHERE id = $1`, id)
-	if err := dt.del().OnReverted(ctx, dt.ws, dt.owner, util.MustParseUUID(id)); !errors.Is(err, ErrDelegationRevertWindow) {
+	d.fx.Exec(t, `UPDATE decision_prediction SET resolved_at = now() - interval '73 hours' WHERE id = $1`, pred.ID)
+	if err := del.OnReverted(ctx, d.ws, PrincipalActor{Type: GovernanceActorMember, ID: d.member}, pred.ID); !errors.Is(err, ErrDelegationRevertWindow) {
 		t.Fatalf("revert after 73 hours: err = %v, want ErrDelegationRevertWindow", err)
 	}
 }
@@ -280,5 +369,57 @@ func TestDeleteRemovesDelegations(t *testing.T) {
 	}
 	if n := dt.Count(t, `SELECT COUNT(*) FROM principal_delegation WHERE workspace_id = $1`, dt.WorkspaceID); n != 0 {
 		t.Fatalf("%d delegation rows left after delete", n)
+	}
+}
+
+// A manual check the boss delegated is recorded as the boss's verdict, through the check path.
+func TestDelegatedManualCheckLogged(t *testing.T) {
+	vf := newVerificationFixture(t)
+	ctx := context.Background()
+	boss, err := vf.q.GetMemberByUserAndWorkspace(ctx, db.GetMemberByUserAndWorkspaceParams{UserID: vf.member.ID, WorkspaceID: vf.ws})
+	if err != nil {
+		t.Fatalf("boss member: %v", err)
+	}
+	vf.Exec(t, `UPDATE workspace SET secretary_agent_id = $2 WHERE id = $1`, vf.WorkspaceID, util.MustParseUUID(vf.verifier))
+	vf.Exec(t, `INSERT INTO principal_profile (workspace_id, member_id, status, consent_at, share_with_owners) VALUES ($1, $2, 'active', now(), false)`, vf.WorkspaceID, boss.ID)
+	for i := 0; i < 25; i++ {
+		vf.Insert(t, "decision_prediction", testutil.Cols{
+			"workspace_id": vf.WorkspaceID, "member_id": util.UUIDToString(boss.ID),
+			"subject_type": "outcome_check", "subject_id": util.UUIDToString(dbid.NewV7()),
+			"decision_kind": "outcome", "predicted": "pass", "confidence": 0.9,
+			"actual": "pass", "matched": true, "resolved_at": time.Now().Add(-time.Duration(i+1) * time.Minute),
+		})
+	}
+	flags := flagsWith(true)
+	vf.checks.Flags = flags
+	predictions := &PredictionService{Queries: vf.q, Flags: flags}
+	if err := predictions.delegation().Enable(ctx, PrincipalActor{Type: GovernanceActorMember, ID: boss.ID}, vf.ws, boss.ID, "outcome", 0.9); err != nil {
+		t.Fatalf("enable: %v", err)
+	}
+
+	issue := vf.doneIssue(t, vf.doer)
+	c := vf.addCriterion(t, issue, "The page loads.", "manual", map[string]any{})
+	outcome := vf.currentOutcome(t, issue)
+	pred, err := predictions.Record(ctx, PrincipalActor{Type: GovernanceActorAgent, ID: util.MustParseUUID(vf.verifier)}, PredictionInput{
+		WorkspaceID: vf.ws, MemberID: boss.ID, SubjectType: "outcome_check", SubjectID: outcome.ID,
+		DecisionKind: "outcome", Predicted: "pass", Confidence: 0.95,
+	})
+	if err != nil {
+		t.Fatalf("record: %v", err)
+	}
+	if _, err := vf.checks.RecordAsPrincipal(ctx, vf.ws, vf.member.ID, outcome.ID,
+		VerificationInput{CriterionID: c.ID, Result: "pass"}, DelegatedDecision{PredictionID: pred.ID}); err != nil {
+		t.Fatalf("delegated check: %v", err)
+	}
+	if n := vf.Count(t, `SELECT COUNT(*) FROM outcome_verification WHERE outcome_id = $1 AND criterion_id = $2 AND verifier_type = 'member' AND verifier_id = $3 AND result = 'pass'`,
+		outcome.ID, c.ID, vf.member.ID); n != 1 {
+		t.Fatalf("%d member verifications, want 1", n)
+	}
+	if n := vf.Count(t, `SELECT COUNT(*) FROM decision_prediction WHERE id = $1 AND applied_by_delegation = true AND resolved_at IS NOT NULL`, pred.ID); n != 1 {
+		t.Fatalf("prediction not applied by delegation")
+	}
+	if n := vf.Count(t, `SELECT COUNT(*) FROM governance_event WHERE workspace_id = $1 AND kind = 'principal_delegated_decision' AND subject_id = $2`,
+		vf.WorkspaceID, pred.ID); n != 1 {
+		t.Fatalf("%d delegated-decision events, want 1", n)
 	}
 }

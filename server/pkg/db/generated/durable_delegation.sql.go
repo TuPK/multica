@@ -48,6 +48,30 @@ func (q *Queries) DeletePrincipalDelegations(ctx context.Context, arg DeletePrin
 	return result.RowsAffected(), nil
 }
 
+const deleteWorkspaceDecisionPredictions = `-- name: DeleteWorkspaceDecisionPredictions :execrows
+DELETE FROM decision_prediction WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspaceDecisionPredictions(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkspaceDecisionPredictions, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteWorkspacePrincipalDelegations = `-- name: DeleteWorkspacePrincipalDelegations :execrows
+DELETE FROM principal_delegation WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspacePrincipalDelegations(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkspacePrincipalDelegations, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const disablePrincipalDelegation = `-- name: DisablePrincipalDelegation :execrows
 UPDATE principal_delegation SET disabled_at = now(), disabled_reason = $1
 WHERE workspace_id = $2 AND member_id = $3
@@ -214,8 +238,11 @@ func (q *Queries) ListRecentDelegatedPredictionIDs(ctx context.Context, arg List
 
 const markPredictionAppliedByDelegation = `-- name: MarkPredictionAppliedByDelegation :execrows
 UPDATE decision_prediction
-SET applied_by_delegation = true, actual = predicted, matched = true, resolved_at = now()
-WHERE id = $1 AND workspace_id = $2 AND resolved_at IS NULL
+SET applied_by_delegation = true,
+    actual = COALESCE(actual, predicted),
+    matched = COALESCE(matched, true),
+    resolved_at = COALESCE(resolved_at, now())
+WHERE id = $1 AND workspace_id = $2 AND applied_by_delegation = false
 `
 
 type MarkPredictionAppliedByDelegationParams struct {
@@ -223,8 +250,8 @@ type MarkPredictionAppliedByDelegationParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 }
 
-// A delegated decision is the prediction, decided now: it resolves with that outcome, and its 72-hour
-// revert window starts from resolved_at.
+// A delegated decision is the prediction, decided: the decision path has already resolved it with the
+// decision it made, which is the predicted one. The 72-hour revert window starts from resolved_at.
 func (q *Queries) MarkPredictionAppliedByDelegation(ctx context.Context, arg MarkPredictionAppliedByDelegationParams) (int64, error) {
 	result, err := q.db.Exec(ctx, markPredictionAppliedByDelegation, arg.ID, arg.WorkspaceID)
 	if err != nil {
