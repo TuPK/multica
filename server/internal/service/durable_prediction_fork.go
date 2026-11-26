@@ -160,6 +160,9 @@ func (s *PredictionService) Record(ctx context.Context, actor PrincipalActor, in
 	if err != nil {
 		return db.DecisionPrediction{}, fmt.Errorf("record prediction: %w", err)
 	}
+	if in.SubjectType == "inquiry" {
+		row = s.delegateInquiry(ctx, row)
+	}
 	return row, nil
 }
 

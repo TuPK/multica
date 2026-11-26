@@ -54,3 +54,17 @@ DELETE FROM principal_delegation WHERE workspace_id = sqlc.arg(workspace_id);
 
 -- name: DeleteWorkspaceDecisionPredictions :execrows
 DELETE FROM decision_prediction WHERE workspace_id = sqlc.arg(workspace_id);
+
+-- name: AnswerBriefInquiryAsPrincipal :execrows
+-- A delegated answer to an open inquiry. Only an inquiry no one has answered takes it.
+UPDATE brief_inquiry
+SET answered_at = now(), answer_excerpt = sqlc.arg(answer_excerpt)
+WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id) AND answered_at IS NULL;
+
+-- name: ReopenBriefInquiryAnswer :execrows
+-- Undoing a delegated answer reopens the inquiry for the squad leader, unless the answer
+-- on it is no longer the delegated one.
+UPDATE brief_inquiry
+SET answered_at = NULL, answer_excerpt = NULL
+WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id)
+  AND answered_at IS NOT NULL AND answer_excerpt = sqlc.arg(answer_excerpt);

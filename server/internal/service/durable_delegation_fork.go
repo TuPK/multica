@@ -272,6 +272,13 @@ func (s *DelegationService) OnReverted(ctx context.Context, ws pgtype.UUID, acto
 		"decision_prediction", pred.ID, map[string]any{"decision_kind": pred.DecisionKind}); err != nil {
 		return err
 	}
+	if pred.SubjectType == "inquiry" {
+		if _, err := s.Queries.ReopenBriefInquiryAnswer(ctx, db.ReopenBriefInquiryAnswerParams{
+			ID: pred.SubjectID, WorkspaceID: ws, AnswerExcerpt: briefInquiryExcerptText(pred.Predicted),
+		}); err != nil {
+			return fmt.Errorf("reopen inquiry: %w", err)
+		}
+	}
 	recent, err := s.Queries.ListRecentDelegatedPredictionIDs(ctx, db.ListRecentDelegatedPredictionIDsParams{
 		WorkspaceID: ws, MemberID: pred.MemberID, DecisionKind: pred.DecisionKind,
 	})
@@ -403,4 +410,41 @@ func (s *VerificationService) RecordAsPrincipal(ctx context.Context, ws, decider
 // delegation is the delegation gate for manual checks.
 func (s *VerificationService) delegation() *DelegationService {
 	return &DelegationService{Queries: s.Queries, Flags: s.Flags, Predictions: &PredictionService{Queries: s.Queries, Flags: s.Flags}}
+}
+
+// delegateInquiry answers an open inquiry as the person's own decision, when the person delegated
+// inquiries and the prediction the Secretary recorded for them is eligible (durable spec 6.5). The
+// predicted answer is the answer. Without an eligible prediction the inquiry stays with its squad
+// leader, and no principal actor is recorded. It returns the prediction as it stands afterwards.
+func (s *PredictionService) delegateInquiry(ctx context.Context, pred db.DecisionPrediction) db.DecisionPrediction {
+	member, err := s.Queries.GetMember(ctx, pred.MemberID)
+	if err != nil {
+		slog.Warn("inquiry delegation skipped", "prediction_id", util.UUIDToString(pred.ID), "error", err)
+		return pred
+	}
+	err = s.delegation().Settle(ctx, pred.WorkspaceID, &DelegatedDecision{PredictionID: pred.ID},
+		"inquiry", pred.SubjectID, member.UserID, pred.Predicted, AskInput{}, func() error {
+			n, err := s.Queries.AnswerBriefInquiryAsPrincipal(ctx, db.AnswerBriefInquiryAsPrincipalParams{
+				ID: pred.SubjectID, WorkspaceID: pred.WorkspaceID, AnswerExcerpt: briefInquiryExcerptText(pred.Predicted),
+			})
+			if err != nil {
+				return fmt.Errorf("answer inquiry: %w", err)
+			}
+			if n == 0 {
+				return ErrDelegationNotEligible
+			}
+			return nil
+		})
+	if err != nil && !errors.Is(err, ErrDelegationNotEligible) {
+		slog.Warn("inquiry delegation failed", "prediction_id", util.UUIDToString(pred.ID), "error", err)
+	}
+	if fresh, err := s.Queries.GetDecisionPredictionByID(ctx, db.GetDecisionPredictionByIDParams{ID: pred.ID, WorkspaceID: pred.WorkspaceID}); err == nil {
+		return fresh
+	}
+	return pred
+}
+
+// briefInquiryExcerptText is the answer excerpt a delegated inquiry answer stores.
+func briefInquiryExcerptText(predicted string) pgtype.Text {
+	return pgtype.Text{String: briefInquiryExcerpt(predicted), Valid: true}
 }

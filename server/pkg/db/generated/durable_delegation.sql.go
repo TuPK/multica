@@ -11,6 +11,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const answerBriefInquiryAsPrincipal = `-- name: AnswerBriefInquiryAsPrincipal :execrows
+UPDATE brief_inquiry
+SET answered_at = now(), answer_excerpt = $1
+WHERE id = $2 AND workspace_id = $3 AND answered_at IS NULL
+`
+
+type AnswerBriefInquiryAsPrincipalParams struct {
+	AnswerExcerpt pgtype.Text `json:"answer_excerpt"`
+	ID            pgtype.UUID `json:"id"`
+	WorkspaceID   pgtype.UUID `json:"workspace_id"`
+}
+
+// A delegated answer to an open inquiry. Only an inquiry no one has answered takes it.
+func (q *Queries) AnswerBriefInquiryAsPrincipal(ctx context.Context, arg AnswerBriefInquiryAsPrincipalParams) (int64, error) {
+	result, err := q.db.Exec(ctx, answerBriefInquiryAsPrincipal, arg.AnswerExcerpt, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countDelegationReverts = `-- name: CountDelegationReverts :one
 SELECT COUNT(*)::int FROM governance_event
 WHERE workspace_id = $1 AND kind = 'principal_delegation_reverted'
@@ -254,6 +275,29 @@ type MarkPredictionAppliedByDelegationParams struct {
 // decision it made, which is the predicted one. The 72-hour revert window starts from resolved_at.
 func (q *Queries) MarkPredictionAppliedByDelegation(ctx context.Context, arg MarkPredictionAppliedByDelegationParams) (int64, error) {
 	result, err := q.db.Exec(ctx, markPredictionAppliedByDelegation, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const reopenBriefInquiryAnswer = `-- name: ReopenBriefInquiryAnswer :execrows
+UPDATE brief_inquiry
+SET answered_at = NULL, answer_excerpt = NULL
+WHERE id = $1 AND workspace_id = $2
+  AND answered_at IS NOT NULL AND answer_excerpt = $3
+`
+
+type ReopenBriefInquiryAnswerParams struct {
+	ID            pgtype.UUID `json:"id"`
+	WorkspaceID   pgtype.UUID `json:"workspace_id"`
+	AnswerExcerpt pgtype.Text `json:"answer_excerpt"`
+}
+
+// Undoing a delegated answer reopens the inquiry for the squad leader, unless the answer
+// on it is no longer the delegated one.
+func (q *Queries) ReopenBriefInquiryAnswer(ctx context.Context, arg ReopenBriefInquiryAnswerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, reopenBriefInquiryAnswer, arg.ID, arg.WorkspaceID, arg.AnswerExcerpt)
 	if err != nil {
 		return 0, err
 	}
