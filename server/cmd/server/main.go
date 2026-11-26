@@ -916,6 +916,10 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.DurableSeatCleanupJob(durableDossier)); err != nil {
 		slog.Error("scheduler: register durable seat cleanup", "error", err)
 	}
+	durablePredictions := &service.PredictionService{Queries: queries, Flags: flags}
+	if err := schedulerMgr.Register(scheduler.PrincipalLearningJob(durablePredictions)); err != nil {
+		slog.Error("scheduler: register principal learning", "error", err)
+	}
 	if err := schedulerMgr.Register(scheduler.DurableMetricJob(durableOutcomes)); err != nil {
 		slog.Error("scheduler: register durable metric", "error", err)
 	}

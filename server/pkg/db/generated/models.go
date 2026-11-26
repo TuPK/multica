@@ -1102,6 +1102,26 @@ type DashboardRangeView struct {
 	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
 }
 
+type DecisionPrediction struct {
+	ID                  pgtype.UUID        `json:"id"`
+	WorkspaceID         pgtype.UUID        `json:"workspace_id"`
+	MemberID            pgtype.UUID        `json:"member_id"`
+	SubjectType         string             `json:"subject_type"`
+	SubjectID           pgtype.UUID        `json:"subject_id"`
+	DecisionKind        string             `json:"decision_kind"`
+	Predicted           string             `json:"predicted"`
+	Confidence          pgtype.Numeric     `json:"confidence"`
+	Why                 string             `json:"why"`
+	TraitIds            []pgtype.UUID      `json:"trait_ids"`
+	ProfileVersion      int32              `json:"profile_version"`
+	PredictorTaskID     pgtype.UUID        `json:"predictor_task_id"`
+	Actual              pgtype.Text        `json:"actual"`
+	Matched             pgtype.Bool        `json:"matched"`
+	AppliedByDelegation bool               `json:"applied_by_delegation"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	ResolvedAt          pgtype.Timestamptz `json:"resolved_at"`
+}
+
 type DingtalkBotIdentity struct {
 	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
 	InstallationID   pgtype.UUID        `json:"installation_id"`
@@ -2870,6 +2890,41 @@ type PluginStorage struct {
 	Value          string             `json:"value"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PrincipalDelegation struct {
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	MemberID       pgtype.UUID        `json:"member_id"`
+	DecisionKind   string             `json:"decision_kind"`
+	MinConfidence  pgtype.Numeric     `json:"min_confidence"`
+	EnabledAt      pgtype.Timestamptz `json:"enabled_at"`
+	DisabledAt     pgtype.Timestamptz `json:"disabled_at"`
+	DisabledReason string             `json:"disabled_reason"`
+}
+
+type PrincipalProfile struct {
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	MemberID        pgtype.UUID        `json:"member_id"`
+	Status          string             `json:"status"`
+	ConsentAt       pgtype.Timestamptz `json:"consent_at"`
+	ShareWithOwners bool               `json:"share_with_owners"`
+	Version         int32              `json:"version"`
+	Summary         string             `json:"summary"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PrincipalTrait struct {
+	ID           pgtype.UUID        `json:"id"`
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	MemberID     pgtype.UUID        `json:"member_id"`
+	DecisionKind string             `json:"decision_kind"`
+	Statement    string             `json:"statement"`
+	Evidence     []byte             `json:"evidence"`
+	Origin       string             `json:"origin"`
+	Status       string             `json:"status"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	RetiredAt    pgtype.Timestamptz `json:"retired_at"`
 }
 
 type Project struct {

@@ -198,6 +198,9 @@ type AskInput struct {
 	ByAgent       bool
 	Urgent        bool
 	Delegated     bool
+	// AboutMember is the person a question concerns, when it concerns one (an org change about
+	// their role). No prediction is made for that person (durable spec 6.4).
+	AboutMember pgtype.UUID
 }
 
 // AttentionService keeps the ledger and admits each question. Flags is read on every call,
@@ -276,6 +279,12 @@ func (s *AttentionService) Admit(ctx context.Context, ask AskInput) (string, err
 	})
 	if err != nil {
 		return "", fmt.Errorf("record attention ask: %w", err)
+	}
+	// A question put to the deciders gets their predictions (durable spec 6.4). A failure here
+	// must not refuse the question itself.
+	pred := &PredictionService{Queries: s.Queries, Flags: s.Flags}
+	if err := pred.Request(ctx, ask); err != nil {
+		slog.Warn("attention ledger: predictions not requested", "subject_id", util.UUIDToString(ask.SubjectID), "error", err)
 	}
 	return stored, nil
 }

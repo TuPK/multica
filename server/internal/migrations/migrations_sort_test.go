@@ -58,7 +58,7 @@ func TestDownMigrationsRunInReverseUpOrder(t *testing.T) {
 }
 
 // The real directory: the org change table is created by 830, rewritten by 870, and altered by
-// the runtime change migrations 1107 and 1108, in that order.
+// the runtime change migrations 1116 and 1117, in that order.
 func TestRealMigrationsRunTheOrgChangeTableInDependencyOrder(t *testing.T) {
 	matches, err := filepath.Glob(filepath.Join(realMigrationsDir(t), "*.up.sql"))
 	if err != nil || len(matches) == 0 {
@@ -72,8 +72,8 @@ func TestRealMigrationsRunTheOrgChangeTableInDependencyOrder(t *testing.T) {
 	chain := []string{
 		"830_org_change_application.up.sql",
 		"870_org_change_application_rollback_types.up.sql",
-		"1107_org_change_application_runtime_type.up.sql",
-		"1108_org_change_application_shadow_actor.up.sql",
+		"1116_org_change_application_runtime_type.up.sql",
+		"1117_org_change_application_shadow_actor.up.sql",
 	}
 	for i := 1; i < len(chain); i++ {
 		a, okA := index[chain[i-1]]
@@ -85,8 +85,8 @@ func TestRealMigrationsRunTheOrgChangeTableInDependencyOrder(t *testing.T) {
 			t.Errorf("%s runs at %d, not before %s at %d", chain[i-1], a, chain[i], b)
 		}
 	}
-	if index["001_init.up.sql"] >= index["1107_org_change_application_runtime_type.up.sql"] {
-		t.Error("001_init must run before 1107")
+	if index["001_init.up.sql"] >= index["1116_org_change_application_runtime_type.up.sql"] {
+		t.Error("001_init must run before 1116")
 	}
 }
 

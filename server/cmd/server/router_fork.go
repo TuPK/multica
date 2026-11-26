@@ -284,6 +284,25 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	r.Post("/api/issues/{id}/criteria", h.CreateIssueCriterion)
 	r.Patch("/api/issues/{id}/criteria/{cid}", h.UpdateIssueCriterion)
 
+	// The principal profile (durable spec 6.6, F5): a person's own profile, its traits and the
+	// interview. Only a person consents, edits and deletes; the Secretary reads and adds learned
+	// traits. The handlers refuse agents for the person-only routes. Flat registrations, as the
+	// company endpoints above are.
+	r.Get("/api/principal/profile", h.GetPrincipalProfile)
+	r.Put("/api/principal/profile", h.EnablePrincipalProfile)
+	r.Delete("/api/principal/profile", h.DeletePrincipalProfile)
+	r.Post("/api/principal/profile/traits", h.AddPrincipalTrait)
+	r.Patch("/api/principal/profile/traits/{id}", h.EditPrincipalTrait)
+	r.Delete("/api/principal/profile/traits/{id}", h.RetirePrincipalTrait)
+	r.Post("/api/principal/predictions", h.RecordPrincipalPrediction)
+	// Delegation by prediction (durable spec 6.5): the person turns a kind on or off, and reverts a
+	// delegated decision within 72 hours.
+	r.Put("/api/principal/delegations", h.EnablePrincipalDelegation)
+	r.Delete("/api/principal/delegations", h.DisablePrincipalDelegation)
+	r.Post("/api/principal/decisions/{id}/revert", h.RevertDelegatedDecision)
+	r.Get("/api/principal/interview", h.GetPrincipalInterview)
+	r.Post("/api/principal/interview/answers", h.AnswerPrincipalInterview)
+
 	// Track records and verification modes (durable spec 3.5). Reads are for members and
 	// agents. Only an owner or an admin pins a mode, as a person.
 	r.Get("/api/track-records", h.ListTrackRecords)
