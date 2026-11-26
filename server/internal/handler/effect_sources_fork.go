@@ -37,11 +37,12 @@ func (rec *effectStatusRecorder) Write(b []byte) (int, error) {
 // that are not a workspace member's: those reach the handler, which refuses them.
 // It runs inside the authenticated group, so the user is known. A request sent with
 // an agent task's X-Task-ID is the agent's own write, and the event carries its
-// task and agent.
+// task and agent. The declare route is not gated here: it answers with the decision
+// and records its own event.
 func (h *Handler) EffectCLIMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		platform, _, _ := middleware.ClientMetadataFromContext(r.Context())
-		if h.Effects == nil || platform != "cli" || !isMutatingMethod(r.Method) {
+		if h.Effects == nil || platform != "cli" || !isMutatingMethod(r.Method) || r.URL.Path == effectDeclarePath {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -97,6 +98,9 @@ func (h *Handler) EffectCLIMiddleware(next http.Handler) http.Handler {
 }
 
 // isMutatingMethod reports whether a request method can change data.
+// effectDeclarePath is the route an agent declares an effect on (router.go, /api/effects).
+const effectDeclarePath = "/api/effects/declare"
+
 func isMutatingMethod(method string) bool {
 	switch method {
 	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
