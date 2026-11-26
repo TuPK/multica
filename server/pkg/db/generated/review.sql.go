@@ -150,7 +150,7 @@ func (q *Queries) GetReviewInWorkspace(ctx context.Context, arg GetReviewInWorks
 }
 
 const getReviewerAgent = `-- name: GetReviewerAgent :one
-SELECT a.id, a.workspace_id, a.name, a.avatar_url, a.runtime_mode, a.runtime_config, a.visibility, a.status, a.max_concurrent_tasks, a.owner_id, a.created_at, a.updated_at, a.description, a.runtime_id, a.instructions, a.archived_at, a.archived_by, a.custom_env, a.custom_args, a.mcp_config, a.model, a.thinking_level, a.composio_toolkit_allowlist, a.permission_mode, a.kind, a.system_key, a.disabled_runtime_skills, a.service_tier, a.conversation_starters, a.home_squad_id FROM squad_member sm
+SELECT a.id, a.workspace_id, a.name, a.avatar_url, a.runtime_mode, a.runtime_config, a.visibility, a.status, a.max_concurrent_tasks, a.owner_id, a.created_at, a.updated_at, a.description, a.runtime_id, a.instructions, a.archived_at, a.archived_by, a.custom_env, a.custom_args, a.mcp_config, a.model, a.thinking_level, a.shadow_of_agent_id, a.composio_toolkit_allowlist, a.permission_mode, a.kind, a.system_key, a.disabled_runtime_skills, a.service_tier, a.conversation_starters, a.home_squad_id FROM squad_member sm
 JOIN squad s ON s.id = sm.squad_id
 JOIN agent a ON a.id = sm.member_id
 WHERE s.workspace_id = $1
@@ -190,6 +190,7 @@ func (q *Queries) GetReviewerAgent(ctx context.Context, workspaceID pgtype.UUID)
 		&i.McpConfig,
 		&i.Model,
 		&i.ThinkingLevel,
+		&i.ShadowOfAgentID,
 		&i.ComposioToolkitAllowlist,
 		&i.PermissionMode,
 		&i.Kind,
