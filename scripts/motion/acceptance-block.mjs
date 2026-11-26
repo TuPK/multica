@@ -91,7 +91,9 @@ export default async function acceptanceBlock({ open, sample, record, check, che
     if (reducedMotion) {
       check(`${archiveLabel}: list height changes instantly`, instant(listHeight));
       check(`${archiveLabel}: archived row closes in one frame`, instant(archivedHeight));
-      check(`${archiveLabel}: archived row ends at zero`, reachesEnd(archivedHeight, 0));
+      // Reduced motion removes the row outright, so its end state is gone, not zero high.
+      const removed = archiveFrames.at(-1)?.rects.archived == null;
+      check(`${archiveLabel}: archived row is gone by the last frame`, { ok: removed, detail: removed ? "gone" : "still on the page" });
     } else {
       check(`${archiveLabel}: list height changes one way`, monotonic(listHeight));
       check(`${archiveLabel}: list height eases`, animated(listHeight));
