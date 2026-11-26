@@ -7,7 +7,8 @@
     "reviews": "評核",
     "log": "紀錄",
     "controls": "控制",
-    "effects": "影響"
+    "effects": "影響",
+    "outcomes": "成果"
   },
   "placeholder": {
     "title": "尚無內容"
@@ -78,7 +79,8 @@
     "create_max_cost": "最高成本（微單位，選填）",
     "create_submit": "建立常設核准",
     "create_done": "已建立常設核准",
-    "create_failed": "無法建立常設核准，請檢查輸入後再試一次。"
+    "create_failed": "無法建立常設核准，請檢查輸入後再試一次。",
+    "platform_scope": "Delegora 只控制經過平台的事項。"
   },
   "controls": {
     "state_heading": "公司狀態",

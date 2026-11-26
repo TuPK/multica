@@ -16,6 +16,7 @@ export const ISSUE_SIDEBAR_SECTIONS = [
   "pull_requests",
   "environments",
   "deliverables",
+  "acceptance",
   "apps",
   "execution_log",
   "metadata",

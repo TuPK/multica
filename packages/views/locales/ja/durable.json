@@ -105,5 +105,111 @@
     "saved": "判断を保存しました。",
     "save_failed": "判断を保存できませんでした。",
     "load_failed": "影響ポリシーを読み込めませんでした。"
+  },
+  "outcomes": {
+    "verdict": {
+      "pass": "合格",
+      "partial": "一部合格",
+      "fail": "不合格",
+      "unverified": "未検証",
+      "pending": "保留中"
+    },
+    "result": {
+      "pass": "合格",
+      "partial": "一部合格",
+      "fail": "不合格",
+      "unable": "未確認"
+    },
+    "check_kind": {
+      "manual": "手動",
+      "agent_judgment": "エージェントの判断",
+      "command": "コマンド",
+      "artifact": "成果物",
+      "metric": "指標"
+    },
+    "mode": {
+      "full": "すべての結果",
+      "sampled": "抽出",
+      "spot": "ランダム確認"
+    },
+    "remaining": {
+      "days_hours": "{{days}}日{{hours}}時間",
+      "hours": "{{hours}}時間",
+      "minutes": "{{minutes}}分"
+    },
+    "cancel": "キャンセル",
+    "acceptance": {
+      "title": "受け入れ",
+      "add": "基準を追加",
+      "criterion_label": "基準",
+      "criterion_placeholder": "完了時に何が満たされていればよいか",
+      "check_kind_label": "確認方法",
+      "submit": "追加",
+      "added": "基準を追加しました。",
+      "add_failed": "基準を追加できませんでした。",
+      "empty": "基準はまだありません。",
+      "load_failed": "基準を読み込めませんでした。",
+      "pending": "保留中 · {{time}}後に確定",
+      "pending_now": "保留中 · まもなく確定",
+      "archive": "基準をアーカイブ",
+      "archived": "基準をアーカイブしました。",
+      "archive_failed": "基準をアーカイブできませんでした。"
+    },
+    "tab": {
+      "coverage": "検証カバー率",
+      "coverage_hint": "直近7日間：合格、一部合格、不合格の合計が全結果に占める割合です。",
+      "agent": "エージェント",
+      "squad": "スクワッド",
+      "verdict": "結論",
+      "all": "すべて",
+      "empty": "条件に合う結果がありません。",
+      "load_failed": "結果を読み込めませんでした。",
+      "limit_note": "最新の100件を表示しています。",
+      "weekly_title": "週ごとの合格率",
+      "weekly_hint": "作成された週ごとに、確認済みの結果のうち合格の割合です。直近100件。",
+      "weekly_row": "{{week}}: {{rate}}%（合格 {{pass}}、確認済み {{verified}}）",
+      "weekly_none": "{{week}}: 確認済みの結果なし"
+    },
+    "track_record": {
+      "title": "実績",
+      "empty": "結果はまだありません。",
+      "load_failed": "実績を読み込めませんでした。",
+      "column_work": "作業の種類",
+      "column_mode": "確認方法",
+      "column_pin": "固定",
+      "column_pass": "合格",
+      "column_partial": "一部",
+      "column_fail": "不合格",
+      "column_unverified": "未検証",
+      "column_high_fail": "重大な失敗",
+      "column_score": "下限スコア",
+      "pin_label": "{{work}} の確認方法",
+      "pin_automatic": "自動",
+      "pinned": "確認方法を保存しました。",
+      "pin_failed": "確認方法を保存できませんでした。"
+    },
+    "envelope": {
+      "column": "範囲",
+      "reputation_column": "評判（90日）",
+      "set": "範囲を設定",
+      "none": "範囲は未設定",
+      "range": "L{{floor}}–L{{ceiling}}",
+      "dialog_title": "範囲を設定",
+      "dialog_hint": "スクワッドはこの範囲内で根拠に応じて動きます。範囲外への変更はあなたのみが行えます。",
+      "floor": "下限",
+      "ceiling": "上限",
+      "reason": "理由",
+      "reason_placeholder": "この範囲にした理由",
+      "save": "範囲を保存",
+      "floor_above_ceiling": "下限は上限を超えられません。",
+      "saved": "範囲を保存しました。",
+      "save_failed": "範囲を保存できませんでした。",
+      "reputation": "結果 {{n}} 件 · 下限スコア {{score}}%",
+      "reputation_none": "結果はまだありません",
+      "high_fail": "直近90日に重大な失敗あり",
+      "clear": "範囲を解除",
+      "cleared": "範囲を解除しました。",
+      "clear_failed": "範囲を解除できませんでした。"
+    }
   }
 }

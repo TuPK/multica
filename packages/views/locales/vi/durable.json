@@ -105,5 +105,111 @@
     "saved": "Đã lưu quyết định.",
     "save_failed": "Không lưu được quyết định.",
     "load_failed": "Không tải được chính sách hệ quả."
+  },
+  "outcomes": {
+    "verdict": {
+      "pass": "Đạt",
+      "partial": "Đạt một phần",
+      "fail": "Không đạt",
+      "unverified": "Chưa kiểm chứng",
+      "pending": "Đang chờ chốt"
+    },
+    "result": {
+      "pass": "Đạt",
+      "partial": "Đạt một phần",
+      "fail": "Không đạt",
+      "unable": "Chưa kiểm"
+    },
+    "check_kind": {
+      "manual": "Thủ công",
+      "agent_judgment": "Agent đánh giá",
+      "command": "Lệnh",
+      "artifact": "Tài liệu",
+      "metric": "Chỉ số"
+    },
+    "mode": {
+      "full": "Mọi kết quả",
+      "sampled": "Lấy mẫu",
+      "spot": "Kiểm ngẫu nhiên"
+    },
+    "remaining": {
+      "days_hours": "{{days}} ngày {{hours}} giờ",
+      "hours": "{{hours}} giờ",
+      "minutes": "{{minutes}} phút"
+    },
+    "cancel": "Huỷ",
+    "acceptance": {
+      "title": "Nghiệm thu",
+      "add": "Thêm tiêu chí",
+      "criterion_label": "Tiêu chí",
+      "criterion_placeholder": "Điều gì phải đúng khi việc này xong",
+      "check_kind_label": "Cách kiểm",
+      "submit": "Thêm",
+      "added": "Đã thêm tiêu chí.",
+      "add_failed": "Không thêm được tiêu chí.",
+      "empty": "Chưa có tiêu chí.",
+      "load_failed": "Không tải được tiêu chí.",
+      "pending": "Đang chờ · còn {{time}}",
+      "pending_now": "Đang chờ · sắp chốt",
+      "archive": "Lưu trữ tiêu chí",
+      "archived": "Đã lưu trữ tiêu chí.",
+      "archive_failed": "Không lưu trữ được tiêu chí."
+    },
+    "tab": {
+      "coverage": "Độ phủ kiểm chứng",
+      "coverage_hint": "7 ngày gần nhất: đạt, đạt một phần và không đạt, trên tổng số kết quả.",
+      "agent": "Agent",
+      "squad": "Squad",
+      "verdict": "Kết luận",
+      "all": "Tất cả",
+      "empty": "Không có kết quả nào khớp bộ lọc.",
+      "load_failed": "Không tải được kết quả.",
+      "limit_note": "Hiện 100 kết quả mới nhất.",
+      "weekly_title": "Tỷ lệ đạt theo tuần",
+      "weekly_hint": "Số đạt trên các kết quả đã kiểm, theo tuần tạo ra kết quả. 100 kết quả gần nhất.",
+      "weekly_row": "{{week}}: {{rate}}% ({{pass}} trên {{verified}} đã kiểm)",
+      "weekly_none": "{{week}}: chưa có kết quả kiểm"
+    },
+    "track_record": {
+      "title": "Thành tích",
+      "empty": "Chưa có kết quả nào.",
+      "load_failed": "Không tải được thành tích.",
+      "column_work": "Việc",
+      "column_mode": "Chế độ kiểm",
+      "column_pin": "Ghim",
+      "column_pass": "Đạt",
+      "column_partial": "Một phần",
+      "column_fail": "Không đạt",
+      "column_unverified": "Chưa kiểm",
+      "column_high_fail": "Lỗi nặng",
+      "column_score": "Cận dưới",
+      "pin_label": "Chế độ kiểm cho {{work}}",
+      "pin_automatic": "Tự động",
+      "pinned": "Đã lưu chế độ.",
+      "pin_failed": "Không lưu được chế độ."
+    },
+    "envelope": {
+      "column": "Khoảng",
+      "reputation_column": "Uy tín (90 ngày)",
+      "set": "Đặt khoảng",
+      "none": "Chưa đặt khoảng",
+      "range": "L{{floor}}–L{{ceiling}}",
+      "dialog_title": "Đặt khoảng",
+      "dialog_hint": "Squad di chuyển trong khoảng này theo bằng chứng. Ra ngoài khoảng, chỉ bạn đổi.",
+      "floor": "Sàn",
+      "ceiling": "Trần",
+      "reason": "Lý do",
+      "reason_placeholder": "Vì sao chọn khoảng này",
+      "save": "Lưu khoảng",
+      "floor_above_ceiling": "Sàn không được cao hơn trần.",
+      "saved": "Đã lưu khoảng.",
+      "save_failed": "Không lưu được khoảng.",
+      "reputation": "{{n}} kết quả · cận dưới {{score}}%",
+      "reputation_none": "Chưa có kết quả",
+      "high_fail": "Có lỗi nặng trong 90 ngày",
+      "clear": "Bỏ khoảng",
+      "cleared": "Đã bỏ khoảng.",
+      "clear_failed": "Không bỏ được khoảng."
+    }
   }
 }

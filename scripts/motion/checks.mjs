@@ -93,6 +93,18 @@ export function instant(values) {
   return { ok, detail: ok ? describe(values) : `moved for ${longestRun} frames in a row (${describe(values)})` };
 }
 
+/**
+ * The track ends at `end`: a row that collapses must reach zero, not stop partway or be
+ * replaced by a neighbour that happens to read the same size. Frames where the element is
+ * gone are dropped, so the last value is the one just before it left the page.
+ */
+export function reachesEnd(values, end, { tolerance = DEFAULT_TOLERANCE } = {}) {
+  if (values.length === 0) return { ok: false, detail: "not found" };
+  const last = values.at(-1);
+  const ok = Math.abs(last - end) <= tolerance;
+  return { ok, detail: `${describe(values)}; ends at ${round(last)}, expected ${end}` };
+}
+
 /** In the last frame, element `a` sits exactly on element `b` along `props`. */
 export function landsOn(frames, a, b, { props = ["x", "w"], tolerance = DEFAULT_TOLERANCE } = {}) {
   const last = frames.at(-1)?.rects ?? {};

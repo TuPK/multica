@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { TrackRecordSchema, parseTrackRecordList } from "./schemas";
+import { SquadEnvelopeViewSchema, TrackRecordSchema, parseSquadEnvelope, parseTrackRecord, parseTrackRecordList } from "./schemas";
 
 const recordRow = {
   agent_id: "a-1",
@@ -53,5 +53,61 @@ describe("track record schemas", () => {
   it("falls back to an empty list for a body of the wrong shape", () => {
     expect(parseTrackRecordList(null, "GET /api/track-records")).toEqual([]);
     expect(parseTrackRecordList({ track_records: "x" }, "GET /api/track-records")).toEqual([]);
+  });
+});
+
+const envelopeView = {
+  envelope: {
+    squad_id: "s-1",
+    floor_level: 1,
+    ceiling_level: 2,
+    reason: "Trial squad",
+    set_by: "u-1",
+    last_auto_change_at: null,
+    updated_at: "2026-11-24T02:00:00Z",
+  },
+  reputation: {
+    n: 14,
+    score_lower: 0.6,
+    window_days: 90,
+    high_fail_30: false,
+    high_fail_90: true,
+    acceptance_rate: 0.92,
+  },
+};
+
+describe("autonomy envelope schemas", () => {
+  it("accepts the envelope view as the server sends it", () => {
+    expect(SquadEnvelopeViewSchema.parse(envelopeView)).toMatchObject({
+      envelope: { floor_level: 1, ceiling_level: 2, reason: "Trial squad", last_auto_change_at: null },
+      reputation: { n: 14, score_lower: 0.6, high_fail_90: true, acceptance_rate: 0.92 },
+    });
+  });
+
+  it("reads a squad without an envelope as null, with the reputation kept", () => {
+    const view = parseSquadEnvelope({ envelope: null, reputation: envelopeView.reputation }, "GET .../envelope");
+    expect(view.envelope).toBeNull();
+    expect(view.reputation.n).toBe(14);
+  });
+
+  it("gives a missing reputation its defaults, with no acceptance rate", () => {
+    const view = parseSquadEnvelope({ envelope: null }, "GET .../envelope");
+    expect(view.reputation).toMatchObject({ n: 0, score_lower: 0, window_days: 90, high_fail_30: false, acceptance_rate: null });
+  });
+
+  it("keeps levels inside the 0-3 range", () => {
+    const view = parseSquadEnvelope(
+      { envelope: { ...envelopeView.envelope, floor_level: 9, ceiling_level: "2" } },
+      "GET .../envelope",
+    );
+    expect(view.envelope).toMatchObject({ floor_level: 0, ceiling_level: 2 });
+  });
+
+  it("reads one track record returned by the pin route", () => {
+    expect(parseTrackRecord({ ...recordRow, verification_mode: "spot", mode_pinned: true }, "PUT /api/track-records/pin")).toMatchObject({
+      verification_mode: "spot",
+      mode_pinned: true,
+    });
+    expect(parseTrackRecord("oops", "PUT /api/track-records/pin")).toBeNull();
   });
 });

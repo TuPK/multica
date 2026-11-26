@@ -105,5 +105,111 @@
     "saved": "決定已儲存。",
     "save_failed": "無法儲存決定。",
     "load_failed": "無法載入影響政策。"
+  },
+  "outcomes": {
+    "verdict": {
+      "pass": "通過",
+      "partial": "部分通過",
+      "fail": "未通過",
+      "unverified": "未驗證",
+      "pending": "待定"
+    },
+    "result": {
+      "pass": "通過",
+      "partial": "部分通過",
+      "fail": "未通過",
+      "unable": "未檢查"
+    },
+    "check_kind": {
+      "manual": "人工",
+      "agent_judgment": "Agent 判斷",
+      "command": "指令",
+      "artifact": "產出物",
+      "metric": "指標"
+    },
+    "mode": {
+      "full": "每個結果",
+      "sampled": "抽樣",
+      "spot": "隨機抽查"
+    },
+    "remaining": {
+      "days_hours": "{{days}}天{{hours}}小時",
+      "hours": "{{hours}}小時",
+      "minutes": "{{minutes}}分鐘"
+    },
+    "cancel": "取消",
+    "acceptance": {
+      "title": "驗收",
+      "add": "新增標準",
+      "criterion_label": "標準",
+      "criterion_placeholder": "完成時必須達到什麼",
+      "check_kind_label": "檢查方式",
+      "submit": "新增",
+      "added": "已新增標準。",
+      "add_failed": "無法新增標準。",
+      "empty": "尚無標準。",
+      "load_failed": "無法載入標準。",
+      "pending": "待定 · {{time}}後結算",
+      "pending_now": "待定 · 即將結算",
+      "archive": "封存標準",
+      "archived": "已封存標準。",
+      "archive_failed": "無法封存標準。"
+    },
+    "tab": {
+      "coverage": "驗證覆蓋率",
+      "coverage_hint": "最近 7 天：通過、部分通過和未通過的結果，佔全部結果的比例。",
+      "agent": "Agent",
+      "squad": "小組",
+      "verdict": "結論",
+      "all": "全部",
+      "empty": "沒有符合篩選條件的結果。",
+      "load_failed": "無法載入結果。",
+      "limit_note": "顯示最新的 100 筆結果。",
+      "weekly_title": "每週通過率",
+      "weekly_hint": "依結果建立的週，統計已檢查結果中通過的比例。最近 100 筆結果。",
+      "weekly_row": "{{week}}：{{rate}}%（通過 {{pass}}，已檢查 {{verified}}）",
+      "weekly_none": "{{week}}：尚無已檢查結果"
+    },
+    "track_record": {
+      "title": "履歷",
+      "empty": "尚無結果。",
+      "load_failed": "無法載入履歷。",
+      "column_work": "工作類型",
+      "column_mode": "檢查方式",
+      "column_pin": "固定",
+      "column_pass": "通過",
+      "column_partial": "部分",
+      "column_fail": "未通過",
+      "column_unverified": "未驗證",
+      "column_high_fail": "嚴重失敗",
+      "column_score": "信賴下界",
+      "pin_label": "{{work}} 的檢查方式",
+      "pin_automatic": "自動",
+      "pinned": "已儲存檢查方式。",
+      "pin_failed": "無法儲存檢查方式。"
+    },
+    "envelope": {
+      "column": "區間",
+      "reputation_column": "信譽（90 天）",
+      "set": "設定區間",
+      "none": "未設定區間",
+      "range": "L{{floor}}–L{{ceiling}}",
+      "dialog_title": "設定區間",
+      "dialog_hint": "小組依據證據在此區間內移動。超出區間，只有你能調整。",
+      "floor": "下限",
+      "ceiling": "上限",
+      "reason": "理由",
+      "reason_placeholder": "為何選這個區間",
+      "save": "儲存區間",
+      "floor_above_ceiling": "下限不能高於上限。",
+      "saved": "已儲存區間。",
+      "save_failed": "無法儲存區間。",
+      "reputation": "{{n}} 筆結果 · 信賴下界 {{score}}%",
+      "reputation_none": "尚無結果",
+      "high_fail": "90 天內有嚴重失敗",
+      "clear": "清除區間",
+      "cleared": "已清除區間。",
+      "clear_failed": "無法清除區間。"
+    }
   }
 }

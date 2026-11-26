@@ -105,5 +105,111 @@
     "saved": "결정을 저장했습니다.",
     "save_failed": "결정을 저장하지 못했습니다.",
     "load_failed": "효과 정책을 불러오지 못했습니다."
+  },
+  "outcomes": {
+    "verdict": {
+      "pass": "통과",
+      "partial": "부분 통과",
+      "fail": "실패",
+      "unverified": "검증 안 됨",
+      "pending": "보류 중"
+    },
+    "result": {
+      "pass": "통과",
+      "partial": "부분 통과",
+      "fail": "실패",
+      "unable": "확인 안 됨"
+    },
+    "check_kind": {
+      "manual": "수동",
+      "agent_judgment": "에이전트 판단",
+      "command": "명령",
+      "artifact": "산출물",
+      "metric": "지표"
+    },
+    "mode": {
+      "full": "모든 결과",
+      "sampled": "표본 검사",
+      "spot": "무작위 점검"
+    },
+    "remaining": {
+      "days_hours": "{{days}}일 {{hours}}시간",
+      "hours": "{{hours}}시간",
+      "minutes": "{{minutes}}분"
+    },
+    "cancel": "취소",
+    "acceptance": {
+      "title": "검수",
+      "add": "기준 추가",
+      "criterion_label": "기준",
+      "criterion_placeholder": "완료되려면 무엇이 참이어야 하나요",
+      "check_kind_label": "확인 방식",
+      "submit": "추가",
+      "added": "기준을 추가했습니다.",
+      "add_failed": "기준을 추가하지 못했습니다.",
+      "empty": "아직 기준이 없습니다.",
+      "load_failed": "기준을 불러오지 못했습니다.",
+      "pending": "보류 중 · {{time}} 뒤 확정",
+      "pending_now": "보류 중 · 곧 확정",
+      "archive": "기준 보관",
+      "archived": "기준을 보관했습니다.",
+      "archive_failed": "기준을 보관하지 못했습니다."
+    },
+    "tab": {
+      "coverage": "검증 범위",
+      "coverage_hint": "최근 7일: 통과, 부분 통과, 실패의 합계를 전체 결과로 나눈 값입니다.",
+      "agent": "에이전트",
+      "squad": "스쿼드",
+      "verdict": "결론",
+      "all": "전체",
+      "empty": "조건에 맞는 결과가 없습니다.",
+      "load_failed": "결과를 불러오지 못했습니다.",
+      "limit_note": "최근 결과 100개를 표시합니다.",
+      "weekly_title": "주간 통과율",
+      "weekly_hint": "생성된 주 기준으로, 검사된 결과 중 통과한 비율입니다. 최근 결과 100개.",
+      "weekly_row": "{{week}}: {{rate}}% (통과 {{pass}}, 검사 {{verified}})",
+      "weekly_none": "{{week}}: 검사된 결과 없음"
+    },
+    "track_record": {
+      "title": "실적",
+      "empty": "아직 결과가 없습니다.",
+      "load_failed": "실적을 불러오지 못했습니다.",
+      "column_work": "작업 유형",
+      "column_mode": "확인 방식",
+      "column_pin": "고정",
+      "column_pass": "통과",
+      "column_partial": "부분",
+      "column_fail": "실패",
+      "column_unverified": "검증 안 됨",
+      "column_high_fail": "심각한 실패",
+      "column_score": "하한 점수",
+      "pin_label": "{{work}} 확인 방식",
+      "pin_automatic": "자동",
+      "pinned": "확인 방식을 저장했습니다.",
+      "pin_failed": "확인 방식을 저장하지 못했습니다."
+    },
+    "envelope": {
+      "column": "범위",
+      "reputation_column": "평판(90일)",
+      "set": "범위 설정",
+      "none": "범위 없음",
+      "range": "L{{floor}}–L{{ceiling}}",
+      "dialog_title": "범위 설정",
+      "dialog_hint": "스쿼드는 이 범위 안에서 근거에 따라 움직입니다. 범위 밖으로는 관리자만 바꿀 수 있습니다.",
+      "floor": "하한",
+      "ceiling": "상한",
+      "reason": "사유",
+      "reason_placeholder": "이 범위를 고른 이유",
+      "save": "범위 저장",
+      "floor_above_ceiling": "하한은 상한보다 높을 수 없습니다.",
+      "saved": "범위를 저장했습니다.",
+      "save_failed": "범위를 저장하지 못했습니다.",
+      "reputation": "결과 {{n}}개 · 하한 점수 {{score}}%",
+      "reputation_none": "아직 결과가 없습니다",
+      "high_fail": "최근 90일 내 심각한 실패",
+      "clear": "범위 해제",
+      "cleared": "범위를 해제했습니다.",
+      "clear_failed": "범위를 해제하지 못했습니다."
+    }
   }
 }

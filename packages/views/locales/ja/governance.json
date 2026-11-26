@@ -7,7 +7,8 @@
     "reviews": "レビュー",
     "log": "ログ",
     "controls": "管理",
-    "effects": "影響"
+    "effects": "影響",
+    "outcomes": "成果"
   },
   "placeholder": {
     "title": "まだ表示するものはありません"
@@ -78,7 +79,8 @@
     "create_max_cost": "コストの上限（マイクロ単位、任意）",
     "create_submit": "常時承認を作成",
     "create_done": "常時承認を作成しました",
-    "create_failed": "常時承認を作成できませんでした。入力内容を確認してもう一度お試しください。"
+    "create_failed": "常時承認を作成できませんでした。入力内容を確認してもう一度お試しください。",
+    "platform_scope": "Delegora が管理するのは、プラットフォームを通るものだけです。"
   },
   "controls": {
     "state_heading": "会社の状態",

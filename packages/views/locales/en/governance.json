@@ -7,7 +7,8 @@
     "reviews": "Reviews",
     "log": "Log",
     "controls": "Controls",
-    "effects": "Effects"
+    "effects": "Effects",
+    "outcomes": "Outcomes"
   },
   "placeholder": {
     "title": "Nothing to show yet"
@@ -78,7 +79,8 @@
     "create_max_cost": "Largest cost, in micro-units (optional)",
     "create_submit": "Create standing approval",
     "create_done": "Standing approval created",
-    "create_failed": "Could not create the standing approval. Check the fields and try again."
+    "create_failed": "Could not create the standing approval. Check the fields and try again.",
+    "platform_scope": "Delegora controls only what passes through the platform."
   },
   "controls": {
     "state_heading": "Company state",

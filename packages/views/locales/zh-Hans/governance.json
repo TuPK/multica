@@ -7,7 +7,8 @@
     "reviews": "评审",
     "log": "日志",
     "controls": "控制",
-    "effects": "影响"
+    "effects": "影响",
+    "outcomes": "成果"
   },
   "placeholder": {
     "title": "暂无内容"
@@ -78,7 +79,8 @@
     "create_max_cost": "最高成本（微单位，可选）",
     "create_submit": "创建常设批准",
     "create_done": "已创建常设批准",
-    "create_failed": "无法创建常设批准，请检查输入后重试。"
+    "create_failed": "无法创建常设批准，请检查输入后重试。",
+    "platform_scope": "Delegora 只控制经过平台的事务。"
   },
   "controls": {
     "state_heading": "公司状态",

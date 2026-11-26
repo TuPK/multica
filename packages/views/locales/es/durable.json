@@ -105,5 +105,111 @@
     "saved": "Decisión guardada.",
     "save_failed": "No se pudo guardar la decisión.",
     "load_failed": "No se pudo cargar la política de efectos."
+  },
+  "outcomes": {
+    "verdict": {
+      "pass": "Aprobado",
+      "partial": "Aprobado parcialmente",
+      "fail": "No aprobado",
+      "unverified": "No verificado",
+      "pending": "Pendiente"
+    },
+    "result": {
+      "pass": "Aprobado",
+      "partial": "Aprobado parcialmente",
+      "fail": "No aprobado",
+      "unable": "No verificado"
+    },
+    "check_kind": {
+      "manual": "Manual",
+      "agent_judgment": "Juicio del agente",
+      "command": "Comando",
+      "artifact": "Artefacto",
+      "metric": "Métrica"
+    },
+    "mode": {
+      "full": "Cada resultado",
+      "sampled": "Por muestreo",
+      "spot": "Revisiones aleatorias"
+    },
+    "remaining": {
+      "days_hours": "{{days}} d {{hours}} h",
+      "hours": "{{hours}} h",
+      "minutes": "{{minutes}} min"
+    },
+    "cancel": "Cancelar",
+    "acceptance": {
+      "title": "Aceptación",
+      "add": "Añadir criterio",
+      "criterion_label": "Criterio",
+      "criterion_placeholder": "Qué debe ser cierto al terminar",
+      "check_kind_label": "Verificación",
+      "submit": "Añadir",
+      "added": "Criterio añadido.",
+      "add_failed": "No se pudo añadir el criterio.",
+      "empty": "Aún no hay criterios.",
+      "load_failed": "No se pudieron cargar los criterios.",
+      "pending": "Pendiente · se cierra en {{time}}",
+      "pending_now": "Pendiente · se cierra pronto",
+      "archive": "Archivar criterio",
+      "archived": "Criterio archivado.",
+      "archive_failed": "No se pudo archivar el criterio."
+    },
+    "tab": {
+      "coverage": "Cobertura verificada",
+      "coverage_hint": "Últimos 7 días: aprobados, aprobados parcialmente y no aprobados, sobre todos los resultados.",
+      "agent": "Agente",
+      "squad": "Escuadrón",
+      "verdict": "Veredicto",
+      "all": "Todos",
+      "empty": "Ningún resultado coincide con estos filtros.",
+      "load_failed": "No se pudieron cargar los resultados.",
+      "limit_note": "Se muestran los 100 resultados más recientes.",
+      "weekly_title": "Tasa de aprobados por semana",
+      "weekly_hint": "Aprobados entre los resultados revisados, por semana de creación. Los 100 resultados más recientes.",
+      "weekly_row": "{{week}}: {{rate}} % ({{pass}} de {{verified}} revisados)",
+      "weekly_none": "{{week}}: ninguno revisado"
+    },
+    "track_record": {
+      "title": "Historial",
+      "empty": "Aún no hay resultados.",
+      "load_failed": "No se pudo cargar el historial.",
+      "column_work": "Tipo de trabajo",
+      "column_mode": "Modo de revisión",
+      "column_pin": "Fijar",
+      "column_pass": "Aprobados",
+      "column_partial": "Parciales",
+      "column_fail": "No aprobados",
+      "column_unverified": "No verificados",
+      "column_high_fail": "Fallos graves",
+      "column_score": "Límite inferior",
+      "pin_label": "Modo de revisión para {{work}}",
+      "pin_automatic": "Automático",
+      "pinned": "Modo guardado.",
+      "pin_failed": "No se pudo guardar el modo."
+    },
+    "envelope": {
+      "column": "Rango",
+      "reputation_column": "Reputación (90 días)",
+      "set": "Definir rango",
+      "none": "Sin rango",
+      "range": "L{{floor}}–L{{ceiling}}",
+      "dialog_title": "Definir el rango",
+      "dialog_hint": "El escuadrón se mueve dentro de este rango según sus resultados. Solo usted puede moverlo fuera de él.",
+      "floor": "Mínimo",
+      "ceiling": "Máximo",
+      "reason": "Motivo",
+      "reason_placeholder": "Por qué este rango",
+      "save": "Guardar rango",
+      "floor_above_ceiling": "El mínimo no puede ser mayor que el máximo.",
+      "saved": "Rango guardado.",
+      "save_failed": "No se pudo guardar el rango.",
+      "reputation": "{{n}} resultados · límite inferior {{score}} %",
+      "reputation_none": "Aún no hay resultados",
+      "high_fail": "Fallo grave en los últimos 90 días",
+      "clear": "Quitar rango",
+      "cleared": "Rango quitado.",
+      "clear_failed": "No se pudo quitar el rango."
+    }
   }
 }

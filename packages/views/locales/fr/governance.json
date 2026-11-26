@@ -7,7 +7,8 @@
     "reviews": "Évaluations",
     "log": "Journal",
     "controls": "Contrôles",
-    "effects": "Effets"
+    "effects": "Effets",
+    "outcomes": "Résultats"
   },
   "placeholder": {
     "title": "Rien à afficher pour l'instant"
@@ -78,7 +79,8 @@
     "create_max_cost": "Coût maximum, en micro-unités (facultatif)",
     "create_submit": "Créer l'approbation permanente",
     "create_done": "Approbation permanente créée",
-    "create_failed": "Impossible de créer l'approbation permanente. Vérifiez les champs et réessayez."
+    "create_failed": "Impossible de créer l'approbation permanente. Vérifiez les champs et réessayez.",
+    "platform_scope": "Delegora ne contrôle que ce qui passe par la plateforme."
   },
   "controls": {
     "state_heading": "État de l'entreprise",
