@@ -50,6 +50,7 @@ func newPrincipalTest(t *testing.T, flagOn bool) principalTest {
 	}
 	f.Cleanup(t, `DELETE FROM principal_delegation WHERE workspace_id = $1`, f.WorkspaceID)
 	f.Cleanup(t, `DELETE FROM decision_prediction WHERE workspace_id = $1`, f.WorkspaceID)
+	f.Cleanup(t, `DELETE FROM chat_session WHERE workspace_id = $1`, f.WorkspaceID)
 	f.Cleanup(t, `DELETE FROM principal_trait WHERE workspace_id = $1`, f.WorkspaceID)
 	f.Cleanup(t, `DELETE FROM principal_profile WHERE workspace_id = $1`, f.WorkspaceID)
 	f.Cleanup(t, `DELETE FROM governance_event WHERE workspace_id = $1`, f.WorkspaceID)
@@ -450,4 +451,38 @@ func TestInterviewAnswersBecomeTraitsWithTheirMessage(t *testing.T) {
 	if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, 8, "x", util.MustParseUUID(msg)); !errors.Is(err, ErrPrincipalTraitInvalid) {
 		t.Fatalf("question 8 of 8: err = %v, want ErrPrincipalTraitInvalid", err)
 	}
+}
+
+// The interview runs in the Secretary's chat: the first consent asks question 1, and each answer
+// asks the next one, eight in all (durable spec 6.3).
+func TestInterviewKickoffInChat(t *testing.T) {
+	pt := newPrincipalTest(t, true)
+	pt.enable(t)
+	ctx := context.Background()
+	session := pt.interviewSession(t)
+	if n := pt.Count(t, `SELECT COUNT(*) FROM chat_message WHERE chat_session_id = $1 AND role = 'assistant'`, session); n != 1 {
+		t.Fatalf("after consent: %d questions asked, want 1", n)
+	}
+	questions := InterviewQuestions()
+	if c := pt.Count(t, `SELECT COUNT(*) FROM chat_message WHERE chat_session_id = $1 AND role = 'assistant' AND content = $2`, session, questions[0]); c != 1 {
+		t.Fatalf("the first question is not the first of the eight")
+	}
+	for q := 0; q < len(questions); q++ {
+		msg := pt.Insert(t, "chat_message", testutil.Cols{"chat_session_id": session, "role": "user", "content": "câu trả lời"})
+		if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, q, "Một câu trả lời", util.MustParseUUID(msg)); err != nil {
+			t.Fatalf("answer %d: %v", q, err)
+		}
+	}
+	if n := pt.Count(t, `SELECT COUNT(*) FROM chat_message WHERE chat_session_id = $1 AND role = 'assistant'`, session); n != len(questions) {
+		t.Fatalf("%d questions asked in all, want %d", n, len(questions))
+	}
+}
+
+// interviewSession is the person's interview chat with the Secretary.
+func (pt principalTest) interviewSession(t *testing.T) string {
+	t.Helper()
+	var id string
+	pt.QueryRow(t, `SELECT id FROM chat_session WHERE workspace_id = $1 AND creator_id = $2 AND title = $3`,
+		pt.WorkspaceID, util.UUIDToString(pt.owner.ID), principalInterviewTitle).Scan(&id)
+	return id
 }

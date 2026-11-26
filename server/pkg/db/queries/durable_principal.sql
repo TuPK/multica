@@ -90,3 +90,11 @@ SELECT EXISTS (
 
 -- name: GetWorkspaceSecretaryAgentID :one
 SELECT secretary_agent_id FROM workspace WHERE id = sqlc.arg(workspace_id);
+
+-- name: GetPrincipalInterviewSession :one
+-- The interview's chat with the Secretary, which the person started (durable spec 6.3).
+SELECT * FROM chat_session
+WHERE workspace_id = sqlc.arg(workspace_id) AND creator_id = sqlc.arg(member_id)
+  AND agent_id = sqlc.arg(agent_id) AND title = sqlc.arg(title)
+ORDER BY created_at DESC
+LIMIT 1;

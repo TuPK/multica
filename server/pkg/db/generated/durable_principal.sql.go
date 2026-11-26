@@ -121,6 +121,52 @@ func (q *Queries) EditPrincipalTraitStatement(ctx context.Context, arg EditPrinc
 	return i, err
 }
 
+const getPrincipalInterviewSession = `-- name: GetPrincipalInterviewSession :one
+SELECT id, workspace_id, agent_id, creator_id, title, session_id, work_dir, status, created_at, updated_at, unread_since, runtime_id, last_read_at, is_agent_intro, pinned_at, project_id, explicitly_created_at FROM chat_session
+WHERE workspace_id = $1 AND creator_id = $2
+  AND agent_id = $3 AND title = $4
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetPrincipalInterviewSessionParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	MemberID    pgtype.UUID `json:"member_id"`
+	AgentID     pgtype.UUID `json:"agent_id"`
+	Title       string      `json:"title"`
+}
+
+// The interview's chat with the Secretary, which the person started (durable spec 6.3).
+func (q *Queries) GetPrincipalInterviewSession(ctx context.Context, arg GetPrincipalInterviewSessionParams) (ChatSession, error) {
+	row := q.db.QueryRow(ctx, getPrincipalInterviewSession,
+		arg.WorkspaceID,
+		arg.MemberID,
+		arg.AgentID,
+		arg.Title,
+	)
+	var i ChatSession
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.AgentID,
+		&i.CreatorID,
+		&i.Title,
+		&i.SessionID,
+		&i.WorkDir,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UnreadSince,
+		&i.RuntimeID,
+		&i.LastReadAt,
+		&i.IsAgentIntro,
+		&i.PinnedAt,
+		&i.ProjectID,
+		&i.ExplicitlyCreatedAt,
+	)
+	return i, err
+}
+
 const getPrincipalProfile = `-- name: GetPrincipalProfile :one
 
 SELECT workspace_id, member_id, status, consent_at, share_with_owners, version, summary, updated_at FROM principal_profile

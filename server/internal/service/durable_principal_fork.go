@@ -39,6 +39,9 @@ const (
 	principalOriginLearned   = "learned"
 	principalOriginInterview = "interview"
 	principalOriginEdited    = "edited"
+
+	// principalInterviewTitle titles the interview's chat with the Secretary.
+	principalInterviewTitle = "Phỏng vấn hồ sơ"
 )
 
 func init() {
@@ -136,6 +139,12 @@ func (s *PrincipalService) Enable(ctx context.Context, ws, member pgtype.UUID, c
 	})
 	if err != nil {
 		return db.PrincipalProfile{}, fmt.Errorf("enable principal profile: %w", err)
+	}
+	if profile.Version == 1 {
+		// The first consent opens the interview in the Secretary's chat (spec 6.3).
+		if err := s.startInterview(ctx, ws, member); err != nil {
+			return db.PrincipalProfile{}, err
+		}
 	}
 	sum := sha256.Sum256([]byte(consentText))
 	if err := NewGovernanceLog().Record(ctx, s.Queries, GovernanceEvent{
@@ -279,12 +288,12 @@ func (s *PrincipalService) RetireTrait(ctx context.Context, actor PrincipalActor
 
 // AnswerInterview records one answer of the start-up interview as an interview trait, whose
 // evidence is the chat message the person sent with the answer (spec 6.3). question is the index
-// of the question, 0 to 7.
+// of the question, 0 to 7. The next question is posted in the same chat.
 func (s *PrincipalService) AnswerInterview(ctx context.Context, ws, member pgtype.UUID, question int, answer string, messageID pgtype.UUID) (db.PrincipalTrait, error) {
 	if question < 0 || question >= len(principalInterviewQuestions) {
 		return db.PrincipalTrait{}, ErrPrincipalTraitInvalid
 	}
-	return s.AddTrait(ctx, PrincipalActor{Type: GovernanceActorMember, ID: member}, TraitInput{
+	trait, err := s.AddTrait(ctx, PrincipalActor{Type: GovernanceActorMember, ID: member}, TraitInput{
 		WorkspaceID:  ws,
 		MemberID:     member,
 		DecisionKind: "general",
@@ -292,6 +301,58 @@ func (s *PrincipalService) AnswerInterview(ctx context.Context, ws, member pgtyp
 		Origin:       principalOriginInterview,
 		Evidence:     []PrincipalEvidence{{Type: "interview", Ref: util.UUIDToString(messageID)}},
 	})
+	if err != nil {
+		return db.PrincipalTrait{}, err
+	}
+	if question+1 < len(principalInterviewQuestions) {
+		if err := s.postInterviewQuestion(ctx, ws, member, question+1); err != nil {
+			return db.PrincipalTrait{}, err
+		}
+	}
+	return trait, nil
+}
+
+// startInterview opens the interview in a chat with the workspace Secretary and asks the first
+// question. A workspace with no Secretary has no one to interview the person, so it waits.
+func (s *PrincipalService) startInterview(ctx context.Context, ws, member pgtype.UUID) error {
+	secretary, err := s.Queries.GetWorkspaceSecretaryAgentID(ctx, ws)
+	if err != nil || !secretary.Valid {
+		return nil
+	}
+	session, err := s.Queries.CreateChatSession(ctx, db.CreateChatSessionParams{
+		WorkspaceID: ws, AgentID: secretary, CreatorID: member, Title: principalInterviewTitle, ID: dbid.NewV7(),
+	})
+	if err != nil {
+		return fmt.Errorf("open interview chat: %w", err)
+	}
+	return s.postInterviewQuestionIn(ctx, session.ID, 0)
+}
+
+// postInterviewQuestion asks the question in the person's interview chat, if the interview was opened.
+func (s *PrincipalService) postInterviewQuestion(ctx context.Context, ws, member pgtype.UUID, question int) error {
+	secretary, err := s.Queries.GetWorkspaceSecretaryAgentID(ctx, ws)
+	if err != nil || !secretary.Valid {
+		return nil
+	}
+	session, err := s.Queries.GetPrincipalInterviewSession(ctx, db.GetPrincipalInterviewSessionParams{
+		WorkspaceID: ws, MemberID: member, AgentID: secretary, Title: principalInterviewTitle,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("load interview chat: %w", err)
+	}
+	return s.postInterviewQuestionIn(ctx, session.ID, question)
+}
+
+func (s *PrincipalService) postInterviewQuestionIn(ctx context.Context, session pgtype.UUID, question int) error {
+	if _, err := s.Queries.CreateChatMessage(ctx, db.CreateChatMessageParams{
+		ChatSessionID: session, Role: "assistant", Content: principalInterviewQuestions[question], ID: dbid.NewV7(),
+	}); err != nil {
+		return fmt.Errorf("post interview question: %w", err)
+	}
+	return nil
 }
 
 // Delete removes the person's profile and its traits in one transaction (spec 6.6). Only the person
