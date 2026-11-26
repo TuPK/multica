@@ -296,6 +296,10 @@ func registerDurableSeatRoutes(r chi.Router, h *handler.Handler) {
 	r.Get("/dossier", h.ListSeatDossier)
 	r.Post("/dossier", h.AddSeatDossierEntries)
 	r.Post("/dossier/{entryId}/retire", h.RetireSeatDossierEntry)
+	// A shadow run is a person's decision to try a model on a seat (durable spec 9.4): the
+	// estimate is read by any member, the start is a person's request.
+	r.Get("/shadow/estimate", h.GetShadowEstimate)
+	r.With(handler.RequireHumanActor).Post("/shadow", h.StartShadowRun)
 }
 
 // registerDurableSquadEnvelopeRoutes mounts a squad's autonomy envelope (durable spec 3.5).
