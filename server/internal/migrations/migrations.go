@@ -2,9 +2,11 @@ package migrations
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/multica-ai/multica/server/internal/selfexec"
@@ -63,12 +65,54 @@ func Files(direction string) ([]string, error) {
 		return nil, err
 	}
 
+	sortMigrations(files)
 	if direction == "down" {
-		sort.Sort(sort.Reverse(sort.StringSlice(files)))
-	} else {
-		sort.Strings(files)
+		reverseFiles(files)
 	}
 	return files, nil
+}
+
+// sortMigrations orders up migrations by their leading number, so 830 runs before 1000 and 1107,
+// and by name when two share a number. Ordering by the whole name would put 1000 before 830, which
+// is wrong for a migration that alters a table an earlier number creates.
+func sortMigrations(files []string) {
+	sort.SliceStable(files, func(i, j int) bool {
+		return migrationLess(files[i], files[j])
+	})
+}
+
+// migrationLess is the up order: the leading number, then the base name.
+func migrationLess(a, b string) bool {
+	na, nb := migrationNumber(a), migrationNumber(b)
+	if na != nb {
+		return na < nb
+	}
+	return filepath.Base(a) < filepath.Base(b)
+}
+
+// migrationNumber is the integer a migration file's name starts with. A name with no leading number
+// sorts after every numbered one.
+func migrationNumber(path string) int {
+	base := filepath.Base(path)
+	end := 0
+	for end < len(base) && base[end] >= '0' && base[end] <= '9' {
+		end++
+	}
+	if end == 0 {
+		return math.MaxInt
+	}
+	n, err := strconv.Atoi(base[:end])
+	if err != nil {
+		return math.MaxInt
+	}
+	return n
+}
+
+// reverseFiles reverses a sorted list in place: down migrations run in the reverse of up order.
+func reverseFiles(files []string) {
+	for i, j := 0, len(files)-1; i < j; i, j = i+1, j-1 {
+		files[i], files[j] = files[j], files[i]
+	}
 }
 
 // AllVersions returns every "up" migration version found on disk, in apply
