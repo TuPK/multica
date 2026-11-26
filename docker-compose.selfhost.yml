@@ -380,9 +380,10 @@ services:
     restart: unless-stopped
 
   # Marketing landing page (apps/landing), a static Astro build served by nginx.
-  # There is no published image yet, so it is built from this checkout by
-  # Dockerfile.landing; `pull` skips it and `up` builds it when it is missing.
+  # Built from this checkout by Dockerfile.landing when no image is present;
+  # `make deploy` pushes it to Docker Hub under MULTICA_LANDING_IMAGE.
   landing:
+    image: ${MULTICA_LANDING_IMAGE:-multica-landing}:${MULTICA_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile.landing

@@ -1,4 +1,4 @@
-.PHONY: help makehelp web-dev web-prod collab-dev env-exec api-dev desktop-dev install-daemon landing landing-stop dev dev-full server daemon cli agent-pack catalog-build multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-start selfhost-build selfhost-build-start selfhost-stop up down status list destroy gc env-exe
+.PHONY: help makehelp web-dev web-prod collab-dev env-exec api-dev desktop-dev install-daemon landing landing-stop dev dev-full server daemon cli agent-pack catalog-build multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-start selfhost-build selfhost-build-start selfhost-stop deploy up down status list destroy gc env-exe
 
 MAIN_ENV_FILE ?= .env
 WORKTREE_ENV_FILE ?= .env.worktree
@@ -169,6 +169,10 @@ selfhost-build-start:
 	@echo "==> Building Delegora from the current checkout..."
 	$(COMPOSE) -f docker-compose.selfhost.yml -f docker-compose.selfhost.build.yml up -d --build
 	@bash scripts/selfhost-wait.sh build
+
+deploy: ## Build and push the production images to Docker Hub, then pull and start the stack on the server ENV=<ip>
+	@test -n "$(ENV)" || { echo "usage: make deploy ENV=<server-ip>"; exit 1; }
+	@bash scripts/deploy.sh "$(ENV)"
 
 selfhost-stop: ## Stop the self-hosted Docker Compose stack
 	$(REQUIRE_COMPOSE)
