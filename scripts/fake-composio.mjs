@@ -212,6 +212,8 @@ const TOOLS = {
     ["GMAIL_FETCH_EMAILS", "Fetch emails", "Fetch a list of email messages from the mailbox."],
     ["GMAIL_SEND_EMAIL", "Send email", "Send an email to one or more recipients."],
     ["GMAIL_CREATE_EMAIL_DRAFT", "Create email draft", "Create a draft email."],
+    ["GMAIL_CREATE_DRAFT", "Create draft", "Create a draft email that the person can review before sending."],
+    ["GMAIL_DELETE_DRAFT", "Delete draft", "Delete a draft email."],
     ["GMAIL_DELETE_MESSAGE", "Delete message", "Permanently delete an email message."],
   ],
   googlecalendar: [

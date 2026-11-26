@@ -10,7 +10,7 @@ import { API_BASE, TestApiClient } from "../fixtures";
 //   2. `node scripts/fake-composio.mjs up` has written COMPOSIO_BASE_URL (loopback) and COMPOSIO_STATE_SECRET
 //      to the same env file. The fake stands in for Composio, so no real email service is called.
 //
-// The agent's run is seeded as a running task, and the gateway token is minted the way the server mints a run's
+// Each agent's run is seeded as a running task, and the gateway token is minted the way the server mints a run's
 // token (connectedapps.SignTaskToken with DeriveTokenSecret). No model runs.
 
 const RUN = Date.now().toString(36);
@@ -27,14 +27,19 @@ const SUBJECT_REJECTED = `Quote ${RUN} for rejection`;
 const BODY_DRAFT = "Hello, the quote is attached.";
 const BODY_EDITED = "Hello, the quote is attached and valid for 14 days.";
 const REJECT_REASON = `Wrong customer ${RUN}`;
+const DRAFT_SUMMARY = `Draft reply ${RUN}`;
+const LATE_SUMMARY = `Late draft ${RUN}`;
 
 let api: TestApiClient;
 let workspaceId = "";
 let slug = "";
+let runtimeId = "";
 let agentId = "";
 let taskId = "";
 let intentEdited = "";
 let intentRejected = "";
+let draftAgentId = "";
+const taskIds: string[] = [];
 
 function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -54,27 +59,46 @@ function gatewayToken(run: string): string {
   return `mca_${payload}.${signature}`;
 }
 
-/** The agent asks for an app tool through the gateway, as a run's CLI does. */
-async function askToSend(subject: string, body: string): Promise<{ status: string; intentId: string }> {
+/** A run calls an app tool through the gateway, as its CLI does. Held or refused calls come back with isError. */
+async function callGateway(
+  run: string,
+  tool: string,
+  toolArgs: Record<string, unknown>,
+  summary = "",
+): Promise<{ isError: boolean; text: string }> {
   const res = await fetch(`${API_BASE}/api/apps/mcp`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${gatewayToken(taskId)}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${gatewayToken(run)}` },
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: 1,
       method: "tools/call",
-      params: {
-        name: "apps_run_tool",
-        arguments: {
-          tool: "GMAIL_SEND_EMAIL",
-          arguments: { user_id: "me", to: RECIPIENT, subject, body, _rationale: "the customer asked for the quote" },
-        },
-      },
+      params: { name: "apps_run_tool", arguments: { tool, arguments: toolArgs, summary } },
     }),
   });
   expect(res.status).toBe(200);
-  const answer = JSON.parse((await res.json()).result.content[0].text) as { status: string; intent_id?: string };
+  const result = (await res.json()).result as { isError?: boolean; content: { text: string }[] };
+  return { isError: result.isError === true, text: result.content[0].text };
+}
+
+/** The agent asks to send an email. The platform holds it for the person and answers with the intent id. */
+async function askToSend(subject: string, body: string): Promise<{ status: string; intentId: string }> {
+  const held = await callGateway(
+    taskId,
+    "GMAIL_SEND_EMAIL",
+    { user_id: "me", to: RECIPIENT, subject, body, _rationale: "the customer asked for the quote" },
+    subject,
+  );
+  expect(held.isError).toBe(true);
+  const answer = JSON.parse(held.text) as { status: string; intent_id?: string };
   return { status: answer.status, intentId: answer.intent_id ?? "" };
+}
+
+/** A running task for an agent, with the mat_ token its CLI carries. Removed in afterAll. */
+async function seedRun(agent: string): Promise<{ id: string; token: string }> {
+  const run = await api.seedRunningTask(agent);
+  taskIds.push(run.id);
+  return run;
 }
 
 /** A call to the API as the signed-in person. Returns the status and the raw body. */
@@ -106,9 +130,28 @@ function intentCard(page: Page, subject: string) {
   return page.getByRole("article", { name: subject, exact: true });
 }
 
+/** An agent at autonomy L2 with Gmail attached: its drafts run, where an L1 agent's would wait. */
+async function setUpDraftAgent(): Promise<void> {
+  const agent = await api.createAgent(`Drafts agent ${RUN}`, runtimeId);
+  draftAgentId = agent.id;
+  const squad = await api.createSquad(`Drafts squad ${RUN}`, agent.id);
+  await api.queryDb(
+    `INSERT INTO squad_member (squad_id, member_type, member_id) VALUES ($1, 'agent', $2) ON CONFLICT DO NOTHING`,
+    [squad.id, agent.id],
+  );
+  await api.queryDb(`UPDATE squad SET autonomy_level = 2 WHERE id = $1`, [squad.id]);
+  const attached = await apiCall("PUT", `/api/agents/${draftAgentId}/apps`, {
+    apps: [{ toolkit_slug: "gmail", account_scope: "personal", level: "write" }],
+  });
+  expect(attached.status, attached.text).toBe(200);
+}
+
 test.describe.serial("F3, F4: an email an agent wants to send waits for a person", () => {
+  // The first visit to a page compiles its client code in `next dev`, so UI steps get more time than a unit step.
+  test.describe.configure({ timeout: 180000 });
+
   test.beforeAll(async () => {
-    test.setTimeout(240000);
+    test.setTimeout(900000);
     const fake = new URL(requireEnv("COMPOSIO_BASE_URL"));
     if (!["127.0.0.1", "localhost"].includes(fake.hostname)) {
       throw new Error(`COMPOSIO_BASE_URL must point at the local fake, not ${fake.host}`);
@@ -126,10 +169,12 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
 
     // The first request to a route compiles it in `next dev`, which can take longer than a test's navigation.
     const frontend = process.env.PLAYWRIGHT_BASE_URL ?? process.env.FRONTEND_ORIGIN ?? "http://localhost:3000";
-    const warm = await fetch(new URL(`/${slug}/inbox`, frontend), { signal: AbortSignal.timeout(180000) });
-    expect(warm.ok, "the inbox route compiles and answers").toBe(true);
+    const warmed = await Promise.all(
+      ["inbox", "governance"].map((page) => fetch(new URL(`/${slug}/${page}`, frontend), { signal: AbortSignal.timeout(600000) })),
+    );
+    expect(warmed.every((res) => res.ok), "the inbox and governance routes compile and answer").toBe(true);
 
-    const runtimeId = await api.seedRuntime(`effects-runtime-${RUN}`);
+    runtimeId = await api.seedRuntime(`effects-runtime-${RUN}`);
     const agent = await api.createAgent(`Effects agent ${RUN}`, runtimeId);
     agentId = agent.id;
 
@@ -144,7 +189,7 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
     });
     expect(attached.status, attached.text).toBe(200);
 
-    taskId = (await api.seedRunningTask(agentId)).id;
+    taskId = (await seedRun(agentId)).id;
   });
 
   test.afterAll(async () => {
@@ -152,9 +197,12 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
       await api.queryDb(`DELETE FROM effect_event WHERE workspace_id = $1`, [workspaceId]);
       await api.queryDb(`DELETE FROM effect_intent WHERE workspace_id = $1`, [workspaceId]);
     }
-    if (taskId) {
-      await api.queryDb(`DELETE FROM task_token WHERE task_id = $1`, [taskId]);
-      await api.queryDb(`DELETE FROM agent_task_queue WHERE id = $1`, [taskId]);
+    if (draftAgentId) {
+      await api.queryDb(`DELETE FROM squad_member WHERE member_id = $1`, [draftAgentId]);
+    }
+    for (const id of taskIds) {
+      await api.queryDb(`DELETE FROM task_token WHERE task_id = $1`, [id]);
+      await api.queryDb(`DELETE FROM agent_task_queue WHERE id = $1`, [id]);
     }
     await api.queryDb(`DELETE FROM user_composio_connection WHERE connected_account_id = $1`, [ACCOUNT_ID]);
     await api.cleanup();
@@ -184,10 +232,10 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
 
   test("a person edits the email in the inbox and approves it once", async ({ page }) => {
     await signIn(page);
-    await page.goto(`/${slug}/inbox`);
+    await page.goto(`/${slug}/inbox`, { waitUntil: "domcontentloaded" });
 
     const card = intentCard(page, SUBJECT_EDITED);
-    await expect(card).toBeVisible({ timeout: 30000 });
+    await expect(card).toBeVisible({ timeout: 120000 });
     await expect(card).toContainText(RECIPIENT);
     await expect(card).toContainText(BODY_DRAFT);
 
@@ -195,7 +243,7 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
     await card.getByLabel("Message text").fill(BODY_EDITED);
     await card.getByRole("button", { name: "Approve edited version", exact: true }).click();
 
-    await expect(page.getByText("Approved. The action runs once.")).toBeVisible();
+    await expect(page.getByText("Approved. The action runs once.")).toBeVisible({ timeout: 30000 });
     await expect(intentCard(page, SUBJECT_EDITED)).toHaveCount(0);
 
     const [row] = await api.queryDb(
@@ -205,18 +253,16 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
     expect(row).toMatchObject({ state: "executed", body: BODY_EDITED });
   });
 
-  test("a second approval is refused, and the ledger holds one send with no undo", async () => {
+  test("a second approval is refused, and the ledger holds one send", async () => {
     const again = await apiCall("POST", `/api/intents/${intentEdited}/approve`, {});
     expect(again.status).toBe(409);
     expect(again.text).toContain("intent_not_pending");
 
     const events = await api.queryDb(
-      `SELECT status, undo, undo_until FROM effect_event WHERE intent_id = $1`,
+      `SELECT status FROM effect_event WHERE intent_id = $1`,
       [intentEdited],
     );
-    const executed = events.filter((event) => event.status === "executed");
-    expect(executed).toHaveLength(1);
-    expect(executed[0]).toMatchObject({ undo: null, undo_until: null });
+    expect(events.filter((event) => event.status === "executed")).toHaveLength(1);
   });
 
   test("a person rejects a second send with a reason, and nothing is sent", async ({ page }) => {
@@ -225,15 +271,15 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
     intentRejected = held.intentId;
 
     await signIn(page);
-    await page.goto(`/${slug}/inbox`);
+    await page.goto(`/${slug}/inbox`, { waitUntil: "domcontentloaded" });
 
     const card = intentCard(page, SUBJECT_REJECTED);
-    await expect(card).toBeVisible({ timeout: 30000 });
+    await expect(card).toBeVisible({ timeout: 120000 });
     await card.getByRole("button", { name: "Reject", exact: true }).click();
     await card.getByLabel("Reason (the agent reads it)").fill(REJECT_REASON);
     await card.getByRole("button", { name: "Send rejection", exact: true }).click();
 
-    await expect(page.getByText("Rejected. The agent gets the reason.")).toBeVisible();
+    await expect(page.getByText("Rejected. The agent gets the reason.")).toBeVisible({ timeout: 30000 });
 
     const [row] = await api.queryDb(`SELECT state, decision_note FROM effect_intent WHERE id = $1`, [intentRejected]);
     expect(row).toMatchObject({ state: "rejected", decision_note: REJECT_REASON });
@@ -243,5 +289,78 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
       [intentRejected],
     );
     expect(executed).toHaveLength(0);
+  });
+
+  test("the sent email has no undo: the log shows none and the API refuses one", async ({ page }) => {
+    const [sent] = await api.queryDb(
+      `SELECT id FROM effect_event WHERE intent_id = $1 AND status = 'executed'`,
+      [intentEdited],
+    );
+    const refused = await apiCall("POST", `/api/effects/${sent.id}/undo`, {});
+    expect(refused.status).toBe(422);
+    expect(refused.text).toContain("not_undoable");
+
+    await signIn(page);
+    await page.goto(`/${slug}/governance`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("tab", { name: "Effects", exact: true }).click();
+
+    const row = page.getByRole("listitem").filter({ hasText: SUBJECT_EDITED });
+    await expect(row).toBeVisible({ timeout: 120000 });
+    await expect(row).toContainText("Done");
+    await expect(row.getByRole("button", { name: "Undo", exact: true })).toHaveCount(0);
+  });
+
+  test("at L2 a draft runs, and the person takes it back from the effect log", async ({ page }) => {
+    await setUpDraftAgent();
+    const task = await seedRun(draftAgentId);
+
+    const made = await callGateway(
+      task.id,
+      "GMAIL_CREATE_DRAFT",
+      { user_id: "me", to: RECIPIENT, subject: `Draft ${RUN}`, body: BODY_DRAFT },
+      DRAFT_SUMMARY,
+    );
+    expect(made.isError).toBe(false);
+
+    const [draft] = await api.queryDb(
+      `SELECT id, status, undo, undo_until FROM effect_event WHERE task_id = $1`,
+      [task.id],
+    );
+    expect(draft).toMatchObject({ status: "executed" });
+    expect(draft.undo).not.toBeNull();
+    expect(draft.undo_until).not.toBeNull();
+
+    await signIn(page);
+    await page.goto(`/${slug}/governance`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("tab", { name: "Effects", exact: true }).click();
+
+    const row = page.getByRole("listitem").filter({ hasText: DRAFT_SUMMARY });
+    await expect(row).toBeVisible({ timeout: 120000 });
+    await row.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(page.getByText("Effect undone.")).toBeVisible({ timeout: 30000 });
+
+    const [after] = await api.queryDb(`SELECT status FROM effect_event WHERE id = $1`, [draft.id]);
+    expect(after).toMatchObject({ status: "undone" });
+  });
+
+  test("an undo after its window has closed is refused", async () => {
+    const task = await seedRun(draftAgentId);
+    const made = await callGateway(
+      task.id,
+      "GMAIL_CREATE_DRAFT",
+      { user_id: "me", to: RECIPIENT, subject: `Late ${RUN}`, body: BODY_DRAFT },
+      LATE_SUMMARY,
+    );
+    expect(made.isError).toBe(false);
+
+    const [draft] = await api.queryDb(`SELECT id FROM effect_event WHERE task_id = $1 AND status = 'executed'`, [task.id]);
+    await api.queryDb(`UPDATE effect_event SET undo_until = now() - interval '1 minute' WHERE id = $1`, [draft.id]);
+
+    const closed = await apiCall("POST", `/api/effects/${draft.id}/undo`, {});
+    expect(closed.status).toBe(409);
+    expect(closed.text).toContain("undo_window_closed");
+
+    const [after] = await api.queryDb(`SELECT status FROM effect_event WHERE id = $1`, [draft.id]);
+    expect(after).toMatchObject({ status: "executed" });
   });
 });
