@@ -9,7 +9,8 @@ import { API_BASE, type TestApiClient } from "../fixtures";
 // worker closes 25 items through its task token, the boss reopens one of them, the
 // boss records a check on each closed item, and the week's jobs run through the test route
 // POST /api/test/durable/jobs (runbook phase 4, section 0). The clock is moved a week on
-// for the settlement.
+// for the settlement. The week's brief is then published, and its Progress section must
+// show the outcome numbers, both through the API and in the company page's brief dialog.
 //
 // Nothing here runs an agent. The agent's writes are API calls made with the task token a
 // running task carries (TestApiClient.seedRunningTask). Setup and teardown go through
@@ -25,6 +26,34 @@ import { API_BASE, type TestApiClient } from "../fixtures";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ITEMS = 25;
 const PASSED = 24;
+
+// The brief as the Secretary writes it: every required section, with prose only. The outcome
+// facts are not written here; the server adds them under Progress.
+const BRIEF_BODY = [
+  "## Headline",
+  "One squad worked a week of criteria items.",
+  "",
+  "## Needs your decision",
+  "Nothing needs you today.",
+  "",
+  "## Progress",
+  "The worker closed its items this week.",
+  "",
+  "## Blockers and risks",
+  "None.",
+  "",
+  "## FYI",
+  "None.",
+].join("\n");
+
+/** The text of one level-2 section of a brief body, up to the next one. */
+function sectionOf(body: string, heading: string): string {
+  const start = body.indexOf(`## ${heading}\n`);
+  if (start < 0) return "";
+  const rest = body.slice(start + heading.length + 4);
+  const next = rest.search(/^## /m);
+  return next < 0 ? rest : rest.slice(0, next);
+}
 
 type Json = Record<string, any>;
 
@@ -66,8 +95,8 @@ async function runDurableJobs(s: Session, now?: string): Promise<{ opened: numbe
   return res.json as { opened: number; settled: number; track_pairs: number; squads_moved: number };
 }
 
-test("spec 17.2 (1): a week of an L1 squad with 25 criteria items: 24 pass and 1 reopened, the track record moves to sampled, the squad stays at L1", async () => {
-  test.setTimeout(180_000);
+test("spec 17.2 (1): a week of an L1 squad with 25 criteria items: 24 pass and 1 reopened, the track record moves to sampled, the squad stays at L1", async ({ page }) => {
+  test.setTimeout(600_000);
   const t: TestApiClient = await createTestApi();
   const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const workspace = await t.createWorkspace(`Outcome week ${id}`, `e2e-outcome-week-${id}`);
@@ -173,6 +202,44 @@ test("spec 17.2 (1): a week of an L1 squad with 25 criteria items: 24 pass and 1
     expect(view.reputation.n, "the squad has no settled outcome of its own").toBe(0);
     expect(view.reputation.acceptance_rate).toBeNull();
     expect((await ok(boss, "GET", `/api/squads/${squad.id}`)).autonomy_level).toBe(1);
+
+    // The week's brief, published the way the Secretary publishes it. The server places the
+    // outcome facts under Progress (durable spec 2.7), so the numbers the boss reads are the
+    // stored ones. The period covers the settlement, which the test clock placed eight days on.
+    const published = await ok(boss, "POST", "/api/briefs", {
+      kind: "weekly",
+      title: "Weekly review",
+      body: BRIEF_BODY,
+      period_start: new Date(Date.now() - DAY_MS).toISOString(),
+      period_end: new Date(Date.now() + 9 * DAY_MS).toISOString(),
+    });
+    const brief = await ok(boss, "GET", `/api/briefs/${published.id}`);
+    const progress = sectionOf(brief.body, "Progress");
+    expect(progress, "the brief has a Progress section with the facts").toContain(
+      `**Outcomes this period:** ${ITEMS} settled: ${PASSED} pass, 0 partial, 1 fail (1 reopened), 0 unverified.`,
+    );
+    expect(progress).toContain(`- Verification mode of ${worker.name} (general) is now sampled.`);
+    expect(progress).toContain("- Autonomy envelope: 0 squad level change(s) on evidence.");
+    expect(brief.body.indexOf("**Outcomes this period:**"), "the facts come before Blockers and risks").toBeLessThan(
+      brief.body.indexOf("## Blockers and risks"),
+    );
+
+    // The boss opens the brief from the company page: the dialog shows the same numbers.
+    await page.addInitScript((token) => {
+      localStorage.setItem("multica_token", token);
+      localStorage.setItem("multica:chat:isOpen", "false");
+    }, boss.token);
+    await page.goto(`/${workspace.slug}/company`, { waitUntil: "domcontentloaded" });
+    // Bounded waits: with no action timeout, a click on a button that never settles would
+    // hold the test until its own timeout, with no message about which step stalled.
+    // The name is "Brief", plus "New brief" while the brief is unread.
+    const briefButton = page.getByRole("button", { name: /^Brief/ });
+    await expect(briefButton, "the company page offers the brief").toBeVisible({ timeout: 120_000 });
+    await briefButton.click({ timeout: 30_000 });
+    const dialog = page.getByRole("dialog");
+    await expect(dialog, "the brief dialog opens").toBeVisible({ timeout: 30_000 });
+    await expect(dialog).toContainText(`${ITEMS} settled: ${PASSED} pass, 0 partial, 1 fail (1 reopened)`, { timeout: 30_000 });
+    await expect(dialog).toContainText(`Verification mode of ${worker.name} (general) is now sampled.`, { timeout: 30_000 });
   } finally {
     await t.cleanup();
     await t.deleteWorkspace();
