@@ -929,6 +929,8 @@ export class TestApiClient {
       method: "POST",
       body: JSON.stringify(body),
     });
+  }
+
   async getIssue(id: string) {
     const res = await this.authedFetch(`/api/issues/${id}`);
     if (!res.ok) throw new Error(`get issue: ${res.status}`);
