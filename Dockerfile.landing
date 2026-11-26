@@ -15,6 +15,7 @@ RUN corepack enable && \
 # Root manifests, the lockfile, and the root patch inputs. Only the landing workspace is installed.
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/mobile/patches/ apps/mobile/patches/
+COPY patches/ patches/
 COPY apps/landing/ apps/landing/
 RUN pnpm install --frozen-lockfile --filter @multica/landing...
 

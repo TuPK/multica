@@ -20,6 +20,7 @@ RUN corepack enable && \
 # Root pnpm patchedDependencies is read even without the mobile workspace.
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/mobile/patches/ apps/mobile/patches/
+COPY patches/ patches/
 COPY packages/core/package.json packages/core/
 COPY packages/ui/package.json packages/ui/
 COPY packages/tsconfig/package.json packages/tsconfig/
