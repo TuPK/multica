@@ -31,6 +31,7 @@ const SUBJECT_REJECTED = `Quote ${RUN} for rejection`;
 const BODY_DRAFT = "Hello, the quote is attached.";
 const BODY_EDITED = "Hello, the quote is attached and valid for 14 days.";
 const REJECT_REASON = `Wrong customer ${RUN}`;
+const SUBJECT_EXPIRED = `Quote ${RUN} left undecided`;
 const DRAFT_SUMMARY = `Draft reply ${RUN}`;
 const LATE_SUMMARY = `Late draft ${RUN}`;
 
@@ -467,5 +468,50 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
       encoding: "utf8",
     });
     expect(result.status).toBe(4);
+  });
+
+  test("an intent nobody decides within 72 hours expires once, and its agent is woken once", async () => {
+    test.setTimeout(420000);
+    // The run belongs to an issue, which is what lets an expiry wake its agent.
+    const issue = await api.createIssue(`Expiry ${RUN}`);
+    const run = await seedRun(agentId);
+    await api.queryDb(`UPDATE agent_task_queue SET issue_id = $2 WHERE id = $1`, [run.id, issue.id]);
+
+    const held = await callGateway(
+      run.id,
+      "GMAIL_SEND_EMAIL",
+      { user_id: "me", to: RECIPIENT, subject: SUBJECT_EXPIRED, body: BODY_DRAFT, _rationale: "a reminder for the quote" },
+      SUBJECT_EXPIRED,
+    );
+    expect(held.isError).toBe(true);
+    const intentId = (JSON.parse(held.text) as { intent_id: string }).intent_id;
+
+    // Seventy-two hours pass without a decision: the deadline is now in the past.
+    await api.queryDb(`UPDATE effect_intent SET expires_at = now() - interval '1 minute' WHERE id = $1`, [intentId]);
+    await expect
+      .poll(async () => (await api.queryDb(`SELECT state FROM effect_intent WHERE id = $1`, [intentId]))[0]?.state, {
+        timeout: 240000,
+        intervals: [5000],
+      })
+      .toBe("expired");
+
+    const [event] = await api.queryDb(`SELECT status FROM effect_event WHERE intent_id = $1`, [intentId]);
+    expect(event).toMatchObject({ status: "blocked" });
+
+    const wakeups = async () =>
+      Number(
+        (
+          await api.queryDb(
+            `SELECT count(*) AS n FROM agent_task_queue WHERE agent_id = $1 AND handoff_note LIKE 'expired without a decision%'`,
+            [agentId],
+          )
+        )[0].n,
+      );
+    // The wake is written just after the state change, so wait for it rather than read it right away.
+    await expect.poll(wakeups, { timeout: 30000 }).toBe(1);
+
+    // The sweep runs every minute. A second pass finds nothing pending, so the agent is not woken again.
+    await new Promise((resolve) => setTimeout(resolve, 90000));
+    expect(await wakeups()).toBe(1);
   });
 });
