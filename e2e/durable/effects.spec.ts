@@ -446,10 +446,9 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
     expect(blocked.out).toContain('"block"');
   });
 
-  // Product finding, not yet fixed: a shadow run's `effect declare` is a CLI write, and EffectCLIMiddleware refuses
-  // it with 403 before the handler decides (effect_sources_fork.go). The CLI maps 403 to exit 3, which is also the
-  // code for "held for approval", so the agent cannot tell a block from a hold. Spec 4.5 wants exit 4.
-  test.fixme("a shadow run's declare exits 4", async () => {
+  // A shadow run's declare is a CLI write. The declare route answers with its decision, so the block reaches the CLI
+  // as exit 4 and not as the 403 that the CLI reads as "held" (exit 3).
+  test("a shadow run's declare exits 4", async () => {
     const dir = mkdtempSync(join(tmpdir(), "effects-cli-shadow-"));
     const bin = join(dir, "multica");
     execFileSync("go", ["build", "-o", bin, "./cmd/multica"], { cwd: join(process.cwd(), "server"), stdio: "pipe", timeout: 540000 });
