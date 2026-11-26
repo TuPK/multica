@@ -48,6 +48,7 @@ func newPrincipalTest(t *testing.T, flagOn bool) principalTest {
 		secretary:        PrincipalActor{Type: GovernanceActorAgent, ID: util.MustParseUUID(secretary)},
 		svc:              &PrincipalService{Queries: f.q, TxStarter: f.Pool, Flags: featureflag.NewService(provider)},
 	}
+	f.Cleanup(t, `DELETE FROM principal_delegation WHERE workspace_id = $1`, f.WorkspaceID)
 	f.Cleanup(t, `DELETE FROM decision_prediction WHERE workspace_id = $1`, f.WorkspaceID)
 	f.Cleanup(t, `DELETE FROM principal_trait WHERE workspace_id = $1`, f.WorkspaceID)
 	f.Cleanup(t, `DELETE FROM principal_profile WHERE workspace_id = $1`, f.WorkspaceID)

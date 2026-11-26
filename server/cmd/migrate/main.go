@@ -173,6 +173,7 @@ var concurrentIndexCleanups = map[string]string{
 	"1102_principal_trait_member_idx":                           "principal_trait_member_kind_idx",
 	"1104_decision_prediction_subject_uidx":                     "decision_prediction_subject_uidx",
 	"1105_decision_prediction_accuracy_idx":                     "decision_prediction_accuracy_idx",
+	"1107_principal_delegation_active_uidx":                     "principal_delegation_active_uidx",
 	"753_agent_task_queue_doc_idx":                              "idx_agent_task_queue_doc",
 	"749_app_tool_call_quota_period_scope_idx":                  "uq_app_tool_call_quota_period_scope",
 	"751_app_tool_call_workspace_metered_idx":                   "idx_app_tool_call_workspace_metered",

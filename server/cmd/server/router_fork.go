@@ -295,6 +295,11 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	r.Patch("/api/principal/profile/traits/{id}", h.EditPrincipalTrait)
 	r.Delete("/api/principal/profile/traits/{id}", h.RetirePrincipalTrait)
 	r.Post("/api/principal/predictions", h.RecordPrincipalPrediction)
+	// Delegation by prediction (durable spec 6.5): the person turns a kind on or off, and reverts a
+	// delegated decision within 72 hours.
+	r.Put("/api/principal/delegations", h.EnablePrincipalDelegation)
+	r.Delete("/api/principal/delegations", h.DisablePrincipalDelegation)
+	r.Post("/api/principal/decisions/{id}/revert", h.RevertDelegatedDecision)
 	r.Get("/api/principal/interview", h.GetPrincipalInterview)
 	r.Post("/api/principal/interview/answers", h.AnswerPrincipalInterview)
 

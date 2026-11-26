@@ -309,6 +309,9 @@ func (s *PrincipalService) Delete(ctx context.Context, actor PrincipalActor, ws,
 		if _, err := q.ForgetPredictionReasons(ctx, db.ForgetPredictionReasonsParams{WorkspaceID: ws, MemberID: member}); err != nil {
 			return fmt.Errorf("forget prediction reasons: %w", err)
 		}
+		if _, err := q.DeletePrincipalDelegations(ctx, db.DeletePrincipalDelegationsParams{WorkspaceID: ws, MemberID: member}); err != nil {
+			return fmt.Errorf("delete principal delegations: %w", err)
+		}
 		n, err := q.DeletePrincipalProfile(ctx, db.DeletePrincipalProfileParams{WorkspaceID: ws, MemberID: member})
 		if err != nil {
 			return fmt.Errorf("delete principal profile: %w", err)
