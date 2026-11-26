@@ -54,6 +54,7 @@
   "backend": [
     "server/**",
     "docs/engineering/r4-currency-inventory.md",
+    "docs/specs/durable-platform/ocf/v1.schema.json",
     "platform-management/contract/testdata/**",
     "catalog/**",
     "scripts/catalog/**",
