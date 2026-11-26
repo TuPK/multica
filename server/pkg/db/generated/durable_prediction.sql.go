@@ -108,6 +108,51 @@ func (q *Queries) InsertPendingPrediction(ctx context.Context, arg InsertPending
 	return result.RowsAffected(), nil
 }
 
+const latestAssistantMessageAt = `-- name: LatestAssistantMessageAt :one
+SELECT created_at FROM chat_message
+WHERE chat_session_id = $1 AND role = 'assistant'
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+// When the Secretary last wrote into a chat session.
+func (q *Queries) LatestAssistantMessageAt(ctx context.Context, chatSessionID pgtype.UUID) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, latestAssistantMessageAt, chatSessionID)
+	var created_at pgtype.Timestamptz
+	err := row.Scan(&created_at)
+	return created_at, err
+}
+
+const listActivePrincipalProfiles = `-- name: ListActivePrincipalProfiles :many
+SELECT workspace_id, member_id FROM principal_profile WHERE status = 'active'
+`
+
+type ListActivePrincipalProfilesRow struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	MemberID    pgtype.UUID `json:"member_id"`
+}
+
+// Every active profile in every workspace, for the profile update job.
+func (q *Queries) ListActivePrincipalProfiles(ctx context.Context) ([]ListActivePrincipalProfilesRow, error) {
+	rows, err := q.db.Query(ctx, listActivePrincipalProfiles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListActivePrincipalProfilesRow{}
+	for rows.Next() {
+		var i ListActivePrincipalProfilesRow
+		if err := rows.Scan(&i.WorkspaceID, &i.MemberID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProfiledDeciders = `-- name: ListProfiledDeciders :many
 SELECT p.member_id FROM principal_profile p
 JOIN member m ON m.workspace_id = p.workspace_id AND m.user_id = p.member_id
@@ -164,6 +209,60 @@ func (q *Queries) ListRecentResolvedPredictions(ctx context.Context, arg ListRec
 			return nil, err
 		}
 		items = append(items, matched)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResolvedPredictionsSince = `-- name: ListResolvedPredictionsSince :many
+SELECT subject_type, subject_id, decision_kind, predicted, actual, matched, resolved_at
+FROM decision_prediction
+WHERE workspace_id = $1 AND member_id = $2
+  AND resolved_at IS NOT NULL AND resolved_at >= $3
+ORDER BY resolved_at DESC
+LIMIT 20
+`
+
+type ListResolvedPredictionsSinceParams struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	MemberID    pgtype.UUID        `json:"member_id"`
+	Since       pgtype.Timestamptz `json:"since"`
+}
+
+type ListResolvedPredictionsSinceRow struct {
+	SubjectType  string             `json:"subject_type"`
+	SubjectID    pgtype.UUID        `json:"subject_id"`
+	DecisionKind string             `json:"decision_kind"`
+	Predicted    string             `json:"predicted"`
+	Actual       pgtype.Text        `json:"actual"`
+	Matched      pgtype.Bool        `json:"matched"`
+	ResolvedAt   pgtype.Timestamptz `json:"resolved_at"`
+}
+
+// The predictions resolved since a time, newest first, for one profile update batch (spec 6.3).
+func (q *Queries) ListResolvedPredictionsSince(ctx context.Context, arg ListResolvedPredictionsSinceParams) ([]ListResolvedPredictionsSinceRow, error) {
+	rows, err := q.db.Query(ctx, listResolvedPredictionsSince, arg.WorkspaceID, arg.MemberID, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListResolvedPredictionsSinceRow{}
+	for rows.Next() {
+		var i ListResolvedPredictionsSinceRow
+		if err := rows.Scan(
+			&i.SubjectType,
+			&i.SubjectID,
+			&i.DecisionKind,
+			&i.Predicted,
+			&i.Actual,
+			&i.Matched,
+			&i.ResolvedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

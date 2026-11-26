@@ -58,3 +58,23 @@ LIMIT 50;
 -- Deleting a profile keeps the match counts and drops what the prediction said (spec 6.6).
 UPDATE decision_prediction SET why = '', trait_ids = '{}'
 WHERE workspace_id = sqlc.arg(workspace_id) AND member_id = sqlc.arg(member_id);
+
+-- name: ListResolvedPredictionsSince :many
+-- The predictions resolved since a time, newest first, for one profile update batch (spec 6.3).
+SELECT subject_type, subject_id, decision_kind, predicted, actual, matched, resolved_at
+FROM decision_prediction
+WHERE workspace_id = sqlc.arg(workspace_id) AND member_id = sqlc.arg(member_id)
+  AND resolved_at IS NOT NULL AND resolved_at >= sqlc.arg(since)
+ORDER BY resolved_at DESC
+LIMIT 20;
+
+-- name: ListActivePrincipalProfiles :many
+-- Every active profile in every workspace, for the profile update job.
+SELECT workspace_id, member_id FROM principal_profile WHERE status = 'active';
+
+-- name: LatestAssistantMessageAt :one
+-- When the Secretary last wrote into a chat session.
+SELECT created_at FROM chat_message
+WHERE chat_session_id = sqlc.arg(chat_session_id) AND role = 'assistant'
+ORDER BY created_at DESC
+LIMIT 1;

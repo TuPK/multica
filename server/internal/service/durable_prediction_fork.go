@@ -7,12 +7,14 @@ import (
 	"log/slog"
 	"math"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
@@ -233,3 +235,115 @@ func traitIDsOrEmpty(ids []pgtype.UUID) []pgtype.UUID {
 	}
 	return ids
 }
+
+// resolvePredictions resolves the open predictions of a decided proposal, after the decision commits.
+// A failure is logged and never fails the decision.
+func (s *ProposalService) resolvePredictions(ctx context.Context, ws, proposal pgtype.UUID, decision string) {
+	if s.Principal == nil {
+		return
+	}
+	if err := s.Principal.Resolve(ctx, ws, "proposal", proposal, decision); err != nil {
+		slog.Warn("decision predictions not resolved", "proposal_id", util.UUIDToString(proposal), "error", err)
+	}
+}
+
+// principalLearningTitle titles the chat where the Secretary posts a person's profile update batches.
+const principalLearningTitle = "Cập nhật hồ sơ"
+
+// LearnBatches runs the profile update job over every active profile: each person gets at most one
+// batch per six hours, holding the decisions resolved in that window (durable spec 6.3). It returns
+// the number of batches posted.
+func (s *PredictionService) LearnBatches(ctx context.Context, now time.Time) (int, error) {
+	if !s.on(ctx) {
+		return 0, nil
+	}
+	profiles, err := s.Queries.ListActivePrincipalProfiles(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("list active profiles: %w", err)
+	}
+	posted := 0
+	for _, p := range profiles {
+		ok, err := s.learnBatch(ctx, p.WorkspaceID, p.MemberID, now)
+		if err != nil {
+			return posted, err
+		}
+		if ok {
+			posted++
+		}
+	}
+	return posted, nil
+}
+
+// learnBatch posts the person's batch if decisions were resolved in the last six hours and no batch
+// was posted in that window. It reports whether it posted one.
+func (s *PredictionService) learnBatch(ctx context.Context, ws, member pgtype.UUID, now time.Time) (bool, error) {
+	secretary, err := s.Queries.GetWorkspaceSecretaryAgentID(ctx, ws)
+	if err != nil || !secretary.Valid {
+		return false, nil
+	}
+	since := now.Add(-predictionBatchWindow)
+	rows, err := s.Queries.ListResolvedPredictionsSince(ctx, db.ListResolvedPredictionsSinceParams{
+		WorkspaceID: ws, MemberID: member, Since: pgtype.Timestamptz{Time: since, Valid: true},
+	})
+	if err != nil {
+		return false, fmt.Errorf("list resolved predictions: %w", err)
+	}
+	if len(rows) == 0 {
+		return false, nil
+	}
+	session, err := s.learningSession(ctx, ws, member, secretary)
+	if err != nil {
+		return false, err
+	}
+	last, err := s.Queries.LatestAssistantMessageAt(ctx, session.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return false, fmt.Errorf("read last batch: %w", err)
+	}
+	if err == nil && last.Valid && last.Time.After(since) {
+		return false, nil
+	}
+	if _, err := s.Queries.CreateChatMessage(ctx, db.CreateChatMessageParams{
+		ChatSessionID: session.ID, Role: "assistant", Content: learningBatchText(rows), ID: dbid.NewV7(),
+	}); err != nil {
+		return false, fmt.Errorf("post profile update batch: %w", err)
+	}
+	return true, nil
+}
+
+// learningSession is the person's profile update chat with the Secretary, opened on first use.
+func (s *PredictionService) learningSession(ctx context.Context, ws, member, secretary pgtype.UUID) (db.ChatSession, error) {
+	session, err := s.Queries.GetPrincipalInterviewSession(ctx, db.GetPrincipalInterviewSessionParams{
+		WorkspaceID: ws, MemberID: member, AgentID: secretary, Title: principalLearningTitle,
+	})
+	if err == nil {
+		return session, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return db.ChatSession{}, fmt.Errorf("load learning chat: %w", err)
+	}
+	created, err := s.Queries.CreateChatSession(ctx, db.CreateChatSessionParams{
+		WorkspaceID: ws, AgentID: secretary, CreatorID: member, Title: principalLearningTitle, ID: dbid.NewV7(),
+	})
+	if err != nil {
+		return db.ChatSession{}, fmt.Errorf("open learning chat: %w", err)
+	}
+	return created, nil
+}
+
+// learningBatchText is one batch: the decisions it holds, one line each, and whether the prediction
+// matched.
+func learningBatchText(rows []db.ListResolvedPredictionsSinceRow) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Cập nhật hồ sơ: %d quyết định trong 6 giờ qua.\n", len(rows))
+	for _, r := range rows {
+		verdict := "lệch dự đoán"
+		if r.Matched.Valid && r.Matched.Bool {
+			verdict = "khớp dự đoán"
+		}
+		fmt.Fprintf(&b, "- %s (%s): dự đoán %s, quyết định %s, %s\n", r.DecisionKind, r.SubjectType, r.Predicted, r.Actual.String, verdict)
+	}
+	return b.String()
+}
+
+// predictionBatchWindow is how often a person gets a profile update batch (spec 6.3).
+const predictionBatchWindow = 6 * time.Hour

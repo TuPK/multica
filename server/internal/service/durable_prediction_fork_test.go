@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -47,7 +48,7 @@ func TestNoPredictionAboutSelf(t *testing.T) {
 	}
 }
 
-func TestPredictionResolvedOnDecision(t *testing.T) {
+func TestResolveSetsMatch(t *testing.T) {
 	pt := newPrincipalTest(t, true)
 	pt.enable(t)
 	ctx := context.Background()
@@ -182,5 +183,36 @@ func TestDeleteKeepsMatchCountsOnly(t *testing.T) {
 	}
 	if n := pt.Count(t, `SELECT COUNT(*) FROM decision_prediction WHERE subject_id = $1 AND why = '' AND trait_ids = '{}'`, subj); n != 1 {
 		t.Fatalf("the reasons were kept")
+	}
+}
+
+// Several decisions in six hours make one profile update batch; the next one waits for the window
+// (durable spec 6.3).
+func TestProfileUpdateJobBatches(t *testing.T) {
+	pt := newPrincipalTest(t, true)
+	pt.enable(t)
+	ctx := context.Background()
+	for i := 0; i < 3; i++ {
+		pt.Exec(t, `INSERT INTO decision_prediction
+			(workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, actual, matched, resolved_at)
+			VALUES ($1, $2, 'proposal', gen_random_uuid(), 'proposal:general', 'approve', 0.9, 'approve', true, now() - interval '1 hour')`,
+			pt.WorkspaceID, pt.owner.ID)
+	}
+	now := time.Now()
+	posted, err := pt.pred().learnBatch(ctx, pt.ws, pt.owner.ID, now)
+	if err != nil || !posted {
+		t.Fatalf("first batch: posted=%v err=%v, want one batch", posted, err)
+	}
+	if again, err := pt.pred().learnBatch(ctx, pt.ws, pt.owner.ID, now.Add(time.Hour)); err != nil || again {
+		t.Fatalf("second batch within six hours: posted=%v err=%v, want none", again, err)
+	}
+	var session string
+	pt.QueryRow(t, `SELECT id FROM chat_session WHERE workspace_id = $1 AND creator_id = $2 AND title = $3`,
+		pt.WorkspaceID, util.UUIDToString(pt.owner.ID), principalLearningTitle).Scan(&session)
+	if n := pt.Count(t, `SELECT COUNT(*) FROM chat_message WHERE chat_session_id = $1 AND role = 'assistant'`, session); n != 1 {
+		t.Fatalf("%d batches in the learning chat, want 1", n)
+	}
+	if n := pt.Count(t, `SELECT COUNT(*) FROM chat_message WHERE chat_session_id = $1 AND content LIKE 'Cập nhật hồ sơ: 3 quyết định%'`, session); n != 1 {
+		t.Fatalf("the batch does not hold the three decisions")
 	}
 }
