@@ -8,6 +8,12 @@ import (
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
+// RewireShadowService gives the task service its shadow hook again. handler.New builds it before
+// the router sets the feature flags, so the hook would otherwise sample with nil flags.
+func (h *Handler) RewireShadowService() {
+	h.TaskService.Shadow = h.shadowService()
+}
+
 // shadowService is the shadow run service the task service judges runs with (durable spec
 // 9.4). It is built from the handler's stores, so a run's juror and its runtime change use the
 // same proposal and organisation services as everything else.
