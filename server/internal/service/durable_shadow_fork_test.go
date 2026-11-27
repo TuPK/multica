@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -407,4 +408,78 @@ func TestShadowTaskHasNoGatewayOverlayOrAppMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	check(ordinary.ID, true)
+}
+
+// TestShadowStartConcurrentSingleRunning: two concurrent Start calls for the same seat
+// yield exactly one running shadow_config; the other returns ErrShadowAlreadyRunning.
+func TestShadowStartConcurrentSingleRunning(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	ctx := context.Background()
+
+	for i := 0; i < 5; i++ {
+		seatID := sf.Agent(t, fmt.Sprintf("concurrent-seat-%d", i), sf.runtime)
+		in := ShadowStartInput{
+			AgentID: util.MustParseUUID(seatID), CandidateRuntimeID: util.MustParseUUID(sf.cand),
+			CandidateModel: "gpt-candidate", Purpose: ShadowPurposeModelTrial, SampleRate: 1, TargetPairs: 20,
+		}
+		var ready, done sync.WaitGroup
+		ready.Add(2)
+		done.Add(2)
+		release := make(chan struct{})
+		errs := make([]error, 2)
+		for g := 0; g < 2; g++ {
+			go func(idx int) {
+				defer done.Done()
+				ready.Done()
+				<-release
+				_, errs[idx] = sf.svc.Start(ctx, sf.ws, sf.owner, in)
+			}(g)
+		}
+		ready.Wait()
+		close(release)
+		done.Wait()
+
+		var okCount, alreadyCount int
+		for _, err := range errs {
+			switch {
+			case err == nil:
+				okCount++
+			case errors.Is(err, ErrShadowAlreadyRunning):
+				alreadyCount++
+			default:
+				t.Fatalf("attempt %d: unexpected error: %v", i, err)
+			}
+		}
+		if okCount != 1 || alreadyCount != 1 {
+			t.Fatalf("attempt %d: ok=%d already_running=%d errs=%v, want 1 and 1", i, okCount, alreadyCount, errs)
+		}
+		if n := sf.Count(t, `SELECT count(*) FROM shadow_config WHERE workspace_id = $1 AND agent_id = $2 AND state = 'running'`, sf.WorkspaceID, seatID); n != 1 {
+			t.Fatalf("attempt %d: running configs = %d, want 1", i, n)
+		}
+	}
+}
+
+// TestShadowStartAllowedAfterStopped: a stopped shadow run does not block starting a new one
+// on the same seat.
+func TestShadowStartAllowedAfterStopped(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	ctx := context.Background()
+
+	first := sf.start(t)
+	if _, err := sf.q.SetShadowConfigState(ctx, db.SetShadowConfigStateParams{
+		ID: first.ID, WorkspaceID: sf.ws, State: "stopped",
+	}); err != nil {
+		t.Fatalf("stop first run: %v", err)
+	}
+
+	second := sf.start(t)
+	if second.ID == first.ID {
+		t.Fatalf("second run reused first run id %s", util.UUIDToString(first.ID))
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM shadow_config WHERE workspace_id = $1 AND agent_id = $2 AND state = 'running'`, sf.WorkspaceID, sf.seat); n != 1 {
+		t.Fatalf("running configs = %d, want 1", n)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM shadow_config WHERE workspace_id = $1 AND agent_id = $2 AND state = 'stopped'`, sf.WorkspaceID, sf.seat); n != 1 {
+		t.Fatalf("stopped configs = %d, want 1", n)
+	}
 }

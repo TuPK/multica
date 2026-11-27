@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
@@ -33,6 +34,9 @@ const (
 	// shadowKindMarker is the durable_kind a shadow task carries; durableRunClassOf reads
 	// it to put the task in the shadow run class.
 	shadowKindMarker = "shadow"
+
+	// shadowRunningAgentIndex enforces at most one running shadow_config per (workspace_id, agent_id).
+	shadowRunningAgentIndex = "shadow_config_running_agent_uidx"
 )
 
 var (
@@ -200,12 +204,21 @@ func (s *ShadowService) Start(ctx context.Context, ws pgtype.UUID, actor Governa
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return db.ShadowConfig{}, fmt.Errorf("check running shadow: %w", err)
 	}
-	return s.Queries.InsertShadowConfig(ctx, db.InsertShadowConfigParams{
+	cfg, err := s.Queries.InsertShadowConfig(ctx, db.InsertShadowConfigParams{
 		ID: dbid.NewV7(), WorkspaceID: ws, AgentID: in.AgentID, CandidateRuntimeID: in.CandidateRuntimeID,
 		CandidateModel: in.CandidateModel, Purpose: in.Purpose, NecessityTestID: in.NecessityTestID,
 		WorkClassPrefix: in.WorkClassPrefix, SampleRate: numericOf(in.SampleRate), TargetPairs: int32(in.TargetPairs),
 		AutoPromote: in.AutoPromote, CreatedBy: actor.ID,
 	})
+	if isShadowRunningUniqueViolation(err) {
+		return db.ShadowConfig{}, ErrShadowAlreadyRunning
+	}
+	return cfg, err
+}
+
+func isShadowRunningUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == shadowRunningAgentIndex
 }
 
 // OnPrimaryClaimed runs when a seat's ordinary task is claimed. If the seat has a running

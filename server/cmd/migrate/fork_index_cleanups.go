@@ -194,6 +194,7 @@ var forkConcurrentIndexCleanups = map[string]string{
 	"887_metric_webhook_token_hash_uidx":              "metric_webhook_token_hash_uidx",
 	"888_metric_webhook_token_workspace_idx":          "metric_webhook_token_workspace_idx",
 	"900_agent_task_inflight_index":                   "agent_task_queue_inflight_agent_idx",
+	"1119_shadow_config_running_agent_uidx":           "shadow_config_running_agent_uidx",
 }
 
 // mergeForkIndexCleanups runs during package variable initialization, not in init():
