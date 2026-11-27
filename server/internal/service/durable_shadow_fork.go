@@ -18,6 +18,7 @@ import (
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
+	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
 // Shadow run (durable spec 9.4, F8): a candidate runtime and model run a sampled share of
@@ -242,37 +243,18 @@ func (s *ShadowService) OnPrimaryClaimed(ctx context.Context, task db.AgentTaskQ
 	if !ShadowSelected(util.UUIDToString(issue.ID), util.UUIDToString(cfg.ID), rate.Float64) {
 		return nil
 	}
-	shadowAgent, pair, created, err := s.recordPair(ctx, cfg, task)
+	shadowTask, created, err := s.recordPair(ctx, cfg, task, issue)
 	if err != nil || !created {
 		return err
 	}
-	shadowTask, err := s.Tasks.EnqueueVerificationTask(ctx, issue, shadowAgent)
-	if err != nil {
-		return fmt.Errorf("enqueue shadow task: %w", err)
-	}
-	n, err := s.Queries.SetShadowTaskContext(ctx, db.SetShadowTaskContextParams{
-		ID: shadowTask.ID, ShadowConfigID: util.UUIDToString(cfg.ID), ShadowPairID: util.UUIDToString(pair.ID),
-	})
-	if err != nil {
-		return fmt.Errorf("mark shadow task: %w", err)
-	}
-	if n == 0 {
-		return fmt.Errorf("shadow task %s was claimed before it was marked", util.UUIDToString(shadowTask.ID))
-	}
-	_, err = s.Queries.SetShadowPairShadowTask(ctx, db.SetShadowPairShadowTaskParams{
-		ID: pair.ID, ShadowTaskID: shadowTask.ID,
-	})
-	if err != nil {
-		return fmt.Errorf("link shadow task: %w", err)
-	}
+	s.Tasks.broadcastTaskEvent(ctx, protocol.EventTaskQueued, shadowTask)
+	s.Tasks.NotifyTaskEnqueued(ctx, shadowTask)
 	return nil
 }
 
-// recordPair locks the run, creates the shadow agent on first use, and inserts the pair
-// for the primary task. created is false when the primary already has its pair.
-func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, task db.AgentTaskQueue) (pgtype.UUID, db.ShadowPair, bool, error) {
-	var shadowAgent pgtype.UUID
-	var pair db.ShadowPair
+// recordPair creates the pair and its marked task in the same transaction.
+func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, task db.AgentTaskQueue, issue db.Issue) (db.AgentTaskQueue, bool, error) {
+	var shadowTask db.AgentTaskQueue
 	created := false
 	err := s.inTx(ctx, func(q *db.Queries) error {
 		locked, err := q.LockShadowConfig(ctx, db.LockShadowConfigParams{ID: cfg.ID, WorkspaceID: cfg.WorkspaceID})
@@ -282,7 +264,7 @@ func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, tas
 		if locked.State != "running" {
 			return nil
 		}
-		row, err := q.InsertShadowPair(ctx, db.InsertShadowPairParams{
+		pair, err := q.InsertShadowPair(ctx, db.InsertShadowPairParams{
 			ID: dbid.NewV7(), WorkspaceID: cfg.WorkspaceID, ConfigID: cfg.ID,
 			IssueID: task.IssueID, PrimaryTaskID: task.ID,
 		})
@@ -292,29 +274,47 @@ func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, tas
 		if err != nil {
 			return fmt.Errorf("insert pair: %w", err)
 		}
+		shadowAgent := locked.ShadowAgentID
+		if !shadowAgent.Valid {
+			seat, err := q.GetAgent(ctx, cfg.AgentID)
+			if err != nil {
+				return fmt.Errorf("load seat: %w", err)
+			}
+			agent, err := q.CreateShadowAgent(ctx, db.CreateShadowAgentParams{
+				RuntimeID: cfg.CandidateRuntimeID, Model: pgtype.Text{String: cfg.CandidateModel, Valid: cfg.CandidateModel != ""},
+				SeatID: cfg.AgentID, WorkspaceID: cfg.WorkspaceID,
+				Name: fmt.Sprintf("%s (shadow %s)", seat.Name, util.UUIDToString(cfg.ID)[:8]),
+			})
+			if err != nil {
+				return fmt.Errorf("create shadow agent: %w", err)
+			}
+			shadowAgent = agent.ID
+			if _, err := q.SetShadowConfigShadowAgent(ctx, db.SetShadowConfigShadowAgentParams{ID: cfg.ID, ShadowAgentID: agent.ID}); err != nil {
+				return err
+			}
+		}
+		shadowTask, err = s.Tasks.enqueueVerificationTaskTx(ctx, q, issue, shadowAgent)
+		if err != nil {
+			return fmt.Errorf("enqueue shadow task: %w", err)
+		}
+		if _, err := q.SetShadowTaskContext(ctx, db.SetShadowTaskContextParams{
+			ID: shadowTask.ID, ShadowConfigID: util.UUIDToString(cfg.ID), ShadowPairID: util.UUIDToString(pair.ID),
+		}); err != nil {
+			return fmt.Errorf("mark shadow task: %w", err)
+		}
+		if _, err := q.SetShadowPairShadowTask(ctx, db.SetShadowPairShadowTaskParams{
+			ID: pair.ID, ShadowTaskID: shadowTask.ID,
+		}); err != nil {
+			return fmt.Errorf("link shadow task: %w", err)
+		}
+		shadowTask, err = q.GetAgentTask(ctx, shadowTask.ID)
+		if err != nil {
+			return fmt.Errorf("load shadow task: %w", err)
+		}
 		created = true
-		pair = row
-		if locked.ShadowAgentID.Valid {
-			shadowAgent = locked.ShadowAgentID
-			return nil
-		}
-		seat, err := q.GetAgent(ctx, cfg.AgentID)
-		if err != nil {
-			return fmt.Errorf("load seat: %w", err)
-		}
-		agent, err := q.CreateShadowAgent(ctx, db.CreateShadowAgentParams{
-			RuntimeID: cfg.CandidateRuntimeID, Model: pgtype.Text{String: cfg.CandidateModel, Valid: cfg.CandidateModel != ""},
-			SeatID: cfg.AgentID, WorkspaceID: cfg.WorkspaceID,
-			Name: fmt.Sprintf("%s (shadow %s)", seat.Name, util.UUIDToString(cfg.ID)[:8]),
-		})
-		if err != nil {
-			return fmt.Errorf("create shadow agent: %w", err)
-		}
-		shadowAgent = agent.ID
-		_, err = q.SetShadowConfigShadowAgent(ctx, db.SetShadowConfigShadowAgentParams{ID: cfg.ID, ShadowAgentID: agent.ID})
-		return err
+		return nil
 	})
-	return shadowAgent, pair, created, err
+	return shadowTask, created, err
 }
 
 // RecordVerdict writes the blind verdict of a juror on a pair's labelled outputs, once.

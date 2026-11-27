@@ -301,3 +301,36 @@ func TestShadowVerdictAndReport(t *testing.T) {
 		t.Errorf("report pairs = %d, want 1", report.Pairs)
 	}
 }
+
+func TestShadowEnqueueFailureRollsBackAndRetries(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	cfg := sf.start(t)
+	primary := sf.primaryTask(t)
+	ctx := context.Background()
+	if _, err := sf.Pool.Exec(ctx, `UPDATE issue SET triage_state = 'pending' WHERE id = $1`, sf.issue); err != nil {
+		t.Fatal(err)
+	}
+	if err := sf.svc.OnPrimaryClaimed(ctx, primary); !errors.Is(err, ErrIssueInTriage) {
+		t.Fatalf("enqueue error = %v, want triage rejection", err)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM shadow_pair WHERE primary_task_id = $1`, util.UUIDToString(primary.ID)); n != 0 {
+		t.Fatalf("pairs after failed enqueue = %d, want 0", n)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1 AND agent_id IN (SELECT id FROM agent WHERE shadow_of_agent_id = $2)`, sf.issue, sf.seat); n != 0 {
+		t.Fatalf("shadow tasks after failed enqueue = %d, want 0", n)
+	}
+	if _, err := sf.Pool.Exec(ctx, `UPDATE issue SET triage_state = NULL WHERE id = $1`, sf.issue); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := sf.svc.OnPrimaryClaimed(ctx, primary); err != nil {
+			t.Fatalf("retry %d: %v", i, err)
+		}
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM shadow_pair p JOIN agent_task_queue t ON t.id = p.shadow_task_id WHERE p.primary_task_id = $1 AND t.context->>'durable_kind' = 'shadow' AND t.context->>'shadow_config_id' = $2 AND t.context->>'shadow_pair_id' = p.id::text`, util.UUIDToString(primary.ID), util.UUIDToString(cfg.ID)); n != 1 {
+		t.Fatalf("linked, marked pairs after retry = %d, want 1", n)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1 AND agent_id IN (SELECT id FROM agent WHERE shadow_of_agent_id = $2)`, sf.issue, sf.seat); n != 1 {
+		t.Fatalf("shadow tasks after retry = %d, want 1", n)
+	}
+}
