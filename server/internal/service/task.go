@@ -43,6 +43,9 @@ type TaskService struct {
 	TxStarter TxStarter
 	Hub       *realtime.Hub
 	Bus       *events.Bus
+	// Shadow judges the pairs of a shadow run when their tasks complete (durable spec 9.4).
+	// Nil judges none.
+	Shadow    *ShadowService
 	Analytics analytics.Client
 	Metrics   *obsmetrics.BusinessMetrics
 	Wakeup    TaskWakeupNotifier
@@ -5180,6 +5183,7 @@ func (s *TaskService) CompleteTaskWithBranchMerge(ctx context.Context, taskID pg
 
 	// Broadcast
 	s.broadcastTaskEvent(ctx, protocol.EventTaskCompleted, task)
+	s.onShadowTaskSettled(ctx, task)
 
 	return &task, true, nil
 }

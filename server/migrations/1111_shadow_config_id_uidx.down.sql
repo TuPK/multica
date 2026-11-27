@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS shadow_config_id_uidx;

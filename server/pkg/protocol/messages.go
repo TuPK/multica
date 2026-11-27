@@ -35,6 +35,10 @@ const (
 	// DaemonCapabilityForceRecheckV1 requests presence-aware batch claim
 	// acknowledgements on both HTTP and WebSocket.
 	DaemonCapabilityForceRecheckV1 = "force-recheck-v1"
+	// DaemonCapabilityShadowV1 advertises that the daemon runs a shadow task (durable
+	// spec 9.4, D30): in a temporary directory, with no worktree, and without the skills
+	// the claim omits. A daemon without it is never given a shadow task.
+	DaemonCapabilityShadowV1 = "shadow-v1"
 
 	// DaemonCapabilityPlatformSkillV1 advertises that the daemon's runtime
 	// brief names the merged `multica-platform` skill instead of the

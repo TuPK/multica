@@ -364,6 +364,15 @@ func (s *TaskService) claimRefusalFor(ctx context.Context, q *db.Queries, ws pgt
 	if class == RunClassHuman || class == RunClassExempt {
 		return nil, nil
 	}
+	if class == RunClassShadow {
+		reason, err := shadowClaimRefusal(ctx, q, task)
+		if err != nil {
+			return nil, err
+		}
+		if reason != "" {
+			return &claimRefusal{WorkspaceID: ws, Task: task, Class: class, Reason: reason}, nil
+		}
+	}
 	now := time.Now()
 	verdict, err := CompanyVerdict(ctx, q, ws, class, now)
 	if err != nil {

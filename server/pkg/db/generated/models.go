@@ -60,6 +60,7 @@ type Agent struct {
 	McpConfig          []byte             `json:"mcp_config"`
 	Model              pgtype.Text        `json:"model"`
 	ThinkingLevel      pgtype.Text        `json:"thinking_level"`
+	ShadowOfAgentID    pgtype.UUID        `json:"shadow_of_agent_id"`
 	// Composio toolkit slugs this agent is allowed to mount as MCP. NULL or empty array = no MCP overlay. Mounted for any run that passes the agent invocation-permission gate (MUL-3963); the overlay uses the agent OWNER's active Composio connection, so sharing the agent (public_to) shares these apps with whoever may invoke it. No longer gated on originator == owner. Stored as TEXT[] so the dispatch path can intersect against the owner's active connections with a single SQL ANY() filter.
 	ComposioToolkitAllowlist []string `json:"composio_toolkit_allowlist"`
 	// Agent invocation permission mode (MUL-3963). private = owner only; public_to = allow-list in agent_invocation_target. Replaces visibility as the authorization source for triggering runs; visibility is now a derived legacy field. Default private = deny-by-default.
@@ -3281,6 +3282,40 @@ type SeatDossierEntry struct {
 	Uses        int32              `json:"uses"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	RetiredAt   pgtype.Timestamptz `json:"retired_at"`
+}
+
+type ShadowConfig struct {
+	ID                 pgtype.UUID        `json:"id"`
+	WorkspaceID        pgtype.UUID        `json:"workspace_id"`
+	AgentID            pgtype.UUID        `json:"agent_id"`
+	CandidateRuntimeID pgtype.UUID        `json:"candidate_runtime_id"`
+	CandidateModel     string             `json:"candidate_model"`
+	Purpose            string             `json:"purpose"`
+	NecessityTestID    pgtype.UUID        `json:"necessity_test_id"`
+	WorkClassPrefix    string             `json:"work_class_prefix"`
+	SampleRate         pgtype.Numeric     `json:"sample_rate"`
+	TargetPairs        int32              `json:"target_pairs"`
+	AutoPromote        bool               `json:"auto_promote"`
+	ShadowAgentID      pgtype.UUID        `json:"shadow_agent_id"`
+	State              string             `json:"state"`
+	CreatedBy          pgtype.UUID        `json:"created_by"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
+}
+
+type ShadowPair struct {
+	ID                pgtype.UUID        `json:"id"`
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	ConfigID          pgtype.UUID        `json:"config_id"`
+	IssueID           pgtype.UUID        `json:"issue_id"`
+	PrimaryTaskID     pgtype.UUID        `json:"primary_task_id"`
+	ShadowTaskID      pgtype.UUID        `json:"shadow_task_id"`
+	Comparison        pgtype.Text        `json:"comparison"`
+	ComparisonReason  string             `json:"comparison_reason"`
+	PrimaryCostMicros int64              `json:"primary_cost_micros"`
+	ShadowCostMicros  int64              `json:"shadow_cost_micros"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	ComparedAt        pgtype.Timestamptz `json:"compared_at"`
 }
 
 type SiteCounter struct {

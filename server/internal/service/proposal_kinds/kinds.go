@@ -57,6 +57,9 @@ type Decision struct {
 	// Outcome is the boss's choice on an operate-stage gate: continue, scale or
 	// sunset. Empty on every other decision.
 	Outcome string
+	// ActorType names who applies an approved change when it is not the decider: "shadow"
+	// for an auto-promoted runtime change (durable spec 9.6). Empty means the decider.
+	ActorType string
 }
 
 // Effect reports what Apply created that the caller must publish or kick off

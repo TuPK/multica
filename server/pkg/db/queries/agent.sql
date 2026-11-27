@@ -1,11 +1,12 @@
 -- name: ListAgents :many
+-- A shadow agent (durable spec 9.4) stands for a seat and is not listed beside it.
 SELECT * FROM agent
-WHERE workspace_id = $1 AND archived_at IS NULL AND kind = 'user'
+WHERE workspace_id = $1 AND archived_at IS NULL AND kind = 'user' AND shadow_of_agent_id IS NULL
 ORDER BY created_at ASC;
 
 -- name: ListAllAgents :many
 SELECT * FROM agent
-WHERE workspace_id = $1 AND kind = 'user'
+WHERE workspace_id = $1 AND kind = 'user' AND shadow_of_agent_id IS NULL
 ORDER BY created_at ASC;
 
 -- name: ListAllAgentsAnyKind :many

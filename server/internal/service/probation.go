@@ -148,6 +148,13 @@ func (p *ProbationService) judge(ctx context.Context, app db.OrgChangeApplicatio
 // fileRollback files the change that undoes a change judged worse. It needs a
 // reviewer to file it; without one the verdict stands and nothing is filed.
 func (p *ProbationService) fileRollback(ctx context.Context, app db.OrgChangeApplication) {
+	// An auto-promoted runtime change is undone at once, without a proposal (durable spec 9.6).
+	if p.Changes != nil && app.ChangeType == OrgChangeRuntime && app.AppliedByType == GovernanceActorShadow {
+		if _, err := p.Changes.RevertOrgChange(ctx, p.Queries, app.WorkspaceID, app.ID, GovernanceActor{Type: GovernanceActorShadow, ID: app.AppliedByID}); err != nil {
+			slog.Warn("probation: auto-promoted runtime change not reverted", "application_id", util.UUIDToString(app.ID), "error", err)
+		}
+		return
+	}
 	if p.Proposals == nil {
 		return
 	}
@@ -245,6 +252,19 @@ func rollbackPayload(ctx context.Context, q *db.Queries, app db.OrgChangeApplica
 	case OrgChangeUnretire:
 		agentID, squadID := orgSubjectFields(app)
 		out = retirePayload{Type: OrgChangeRetire, AgentID: agentID, SquadID: squadID, Rationale: why}
+	case OrgChangeRuntime:
+		// A runtime change is undone by filing the seat's earlier runtime and model. The
+		// shadow run that tested the change stays the evidence.
+		var after runtimeChangePayload
+		if err := json.Unmarshal(app.AfterState, &after); err != nil {
+			return nil, err
+		}
+		if before.RuntimeID == "" {
+			return nil, errors.New("the seat had no earlier runtime to restore")
+		}
+		out = runtimeChangePayload{Type: OrgChangeRuntime, AgentID: util.UUIDToString(app.SubjectID),
+			ToRuntimeID: before.RuntimeID, ToModel: before.Model, ShadowConfigID: after.ShadowConfigID,
+			Report: after.Report, Rationale: why, RollbackOf: util.UUIDToString(app.ID)}
 	case OrgChangeMerge:
 		// The merge is undone by unmerging it, which reads the snapshot the merge kept.
 		out = unmergePayload{Type: OrgChangeUnmerge, ApplicationID: util.UUIDToString(app.ID), Rationale: why}

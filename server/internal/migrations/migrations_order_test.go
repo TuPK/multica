@@ -10,11 +10,9 @@ import (
 	"testing"
 )
 
-// The runner sorts migration files as strings (migrations.go), so a four-digit
-// number such as 1016 sorts before 101 to 999 and runs early on a new
-// database. A four-digit migration may therefore only touch a table that a file
-// sorting before it creates; otherwise it fails on a fresh install although it
-// passes on a database that already has the table.
+// The runner applies migration files in leading-number order (migrations.go). A migration may only
+// touch a table that a file sorting before it creates; otherwise it fails on a fresh install although
+// it passes on a database that already has the table.
 var (
 	createTableRe = regexp.MustCompile(`(?is)\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"?([a-z_][a-z0-9_]*)"?`)
 	touchedTable  = regexp.MustCompile(`(?is)\b(?:ALTER\s+TABLE(?:\s+IF\s+EXISTS)?(?:\s+ONLY)?|INSERT\s+INTO|UPDATE|FROM|JOIN|CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?[a-z0-9_]+\s+ON)\s+"?([a-z_][a-z0-9_]*)"?`)
@@ -42,7 +40,7 @@ func orderViolations(files map[string]string) []string {
 	for n := range files {
 		names = append(names, n)
 	}
-	sort.Strings(names)
+	sortMigrations(names)
 	created := map[string]bool{}
 	var out []string
 	for _, name := range names {
@@ -97,9 +95,9 @@ func TestFourDigitMigrationsOnlyTouchTablesCreatedEarlierInSortOrder(t *testing.
 // migration that sorts after it.
 func TestOrderScanFlagsATableCreatedLater(t *testing.T) {
 	got := orderViolations(map[string]string{
-		"001_init.up.sql":                   "CREATE TABLE workspace (id uuid);",
-		"672_workspace_subscription.up.sql": "CREATE TABLE IF NOT EXISTS workspace_subscription (workspace_id uuid);",
-		"1016_tenant.up.sql":                "CREATE TABLE IF NOT EXISTS tenant (id uuid);",
+		"001_init.up.sql":                    "CREATE TABLE workspace (id uuid);",
+		"1030_workspace_subscription.up.sql": "CREATE TABLE IF NOT EXISTS workspace_subscription (workspace_id uuid);",
+		"1016_tenant.up.sql":                 "CREATE TABLE IF NOT EXISTS tenant (id uuid);",
 		"1021_tenant_backfill.up.sql": `-- reads workspace_subscription in a comment: ignored
 			INSERT INTO tenant (id) SELECT w.id FROM workspace w JOIN workspace_subscription s ON s.workspace_id = w.id;`,
 	})

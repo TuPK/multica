@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS shadow_pair_id_uidx;

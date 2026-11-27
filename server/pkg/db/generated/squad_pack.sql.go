@@ -85,7 +85,7 @@ func (q *Queries) DeleteSquadPackInstallsForWorkspace(ctx context.Context, works
 }
 
 const getAgentByNameInWorkspace = `-- name: GetAgentByNameInWorkspace :one
-SELECT id, workspace_id, name, avatar_url, runtime_mode, runtime_config, visibility, status, max_concurrent_tasks, owner_id, created_at, updated_at, description, runtime_id, instructions, archived_at, archived_by, custom_env, custom_args, mcp_config, model, thinking_level, composio_toolkit_allowlist, permission_mode, kind, system_key, disabled_runtime_skills, service_tier, conversation_starters, home_squad_id FROM agent
+SELECT id, workspace_id, name, avatar_url, runtime_mode, runtime_config, visibility, status, max_concurrent_tasks, owner_id, created_at, updated_at, description, runtime_id, instructions, archived_at, archived_by, custom_env, custom_args, mcp_config, model, thinking_level, shadow_of_agent_id, composio_toolkit_allowlist, permission_mode, kind, system_key, disabled_runtime_skills, service_tier, conversation_starters, home_squad_id FROM agent
 WHERE workspace_id = $1::uuid
   AND name = $2::text
 `
@@ -122,6 +122,7 @@ func (q *Queries) GetAgentByNameInWorkspace(ctx context.Context, arg GetAgentByN
 		&i.McpConfig,
 		&i.Model,
 		&i.ThinkingLevel,
+		&i.ShadowOfAgentID,
 		&i.ComposioToolkitAllowlist,
 		&i.PermissionMode,
 		&i.Kind,
