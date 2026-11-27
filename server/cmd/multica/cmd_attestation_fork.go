@@ -17,6 +17,14 @@ import (
 // attestationKeysMaxBytes caps the key document fetched from an issuer.
 const attestationKeysMaxBytes = 256 << 10
 
+// attestationKeysSource fetches an issuer's published key document. The default is the
+// SSRF-safe fetcher; tests swap it for a fake.
+type attestationKeysSource interface {
+	Get(ctx context.Context, rawURL string, maxBytes int64) ([]byte, string, error)
+}
+
+var attestationKeysGetter attestationKeysSource = hub.NewSafeFetcher(hub.FetcherOptions{})
+
 var attestationCmd = &cobra.Command{
 	Use:   "attestation",
 	Short: "Issue and verify signed track records of agents",
@@ -98,8 +106,7 @@ func runAttestationVerify(_ *cobra.Command, args []string) error {
 	if host == "" {
 		return fmt.Errorf("the attestation names no issuer host")
 	}
-	fetcher := hub.NewSafeFetcher(hub.FetcherOptions{})
-	keysBody, _, err := fetcher.Get(context.Background(), "https://"+host+service.AttestationKeysPath, attestationKeysMaxBytes)
+	keysBody, _, err := attestationKeysGetter.Get(context.Background(), "https://"+host+service.AttestationKeysPath, attestationKeysMaxBytes)
 	if err != nil {
 		return fmt.Errorf("fetch the keys of %s: %w", host, err)
 	}
