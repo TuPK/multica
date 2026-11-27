@@ -334,3 +334,31 @@ func TestShadowEnqueueFailureRollsBackAndRetries(t *testing.T) {
 		t.Fatalf("shadow tasks after retry = %d, want 1", n)
 	}
 }
+
+func TestShadowOutputIsNotPostedAsComment(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	sf.Cleanup(t, `DELETE FROM comment WHERE issue_id = $1`, sf.issue)
+	sf.start(t)
+	primary := sf.primaryTask(t)
+	ctx := context.Background()
+	if err := sf.svc.OnPrimaryClaimed(ctx, primary); err != nil {
+		t.Fatal(err)
+	}
+	pair, err := sf.q.GetShadowPairForPrimary(ctx, primary.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shadow, err := sf.q.GetAgentTask(ctx, pair.ShadowTaskID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sf.completeTask(t, util.UUIDToString(primary.ID), "ordinary output")
+	sf.completeTask(t, util.UUIDToString(shadow.ID), "shadow output")
+	if n := sf.Count(t, `SELECT count(*) FROM comment WHERE issue_id = $1 AND source_task_id = $2 AND author_type = 'agent'`, sf.issue, primary.ID); n != 1 {
+		t.Errorf("ordinary task comments = %d, want 1", n)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM comment WHERE issue_id = $1 AND source_task_id = $2 AND author_type = 'agent' AND author_id = $3`, sf.issue, shadow.ID, shadow.AgentID); n != 0 {
+		t.Errorf("shadow task comments = %d, want 0", n)
+	}
+}
+
