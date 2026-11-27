@@ -27,6 +27,7 @@ import { Loader2, MessageSquare, Newspaper } from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
 import { isFloatingChatRouteSuppressed } from "../../chat/floating-chat-visibility";
 import { ReadonlyContent } from "../../editor/readonly-content";
+import { PrincipalPredictionLine } from "../../durable/principal/prediction-line";
 import { useT } from "../../i18n";
 import { useNavigation } from "../../navigation";
 import { CompanyBriefDelivery } from "./company-brief-delivery";
@@ -312,6 +313,7 @@ function BriefBody({
                         <CompanyProposalKindLabel kind={proposal.kind} />
                       </span>
                       <span className="text-body font-medium">{proposal.title}</span>
+                      <PrincipalPredictionLine subjectType="proposal" subjectId={proposal.id} />
                     </div>
                     <CompanyProposalStatus proposal={proposal} squadName={squadName} />
                     <CompanyProposalKindSummary proposal={proposal} />

@@ -724,7 +724,9 @@
     "delete_account_recent_login_sign_out": "Sign out",
     "delete_account_success_title": "Account scheduled for deletion",
     "delete_account_success_description": "Your account will be deleted on {{date}}. You have been signed out.",
-    "delete_account_success_sign_out": "Sign out"
+    "delete_account_success_sign_out": "Sign out",
+    "principal_profile_title": "Principal profile",
+    "principal_profile_button": "Manage"
   },
   "notifications": {
     "title": "Inbox",

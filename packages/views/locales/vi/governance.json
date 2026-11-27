@@ -8,7 +8,8 @@
     "log": "Nhật ký",
     "controls": "Điều khiển",
     "effects": "Hệ quả",
-    "outcomes": "Kết quả"
+    "outcomes": "Kết quả",
+    "principal": "Hồ sơ quyết định"
   },
   "placeholder": {
     "title": "Chưa có gì để hiển thị"
@@ -133,7 +134,28 @@
     "attention_invalid": "Nhập số phút nguyên từ 0 đến {{max}}.",
     "attention_save": "Lưu ngân sách",
     "attention_saved": "Đã lưu ngân sách chú ý",
-    "attention_save_failed": "Không lưu được ngân sách chú ý. Thử lại."
+    "attention_save_failed": "Không lưu được ngân sách chú ý. Thử lại.",
+    "attention_queue_heading": "Đang xếp hàng",
+    "attention_queue_empty": "Không có câu hỏi nào đang xếp hàng.",
+    "attention_queue_load_failed": "Không tải được danh sách đang xếp hàng.",
+    "attention_queue_minutes": "{{minutes}} phút",
+    "attention_subject_type": {
+      "proposal": "Đề xuất",
+      "effect_intent": "Duyệt hành động",
+      "outcome_check": "Kiểm chứng kết quả",
+      "app_action_request": "Yêu cầu ứng dụng",
+      "inquiry": "Câu hỏi",
+      "unknown": "Câu hỏi"
+    },
+    "attention_reason": {
+      "judgment": "Cần phán đoán",
+      "irreversible": "Không đảo ngược được",
+      "missing_access": "Thiếu quyền truy cập",
+      "missing_info": "Thiếu thông tin",
+      "policy": "Chính sách yêu cầu",
+      "verification": "Kiểm chứng",
+      "unknown": "Khác"
+    }
   },
   "log": {
     "filter_kind": "Loại",

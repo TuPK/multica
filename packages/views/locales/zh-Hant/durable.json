@@ -240,6 +240,148 @@
       }
     }
   },
+  "principal": {
+    "title": "決策畫像",
+    "load_failed": "無法載入你的決策畫像。",
+    "off_description": "讓秘書從你的決策與備註中學習判斷偏好，預測你的決定，並在你開啟後代為處理符合條件的類型。",
+    "enable": "開啟畫像",
+    "status": {
+      "active": "已開啟",
+      "paused": "已暫停"
+    },
+    "version": "v{{version}}",
+    "consented_at": "同意時間：{{date}}",
+    "share_with_owners": "與工作區擁有者共享",
+    "share_saved": "已儲存共享設定。",
+    "share_failed": "無法更新共享設定。",
+    "delete": "刪除畫像",
+    "delete_dialog_title": "刪除決策畫像？",
+    "delete_dialog_description": "刪除你在此工作區的畫像、特徵與授權設定。歷史預測命中次數會保留，但原因與關聯特徵會被清除。",
+    "delete_confirm": "刪除畫像",
+    "deleted": "已刪除決策畫像。",
+    "delete_failed": "無法刪除決策畫像。",
+    "cancel": "取消",
+    "consent": {
+      "title": "開啟決策畫像",
+      "point_data": "讀取的資料：你在此工作區中的決策、備註以及訪談回答。",
+      "point_access": "誰可檢視：你自己、工作區秘書，以及僅在你允許時的其他擁有者。",
+      "point_no_eval": "絕不用於評價個人、計分卡、評審或組織變更。",
+      "point_delete": "你隨時可以刪除畫像及其全部特徵。",
+      "checkbox": "我已了解並同意 Delegora 在此工作區中保存我的決策畫像。",
+      "share_with_owners": "允許工作區擁有者檢視我的畫像",
+      "confirm": "開啟畫像",
+      "enabled": "已開啟決策畫像。",
+      "enable_failed": "無法開啟決策畫像。"
+    },
+    "traits": {
+      "title": "判斷特徵",
+      "empty": "尚無生效中的特徵。",
+      "origin": {
+        "learned": "學習",
+        "interview": "訪談",
+        "edited": "已編輯"
+      },
+      "edit": "編輯",
+      "retire": "移除",
+      "statement_label": "特徵內容",
+      "save": "儲存",
+      "edited": "已更新特徵。",
+      "edit_failed": "無法更新特徵。",
+      "retired": "已移除特徵。",
+      "retire_failed": "無法移除特徵。",
+      "add": "新增特徵",
+      "decision_kind_label": "決策類型",
+      "evidence_label": "依據決策",
+      "evidence_placeholder": "選擇一筆近期決策",
+      "evidence_empty": "手動新增特徵前，請先決定至少一筆提案。",
+      "evidence_load_failed": "無法載入你的近期決策。",
+      "statement_placeholder": "寫下你在此類情況下的判斷原則...",
+      "added": "已新增特徵。",
+      "add_failed": "無法新增特徵。",
+      "decision_state": {
+        "approved": "已核准",
+        "rejected": "已拒絕",
+        "revising": "修改中",
+        "expired": "已過期"
+      }
+    },
+    "interview": {
+      "title": "初始訪談",
+      "progress": "第 {{current}} / {{total}} 題",
+      "answer_label": "你的回答",
+      "answer_placeholder": "寫下你的判斷原則...",
+      "submit": "儲存回答",
+      "previous": "上一題",
+      "next": "下一題",
+      "completed": "已完成全部訪談問題。",
+      "restart": "重新檢視問題",
+      "saved": "已將回答儲存到畫像。",
+      "save_failed": "無法儲存回答。",
+      "load_failed": "無法載入訪談問題。"
+    },
+    "delegation": {
+      "title": "依預測授權",
+      "rules_note": "不可逆操作與緊急問題絕不授權。開啟需至少 20 次已確認預測且準確率達 85%。",
+      "min_confidence": "最低信心度",
+      "enable": "開啟",
+      "disable": "關閉",
+      "locked": "已鎖定",
+      "locked_reason": "始終需由人工決定。",
+      "enabled": "已為 {{kind}} 開啟授權。",
+      "enable_failed": "無法開啟授權。",
+      "disabled": "已為 {{kind}} 關閉授權。",
+      "disable_failed": "無法關閉授權。",
+      "kinds": {
+        "general": "通用",
+        "outcome": "結果核驗",
+        "inquiry": "秘書詢問",
+        "proposal_general": "常規提案",
+        "proposal_hire": "招募提案",
+        "proposal_promote": "晉升提案",
+        "effect_write": "外部寫入",
+        "effect_send": "外部傳送",
+        "proposal_org_change": "組織變更",
+        "proposal_launch": "發布關卡",
+        "proposal_stage_gate": "階段關卡",
+        "effect_spend": "支出操作",
+        "effect_share": "外部共享",
+        "proposal_budget": "預算變更",
+        "proposal_autonomy": "自主層級變更",
+        "proposal_envelope": "自主範圍",
+        "proposal_policy": "審批策略",
+        "proposal_profile": "決策畫像"
+      },
+      "load_failed": "無法載入授權設定。",
+      "status_on": "已開啟",
+      "status_off": "已關閉",
+      "min_confidence_value": "最低 {{percent}}%",
+      "accuracy": "命中 {{matched}} / {{n}} · 下界 {{lower}}%",
+      "accuracy_none": "尚無已確認預測",
+      "not_eligible_reason": "需要至少 20 次已確認預測且匹配率達 85%。"
+    },
+    "prediction": {
+      "line": "預測：{{predicted}}，{{confidence}}%",
+      "values": {
+        "approve": "核准",
+        "reject": "拒絕",
+        "revise": "要求修改",
+        "snooze": "稍後決定",
+        "pass": "通過",
+        "partial": "部分通過",
+        "fail": "未通過"
+      }
+    },
+    "errors": {
+      "profile_consent_required": "開啟畫像前必須確認同意說明。",
+      "principal_trait_limit": "已達到 200 條生效特徵上限，請先移除一條。",
+      "principal_evidence_invalid": "特徵需要引用你本人的決策、評論或訪談聊天記錄。",
+      "principal_trait_invalid": "請檢查特徵內容與決策類型（1 至 500 個字元）。",
+      "principal_trait_edited": "只有你可以移除自己編寫或編輯的特徵。",
+      "delegation_not_eligible": "該類型至少需要 20 次已確認預測且匹配率不低於 85%。",
+      "delegation_forbidden_kind": "該決策類型不可授權。",
+      "principal_no_secretary": "請先為工作區設定秘書，再回答訪談問題。"
+    }
+  },
   "seats": {
     "dossier": {
       "title": "席位檔案",

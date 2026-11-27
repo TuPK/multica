@@ -183,6 +183,27 @@ func (s *PredictionService) Resolve(ctx context.Context, ws pgtype.UUID, subject
 	return nil
 }
 
+// ErrPredictionNone: the person has no prediction of that question (none was made, or it said nothing).
+var ErrPredictionNone = errors.New("no prediction for this question")
+
+// Prediction reads the person's own prediction of one question (GET /api/principal/predictions). A
+// question with no predicted decision has no prediction to show.
+func (s *PredictionService) Prediction(ctx context.Context, ws, member pgtype.UUID, subjectType string, subjectID pgtype.UUID) (db.DecisionPrediction, error) {
+	if !predictionSubjectTypes[subjectType] {
+		return db.DecisionPrediction{}, ErrPredictionInvalid
+	}
+	pred, err := s.Queries.GetDecisionPrediction(ctx, db.GetDecisionPredictionParams{
+		WorkspaceID: ws, MemberID: member, SubjectType: subjectType, SubjectID: subjectID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && pred.Predicted == "") {
+		return db.DecisionPrediction{}, ErrPredictionNone
+	}
+	if err != nil {
+		return db.DecisionPrediction{}, fmt.Errorf("read prediction: %w", err)
+	}
+	return pred, nil
+}
+
 // Accuracy reads a person's prediction accuracy for one decision kind over the last 50 resolved
 // predictions: how many matched, how many there are, and the Wilson lower bound of the match rate.
 func (s *PredictionService) Accuracy(ctx context.Context, ws, member pgtype.UUID, kind string) (matched, n int, lower float64, err error) {

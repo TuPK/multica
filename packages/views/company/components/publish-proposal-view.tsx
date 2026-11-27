@@ -12,6 +12,7 @@ import {
   Tag,
 } from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
+import { PrincipalPredictionLine } from "../../durable/principal/prediction-line";
 import { useT } from "../../i18n";
 import { CompanyProposalDecision } from "./company-proposal-decision";
 import { CompanyProposalStatus } from "./company-proposal-details";
@@ -160,6 +161,7 @@ export function PublishProposalView({
 }) {
   return (
     <div className={cn("flex flex-col gap-4", className)}>
+      <PrincipalPredictionLine subjectType="proposal" subjectId={proposal.id} />
       <CompanyProposalStatus proposal={proposal} squadName={squadName} />
       <PublishProposalSummary proposal={proposal} />
       {showDecisions ? (

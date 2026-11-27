@@ -78,3 +78,9 @@ SELECT created_at FROM chat_message
 WHERE chat_session_id = sqlc.arg(chat_session_id) AND role = 'assistant'
 ORDER BY created_at DESC
 LIMIT 1;
+
+-- name: ListPredictionKinds :many
+-- The decision kinds the person has predictions of, for the delegation panel's accuracy list.
+SELECT DISTINCT decision_kind FROM decision_prediction
+WHERE workspace_id = sqlc.arg(workspace_id) AND member_id = sqlc.arg(member_id)
+ORDER BY decision_kind;

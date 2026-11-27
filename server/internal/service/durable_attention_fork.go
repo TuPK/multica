@@ -111,6 +111,9 @@ const (
 	attentionWhyMax = 500
 	// attentionDigestMax bounds the queued asks the brief lists.
 	attentionDigestMax = 20
+
+	// AttentionQueueMax caps the queue a person sees on the governance page.
+	AttentionQueueMax = 50
 	// attentionDefaultReason is a person's question with no reason given.
 	attentionDefaultReason = "judgment"
 

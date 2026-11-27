@@ -28,8 +28,11 @@ import {
 import { useLogout } from "../../auth";
 import { saveBlob } from "../../governance/save-blob";
 import { securityEventsOptions } from "@multica/core/audit";
+import { paths, useWorkspaceSlug } from "@multica/core/paths";
 import { AvatarUploadControl } from "../../common/avatar-upload-control";
+import { usePrincipalEnabled } from "../../durable/principal/use-principal-enabled";
 import { useLocale, useT } from "../../i18n";
+import { useNavigation } from "../../navigation";
 import {
   SettingsCard,
   SettingsRow,
@@ -59,6 +62,7 @@ export function AccountTab() {
   const locale = useLocale();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const principalOn = usePrincipalEnabled();
 
   const [profileName, setProfileName] = useState(user?.name ?? "");
   const [profileDescription, setProfileDescription] = useState(
@@ -405,6 +409,7 @@ export function AccountTab() {
               {t(($) => $.account.export_button)}
             </Button>
           </SettingsRow>
+          {principalOn ? <AccountPrincipalRow /> : null}
         </SettingsCard>
       </SettingsSection>
 
@@ -718,5 +723,28 @@ export function AccountTab() {
         </DialogContent>
       </Dialog>
     </SettingsTab>
+  );
+}
+
+function AccountPrincipalRow() {
+  const { t } = useT("settings");
+  const { push } = useNavigation();
+  const slug = useWorkspaceSlug();
+  if (!slug) return null;
+
+  return (
+    <SettingsRow
+      anchor="principal-profile"
+      label={t(($) => $.account.principal_profile_title)}
+    >
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => push(paths.workspace(slug).governance("principal"))}
+      >
+        {t(($) => $.account.principal_profile_button)}
+      </Button>
+    </SettingsRow>
   );
 }

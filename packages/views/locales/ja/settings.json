@@ -719,7 +719,9 @@
     "delete_account_recent_login_sign_out": "サインアウト",
     "delete_account_success_title": "アカウントの削除が予定されました",
     "delete_account_success_description": "アカウントは {{date}} に削除されます。サインアウトしました。",
-    "delete_account_success_sign_out": "サインアウト"
+    "delete_account_success_sign_out": "サインアウト",
+    "principal_profile_title": "意思決定プロファイル",
+    "principal_profile_button": "管理"
   },
   "notifications": {
     "title": "インボックス",

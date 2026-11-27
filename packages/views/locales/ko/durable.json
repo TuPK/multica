@@ -240,6 +240,148 @@
       }
     }
   },
+  "principal": {
+    "title": "의사결정 프로필",
+    "load_failed": "의사결정 프로필을 불러올 수 없습니다.",
+    "off_description": "비서가 선택과 메모에서 판단 기준을 학습하고, 결정을 예측하며, 켠 항목 중 조건을 충족한 유형을 위임할 수 있게 합니다.",
+    "enable": "프로필 켜기",
+    "status": {
+      "active": "활성",
+      "paused": "일시정지"
+    },
+    "version": "v{{version}}",
+    "consented_at": "동의일: {{date}}",
+    "share_with_owners": "워크스페이스 소유자와 공유",
+    "share_saved": "공유 설정을 저장했습니다.",
+    "share_failed": "공유 설정을 업데이트할 수 없습니다.",
+    "delete": "프로필 삭제",
+    "delete_dialog_title": "의사결정 프로필을 삭제할까요?",
+    "delete_dialog_description": "이 워크스페이스의 프로필, 특성 및 위임 설정을 삭제합니다. 과거 예측 일치 횟수는 이유와 특성 없이 유지됩니다.",
+    "delete_confirm": "프로필 삭제",
+    "deleted": "의사결정 프로필을 삭제했습니다.",
+    "delete_failed": "의사결정 프로필을 삭제할 수 없습니다.",
+    "cancel": "취소",
+    "consent": {
+      "title": "의사결정 프로필 켜기",
+      "point_data": "읽는 데이터: 이 워크스페이스에서의 결정과 메모, 인터뷰 답변.",
+      "point_access": "열람 권한: 본인, 워크스페이스 비서, 그리고 허용한 경우에만 다른 소유자.",
+      "point_no_eval": "사람 평가, 스코어카드, 리뷰 또는 조직 변경에는 절대 사용되지 않습니다.",
+      "point_delete": "언제든지 프로필과 모든 특성을 삭제할 수 있습니다.",
+      "checkbox": "내용을 이해했으며 Delegora가 이 워크스페이스에 내 의사결정 프로필을 유지하는 데 동의합니다.",
+      "share_with_owners": "워크스페이스 소유자가 내 프로필을 읽도록 허용",
+      "confirm": "프로필 켜기",
+      "enabled": "의사결정 프로필을 켰습니다.",
+      "enable_failed": "의사결정 프로필을 켤 수 없습니다."
+    },
+    "traits": {
+      "title": "판단 특성",
+      "empty": "활성 특성이 아직 없습니다.",
+      "origin": {
+        "learned": "학습됨",
+        "interview": "인터뷰",
+        "edited": "편집됨"
+      },
+      "edit": "편집",
+      "retire": "제외",
+      "statement_label": "특성 내용",
+      "save": "저장",
+      "edited": "특성을 업데이트했습니다.",
+      "edit_failed": "특성을 업데이트할 수 없습니다.",
+      "retired": "특성을 제외했습니다.",
+      "retire_failed": "특성을 제외할 수 없습니다.",
+      "add": "특성 추가",
+      "decision_kind_label": "결정 유형",
+      "evidence_label": "근거 결정",
+      "evidence_placeholder": "최근 결정 선택",
+      "evidence_empty": "직접 특성을 추가하려면 먼저 제안을 하나 이상 결정해야 합니다.",
+      "evidence_load_failed": "최근 결정을 불러올 수 없습니다.",
+      "statement_placeholder": "이 상황에서 어떻게 판단하는지 적어 주세요...",
+      "added": "특성을 추가했습니다.",
+      "add_failed": "특성을 추가할 수 없습니다.",
+      "decision_state": {
+        "approved": "승인됨",
+        "rejected": "거절됨",
+        "revising": "수정 중",
+        "expired": "만료됨"
+      }
+    },
+    "interview": {
+      "title": "초기 인터뷰",
+      "progress": "질문 {{current}} / {{total}}",
+      "answer_label": "답변",
+      "answer_placeholder": "판단 기준을 적어 주세요...",
+      "submit": "답변 저장",
+      "previous": "이전",
+      "next": "다음",
+      "completed": "모든 인터뷰 질문을 마쳤습니다.",
+      "restart": "질문 다시 보기",
+      "saved": "답변을 프로필에 저장했습니다.",
+      "save_failed": "답변을 저장할 수 없습니다.",
+      "load_failed": "인터뷰 질문을 불러올 수 없습니다."
+    },
+    "delegation": {
+      "title": "예측 기반 위임",
+      "rules_note": "되돌릴 수 없는 작업과 긴급 질문은 위임되지 않습니다. 활성화하려면 해결된 예측 20건 이상과 85% 이상의 정확도가 필요합니다.",
+      "min_confidence": "최소 신뢰도",
+      "enable": "켜기",
+      "disable": "끄기",
+      "locked": "잠김",
+      "locked_reason": "항상 사람의 결정이 필요합니다.",
+      "enabled": "{{kind}} 위임을 켰습니다.",
+      "enable_failed": "위임을 켤 수 없습니다.",
+      "disabled": "{{kind}} 위임을 껐습니다.",
+      "disable_failed": "위임을 끌 수 없습니다.",
+      "kinds": {
+        "general": "일반",
+        "outcome": "결과 확인",
+        "inquiry": "비서 문의",
+        "proposal_general": "일반 제안",
+        "proposal_hire": "채용 제안",
+        "proposal_promote": "승격 제안",
+        "effect_write": "외부 쓰기",
+        "effect_send": "외부 전송",
+        "proposal_org_change": "조직 변경",
+        "proposal_launch": "출시 게이트",
+        "proposal_stage_gate": "단계 게이트",
+        "effect_spend": "지출 작업",
+        "effect_share": "외부 공유",
+        "proposal_budget": "예산 변경",
+        "proposal_autonomy": "자율성 변경",
+        "proposal_envelope": "자율성 범위",
+        "proposal_policy": "승인 정책",
+        "proposal_profile": "의사결정 프로필"
+      },
+      "load_failed": "위임 설정을 불러올 수 없습니다.",
+      "status_on": "켜짐",
+      "status_off": "꺼짐",
+      "min_confidence_value": "최소 {{percent}}%",
+      "accuracy": "{{n}}건 중 {{matched}}건 일치 · 하한 {{lower}}%",
+      "accuracy_none": "해결된 예측이 아직 없습니다",
+      "not_eligible_reason": "해결된 예측 20건 이상과 85% 이상의 일치율이 필요합니다."
+    },
+    "prediction": {
+      "line": "예측: {{predicted}}, {{confidence}}%",
+      "values": {
+        "approve": "승인",
+        "reject": "거절",
+        "revise": "수정 요청",
+        "snooze": "나중에 결정",
+        "pass": "통과",
+        "partial": "부분 통과",
+        "fail": "실패"
+      }
+    },
+    "errors": {
+      "profile_consent_required": "프로필을 켜기 전에 동의 문구가 필요합니다.",
+      "principal_trait_limit": "활성 특성 200개 한도에 도달했습니다. 먼저 하나를 제외하세요.",
+      "principal_evidence_invalid": "특성에는 본인의 결정, 댓글 또는 인터뷰 채팅의 유효한 근거가 필요합니다.",
+      "principal_trait_invalid": "특성 문구와 결정 유형을 확인하세요(1~500자).",
+      "principal_trait_edited": "직접 작성하거나 편집한 특성은 본인만 제외할 수 있습니다.",
+      "delegation_not_eligible": "이 유형의 해결된 예측이 20건 이상이고 일치율이 85% 이상이어야 합니다.",
+      "delegation_forbidden_kind": "이 결정 유형은 위임할 수 없습니다.",
+      "principal_no_secretary": "인터뷰에 답하기 전에 워크스페이스 비서를 설정하세요."
+    }
+  },
   "seats": {
     "dossier": {
       "title": "좌석 기록부",

@@ -241,6 +241,148 @@
       }
     }
   },
+  "principal": {
+    "title": "Principal profile",
+    "load_failed": "Could not load your principal profile.",
+    "off_description": "Let the Secretary learn how you decide from your choices and notes, predict your calls, and delegate eligible kinds when you turn them on.",
+    "enable": "Enable profile",
+    "status": {
+      "active": "Active",
+      "paused": "Paused"
+    },
+    "version": "v{{version}}",
+    "consented_at": "Consented {{date}}",
+    "share_with_owners": "Share with workspace owners",
+    "share_saved": "Sharing preference saved.",
+    "share_failed": "Could not update sharing preference.",
+    "delete": "Delete profile",
+    "delete_dialog_title": "Delete principal profile?",
+    "delete_dialog_description": "Deletes your profile, traits, and delegations in this workspace. Past prediction match counts stay without reasons or traits.",
+    "delete_confirm": "Delete profile",
+    "deleted": "Principal profile deleted.",
+    "delete_failed": "Could not delete the principal profile.",
+    "cancel": "Cancel",
+    "consent": {
+      "title": "Enable principal profile",
+      "point_data": "Data read: your decisions and notes in this workspace, and your interview answers.",
+      "point_access": "Who can read it: you, the workspace Secretary, and other owners only if you allow it.",
+      "point_no_eval": "Never used to evaluate people, scorecards, reviews, or organization changes.",
+      "point_delete": "You can delete your profile and all its traits at any time.",
+      "checkbox": "I understand and consent to Delegora keeping my principal profile in this workspace.",
+      "share_with_owners": "Allow workspace owners to read my profile",
+      "confirm": "Enable profile",
+      "enabled": "Principal profile enabled.",
+      "enable_failed": "Could not enable the principal profile."
+    },
+    "traits": {
+      "title": "Traits",
+      "empty": "No active traits yet.",
+      "origin": {
+        "learned": "Learned",
+        "interview": "Interview",
+        "edited": "Edited"
+      },
+      "edit": "Edit",
+      "retire": "Retire",
+      "statement_label": "Trait statement",
+      "save": "Save",
+      "edited": "Trait updated.",
+      "edit_failed": "Could not update the trait.",
+      "retired": "Trait retired.",
+      "retire_failed": "Could not retire the trait.",
+      "add": "Add trait",
+      "decision_kind_label": "Decision kind",
+      "evidence_label": "Supporting decision",
+      "evidence_placeholder": "Choose a recent decision",
+      "evidence_empty": "Decide at least one proposal before adding a trait by hand.",
+      "evidence_load_failed": "Could not load your recent decisions.",
+      "statement_placeholder": "Write how you decide in this situation...",
+      "added": "Trait added.",
+      "add_failed": "Could not add the trait.",
+      "decision_state": {
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "revising": "Revising",
+        "expired": "Expired"
+      }
+    },
+    "interview": {
+      "title": "Start-up interview",
+      "progress": "Question {{current}} of {{total}}",
+      "answer_label": "Your answer",
+      "answer_placeholder": "Write how you decide...",
+      "submit": "Save answer",
+      "previous": "Previous",
+      "next": "Next",
+      "completed": "You have reached the end of the interview questions.",
+      "restart": "Review questions",
+      "saved": "Answer saved to your profile.",
+      "save_failed": "Could not save your answer.",
+      "load_failed": "Could not load interview questions."
+    },
+    "delegation": {
+      "title": "Delegation by prediction",
+      "rules_note": "Irreversible actions and urgent questions are never delegated. Enabling requires at least 20 resolved predictions with 85% accuracy.",
+      "min_confidence": "Min confidence",
+      "enable": "Enable",
+      "disable": "Disable",
+      "locked": "Locked",
+      "locked_reason": "Always requires a person.",
+      "enabled": "Delegation enabled for {{kind}}.",
+      "enable_failed": "Could not enable delegation.",
+      "disabled": "Delegation disabled for {{kind}}.",
+      "disable_failed": "Could not disable delegation.",
+      "kinds": {
+        "general": "General",
+        "outcome": "Outcome checks",
+        "inquiry": "Secretary inquiries",
+        "proposal_general": "General proposals",
+        "proposal_hire": "Hiring proposals",
+        "proposal_promote": "Promotion proposals",
+        "effect_write": "External writes",
+        "effect_send": "External sends",
+        "proposal_org_change": "Organization changes",
+        "proposal_launch": "Launch gate",
+        "proposal_stage_gate": "Stage gates",
+        "effect_spend": "Spend actions",
+        "effect_share": "External sharing",
+        "proposal_budget": "Budget changes",
+        "proposal_autonomy": "Autonomy changes",
+        "proposal_envelope": "Autonomy envelopes",
+        "proposal_policy": "Approval policies",
+        "proposal_profile": "Principal profiles"
+      },
+      "load_failed": "Could not load delegation settings.",
+      "status_on": "On",
+      "status_off": "Off",
+      "min_confidence_value": "Min {{percent}}%",
+      "accuracy": "{{matched}} of {{n}} matched · lower bound {{lower}}%",
+      "accuracy_none": "No resolved predictions yet",
+      "not_eligible_reason": "Needs at least 20 resolved predictions with 85% matched."
+    },
+    "prediction": {
+      "line": "Predicted: {{predicted}}, {{confidence}}%",
+      "values": {
+        "approve": "approve",
+        "reject": "reject",
+        "revise": "ask for changes",
+        "snooze": "decide later",
+        "pass": "pass",
+        "partial": "partly pass",
+        "fail": "fail"
+      }
+    },
+    "errors": {
+      "profile_consent_required": "Consent text is required before enabling your profile.",
+      "principal_trait_limit": "You have reached the 200 active trait limit. Retire a trait first.",
+      "principal_evidence_invalid": "This trait requires valid evidence from your own decisions, comments, or interview chat.",
+      "principal_trait_invalid": "Check the trait statement and decision kind (1 to 500 characters).",
+      "principal_trait_edited": "Only you can retire a trait you wrote or edited.",
+      "delegation_not_eligible": "Needs at least 20 resolved predictions of this kind with at least 85% matched.",
+      "delegation_forbidden_kind": "This decision kind cannot be delegated.",
+      "principal_no_secretary": "Set up a workspace Secretary before answering interview questions."
+    }
+  },
   "seats": {
     "dossier": {
       "title": "Seat dossier",

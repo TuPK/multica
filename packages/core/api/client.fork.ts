@@ -54,6 +54,7 @@ import { FALLBACK_GOAL, GoalResponseSchema } from "../governance/goals-schemas";
 import type { Goal } from "../governance/goals-types";
 import { FALLBACK_COMPANY_STATE, CompanyStateSchema } from "../governance/schemas";
 import { parseHealthReport, type HealthReport } from "../governance/health";
+import { parseQueuedAttention, type QueuedAttentionList } from "../governance/attention";
 import { parseIssueHandoff, parseSquadHandoffRule, type IssueHandoff, type SetSquadHandoffRuleRequest, type SquadHandoffRule } from "../squads/handoff";
 import { parseApprovalPolicies, parseApprovalPolicy, parsePolicyAutoApprovals, type ApprovalPolicy, type PolicyAutoApprovalHistory } from "../governance/approval-policy";
 import { parseCompanyPulse, type CompanyPulse } from "../governance/scale";
@@ -2383,5 +2384,9 @@ export abstract class ForkApiMethods {
       headers: workspaceHeader({ workspaceId }),
     });
     return res.blob();
+  }
+  /** Questions queued for the caller when their squad's weekly attention share is spent (durable spec 7.5). */
+  async getQueuedAttention(): Promise<QueuedAttentionList> {
+    return parseQueuedAttention(await this.fetch<unknown>("/api/company/attention/queued"));
   }
 }

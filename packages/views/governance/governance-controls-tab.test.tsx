@@ -14,9 +14,16 @@ const api = vi.hoisted(() => ({
   setQuietHours: vi.fn(),
   getDigestMode: vi.fn(),
   setDigestMode: vi.fn(),
+  getAttentionBudget: vi.fn(),
+  getQueuedAttention: vi.fn(),
 }));
+const flags = vi.hoisted(() => ({ principal: false }));
 const role = vi.hoisted(() => ({ value: "admin" as "owner" | "admin" | "member" }));
 
+vi.mock("@multica/core/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/config")>()),
+  useFeatureEnabled: (key: string, fallback: boolean) => (key === "durable_principal" ? flags.principal : fallback),
+}));
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
   api,
@@ -40,12 +47,15 @@ const segment = (name: string) => screen.getByRole("button", { name });
 
 describe("GovernanceControlsTab", () => {
   beforeEach(() => {
+    flags.principal = false;
     role.value = "admin";
     api.getCompanyState.mockReset();
     api.setCompanyState.mockReset();
     api.setQuietHours.mockReset();
     api.getDigestMode.mockReset();
     api.setDigestMode.mockReset();
+    api.getAttentionBudget.mockReset();
+    api.getQueuedAttention.mockReset();
   });
   afterEach(cleanup);
 
@@ -172,5 +182,21 @@ describe("GovernanceControlsTab", () => {
 
     expect(await screen.findByText("Disagreement jury")).toBeTruthy();
     expect(screen.getByText("No jury pool set")).toBeTruthy();
+  });
+
+  it("hides the queued attention block when durable_principal is off and shows it when on", async () => {
+    api.getCompanyState.mockResolvedValue(withState("running"));
+    api.getQueuedAttention.mockResolvedValue({ asks: [] });
+
+    renderTab();
+    await waitFor(() => expect(segment("Running").getAttribute("aria-pressed")).toBe("true"));
+    expect(screen.queryByRole("heading", { name: "Queued" })).toBeNull();
+    expect(api.getQueuedAttention).not.toHaveBeenCalled();
+
+    cleanup();
+    flags.principal = true;
+    renderTab();
+    expect(await screen.findByRole("heading", { name: "Queued" })).toBeTruthy();
+    expect(await screen.findByText("No questions are queued.")).toBeTruthy();
   });
 });

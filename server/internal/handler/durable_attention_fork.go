@@ -13,6 +13,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/service"
 	proposalkinds "github.com/multica-ai/multica/server/internal/service/proposal_kinds"
 	"github.com/multica-ai/multica/server/internal/util"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 // attentionService is the attention ledger over the handler's queries and flags.
@@ -54,6 +55,43 @@ func (h *Handler) GetAttentionBudget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// PrincipalQueuedAsk is one question queued for a person to decide (durable spec 7.5).
+type PrincipalQueuedAsk struct {
+	SubjectType      string  `json:"subject_type"`
+	SubjectID        string  `json:"subject_id"`
+	Reason           string  `json:"reason"`
+	EstimatedMinutes float64 `json:"estimated_minutes"`
+	CreatedAt        string  `json:"created_at"`
+}
+
+// ListQueuedAttention lists the questions queued for the caller, oldest first (GET
+// /api/company/attention/queued). An owner or admin also sees the questions addressed to no one.
+// Only a person reads it, and only while durable_principal is on.
+func (h *Handler) ListQueuedAttention(w http.ResponseWriter, r *http.Request) {
+	c, ok := h.principalCallerFor(w, r, true)
+	if !ok {
+		return
+	}
+	if !requirePrincipalPerson(w, c) {
+		return
+	}
+	rows, err := h.Queries.ListQueuedAttentionForMember(r.Context(), db.ListQueuedAttentionForMemberParams{
+		WorkspaceID: c.ws, MemberID: c.actor.ID, IncludeUnassigned: c.owner, RowLimit: service.AttentionQueueMax,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list the queued questions")
+		return
+	}
+	asks := make([]PrincipalQueuedAsk, 0, len(rows))
+	for _, row := range rows {
+		asks = append(asks, PrincipalQueuedAsk{
+			SubjectType: row.SubjectType, SubjectID: util.UUIDToString(row.SubjectID), Reason: row.Reason,
+			EstimatedMinutes: row.EstimatedMinutes, CreatedAt: timestampToString(row.CreatedAt),
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"asks": asks})
 }
 
 // SetAttentionBudget saves the weekly budget and its split. Owners and admins only.

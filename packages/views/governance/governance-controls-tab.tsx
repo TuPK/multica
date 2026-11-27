@@ -45,8 +45,10 @@ import { useT } from "../i18n";
 import { GovernanceHealthSection } from "./governance-health-section";
 import { AttentionBudgetSection } from "./attention-budget-section";
 import { JurySettingsLine } from "./jury-settings-line";
+import { AttentionQueueSection } from "./attention-queue-section";
 import { EffectPolicyGrid } from "../durable/effects/effect-policy-grid";
 import { useEffectsEnabled } from "../durable/effects/use-effects-enabled";
+import { usePrincipalEnabled } from "../durable/principal/use-principal-enabled";
 
 const SELECTABLE_STATES: readonly SelectableCompanyState[] = ["running", "quiet", "paused"];
 
@@ -71,6 +73,7 @@ export function GovernanceControlsTab() {
   const state: CompanyState = info?.state ?? "unknown";
   const busy = setState.isPending;
   const effectsOn = useEffectsEnabled();
+  const principalOn = usePrincipalEnabled();
 
   const choose = (next: SelectableCompanyState) => {
     if (!editable || busy || next === setting) return;
@@ -175,6 +178,7 @@ export function GovernanceControlsTab() {
       <AttentionBudgetSection wsId={wsId} editable={editable} />
 
       <JurySettingsLine />
+      {principalOn ? <AttentionQueueSection wsId={wsId} /> : null}
 
       <GovernanceHealthSection />
 

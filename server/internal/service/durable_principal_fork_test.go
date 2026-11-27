@@ -422,34 +422,77 @@ func TestReviewJobsNeverReadProfile(t *testing.T) {
 	}
 }
 
-func TestInterviewAnswersBecomeTraitsWithTheirMessage(t *testing.T) {
+// An answer is the person's own message in the interview chat, and the trait cites that message
+// (spec 6.3). The next question is asked in the same chat.
+func TestInterviewAnswerWritesItsMessage(t *testing.T) {
 	pt := newPrincipalTest(t, true)
 	pt.enable(t)
 	ctx := context.Background()
 	if n := len(InterviewQuestions()); n != 8 {
 		t.Fatalf("interview has %d questions, want 8", n)
 	}
-	msg := pt.chatMessage(t, pt.owner)
-	trait, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, 0, "Chậm mà chắc", util.MustParseUUID(msg))
+	trait, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, 0, "  Chậm mà chắc  ")
 	if err != nil {
 		t.Fatalf("answer: %v", err)
 	}
-	if trait.Origin != "interview" || trait.DecisionKind != "general" {
-		t.Fatalf("trait = %s/%s, want interview/general", trait.Origin, trait.DecisionKind)
+	if trait.Origin != "interview" || trait.DecisionKind != "general" || trait.Statement != "Chậm mà chắc" {
+		t.Fatalf("trait = %s/%s %q, want interview/general with the trimmed answer", trait.Origin, trait.DecisionKind, trait.Statement)
+	}
+
+	session := pt.interviewSession(t)
+	var msgID, role, content string
+	pt.QueryRow(t, `SELECT id, role, content FROM chat_message WHERE chat_session_id = $1 AND role = 'user'`, session).Scan(&msgID, &role, &content)
+	if role != "user" || content != "Chậm mà chắc" {
+		t.Fatalf("answer message = %s %q, want the person's trimmed answer", role, content)
 	}
 	var evidence []PrincipalEvidence
 	if err := json.Unmarshal(trait.Evidence, &evidence); err != nil {
 		t.Fatalf("evidence: %v", err)
 	}
-	if len(evidence) != 1 || evidence[0].Type != "interview" || evidence[0].Ref != util.UUIDToString(util.MustParseUUID(msg)) {
-		t.Fatalf("evidence = %+v, want the answer message", evidence)
+	if len(evidence) != 1 || evidence[0].Type != "interview" || evidence[0].Ref != msgID {
+		t.Fatalf("evidence = %+v, want the answer message %s", evidence, msgID)
+	}
+	if n := pt.Count(t, `SELECT COUNT(*) FROM chat_message WHERE chat_session_id = $1 AND role = 'assistant'`, session); n != 2 {
+		t.Fatalf("%d assistant messages, want the first question and the second", n)
 	}
 
-	if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, 1, "x", util.MustParseUUID(pt.chatMessage(t, pt.other))); !errors.Is(err, ErrPrincipalEvidenceInvalid) {
-		t.Fatalf("another person's message: err = %v, want ErrPrincipalEvidenceInvalid", err)
+	if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, 1, "   "); !errors.Is(err, ErrPrincipalTraitInvalid) {
+		t.Fatalf("blank answer: err = %v, want ErrPrincipalTraitInvalid", err)
 	}
-	if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, 8, "x", util.MustParseUUID(msg)); !errors.Is(err, ErrPrincipalTraitInvalid) {
+	if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, 8, "x"); !errors.Is(err, ErrPrincipalTraitInvalid) {
 		t.Fatalf("question 8 of 8: err = %v, want ErrPrincipalTraitInvalid", err)
+	}
+	if n := pt.Count(t, `SELECT COUNT(*) FROM chat_message WHERE chat_session_id = $1 AND role = 'user'`, session); n != 1 {
+		t.Fatalf("%d answer messages after refused answers, want 1", n)
+	}
+}
+
+// Without a profile the answer writes nothing: the message and the trait commit together.
+func TestInterviewAnswerWithoutProfileWritesNothing(t *testing.T) {
+	pt := newPrincipalTest(t, true)
+	ctx := context.Background()
+	if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, 0, "Một câu trả lời"); !errors.Is(err, ErrPrincipalNoProfile) {
+		t.Fatalf("answer without a profile: err = %v, want ErrPrincipalNoProfile", err)
+	}
+	if n := pt.Count(t, `SELECT COUNT(*) FROM chat_message m JOIN chat_session s ON s.id = m.chat_session_id WHERE s.workspace_id = $1 AND m.role = 'user'`, pt.WorkspaceID); n != 0 {
+		t.Fatalf("%d answer messages written without a profile", n)
+	}
+	if n := pt.Count(t, `SELECT COUNT(*) FROM principal_trait WHERE workspace_id = $1`, pt.WorkspaceID); n != 0 {
+		t.Fatalf("%d traits written without a profile", n)
+	}
+}
+
+// With no Secretary there is no interview chat, so the answer is refused and nothing is written.
+func TestInterviewAnswerNeedsASecretary(t *testing.T) {
+	pt := newPrincipalTest(t, true)
+	pt.enable(t)
+	ctx := context.Background()
+	pt.Exec(t, `UPDATE workspace SET secretary_agent_id = NULL WHERE id = $1`, pt.WorkspaceID)
+	if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, 0, "Một câu trả lời"); !errors.Is(err, ErrPrincipalNoSecretary) {
+		t.Fatalf("answer with no Secretary: err = %v, want ErrPrincipalNoSecretary", err)
+	}
+	if n := pt.Count(t, `SELECT COUNT(*) FROM principal_trait WHERE workspace_id = $1`, pt.WorkspaceID); n != 0 {
+		t.Fatalf("%d traits written with no Secretary", n)
 	}
 }
 
@@ -468,8 +511,7 @@ func TestInterviewKickoffInChat(t *testing.T) {
 		t.Fatalf("the first question is not the first of the eight")
 	}
 	for q := 0; q < len(questions); q++ {
-		msg := pt.Insert(t, "chat_message", testutil.Cols{"chat_session_id": session, "role": "user", "content": "câu trả lời"})
-		if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, q, "Một câu trả lời", util.MustParseUUID(msg)); err != nil {
+		if _, err := pt.svc.AnswerInterview(ctx, pt.ws, pt.owner.ID, q, "Một câu trả lời"); err != nil {
 			t.Fatalf("answer %d: %v", q, err)
 		}
 	}

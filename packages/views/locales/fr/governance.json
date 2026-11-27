@@ -8,7 +8,8 @@
     "log": "Journal",
     "controls": "Contrôles",
     "effects": "Effets",
-    "outcomes": "Résultats"
+    "outcomes": "Résultats",
+    "principal": "Décideur"
   },
   "placeholder": {
     "title": "Rien à afficher pour l'instant"
@@ -133,7 +134,28 @@
     "attention_invalid": "Saisissez un nombre entier de minutes entre 0 et {{max}}.",
     "attention_save": "Enregistrer le budget",
     "attention_saved": "Budget d'attention enregistré",
-    "attention_save_failed": "Impossible d'enregistrer le budget d'attention. Réessayez."
+    "attention_save_failed": "Impossible d'enregistrer le budget d'attention. Réessayez.",
+    "attention_queue_heading": "En file d'attente",
+    "attention_queue_empty": "Aucune question en file d'attente.",
+    "attention_queue_load_failed": "Impossible de charger les questions en file d'attente.",
+    "attention_queue_minutes": "{{minutes}} min",
+    "attention_subject_type": {
+      "proposal": "Proposition",
+      "effect_intent": "Approbation d'action",
+      "outcome_check": "Vérification de résultat",
+      "app_action_request": "Demande d'application",
+      "inquiry": "Question",
+      "unknown": "Question"
+    },
+    "attention_reason": {
+      "judgment": "Décision requise",
+      "irreversible": "Irréversible",
+      "missing_access": "Accès manquant",
+      "missing_info": "Information manquante",
+      "policy": "Règle de politique",
+      "verification": "Vérification",
+      "unknown": "Autre"
+    }
   },
   "log": {
     "filter_kind": "Type",

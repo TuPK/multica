@@ -18,6 +18,8 @@ import { GovernanceEffectsTab } from "../durable/effects/governance-effects-tab"
 import { useEffectsEnabled } from "../durable/effects/use-effects-enabled";
 import { GovernanceOutcomesTab } from "../durable/outcomes/governance-outcomes-tab";
 import { useOutcomesEnabled } from "../durable/outcomes/use-outcomes-enabled";
+import { PrincipalProfilePage } from "../durable/principal/principal-profile-page";
+import { usePrincipalEnabled } from "../durable/principal/use-principal-enabled";
 
 /**
  * Governance: how the company is steered. Six tabs, selected by the URL's
@@ -30,6 +32,7 @@ export function GovernancePage() {
   const tab = parseGovernanceTab(searchParams.get("tab"));
   const effectsOn = useEffectsEnabled();
   const outcomesOn = useOutcomesEnabled();
+  const principalOn = usePrincipalEnabled();
 
   const selectTab = (next: GovernanceTab) => {
     const params = new URLSearchParams(searchParams);
@@ -55,6 +58,7 @@ export function GovernancePage() {
             <TabsTrigger value="controls">{t(($) => $.tabs.controls)}</TabsTrigger>
             {effectsOn ? <TabsTrigger value="effects">{t(($) => $.tabs.effects)}</TabsTrigger> : null}
             {outcomesOn ? <TabsTrigger value="outcomes">{t(($) => $.tabs.outcomes)}</TabsTrigger> : null}
+            {principalOn ? <TabsTrigger value="principal">{t(($) => $.tabs.principal)}</TabsTrigger> : null}
           </TabsList>
         </div>
         <TabsContent value="goals" className="min-h-0 flex-1 overflow-y-auto">
@@ -83,6 +87,11 @@ export function GovernancePage() {
         {outcomesOn ? (
           <TabsContent value="outcomes" className="min-h-0 flex-1 overflow-y-auto">
             <GovernanceOutcomesTab />
+          </TabsContent>
+        ) : null}
+        {principalOn ? (
+          <TabsContent value="principal" className="min-h-0 flex-1 overflow-y-auto">
+            <PrincipalProfilePage />
           </TabsContent>
         ) : null}
       </Tabs>

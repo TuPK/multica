@@ -9,6 +9,7 @@ export const governanceKeys = {
   companyState: (wsId: string) => [...governanceKeys.all(wsId), "company-state"] as const,
   digestMode: (wsId: string) => [...governanceKeys.all(wsId), "digest-mode"] as const,
   attention: (wsId: string) => [...governanceKeys.all(wsId), "attention"] as const,
+  attentionQueued: (wsId: string) => [...governanceKeys.all(wsId), "attention-queued"] as const,
   events: (wsId: string, filters: GovernanceEventFilters = {}) =>
     [
       ...governanceKeys.all(wsId),
@@ -43,6 +44,15 @@ export function attentionBudgetOptions(wsId: string) {
     queryKey: governanceKeys.attention(wsId),
     queryFn: () => api.getAttentionBudget(),
     enabled: !!wsId,
+  });
+}
+
+/** Questions queued for the caller while their squad's weekly attention share is spent (durable spec 7.5). */
+export function queuedAttentionOptions(wsId: string, enabled = true) {
+  return queryOptions({
+    queryKey: governanceKeys.attentionQueued(wsId),
+    queryFn: () => api.getQueuedAttention(),
+    enabled: !!wsId && enabled,
   });
 }
 

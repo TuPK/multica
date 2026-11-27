@@ -142,6 +142,8 @@ func writePrincipalError(w http.ResponseWriter, err error) {
 		writeErrorCode(w, http.StatusUnprocessableEntity, "principal_trait_invalid", err.Error())
 	case errors.Is(err, service.ErrPrincipalTraitLimit):
 		writeErrorCode(w, http.StatusConflict, "principal_trait_limit", err.Error())
+	case errors.Is(err, service.ErrPrincipalNoSecretary):
+		writeErrorCode(w, http.StatusConflict, "principal_no_secretary", err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "failed to update the principal profile")
 	}
@@ -323,9 +325,10 @@ func (h *Handler) GetPrincipalInterview(w http.ResponseWriter, r *http.Request) 
 }
 
 // AnswerPrincipalInterview records one answer as an interview trait (POST
-// /api/principal/interview/answers). The answer's chat message is its evidence.
+// /api/principal/interview/answers). The server writes the answer into the person's interview chat
+// with the Secretary, and that message is the trait's evidence.
 //
-//	{question, answer, message_id}
+//	{question, answer}
 func (h *Handler) AnswerPrincipalInterview(w http.ResponseWriter, r *http.Request) {
 	c, ok := h.principalCallerFor(w, r, true)
 	if !ok {
@@ -335,19 +338,52 @@ func (h *Handler) AnswerPrincipalInterview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	var req struct {
-		Question  int    `json:"question"`
-		Answer    string `json:"answer"`
-		MessageID string `json:"message_id"`
+		Question int    `json:"question"`
+		Answer   string `json:"answer"`
 	}
 	if !decodeInitiativeBody(w, r, &req) {
 		return
 	}
-	// A message id that is not a UUID is no evidence at all: the service refuses it with 422.
-	message, _ := util.ParseUUID(req.MessageID)
-	trait, err := h.principalService().AnswerInterview(r.Context(), c.ws, c.actor.ID, req.Question, req.Answer, message)
+	trait, err := h.principalService().AnswerInterview(r.Context(), c.ws, c.actor.ID, req.Question, req.Answer)
 	if err != nil {
 		writePrincipalError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, principalTraitResponse(trait))
+}
+
+// PrincipalEvidenceCandidate is a proposal decision the person may cite as evidence of a trait they
+// add by hand.
+type PrincipalEvidenceCandidate struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Decision  string `json:"decision"`
+	DecidedAt string `json:"decided_at"`
+}
+
+// ListPrincipalEvidenceCandidates lists the proposals the person decided most recently (GET
+// /api/principal/evidence-candidates). Only the person sees their own decisions.
+func (h *Handler) ListPrincipalEvidenceCandidates(w http.ResponseWriter, r *http.Request) {
+	c, ok := h.principalCallerFor(w, r, true)
+	if !ok {
+		return
+	}
+	if !requirePrincipalPerson(w, c) {
+		return
+	}
+	rows, err := h.Queries.ListOwnRecentProposalDecisions(r.Context(), db.ListOwnRecentProposalDecisionsParams{
+		WorkspaceID: c.ws, MemberID: c.actor.ID,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list the decisions")
+		return
+	}
+	decisions := make([]PrincipalEvidenceCandidate, 0, len(rows))
+	for _, row := range rows {
+		decisions = append(decisions, PrincipalEvidenceCandidate{
+			ID: util.UUIDToString(row.ID), Title: row.IssueTitle, Decision: row.State,
+			DecidedAt: timestampToString(row.DecidedAt),
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"decisions": decisions})
 }
