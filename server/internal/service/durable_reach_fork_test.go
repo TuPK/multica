@@ -112,6 +112,14 @@ func flagsOpen(on bool) *featureflag.Service {
 	return featureflag.NewService(p)
 }
 
+// flagsOpenAndOutcomes turns on the Reach Map and the outcome writes a gap criterion needs.
+func flagsOpenAndOutcomes() *featureflag.Service {
+	p := featureflag.NewStaticProvider()
+	p.Set(featureflags.DurableOpen, featureflag.Rule{Default: true})
+	p.Set(featureflags.DurableOutcomes, featureflag.Rule{Default: true})
+	return featureflag.NewService(p)
+}
+
 // reachEnv is the policy workspace with a Reach Map service on a fixed clock.
 type reachEnv struct {
 	*policyEnv
@@ -128,7 +136,7 @@ func newReachEnv(t *testing.T, on bool) reachEnv {
 		reach: &ReachService{
 			Queries:      e.q,
 			Issues:       NewIssueService(e.q, pool, nil, nil, nil),
-			Verification: &VerificationService{Queries: e.q, TxStarter: pool, Flags: flagsOpen(true)},
+			Verification: &VerificationService{Queries: e.q, TxStarter: pool, Flags: flagsOpenAndOutcomes()},
 			Flags:        flagsOpen(on),
 			Now:          func() time.Time { return reachFixedNow },
 		},

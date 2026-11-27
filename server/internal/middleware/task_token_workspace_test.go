@@ -61,6 +61,10 @@ func (f *fakeTaskTokenDB) QueryRow(_ context.Context, sql string, args ...interf
 			*dest[4].(*pgtype.UUID) = util.MustParseUUID(ttWorkspaceA)
 			*dest[5].(*pgtype.UUID) = util.MustParseUUID(ttUserID)
 		}}
+	case strings.Contains(sql, "name: GetAgentTask"):
+		// The shadow-run guard reads the token's task on a change; this fixture has no task
+		// row, which the guard passes on (durable_shadow_fork.go).
+		return fakeRow{err: pgx.ErrNoRows}
 	case strings.Contains(sql, "name: GetWorkspaceBySlug"):
 		var id string
 		switch args[0] {

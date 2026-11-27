@@ -191,9 +191,10 @@ func TestShadowClaimFieldsByPurpose(t *testing.T) {
 			want: ShadowClaimFields{Shadow: true, OmitSkills: false},
 		},
 		{
-			name: "model_trial by purpose alone keeps skills",
+			// Without the claim's omit_skills mark, a shadow task omits skills (the safe default).
+			name: "model_trial by purpose alone omits skills",
 			ctx:  []byte(`{"durable_kind":"shadow","shadow_purpose":"model_trial"}`),
-			want: ShadowClaimFields{Shadow: true, OmitSkills: false},
+			want: ShadowClaimFields{Shadow: true, OmitSkills: true},
 		},
 		{
 			name: "necessity_test omits skills",
@@ -216,16 +217,15 @@ func TestShadowClaimFieldsByPurpose(t *testing.T) {
 	}
 }
 
-// TestShadowOnPrimaryClaimedSetsOmitSkillsByPurpose: enqueuing a shadow task records the
-// purpose-driven omit_skills policy on the task context (false for model_trial, true for
-// necessity_test).
+// TestShadowOnPrimaryClaimedSetsOmitSkillsByPurpose: the enqueued model trial task records
+// omit_skills=false, so it keeps the seat's skills. A necessity run's skill policy is
+// TestShadowOmitsSkillUnderTest.
 func TestShadowOnPrimaryClaimedSetsOmitSkillsByPurpose(t *testing.T) {
 	for _, tc := range []struct {
 		purpose  string
 		wantOmit bool
 	}{
 		{purpose: ShadowPurposeModelTrial, wantOmit: false},
-		{purpose: ShadowPurposeNecessity, wantOmit: true},
 	} {
 		t.Run(tc.purpose, func(t *testing.T) {
 			sf := newShadowFixture(t, true)

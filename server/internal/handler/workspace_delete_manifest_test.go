@@ -21,6 +21,24 @@ const (
 // teardown. Adding a table requires an explicit ownership decision here; the
 // handler deletion graph must then implement that decision before CI passes.
 var workspaceDeletionManifest = map[string]workspaceDeleteAction{
+	"acceptance_criterion":               workspaceDelete,
+	"attention_ledger":                   workspaceDelete,
+	"durable_outcome_applied":            workspaceDelete,
+	"durable_outcome_cursor":             workspaceDelete,
+	"effect_event":                       workspaceDeleteKeep, // audit of external effects, kept as issued like einvoice_issuance,
+	"effect_intent":                      workspaceDelete,
+	"effect_policy_override":             workspaceDelete,
+	"issue_status_transition":            workspaceDelete,
+	"jury_panel":                         workspaceDelete,
+	"necessity_test":                     workspaceDelete,
+	"outcome_check_task":                 workspaceDelete,
+	"outcome_verification":               workspaceDelete,
+	"reach_snapshot":                     workspaceDelete,
+	"seat_offer":                         workspaceDelete,
+	"shadow_config":                      workspaceDelete,
+	"shadow_pair":                        workspaceDelete,
+	"track_record":                       workspaceDeleteKeep, // signed track records kept as issued, like the attestations they back,
+	"work_outcome":                       workspaceDelete,
 	"decision_prediction":                workspaceDelete,
 	"principal_delegation":               workspaceDelete,
 	"principal_profile":                  workspaceDelete,
@@ -303,6 +321,8 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 // rows the manifest keeps (table.column keys).
 var workspaceDeletionColumns = map[string]workspaceDeleteAction{
 	"personal_access_token.workspace_id": workspaceDeleteKeep, // user-level token; a binding to a deleted workspace matches nothing, so the token is refused everywhere
+	"effect_event.workspace_id":          workspaceDeleteKeep, // audit row kept as written; the external effect already happened
+	"track_record.workspace_id":          workspaceDeleteKeep, // signed record kept as issued; a verifier checks it without the workspace
 	"einvoice_issuance.workspace_id":     workspaceDeleteKeep, // tax record kept as issued; open item for the owner, same as billing_order
 }
 

@@ -8,10 +8,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // delegationTest is a principalTest with the delegation service over the same fixture.
@@ -390,7 +392,11 @@ func TestDelegatedManualCheckLogged(t *testing.T) {
 			"actual": "pass", "matched": true, "resolved_at": time.Now().Add(-time.Duration(i+1) * time.Minute),
 		})
 	}
-	flags := flagsWith(true)
+	// Criteria are written only while durable_outcomes is on (VerificationService).
+	p := featureflag.NewStaticProvider()
+	p.Set(featureflags.DurablePrincipal, featureflag.Rule{Default: true})
+	p.Set(featureflags.DurableOutcomes, featureflag.Rule{Default: true})
+	flags := featureflag.NewService(p)
 	vf.checks.Flags = flags
 	predictions := &PredictionService{Queries: vf.q, Flags: flags}
 	if err := predictions.delegation().Enable(ctx, PrincipalActor{Type: GovernanceActorMember, ID: boss.ID}, vf.ws, boss.ID, "outcome", 0.9); err != nil {

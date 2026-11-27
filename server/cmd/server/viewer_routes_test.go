@@ -90,6 +90,7 @@ var viewerWriteExceptions = map[string]string{
 	"POST /api/client-usage":                             "records the caller's client usage",
 	"POST /api/contact-sales":                            "public sales contact form",
 	"POST /api/feedback":                                 "product feedback, not workspace data",
+	"POST /api/attestations/verify":                      "public check of a signed track record; reads the issuer keys and writes nothing",
 	"POST /api/tokens/":                                  "the caller's personal access tokens",
 	"POST /api/tokens/current/renew":                     "the caller's current token",
 	"DELETE /api/tokens/{id}":                            "the caller's personal access tokens",

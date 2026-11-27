@@ -20,8 +20,9 @@ func TestAgentTaskHistoryIndexMigrationAndPagePlans(t *testing.T) {
 		`CREATE TABLE agent_task_queue (
     id UUID PRIMARY KEY, agent_id UUID NOT NULL, created_at TIMESTAMPTZ NOT NULL,
     status TEXT NOT NULL, escalation_for_task_id UUID, started_at TIMESTAMPTZ,
-    result TEXT
+    result TEXT, issue_id UUID
   )`,
+		`CREATE TABLE issue (id UUID PRIMARY KEY, project_id UUID)`,
 		`INSERT INTO agent_task_queue (id, agent_id, created_at, status, result)
    SELECT md5('task-' || n)::uuid, md5('agent')::uuid,
      '2026-09-01T00:00:00Z'::timestamptz + n * interval '1 second',
@@ -66,6 +67,7 @@ func TestAgentTaskHistoryIndexMigrationAndPagePlans(t *testing.T) {
 			"@before_created_at", before,
 			"@before_id", "'ffffffff-ffff-ffff-ffff-ffffffffffff'",
 			"@page_limit", "201",
+			"sqlc.narg('hidden_project_ids')", "NULL",
 		).Replace(history)
 		plan := explainAnalyze(t, ctx, pool, query)
 		if !strings.Contains(plan, indexName) || strings.Contains(plan, "Sort") {
