@@ -93,14 +93,16 @@ WHERE workspace_id = @workspace_id AND config_id = @config_id
 ORDER BY created_at, id;
 
 -- name: SetShadowTaskContext :execrows
--- Marks a shadow task with its run and pair, while the task is not yet claimed. The task
--- is then in the shadow run class, and budgets hold it.
+-- Marks a shadow task with its run, pair, purpose and skill-omission policy, while the task is
+-- not yet claimed. The task is then in the shadow run class, and budgets hold it.
 UPDATE agent_task_queue
 SET context = COALESCE(context, '{}'::jsonb)
     || jsonb_build_object(
         'durable_kind', 'shadow',
         'shadow_config_id', sqlc.arg(shadow_config_id)::text,
-        'shadow_pair_id', sqlc.arg(shadow_pair_id)::text)
+        'shadow_pair_id', sqlc.arg(shadow_pair_id)::text,
+        'shadow_purpose', sqlc.arg(shadow_purpose)::text,
+        'omit_skills', sqlc.arg(omit_skills)::boolean)
 WHERE id = sqlc.arg(id)
   AND status IN ('queued', 'dispatched', 'deferred');
 

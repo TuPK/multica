@@ -663,21 +663,31 @@ SET context = COALESCE(context, '{}'::jsonb)
     || jsonb_build_object(
         'durable_kind', 'shadow',
         'shadow_config_id', $1::text,
-        'shadow_pair_id', $2::text)
-WHERE id = $3
+        'shadow_pair_id', $2::text,
+        'shadow_purpose', $3::text,
+        'omit_skills', $4::boolean)
+WHERE id = $5
   AND status IN ('queued', 'dispatched', 'deferred')
 `
 
 type SetShadowTaskContextParams struct {
 	ShadowConfigID string      `json:"shadow_config_id"`
 	ShadowPairID   string      `json:"shadow_pair_id"`
+	ShadowPurpose  string      `json:"shadow_purpose"`
+	OmitSkills     bool        `json:"omit_skills"`
 	ID             pgtype.UUID `json:"id"`
 }
 
-// Marks a shadow task with its run and pair, while the task is not yet claimed. The task
-// is then in the shadow run class, and budgets hold it.
+// Marks a shadow task with its run, pair, purpose and skill-omission policy, while the task is
+// not yet claimed. The task is then in the shadow run class, and budgets hold it.
 func (q *Queries) SetShadowTaskContext(ctx context.Context, arg SetShadowTaskContextParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setShadowTaskContext, arg.ShadowConfigID, arg.ShadowPairID, arg.ID)
+	result, err := q.db.Exec(ctx, setShadowTaskContext,
+		arg.ShadowConfigID,
+		arg.ShadowPairID,
+		arg.ShadowPurpose,
+		arg.OmitSkills,
+		arg.ID,
+	)
 	if err != nil {
 		return 0, err
 	}

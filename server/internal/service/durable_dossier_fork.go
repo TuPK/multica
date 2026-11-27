@@ -130,6 +130,13 @@ func dossierBriefing(ctx context.Context, q *db.Queries, flags *featureflag.Serv
 		slog.Warn("durable briefing: load seat failed", "task_id", util.UUIDToString(task.ID), "error", err)
 		return nil
 	}
+	if seat.ShadowOfAgentID.Valid {
+		seat, err = q.GetAgent(ctx, seat.ShadowOfAgentID)
+		if err != nil {
+			slog.Warn("durable briefing: load seat of shadow agent failed", "task_id", util.UUIDToString(task.ID), "error", err)
+			return nil
+		}
+	}
 	workClass := ""
 	if task.IssueID.Valid {
 		issue, err := q.GetIssue(ctx, task.IssueID)

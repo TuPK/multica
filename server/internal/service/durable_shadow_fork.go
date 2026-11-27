@@ -302,6 +302,17 @@ func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, tas
 				return fmt.Errorf("create shadow agent: %w", err)
 			}
 			shadowAgent = agent.ID
+			if !ShadowOmitsSkills(cfg.Purpose) {
+				skills, err := q.ListEffectiveAgentSkills(ctx, cfg.AgentID)
+				if err != nil {
+					return fmt.Errorf("list seat skills for shadow: %w", err)
+				}
+				for _, sk := range skills {
+					if err := q.AddAgentSkill(ctx, db.AddAgentSkillParams{AgentID: agent.ID, SkillID: sk.ID}); err != nil {
+						return fmt.Errorf("copy seat skill to shadow: %w", err)
+					}
+				}
+			}
 			if _, err := q.SetShadowConfigShadowAgent(ctx, db.SetShadowConfigShadowAgentParams{ID: cfg.ID, ShadowAgentID: agent.ID}); err != nil {
 				return err
 			}
@@ -312,6 +323,7 @@ func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, tas
 		}
 		if _, err := q.SetShadowTaskContext(ctx, db.SetShadowTaskContextParams{
 			ID: shadowTask.ID, ShadowConfigID: util.UUIDToString(cfg.ID), ShadowPairID: util.UUIDToString(pair.ID),
+			ShadowPurpose: cfg.Purpose, OmitSkills: ShadowOmitsSkills(cfg.Purpose),
 		}); err != nil {
 			return fmt.Errorf("mark shadow task: %w", err)
 		}

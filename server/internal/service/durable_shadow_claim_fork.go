@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -68,9 +69,16 @@ func shadowClaimRefusal(ctx context.Context, q *db.Queries, task db.AgentTaskQue
 	return "", nil
 }
 
+// ShadowOmitsSkills reports whether a shadow run of purpose omits skills on its shadow tasks.
+// Only necessity_test omits skills (durable spec 10.2); model_trial keeps the seat's skills so
+// the candidate model runs on the same briefing as the seat (spec 9.4).
+func ShadowOmitsSkills(purpose string) bool {
+	return purpose == ShadowPurposeNecessity
+}
+
 // ShadowClaimFields are the claim fields a shadow task carries to the daemon: the shadow
-// flag, and the omission of skills (D30). A daemon reads them only when it advertised the
-// shadow capability, which the claim gate has already required.
+// flag, and the purpose-decided omission of skills (D30). A daemon reads them only when it
+// advertised the shadow capability, which the claim gate has already required.
 type ShadowClaimFields struct {
 	Shadow     bool `json:"shadow,omitempty"`
 	OmitSkills bool `json:"omit_skills,omitempty"`
@@ -81,5 +89,14 @@ func ShadowClaimFieldsOf(taskContext []byte) ShadowClaimFields {
 	if !IsShadowTaskContext(taskContext) {
 		return ShadowClaimFields{}
 	}
-	return ShadowClaimFields{Shadow: true, OmitSkills: true}
+	var meta struct {
+		ShadowPurpose string `json:"shadow_purpose"`
+		OmitSkills    *bool  `json:"omit_skills"`
+	}
+	_ = json.Unmarshal(taskContext, &meta)
+	omitSkills := ShadowOmitsSkills(meta.ShadowPurpose)
+	if meta.OmitSkills != nil {
+		omitSkills = *meta.OmitSkills
+	}
+	return ShadowClaimFields{Shadow: true, OmitSkills: omitSkills}
 }
