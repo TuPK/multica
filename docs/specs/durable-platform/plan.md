@@ -33,6 +33,37 @@ Những trường hợp spec ngầm định mà dễ hỏng nhất với ngườ
 
 ---
 
+## Trạng thái thực tế (cập nhật 2026-11-27)
+
+Bảng này ghi trạng thái theo mã nhánh trên `durable-platform` (tip `4ba65dade4`), đối chiếu với file, route và test có trong cây. Các ô `[ ]` trong từng task chưa được tick lại; mỗi task chỉ được tick khi phiên làm task đó xác nhận từng bước.
+
+| Task | Trạng thái | Bằng chứng / còn thiếu |
+|---|---|---|
+| P0.1–P0.3 | Xong | `p0-findings.md`, `packages/core/durable/flags.ts` |
+| A1–A9 | Đã merge | `packages/views/durable/outcomes`, `e2e/durable/outcomes.spec.ts`. Chưa có `TestEveryStatusWriterRecordsOneTransition` (trọng tâm rà soát 1) |
+| B1–B4 | Đã merge | `durable_intent_fork.go`, `connected_apps_intent_fork_test.go` (test chốt một lần thực thi). Chưa có `durable_intent_fork_test.go` đúng tên plan |
+| B5 | Chưa đủ | Có `durable_flow_effects_fork.go`; chưa xác nhận trường đánh dấu hệ quả trong manifest flow (U7), chưa xác nhận kiểm tra catalog validate |
+| B6 | Đã merge | `packages/views/durable/effects` |
+| B7 | Đã merge | `e2e/durable/effects.spec.ts` |
+| C1 | Một phần | `actual_seconds` có trong attention; `attention.minutes_per_done` chỉ thấy trong digest, chưa thấy trong attention |
+| C2–C4 | Đã merge | Principal, dự đoán, học, uỷ quyền, phỏng vấn (merge `35b8a186e4`) |
+| C5 | Chưa làm | Không có UI principal, dự đoán, phỏng vấn |
+| C6 | Chưa làm | Không có E2E giai đoạn C |
+| D1 | Đã merge | `durable_jury_fork.go`, `TestJuryWithOneAgentEscalates` |
+| D2 | Đã merge | Hồ sơ ghế (merge `235d48f272`) |
+| D3 | Đã merge | Shadow run, merge `4ba65dade4` |
+| D4 | Đã merge | `runtime_change` và tự hoàn tác (trong nhánh D3) |
+| D5 | Một phần | `durable_necessity_fork.go` có; chưa thấy route hay job scaffolding sunset |
+| D6 | Chưa làm | Không có UI hồ sơ ghế, shadow, jury |
+| D7 | Chưa làm | Không có E2E giai đoạn D |
+| E1 | Một phần | `durable_reach_fork.go` có; chưa thấy route và job scheduler reach |
+| E2 | Đã merge | `durable_ocf_fork.go`, `docs/specs/durable-platform/ocf` |
+| E3 | Một phần | `durable_attestation_fork.go` có; chưa thấy route `POST /api/attestations/verify`, well-known keys, lệnh CLI |
+| E4 | Chưa làm | Không có offer ghế trên Hub |
+| E5 | Chưa làm | Không có UI giai đoạn E |
+| F1 | Chưa làm | Chạy sau mỗi giai đoạn |
+| F2 | Chưa làm | Bật thử trên máy chủ dev, chỉ khi người dùng đồng ý |
+
 ## P0. Nền
 
 Mục đích: xác nhận các giả định U1 đến U10 của spec mục 15 và ghi nền kiểm tra trước khi xây. Không đổi mã sản phẩm.
