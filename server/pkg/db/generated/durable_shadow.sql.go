@@ -628,3 +628,20 @@ func (q *Queries) SetShadowTaskContext(ctx context.Context, arg SetShadowTaskCon
 	}
 	return result.RowsAffected(), nil
 }
+
+const setShadowTaskKeepSkills = `-- name: SetShadowTaskKeepSkills :execrows
+UPDATE agent_task_queue
+SET context = COALESCE(context, '{}'::jsonb) || jsonb_build_object('omit_skills', false)
+WHERE id = $1
+  AND status IN ('queued', 'dispatched', 'deferred')
+`
+
+// A necessity test's shadow task keeps the skills its shadow agent holds (spec 10.2): the claim
+// does not omit them. Only a task not yet claimed is marked.
+func (q *Queries) SetShadowTaskKeepSkills(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, setShadowTaskKeepSkills, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

@@ -18,7 +18,7 @@ func (h *Handler) RewireShadowService() {
 // 9.4). It is built from the handler's stores, so a run's juror and its runtime change use the
 // same proposal and organisation services as everything else.
 func (h *Handler) shadowService() *service.ShadowService {
-	return &service.ShadowService{
+	svc := &service.ShadowService{
 		Queries:   h.Queries,
 		TxStarter: h.TxStarter,
 		Tasks:     h.TaskService,
@@ -30,6 +30,17 @@ func (h *Handler) shadowService() *service.ShadowService {
 			Flags:     h.FeatureFlags,
 		},
 	}
+	// A necessity run is decided by its verdicts, not by the runtime change (durable spec 10.2).
+	svc.Necessity = &service.NecessityService{
+		Queries: h.Queries, TxStarter: h.TxStarter, Shadow: svc, Proposals: h.proposalService(), Flags: h.FeatureFlags,
+	}
+	return svc
+}
+
+// NecessityService is the scaffolding sunset service (durable spec 10): the scheduler's weekly and
+// monthly jobs and the routes use it.
+func (h *Handler) NecessityService() *service.NecessityService {
+	return h.shadowService().Necessity
 }
 
 // shadowClaimContext carries the daemon's shadow capability into the claim: a daemon that did not

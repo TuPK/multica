@@ -319,6 +319,10 @@ func registerDurableSeatRoutes(r chi.Router, h *handler.Handler) {
 	// estimate is read by any member, the start is a person's request.
 	r.Get("/shadow/estimate", h.GetShadowEstimate)
 	r.With(handler.RequireHumanActor).Post("/shadow", h.StartShadowRun)
+	// The scaffolding sunset (durable spec 10.3): members read a seat's necessity tests, and a
+	// person starts one on a skill the seat holds.
+	r.Get("/necessity", h.ListNecessityTests)
+	r.With(handler.RequireHumanActor).Post("/necessity", h.StartNecessityTest)
 }
 
 // registerDurableSquadEnvelopeRoutes mounts a squad's autonomy envelope (durable spec 3.5).

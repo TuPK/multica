@@ -916,6 +916,14 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.DurableSeatCleanupJob(durableDossier)); err != nil {
 		slog.Error("scheduler: register durable seat cleanup", "error", err)
 	}
+	// Weekly: skills due a necessity test open one each, at most two per squad (durable spec 10.3).
+	// Monthly: flow gates that pass the merge-or-drop threshold are counted (durable spec 10.4).
+	if err := schedulerMgr.Register(scheduler.DurableNecessityJob(h.NecessityService())); err != nil {
+		slog.Error("scheduler: register durable necessity", "error", err)
+	}
+	if err := schedulerMgr.Register(scheduler.DurableFlowStageJob(h.NecessityService())); err != nil {
+		slog.Error("scheduler: register durable flow stage", "error", err)
+	}
 	durablePredictions := &service.PredictionService{Queries: queries, Flags: flags}
 	if err := schedulerMgr.Register(scheduler.PrincipalLearningJob(durablePredictions)); err != nil {
 		slog.Error("scheduler: register principal learning", "error", err)

@@ -290,6 +290,12 @@ func (s *ShadowService) finishIfComplete(ctx context.Context, ws, configID pgtyp
 	if cfg.State != "running" {
 		return nil
 	}
+	if cfg.Purpose == ShadowPurposeNecessity {
+		if s.Necessity == nil {
+			return nil
+		}
+		return s.Necessity.OnVerdicts(ctx, cfg)
+	}
 	report, err := s.Report(ctx, ws, configID)
 	if err != nil {
 		return err
@@ -297,25 +303,32 @@ func (s *ShadowService) finishIfComplete(ctx context.Context, ws, configID pgtyp
 	if report.Pairs < int(cfg.TargetPairs) {
 		return nil
 	}
+	completed, err := s.completeRun(ctx, cfg)
+	if err != nil || !completed || s.Runtime == nil {
+		return err
+	}
+	return s.Runtime.OnShadowCompleted(ctx, cfg, report)
+}
+
+// completeRun marks a running shadow run completed under its row lock, so two callers that finish
+// it together complete it once. It reports whether this call completed it.
+func (s *ShadowService) completeRun(ctx context.Context, cfg db.ShadowConfig) (bool, error) {
 	completed := false
-	err = s.inTx(ctx, func(q *db.Queries) error {
-		locked, err := q.LockShadowConfig(ctx, db.LockShadowConfigParams{ID: cfg.ID, WorkspaceID: ws})
+	err := s.inTx(ctx, func(q *db.Queries) error {
+		locked, err := q.LockShadowConfig(ctx, db.LockShadowConfigParams{ID: cfg.ID, WorkspaceID: cfg.WorkspaceID})
 		if err != nil {
 			return fmt.Errorf("lock shadow run: %w", err)
 		}
 		if locked.State != "running" {
 			return nil
 		}
-		if _, err := q.SetShadowConfigState(ctx, db.SetShadowConfigStateParams{ID: cfg.ID, WorkspaceID: ws, State: "completed"}); err != nil {
+		if _, err := q.SetShadowConfigState(ctx, db.SetShadowConfigStateParams{ID: cfg.ID, WorkspaceID: cfg.WorkspaceID, State: "completed"}); err != nil {
 			return fmt.Errorf("complete shadow run: %w", err)
 		}
 		completed = true
 		return nil
 	})
-	if err != nil || !completed || s.Runtime == nil {
-		return err
-	}
-	return s.Runtime.OnShadowCompleted(ctx, cfg, report)
+	return completed, err
 }
 
 // ShadowEstimate is the cost of a shadow run before it starts (spec 9.5): the average cost of

@@ -2497,6 +2497,24 @@ type MetricWebhookToken struct {
 	RevokedAt   pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type NecessityTest struct {
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	SubjectType    string             `json:"subject_type"`
+	SubjectRef     string             `json:"subject_ref"`
+	AgentID        pgtype.UUID        `json:"agent_id"`
+	ShadowConfigID pgtype.UUID        `json:"shadow_config_id"`
+	Margin         pgtype.Numeric     `json:"margin"`
+	MinPairs       int32              `json:"min_pairs"`
+	State          string             `json:"state"`
+	Result         []byte             `json:"result"`
+	ProposalID     pgtype.UUID        `json:"proposal_id"`
+	CreatedByType  string             `json:"created_by_type"`
+	CreatedByID    pgtype.UUID        `json:"created_by_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	CompletedAt    pgtype.Timestamptz `json:"completed_at"`
+}
+
 type NotificationPreference struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -76,10 +77,19 @@ type ShadowClaimFields struct {
 	OmitSkills bool `json:"omit_skills,omitempty"`
 }
 
-// ShadowClaimFieldsOf returns the claim fields for a task, or the zero value for any other.
+// ShadowClaimFieldsOf returns the claim fields for a task, or the zero value for any other. A shadow
+// task omits its skills unless its context says omit_skills is false: a necessity test's shadow
+// agent holds the skills it should keep (spec 10.2).
 func ShadowClaimFieldsOf(taskContext []byte) ShadowClaimFields {
 	if !IsShadowTaskContext(taskContext) {
 		return ShadowClaimFields{}
 	}
-	return ShadowClaimFields{Shadow: true, OmitSkills: true}
+	omit := true
+	var marks struct {
+		OmitSkills *bool `json:"omit_skills"`
+	}
+	if json.Unmarshal(taskContext, &marks) == nil && marks.OmitSkills != nil {
+		omit = *marks.OmitSkills
+	}
+	return ShadowClaimFields{Shadow: true, OmitSkills: omit}
 }
