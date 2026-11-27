@@ -13,9 +13,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 	"sort"
 )
 
@@ -138,6 +140,7 @@ type JuryAsker interface {
 type JuryService struct {
 	Queries   *db.Queries
 	TxStarter TxStarter
+	Flags     *featureflag.Service
 	// Tasks gives each juror its check. It is needed to open a panel with jurors.
 	Tasks *TaskService
 	Asker JuryAsker
@@ -478,6 +481,9 @@ func (s *JuryService) recordSplitRate(ctx context.Context, q *db.Queries, panel 
 // Timeout times out the open panels older than a day (spec 8.3). Their criteria become
 // unable; nobody is asked.
 func (s *JuryService) Timeout(ctx context.Context) error {
+	if s.Flags == nil || !featureflags.DurableSeatsEnabled(ctx, s.Flags) {
+		return nil
+	}
 	panels, err := s.Queries.ListStaleOpenJuryPanels(ctx, db.ListStaleOpenJuryPanelsParams{
 		Cutoff:   pgtype.Timestamptz{Time: s.now().Add(-juryTimeout), Valid: true},
 		RowLimit: juryTimeoutBatch,

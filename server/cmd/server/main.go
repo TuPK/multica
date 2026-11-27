@@ -906,6 +906,7 @@ func main() {
 	}
 	// Every minute: a transition into done opens a work outcome, and due outcomes are settled (durable spec 2.4).
 	durableJury := service.NewJuryService(queries, pool, taskSvc)
+	durableJury.Flags = flags
 	durableChecks := &service.VerificationService{Queries: queries, TxStarter: pool, Tasks: taskSvc, Jury: durableJury, Flags: flags}
 	trackRecords := &service.TrackRecordService{Queries: queries, TxStarter: pool, Flags: flags}
 	durableDossier := &service.DossierService{Queries: queries, TxStarter: pool, Issues: h.IssueService, Flags: flags}
