@@ -16,5 +16,5 @@ func (s *TaskService) EnqueueVerificationTask(ctx context.Context, issue db.Issu
 }
 
 func (s *TaskService) enqueueVerificationTaskTx(ctx context.Context, q *db.Queries, issue db.Issue, verifierID pgtype.UUID) (db.AgentTaskQueue, error) {
-	return s.enqueueMentionTaskWithQueries(ctx, issue, verifierID, pgtype.UUID{}, nil, false, pgtype.UUID{}, false, "", pgtype.UUID{}, pgtype.UUID{}, OriginDerived, false, false, q)
+	return s.enqueueMentionTaskWithQueries(ctx, issue, verifierID, pgtype.UUID{}, nil, false, pgtype.UUID{}, false, "", pgtype.UUID{}, pgtype.UUID{}, OriginDerived, false, false, true, q)
 }

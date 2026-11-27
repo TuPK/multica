@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -12,6 +13,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/runtimeapps"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -362,3 +364,47 @@ func TestShadowOutputIsNotPostedAsComment(t *testing.T) {
 	}
 }
 
+func TestShadowTaskHasNoGatewayOverlayOrAppMetadata(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	ctx := context.Background()
+	sf.Exec(t, `UPDATE issue SET creator_type = 'member', creator_id = $2 WHERE id = $1`, sf.issue, sf.UserID)
+	sf.Exec(t, `UPDATE agent SET composio_toolkit_allowlist = ARRAY['notion'] WHERE id = $1`, sf.seat)
+	builder := &stubOverlayBuilder{resp: json.RawMessage(`{"mcpServers":{"composio":{"type":"http","url":"https://mcp.example/session"}}}`), apps: []runtimeapps.ConnectedApp{{Provider: "composio", ServerName: "composio", ToolkitSlug: "notion", ToolkitName: "Notion"}}}
+	sf.svc.Tasks.Composio = builder
+	// ComposioMCPApps enables the gateway overlay.
+	sf.svc.Tasks.FeatureFlags = composioMCPAppsTestFlags(true)
+	sf.start(t)
+	primary := sf.primaryTask(t)
+	if err := sf.svc.OnPrimaryClaimed(ctx, primary); err != nil {
+		t.Fatal(err)
+	}
+	pair, err := sf.q.GetShadowPairForPrimary(ctx, primary.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	issue, err := sf.q.GetIssue(ctx, util.MustParseUUID(sf.issue))
+	if err != nil {
+		t.Fatal(err)
+	}
+	shadow, err := sf.q.GetAgentTask(ctx, pair.ShadowTaskID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(id pgtype.UUID, want bool) {
+		t.Helper()
+		var overlay, apps []byte
+		if err := sf.Pool.QueryRow(ctx, `SELECT runtime_mcp_overlay, runtime_connected_apps FROM agent_task_queue WHERE id = $1`, id).Scan(&overlay, &apps); err != nil {
+			t.Fatal(err)
+		}
+		if (len(overlay) > 0) != want || (len(apps) > 0) != want {
+			t.Errorf("task %s: overlay=%s apps=%s, want present=%v", util.UUIDToString(id), overlay, apps, want)
+		}
+	}
+	check(shadow.ID, false)
+	sf.Exec(t, `UPDATE agent_task_queue SET status = 'cancelled' WHERE id = $1`, shadow.ID)
+	ordinary, err := sf.svc.Tasks.EnqueueVerificationTask(ctx, issue, shadow.AgentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(ordinary.ID, true)
+}
