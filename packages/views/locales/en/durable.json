@@ -210,6 +210,172 @@
       "clear": "Clear range",
       "cleared": "Range cleared.",
       "clear_failed": "Could not clear the range."
+    },
+    "jury": {
+      "title": "Disagreement jury",
+      "load_failed": "Could not load jury panels.",
+      "state": {
+        "open": "Jurors are still voting.",
+        "unanimous": "Unanimous verdict",
+        "split": "Jury split",
+        "escalated": "Escalated for review",
+        "resolved": "Resolved",
+        "timed_out": "Jury timed out"
+      },
+      "diversity": {
+        "provider": "Different providers",
+        "model_only": "Different models, same provider",
+        "none": "Same model"
+      },
+      "same_model_warning": "All jurors use the same model.",
+      "juror_label": "Juror {{number}}",
+      "no_note": "No reason provided.",
+      "no_votes": "No votes recorded.",
+      "controls": {
+        "heading": "Disagreement jury",
+        "rule": "Used for important work only. The pool needs at least two agents.",
+        "empty": "No jury pool set",
+        "pool_one": "{{count}} agent in pool",
+        "pool_other": "{{count}} agents in pool",
+        "work_classes_label": "Work classes: {{classes}}"
+      }
+    }
+  },
+  "seats": {
+    "dossier": {
+      "title": "Seat dossier",
+      "status_label": "Status",
+      "status": {
+        "active": "Active",
+        "retired": "Retired",
+        "all": "All"
+      },
+      "kind": {
+        "lesson": "Lesson",
+        "pitfall": "Pitfall",
+        "preference": "Preference",
+        "context": "Context",
+        "contact": "Contact"
+      },
+      "origin": {
+        "outcome": "Outcome",
+        "retro": "Retrospective",
+        "agent": "Agent",
+        "member": "Member"
+      },
+      "evidence_type": {
+        "outcome": "Outcome",
+        "retro": "Retrospective",
+        "comment": "Comment",
+        "document": "Document"
+      },
+      "all_work": "All work",
+      "add": "Add entry",
+      "add_submit": "Save entry",
+      "cancel": "Cancel",
+      "kind_label": "Kind",
+      "text_label": "Note",
+      "text_placeholder": "What this seat should remember",
+      "work_class_label": "Work class",
+      "work_class_placeholder": "Leave blank for all work",
+      "evidence_type_label": "Evidence source",
+      "evidence_ref_label": "Evidence reference",
+      "evidence_ref_placeholder": "ID or link to the source",
+      "retire": "Retire",
+      "retire_reason_label": "Reason",
+      "retire_reason_placeholder": "Why this entry no longer applies",
+      "retire_confirm": "Confirm retire",
+      "empty": "No dossier entries yet.",
+      "empty_retired": "No retired entries.",
+      "load_failed": "Could not load the seat dossier.",
+      "added": "Entry added.",
+      "add_failed": "Could not add the entry.",
+      "full_error": "This seat already has 100 active entries. Retire some first.",
+      "retired": "Entry retired.",
+      "retire_failed": "Could not retire the entry.",
+      "start_shadow": "Start shadow trial"
+    },
+    "shadow": {
+      "title": "Start shadow trial",
+      "isolation_warning": "Only use a runtime with no access keys to real systems other than the model key.",
+      "runtime_label": "Candidate runtime",
+      "runtime_placeholder": "Select a runtime",
+      "runtime_empty": "No runtimes available.",
+      "model_label": "Candidate model",
+      "model_placeholder": "Default runtime model",
+      "work_class_prefix_label": "Work class prefix",
+      "work_class_prefix_placeholder": "All work classes",
+      "sample_rate_label": "Sample rate",
+      "sample_rate_hint": "Between 0.01 and 1",
+      "target_pairs_label": "Target pairs",
+      "target_pairs_hint": "Between 5 and 200",
+      "estimate_title": "Estimated cost",
+      "estimate_loading": "Estimating cost...",
+      "estimate_failed": "Could not estimate cost.",
+      "estimate_amount": "Estimate: {{amount}}",
+      "budget_remaining": "Budget remaining: {{amount}}",
+      "budget_none": "No budget covers this seat.",
+      "budget_exceeded": "Estimated cost exceeds the remaining budget for this seat.",
+      "confirm_cost": "I confirm starting this shadow trial above the remaining budget.",
+      "start": "Start trial",
+      "cancel": "Cancel",
+      "started": "Shadow trial started.",
+      "error_already_running": "A shadow trial is already running on this seat.",
+      "error_cost_confirm": "Confirm the cost estimate before starting.",
+      "error_owner_only": "Only an owner or admin can enable auto-promotion.",
+      "error_invalid": "Check the runtime, sample rate, and target pairs.",
+      "error_failed": "Could not start the shadow trial."
+    },
+    "shadow_runs": {
+      "title": "Shadow runs",
+      "loading": "Loading shadow runs...",
+      "load_failed": "Could not load shadow runs.",
+      "empty": "No shadow runs yet.",
+      "state": {
+        "running": "Running",
+        "completed": "Completed",
+        "stopped": "Stopped"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} pairs",
+      "shadow_count": "Shadow: {{count}}",
+      "tie_count": "Tie: {{count}}",
+      "primary_count": "Primary: {{count}}",
+      "unable_count": "Unable: {{count}}",
+      "not_losing_lower": "Not-losing lower bound: {{percent}}",
+      "primary_cost_avg": "Primary avg cost: {{amount}}",
+      "shadow_cost_avg": "Shadow avg cost: {{amount}}"
+    },
+    "necessity": {
+      "title": "Necessity tests",
+      "loading": "Loading necessity tests...",
+      "load_failed": "Could not load necessity tests.",
+      "empty": "No necessity tests yet.",
+      "start": "Start necessity test",
+      "state": {
+        "running": "Running",
+        "not_needed": "Not needed",
+        "needed": "Needed",
+        "inconclusive": "Inconclusive",
+        "stopped": "Stopped"
+      },
+      "pairs_count": "Pairs: {{count}}",
+      "wins_count": "Wins: {{count}}",
+      "losses_count": "Losses: {{count}}",
+      "waiting_for_decision": "Waiting for a person's decision",
+      "dialog_title": "Start necessity test",
+      "dialog_note": "A test runs the seat's work without the skill in a shadow trial, and the skill is removed only after a person approves the proposal.",
+      "skill_label": "Skill",
+      "skill_placeholder": "Select a skill",
+      "skills_loading": "Loading skills...",
+      "skills_load_failed": "Could not load the seat's skills.",
+      "skills_empty": "This seat has no skills to test.",
+      "submit": "Start test",
+      "cancel": "Cancel",
+      "started": "Necessity test started.",
+      "error_running": "A necessity test for this skill is already running.",
+      "error_shadow_running": "A shadow trial is already running on this seat.",
+      "error_invalid": "This skill cannot be tested on this seat.",
+      "error_failed": "Could not start the necessity test."
     }
   }
 }

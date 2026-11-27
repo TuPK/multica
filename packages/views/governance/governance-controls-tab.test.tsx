@@ -165,4 +165,12 @@ describe("GovernanceControlsTab", () => {
       expect(screen.getByRole("button", { name: "Floors" }).getAttribute("aria-pressed")).toBe("true"),
     );
   });
+
+  it("mounts the disagreement jury line on the Controls tab", async () => {
+    api.getCompanyState.mockResolvedValue(RUNNING);
+    renderTab();
+
+    expect(await screen.findByText("Disagreement jury")).toBeTruthy();
+    expect(screen.getByText("No jury pool set")).toBeTruthy();
+  });
 });

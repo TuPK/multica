@@ -210,6 +210,171 @@
       "clear": "清除区间",
       "cleared": "已清除区间。",
       "clear_failed": "无法清除区间。"
+    },
+    "jury": {
+      "title": "分歧评审团",
+      "load_failed": "无法加载评审团记录。",
+      "state": {
+        "open": "评审员仍在投票。",
+        "unanimous": "一致通过",
+        "split": "评审分歧",
+        "escalated": "已升级待审核",
+        "resolved": "已裁定",
+        "timed_out": "评审超时"
+      },
+      "diversity": {
+        "provider": "不同提供商",
+        "model_only": "同提供商不同模型",
+        "none": "相同模型"
+      },
+      "same_model_warning": "所有评审员均使用相同模型。",
+      "juror_label": "评审员 {{number}}",
+      "no_note": "未填写理由。",
+      "no_votes": "暂无投票记录。",
+      "controls": {
+        "heading": "分歧评审团",
+        "rule": "仅用于重要工作，候选池至少需要两个智能体。",
+        "empty": "未设置评审团候选池",
+        "pool_other": "候选池中有 {{count}} 个智能体",
+        "work_classes_label": "工作类型：{{classes}}"
+      }
+    }
+  },
+  "seats": {
+    "dossier": {
+      "title": "席位档案",
+      "status_label": "状态",
+      "status": {
+        "active": "生效中",
+        "retired": "已停用",
+        "all": "全部"
+      },
+      "kind": {
+        "lesson": "经验",
+        "pitfall": "避坑",
+        "preference": "偏好",
+        "context": "背景",
+        "contact": "联系人"
+      },
+      "origin": {
+        "outcome": "结果",
+        "retro": "复盘",
+        "agent": "智能体",
+        "member": "成员"
+      },
+      "evidence_type": {
+        "outcome": "结果",
+        "retro": "复盘",
+        "comment": "评论",
+        "document": "文档"
+      },
+      "all_work": "所有工作",
+      "add": "添加条目",
+      "add_submit": "保存条目",
+      "cancel": "取消",
+      "kind_label": "类型",
+      "text_label": "内容",
+      "text_placeholder": "该席位需要记住的要点",
+      "work_class_label": "工作类型",
+      "work_class_placeholder": "留空则适用于所有工作",
+      "evidence_type_label": "证据来源",
+      "evidence_ref_label": "证据引用",
+      "evidence_ref_placeholder": "来源 ID 或引用",
+      "retire": "停用",
+      "retire_reason_label": "理由",
+      "retire_reason_placeholder": "说明该条目不再适用的原因",
+      "retire_confirm": "确认停用",
+      "empty": "还没有档案条目。",
+      "empty_retired": "没有已停用的条目。",
+      "load_failed": "无法加载席位档案。",
+      "added": "已添加条目。",
+      "add_failed": "无法添加条目。",
+      "full_error": "该席位已有 100 条生效中的条目，请先停用部分条目。",
+      "retired": "已停用条目。",
+      "retire_failed": "无法停用条目。",
+      "start_shadow": "发起影子试跑"
+    },
+    "shadow": {
+      "title": "发起影子试跑",
+      "isolation_warning": "仅使用除模型密钥外不持有真实系统访问密钥的运行时。",
+      "runtime_label": "候选运行时",
+      "runtime_placeholder": "选择运行时",
+      "runtime_empty": "暂无可用运行时。",
+      "model_label": "候选模型",
+      "model_placeholder": "运行时默认模型",
+      "work_class_prefix_label": "工作类型前缀",
+      "work_class_prefix_placeholder": "所有工作类型",
+      "sample_rate_label": "抽样比例",
+      "sample_rate_hint": "0.01 到 1 之间",
+      "target_pairs_label": "目标对比组数",
+      "target_pairs_hint": "5 到 200 之间",
+      "estimate_title": "预估费用",
+      "estimate_loading": "正在估算费用...",
+      "estimate_failed": "无法估算费用。",
+      "estimate_amount": "预估：{{amount}}",
+      "budget_remaining": "剩余预算：{{amount}}",
+      "budget_none": "当前没有覆盖该席位的预算。",
+      "budget_exceeded": "预估费用超出该席位的剩余预算。",
+      "confirm_cost": "我确认在超出剩余预算的情况下发起本次影子试跑。",
+      "start": "开始试跑",
+      "cancel": "取消",
+      "started": "已发起影子试跑。",
+      "error_already_running": "该席位已有正在运行的影子试跑。",
+      "error_cost_confirm": "发起前请先确认费用预估。",
+      "error_owner_only": "只有所有者或管理员可以开启自动切换。",
+      "error_invalid": "请检查运行时、抽样比例和目标对比组数。",
+      "error_failed": "无法发起影子试跑。"
+    },
+    "shadow_runs": {
+      "title": "影子试跑记录",
+      "loading": "正在加载影子试跑记录...",
+      "load_failed": "无法加载影子试跑记录。",
+      "empty": "还没有影子试跑记录。",
+      "state": {
+        "running": "运行中",
+        "completed": "已完成",
+        "stopped": "已停止"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} 组对比",
+      "shadow_count": "影子胜：{{count}}",
+      "tie_count": "平局：{{count}}",
+      "primary_count": "主席位胜：{{count}}",
+      "unable_count": "无法对比：{{count}}",
+      "not_losing_lower": "不败率下界：{{percent}}",
+      "primary_cost_avg": "主席位均价：{{amount}}",
+      "shadow_cost_avg": "影子均价：{{amount}}"
+    },
+    "necessity": {
+      "title": "必要性测试",
+      "loading": "正在加载必要性测试...",
+      "load_failed": "无法加载必要性测试。",
+      "empty": "还没有必要性测试。",
+      "start": "发起必要性测试",
+      "state": {
+        "running": "运行中",
+        "not_needed": "无需保留",
+        "needed": "需要保留",
+        "inconclusive": "尚无结论",
+        "stopped": "已停止"
+      },
+      "pairs_count": "对比组数：{{count}}",
+      "wins_count": "胜：{{count}}",
+      "losses_count": "负：{{count}}",
+      "waiting_for_decision": "等待人工决定",
+      "dialog_title": "发起必要性测试",
+      "dialog_note": "测试会在影子试跑中不加载该 skill 执行席位的工作，且仅在人工批准提案后才会移除该 skill。",
+      "skill_label": "Skill",
+      "skill_placeholder": "选择 skill",
+      "skills_loading": "正在加载 skill...",
+      "skills_load_failed": "无法加载该席位的 skill。",
+      "skills_empty": "该席位没有可测试的 skill。",
+      "submit": "开始测试",
+      "cancel": "取消",
+      "started": "已发起必要性测试。",
+      "error_running": "该 skill 已有正在运行的必要性测试。",
+      "error_shadow_running": "该席位已有正在运行的影子试跑。",
+      "error_invalid": "该 skill 无法在此席位上测试。",
+      "error_failed": "无法发起必要性测试。"
     }
   }
 }

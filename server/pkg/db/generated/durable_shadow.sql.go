@@ -366,6 +366,57 @@ func (q *Queries) ListSeatCompletedTaskIDs(ctx context.Context, arg ListSeatComp
 	return items, nil
 }
 
+const listShadowConfigsForAgent = `-- name: ListShadowConfigsForAgent :many
+SELECT id, workspace_id, agent_id, candidate_runtime_id, candidate_model, purpose, necessity_test_id, work_class_prefix, sample_rate, target_pairs, auto_promote, shadow_agent_id, state, created_by, created_at, completed_at FROM shadow_config
+WHERE workspace_id = $1 AND agent_id = $2
+ORDER BY created_at DESC, id DESC
+LIMIT $3
+`
+
+type ListShadowConfigsForAgentParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	AgentID     pgtype.UUID `json:"agent_id"`
+	RowLimit    int32       `json:"row_limit"`
+}
+
+// The shadow runs of one seat, newest first. Reads only: the report route summarises each run.
+func (q *Queries) ListShadowConfigsForAgent(ctx context.Context, arg ListShadowConfigsForAgentParams) ([]ShadowConfig, error) {
+	rows, err := q.db.Query(ctx, listShadowConfigsForAgent, arg.WorkspaceID, arg.AgentID, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ShadowConfig{}
+	for rows.Next() {
+		var i ShadowConfig
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AgentID,
+			&i.CandidateRuntimeID,
+			&i.CandidateModel,
+			&i.Purpose,
+			&i.NecessityTestID,
+			&i.WorkClassPrefix,
+			&i.SampleRate,
+			&i.TargetPairs,
+			&i.AutoPromote,
+			&i.ShadowAgentID,
+			&i.State,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listShadowPairsForConfig = `-- name: ListShadowPairsForConfig :many
 SELECT id, workspace_id, config_id, issue_id, primary_task_id, shadow_task_id, comparison, comparison_reason, primary_cost_micros, shadow_cost_micros, created_at, compared_at FROM shadow_pair
 WHERE workspace_id = $1 AND config_id = $2

@@ -210,6 +210,171 @@
       "clear": "범위 해제",
       "cleared": "범위를 해제했습니다.",
       "clear_failed": "범위를 해제하지 못했습니다."
+    },
+    "jury": {
+      "title": "불일치 심사단",
+      "load_failed": "심사단 패널을 불러오지 못했습니다.",
+      "state": {
+        "open": "심사원이 투표 중입니다.",
+        "unanimous": "만장일치 판정",
+        "split": "심사 의견 불일치",
+        "escalated": "검토를 위해 에스컬레이션됨",
+        "resolved": "해결됨",
+        "timed_out": "심사 시간 초과"
+      },
+      "diversity": {
+        "provider": "서로 다른 제공자",
+        "model_only": "서로 다른 모델, 같은 제공자",
+        "none": "같은 모델"
+      },
+      "same_model_warning": "모든 심사원이 같은 모델을 사용합니다.",
+      "juror_label": "심사원 {{number}}",
+      "no_note": "사유가 없습니다.",
+      "no_votes": "기록된 투표가 없습니다.",
+      "controls": {
+        "heading": "불일치 심사단",
+        "rule": "중요한 작업에만 사용됩니다. 풀에는 최소 2명의 에이전트가 필요합니다.",
+        "empty": "설정된 심사단 풀이 없습니다",
+        "pool_other": "풀에 에이전트 {{count}}명",
+        "work_classes_label": "작업 유형: {{classes}}"
+      }
+    }
+  },
+  "seats": {
+    "dossier": {
+      "title": "좌석 기록부",
+      "status_label": "상태",
+      "status": {
+        "active": "활성",
+        "retired": "폐기됨",
+        "all": "전체"
+      },
+      "kind": {
+        "lesson": "교훈",
+        "pitfall": "주의사항",
+        "preference": "선호",
+        "context": "맥락",
+        "contact": "연락처"
+      },
+      "origin": {
+        "outcome": "결과",
+        "retro": "회고",
+        "agent": "에이전트",
+        "member": "멤버"
+      },
+      "evidence_type": {
+        "outcome": "결과",
+        "retro": "회고",
+        "comment": "댓글",
+        "document": "문서"
+      },
+      "all_work": "모든 작업",
+      "add": "항목 추가",
+      "add_submit": "항목 저장",
+      "cancel": "취소",
+      "kind_label": "종류",
+      "text_label": "내용",
+      "text_placeholder": "이 좌석이 기억해야 할 내용",
+      "work_class_label": "작업 유형",
+      "work_class_placeholder": "비워 두면 모든 작업에 적용",
+      "evidence_type_label": "근거 출처",
+      "evidence_ref_label": "근거 참조",
+      "evidence_ref_placeholder": "출처 ID 또는 참조",
+      "retire": "폐기",
+      "retire_reason_label": "사유",
+      "retire_reason_placeholder": "이 항목이 더 이상 유효하지 않은 이유",
+      "retire_confirm": "폐기 확인",
+      "empty": "아직 기록 항목이 없습니다.",
+      "empty_retired": "폐기된 항목이 없습니다.",
+      "load_failed": "좌석 기록부를 불러오지 못했습니다.",
+      "added": "항목을 추가했습니다.",
+      "add_failed": "항목을 추가하지 못했습니다.",
+      "full_error": "이 좌석에는 이미 활성 항목이 100개 있습니다. 먼저 일부를 폐기하세요.",
+      "retired": "항목을 폐기했습니다.",
+      "retire_failed": "항목을 폐기하지 못했습니다.",
+      "start_shadow": "섀도우 시험 시작"
+    },
+    "shadow": {
+      "title": "섀도우 시험 시작",
+      "isolation_warning": "모델 키 외에 실제 시스템 접근 키가 없는 런타임만 사용하세요.",
+      "runtime_label": "후보 런타임",
+      "runtime_placeholder": "런타임 선택",
+      "runtime_empty": "사용 가능한 런타임이 없습니다.",
+      "model_label": "후보 모델",
+      "model_placeholder": "런타임 기본 모델",
+      "work_class_prefix_label": "작업 유형 접두사",
+      "work_class_prefix_placeholder": "모든 작업 유형",
+      "sample_rate_label": "샘플링 비율",
+      "sample_rate_hint": "0.01에서 1 사이",
+      "target_pairs_label": "목표 쌍 수",
+      "target_pairs_hint": "5에서 200 사이",
+      "estimate_title": "예상 비용",
+      "estimate_loading": "비용 계산 중...",
+      "estimate_failed": "비용을 계산하지 못했습니다.",
+      "estimate_amount": "예상: {{amount}}",
+      "budget_remaining": "남은 예산: {{amount}}",
+      "budget_none": "이 좌석에 적용되는 예산이 없습니다.",
+      "budget_exceeded": "예상 비용이 이 좌석의 남은 예산을 초과합니다.",
+      "confirm_cost": "남은 예산을 초과하여 이 섀도우 시험을 시작함을 확인합니다.",
+      "start": "시험 시작",
+      "cancel": "취소",
+      "started": "섀도우 시험을 시작했습니다.",
+      "error_already_running": "이 좌석에서 이미 섀도우 시험이 실행 중입니다.",
+      "error_cost_confirm": "시작하기 전에 비용 예상을 확인하세요.",
+      "error_owner_only": "소유자 또는 관리자만 자동 승격을 켤 수 있습니다.",
+      "error_invalid": "런타임, 샘플링 비율, 목표 쌍 수를 확인하세요.",
+      "error_failed": "섀도우 시험을 시작하지 못했습니다."
+    },
+    "shadow_runs": {
+      "title": "섀도우 실행",
+      "loading": "섀도우 실행 불러오는 중...",
+      "load_failed": "섀도우 실행을 불러오지 못했습니다.",
+      "empty": "아직 섀도우 실행이 없습니다.",
+      "state": {
+        "running": "실행 중",
+        "completed": "완료됨",
+        "stopped": "중지됨"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} 쌍",
+      "shadow_count": "섀도우: {{count}}",
+      "tie_count": "동률: {{count}}",
+      "primary_count": "기본: {{count}}",
+      "unable_count": "비교 불가: {{count}}",
+      "not_losing_lower": "비열위 하한: {{percent}}",
+      "primary_cost_avg": "기본 평균 비용: {{amount}}",
+      "shadow_cost_avg": "섀도우 평균 비용: {{amount}}"
+    },
+    "necessity": {
+      "title": "필요성 테스트",
+      "loading": "필요성 테스트 불러오는 중...",
+      "load_failed": "필요성 테스트를 불러오지 못했습니다.",
+      "empty": "아직 필요성 테스트가 없습니다.",
+      "start": "필요성 테스트 시작",
+      "state": {
+        "running": "실행 중",
+        "not_needed": "불필요",
+        "needed": "필요",
+        "inconclusive": "판정 보류",
+        "stopped": "중지됨"
+      },
+      "pairs_count": "쌍: {{count}}",
+      "wins_count": "승: {{count}}",
+      "losses_count": "패: {{count}}",
+      "waiting_for_decision": "사람의 결정을 기다리는 중",
+      "dialog_title": "필요성 테스트 시작",
+      "dialog_note": "이 테스트는 해당 skill 없이 좌석의 작업을 섀도우 시험으로 실행하며, 사람이 제안을 승인한 뒤에만 skill을 제거합니다.",
+      "skill_label": "Skill",
+      "skill_placeholder": "skill 선택",
+      "skills_loading": "skill 불러오는 중...",
+      "skills_load_failed": "이 좌석의 skill을 불러오지 못했습니다.",
+      "skills_empty": "이 좌석에 테스트할 skill이 없습니다.",
+      "submit": "테스트 시작",
+      "cancel": "취소",
+      "started": "필요성 테스트를 시작했습니다.",
+      "error_running": "이 skill에 대한 필요성 테스트가 이미 실행 중입니다.",
+      "error_shadow_running": "이 좌석에서 이미 섀도우 시험이 실행 중입니다.",
+      "error_invalid": "이 좌석에서는 해당 skill을 테스트할 수 없습니다.",
+      "error_failed": "필요성 테스트를 시작하지 못했습니다."
     }
   }
 }

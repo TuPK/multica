@@ -65,6 +65,7 @@ function route(path: string) {
     return Promise.resolve({ criteria: [{ ...criterion, archived_at: criterionArchived ? "2026-11-25T10:00:00Z" : null }] });
   }
   if (path === "/api/issues/i-1/outcome") return Promise.resolve({ ...outcome, verdict: outcomeVerdict });
+  if (path === "/api/outcomes/o-1/jury") return Promise.resolve({ panels: [] });
   if (path === "/api/outcomes/o-1") {
     return Promise.resolve({
       ...outcome,

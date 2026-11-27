@@ -210,6 +210,171 @@
       "clear": "Bỏ khoảng",
       "cleared": "Đã bỏ khoảng.",
       "clear_failed": "Không bỏ được khoảng."
+    },
+    "jury": {
+      "title": "Hội đồng bất đồng",
+      "load_failed": "Không tải được hội đồng kiểm chứng.",
+      "state": {
+        "open": "Các giám khảo vẫn đang bỏ phiếu.",
+        "unanimous": "Đồng thuận",
+        "split": "Hội đồng bất đồng",
+        "escalated": "Đã chuyển người xem xét",
+        "resolved": "Đã chốt",
+        "timed_out": "Hết hạn bỏ phiếu"
+      },
+      "diversity": {
+        "provider": "Khác nhà cung cấp",
+        "model_only": "Khác mô hình, cùng nhà cung cấp",
+        "none": "Cùng mô hình"
+      },
+      "same_model_warning": "Tất cả giám khảo đều dùng cùng một mô hình.",
+      "juror_label": "Giám khảo {{number}}",
+      "no_note": "Không có lý do.",
+      "no_votes": "Chưa có phiếu nào.",
+      "controls": {
+        "heading": "Hội đồng bất đồng",
+        "rule": "Chỉ dùng cho việc quan trọng. Nhóm cần ít nhất hai agent.",
+        "empty": "Chưa thiết lập nhóm hội đồng",
+        "pool_other": "{{count}} agent trong nhóm",
+        "work_classes_label": "Loại việc: {{classes}}"
+      }
+    }
+  },
+  "seats": {
+    "dossier": {
+      "title": "Hồ sơ ghế",
+      "status_label": "Trạng thái",
+      "status": {
+        "active": "Đang dùng",
+        "retired": "Đã gỡ",
+        "all": "Tất cả"
+      },
+      "kind": {
+        "lesson": "Bài học",
+        "pitfall": "Cạm bẫy",
+        "preference": "Sở thích",
+        "context": "Bối cảnh",
+        "contact": "Liên hệ"
+      },
+      "origin": {
+        "outcome": "Kết quả",
+        "retro": "Nhìn lại",
+        "agent": "Agent",
+        "member": "Thành viên"
+      },
+      "evidence_type": {
+        "outcome": "Kết quả",
+        "retro": "Nhìn lại",
+        "comment": "Bình luận",
+        "document": "Tài liệu"
+      },
+      "all_work": "Mọi việc",
+      "add": "Thêm mục",
+      "add_submit": "Lưu mục",
+      "cancel": "Huỷ",
+      "kind_label": "Loại",
+      "text_label": "Nội dung",
+      "text_placeholder": "Điều ghế này cần nhớ",
+      "work_class_label": "Loại việc",
+      "work_class_placeholder": "Để trống nếu áp cho mọi việc",
+      "evidence_type_label": "Nguồn bằng chứng",
+      "evidence_ref_label": "Mã bằng chứng",
+      "evidence_ref_placeholder": "ID hoặc tham chiếu tới nguồn",
+      "retire": "Gỡ mục",
+      "retire_reason_label": "Lý do",
+      "retire_reason_placeholder": "Vì sao mục này không còn đúng",
+      "retire_confirm": "Xác nhận gỡ",
+      "empty": "Chưa có mục hồ sơ nào.",
+      "empty_retired": "Chưa có mục nào bị gỡ.",
+      "load_failed": "Không tải được hồ sơ ghế.",
+      "added": "Đã thêm mục.",
+      "add_failed": "Không thêm được mục.",
+      "full_error": "Ghế này đã có đủ 100 mục đang dùng. Hãy gỡ bớt trước.",
+      "retired": "Đã gỡ mục.",
+      "retire_failed": "Không gỡ được mục.",
+      "start_shadow": "Chạy thử bóng"
+    },
+    "shadow": {
+      "title": "Chạy thử bóng",
+      "isolation_warning": "Chỉ dùng runtime không có khoá truy cập hệ thống thật ngoài khoá mô hình.",
+      "runtime_label": "Runtime ứng viên",
+      "runtime_placeholder": "Chọn runtime",
+      "runtime_empty": "Chưa có runtime khả dụng.",
+      "model_label": "Mô hình ứng viên",
+      "model_placeholder": "Mặc định của runtime",
+      "work_class_prefix_label": "Tiền tố loại việc",
+      "work_class_prefix_placeholder": "Mọi loại việc",
+      "sample_rate_label": "Tỷ lệ lấy mẫu",
+      "sample_rate_hint": "Từ 0.01 đến 1",
+      "target_pairs_label": "Số cặp mục tiêu",
+      "target_pairs_hint": "Từ 5 đến 200",
+      "estimate_title": "Ước tính chi phí",
+      "estimate_loading": "Đang ước tính chi phí...",
+      "estimate_failed": "Không ước tính được chi phí.",
+      "estimate_amount": "Ước tính: {{amount}}",
+      "budget_remaining": "Ngân sách còn lại: {{amount}}",
+      "budget_none": "Chưa có ngân sách áp cho ghế này.",
+      "budget_exceeded": "Chi phí ước tính vượt ngân sách còn lại của ghế.",
+      "confirm_cost": "Tôi xác nhận bắt đầu chạy thử bóng vượt ngân sách còn lại.",
+      "start": "Bắt đầu chạy thử",
+      "cancel": "Huỷ",
+      "started": "Đã bắt đầu chạy thử bóng.",
+      "error_already_running": "Ghế này đang có một đợt chạy thử bóng.",
+      "error_cost_confirm": "Hãy xác nhận ước tính chi phí trước khi bắt đầu.",
+      "error_owner_only": "Chỉ chủ sở hữu hoặc quản trị viên được bật tự nâng cấp.",
+      "error_invalid": "Hãy kiểm tra runtime, tỷ lệ lấy mẫu và số cặp mục tiêu.",
+      "error_failed": "Không bắt đầu được đợt chạy thử bóng."
+    },
+    "shadow_runs": {
+      "title": "Các đợt chạy bóng",
+      "loading": "Đang tải các đợt chạy bóng...",
+      "load_failed": "Không tải được các đợt chạy bóng.",
+      "empty": "Chưa có đợt chạy bóng nào.",
+      "state": {
+        "running": "Đang chạy",
+        "completed": "Hoàn tất",
+        "stopped": "Đã dừng"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} cặp",
+      "shadow_count": "Bóng thắng: {{count}}",
+      "tie_count": "Hoà: {{count}}",
+      "primary_count": "Chính thắng: {{count}}",
+      "unable_count": "Không so được: {{count}}",
+      "not_losing_lower": "Cận dưới không thua: {{percent}}",
+      "primary_cost_avg": "Chi phí TB bản chính: {{amount}}",
+      "shadow_cost_avg": "Chi phí TB bản bóng: {{amount}}"
+    },
+    "necessity": {
+      "title": "Bài kiểm tra cần thiết",
+      "loading": "Đang tải các bài kiểm tra cần thiết...",
+      "load_failed": "Không tải được các bài kiểm tra cần thiết.",
+      "empty": "Chưa có bài kiểm tra cần thiết nào.",
+      "start": "Chạy kiểm tra cần thiết",
+      "state": {
+        "running": "Đang chạy",
+        "not_needed": "Không cần",
+        "needed": "Cần thiết",
+        "inconclusive": "Chưa kết luận",
+        "stopped": "Đã dừng"
+      },
+      "pairs_count": "Số cặp: {{count}}",
+      "wins_count": "Thắng: {{count}}",
+      "losses_count": "Thua: {{count}}",
+      "waiting_for_decision": "Đang chờ người quyết định",
+      "dialog_title": "Chạy kiểm tra cần thiết",
+      "dialog_note": "Bài kiểm tra chạy việc của ghế không có skill trong đợt chạy bóng, và skill chỉ được gỡ sau khi người duyệt đề xuất.",
+      "skill_label": "Skill",
+      "skill_placeholder": "Chọn skill",
+      "skills_loading": "Đang tải danh sách skill...",
+      "skills_load_failed": "Không tải được danh sách skill của ghế.",
+      "skills_empty": "Ghế này chưa có skill để kiểm tra.",
+      "submit": "Bắt đầu kiểm tra",
+      "cancel": "Huỷ",
+      "started": "Đã bắt đầu bài kiểm tra cần thiết.",
+      "error_running": "Skill này đang có một bài kiểm tra cần thiết đang chạy.",
+      "error_shadow_running": "Ghế này đang có một đợt chạy thử bóng.",
+      "error_invalid": "Không thể kiểm tra skill này trên ghế hiện tại.",
+      "error_failed": "Không bắt đầu được bài kiểm tra cần thiết."
     }
   }
 }

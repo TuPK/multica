@@ -210,6 +210,172 @@
       "clear": "Quitar rango",
       "cleared": "Rango quitado.",
       "clear_failed": "No se pudo quitar el rango."
+    },
+    "jury": {
+      "title": "Jurado de desacuerdo",
+      "load_failed": "No se pudieron cargar los paneles del jurado.",
+      "state": {
+        "open": "Los miembros del jurado siguen votando.",
+        "unanimous": "Veredicto unánime",
+        "split": "Jurado dividido",
+        "escalated": "Escalado para revisión",
+        "resolved": "Resuelto",
+        "timed_out": "Tiempo de votación agotado"
+      },
+      "diversity": {
+        "provider": "Proveedores distintos",
+        "model_only": "Modelos distintos, mismo proveedor",
+        "none": "Mismo modelo"
+      },
+      "same_model_warning": "Todos los miembros del jurado usan el mismo modelo.",
+      "juror_label": "Jurado {{number}}",
+      "no_note": "Sin motivo indicado.",
+      "no_votes": "Sin votos registrados.",
+      "controls": {
+        "heading": "Jurado de desacuerdo",
+        "rule": "Solo se usa en trabajo importante. El grupo requiere al menos dos agentes.",
+        "empty": "Sin grupo de jurado configurado",
+        "pool_one": "{{count}} agente en el grupo",
+        "pool_other": "{{count}} agentes en el grupo",
+        "work_classes_label": "Tipos de trabajo: {{classes}}"
+      }
+    }
+  },
+  "seats": {
+    "dossier": {
+      "title": "Expediente del puesto",
+      "status_label": "Estado",
+      "status": {
+        "active": "Activos",
+        "retired": "Retirados",
+        "all": "Todos"
+      },
+      "kind": {
+        "lesson": "Lección",
+        "pitfall": "Trampa",
+        "preference": "Preferencia",
+        "context": "Contexto",
+        "contact": "Contacto"
+      },
+      "origin": {
+        "outcome": "Resultado",
+        "retro": "Retrospectiva",
+        "agent": "Agente",
+        "member": "Miembro"
+      },
+      "evidence_type": {
+        "outcome": "Resultado",
+        "retro": "Retrospectiva",
+        "comment": "Comentario",
+        "document": "Documento"
+      },
+      "all_work": "Todo el trabajo",
+      "add": "Agregar entrada",
+      "add_submit": "Guardar entrada",
+      "cancel": "Cancelar",
+      "kind_label": "Tipo",
+      "text_label": "Nota",
+      "text_placeholder": "Qué debe recordar este puesto",
+      "work_class_label": "Tipo de trabajo",
+      "work_class_placeholder": "Dejar vacío para todo el trabajo",
+      "evidence_type_label": "Fuente de evidencia",
+      "evidence_ref_label": "Referencia de evidencia",
+      "evidence_ref_placeholder": "ID o referencia de la fuente",
+      "retire": "Retirar",
+      "retire_reason_label": "Motivo",
+      "retire_reason_placeholder": "Por qué esta entrada ya no aplica",
+      "retire_confirm": "Confirmar retiro",
+      "empty": "Aún no hay entradas en el expediente.",
+      "empty_retired": "No hay entradas retiradas.",
+      "load_failed": "No se pudo cargar el expediente del puesto.",
+      "added": "Entrada agregada.",
+      "add_failed": "No se pudo agregar la entrada.",
+      "full_error": "Este puesto ya tiene 100 entradas activas. Retira algunas primero.",
+      "retired": "Entrada retirada.",
+      "retire_failed": "No se pudo retirar la entrada.",
+      "start_shadow": "Iniciar prueba en sombra"
+    },
+    "shadow": {
+      "title": "Iniciar prueba en sombra",
+      "isolation_warning": "Usa solo un runtime sin claves de acceso a sistemas reales aparte de la clave del modelo.",
+      "runtime_label": "Runtime candidato",
+      "runtime_placeholder": "Selecciona un runtime",
+      "runtime_empty": "No hay runtimes disponibles.",
+      "model_label": "Modelo candidato",
+      "model_placeholder": "Modelo predeterminado del runtime",
+      "work_class_prefix_label": "Prefijo de tipo de trabajo",
+      "work_class_prefix_placeholder": "Todos los tipos de trabajo",
+      "sample_rate_label": "Tasa de muestreo",
+      "sample_rate_hint": "Entre 0.01 y 1",
+      "target_pairs_label": "Pares objetivo",
+      "target_pairs_hint": "Entre 5 y 200",
+      "estimate_title": "Costo estimado",
+      "estimate_loading": "Estimando costo...",
+      "estimate_failed": "No se pudo estimar el costo.",
+      "estimate_amount": "Estimación: {{amount}}",
+      "budget_remaining": "Presupuesto restante: {{amount}}",
+      "budget_none": "Ningún presupuesto cubre este puesto.",
+      "budget_exceeded": "El costo estimado supera el presupuesto restante de este puesto.",
+      "confirm_cost": "Confirmo iniciar esta prueba en sombra por encima del presupuesto restante.",
+      "start": "Iniciar prueba",
+      "cancel": "Cancelar",
+      "started": "Prueba en sombra iniciada.",
+      "error_already_running": "Ya hay una prueba en sombra en curso en este puesto.",
+      "error_cost_confirm": "Confirma la estimación de costo antes de iniciar.",
+      "error_owner_only": "Solo un propietario o administrador puede activar la autopromoción.",
+      "error_invalid": "Revisa el runtime, la tasa de muestreo y los pares objetivo.",
+      "error_failed": "No se pudo iniciar la prueba en sombra."
+    },
+    "shadow_runs": {
+      "title": "Ejecuciones en sombra",
+      "loading": "Cargando ejecuciones en sombra...",
+      "load_failed": "No se pudieron cargar las ejecuciones en sombra.",
+      "empty": "Aún no hay ejecuciones en sombra.",
+      "state": {
+        "running": "En curso",
+        "completed": "Completada",
+        "stopped": "Detenida"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} pares",
+      "shadow_count": "Sombra: {{count}}",
+      "tie_count": "Empate: {{count}}",
+      "primary_count": "Principal: {{count}}",
+      "unable_count": "Sin comparar: {{count}}",
+      "not_losing_lower": "Cota inferior sin perder: {{percent}}",
+      "primary_cost_avg": "Costo prom. principal: {{amount}}",
+      "shadow_cost_avg": "Costo prom. sombra: {{amount}}"
+    },
+    "necessity": {
+      "title": "Pruebas de necesidad",
+      "loading": "Cargando pruebas de necesidad...",
+      "load_failed": "No se pudieron cargar las pruebas de necesidad.",
+      "empty": "Aún no hay pruebas de necesidad.",
+      "start": "Iniciar prueba de necesidad",
+      "state": {
+        "running": "En curso",
+        "not_needed": "No necesaria",
+        "needed": "Necesaria",
+        "inconclusive": "No concluyente",
+        "stopped": "Detenida"
+      },
+      "pairs_count": "Pares: {{count}}",
+      "wins_count": "Victorias: {{count}}",
+      "losses_count": "Derrotas: {{count}}",
+      "waiting_for_decision": "Esperando la decisión de una persona",
+      "dialog_title": "Iniciar prueba de necesidad",
+      "dialog_note": "La prueba ejecuta el trabajo del puesto sin la skill en una prueba en sombra, y la skill solo se retira después de que una persona apruebe la propuesta.",
+      "skill_label": "Skill",
+      "skill_placeholder": "Selecciona una skill",
+      "skills_loading": "Cargando skills...",
+      "skills_load_failed": "No se pudieron cargar las skills del puesto.",
+      "skills_empty": "Este puesto no tiene skills para probar.",
+      "submit": "Iniciar prueba",
+      "cancel": "Cancelar",
+      "started": "Prueba de necesidad iniciada.",
+      "error_running": "Ya hay una prueba de necesidad en curso para esta skill.",
+      "error_shadow_running": "Ya hay una prueba en sombra en curso en este puesto.",
+      "error_invalid": "Esta skill no se puede probar en este puesto.",
+      "error_failed": "No se pudo iniciar la prueba de necesidad."
     }
   }
 }
