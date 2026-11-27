@@ -6804,7 +6804,7 @@ func (s *TaskService) HandleFailedTasks(ctx context.Context, tasks []db.AgentTas
 							"error", checkErr,
 						)
 					} else if landing := FailedRunLandingStatus(ctx, s.Queries, issue); !hasActive && landing != "" {
-						updatedIssue, updateErr := s.Queries.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{
+						updatedIssue, updateErr := s.updateFailedTaskIssueStatus(ctx, t.AgentID, db.UpdateIssueStatusParams{
 							SourceTaskID: t.ID,
 							ID:           t.IssueID,
 							Status:       landing,
