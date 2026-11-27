@@ -6,6 +6,8 @@ import {
   CriterionSchema,
   VerificationSchema,
   parseCriteriaList,
+  parseCriterion,
+  parseVerification,
   parseOutcome,
   parseOutcomeList,
   parseOutcomeSummary,
@@ -191,5 +193,33 @@ describe("outcome schemas", () => {
     expect(summary.groups).toEqual([
       { key: "a-1", total: 3, pass: 1, partial: 1, fail: 0, unverified: 0, pending: 1 },
     ]);
+  });
+});
+
+describe("required outcome identifiers", () => {
+  it("rejects malformed identifiers in single responses and drops only invalid list rows", () => {
+    for (const [row, fields, parse] of [
+      [outcomeRow, ["id", "issue_id"], parseOutcome],
+      [criterionRow, ["id", "issue_id"], parseCriterion],
+      [verificationRow, ["id", "outcome_id"], parseVerification],
+    ] as const) {
+      expect(parse({}, "test")).toBeNull();
+      for (const field of fields) {
+        for (const value of [undefined, "", 42]) {
+          const bad = { ...row, [field]: value };
+          expect(parse(bad, "test")).toBeNull();
+          if (row === outcomeRow) {
+            for (const endpoint of ["GET /api/outcomes/:id", "GET /api/issues/:id/outcome"]) expect(parseOutcome(bad, endpoint)).toBeNull();
+            expect(parseOutcomeList({ outcomes: [outcomeRow, bad] }, "GET /api/outcomes").outcomes).toHaveLength(1);
+          } else if (row === criterionRow) {
+            expect(parseCriteriaList({ criteria: [criterionRow, bad] }, "GET /api/issues/:id/criteria")).toHaveLength(1);
+          } else {
+            expect(parseOutcome({ ...outcomeRow, verifications: [verificationRow, bad] }, "test")?.verifications).toHaveLength(1);
+          }
+        }
+      }
+    }
+    expect(parseOutcomeList({ outcomes: [outcomeRow, {}] }, "GET /api/outcomes").outcomes).toHaveLength(1);
+    expect(parseCriteriaList({ criteria: [criterionRow, {}] }, "GET /api/issues/:id/criteria")).toHaveLength(1);
   });
 });
