@@ -279,7 +279,7 @@ func (s *ShadowService) recordClaimedPrimary(ctx context.Context, cfg db.ShadowC
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("load pair for primary: %w", err)
 	}
-	shadowTask, err := s.Tasks.EnqueueVerificationTask(ctx, issue, shadowAgent)
+	shadowTask, err := s.Tasks.EnqueueShadowTask(ctx, issue, shadowAgent)
 	if err != nil {
 		return fmt.Errorf("enqueue shadow task: %w", err)
 	}

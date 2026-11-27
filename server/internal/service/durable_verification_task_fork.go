@@ -18,6 +18,12 @@ func (s *TaskService) EnqueueVerificationTask(ctx context.Context, issue db.Issu
 	return s.enqueueMentionTask(ctx, issue, verifierID, pgtype.UUID{}, false, pgtype.UUID{}, false, "", pgtype.UUID{}, pgtype.UUID{}, OriginDerived)
 }
 
+// EnqueueShadowTask queues a shadow run's task. A shadow run is a candidate's private trial:
+// the gateway overlay and the connected-app metadata stay off it (isShadow).
+func (s *TaskService) EnqueueShadowTask(ctx context.Context, issue db.Issue, shadowAgentID pgtype.UUID) (db.AgentTaskQueue, error) {
+	return s.enqueueMentionTaskWithQueries(ctx, issue, shadowAgentID, pgtype.UUID{}, nil, false, pgtype.UUID{}, false, "", pgtype.UUID{}, pgtype.UUID{}, OriginDerived, false, false, true, nil)
+}
+
 func (s *TaskService) enqueueVerificationTaskTx(ctx context.Context, q *db.Queries, issue db.Issue, verifierID pgtype.UUID) (db.AgentTaskQueue, error) {
 	return s.enqueueMentionTaskWithQueries(ctx, issue, verifierID, pgtype.UUID{}, nil, false, pgtype.UUID{}, false, "", pgtype.UUID{}, pgtype.UUID{}, OriginDerived, false, false, true, q)
 }
