@@ -336,3 +336,39 @@ func TestShadowReconcileUnjudgedPairs(t *testing.T) {
 		t.Fatalf("juror task changed across reconcile passes: %s != %s", afterSecondJurorTaskID, firstJurorTaskID)
 	}
 }
+
+func TestShadowOpenJurorIdempotentAtomic(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	ctx := context.Background()
+	sf.start(t)
+	juror := sf.Agent(t, "atomic-juror", sf.Runtime(t, "atomic juror runtime", testutil.Cols{"provider": "google"}))
+	pool, err := json.Marshal(map[string]any{"jury_pool": []string{juror}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sf.Exec(t, `UPDATE workspace SET settings = $2::jsonb WHERE id = $1`, sf.WorkspaceID, string(pool))
+	primary := sf.primaryTask(t)
+	if err := sf.svc.OnPrimaryClaimed(ctx, primary); err != nil {
+		t.Fatal(err)
+	}
+	pair, err := sf.q.GetShadowPairForPrimary(ctx, primary.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sf.completeTask(t, util.UUIDToString(primary.ID), "primary")
+	sf.completeTask(t, util.UUIDToString(pair.ShadowTaskID), "shadow")
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		go func() { <-start; errs <- sf.svc.openJuror(ctx, pair) }()
+	}
+	close(start)
+	for i := 0; i < 2; i++ {
+		if err := <-errs; err != nil {
+			t.Fatalf("open juror: %v", err)
+		}
+	}
+	if n, err := sf.q.CountShadowJurorTasksForPair(ctx, util.UUIDToString(pair.ID)); err != nil || n != 1 {
+		t.Fatalf("juror count = %d, err = %v; want 1", n, err)
+	}
+}

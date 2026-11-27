@@ -15,6 +15,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
 // The judging of a shadow run (durable spec 9.4): when both tasks of a pair have completed,
@@ -261,18 +262,43 @@ func (s *ShadowService) openJuror(ctx context.Context, pair db.ShadowPair) error
 	if s.Tasks == nil {
 		return errors.New("durable shadow: no task service to give a juror its check")
 	}
-	task, err := s.Tasks.EnqueueVerificationTask(ctx, issue, juror)
-	if err != nil {
-		return fmt.Errorf("enqueue juror task: %w", err)
-	}
-	marked, err := s.Queries.SetShadowJurorTaskContext(ctx, db.SetShadowJurorTaskContextParams{
-		ID: task.ID, ShadowPairID: util.UUIDToString(pair.ID),
+	var task db.AgentTaskQueue
+	created := false
+	err = s.inTx(ctx, func(q *db.Queries) error {
+		if _, err := q.LockShadowConfig(ctx, db.LockShadowConfigParams{ID: pair.ConfigID, WorkspaceID: pair.WorkspaceID}); err != nil {
+			return fmt.Errorf("lock shadow run: %w", err)
+		}
+		n, err := q.CountShadowJurorTasksForPair(ctx, util.UUIDToString(pair.ID))
+		if err != nil {
+			return fmt.Errorf("count jurors: %w", err)
+		}
+		if n > 0 {
+			return nil
+		}
+		task, err = s.Tasks.enqueueMentionTaskWithQueries(ctx, issue, juror, pgtype.UUID{}, nil, false, pgtype.UUID{}, false, "", pgtype.UUID{}, pgtype.UUID{}, OriginDerived, false, false, false, q)
+		if err != nil {
+			return fmt.Errorf("enqueue juror task: %w", err)
+		}
+		marked, err := q.SetShadowJurorTaskContext(ctx, db.SetShadowJurorTaskContextParams{ID: task.ID, ShadowPairID: util.UUIDToString(pair.ID)})
+		if err != nil {
+			return fmt.Errorf("mark juror task: %w", err)
+		}
+		if marked == 0 {
+			return fmt.Errorf("juror task %s was claimed before it was marked", util.UUIDToString(task.ID))
+		}
+		task, err = q.GetAgentTask(ctx, task.ID)
+		if err != nil {
+			return fmt.Errorf("load juror task: %w", err)
+		}
+		created = true
+		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("mark juror task: %w", err)
+		return err
 	}
-	if marked == 0 {
-		return fmt.Errorf("juror task %s was claimed before it was marked", util.UUIDToString(task.ID))
+	if created {
+		s.Tasks.broadcastTaskEvent(ctx, protocol.EventTaskQueued, task)
+		s.Tasks.NotifyTaskEnqueued(ctx, task)
 	}
 	return nil
 }
