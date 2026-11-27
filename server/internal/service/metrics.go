@@ -109,6 +109,7 @@ var builtinMetricDefs = []BuiltinMetricDef{
 	{"knowledge.fresh_ratio", "Fresh documents", "%", "increase", "Published documents republished within the last 90 days, as a share of all published documents, now."},
 	{"knowledge.retrieval_hit_rate", "Retrieval hit rate", "%", "increase", "Hit rate of the latest knowledge retrieval evaluation run."},
 	{"brief.usefulness", "Brief usefulness", "%", "increase", "Ratings of briefs that the boss marked useful, as a share of the day's ratings."},
+	{"attention.minutes_per_done", "Attention minutes per done issue", "minutes", "decrease", "Minutes of the day's attention questions, per issue done in the day. No reading when the day has no question or no done issue."},
 }
 
 // BuiltinMetricDefs returns the built-in metrics this build computes.

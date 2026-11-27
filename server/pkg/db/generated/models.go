@@ -3284,6 +3284,20 @@ type SeatDossierEntry struct {
 	RetiredAt   pgtype.Timestamptz `json:"retired_at"`
 }
 
+type SeatOffer struct {
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	Name            string             `json:"name"`
+	Role            string             `json:"role"`
+	SquadID         pgtype.UUID        `json:"squad_id"`
+	RuntimeID       pgtype.UUID        `json:"runtime_id"`
+	OutcomeCriteria string             `json:"outcome_criteria"`
+	Rationale       string             `json:"rationale"`
+	Status          string             `json:"status"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
 type ShadowConfig struct {
 	ID                 pgtype.UUID        `json:"id"`
 	WorkspaceID        pgtype.UUID        `json:"workspace_id"`

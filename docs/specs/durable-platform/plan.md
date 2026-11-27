@@ -45,7 +45,7 @@ Bảng này ghi trạng thái theo mã nhánh trên `durable-platform` (tip `4ba
 | B5 | Chưa đủ | Có `durable_flow_effects_fork.go`; chưa xác nhận trường đánh dấu hệ quả trong manifest flow (U7), chưa xác nhận kiểm tra catalog validate |
 | B6 | Đã merge | `packages/views/durable/effects` |
 | B7 | Đã merge | `e2e/durable/effects.spec.ts` |
-| C1 | Một phần | `actual_seconds` có trong attention; `attention.minutes_per_done` chỉ thấy trong digest, chưa thấy trong attention |
+| C1 | Đã xong (chưa commit) | `attention.minutes_per_done` là metric nội tại trong `metrics_builtin.go` qua `attentionMinutesReadings` (`durable_attention_fork.go`), chỉ ghi khi `durable_principal` bật; test `TestAttentionMinutesPerDoneReading`. Không cần migration. Còn lại: `actual_seconds` chưa được handler truyền số đo (luôn `nil`) |
 | C2–C4 | Đã merge | Principal, dự đoán, học, uỷ quyền, phỏng vấn (merge `35b8a186e4`) |
 | C5 | Chưa làm | Không có UI principal, dự đoán, phỏng vấn |
 | C6 | Chưa làm | Không có E2E giai đoạn C |
@@ -59,7 +59,7 @@ Bảng này ghi trạng thái theo mã nhánh trên `durable-platform` (tip `4ba
 | E1 | Một phần | `durable_reach_fork.go` có; chưa thấy route và job scheduler reach |
 | E2 | Một phần | `durable_ocf_fork.go`, `docs/specs/durable-platform/ocf`. Thiếu: OCF lịch sử không xuất dossier, handler không cấp principal (review 2026-11-27, mục 27) |
 | E3 | Một phần | `durable_attestation_fork.go` có; chưa thấy route `POST /api/attestations/verify`, well-known keys, lệnh CLI |
-| E4 | Chưa làm | Không có offer ghế trên Hub |
+| E4 | Một phần (chưa commit) | Migration 1122 (`seat_offer`) và 1123 (index CONCURRENTLY, đã đăng ký cleanup); `durable_seat_offer_fork.go` có `Post`, `Hire`, `SeatAttestationVerified`; test `durable_seat_offer_fork_test.go`. Chưa có: `TestHiredSeatStartsFull` (chưa có envelope theo ghế), ngân sách/envelope/work class của offer, route, UI, lấy khoá host từ xa, kiểm vai trò owner/admin |
 | E5 | Chưa làm | Không có UI giai đoạn E |
 | F1 | Chưa làm | Chạy sau mỗi giai đoạn |
 | F2 | Chưa làm | Bật thử trên máy chủ dev, chỉ khi người dùng đồng ý |
