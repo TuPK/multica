@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/service"
@@ -32,14 +31,7 @@ func (h *Handler) maybeHoldExternalFlowTask(ctx context.Context, run *flowRun, c
 	if !h.shouldHoldExternalFlowTask(ctx, c) {
 		return nil
 	}
-	in := connectedapps.EffectRequest{
-		WS:      run.issue.WorkspaceID,
-		IssueID: issue.ID,
-	}
-	if c.AssigneeTyp == "agent" {
-		in.AgentID = c.AssigneeID
-	}
-	if _, err := h.Intents.HoldFlowTask(ctx, in, c.Step, c.Key); err != nil {
+	if _, err := h.Intents.HoldFlowTask(ctx, run.issue.WorkspaceID, issue.ID, c.Step, c.Key, c.Round); err != nil {
 		return fmt.Errorf("hold external flow task %s: %w", c.Key, err)
 	}
 	return nil

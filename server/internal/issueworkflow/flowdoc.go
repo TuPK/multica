@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 )
 
 // FlowDoc is the schema 2 flow definition (docs/engineering/flow-engine-generalization-spec.md
@@ -329,7 +330,9 @@ type DocTask struct {
 	Skills       []string      `json:"skills,omitempty"`
 	Deadline     *TaskDeadline `json:"deadline,omitempty"`
 	Instructions string        `json:"instructions,omitempty"`
-	DocTaskFork
+	// Effects marks work whose result lands outside the platform. "external" holds the
+	// task until a person approves it (durable spec 5.4). Empty is ordinary work.
+	Effects string `json:"effects,omitempty"`
 }
 
 // NeedsVerdict reports whether the task closes only with a verdict: a gate
@@ -613,7 +616,18 @@ func walkUnknownKeys(path string, value any, t reflect.Type, issues *[]Issue) {
 		if !ok {
 			return
 		}
-		fields := docFieldTypes(t)
+		fields := map[string]reflect.Type{}
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+			name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+			if name == "-" || !f.IsExported() {
+				continue
+			}
+			if name == "" {
+				name = f.Name
+			}
+			fields[name] = f.Type
+		}
 		names := make([]string, 0, len(obj))
 		for name := range obj {
 			names = append(names, name)
