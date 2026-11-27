@@ -259,9 +259,10 @@
      "pattern": "featureflags\\.RequireDurableDependencies\\("
     },
     {
-     "kind": "matches",
+     "kind": "hookCall",
      "path": "server/cmd/server/main.go",
-     "pattern": "registerDurableShadowJobs\\("
+     "symbol": "registerDurableShadowJobs",
+     "count": 1
     }
    ]
   },
