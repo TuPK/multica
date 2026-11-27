@@ -155,7 +155,14 @@
       "pending_now": "Pendiente · se cierra pronto",
       "archive": "Archivar criterio",
       "archived": "Criterio archivado.",
-      "archive_failed": "No se pudo archivar el criterio."
+      "archive_failed": "No se pudo archivar el criterio.",
+      "rubric_label": "Rúbrica",
+      "run_label": "Comando a ejecutar",
+      "expect_exit_label": "Código de salida esperado (opcional)",
+      "artifact_kind_label": "Tipo de documento",
+      "metric_key_label": "Clave de la métrica",
+      "metric_value_label": "Al menos",
+      "within_days_label": "En un plazo de (días)"
     },
     "tab": {
       "coverage": "Cobertura verificada",

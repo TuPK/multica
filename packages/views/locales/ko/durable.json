@@ -155,7 +155,14 @@
       "pending_now": "보류 중 · 곧 확정",
       "archive": "기준 보관",
       "archived": "기준을 보관했습니다.",
-      "archive_failed": "기준을 보관하지 못했습니다."
+      "archive_failed": "기준을 보관하지 못했습니다.",
+      "rubric_label": "채점 기준",
+      "run_label": "실행할 명령",
+      "expect_exit_label": "예상 종료 코드(선택)",
+      "artifact_kind_label": "문서 종류",
+      "metric_key_label": "지표 키",
+      "metric_value_label": "이상",
+      "within_days_label": "기간(일)"
     },
     "tab": {
       "coverage": "검증 범위",

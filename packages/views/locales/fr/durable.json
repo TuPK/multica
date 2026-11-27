@@ -155,7 +155,14 @@
       "pending_now": "En attente · clôture imminente",
       "archive": "Archiver le critère",
       "archived": "Critère archivé.",
-      "archive_failed": "Impossible d'archiver le critère."
+      "archive_failed": "Impossible d'archiver le critère.",
+      "rubric_label": "Grille d'évaluation",
+      "run_label": "Commande à exécuter",
+      "expect_exit_label": "Code de sortie attendu (facultatif)",
+      "artifact_kind_label": "Type de document",
+      "metric_key_label": "Clé de la métrique",
+      "metric_value_label": "Au moins",
+      "within_days_label": "Dans les (jours)"
     },
     "tab": {
       "coverage": "Couverture vérifiée",

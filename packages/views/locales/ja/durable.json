@@ -155,7 +155,14 @@
       "pending_now": "保留中 · まもなく確定",
       "archive": "基準をアーカイブ",
       "archived": "基準をアーカイブしました。",
-      "archive_failed": "基準をアーカイブできませんでした。"
+      "archive_failed": "基準をアーカイブできませんでした。",
+      "rubric_label": "採点基準",
+      "run_label": "実行するコマンド",
+      "expect_exit_label": "期待する終了コード（任意）",
+      "artifact_kind_label": "ドキュメントの種類",
+      "metric_key_label": "指標キー",
+      "metric_value_label": "以上",
+      "within_days_label": "期間（日）"
     },
     "tab": {
       "coverage": "検証カバー率",

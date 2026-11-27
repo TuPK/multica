@@ -155,7 +155,14 @@
       "pending_now": "Đang chờ · sắp chốt",
       "archive": "Lưu trữ tiêu chí",
       "archived": "Đã lưu trữ tiêu chí.",
-      "archive_failed": "Không lưu trữ được tiêu chí."
+      "archive_failed": "Không lưu trữ được tiêu chí.",
+      "rubric_label": "Tiêu chí chấm",
+      "run_label": "Lệnh cần chạy",
+      "expect_exit_label": "Mã thoát mong đợi (không bắt buộc)",
+      "artifact_kind_label": "Loại tài liệu",
+      "metric_key_label": "Khóa chỉ số",
+      "metric_value_label": "Tối thiểu",
+      "within_days_label": "Trong vòng (ngày)"
     },
     "tab": {
       "coverage": "Độ phủ kiểm chứng",

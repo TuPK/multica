@@ -5,12 +5,15 @@ import { toast } from "sonner";
 import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import {
   CHECK_KINDS,
+  checkSpecFor,
+  emptyCheckSpecFields,
   useAddCriterion,
   useArchiveCriterion,
   useIssueCriteria,
   useIssueOutcome,
   useOutcome,
   type CheckKind,
+  type CheckSpecFields,
   type Criterion,
   type Outcome,
   type Verification,
@@ -28,6 +31,7 @@ import {
 } from "@multica/ui/components/ui/dialog";
 import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
+import { Textarea } from "@multica/ui/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { Archive, Plus } from "@multica/ui/icons";
 import { useReducedMotion } from "@multica/core/appearance";
@@ -213,13 +217,19 @@ function AddCriterionForm({ wsId, issueId, onDone }: { wsId: string; issueId: st
   const { t } = useT("durable");
   const [text, setText] = useState("");
   const [checkKind, setCheckKind] = useState<CheckKind>("manual");
+  const [fields, setFields] = useState<CheckSpecFields>(emptyCheckSpecFields);
   const add = useAddCriterion(wsId, issueId);
-  const canSubmit = text.trim() !== "" && !add.isPending;
+  const spec = checkSpecFor(checkKind, fields);
+  const canSubmit = text.trim() !== "" && spec.ok && !add.isPending;
+
+  const changeField = (key: keyof CheckSpecFields, value: string) => {
+    setFields((previous) => ({ ...previous, [key]: value }));
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!canSubmit) return;
-    add.mutateAsync({ text: text.trim(), check_kind: checkKind }).then(
+    if (!canSubmit || !spec.ok) return;
+    add.mutateAsync({ text: text.trim(), check_kind: checkKind, check_spec: spec.spec }).then(
       () => {
         toast.success(t(($) => $.outcomes.acceptance.added));
         onDone();
@@ -269,6 +279,7 @@ function AddCriterionForm({ wsId, issueId, onDone }: { wsId: string; issueId: st
           </SelectContent>
         </Select>
       </div>
+      <CheckFields kind={checkKind} fields={fields} disabled={add.isPending} onChange={changeField} />
       <DialogFooter>
         <DialogClose render={<Button variant="outline" />}>{t(($) => $.outcomes.cancel)}</DialogClose>
         <Button type="submit" disabled={!canSubmit} aria-busy={add.isPending}>
@@ -277,6 +288,74 @@ function AddCriterionForm({ wsId, issueId, onDone }: { wsId: string; issueId: st
       </DialogFooter>
     </form>
   );
+}
+
+// The inputs a check kind needs (durable spec 2.5). The rules they enforce are in checkSpecFor, so
+// the submit button stays disabled until the chosen kind's fields are valid.
+function CheckFields({
+  kind,
+  fields,
+  disabled,
+  onChange,
+}: {
+  kind: CheckKind;
+  fields: CheckSpecFields;
+  disabled: boolean;
+  onChange: (key: keyof CheckSpecFields, value: string) => void;
+}) {
+  const { t } = useT("durable");
+  const field = (
+    key: keyof CheckSpecFields,
+    id: string,
+    label: string,
+    inputMode?: "numeric" | "decimal",
+  ) => (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        value={fields[key]}
+        disabled={disabled}
+        inputMode={inputMode}
+        onChange={(event) => onChange(key, event.target.value)}
+      />
+    </div>
+  );
+
+  switch (kind) {
+    case "agent_judgment":
+      return (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="acceptance-rubric">{t(($) => $.outcomes.acceptance.rubric_label)}</Label>
+          <Textarea
+            id="acceptance-rubric"
+            rows={4}
+            value={fields.rubric}
+            disabled={disabled}
+            onChange={(event) => onChange("rubric", event.target.value)}
+          />
+        </div>
+      );
+    case "command":
+      return (
+        <>
+          {field("run", "acceptance-run", t(($) => $.outcomes.acceptance.run_label))}
+          {field("expectExit", "acceptance-expect-exit", t(($) => $.outcomes.acceptance.expect_exit_label), "numeric")}
+        </>
+      );
+    case "artifact":
+      return field("artifactKind", "acceptance-artifact-kind", t(($) => $.outcomes.acceptance.artifact_kind_label));
+    case "metric":
+      return (
+        <>
+          {field("metricKey", "acceptance-metric-key", t(($) => $.outcomes.acceptance.metric_key_label))}
+          {field("metricValue", "acceptance-metric-value", t(($) => $.outcomes.acceptance.metric_value_label), "decimal")}
+          {field("withinDays", "acceptance-within-days", t(($) => $.outcomes.acceptance.within_days_label), "numeric")}
+        </>
+      );
+    case "manual":
+      return null;
+  }
 }
 
 /** The result of each criterion's latest check. A criterion never checked has no entry. */

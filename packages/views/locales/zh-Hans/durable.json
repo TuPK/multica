@@ -155,7 +155,14 @@
       "pending_now": "待定 · 即将结算",
       "archive": "归档标准",
       "archived": "已归档标准。",
-      "archive_failed": "无法归档标准。"
+      "archive_failed": "无法归档标准。",
+      "rubric_label": "评分标准",
+      "run_label": "要运行的命令",
+      "expect_exit_label": "预期退出码（可选）",
+      "artifact_kind_label": "文档类型",
+      "metric_key_label": "指标键",
+      "metric_value_label": "不低于",
+      "within_days_label": "时限（天）"
     },
     "tab": {
       "coverage": "验证覆盖率",

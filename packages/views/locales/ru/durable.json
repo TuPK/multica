@@ -155,7 +155,14 @@
       "pending_now": "Ожидает · итог скоро",
       "archive": "Архивировать критерий",
       "archived": "Критерий архивирован.",
-      "archive_failed": "Не удалось архивировать критерий."
+      "archive_failed": "Не удалось архивировать критерий.",
+      "rubric_label": "Критерии оценки",
+      "run_label": "Команда для запуска",
+      "expect_exit_label": "Ожидаемый код выхода (необязательно)",
+      "artifact_kind_label": "Тип документа",
+      "metric_key_label": "Ключ метрики",
+      "metric_value_label": "Не менее",
+      "within_days_label": "За дней"
     },
     "tab": {
       "coverage": "Охват проверкой",

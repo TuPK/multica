@@ -155,7 +155,14 @@
       "pending_now": "待定 · 即將結算",
       "archive": "封存標準",
       "archived": "已封存標準。",
-      "archive_failed": "無法封存標準。"
+      "archive_failed": "無法封存標準。",
+      "rubric_label": "評分標準",
+      "run_label": "要執行的指令",
+      "expect_exit_label": "預期結束代碼（選填）",
+      "artifact_kind_label": "文件類型",
+      "metric_key_label": "指標鍵",
+      "metric_value_label": "不低於",
+      "within_days_label": "時限（天）"
     },
     "tab": {
       "coverage": "驗證覆蓋率",
