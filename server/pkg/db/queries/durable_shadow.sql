@@ -93,14 +93,16 @@ WHERE workspace_id = @workspace_id AND config_id = @config_id
 ORDER BY created_at, id;
 
 -- name: SetShadowTaskContext :execrows
--- Marks a shadow task with its run and pair, while the task is not yet claimed. The task
--- is then in the shadow run class, and budgets hold it.
+-- Marks a shadow task with its run, pair, purpose and skill-omission policy, while the task is
+-- not yet claimed. The task is then in the shadow run class, and budgets hold it.
 UPDATE agent_task_queue
 SET context = COALESCE(context, '{}'::jsonb)
     || jsonb_build_object(
         'durable_kind', 'shadow',
         'shadow_config_id', sqlc.arg(shadow_config_id)::text,
-        'shadow_pair_id', sqlc.arg(shadow_pair_id)::text)
+        'shadow_pair_id', sqlc.arg(shadow_pair_id)::text,
+        'shadow_purpose', sqlc.arg(shadow_purpose)::text,
+        'omit_skills', sqlc.arg(omit_skills)::boolean)
 WHERE id = sqlc.arg(id)
   AND status IN ('queued', 'dispatched', 'deferred');
 
@@ -147,3 +149,24 @@ UPDATE agent_task_queue
 SET context = COALESCE(context, '{}'::jsonb) || jsonb_build_object('omit_skills', false)
 WHERE id = sqlc.arg(id)
   AND status IN ('queued', 'dispatched', 'deferred');
+
+-- name: ListUnjudgedCompletedShadowPairs :many
+-- Pairs of running or completed shadow runs whose primary and shadow tasks have both
+-- completed, with no comparison written and no juror task opened yet.
+SELECT sp.*
+FROM shadow_pair sp
+JOIN shadow_config sc ON sc.id = sp.config_id AND sc.workspace_id = sp.workspace_id
+JOIN agent_task_queue pt ON pt.id = sp.primary_task_id
+JOIN agent_task_queue st ON st.id = sp.shadow_task_id
+WHERE sp.comparison IS NULL
+  AND sp.shadow_task_id IS NOT NULL
+  AND sc.state IN ('running', 'completed')
+  AND pt.status = 'completed'
+  AND st.status = 'completed'
+  AND NOT EXISTS (
+      SELECT 1 FROM agent_task_queue jt
+      WHERE jt.context->>'durable_kind' = 'verification'
+        AND jt.context->>'shadow_pair_id' = sp.id::text
+  )
+ORDER BY sp.created_at, sp.id
+LIMIT @row_limit;

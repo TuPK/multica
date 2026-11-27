@@ -110,8 +110,8 @@ func TestShadowRunFromTheClaimToItsVerdictAndCompletion(t *testing.T) {
 		if len(shadowClaim.Tasks) != 1 || shadowClaim.Tasks[0].ID != shadowTask {
 			t.Fatalf("pair %d: shadow-v1 claim = %+v, want the shadow task %s", pair, shadowClaim.Tasks, shadowTask)
 		}
-		if !shadowClaim.Tasks[0].Shadow || !shadowClaim.Tasks[0].OmitSkills {
-			t.Fatalf("pair %d: claimed shadow task = %+v, want shadow and omit_skills", pair, shadowClaim.Tasks[0])
+		if !shadowClaim.Tasks[0].Shadow || shadowClaim.Tasks[0].OmitSkills {
+			t.Fatalf("pair %d: claimed model_trial shadow task = %+v, want shadow=true and omit_skills=false", pair, shadowClaim.Tasks[0])
 		}
 
 		shadowE2ETaskCall(t, primary, "start", map[string]any{}, testHandler.StartTask)
@@ -239,4 +239,138 @@ func shadowE2ETaskCall(t *testing.T, taskID, action string, body map[string]any,
 	if w.Code != http.StatusOK {
 		t.Fatalf("%s task %s: status %d: %s", action, taskID, w.Code, w.Body.String())
 	}
+}
+
+// TestShadowClaimSkillsPolicyInHandler verifies that a model_trial shadow claim keeps the seat's
+// skills (OmitSkills=false) while keeping write isolation (Shadow=true, ProjectResources=nil),
+// necessity_test omits skills, and the normal non-shadow path is unchanged (durable spec 9.4, 10.2).
+func TestShadowClaimSkillsPolicyInHandler(t *testing.T) {
+	t.Run("applyShadowClaimFields by purpose and normal path", func(t *testing.T) {
+		sampleSkills := []service.AgentSkillData{{ID: "s1", Name: "seat-skill"}}
+		sampleRefs := []service.AgentSkillRefData{{ID: "s1", Name: "seat-skill"}}
+		sampleResources := []ProjectResourceData{{ID: "r1", ResourceType: "git_repo"}}
+
+		// model_trial: shadow=true, omit_skills=false, skills kept, project resources stripped.
+		mt := AgentTaskResponse{
+			Agent:            &TaskAgentData{Skills: sampleSkills, SkillRefs: sampleRefs},
+			ProjectResources: sampleResources,
+		}
+		applyShadowClaimFields(&mt, []byte(`{"durable_kind":"shadow","shadow_purpose":"model_trial","omit_skills":false}`))
+		if !mt.Shadow || mt.OmitSkills {
+			t.Fatalf("model_trial: shadow=%v omit_skills=%v, want true/false", mt.Shadow, mt.OmitSkills)
+		}
+		if len(mt.Agent.Skills) != 1 || len(mt.Agent.SkillRefs) != 1 {
+			t.Fatalf("model_trial stripped skills: skills=%v refs=%v", mt.Agent.Skills, mt.Agent.SkillRefs)
+		}
+		if mt.ProjectResources != nil {
+			t.Fatalf("model_trial kept project resources: %v", mt.ProjectResources)
+		}
+
+		// necessity_test: shadow=true, omit_skills=true, skills stripped, project resources stripped.
+		nt := AgentTaskResponse{
+			Agent:            &TaskAgentData{Skills: sampleSkills, SkillRefs: sampleRefs},
+			ProjectResources: sampleResources,
+		}
+		applyShadowClaimFields(&nt, []byte(`{"durable_kind":"shadow","shadow_purpose":"necessity_test","omit_skills":true}`))
+		if !nt.Shadow || !nt.OmitSkills {
+			t.Fatalf("necessity_test: shadow=%v omit_skills=%v, want true/true", nt.Shadow, nt.OmitSkills)
+		}
+		if nt.Agent.Skills != nil || nt.Agent.SkillRefs != nil {
+			t.Fatalf("necessity_test kept skills: skills=%v refs=%v", nt.Agent.Skills, nt.Agent.SkillRefs)
+		}
+		if nt.ProjectResources != nil {
+			t.Fatalf("necessity_test kept project resources: %v", nt.ProjectResources)
+		}
+
+		// normal (non-shadow) task: untouched.
+		plain := AgentTaskResponse{
+			Agent:            &TaskAgentData{Skills: sampleSkills, SkillRefs: sampleRefs},
+			ProjectResources: sampleResources,
+		}
+		applyShadowClaimFields(&plain, []byte(`{}`))
+		if plain.Shadow || plain.OmitSkills {
+			t.Fatalf("normal task: shadow=%v omit_skills=%v, want false/false", plain.Shadow, plain.OmitSkills)
+		}
+		if len(plain.Agent.Skills) != 1 || len(plain.Agent.SkillRefs) != 1 || len(plain.ProjectResources) != 1 {
+			t.Fatalf("normal task mutated: skills=%v refs=%v resources=%v", plain.Agent.Skills, plain.Agent.SkillRefs, plain.ProjectResources)
+		}
+	})
+
+	t.Run("model_trial claim handler returns seat skills with omit_skills=false", func(t *testing.T) {
+		if testHandler == nil || testPool == nil {
+			t.Skip("database not available")
+		}
+		withFeatureFlag(t, testHandler, featureflags.DurableSeats, true)
+		shadowE2EWireFlags(t)
+		ctx := context.Background()
+		suffix := uuid.NewString()[:8]
+
+		seatRuntime := createClaimReclaimRuntime(t, ctx, "shadow skills seat "+suffix)
+		seatAgent, _ := createClaimReclaimAgentAndIssue(t, ctx, seatRuntime, "shadow skills seat "+suffix)
+		candidateRuntime := createClaimReclaimRuntime(t, ctx, "shadow skills cand "+suffix)
+
+		skillName := "shadow-seat-skill-" + suffix
+		var skillID string
+		if err := testPool.QueryRow(ctx, `
+			INSERT INTO skill (workspace_id, name, description, content)
+			VALUES ($1, $2, 'seat skill', '# seat skill')
+			RETURNING id::text`, testWorkspaceID, skillName).Scan(&skillID); err != nil {
+			t.Fatalf("insert skill: %v", err)
+		}
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM agent_skill WHERE skill_id = $1`, skillID)
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM skill WHERE id = $1`, skillID)
+		})
+		if _, err := testPool.Exec(ctx, `INSERT INTO agent_skill (agent_id, skill_id) VALUES ($1, $2)`, seatAgent, skillID); err != nil {
+			t.Fatalf("bind seat skill: %v", err)
+		}
+
+		w := httptest.NewRecorder()
+		req := seatRequest("POST", "/api/agents/"+seatAgent+"/shadow", testWorkspaceID, map[string]any{
+			"candidate_runtime_id": candidateRuntime, "candidate_model": "candidate-" + suffix,
+			"sample_rate": 1, "target_pairs": 5, "confirm_cost": true,
+		}, "")
+		req = withURLParam(req, "id", seatAgent)
+		testHandler.StartShadowRun(w, req)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("start shadow run: status %d: %s", w.Code, w.Body.String())
+		}
+
+		issue := shadowE2EIssue(t, ctx, "shadow skills issue "+suffix)
+		primary := seedQueuedIssueTask(t, ctx, seatAgent, seatRuntime, issue)
+
+		// Claim primary -> creates shadow pair and task.
+		primaryClaim := testutil.Decode[struct {
+			Tasks []AgentTaskResponse `json:"tasks"`
+		}](t, testHandler.ClaimTasksByRuntime,
+			batchClaimRequest(testWorkspaceID, []string{seatRuntime}, 1, protocol.DaemonCapabilityShadowV1), http.StatusOK)
+		if len(primaryClaim.Tasks) != 1 || primaryClaim.Tasks[0].ID != primary {
+			t.Fatalf("primary claim = %+v, want %s", primaryClaim.Tasks, primary)
+		}
+
+		// Claim shadow task -> must keep seat's skill and set Shadow=true, OmitSkills=false.
+		shadowClaim := testutil.Decode[struct {
+			Tasks []AgentTaskResponse `json:"tasks"`
+		}](t, testHandler.ClaimTasksByRuntime,
+			batchClaimRequest(testWorkspaceID, []string{candidateRuntime}, 1, protocol.DaemonCapabilityShadowV1), http.StatusOK)
+		if len(shadowClaim.Tasks) != 1 {
+			t.Fatalf("shadow claim got %d tasks, want 1", len(shadowClaim.Tasks))
+		}
+		got := shadowClaim.Tasks[0]
+		if !got.Shadow || got.OmitSkills {
+			t.Fatalf("model_trial shadow claim: shadow=%v omit_skills=%v, want true/false", got.Shadow, got.OmitSkills)
+		}
+		if got.Agent == nil {
+			t.Fatalf("model_trial shadow claim has nil agent")
+		}
+		hasSeatSkill := false
+		for _, sk := range got.Agent.Skills {
+			if sk.Name == skillName {
+				hasSeatSkill = true
+			}
+		}
+		if !hasSeatSkill {
+			t.Fatalf("model_trial shadow claim missing seat skill %q; got skills=%+v", skillName, got.Agent.Skills)
+		}
+	})
 }

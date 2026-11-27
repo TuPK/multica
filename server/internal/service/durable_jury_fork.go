@@ -13,9 +13,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 	"sort"
 )
 
@@ -124,11 +126,11 @@ const (
 var (
 	ErrJuryPanelNotFound = errors.New("jury_panel_not_found")
 	ErrJuryNotDecidable  = errors.New("jury_not_decidable")
+	ErrJuryAskerMissing  = errors.New("durable jury: no asker configured")
 )
 
 // JuryAsker puts a panel that needs the person's decision to them, in the transaction
-// that moves the panel. It is the attention ledger's question (spec 7.3), so it is nil
-// until that ledger is wired; a nil asker leaves a split or escalated panel waiting.
+// that moves the panel (attention ledger, spec 7.3).
 type JuryAsker interface {
 	Ask(ctx context.Context, q *db.Queries, panel db.JuryPanel, reason string) error
 }
@@ -138,6 +140,7 @@ type JuryAsker interface {
 type JuryService struct {
 	Queries   *db.Queries
 	TxStarter TxStarter
+	Flags     *featureflag.Service
 	// Tasks gives each juror its check. It is needed to open a panel with jurors.
 	Tasks *TaskService
 	Asker JuryAsker
@@ -146,10 +149,15 @@ type JuryService struct {
 }
 
 // NewJuryService is the jury the server and the handlers share: it reads the pool from
-// the workspace settings and gives jurors their checks through tasks. Its asker is
-// wired with the attention ledger (spec 7.3) when that lands.
+// the workspace settings, gives jurors their checks through tasks, and puts split or
+// escalated panels to the decider through the attention ledger (spec 7.3).
 func NewJuryService(q *db.Queries, tx TxStarter, tasks *TaskService) *JuryService {
-	return &JuryService{Queries: q, TxStarter: tx, Tasks: tasks}
+	s := &JuryService{Queries: q, TxStarter: tx, Tasks: tasks}
+	s.Asker = &attentionJuryAsker{
+		flags: func() *featureflag.Service { return s.Flags },
+		now:   s.now,
+	}
+	return s
 }
 
 func (s *JuryService) now() time.Time {
@@ -219,12 +227,24 @@ func juryRequested(spec []byte) bool {
 
 // Open gives a criterion its panel: the jurors PickJurors chooses from the pool, and a
 // verification task for each. A pool with fewer than two jurors for the doer escalates
-// the panel at once, to the person. Opening an existing panel does nothing.
+// the panel at once, to the person. Opening an existing open panel ensures every seated
+// juror has its verification task; opening a closed panel does nothing.
 func (s *JuryService) Open(ctx context.Context, o db.WorkOutcome, c db.AcceptanceCriterion) error {
-	if _, err := s.Queries.GetJuryPanelForCriterion(ctx, db.GetJuryPanelForCriterionParams{
-		WorkspaceID: o.WorkspaceID, OutcomeID: o.ID, CriterionID: c.ID,
-	}); err == nil {
+	if s.Flags != nil && !featureflags.DurableSeatsEnabled(ctx, s.Flags) {
 		return nil
+	}
+	existing, err := s.Queries.GetJuryPanelForCriterion(ctx, db.GetJuryPanelForCriterionParams{
+		WorkspaceID: o.WorkspaceID, OutcomeID: o.ID, CriterionID: c.ID,
+	})
+	if err == nil {
+		if existing.State != juryStateOpen {
+			return nil
+		}
+		issue, err := s.Queries.GetIssue(ctx, o.IssueID)
+		if err != nil {
+			return fmt.Errorf("load issue: %w", err)
+		}
+		return s.ensureJurorTasks(ctx, issue, o, existing)
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("load panel: %w", err)
 	}
@@ -269,15 +289,25 @@ func (s *JuryService) Open(ctx context.Context, o db.WorkOutcome, c db.Acceptanc
 		}
 		return nil
 	})
-	if err != nil || inserted == 0 || state == juryStateEscalated {
+	if err != nil {
 		return err
 	}
-	for _, j := range jurors {
-		if err := s.enqueueJuror(ctx, issue, o, panel.ID, j); err != nil {
-			return err
+	if inserted == 0 {
+		existing, err := s.Queries.GetJuryPanelForCriterion(ctx, db.GetJuryPanelForCriterionParams{
+			WorkspaceID: o.WorkspaceID, OutcomeID: o.ID, CriterionID: c.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("load panel: %w", err)
 		}
+		if existing.State != juryStateOpen {
+			return nil
+		}
+		return s.ensureJurorTasks(ctx, issue, o, existing)
 	}
-	return nil
+	if state == juryStateEscalated {
+		return nil
+	}
+	return s.ensureJurorTasks(ctx, issue, o, panel)
 }
 
 // OnVote takes one juror's check on a jury criterion. An unable check is replaced once,
@@ -286,6 +316,9 @@ func (s *JuryService) Open(ctx context.Context, o db.WorkOutcome, c db.Acceptanc
 // unanimous or split. A check on a criterion with no open panel is not a juror's and
 // does nothing.
 func (s *JuryService) OnVote(ctx context.Context, v db.OutcomeVerification) error {
+	if s.Flags != nil && !featureflags.DurableSeatsEnabled(ctx, s.Flags) {
+		return nil
+	}
 	panel, err := s.Queries.GetJuryPanelForCriterion(ctx, db.GetJuryPanelForCriterionParams{
 		WorkspaceID: v.WorkspaceID, OutcomeID: v.OutcomeID, CriterionID: v.CriterionID,
 	})
@@ -456,7 +489,7 @@ func (s *JuryService) stateParams(panel db.JuryPanel, state string, verdict, res
 
 func (s *JuryService) ask(ctx context.Context, q *db.Queries, panel db.JuryPanel) error {
 	if s.Asker == nil {
-		return nil
+		return fmt.Errorf("%w for panel %s", ErrJuryAskerMissing, util.UUIDToString(panel.ID))
 	}
 	if err := s.Asker.Ask(ctx, q, panel, juryAskReason); err != nil {
 		return fmt.Errorf("ask the person about panel %s: %w", util.UUIDToString(panel.ID), err)
@@ -478,6 +511,9 @@ func (s *JuryService) recordSplitRate(ctx context.Context, q *db.Queries, panel 
 // Timeout times out the open panels older than a day (spec 8.3). Their criteria become
 // unable; nobody is asked.
 func (s *JuryService) Timeout(ctx context.Context) error {
+	if s.Flags == nil || !featureflags.DurableSeatsEnabled(ctx, s.Flags) {
+		return nil
+	}
 	panels, err := s.Queries.ListStaleOpenJuryPanels(ctx, db.ListStaleOpenJuryPanelsParams{
 		Cutoff:   pgtype.Timestamptz{Time: s.now().Add(-juryTimeout), Valid: true},
 		RowLimit: juryTimeoutBatch,
@@ -595,24 +631,40 @@ func (s *JuryService) candidates(ctx context.Context, ws pgtype.UUID, issue db.I
 	return out, nil
 }
 
-// enqueueJuror gives one juror its verification task and marks it with the panel, so its
-// check is accepted for that panel and no other.
+// ensureJurorTasks makes sure every juror seated on an open panel has a verification
+// task marked with panel.ID. It is idempotent, so retrying Open after a partial
+// enqueue failure creates only the missing juror tasks.
+func (s *JuryService) ensureJurorTasks(ctx context.Context, issue db.Issue, o db.WorkOutcome, panel db.JuryPanel) error {
+	tasks, err := s.Queries.ListTasksByIssue(ctx, o.IssueID)
+	if err != nil {
+		return fmt.Errorf("list issue tasks: %w", err)
+	}
+	panelID := util.UUIDToString(panel.ID)
+	hasTask := make(map[string]bool, len(panel.JurorAgentIds))
+	for _, t := range tasks {
+		if juryPanelIDOf(t.Context) == panelID {
+			hasTask[util.UUIDToString(t.AgentID)] = true
+		}
+	}
+	for _, j := range panel.JurorAgentIds {
+		if hasTask[util.UUIDToString(j)] {
+			continue
+		}
+		if err := s.enqueueJuror(ctx, issue, o, panel.ID, j); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// enqueueJuror gives one juror its verification task and marks it with the panel in
+// one transaction, so its check is accepted for that panel and no other.
 func (s *JuryService) enqueueJuror(ctx context.Context, issue db.Issue, o db.WorkOutcome, panelID, juror pgtype.UUID) error {
 	if s.Tasks == nil {
 		return errors.New("durable jury: no task service to give a juror its check")
 	}
-	task, err := s.Tasks.EnqueueVerificationTask(ctx, issue, juror)
-	if err != nil {
+	if _, err := s.Tasks.EnqueueJurorTask(ctx, issue, juror, o.ID, panelID); err != nil {
 		return fmt.Errorf("enqueue juror task: %w", err)
-	}
-	n, err := s.Queries.SetJurorTaskContext(ctx, db.SetJurorTaskContextParams{
-		ID: task.ID, OutcomeID: util.UUIDToString(o.ID), JuryPanelID: util.UUIDToString(panelID),
-	})
-	if err != nil {
-		return fmt.Errorf("mark juror task: %w", err)
-	}
-	if n == 0 {
-		return fmt.Errorf("juror task %s was claimed before it was marked", util.UUIDToString(task.ID))
 	}
 	return nil
 }

@@ -257,7 +257,21 @@
      "kind": "matches",
      "path": "server/cmd/server/main.go",
      "pattern": "featureflags\\.RequireDurableDependencies\\("
+    },
+    {
+     "kind": "hookCall",
+     "path": "server/cmd/server/main.go",
+     "symbol": "registerDurableWiring",
+     "count": 1
     }
+   ]
+  },
+  {
+   "id": "inline:server/cmd/server/router.go:durable",
+   "why": "Keep durable service and route wiring in fork files.",
+   "checks": [
+    { "kind": "hookCall", "path": "server/cmd/server/router.go", "symbol": "WireDurableServices", "count": 1 },
+    { "kind": "hookCall", "path": "server/cmd/server/router.go", "symbol": "registerDurableEffectRoutes", "count": 1 }
    ]
   },
   {

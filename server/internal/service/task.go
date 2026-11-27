@@ -1525,10 +1525,18 @@ func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, ag
 }
 
 func (s *TaskService) enqueueMentionTaskWithCommentPlan(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID, coalescedCommentIDs []pgtype.UUID, isLeader bool, squadID pgtype.UUID, forceFreshSession bool, handoffNote string, actorUserID pgtype.UUID, rerunOfTaskID pgtype.UUID, origin RunOrigin, freshRerun, workflowHandoff bool) (db.AgentTaskQueue, error) {
-	if err := guardIssueNotInTriage(ctx, s.Queries, issue.ID, origin); err != nil {
+	return s.enqueueMentionTaskWithQueries(ctx, issue, agentID, triggerCommentID, coalescedCommentIDs, isLeader, squadID, forceFreshSession, handoffNote, actorUserID, rerunOfTaskID, origin, freshRerun, workflowHandoff, false, nil)
+}
+
+func (s *TaskService) enqueueMentionTaskWithQueries(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID, coalescedCommentIDs []pgtype.UUID, isLeader bool, squadID pgtype.UUID, forceFreshSession bool, handoffNote string, actorUserID pgtype.UUID, rerunOfTaskID pgtype.UUID, origin RunOrigin, freshRerun, workflowHandoff, isShadow bool, txQueries *db.Queries) (db.AgentTaskQueue, error) {
+	queries := s.Queries
+	if txQueries != nil {
+		queries = txQueries
+	}
+	if err := guardIssueNotInTriage(ctx, queries, issue.ID, origin); err != nil {
 		return db.AgentTaskQueue{}, err
 	}
-	agent, err := s.Queries.GetAgent(ctx, agentID)
+	agent, err := queries.GetAgent(ctx, agentID)
 	if err != nil {
 		slog.Error("mention task enqueue failed: agent not found", "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "error", err)
 		return db.AgentTaskQueue{}, fmt.Errorf("load agent: %w", err)
@@ -1558,7 +1566,10 @@ func (s *TaskService) enqueueMentionTaskWithCommentPlan(ctx context.Context, iss
 		return db.AgentTaskQueue{}, err
 	}
 	originatorUserID := attr.UserID
-	runtimeMCPOverlay := s.buildRuntimeMCPOverlay(ctx, originatorUserID, agent)
+	var runtimeMCPOverlay runtimeMCPOverlayData
+	if !isShadow {
+		runtimeMCPOverlay = s.buildRuntimeMCPOverlay(ctx, originatorUserID, agent)
+	}
 	attrSource, attrDelegatedFrom, attrEvidenceKind, attrEvidenceRef := attributionCreateParams(attr)
 	resolvedSquadID := s.resolveInheritedSquadID(ctx, issue, agentID, squadID, attrDelegatedFrom)
 	params := db.CreateAgentTaskParams{
@@ -1591,7 +1602,12 @@ func (s *TaskService) enqueueMentionTaskWithCommentPlan(ctx context.Context, iss
 		HeadSha: headShaText(s.ResolveIssueReviewSHA(ctx, issue.ID)),
 	}
 	var task db.AgentTaskQueue
-	if workflowHandoff {
+	if txQueries != nil {
+		task, err = txQueries.CreateAgentTask(ctx, params)
+		if err == nil {
+			err = txQueries.AcknowledgeIssueBlockerRelease(ctx, task.ID)
+		}
+	} else if workflowHandoff {
 		task, err = s.createWorkflowSquadHandoffTask(ctx, issue, params)
 	} else {
 		task, err = s.createIssueTaskWithBlockerRelease(ctx, origin, func(q *db.Queries) (db.AgentTaskQueue, error) {
@@ -1610,6 +1626,10 @@ func (s *TaskService) enqueueMentionTaskWithCommentPlan(ctx context.Context, iss
 		}
 		slog.Error("mention task enqueue failed", "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "error", err)
 		return db.AgentTaskQueue{}, fmt.Errorf("create task: %w", err)
+	}
+
+	if txQueries != nil {
+		return task, nil
 	}
 
 	slog.Info("mention task enqueued", "task_id", util.UUIDToString(task.ID), "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "is_leader_task", isLeader)
@@ -5115,7 +5135,7 @@ func (s *TaskService) CompleteTaskWithBranchMerge(ctx context.Context, taskID pg
 		})
 		// A scheduled wakeup check that found nothing new ends with a check-in
 		// instead of a comment (see IssueWakeupService.CheckIn).
-		if !suppressNoActionComment && !agentCommented && !HasWakeupCheckin(task) {
+		if !suppressNoActionComment && !agentCommented && !HasWakeupCheckin(task) && !IsShadowTaskContext(task.Context) {
 			var payload protocol.TaskCompletedPayload
 			if err := json.Unmarshal(result, &payload); err == nil {
 				if payload.Output != "" {

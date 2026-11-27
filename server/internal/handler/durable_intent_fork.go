@@ -116,7 +116,7 @@ func (h *Handler) ListIntents(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
 		return
 	}
-	if h.Intents == nil {
+	if h.durable.Intents == nil {
 		writeError(w, http.StatusServiceUnavailable, "intents are not configured")
 		return
 	}
@@ -133,7 +133,7 @@ func (h *Handler) ListIntents(w http.ResponseWriter, r *http.Request) {
 		}
 		limit = int32(n)
 	}
-	rows, err := h.Intents.List(r.Context(), wsUUID, r.URL.Query().Get("state"), limit)
+	rows, err := h.durable.Intents.List(r.Context(), wsUUID, r.URL.Query().Get("state"), limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list intents")
 		return
@@ -171,11 +171,11 @@ func (h *Handler) ApproveIntent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if h.Intents == nil {
+	if h.durable.Intents == nil {
 		writeError(w, http.StatusServiceUnavailable, "intents are not configured")
 		return
 	}
-	it, err := h.Intents.Approve(r.Context(), wsUUID, member.UserID, id, req.EditedCall, strings.TrimSpace(req.Note))
+	it, err := h.durable.Intents.Approve(r.Context(), wsUUID, member.UserID, id, req.EditedCall, strings.TrimSpace(req.Note))
 	if err != nil {
 		intentError(w, err)
 		return
@@ -207,11 +207,11 @@ func (h *Handler) RejectIntent(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if h.Intents == nil {
+	if h.durable.Intents == nil {
 		writeError(w, http.StatusServiceUnavailable, "intents are not configured")
 		return
 	}
-	it, err := h.Intents.Reject(r.Context(), wsUUID, member.UserID, id, req.Note)
+	it, err := h.durable.Intents.Reject(r.Context(), wsUUID, member.UserID, id, req.Note)
 	if err != nil {
 		intentError(w, err)
 		return
@@ -240,7 +240,7 @@ func (h *Handler) ApproveIntentBatch(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "ids must list between 1 and 50 intents")
 		return
 	}
-	if h.Intents == nil {
+	if h.durable.Intents == nil {
 		writeError(w, http.StatusServiceUnavailable, "intents are not configured")
 		return
 	}
@@ -261,7 +261,7 @@ func (h *Handler) ApproveIntentBatch(w http.ResponseWriter, r *http.Request) {
 			out = append(out, result{ID: raw, Error: "only the owner, an admin, or the member whose action this is can decide on it", Status: http.StatusForbidden})
 			continue
 		}
-		it, err := h.Intents.Approve(r.Context(), wsUUID, member.UserID, id, nil, "")
+		it, err := h.durable.Intents.Approve(r.Context(), wsUUID, member.UserID, id, nil, "")
 		if err != nil {
 			status := http.StatusInternalServerError
 			switch {

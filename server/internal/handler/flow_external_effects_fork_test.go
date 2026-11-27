@@ -18,9 +18,9 @@ func TestExternalFlowTaskWaitsForApproval(t *testing.T) {
 		collect[0]["effects"] = "external"
 	})
 	intents := &service.IntentService{Queries: testHandler.Queries, TxStarter: testPool, Flags: effectFlagsOn()}
-	previous := testHandler.Intents
-	testHandler.Intents = intents
-	t.Cleanup(func() { testHandler.Intents = previous })
+	previous := testHandler.durable.Intents
+	testHandler.durable.Intents = intents
+	t.Cleanup(func() { testHandler.durable.Intents = previous })
 
 	request := f.newRequest(t)
 	t.Cleanup(func() {

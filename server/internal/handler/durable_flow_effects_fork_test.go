@@ -16,9 +16,9 @@ func TestFlowExternalTaskWaitsForApproval(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			withFeatureFlag(t, testHandler, featureflags.DurableEffects, enabled)
-			old := testHandler.Intents
-			testHandler.Intents = &service.IntentService{Queries: testHandler.Queries, TxStarter: testPool, Flags: testHandler.FeatureFlags, Tasks: testHandler.TaskService}
-			t.Cleanup(func() { testHandler.Intents = old })
+			old := testHandler.durable.Intents
+			testHandler.durable.Intents = &service.IntentService{Queries: testHandler.Queries, TxStarter: testPool, Flags: testHandler.FeatureFlags, Tasks: testHandler.TaskService}
+			t.Cleanup(func() { testHandler.durable.Intents = old })
 			rig := newGraphRig(t, "trade", graphRigOpts{Mutate: func(doc map[string]any) {
 				for _, step := range asMaps(doc["steps"]) {
 					if step["key"] == "collect" {
@@ -56,7 +56,7 @@ func TestFlowExternalTaskWaitsForApproval(t *testing.T) {
 			if err != nil {
 				t.Fatalf("pending approval intent: %v", err)
 			}
-			if _, err := testHandler.Intents.Approve(context.Background(), parseUUID(testWorkspaceID), parseUUID(testUserID), parseUUID(intent), nil, "approved"); err != nil {
+			if _, err := testHandler.durable.Intents.Approve(context.Background(), parseUUID(testWorkspaceID), parseUUID(testUserID), parseUUID(intent), nil, "approved"); err != nil {
 				t.Fatalf("approve: %v", err)
 			}
 			if n := queuedRuns(t, issue); n == 0 {

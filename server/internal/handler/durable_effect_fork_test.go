@@ -55,7 +55,7 @@ func encodeEffectBody(t *testing.T, body any) string {
 func effectsOnFixture(t *testing.T) *appsFixture {
 	t.Helper()
 	f := newAppsFixture(t, withEffectGate(true))
-	f.h.Effects = &service.EffectService{Queries: testHandler.Queries, Flags: effectFlagsOn()}
+	f.h.durable.Effects = &service.EffectService{Queries: testHandler.Queries, Flags: effectFlagsOn()}
 	f.executionAccount(t, "personal")
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `DELETE FROM effect_event WHERE workspace_id = $1 AND target LIKE 'gmail/%'`, testWorkspaceID)
@@ -295,7 +295,7 @@ func TestUndoFlagOffDoesNotCallProvider(t *testing.T) {
 	id := seedGmailDraftEffect(t, f, time.Now().Add(time.Hour), true)
 	off := featureflag.NewStaticProvider()
 	off.Set(featureflags.DurableEffects, featureflag.Rule{Default: false})
-	f.h.Effects = &service.EffectService{Queries: testHandler.Queries, Flags: featureflag.NewService(off)}
+	f.h.durable.Effects = &service.EffectService{Queries: testHandler.Queries, Flags: featureflag.NewService(off)}
 	f.h.FeatureFlags = featureflag.NewService(off)
 	w := httptest.NewRecorder()
 	f.h.UndoEffect(w, effectUndoRequest(t, id, testUserID))

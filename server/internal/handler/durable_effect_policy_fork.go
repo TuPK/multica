@@ -63,11 +63,11 @@ func (h *Handler) GetEffectPolicy(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if h.EffectPolicy == nil {
+	if h.durable.EffectPolicy == nil {
 		writeError(w, http.StatusServiceUnavailable, "the effect policy is not configured")
 		return
 	}
-	overrides, err := h.EffectPolicy.Overrides(r.Context(), wsUUID)
+	overrides, err := h.durable.EffectPolicy.Overrides(r.Context(), wsUUID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load the effect policy")
 		return
@@ -108,7 +108,7 @@ func (h *Handler) SaveEffectPolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if h.EffectPolicy == nil {
+	if h.durable.EffectPolicy == nil {
 		writeError(w, http.StatusServiceUnavailable, "the effect policy is not configured")
 		return
 	}
@@ -126,7 +126,7 @@ func (h *Handler) SaveEffectPolicy(w http.ResponseWriter, r *http.Request) {
 		Reversibility: req.Reversibility,
 		Decision:      req.Decision,
 	}
-	if err := h.EffectPolicy.Save(r.Context(), wsUUID, member.UserID, override); err != nil {
+	if err := h.durable.EffectPolicy.Save(r.Context(), wsUUID, member.UserID, override); err != nil {
 		if errors.Is(err, service.ErrEffectsOff) {
 			writeError(w, http.StatusServiceUnavailable, err.Error())
 			return
@@ -134,7 +134,7 @@ func (h *Handler) SaveEffectPolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to save the effect policy")
 		return
 	}
-	overrides, err := h.EffectPolicy.Overrides(r.Context(), wsUUID)
+	overrides, err := h.durable.EffectPolicy.Overrides(r.Context(), wsUUID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load the effect policy")
 		return

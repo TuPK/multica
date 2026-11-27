@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -12,6 +14,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/runtimeapps"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -299,5 +302,184 @@ func TestShadowVerdictAndReport(t *testing.T) {
 	}
 	if report.Pairs != 1 {
 		t.Errorf("report pairs = %d, want 1", report.Pairs)
+	}
+}
+
+func TestShadowEnqueueFailureRollsBackAndRetries(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	cfg := sf.start(t)
+	primary := sf.primaryTask(t)
+	ctx := context.Background()
+	if _, err := sf.Pool.Exec(ctx, `UPDATE issue SET triage_state = 'pending' WHERE id = $1`, sf.issue); err != nil {
+		t.Fatal(err)
+	}
+	if err := sf.svc.OnPrimaryClaimed(ctx, primary); !errors.Is(err, ErrIssueInTriage) {
+		t.Fatalf("enqueue error = %v, want triage rejection", err)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM shadow_pair WHERE primary_task_id = $1`, util.UUIDToString(primary.ID)); n != 0 {
+		t.Fatalf("pairs after failed enqueue = %d, want 0", n)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1 AND agent_id IN (SELECT id FROM agent WHERE shadow_of_agent_id = $2)`, sf.issue, sf.seat); n != 0 {
+		t.Fatalf("shadow tasks after failed enqueue = %d, want 0", n)
+	}
+	if _, err := sf.Pool.Exec(ctx, `UPDATE issue SET triage_state = NULL WHERE id = $1`, sf.issue); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := sf.svc.OnPrimaryClaimed(ctx, primary); err != nil {
+			t.Fatalf("retry %d: %v", i, err)
+		}
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM shadow_pair p JOIN agent_task_queue t ON t.id = p.shadow_task_id WHERE p.primary_task_id = $1 AND t.context->>'durable_kind' = 'shadow' AND t.context->>'shadow_config_id' = $2 AND t.context->>'shadow_pair_id' = p.id::text`, util.UUIDToString(primary.ID), util.UUIDToString(cfg.ID)); n != 1 {
+		t.Fatalf("linked, marked pairs after retry = %d, want 1", n)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1 AND agent_id IN (SELECT id FROM agent WHERE shadow_of_agent_id = $2)`, sf.issue, sf.seat); n != 1 {
+		t.Fatalf("shadow tasks after retry = %d, want 1", n)
+	}
+}
+
+func TestShadowOutputIsNotPostedAsComment(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	sf.Cleanup(t, `DELETE FROM comment WHERE issue_id = $1`, sf.issue)
+	sf.start(t)
+	primary := sf.primaryTask(t)
+	ctx := context.Background()
+	if err := sf.svc.OnPrimaryClaimed(ctx, primary); err != nil {
+		t.Fatal(err)
+	}
+	pair, err := sf.q.GetShadowPairForPrimary(ctx, primary.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shadow, err := sf.q.GetAgentTask(ctx, pair.ShadowTaskID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sf.completeTask(t, util.UUIDToString(primary.ID), "ordinary output")
+	sf.completeTask(t, util.UUIDToString(shadow.ID), "shadow output")
+	if n := sf.Count(t, `SELECT count(*) FROM comment WHERE issue_id = $1 AND source_task_id = $2 AND author_type = 'agent'`, sf.issue, primary.ID); n != 1 {
+		t.Errorf("ordinary task comments = %d, want 1", n)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM comment WHERE issue_id = $1 AND source_task_id = $2 AND author_type = 'agent' AND author_id = $3`, sf.issue, shadow.ID, shadow.AgentID); n != 0 {
+		t.Errorf("shadow task comments = %d, want 0", n)
+	}
+}
+
+func TestShadowTaskHasNoGatewayOverlayOrAppMetadata(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	ctx := context.Background()
+	sf.Exec(t, `UPDATE issue SET creator_type = 'member', creator_id = $2 WHERE id = $1`, sf.issue, sf.UserID)
+	sf.Exec(t, `UPDATE agent SET composio_toolkit_allowlist = ARRAY['notion'] WHERE id = $1`, sf.seat)
+	builder := &stubOverlayBuilder{resp: json.RawMessage(`{"mcpServers":{"composio":{"type":"http","url":"https://mcp.example/session"}}}`), apps: []runtimeapps.ConnectedApp{{Provider: "composio", ServerName: "composio", ToolkitSlug: "notion", ToolkitName: "Notion"}}}
+	sf.svc.Tasks.Composio = builder
+	// ComposioMCPApps enables the gateway overlay.
+	sf.svc.Tasks.FeatureFlags = composioMCPAppsTestFlags(true)
+	sf.start(t)
+	primary := sf.primaryTask(t)
+	if err := sf.svc.OnPrimaryClaimed(ctx, primary); err != nil {
+		t.Fatal(err)
+	}
+	pair, err := sf.q.GetShadowPairForPrimary(ctx, primary.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	issue, err := sf.q.GetIssue(ctx, util.MustParseUUID(sf.issue))
+	if err != nil {
+		t.Fatal(err)
+	}
+	shadow, err := sf.q.GetAgentTask(ctx, pair.ShadowTaskID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(id pgtype.UUID, want bool) {
+		t.Helper()
+		var overlay, apps []byte
+		if err := sf.Pool.QueryRow(ctx, `SELECT runtime_mcp_overlay, runtime_connected_apps FROM agent_task_queue WHERE id = $1`, id).Scan(&overlay, &apps); err != nil {
+			t.Fatal(err)
+		}
+		if (len(overlay) > 0) != want || (len(apps) > 0) != want {
+			t.Errorf("task %s: overlay=%s apps=%s, want present=%v", util.UUIDToString(id), overlay, apps, want)
+		}
+	}
+	check(shadow.ID, false)
+	sf.Exec(t, `UPDATE agent_task_queue SET status = 'cancelled' WHERE id = $1`, shadow.ID)
+	ordinary, err := sf.svc.Tasks.EnqueueVerificationTask(ctx, issue, shadow.AgentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(ordinary.ID, true)
+}
+
+// TestShadowStartConcurrentSingleRunning: two concurrent Start calls for the same seat
+// yield exactly one running shadow_config; the other returns ErrShadowAlreadyRunning.
+func TestShadowStartConcurrentSingleRunning(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	ctx := context.Background()
+
+	for i := 0; i < 5; i++ {
+		seatID := sf.Agent(t, fmt.Sprintf("concurrent-seat-%d", i), sf.runtime)
+		in := ShadowStartInput{
+			AgentID: util.MustParseUUID(seatID), CandidateRuntimeID: util.MustParseUUID(sf.cand),
+			CandidateModel: "gpt-candidate", Purpose: ShadowPurposeModelTrial, SampleRate: 1, TargetPairs: 20,
+		}
+		var ready, done sync.WaitGroup
+		ready.Add(2)
+		done.Add(2)
+		release := make(chan struct{})
+		errs := make([]error, 2)
+		for g := 0; g < 2; g++ {
+			go func(idx int) {
+				defer done.Done()
+				ready.Done()
+				<-release
+				_, errs[idx] = sf.svc.Start(ctx, sf.ws, sf.owner, in)
+			}(g)
+		}
+		ready.Wait()
+		close(release)
+		done.Wait()
+
+		var okCount, alreadyCount int
+		for _, err := range errs {
+			switch {
+			case err == nil:
+				okCount++
+			case errors.Is(err, ErrShadowAlreadyRunning):
+				alreadyCount++
+			default:
+				t.Fatalf("attempt %d: unexpected error: %v", i, err)
+			}
+		}
+		if okCount != 1 || alreadyCount != 1 {
+			t.Fatalf("attempt %d: ok=%d already_running=%d errs=%v, want 1 and 1", i, okCount, alreadyCount, errs)
+		}
+		if n := sf.Count(t, `SELECT count(*) FROM shadow_config WHERE workspace_id = $1 AND agent_id = $2 AND state = 'running'`, sf.WorkspaceID, seatID); n != 1 {
+			t.Fatalf("attempt %d: running configs = %d, want 1", i, n)
+		}
+	}
+}
+
+// TestShadowStartAllowedAfterStopped: a stopped shadow run does not block starting a new one
+// on the same seat.
+func TestShadowStartAllowedAfterStopped(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	ctx := context.Background()
+
+	first := sf.start(t)
+	if _, err := sf.q.SetShadowConfigState(ctx, db.SetShadowConfigStateParams{
+		ID: first.ID, WorkspaceID: sf.ws, State: "stopped",
+	}); err != nil {
+		t.Fatalf("stop first run: %v", err)
+	}
+
+	second := sf.start(t)
+	if second.ID == first.ID {
+		t.Fatalf("second run reused first run id %s", util.UUIDToString(first.ID))
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM shadow_config WHERE workspace_id = $1 AND agent_id = $2 AND state = 'running'`, sf.WorkspaceID, sf.seat); n != 1 {
+		t.Fatalf("running configs = %d, want 1", n)
+	}
+	if n := sf.Count(t, `SELECT count(*) FROM shadow_config WHERE workspace_id = $1 AND agent_id = $2 AND state = 'stopped'`, sf.WorkspaceID, sf.seat); n != 1 {
+		t.Fatalf("stopped configs = %d, want 1", n)
 	}
 }

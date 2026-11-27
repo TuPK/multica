@@ -17,7 +17,7 @@ type flowTaskCreateFork struct {
 
 func (h *Handler) shouldHoldExternalFlowTask(ctx context.Context, c flowTaskCreate) bool {
 	return c.Effects == issueworkflow.EffectsExternal &&
-		h.Intents != nil &&
+		h.durable.Intents != nil &&
 		featureflags.DurableEffectsEnabled(ctx, h.FeatureFlags)
 }
 
@@ -31,7 +31,7 @@ func (h *Handler) maybeHoldExternalFlowTask(ctx context.Context, run *flowRun, c
 	if !h.shouldHoldExternalFlowTask(ctx, c) {
 		return nil
 	}
-	if _, err := h.Intents.HoldFlowTask(ctx, run.issue.WorkspaceID, issue.ID, c.Step, c.Key, c.Round); err != nil {
+	if _, err := h.durable.Intents.HoldFlowTask(ctx, run.issue.WorkspaceID, issue.ID, c.Step, c.Key, c.Round); err != nil {
 		return fmt.Errorf("hold external flow task %s: %w", c.Key, err)
 	}
 	return nil

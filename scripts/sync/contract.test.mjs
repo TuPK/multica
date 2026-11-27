@@ -41,6 +41,21 @@ test("each check kind passes and fails as described", () => {
   rmSync(root, { recursive: true });
 });
 
+test("hookCall counts calls and requires a fork definition", () => {
+  const root = tree({
+    "server/main.go": "// registerJobs()\nfunc registerJobs() {}\nregisterJobs() // call\n",
+    "server/nested/jobs_fork.go": "func (s *server) registerJobs() {}\n",
+  });
+  const check = { kind: "hookCall", path: "server/main.go", symbol: "registerJobs", count: 1 };
+  assert.equal(runCheck(root, check), null);
+  writeFileSync(join(root, "server/main.go"), "registerJobs()\nregisterJobs()\n");
+  assert.notEqual(runCheck(root, check), null);
+  writeFileSync(join(root, "server/main.go"), "registerJobs()\n");
+  rmSync(join(root, "server/nested/jobs_fork.go"));
+  assert.notEqual(runCheck(root, check), null);
+  rmSync(root, { recursive: true });
+});
+
 test("the real contract is green on this checkout", () => {
   const root = join(SYNC_DIR, "..", "..");
   const contract = JSON.parse(readFileSync(join(SYNC_DIR, "fork-contract.json"), "utf8"));

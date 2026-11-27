@@ -14,8 +14,8 @@ func (h *Handler) flowTaskMayOpen(ctx context.Context, run *flowRun, key, effect
 	if effects != issueworkflow.EffectsExternal {
 		return true, nil
 	}
-	if h.Intents == nil {
+	if h.durable.Intents == nil {
 		return false, errors.New("external flow task: the intent gate is not configured")
 	}
-	return h.Intents.HoldFlowTask(ctx, run.issue.WorkspaceID, run.issue.ID, run.state.Step, key, run.round())
+	return h.durable.Intents.HoldFlowTask(ctx, run.issue.WorkspaceID, run.issue.ID, run.state.Step, key, run.round())
 }

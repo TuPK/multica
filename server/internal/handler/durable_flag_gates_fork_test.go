@@ -65,7 +65,7 @@ func TestDurableFlagOffRefusesEffectPolicySave(t *testing.T) {
 	flags := featureflag.NewService(off)
 	h := *testHandler
 	h.FeatureFlags = flags
-	h.EffectPolicy = &service.EffectPolicyStore{Queries: testHandler.Queries, TxStarter: testPool, Flags: flags}
+	h.durable.EffectPolicy = &service.EffectPolicyStore{Queries: testHandler.Queries, TxStarter: testPool, Flags: flags}
 
 	req := companyReq(fx.Owner, fx.ID, http.MethodPut, "/api/effects/policy", map[string]any{
 		"autonomy_level": 1,

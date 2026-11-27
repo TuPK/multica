@@ -99,7 +99,7 @@ func (h *Handler) DeclareEffect(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if h.Effects == nil {
+	if h.durable.Effects == nil {
 		writeError(w, http.StatusServiceUnavailable, "the effect log is not configured")
 		return
 	}
@@ -145,7 +145,7 @@ func (h *Handler) DeclareEffect(w http.ResponseWriter, r *http.Request) {
 	if task, ok := h.taskFromRequestHeader(r); ok {
 		in.TaskID, in.AgentID = task.ID, task.AgentID
 	}
-	ticket, err := h.Effects.Gate(r.Context(), in)
+	ticket, err := h.durable.Effects.Gate(r.Context(), in)
 	if err != nil {
 		slog.Error("declare effect: gate", "error", err)
 		writeError(w, http.StatusInternalServerError, "could not record the declared action")
@@ -154,8 +154,8 @@ func (h *Handler) DeclareEffect(w http.ResponseWriter, r *http.Request) {
 	// A rehearsed declaration becomes an intent the person decides on. The platform
 	// does not run it: the decision goes back to the agent (durable spec 5.2).
 	var intentID *string
-	if ticket.Decision == connectedapps.PolicyRehearse && h.Intents != nil {
-		id, err := h.Intents.Rehearse(r.Context(), ticket.EventID, in, connectedapps.CanonicalCall{}, req.Rationale)
+	if ticket.Decision == connectedapps.PolicyRehearse && h.durable.Intents != nil {
+		id, err := h.durable.Intents.Rehearse(r.Context(), ticket.EventID, in, connectedapps.CanonicalCall{}, req.Rationale)
 		if err != nil {
 			slog.Error("declare effect: rehearse", "error", err)
 			writeError(w, http.StatusInternalServerError, "could not hold the declared action for approval")
@@ -256,7 +256,7 @@ func (h *Handler) UndoEffect(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if h.Effects == nil || h.ConnectedApps == nil {
+	if h.durable.Effects == nil || h.ConnectedApps == nil {
 		writeError(w, http.StatusServiceUnavailable, "undo is not configured")
 		return
 	}
@@ -359,7 +359,7 @@ func validDeclaredReversibility(rev string) bool {
 }
 
 func (h *Handler) durableEffectsEnabled(ctx context.Context) bool {
-	if svc, ok := h.Effects.(*service.EffectService); ok && svc != nil && svc.Flags != nil {
+	if svc, ok := h.durable.Effects.(*service.EffectService); ok && svc != nil && svc.Flags != nil {
 		return featureflags.DurableEffectsEnabled(ctx, svc.Flags)
 	}
 	return featureflags.DurableEffectsEnabled(ctx, h.FeatureFlags)

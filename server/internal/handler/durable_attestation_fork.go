@@ -53,10 +53,10 @@ func (h *Handler) attestationOff(w http.ResponseWriter, r *http.Request) bool {
 // attestationService wires the attestation service to the server's key and host, set once when the
 // routes are mounted.
 func (h *Handler) attestationService() *service.AttestationService {
-	if h.Attestations == nil {
+	if h.durable.Attestations == nil {
 		return &service.AttestationService{Queries: h.Queries}
 	}
-	return h.Attestations
+	return h.durable.Attestations
 }
 
 // IssueAttestation signs an agent's track record for the period and returns the document.

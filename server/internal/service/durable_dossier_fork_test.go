@@ -421,3 +421,62 @@ func TestBriefingCountsDossierUses(t *testing.T) {
 		t.Errorf("total uses = %d, want 4 (two entries, two briefings)", got)
 	}
 }
+
+// TestShadowTaskGetsSeatDossierInBriefing: a shadow task runs on a shadow agent linked to its
+// seat via shadow_of_agent_id. Its briefing resolves the seat and carries the seat's dossier,
+// while the normal non-shadow path is unchanged (durable spec 9.4, V1.6).
+func TestShadowTaskGetsSeatDossierInBriefing(t *testing.T) {
+	df := newDossierFixture(t, true)
+	ctx := context.Background()
+	seatID := util.MustParseUUID(df.seat)
+	if _, err := df.svc.Add(ctx, df.ws, seatID, df.owner,
+		[]DossierEntryInput{dossierInput("pitfall", "always verify invoice totals")}); err != nil {
+		t.Fatalf("add seat dossier entry: %v", err)
+	}
+	candRuntime := df.Runtime(t, "shadow candidate runtime", testutil.Cols{"provider": "openai"})
+	shadowAgent, err := df.q.CreateShadowAgent(ctx, db.CreateShadowAgentParams{
+		Name: "dossier seat (shadow test)", RuntimeID: util.MustParseUUID(candRuntime),
+		Model: pgtype.Text{String: "model-b", Valid: true}, SeatID: seatID, WorkspaceID: df.ws,
+	})
+	if err != nil {
+		t.Fatalf("create shadow agent: %v", err)
+	}
+	issue := df.Issue(t, "shadow dossier briefing")
+
+	// Shadow task assigned to the shadow agent receives the seat's dossier.
+	shadowTaskID := df.Task(t, util.UUIDToString(shadowAgent.ID), testutil.Cols{
+		"issue_id": issue, "runtime_id": candRuntime,
+		"context": testutil.Raw(`'{"durable_kind":"shadow","shadow_purpose":"model_trial"}'::jsonb`),
+	})
+	shadowTask, err := df.q.GetAgentTask(ctx, util.MustParseUUID(shadowTaskID))
+	if err != nil {
+		t.Fatalf("load shadow task: %v", err)
+	}
+	shadowBlocks := DurableBriefingBlocks(ctx, df.q, df.flags, shadowTask)
+	foundShadow := false
+	for _, b := range shadowBlocks {
+		if b.Title == briefingDossierTitle && strings.Contains(b.Body, "always verify invoice totals") {
+			foundShadow = true
+		}
+	}
+	if !foundShadow {
+		t.Fatalf("shadow task briefing did not include the seat's dossier; blocks = %+v", shadowBlocks)
+	}
+
+	// Normal (non-shadow) task assigned directly to the seat still gets the seat's dossier.
+	normalTaskID := df.Task(t, df.seat, testutil.Cols{"issue_id": issue, "runtime_id": df.runtime})
+	normalTask, err := df.q.GetAgentTask(ctx, util.MustParseUUID(normalTaskID))
+	if err != nil {
+		t.Fatalf("load normal task: %v", err)
+	}
+	normalBlocks := DurableBriefingBlocks(ctx, df.q, df.flags, normalTask)
+	foundNormal := false
+	for _, b := range normalBlocks {
+		if b.Title == briefingDossierTitle && strings.Contains(b.Body, "always verify invoice totals") {
+			foundNormal = true
+		}
+	}
+	if !foundNormal {
+		t.Fatalf("normal task briefing did not include the seat's dossier; blocks = %+v", normalBlocks)
+	}
+}

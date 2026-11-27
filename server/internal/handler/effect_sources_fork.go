@@ -42,7 +42,7 @@ func (rec *effectStatusRecorder) Write(b []byte) (int, error) {
 func (h *Handler) EffectCLIMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		platform, _, _ := middleware.ClientMetadataFromContext(r.Context())
-		if h.Effects == nil || platform != "cli" || !isMutatingMethod(r.Method) || r.URL.Path == effectDeclarePath {
+		if h.durable.Effects == nil || platform != "cli" || !isMutatingMethod(r.Method) || r.URL.Path == effectDeclarePath {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -76,7 +76,7 @@ func (h *Handler) EffectCLIMiddleware(next http.Handler) http.Handler {
 			req.TaskID, req.AgentID = task.ID, task.AgentID
 		}
 		ctx := r.Context()
-		ticket, err := h.Effects.Gate(ctx, req)
+		ticket, err := h.durable.Effects.Gate(ctx, req)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not record the effect of this request")
 			return
@@ -91,7 +91,7 @@ func (h *Handler) EffectCLIMiddleware(next http.Handler) http.Handler {
 		if rec.status >= http.StatusBadRequest {
 			outcome = "failed"
 		}
-		if err := h.Effects.Finish(ctx, ws, ticket.EventID, outcome, nil); err != nil {
+		if err := h.durable.Effects.Finish(ctx, ws, ticket.EventID, outcome, nil); err != nil {
 			slog.Error("effect settle failed", "error", err, "outcome", outcome)
 		}
 	})
@@ -115,12 +115,12 @@ func isMutatingMethod(method string) bool {
 // handler is done, which records executed for a 2xx or 3xx answer and failed for
 // anything else.
 func (h *Handler) pluginWriteGate(w http.ResponseWriter, r *http.Request, ws pgtype.UUID, target string) (rec *effectStatusRecorder, settle func(), allowed bool) {
-	if h.Effects == nil {
+	if h.durable.Effects == nil {
 		rec = &effectStatusRecorder{ResponseWriter: w}
 		return rec, func() {}, true
 	}
 	ctx := r.Context()
-	ticket, err := h.Effects.Gate(ctx, connectedapps.EffectRequest{
+	ticket, err := h.durable.Effects.Gate(ctx, connectedapps.EffectRequest{
 		WS:            ws,
 		Source:        connectedapps.SourcePluginAction,
 		Target:        truncateEffectTarget(target),
@@ -143,7 +143,7 @@ func (h *Handler) pluginWriteGate(w http.ResponseWriter, r *http.Request, ws pgt
 		if rec.status >= http.StatusBadRequest {
 			outcome = "failed"
 		}
-		if err := h.Effects.Finish(ctx, ws, ticket.EventID, outcome, nil); err != nil {
+		if err := h.durable.Effects.Finish(ctx, ws, ticket.EventID, outcome, nil); err != nil {
 			slog.Error("effect settle failed", "error", err, "outcome", outcome)
 		}
 	}
@@ -163,10 +163,10 @@ func truncateEffectTarget(s string) string {
 // this event records the start; its decision is not enforced here. The returned
 // func settles the event once the dispatch has returned.
 func (h *Handler) gateWebhookDispatch(ctx context.Context, ws pgtype.UUID) func(dispatched bool) {
-	if h.Effects == nil {
+	if h.durable.Effects == nil {
 		return func(bool) {}
 	}
-	ticket, err := h.Effects.Gate(ctx, connectedapps.EffectRequest{
+	ticket, err := h.durable.Effects.Gate(ctx, connectedapps.EffectRequest{
 		WS:            ws,
 		Source:        connectedapps.SourceWebhook,
 		Target:        "autopilot webhook",
@@ -184,7 +184,7 @@ func (h *Handler) gateWebhookDispatch(ctx context.Context, ws pgtype.UUID) func(
 		if dispatched {
 			outcome = "executed"
 		}
-		if err := h.Effects.Finish(ctx, ws, ticket.EventID, outcome, nil); err != nil {
+		if err := h.durable.Effects.Finish(ctx, ws, ticket.EventID, outcome, nil); err != nil {
 			slog.Error("effect settle failed", "error", err, "outcome", outcome)
 		}
 	}

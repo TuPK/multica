@@ -461,6 +461,61 @@ func (q *Queries) ListShadowPairsForConfig(ctx context.Context, arg ListShadowPa
 	return items, nil
 }
 
+const listUnjudgedCompletedShadowPairs = `-- name: ListUnjudgedCompletedShadowPairs :many
+SELECT sp.id, sp.workspace_id, sp.config_id, sp.issue_id, sp.primary_task_id, sp.shadow_task_id, sp.comparison, sp.comparison_reason, sp.primary_cost_micros, sp.shadow_cost_micros, sp.created_at, sp.compared_at
+FROM shadow_pair sp
+JOIN shadow_config sc ON sc.id = sp.config_id AND sc.workspace_id = sp.workspace_id
+JOIN agent_task_queue pt ON pt.id = sp.primary_task_id
+JOIN agent_task_queue st ON st.id = sp.shadow_task_id
+WHERE sp.comparison IS NULL
+  AND sp.shadow_task_id IS NOT NULL
+  AND sc.state IN ('running', 'completed')
+  AND pt.status = 'completed'
+  AND st.status = 'completed'
+  AND NOT EXISTS (
+      SELECT 1 FROM agent_task_queue jt
+      WHERE jt.context->>'durable_kind' = 'verification'
+        AND jt.context->>'shadow_pair_id' = sp.id::text
+  )
+ORDER BY sp.created_at, sp.id
+LIMIT $1
+`
+
+// Pairs of running or completed shadow runs whose primary and shadow tasks have both
+// completed, with no comparison written and no juror task opened yet.
+func (q *Queries) ListUnjudgedCompletedShadowPairs(ctx context.Context, rowLimit int32) ([]ShadowPair, error) {
+	rows, err := q.db.Query(ctx, listUnjudgedCompletedShadowPairs, rowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ShadowPair{}
+	for rows.Next() {
+		var i ShadowPair
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ConfigID,
+			&i.IssueID,
+			&i.PrimaryTaskID,
+			&i.ShadowTaskID,
+			&i.Comparison,
+			&i.ComparisonReason,
+			&i.PrimaryCostMicros,
+			&i.ShadowCostMicros,
+			&i.CreatedAt,
+			&i.ComparedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockShadowConfig = `-- name: LockShadowConfig :one
 SELECT id, workspace_id, agent_id, candidate_runtime_id, candidate_model, purpose, necessity_test_id, work_class_prefix, sample_rate, target_pairs, auto_promote, shadow_agent_id, state, created_by, created_at, completed_at FROM shadow_config
 WHERE id = $1 AND workspace_id = $2
@@ -659,21 +714,31 @@ SET context = COALESCE(context, '{}'::jsonb)
     || jsonb_build_object(
         'durable_kind', 'shadow',
         'shadow_config_id', $1::text,
-        'shadow_pair_id', $2::text)
-WHERE id = $3
+        'shadow_pair_id', $2::text,
+        'shadow_purpose', $3::text,
+        'omit_skills', $4::boolean)
+WHERE id = $5
   AND status IN ('queued', 'dispatched', 'deferred')
 `
 
 type SetShadowTaskContextParams struct {
 	ShadowConfigID string      `json:"shadow_config_id"`
 	ShadowPairID   string      `json:"shadow_pair_id"`
+	ShadowPurpose  string      `json:"shadow_purpose"`
+	OmitSkills     bool        `json:"omit_skills"`
 	ID             pgtype.UUID `json:"id"`
 }
 
-// Marks a shadow task with its run and pair, while the task is not yet claimed. The task
-// is then in the shadow run class, and budgets hold it.
+// Marks a shadow task with its run, pair, purpose and skill-omission policy, while the task is
+// not yet claimed. The task is then in the shadow run class, and budgets hold it.
 func (q *Queries) SetShadowTaskContext(ctx context.Context, arg SetShadowTaskContextParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setShadowTaskContext, arg.ShadowConfigID, arg.ShadowPairID, arg.ID)
+	result, err := q.db.Exec(ctx, setShadowTaskContext,
+		arg.ShadowConfigID,
+		arg.ShadowPairID,
+		arg.ShadowPurpose,
+		arg.OmitSkills,
+		arg.ID,
+	)
 	if err != nil {
 		return 0, err
 	}

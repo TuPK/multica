@@ -3,15 +3,19 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 var (
@@ -327,6 +331,101 @@ func TestJurySplitCreatesOneAsk(t *testing.T) {
 	}
 }
 
+func TestJurySplitAsksTheDecider(t *testing.T) {
+	jf := newJuryFixture(t)
+	provider := featureflag.NewStaticProvider()
+	provider.Set(featureflags.DurableSeats, featureflag.Rule{Default: true})
+	provider.Set(featureflags.DurablePrincipal, featureflag.Rule{Default: true})
+	jury := NewJuryService(jf.q, jf.Pool, jf.checks.Tasks)
+	jury.Flags = featureflag.NewService(provider)
+	jf.checks.Jury = jury
+	jf.setPool(t, jf.jurors...)
+	_, c, o := jf.juryCase(t, "high")
+	jf.Cleanup(t, `DELETE FROM attention_ledger WHERE workspace_id = $1 AND subject_id = $2`, jf.ws, o.ID)
+
+	panel := jf.panelFor(t, o, c)
+	if len(panel.JurorAgentIds) != 2 {
+		t.Fatalf("jurors = %d, want 2", len(panel.JurorAgentIds))
+	}
+	if err := jf.vote(t, panel, panel.JurorAgentIds[0], "pass"); err != nil {
+		t.Fatalf("first vote: %v", err)
+	}
+	if err := jf.vote(t, panel, panel.JurorAgentIds[1], "fail"); err != nil {
+		t.Fatalf("second vote: %v", err)
+	}
+	if got := jf.panelFor(t, o, c).State; got != "split" {
+		t.Fatalf("state = %q, want split", got)
+	}
+	count := func() int {
+		return jf.Count(t, `SELECT count(*) FROM attention_ledger WHERE workspace_id = $1 AND subject_type = 'outcome_check' AND subject_id = $2 AND reason = 'verification'`, jf.ws, o.ID)
+	}
+	if got := count(); got != 1 {
+		t.Errorf("attention questions after split = %d, want 1", got)
+	}
+	if err := jury.Open(context.Background(), o, c); err != nil {
+		t.Fatalf("open again: %v", err)
+	}
+	jf.schedule(t, o)
+	if got := count(); got != 1 {
+		t.Errorf("attention questions after retry = %d, want 1", got)
+	}
+}
+
+type failSecondJuryTaskBegin struct {
+	TxStarter
+	calls int
+}
+
+func (s *failSecondJuryTaskBegin) Begin(ctx context.Context) (pgx.Tx, error) {
+	s.calls++
+	if s.calls == 2 {
+		return nil, errors.New("injected second juror enqueue failure")
+	}
+	return s.TxStarter.Begin(ctx)
+}
+
+func TestJuryOpenRecoversMissingJurors(t *testing.T) {
+	jf := newJuryFixture(t)
+	jf.setPool(t, jf.jurors...)
+	issue := jf.doneIssue(t, jf.doer)
+	jf.Cleanup(t, `DELETE FROM jury_panel WHERE outcome_id IN (SELECT id FROM work_outcome WHERE issue_id = $1)`, issue)
+	jf.Exec(t, `UPDATE issue SET priority = 'high' WHERE id = $1`, issue)
+	c := jf.addCriterion(t, issue, "The export has a header.", CheckKindAgentJudgment, map[string]any{"rubric": "Check the header.", "jury": true})
+	o := jf.currentOutcome(t, issue)
+	ctx := context.Background()
+	starter := &failSecondJuryTaskBegin{TxStarter: jf.Pool}
+	tasks := &TaskService{Queries: jf.q, TxStarter: starter, Bus: jf.checks.Tasks.Bus}
+	jury := NewJuryService(jf.q, jf.Pool, tasks)
+	provider := featureflag.NewStaticProvider()
+	provider.Set(featureflags.DurableSeats, featureflag.Rule{Default: true})
+	jury.Flags = featureflag.NewService(provider)
+	if err := jury.Open(ctx, o, c); err == nil {
+		t.Fatal("open with injected second juror failure succeeded")
+	}
+	if starter.calls != 2 {
+		t.Fatalf("task transaction attempts = %d, want 2", starter.calls)
+	}
+	tasks.TxStarter = jf.Pool
+	if err := jury.Open(ctx, o, c); err != nil {
+		t.Fatalf("retry open: %v", err)
+	}
+	panel := jf.panelFor(t, o, c)
+	if len(panel.JurorAgentIds) != 2 {
+		t.Fatalf("panel jurors = %d, want 2", len(panel.JurorAgentIds))
+	}
+	if got := jf.Count(t, `SELECT count(*) FROM jury_panel WHERE workspace_id = $1 AND outcome_id = $2 AND criterion_id = $3`, jf.ws, o.ID, c.ID); got != 1 {
+		t.Errorf("panels = %d, want 1", got)
+	}
+	if got := jf.Count(t, `SELECT count(*) FROM agent_task_queue WHERE context->>'jury_panel_id' = $1`, util.UUIDToString(panel.ID)); got != len(panel.JurorAgentIds) {
+		t.Errorf("juror tasks = %d, want %d", got, len(panel.JurorAgentIds))
+	}
+	for _, juror := range panel.JurorAgentIds {
+		if got := jf.Count(t, `SELECT count(*) FROM agent_task_queue WHERE context->>'jury_panel_id' = $1 AND agent_id = $2`, util.UUIDToString(panel.ID), juror); got != 1 {
+			t.Errorf("tasks for juror %s = %d, want 1", util.UUIDToString(juror), got)
+		}
+	}
+}
+
 func TestJurorUnableReplacedOnce(t *testing.T) {
 	t.Run("first unable is replaced and the panel completes", func(t *testing.T) {
 		jf := newJuryFixture(t)
@@ -382,6 +481,9 @@ func TestJurorUnableReplacedOnce(t *testing.T) {
 
 func TestJuryTimeout24h(t *testing.T) {
 	jf := newJuryFixture(t)
+	provider := featureflag.NewStaticProvider()
+	provider.Set(featureflags.DurableSeats, featureflag.Rule{Default: true})
+	jf.checks.Jury.Flags = featureflag.NewService(provider)
 	jf.setPool(t, jf.jurors...)
 	_, c, o := jf.juryCase(t, "high")
 	panel := jf.panelFor(t, o, c)
@@ -475,5 +577,53 @@ func TestJurorTrackRecordOnOverrule(t *testing.T) {
 	}
 	if r := track(agreeing); r.NPass != 1 || r.NFail != 0 {
 		t.Errorf("agreeing juror n_pass/n_fail = %d/%d, want 1/0", r.NPass, r.NFail)
+	}
+}
+
+func TestJuryTimeoutIsNoOpWhenFlagOff(t *testing.T) {
+	jf := newJuryFixture(t)
+	jf.setPool(t, jf.jurors...)
+	_, criterion, outcome := jf.juryCase(t, "high")
+	panel := jf.panelFor(t, outcome, criterion)
+	jf.Exec(t, `UPDATE jury_panel SET created_at = now() - interval '25 hours' WHERE id = $1`, panel.ID)
+	provider := featureflag.NewStaticProvider()
+	provider.Set(featureflags.DurableSeats, featureflag.Rule{Default: false})
+	jury := NewJuryService(jf.q, jf.Pool, jf.checks.Tasks)
+	// Expected API: the fix must add Flags to JuryService.
+	jury.Flags = featureflag.NewService(provider)
+	ctx := context.Background()
+	snapshot := func() string {
+		t.Helper()
+		var rows string
+		err := jf.Pool.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.id), '[]'::jsonb)::text FROM agent_task_queue t WHERE context->>'jury_panel_id' = $1`, util.UUIDToString(panel.ID)).Scan(&rows)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return rows
+	}
+	before := snapshot()
+	panelsBefore := jf.Count(t, `SELECT count(*) FROM jury_panel WHERE outcome_id = $1`, outcome.ID)
+	checksBefore := jf.Count(t, `SELECT count(*) FROM outcome_check_task WHERE outcome_id = $1`, outcome.ID)
+	if err := jury.Timeout(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got := jf.panelFor(t, outcome, criterion); got.State != "open" || got.ClosedAt.Valid {
+		t.Errorf("flag off: state=%s closed=%v", got.State, got.ClosedAt.Valid)
+	}
+	if got := snapshot(); got != before {
+		t.Errorf("flag off changed juror tasks: before %s after %s", before, got)
+	}
+	if got := jf.Count(t, `SELECT count(*) FROM jury_panel WHERE outcome_id = $1`, outcome.ID); got != panelsBefore {
+		t.Errorf("flag off created panel rows: %d to %d", panelsBefore, got)
+	}
+	if got := jf.Count(t, `SELECT count(*) FROM outcome_check_task WHERE outcome_id = $1`, outcome.ID); got != checksBefore {
+		t.Errorf("flag off created check rows: %d to %d", checksBefore, got)
+	}
+	provider.Set(featureflags.DurableSeats, featureflag.Rule{Default: true})
+	if err := jury.Timeout(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got := jf.panelFor(t, outcome, criterion); got.State != "timed_out" || !got.ClosedAt.Valid {
+		t.Errorf("flag on: state=%s closed=%v, want timed_out", got.State, got.ClosedAt.Valid)
 	}
 }

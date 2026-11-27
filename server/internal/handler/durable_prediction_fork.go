@@ -66,6 +66,9 @@ func (h *Handler) RecordPrincipalPrediction(w http.ResponseWriter, r *http.Reque
 		Why: req.Why, TraitIDs: traits, TaskID: task,
 	})
 	switch {
+	case errors.Is(err, service.ErrPredictionLate):
+		writeErrorCode(w, http.StatusConflict, "prediction_late", err.Error())
+		return
 	case errors.Is(err, service.ErrPredictionInvalid):
 		writeErrorCode(w, http.StatusUnprocessableEntity, "prediction_invalid", err.Error())
 		return

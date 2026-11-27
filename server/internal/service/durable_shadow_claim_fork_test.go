@@ -170,3 +170,93 @@ func TestShadowClaimRequiresCapabilitySingle(t *testing.T) {
 		t.Fatalf("a daemon with the capability got %v, want the shadow task", got)
 	}
 }
+
+// TestShadowClaimFieldsByPurpose: omit_skills is decided by shadow purpose, not hard-coded true
+// for every shadow run. model_trial keeps skills so the candidate model sees the same briefing as
+// the seat (spec 9.4); necessity_test omits skills (spec 10.2); non-shadow tasks get zero values.
+func TestShadowClaimFieldsByPurpose(t *testing.T) {
+	cases := []struct {
+		name string
+		ctx  []byte
+		want ShadowClaimFields
+	}{
+		{
+			name: "non-shadow task",
+			ctx:  []byte(`{}`),
+			want: ShadowClaimFields{Shadow: false, OmitSkills: false},
+		},
+		{
+			name: "model_trial keeps skills",
+			ctx:  []byte(`{"durable_kind":"shadow","shadow_purpose":"model_trial","omit_skills":false}`),
+			want: ShadowClaimFields{Shadow: true, OmitSkills: false},
+		},
+		{
+			name: "model_trial by purpose alone keeps skills",
+			ctx:  []byte(`{"durable_kind":"shadow","shadow_purpose":"model_trial"}`),
+			want: ShadowClaimFields{Shadow: true, OmitSkills: false},
+		},
+		{
+			name: "necessity_test omits skills",
+			ctx:  []byte(`{"durable_kind":"shadow","shadow_purpose":"necessity_test","omit_skills":true}`),
+			want: ShadowClaimFields{Shadow: true, OmitSkills: true},
+		},
+		{
+			name: "necessity_test by purpose alone omits skills",
+			ctx:  []byte(`{"durable_kind":"shadow","shadow_purpose":"necessity_test"}`),
+			want: ShadowClaimFields{Shadow: true, OmitSkills: true},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ShadowClaimFieldsOf(tc.ctx)
+			if got != tc.want {
+				t.Errorf("ShadowClaimFieldsOf(%s) = %+v, want %+v", string(tc.ctx), got, tc.want)
+			}
+		})
+	}
+}
+
+// TestShadowOnPrimaryClaimedSetsOmitSkillsByPurpose: enqueuing a shadow task records the
+// purpose-driven omit_skills policy on the task context (false for model_trial, true for
+// necessity_test).
+func TestShadowOnPrimaryClaimedSetsOmitSkillsByPurpose(t *testing.T) {
+	for _, tc := range []struct {
+		purpose  string
+		wantOmit bool
+	}{
+		{purpose: ShadowPurposeModelTrial, wantOmit: false},
+		{purpose: ShadowPurposeNecessity, wantOmit: true},
+	} {
+		t.Run(tc.purpose, func(t *testing.T) {
+			sf := newShadowFixture(t, true)
+			ctx := context.Background()
+			if _, err := sf.svc.Start(ctx, sf.ws, sf.owner, ShadowStartInput{
+				AgentID: util.MustParseUUID(sf.seat), CandidateRuntimeID: util.MustParseUUID(sf.cand),
+				CandidateModel: "gpt-candidate", Purpose: tc.purpose, SampleRate: 1, TargetPairs: 10,
+			}); err != nil {
+				t.Fatalf("start %s shadow: %v", tc.purpose, err)
+			}
+			primaryID := sf.Task(t, sf.seat, testutil.Cols{"issue_id": sf.issue, "runtime_id": sf.runtime, "status": "dispatched"})
+			primary, err := sf.q.GetAgentTask(ctx, util.MustParseUUID(primaryID))
+			if err != nil {
+				t.Fatalf("load primary: %v", err)
+			}
+			if err := sf.svc.OnPrimaryClaimed(ctx, primary); err != nil {
+				t.Fatalf("OnPrimaryClaimed: %v", err)
+			}
+			pair, err := sf.q.GetShadowPairForPrimary(ctx, primary.ID)
+			if err != nil {
+				t.Fatalf("load pair: %v", err)
+			}
+			shadowTask, err := sf.q.GetAgentTask(ctx, pair.ShadowTaskID)
+			if err != nil {
+				t.Fatalf("load shadow task: %v", err)
+			}
+			got := ShadowClaimFieldsOf(shadowTask.Context)
+			want := ShadowClaimFields{Shadow: true, OmitSkills: tc.wantOmit}
+			if got != want {
+				t.Fatalf("purpose %s: ShadowClaimFieldsOf(%s) = %+v, want %+v", tc.purpose, string(shadowTask.Context), got, want)
+			}
+		})
+	}
+}

@@ -20,6 +20,20 @@ export function runCheck(root, check) {
       return existsSync(path) && statSync(path).isDirectory() && readdirSync(path).length > 0 ? null : "missing or empty directory";
     case "matches":
       return existsSync(path) && new RegExp(check.pattern).test(read(path)) ? null : `file missing or pattern not found: ${check.pattern}`;
+    case "hookCall": {
+      if (!existsSync(path)) return "missing";
+      const symbol = check.symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const call = new RegExp(`\\b${symbol}\\s*\\(`);
+      const definition = new RegExp(`\\bfunc\\s+(?:\\([^)]*\\)\\s*)?${symbol}\\s*\\(`);
+      const uncomment = (text) => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+      const lines = uncomment(read(path)).split("\n").filter((line) => call.test(line) && !definition.test(line)).length;
+      if (lines !== check.count) return `found ${lines} call lines for ${check.symbol}, expected ${check.count}`;
+      const hasDefinition = (dir) => existsSync(dir) && readdirSync(dir, { withFileTypes: true }).some((entry) => {
+        const file = join(dir, entry.name);
+        return entry.isDirectory() ? hasDefinition(file) : entry.name.endsWith("_fork.go") && definition.test(uncomment(read(file)));
+      });
+      return hasDefinition(join(root, "server")) ? null : `fork definition not found: ${check.symbol}`;
+    }
     case "lacks":
       return existsSync(path) && new RegExp(check.pattern).test(read(path)) ? `forbidden pattern found: ${check.pattern}` : null;
     case "jsonEquals": {

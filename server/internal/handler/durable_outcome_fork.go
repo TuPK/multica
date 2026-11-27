@@ -144,10 +144,11 @@ func (h *Handler) outcomeCallerFor(w http.ResponseWriter, r *http.Request, works
 
 // outcomeService returns the verification service over the handler's queries.
 func (h *Handler) outcomeService() *service.VerificationService {
+	jury := service.NewJuryService(h.Queries, h.TxStarter, h.TaskService)
+	jury.Flags = h.FeatureFlags
 	return &service.VerificationService{
 		Queries: h.Queries, TxStarter: h.TxStarter, Tasks: h.TaskService,
-		Jury:  service.NewJuryService(h.Queries, h.TxStarter, h.TaskService),
-		Flags: h.FeatureFlags,
+		Jury: jury, Flags: h.FeatureFlags,
 	}
 }
 
