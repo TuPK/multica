@@ -178,6 +178,10 @@ type hirePayload struct {
 	Template    string `json:"template"`
 	RuntimeID   string `json:"runtime_id"`
 	Rationale   string `json:"rationale"`
+	// Attestation is the candidate's signed track record, filed with a hire from a seat offer
+	// (durable spec 13.3). Its verification is read later, not stored, so nothing in the payload
+	// can claim a verification it does not have.
+	Attestation json.RawMessage `json:"attestation,omitempty"`
 }
 
 type retirePayload struct {

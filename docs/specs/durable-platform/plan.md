@@ -42,10 +42,10 @@ Bảng này ghi trạng thái theo mã nhánh trên `durable-platform` (tip `4ba
 | P0.1–P0.3 | Xong | `p0-findings.md`, `packages/core/durable/flags.ts` |
 | A1–A9 | Đã merge | `packages/views/durable/outcomes`, `e2e/durable/outcomes.spec.ts`. Chưa có `TestEveryStatusWriterRecordsOneTransition` (trọng tâm rà soát 1) |
 | B1–B4 | Đã merge | `durable_intent_fork.go`, `connected_apps_intent_fork_test.go` (test chốt một lần thực thi). Chưa có `durable_intent_fork_test.go` đúng tên plan |
-| B5 | Chưa đủ | Có `durable_flow_effects_fork.go`; chưa xác nhận trường đánh dấu hệ quả trong manifest flow (U7), chưa xác nhận kiểm tra catalog validate |
+| B5 | Đã xong (commit `f951a1b1a4` trên nhánh, chưa push) | Trường `effects` trong `DocTask` (`flowdoc.go`) và schema 1 `Task` (`flow.go`), lift `liftTask`, kiểm tra `validateFlow` trong `scripts/catalog/lib/build-workflows.mjs`, giữ task ở cả hai đường mở (`flowTaskMayOpen`, `HoldFlowTask` theo vòng). Test: `TestExternalFlowTaskWaitsForApproval`, `TestHoldFlowTask*`, `TestLift_CarriesEffectsMark`, catalog `marks a task … external`. Ghi chú: duyệt mở task ở lượt sweep kế tiếp (≤30 giây); intent bị từ chối giữ bước chờ, chưa có đường dừng |
 | B6 | Đã merge | `packages/views/durable/effects` |
 | B7 | Đã merge | `e2e/durable/effects.spec.ts` |
-| C1 | Một phần | `actual_seconds` có trong attention; `attention.minutes_per_done` chỉ thấy trong digest, chưa thấy trong attention |
+| C1 | Đã xong (chưa commit) | `attention.minutes_per_done` là metric nội tại trong `metrics_builtin.go` qua `attentionMinutesReadings` (`durable_attention_fork.go`), chỉ ghi khi `durable_principal` bật; test `TestAttentionMinutesPerDoneReading`. Không cần migration. Còn lại: `actual_seconds` chưa được handler truyền số đo (luôn `nil`) |
 | C2–C4 | Đã merge | Principal, dự đoán, học, uỷ quyền, phỏng vấn (merge `35b8a186e4`) |
 | C5 | Chưa làm | Không có UI principal, dự đoán, phỏng vấn |
 | C6 | Chưa làm | Không có E2E giai đoạn C |
@@ -53,13 +53,13 @@ Bảng này ghi trạng thái theo mã nhánh trên `durable-platform` (tip `4ba
 | D2 | Đã merge | Hồ sơ ghế (merge `235d48f272`) |
 | D3 | Đã merge | Shadow run, merge `4ba65dade4` |
 | D4 | Đã merge | `runtime_change` và tự hoàn tác (trong nhánh D3) |
-| D5 | Một phần | `durable_necessity_fork.go` có; chưa thấy route hay job scaffolding sunset |
+| D5 | Đã xong (commit `f951a1b1a4` trên nhánh, chưa push) | Migration 1118–1119; `durable_necessity_fork.go` (start, job tuần, verdict, `skill_change`, thống kê bước); route `GET/POST /agents/{id}/necessity`; job `durable_necessity_weekly` và `durable_flow_stage_monthly`. Test: `TestNotNeededFilesOneProposal`, `TestWeeklyMaxTwoPerSquad`, `TestShadowOmitsSkillUnderTest`, `TestFlowStageCandidatesCountFirstRound`, `TestNecessityRoute_StartAndList`. Chưa làm: bài kiểm tra cho khối chỉ dẫn (`instruction_block`), đưa thống kê bước vào brief, phút người tiêu ở cổng (F6) |
 | D6 | Chưa làm | Không có UI hồ sơ ghế, shadow, jury |
 | D7 | Chưa làm | Không có E2E giai đoạn D |
 | E1 | Một phần | `durable_reach_fork.go` có; chưa thấy route và job scheduler reach |
-| E2 | Đã merge | `durable_ocf_fork.go`, `docs/specs/durable-platform/ocf` |
+| E2 | Một phần | `durable_ocf_fork.go`, `docs/specs/durable-platform/ocf`. Thiếu: OCF lịch sử không xuất dossier, handler không cấp principal (review 2026-11-27, mục 27) |
 | E3 | Một phần | `durable_attestation_fork.go` có; chưa thấy route `POST /api/attestations/verify`, well-known keys, lệnh CLI |
-| E4 | Chưa làm | Không có offer ghế trên Hub |
+| E4 | Một phần (chưa commit) | Migration 1122 (`seat_offer`) và 1123 (index CONCURRENTLY, đã đăng ký cleanup); `durable_seat_offer_fork.go` có `Post`, `Hire`, `SeatAttestationVerified`; test `durable_seat_offer_fork_test.go`. Chưa có: `TestHiredSeatStartsFull` (chưa có envelope theo ghế), ngân sách/envelope/work class của offer, route, UI, lấy khoá host từ xa, kiểm vai trò owner/admin |
 | E5 | Chưa làm | Không có UI giai đoạn E |
 | F1 | Chưa làm | Chạy sau mỗi giai đoạn |
 | F2 | Chưa làm | Bật thử trên máy chủ dev, chỉ khi người dùng đồng ý |
@@ -315,8 +315,8 @@ Chỉ làm nếu P0 U7 xác nhận được trường manifest; nếu không, gh
 
 **Files:** Modify `server/internal/issueworkflow/flowdoc_validate*.go` (một dòng), `scripts/catalog/lib/validate.mjs` (trường `effects`); Create `server/internal/service/durable_flow_effects_fork.go`; Test tương ứng và `scripts/catalog/catalog.test.mjs`.
 
-- [ ] Test đỏ: bước `effects: external` tạo ý định `declared` trước khi chạy và chỉ chạy sau khi duyệt; cổng Launch không đổi.
-- [ ] Cài đặt; `pnpm catalog:check`; chạy; xanh. Commit `feat(durable): rehearse external flow steps`.
+- [x] Test đỏ: bước `effects: external` tạo ý định `declared` trước khi chạy và chỉ chạy sau khi duyệt; cổng Launch không đổi.
+- [x] Cài đặt; `pnpm catalog:check`; chạy; xanh. Commit `feat(durable): rehearse external flow steps`.
 
 ### Task B6: Giao diện giai đoạn B
 
@@ -482,9 +482,9 @@ Chỉ làm nếu P0 U7 xác nhận được trường manifest; nếu không, gh
 - Consumes: `ShadowService` (D3) với `purpose = necessity_test` và `omit_skills`/cắt khối chỉ dẫn.
 - Produces: `func NewcombeDiffCI(lossA, winA, n int) (lo, hi float64)`; `func NecessityVerdict(pairs []Comparison, margin float64, minPairs int) string`; `func (s *NecessityService) WeeklySchedule(ctx, ws) error` (tối đa 2 mỗi squad); `FlowStageCandidates(ctx, ws) []StageStat`.
 
-- [ ] Test đơn vị đỏ `TestNewcombeKnownValues` (so với giá trị tính sẵn trong bảng test); `TestNecessityVerdictTable` (80 hoà ở biên 0.05 → `not_needed`; 40 hoà ở biên 0.05 → `inconclusive`; bóng thua 30% → `needed`; giữa → `inconclusive` sau `2 × minPairs`).
-- [ ] Test đỏ `TestShadowOmitsSkillUnderTest`; `TestWeeklyMaxTwoPerSquad`; `TestNotNeededFilesOneProposal`; `TestNoSkillRemovalWithoutApproval`; `TestFlowStageCandidateThreshold` (≥ 95% trên ≥ 30 lượt).
-- [ ] Cài đặt; chạy; xanh. Commit `feat(durable): necessity tests for scaffolding`.
+- [x] Test đơn vị đỏ `TestNewcombeKnownValues` (so với giá trị tính sẵn trong bảng test); `TestNecessityVerdictTable` (80 hoà ở biên 0.05 → `not_needed`; 40 hoà ở biên 0.05 → `inconclusive`; bóng thua 30% → `needed`; giữa → `inconclusive` sau `2 × minPairs`).
+- [x] Test đỏ `TestShadowOmitsSkillUnderTest`; `TestWeeklyMaxTwoPerSquad`; `TestNotNeededFilesOneProposal`; `TestNoSkillRemovalWithoutApproval`; `TestFlowStageCandidateThreshold` (≥ 95% trên ≥ 30 lượt).
+- [x] Cài đặt; chạy; xanh. Commit `feat(durable): necessity tests for scaffolding`.
 
 ### Task D6: Giao diện giai đoạn D
 

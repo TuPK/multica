@@ -344,7 +344,11 @@ func (s *MetricService) companyOnlyReadings(ctx context.Context, q *db.Queries, 
 	if rate, ok := ratePercent(float64(usefulness.Useful), float64(usefulness.Total)); ok {
 		out = append(out, builtinReading{key: "brief.usefulness", scope: company, value: rate, observedAt: yesterday})
 	}
-	return out, nil
+	attention, err := attentionMinutesReadings(ctx, q, ws, s.Flags, yesterday, today)
+	if err != nil {
+		return nil, err
+	}
+	return append(out, attention...), nil
 }
 
 // writeSystemReading replaces the system reading of one series at one time, so

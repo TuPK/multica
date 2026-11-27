@@ -2497,6 +2497,24 @@ type MetricWebhookToken struct {
 	RevokedAt   pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type NecessityTest struct {
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	SubjectType    string             `json:"subject_type"`
+	SubjectRef     string             `json:"subject_ref"`
+	AgentID        pgtype.UUID        `json:"agent_id"`
+	ShadowConfigID pgtype.UUID        `json:"shadow_config_id"`
+	Margin         pgtype.Numeric     `json:"margin"`
+	MinPairs       int32              `json:"min_pairs"`
+	State          string             `json:"state"`
+	Result         []byte             `json:"result"`
+	ProposalID     pgtype.UUID        `json:"proposal_id"`
+	CreatedByType  string             `json:"created_by_type"`
+	CreatedByID    pgtype.UUID        `json:"created_by_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	CompletedAt    pgtype.Timestamptz `json:"completed_at"`
+}
+
 type NotificationPreference struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
@@ -3110,6 +3128,20 @@ type QuotaRequest struct {
 	DecidedAt        pgtype.Timestamptz `json:"decided_at"`
 }
 
+type ReachSnapshot struct {
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	SnapshotDate    pgtype.Date        `json:"snapshot_date"`
+	Surface         string             `json:"surface"`
+	State           string             `json:"state"`
+	Effects30d      int32              `json:"effects_30d"`
+	AgentEffects30d int32              `json:"agent_effects_30d"`
+	HumanMinutes30d pgtype.Numeric     `json:"human_minutes_30d"`
+	GapAsks30d      int32              `json:"gap_asks_30d"`
+	TopAskIds       []pgtype.UUID      `json:"top_ask_ids"`
+	GapIssueID      pgtype.UUID        `json:"gap_issue_id"`
+	ComputedAt      pgtype.Timestamptz `json:"computed_at"`
+}
+
 type RemoteAppConnection struct {
 	ID            pgtype.UUID        `json:"id"`
 	AppSlug       string             `json:"app_slug"`
@@ -3282,6 +3314,20 @@ type SeatDossierEntry struct {
 	Uses        int32              `json:"uses"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	RetiredAt   pgtype.Timestamptz `json:"retired_at"`
+}
+
+type SeatOffer struct {
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	Name            string             `json:"name"`
+	Role            string             `json:"role"`
+	SquadID         pgtype.UUID        `json:"squad_id"`
+	RuntimeID       pgtype.UUID        `json:"runtime_id"`
+	OutcomeCriteria string             `json:"outcome_criteria"`
+	Rationale       string             `json:"rationale"`
+	Status          string             `json:"status"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
 type ShadowConfig struct {

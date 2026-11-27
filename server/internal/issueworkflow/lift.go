@@ -276,7 +276,7 @@ func liftStep(s Step, cfg *FlowConfig, roleOf map[string]string, varKeys []strin
 }
 
 func liftTask(t Task, stepKey string, cfg *FlowConfig, roleOf map[string]string) (DocTask, error) {
-	task := DocTask{Key: t.Key, Title: t.Title, Kind: t.Kind, Role: roleOf[t.Handler.ID], Instructions: t.Instructions}
+	task := DocTask{Key: t.Key, Title: t.Title, Kind: t.Kind, Role: roleOf[t.Handler.ID], Instructions: t.Instructions, Effects: t.Effects}
 	if t.When != nil {
 		when, err := rewriteCondition(*t.When, stepKey, cfg)
 		if err != nil {

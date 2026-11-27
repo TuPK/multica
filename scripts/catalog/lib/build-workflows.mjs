@@ -205,6 +205,8 @@ export function validateFlow(entry, problems, context) {
         gateRoles.set(task.role, task.key);
       }
       if (task.when !== undefined && task.when !== null) validateFlowCondition(task.when, declared, `${ref}`, err);
+      // Work whose result lands outside the platform is held until a person approves it (durable spec 5.4).
+      if (task.effects !== undefined && task.effects !== "external") err(`${ref}: effects must be "external" or unset, not ${JSON.stringify(task.effects)}`);
     }
     if (index > 0) {
       for (const task of tasks.filter((t) => t?.kind === "gate")) {

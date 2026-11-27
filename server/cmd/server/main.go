@@ -916,6 +916,14 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.DurableSeatCleanupJob(durableDossier)); err != nil {
 		slog.Error("scheduler: register durable seat cleanup", "error", err)
 	}
+	// Weekly: skills due a necessity test open one each, at most two per squad (durable spec 10.3).
+	// Monthly: flow gates that pass the merge-or-drop threshold are counted (durable spec 10.4).
+	if err := schedulerMgr.Register(scheduler.DurableNecessityJob(h.NecessityService())); err != nil {
+		slog.Error("scheduler: register durable necessity", "error", err)
+	}
+	if err := schedulerMgr.Register(scheduler.DurableFlowStageJob(h.NecessityService())); err != nil {
+		slog.Error("scheduler: register durable flow stage", "error", err)
+	}
 	durablePredictions := &service.PredictionService{Queries: queries, Flags: flags}
 	if err := schedulerMgr.Register(scheduler.PrincipalLearningJob(durablePredictions)); err != nil {
 		slog.Error("scheduler: register principal learning", "error", err)
@@ -939,6 +947,11 @@ func main() {
 	envelopes := &service.EnvelopeService{Queries: queries, TxStarter: pool, Flags: flags}
 	if err := schedulerMgr.Register(scheduler.DurableEnvelopeJob(envelopes)); err != nil {
 		slog.Error("scheduler: register durable envelope", "error", err)
+	}
+	// Daily: every workspace's Reach Map is recomputed from the last 30 days (durable spec 11.2).
+	reach := &service.ReachService{Queries: queries, Issues: h.IssueService, Verification: durableChecks, Flags: flags}
+	if err := schedulerMgr.Register(scheduler.DurableReachJob(reach)); err != nil {
+		slog.Error("scheduler: register durable reach", "error", err)
 	}
 	if err := schedulerMgr.Register(scheduler.FlowSweepJob(h)); err != nil {
 		slog.Error("scheduler: register flow sweep", "error", err)

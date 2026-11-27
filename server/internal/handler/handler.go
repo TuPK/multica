@@ -274,6 +274,9 @@ type Handler struct {
 	Intents *service.IntentService
 	// EffectPolicy reads and saves the workspace's effect policy overrides (durable spec 4.3).
 	EffectPolicy *service.EffectPolicyStore
+	// Attestations signs track records and publishes the keys that check them (durable spec 13.2).
+	// Nil serves the keys as empty and refuses to issue.
+	Attestations *service.AttestationService
 	// Collab is the live co-editing service for docs. Nil turns live editing
 	// off: docs save through the REST autosave path.
 	Collab *collab.Client

@@ -156,7 +156,9 @@ type ShadowService struct {
 	Tasks *TaskService
 	// Runtime files the runtime change a finished run earns (spec 9.6). Nil files none.
 	Runtime *RuntimeChangeService
-	Flags   *featureflag.Service
+	// Necessity decides a necessity run (spec 10.2). Nil decides none.
+	Necessity *NecessityService
+	Flags     *featureflag.Service
 	// Now is the clock. Nil means time.Now.
 	Now func() time.Time
 }
@@ -259,6 +261,11 @@ func (s *ShadowService) OnPrimaryClaimed(ctx context.Context, task db.AgentTaskQ
 	if n == 0 {
 		return fmt.Errorf("shadow task %s was claimed before it was marked", util.UUIDToString(shadowTask.ID))
 	}
+	if cfg.Purpose == ShadowPurposeNecessity {
+		if _, err := s.Queries.SetShadowTaskKeepSkills(ctx, shadowTask.ID); err != nil {
+			return fmt.Errorf("keep skills on shadow task: %w", err)
+		}
+	}
 	_, err = s.Queries.SetShadowPairShadowTask(ctx, db.SetShadowPairShadowTaskParams{
 		ID: pair.ID, ShadowTaskID: shadowTask.ID,
 	})
@@ -309,6 +316,22 @@ func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, tas
 		})
 		if err != nil {
 			return fmt.Errorf("create shadow agent: %w", err)
+		}
+		if cfg.Purpose == ShadowPurposeNecessity {
+			// The shadow agent of a necessity test holds the seat's skills but the one under test.
+			test, err := q.GetNecessityTest(ctx, db.GetNecessityTestParams{ID: cfg.NecessityTestID, WorkspaceID: cfg.WorkspaceID})
+			if err != nil {
+				return fmt.Errorf("load necessity test: %w", err)
+			}
+			subject, err := util.ParseUUID(test.SubjectRef)
+			if err != nil {
+				return fmt.Errorf("necessity subject: %w", err)
+			}
+			if _, err := q.CopyAgentSkillsExcept(ctx, db.CopyAgentSkillsExceptParams{
+				ShadowAgentID: agent.ID, SeatID: cfg.AgentID, ExceptSkillID: subject,
+			}); err != nil {
+				return fmt.Errorf("copy seat skills: %w", err)
+			}
 		}
 		shadowAgent = agent.ID
 		_, err = q.SetShadowConfigShadowAgent(ctx, db.SetShadowConfigShadowAgentParams{ID: cfg.ID, ShadowAgentID: agent.ID})

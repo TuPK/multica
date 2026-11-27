@@ -526,3 +526,55 @@ func TestAttentionBudgetSplit(t *testing.T) {
 }
 
 func attentionIDString(id pgtype.UUID) string { return uuid.UUID(id.Bytes).String() }
+
+// TestAttentionMinutesPerDoneReading: the nightly rollup writes attention.minutes_per_done for the
+// company, the minutes of the day's questions over the issues done that day (spec 7.5). With
+// durable_principal off it writes nothing, even for rows the flag wrote earlier.
+func TestAttentionMinutesPerDoneReading(t *testing.T) {
+	f := newAttentionFixture(t, true)
+	f.Cleanup(t, `DELETE FROM metric_reading WHERE workspace_id = $1`, f.WorkspaceID)
+	ctx := context.Background()
+	now := time.Date(2026, 11, 27, 6, 0, 0, 0, time.UTC)
+	yesterdayNoon := now.AddDate(0, 0, -1).Add(12 * time.Hour)
+
+	// Two manual checks of 4 minutes each, moved into yesterday, and one issue done yesterday: 8 minutes per done.
+	for i := 0; i < 2; i++ {
+		if _, err := f.attention.Admit(ctx, f.outcomeAsk()); err != nil {
+			t.Fatalf("admit: %v", err)
+		}
+	}
+	f.Exec(t, `UPDATE attention_ledger SET created_at = $2 WHERE workspace_id = $1`, f.ws, yesterdayNoon)
+	f.Issue(t, "attention reading done", testutil.Cols{
+		"status": "done", "assignee_type": "squad", "assignee_id": attentionIDString(f.squad), "done_at": yesterdayNoon,
+	})
+
+	metrics := NewMetricService(f.q, sharedTestPool(t))
+	metrics.Flags = f.attention.Flags
+	if _, err := metrics.RollupBuiltinMetrics(ctx, f.ws, now); err != nil {
+		t.Fatalf("rollup: %v", err)
+	}
+	readingOf := func() (float64, int) {
+		t.Helper()
+		var count int
+		var value float64
+		if err := sharedTestPool(t).QueryRow(ctx, `
+			SELECT COUNT(*), COALESCE(MAX(value::float8), 0) FROM metric_reading
+			WHERE workspace_id = $1 AND metric_key = 'attention.minutes_per_done'
+			  AND scope_type = 'company' AND scope_id IS NULL AND actor_type = 'system'`, f.WorkspaceID).Scan(&count, &value); err != nil {
+			t.Fatalf("read attention reading: %v", err)
+		}
+		return value, count
+	}
+	if value, count := readingOf(); count != 1 || value != 8 {
+		t.Fatalf("flag on: attention.minutes_per_done = %v (%d readings), want 8 (1 reading)", value, count)
+	}
+
+	f.Exec(t, `DELETE FROM metric_reading WHERE workspace_id = $1 AND metric_key = 'attention.minutes_per_done'`, f.ws)
+	metrics.Flags = featureflag.NewService(featureflag.NewStaticProvider())
+	if _, err := metrics.RollupBuiltinMetrics(ctx, f.ws, now); err != nil {
+		t.Fatalf("rollup with flag off: %v", err)
+	}
+	if _, count := readingOf(); count != 0 {
+		t.Fatalf("flag off: %d attention readings written, want none", count)
+	}
+}

@@ -139,3 +139,11 @@ SELECT * FROM shadow_config
 WHERE workspace_id = @workspace_id AND agent_id = @agent_id
 ORDER BY created_at DESC, id DESC
 LIMIT @row_limit;
+
+-- name: SetShadowTaskKeepSkills :execrows
+-- A necessity test's shadow task keeps the skills its shadow agent holds (spec 10.2): the claim
+-- does not omit them. Only a task not yet claimed is marked.
+UPDATE agent_task_queue
+SET context = COALESCE(context, '{}'::jsonb) || jsonb_build_object('omit_skills', false)
+WHERE id = sqlc.arg(id)
+  AND status IN ('queued', 'dispatched', 'deferred');

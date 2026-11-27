@@ -1,10 +1,18 @@
 package main
 
 import (
+	"errors"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+
 	"github.com/go-chi/chi/v5"
 
 	"github.com/multica-ai/multica/server/internal/handler"
 	"github.com/multica-ai/multica/server/internal/middleware"
+	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -308,6 +316,48 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	// agents. Only an owner or an admin pins a mode, as a person.
 	r.Get("/api/track-records", h.ListTrackRecords)
 	r.With(handler.RequireHumanActor).Put("/api/track-records/pin", h.PinTrackRecord)
+
+	// The Reach Map (durable spec 11, F10). Reads are for members. Closing a gap opens an issue
+	// for a squad, so only an owner or an admin does it, as a person. Both are behind durable_open.
+	r.Get("/api/reach", h.GetReachMap)
+	r.With(handler.RequireHumanActor, middleware.RequireWorkspaceRole(queries, "owner", "admin")).Post("/api/reach/gaps", h.CloseReachGap)
+
+	// Track-record attestations (durable spec 13.2, F12). Issuing signs a person's record of an
+	// agent, so only an owner or an admin does it, as a person.
+	r.With(handler.RequireHumanActor, middleware.RequireWorkspaceRole(queries, "owner", "admin")).Post("/api/attestations/issue", h.IssueAttestation)
+}
+
+// registerForkPublicRoutes mounts the attestation routes that need no session (durable spec 13.2):
+// the published keys, and verification, which verifyLimit rate limits. It also sets the
+// attestation service from the environment. The signing key is MULTICA_ATTESTATION_KEY (D28); a
+// missing key leaves issuing off and keeps the other routes working.
+func registerForkPublicRoutes(r chi.Router, h *handler.Handler, queries *db.Queries, verifyLimit func(http.Handler) http.Handler) {
+	h.Attestations = newAttestationServiceFromEnv(queries)
+	r.Get(service.AttestationKeysPath, h.GetAttestationKeys)
+	r.With(verifyLimit).Post("/api/attestations/verify", h.VerifyAttestation)
+}
+
+// newAttestationServiceFromEnv reads the signing key, the retired keys, and the public host, which
+// is the host of FRONTEND_ORIGIN: the name every attestation gives as its issuer.
+func newAttestationServiceFromEnv(queries *db.Queries) *service.AttestationService {
+	svc := &service.AttestationService{Queries: queries}
+	if u, err := url.Parse(strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN"))); err == nil {
+		svc.Host = u.Hostname()
+	}
+	key, err := service.AttestationKeyFromEnv()
+	switch {
+	case errors.Is(err, service.ErrAttestationDisabled):
+	case err != nil:
+		slog.Error("attestation: the signing key is malformed; issuing is off", "error", err)
+	default:
+		svc.Key = key
+	}
+	retired, err := service.RetiredKeysFromEnv(os.Getenv(service.AttestationRetiredKeysEnv))
+	if err != nil {
+		slog.Error("attestation: retired keys are malformed; they are not published", "error", err)
+	}
+	svc.Retired = retired
+	return svc
 }
 
 // registerDurableSeatRoutes mounts an agent's seat dossier (durable spec 9.2). Reads and writes
@@ -321,6 +371,10 @@ func registerDurableSeatRoutes(r chi.Router, h *handler.Handler) {
 	r.Get("/shadow", h.ListSeatShadowRuns)
 	r.Get("/shadow/estimate", h.GetShadowEstimate)
 	r.With(handler.RequireHumanActor).Post("/shadow", h.StartShadowRun)
+	// The scaffolding sunset (durable spec 10.3): members read a seat's necessity tests, and a
+	// person starts one on a skill the seat holds.
+	r.Get("/necessity", h.ListNecessityTests)
+	r.With(handler.RequireHumanActor).Post("/necessity", h.StartNecessityTest)
 }
 
 // registerDurableSquadEnvelopeRoutes mounts a squad's autonomy envelope (durable spec 3.5).

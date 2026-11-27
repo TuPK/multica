@@ -108,6 +108,7 @@ var Columns = []Column{
 	{"runtime_profile", "created_by", ActionKeep, refReason},
 	{"runtime_quickstart_request", "initiator_user_id", ActionKeep, refReason},
 	{"seat_capacity_outbox", "user_id", ActionKeep, "billing outbox row; it must outlive the user to settle the seat"},
+	{"seat_offer", "created_by", ActionKeep, refReason},
 	{"shadow_config", "created_by", ActionKeep, refReason},
 	{"skill", "created_by", ActionKeep, refReason},
 	{"skill_version", "created_by", ActionKeep, refReason},

@@ -548,6 +548,25 @@ func filterQueuedToSquads(asks []QueuedAsk, squads map[string]bool) []QueuedAsk 
 	return out
 }
 
+// attentionMinutesReadings is the attention.minutes_per_done reading of one day (spec 7.5), a
+// company reading. It is written only while durable_principal is on: the ledger is not written
+// with the flag off, and a reading of older rows would show a number the flag no longer produces.
+func attentionMinutesReadings(ctx context.Context, q *db.Queries, ws pgtype.UUID, flags *featureflag.Service, yesterday, today time.Time) ([]builtinReading, error) {
+	if !featureflags.DurablePrincipalEnabled(ctx, flags) {
+		return nil, nil
+	}
+	perDone, ok, err := AttentionMinutesPerDone(ctx, q, ws, yesterday, today)
+	if err != nil {
+		return nil, fmt.Errorf("attention minutes per done metric: %w", err)
+	}
+	if !ok {
+		return nil, nil
+	}
+	return []builtinReading{{
+		key: "attention.minutes_per_done", scope: builtinScope{scopeType: ScopeCompany}, value: perDone, observedAt: yesterday,
+	}}, nil
+}
+
 // AttentionMinutesPerDone is the attention.minutes_per_done reading of [since, until) (spec 7.5):
 // the minutes people spent deciding in the window, per issue of the workspace that reached done
 // in it. ok is false when the window holds no question or no done issue, so no reading is shown.
