@@ -37,6 +37,7 @@ type catalogFlowStep struct {
 		Instructions string     `json:"instructions"`
 		When         *Condition `json:"when"`
 		Requires     []string   `json:"requires"`
+		Effects      string     `json:"effects"`
 	} `json:"tasks"`
 	Transitions []struct {
 		ID     string     `json:"id"`
@@ -73,7 +74,7 @@ func (f catalogFlow) definition() (Definition, map[string]CatalogEntry, error) {
 		for _, t := range s.Tasks {
 			step.Tasks = append(step.Tasks, Task{
 				Key: t.Key, Title: t.Title, Kind: t.Kind, Handler: Handler{Type: HandlerAgent, ID: agentFor(t.Role)},
-				Instructions: t.Instructions, When: t.When, Requires: t.Requires,
+				Instructions: t.Instructions, When: t.When, Requires: t.Requires, Effects: t.Effects,
 			})
 		}
 		for _, t := range s.Transitions {

@@ -1016,6 +1016,11 @@ func (h *Handler) openCompatTasks(ctx context.Context, run *flowRun, rows []flow
 	requestRef := prefix + "-" + fmt.Sprint(run.issue.Number)
 	var opened []string
 	for _, task := range missing {
+		if ok, err := h.flowTaskMayOpen(ctx, run, task.Key, task.Effects); err != nil {
+			return advanceOutcome{}, err
+		} else if !ok {
+			continue
+		}
 		agentID, _ := util.ParseUUID(task.Handler.ID)
 		created, err := h.createFlowTask(ctx, run, prefix, flowTaskCreate{
 			Title:       fmt.Sprintf("%s · %s · v%d", resolver.Name(ctx, h.Queries, step), task.Title, run.round()+1),

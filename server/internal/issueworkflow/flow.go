@@ -63,6 +63,8 @@ type Task struct {
 	Instructions string     `json:"instructions,omitempty"`
 	When         *Condition `json:"when,omitempty"`
 	Requires     []string   `json:"requires,omitempty"`
+	// Effects is external for work whose result lands outside the platform (durable spec 5.4).
+	Effects string `json:"effects,omitempty"`
 }
 
 // normalizeTasks trims the free text of tasks and their handlers. It returns
@@ -480,6 +482,9 @@ func validateFlowStep(def Definition, index int, s Step) error {
 		}
 		if task.Kind == KindGate && !task.Needs(RequireOutcome) {
 			return invalid("gate task %q must require an outcome", task.Key)
+		}
+		if task.Effects != "" && task.Effects != EffectsExternal {
+			return invalid("task %q: effects must be external or unset, not %q", task.Key, task.Effects)
 		}
 		if task.Handler.Type != HandlerAgent || task.Handler.ID == "" {
 			return invalid("task %q must be handed to an agent", task.Key)

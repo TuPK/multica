@@ -130,6 +130,11 @@ func (a tradeAgents) all() []string {
 }
 
 func newTradeFlowFixture(t *testing.T) tradeFlowFixture {
+	return newTradeFlowFixtureWith(t, nil)
+}
+
+// newTradeFlowFixtureWith is the Trade flow with its body changed by mutate, before it is saved.
+func newTradeFlowFixtureWith(t *testing.T, mutate func(body map[string]any)) tradeFlowFixture {
 	t.Helper()
 	cleanupFlowRows(t)
 	seedTestCatalog(t)
@@ -137,7 +142,11 @@ func newTradeFlowFixture(t *testing.T) tradeFlowFixture {
 		ensureGoldenStatus(t, key, "started")
 	}
 	agents := newTradeAgents(t)
-	wf := createFlowWorkflowForTest(t, tradeFlowBody("Trade flow "+workflowTestSuffix(), agents))
+	body := tradeFlowBody("Trade flow "+workflowTestSuffix(), agents)
+	if mutate != nil {
+		mutate(body)
+	}
+	wf := createFlowWorkflowForTest(t, body)
 	squadID := flowSquad(t, "Trade squad", agents.all()...)
 	dbfx.Exec(t, `UPDATE issue_workflow SET squad_id = $2 WHERE id = $1`, wf.ID, squadID)
 	dbfx.Exec(t, `UPDATE squad SET active_workflow_id = $2 WHERE id = $1`, squadID, wf.ID)

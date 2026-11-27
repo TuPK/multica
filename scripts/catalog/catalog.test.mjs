@@ -524,6 +524,15 @@ describe("flow workflow validation", () => {
     assert.deepEqual(check(withFlow(validFlow())).errors, []);
   });
 
+  it("marks a task whose result lands outside the platform as external, and nothing else", () => {
+    const external = validFlow();
+    external.steps[1].tasks[0].effects = "external";
+    assert.deepEqual(check(withFlow(external)).errors, []);
+    const other = validFlow();
+    other.steps[1].tasks[0].effects = "maybe";
+    assert.match(errorsOf(other), /task read: effects must be "external" or unset, not "maybe"/);
+  });
+
   it("names the squad it belongs to, and the id says so", () => {
     assert.match(errorsOf({ ...validFlow(), squad: "nowhere" }), /flow\.squad "nowhere" is not a squad/);
     assert.match(errorsOf(validFlow(), { id: "flow_other" }), /id must be "flow_demo_squad"/);

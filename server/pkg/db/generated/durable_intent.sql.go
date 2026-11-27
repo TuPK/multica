@@ -254,6 +254,49 @@ func (q *Queries) GetEffectIntentForUpdate(ctx context.Context, arg GetEffectInt
 	return i, err
 }
 
+const getLatestEffectIntentForTarget = `-- name: GetLatestEffectIntentForTarget :one
+SELECT id, workspace_id, task_id, agent_id, issue_id, source, target, effect_class, reversibility, call, call_sha256, preview, rationale, predicted, state, decided_by, decided_at, decision_note, expires_at, batch_key, created_at FROM effect_intent
+WHERE workspace_id = $1::uuid AND issue_id = $2::uuid AND target = $3
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetLatestEffectIntentForTargetParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	IssueID     pgtype.UUID `json:"issue_id"`
+	Target      string      `json:"target"`
+}
+
+// The newest intent of one target on an issue: a flow task holds one intent per round (durable spec 5.4).
+func (q *Queries) GetLatestEffectIntentForTarget(ctx context.Context, arg GetLatestEffectIntentForTargetParams) (EffectIntent, error) {
+	row := q.db.QueryRow(ctx, getLatestEffectIntentForTarget, arg.WorkspaceID, arg.IssueID, arg.Target)
+	var i EffectIntent
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.TaskID,
+		&i.AgentID,
+		&i.IssueID,
+		&i.Source,
+		&i.Target,
+		&i.EffectClass,
+		&i.Reversibility,
+		&i.Call,
+		&i.CallSha256,
+		&i.Preview,
+		&i.Rationale,
+		&i.Predicted,
+		&i.State,
+		&i.DecidedBy,
+		&i.DecidedAt,
+		&i.DecisionNote,
+		&i.ExpiresAt,
+		&i.BatchKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertEffectIntent = `-- name: InsertEffectIntent :one
 
 INSERT INTO effect_intent (workspace_id, task_id, agent_id, issue_id, source, target,

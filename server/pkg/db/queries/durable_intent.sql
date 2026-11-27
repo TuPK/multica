@@ -92,3 +92,10 @@ SELECT * FROM effect_event
 WHERE intent_id = sqlc.arg('intent_id')::uuid AND workspace_id = sqlc.arg('workspace_id')::uuid
 ORDER BY created_at ASC
 LIMIT 1;
+
+-- name: GetLatestEffectIntentForTarget :one
+-- The newest intent of one target on an issue: a flow task holds one intent per round (durable spec 5.4).
+SELECT * FROM effect_intent
+WHERE workspace_id = sqlc.arg('workspace_id')::uuid AND issue_id = sqlc.arg('issue_id')::uuid AND target = sqlc.arg('target')
+ORDER BY created_at DESC
+LIMIT 1;
