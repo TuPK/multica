@@ -152,6 +152,8 @@ const mockUpdateAgent = vi.hoisted(() => vi.fn());
 const mockArchiveAgent = vi.hoisted(() => vi.fn());
 const mockCancelAgentTasks = vi.hoisted(() => vi.fn());
 const mockCopyText = vi.hoisted(() => vi.fn());
+const mockApiRequest = vi.hoisted(() => vi.fn());
+const mockListRuntimes = vi.hoisted(() => vi.fn());
 
 vi.mock("@multica/core/hooks", () => ({
   useWorkspaceId: () => "ws-1",
@@ -206,7 +208,8 @@ vi.mock("@multica/core/workspace/queries", () => ({
     ],
   },
 }));
-vi.mock("@multica/core/runtimes", () => ({
+vi.mock("@multica/core/runtimes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/runtimes")>()),
   runtimeListOptions: (wsId: string) => ({
     queryKey: ["runtimes", wsId],
     queryFn: () => Promise.resolve(runtimesRef.current),
@@ -252,8 +255,17 @@ vi.mock("@multica/core/api", () => {
       archiveAgent: mockArchiveAgent,
       restoreAgent: vi.fn(),
       cancelAgentTasks: mockCancelAgentTasks,
+      request: mockApiRequest,
+      listRuntimes: mockListRuntimes,
     },
     ApiError,
+    errorCode: (err: unknown) => {
+      if (err instanceof ApiError && err.body && typeof err.body === "object" && "code" in err.body) {
+        const code = (err.body as { code?: unknown }).code;
+        return typeof code === "string" ? code : undefined;
+      }
+      return undefined;
+    },
   };
 });
 vi.mock("@multica/ui/lib/clipboard", () => ({
@@ -335,6 +347,8 @@ beforeEach(() => {
   mockArchiveAgent.mockResolvedValue(undefined);
   mockCancelAgentTasks.mockResolvedValue({ cancelled: 2 });
   mockCopyText.mockResolvedValue(true);
+  mockApiRequest.mockResolvedValue({ entries: [] });
+  mockListRuntimes.mockResolvedValue([]);
   configStore.getState().setFeatureFlags({ [COMPOSIO_MCP_APPS_FLAG]: false });
 });
 
@@ -612,6 +626,33 @@ describe("AgentDetailPage layout", () => {
     renderPage();
     expect(
       await screen.findByRole("img", { name: /Online/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("mounts the seat dossier section only when durable_seats is enabled and opens shadow trial", async () => {
+    mockApiRequest.mockImplementation(async (path: string) => {
+      if (path.includes("/shadow/estimate")) {
+        return { estimate_micros: 250_000, remaining_micros: -1, warn: false };
+      }
+      return { entries: [] };
+    });
+
+    const { unmount } = renderPage();
+    await screen.findByRole("button", { name: "Assign work" });
+    expect(screen.queryByRole("heading", { name: "Seat dossier" })).not.toBeInTheDocument();
+    unmount();
+
+    configStore.getState().setFeatureFlags({
+      [COMPOSIO_MCP_APPS_FLAG]: false,
+      durable_seats: true,
+    });
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "Seat dossier" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Start shadow trial" }));
+    expect(
+      await screen.findByText(
+        "Only use a runtime with no access keys to real systems other than the model key.",
+      ),
     ).toBeInTheDocument();
   });
 });

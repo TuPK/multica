@@ -211,5 +211,91 @@
       "cleared": "範囲を解除しました。",
       "clear_failed": "範囲を解除できませんでした。"
     }
+  },
+  "seats": {
+    "dossier": {
+      "title": "シート記録",
+      "status_label": "状態",
+      "status": {
+        "active": "有効",
+        "retired": "退役済み",
+        "all": "すべて"
+      },
+      "kind": {
+        "lesson": "教訓",
+        "pitfall": "落とし穴",
+        "preference": "好み",
+        "context": "背景",
+        "contact": "連絡先"
+      },
+      "origin": {
+        "outcome": "結果",
+        "retro": "振り返り",
+        "agent": "エージェント",
+        "member": "メンバー"
+      },
+      "evidence_type": {
+        "outcome": "結果",
+        "retro": "振り返り",
+        "comment": "コメント",
+        "document": "ドキュメント"
+      },
+      "all_work": "すべての作業",
+      "add": "項目を追加",
+      "add_submit": "項目を保存",
+      "cancel": "キャンセル",
+      "kind_label": "種類",
+      "text_label": "内容",
+      "text_placeholder": "このシートが覚えておくべきこと",
+      "work_class_label": "作業の種類",
+      "work_class_placeholder": "空欄ですべての作業に適用",
+      "evidence_type_label": "根拠の種類",
+      "evidence_ref_label": "根拠の参照",
+      "evidence_ref_placeholder": "参照元の ID またはリンク",
+      "retire": "退役",
+      "retire_reason_label": "理由",
+      "retire_reason_placeholder": "この項目が不要になった理由",
+      "retire_confirm": "退役を確定",
+      "empty": "記録項目はまだありません。",
+      "empty_retired": "退役済みの項目はありません。",
+      "load_failed": "シート記録を読み込めませんでした。",
+      "added": "項目を追加しました。",
+      "add_failed": "項目を追加できませんでした。",
+      "full_error": "有効な項目が上限の 100 件に達しています。先に不要な項目を退役させてください。",
+      "retired": "項目を退役させました。",
+      "retire_failed": "項目を退役できませんでした。",
+      "start_shadow": "シャドウ試行を開始"
+    },
+    "shadow": {
+      "title": "シャドウ試行を開始",
+      "isolation_warning": "モデルキー以外に実システムへのアクセスキーを持たないランタイムのみ使用してください。",
+      "runtime_label": "候補ランタイム",
+      "runtime_placeholder": "ランタイムを選択",
+      "runtime_empty": "利用可能なランタイムがありません。",
+      "model_label": "候補モデル",
+      "model_placeholder": "ランタイムの既定モデル",
+      "work_class_prefix_label": "作業種類のプレフィックス",
+      "work_class_prefix_placeholder": "すべての作業種類",
+      "sample_rate_label": "サンプル率",
+      "sample_rate_hint": "0.01 から 1 の範囲",
+      "target_pairs_label": "目標ペア数",
+      "target_pairs_hint": "5 から 200 の範囲",
+      "estimate_title": "見積もりコスト",
+      "estimate_loading": "コストを見積もり中...",
+      "estimate_failed": "コストを見積もれませんでした。",
+      "estimate_amount": "見積もり: {{amount}}",
+      "budget_remaining": "残り予算: {{amount}}",
+      "budget_none": "このシートに適用される予算はありません。",
+      "budget_exceeded": "見積もりコストがこのシートの残り予算を超えています。",
+      "confirm_cost": "残り予算を超えてこのシャドウ試行を開始することに同意します。",
+      "start": "試行を開始",
+      "cancel": "キャンセル",
+      "started": "シャドウ試行を開始しました。",
+      "error_already_running": "このシートではすでにシャドウ試行が実行中です。",
+      "error_cost_confirm": "開始前にコスト見積もりを確認してください。",
+      "error_owner_only": "自動昇格を有効にできるのはオーナーまたは管理者のみです。",
+      "error_invalid": "ランタイム、サンプル率、目標ペア数を確認してください。",
+      "error_failed": "シャドウ試行を開始できませんでした。"
+    }
   }
 }

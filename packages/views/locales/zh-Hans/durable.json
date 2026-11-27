@@ -211,5 +211,91 @@
       "cleared": "已清除区间。",
       "clear_failed": "无法清除区间。"
     }
+  },
+  "seats": {
+    "dossier": {
+      "title": "席位档案",
+      "status_label": "状态",
+      "status": {
+        "active": "生效中",
+        "retired": "已停用",
+        "all": "全部"
+      },
+      "kind": {
+        "lesson": "经验",
+        "pitfall": "避坑",
+        "preference": "偏好",
+        "context": "背景",
+        "contact": "联系人"
+      },
+      "origin": {
+        "outcome": "结果",
+        "retro": "复盘",
+        "agent": "智能体",
+        "member": "成员"
+      },
+      "evidence_type": {
+        "outcome": "结果",
+        "retro": "复盘",
+        "comment": "评论",
+        "document": "文档"
+      },
+      "all_work": "所有工作",
+      "add": "添加条目",
+      "add_submit": "保存条目",
+      "cancel": "取消",
+      "kind_label": "类型",
+      "text_label": "内容",
+      "text_placeholder": "该席位需要记住的要点",
+      "work_class_label": "工作类型",
+      "work_class_placeholder": "留空则适用于所有工作",
+      "evidence_type_label": "证据来源",
+      "evidence_ref_label": "证据引用",
+      "evidence_ref_placeholder": "来源 ID 或引用",
+      "retire": "停用",
+      "retire_reason_label": "理由",
+      "retire_reason_placeholder": "说明该条目不再适用的原因",
+      "retire_confirm": "确认停用",
+      "empty": "还没有档案条目。",
+      "empty_retired": "没有已停用的条目。",
+      "load_failed": "无法加载席位档案。",
+      "added": "已添加条目。",
+      "add_failed": "无法添加条目。",
+      "full_error": "该席位已有 100 条生效中的条目，请先停用部分条目。",
+      "retired": "已停用条目。",
+      "retire_failed": "无法停用条目。",
+      "start_shadow": "发起影子试跑"
+    },
+    "shadow": {
+      "title": "发起影子试跑",
+      "isolation_warning": "仅使用除模型密钥外不持有真实系统访问密钥的运行时。",
+      "runtime_label": "候选运行时",
+      "runtime_placeholder": "选择运行时",
+      "runtime_empty": "暂无可用运行时。",
+      "model_label": "候选模型",
+      "model_placeholder": "运行时默认模型",
+      "work_class_prefix_label": "工作类型前缀",
+      "work_class_prefix_placeholder": "所有工作类型",
+      "sample_rate_label": "抽样比例",
+      "sample_rate_hint": "0.01 到 1 之间",
+      "target_pairs_label": "目标对比组数",
+      "target_pairs_hint": "5 到 200 之间",
+      "estimate_title": "预估费用",
+      "estimate_loading": "正在估算费用...",
+      "estimate_failed": "无法估算费用。",
+      "estimate_amount": "预估：{{amount}}",
+      "budget_remaining": "剩余预算：{{amount}}",
+      "budget_none": "当前没有覆盖该席位的预算。",
+      "budget_exceeded": "预估费用超出该席位的剩余预算。",
+      "confirm_cost": "我确认在超出剩余预算的情况下发起本次影子试跑。",
+      "start": "开始试跑",
+      "cancel": "取消",
+      "started": "已发起影子试跑。",
+      "error_already_running": "该席位已有正在运行的影子试跑。",
+      "error_cost_confirm": "发起前请先确认费用预估。",
+      "error_owner_only": "只有所有者或管理员可以开启自动切换。",
+      "error_invalid": "请检查运行时、抽样比例和目标对比组数。",
+      "error_failed": "无法发起影子试跑。"
+    }
   }
 }

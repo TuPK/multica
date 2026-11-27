@@ -211,5 +211,91 @@
       "cleared": "Plage retirée.",
       "clear_failed": "Impossible de retirer la plage."
     }
+  },
+  "seats": {
+    "dossier": {
+      "title": "Dossier du poste",
+      "status_label": "Statut",
+      "status": {
+        "active": "Actives",
+        "retired": "Retirées",
+        "all": "Toutes"
+      },
+      "kind": {
+        "lesson": "Leçon",
+        "pitfall": "Piège",
+        "preference": "Préférence",
+        "context": "Contexte",
+        "contact": "Contact"
+      },
+      "origin": {
+        "outcome": "Résultat",
+        "retro": "Rétrospective",
+        "agent": "Agent",
+        "member": "Membre"
+      },
+      "evidence_type": {
+        "outcome": "Résultat",
+        "retro": "Rétrospective",
+        "comment": "Commentaire",
+        "document": "Document"
+      },
+      "all_work": "Tout type de travail",
+      "add": "Ajouter une entrée",
+      "add_submit": "Enregistrer l'entrée",
+      "cancel": "Annuler",
+      "kind_label": "Type",
+      "text_label": "Note",
+      "text_placeholder": "Ce que ce poste doit retenir",
+      "work_class_label": "Type de travail",
+      "work_class_placeholder": "Laisser vide pour tout travail",
+      "evidence_type_label": "Source de preuve",
+      "evidence_ref_label": "Référence de preuve",
+      "evidence_ref_placeholder": "ID ou référence vers la source",
+      "retire": "Retirer",
+      "retire_reason_label": "Raison",
+      "retire_reason_placeholder": "Pourquoi cette entrée ne s'applique plus",
+      "retire_confirm": "Confirmer le retrait",
+      "empty": "Aucune entrée de dossier pour l'instant.",
+      "empty_retired": "Aucune entrée retirée.",
+      "load_failed": "Impossible de charger le dossier du poste.",
+      "added": "Entrée ajoutée.",
+      "add_failed": "Impossible d'ajouter l'entrée.",
+      "full_error": "Ce poste compte déjà 100 entrées actives. Retirez-en d'abord.",
+      "retired": "Entrée retirée.",
+      "retire_failed": "Impossible de retirer l'entrée.",
+      "start_shadow": "Lancer un essai en ombre"
+    },
+    "shadow": {
+      "title": "Lancer un essai en ombre",
+      "isolation_warning": "Utilisez uniquement un runtime sans clé d'accès aux systèmes réels autre que la clé du modèle.",
+      "runtime_label": "Runtime candidat",
+      "runtime_placeholder": "Sélectionner un runtime",
+      "runtime_empty": "Aucun runtime disponible.",
+      "model_label": "Modèle candidat",
+      "model_placeholder": "Modèle par défaut du runtime",
+      "work_class_prefix_label": "Préfixe de type de travail",
+      "work_class_prefix_placeholder": "Tous les types de travail",
+      "sample_rate_label": "Taux d'échantillonnage",
+      "sample_rate_hint": "Entre 0.01 et 1",
+      "target_pairs_label": "Paires cibles",
+      "target_pairs_hint": "Entre 5 et 200",
+      "estimate_title": "Coût estimé",
+      "estimate_loading": "Estimation du coût...",
+      "estimate_failed": "Impossible d'estimer le coût.",
+      "estimate_amount": "Estimation : {{amount}}",
+      "budget_remaining": "Budget restant : {{amount}}",
+      "budget_none": "Aucun budget ne couvre ce poste.",
+      "budget_exceeded": "Le coût estimé dépasse le budget restant de ce poste.",
+      "confirm_cost": "Je confirme le lancement de cet essai au-delà du budget restant.",
+      "start": "Lancer l'essai",
+      "cancel": "Annuler",
+      "started": "Essai en ombre lancé.",
+      "error_already_running": "Un essai en ombre est déjà en cours sur ce poste.",
+      "error_cost_confirm": "Confirmez l'estimation du coût avant de lancer.",
+      "error_owner_only": "Seul un propriétaire ou un administrateur peut activer la promotion automatique.",
+      "error_invalid": "Vérifiez le runtime, le taux d'échantillonnage et les paires cibles.",
+      "error_failed": "Impossible de lancer l'essai en ombre."
+    }
   }
 }

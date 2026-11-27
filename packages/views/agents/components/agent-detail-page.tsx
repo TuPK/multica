@@ -103,6 +103,8 @@ import { AgentWorkDialog } from "./agent-work-dialog";
 import { AgentWorkSections } from "./tabs/activity-tab";
 import { AgentTrackRecordTab } from "../../durable/outcomes/agent-track-record-tab";
 import { useOutcomesEnabled } from "../../durable/outcomes/use-outcomes-enabled";
+import { SeatDossierTab } from "../../durable/seats/seat-dossier-tab";
+import { useSeatsEnabled } from "../../durable/seats/use-seats-enabled";
 
 const AGENT_DETAIL_LAYOUT_ID = "multica_agent_detail_layout";
 
@@ -129,6 +131,7 @@ interface AgentDetailPageProps {
 export function AgentDetailPage({ agentId, onArchived }: AgentDetailPageProps) {
   const { t } = useT("agents");
   const outcomesOn = useOutcomesEnabled();
+  const seatsOn = useSeatsEnabled();
   const { t: tIssues } = useT("issues");
   const wsId = useWorkspaceId();
   const [scrollParent, setScrollParent] = useState<HTMLDivElement | null>(null);
@@ -724,6 +727,7 @@ export function AgentDetailPage({ agentId, onArchived }: AgentDetailPageProps) {
           />
 
           {outcomesOn ? <AgentTrackRecordTab agentId={agent.id} /> : null}
+          {seatsOn ? <SeatDossierTab agentId={agent.id} /> : null}
 
           <AgentChannelsSection agent={agent} />
 

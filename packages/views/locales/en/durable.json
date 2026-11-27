@@ -211,5 +211,91 @@
       "cleared": "Range cleared.",
       "clear_failed": "Could not clear the range."
     }
+  },
+  "seats": {
+    "dossier": {
+      "title": "Seat dossier",
+      "status_label": "Status",
+      "status": {
+        "active": "Active",
+        "retired": "Retired",
+        "all": "All"
+      },
+      "kind": {
+        "lesson": "Lesson",
+        "pitfall": "Pitfall",
+        "preference": "Preference",
+        "context": "Context",
+        "contact": "Contact"
+      },
+      "origin": {
+        "outcome": "Outcome",
+        "retro": "Retrospective",
+        "agent": "Agent",
+        "member": "Member"
+      },
+      "evidence_type": {
+        "outcome": "Outcome",
+        "retro": "Retrospective",
+        "comment": "Comment",
+        "document": "Document"
+      },
+      "all_work": "All work",
+      "add": "Add entry",
+      "add_submit": "Save entry",
+      "cancel": "Cancel",
+      "kind_label": "Kind",
+      "text_label": "Note",
+      "text_placeholder": "What this seat should remember",
+      "work_class_label": "Work class",
+      "work_class_placeholder": "Leave blank for all work",
+      "evidence_type_label": "Evidence source",
+      "evidence_ref_label": "Evidence reference",
+      "evidence_ref_placeholder": "ID or link to the source",
+      "retire": "Retire",
+      "retire_reason_label": "Reason",
+      "retire_reason_placeholder": "Why this entry no longer applies",
+      "retire_confirm": "Confirm retire",
+      "empty": "No dossier entries yet.",
+      "empty_retired": "No retired entries.",
+      "load_failed": "Could not load the seat dossier.",
+      "added": "Entry added.",
+      "add_failed": "Could not add the entry.",
+      "full_error": "This seat already has 100 active entries. Retire some first.",
+      "retired": "Entry retired.",
+      "retire_failed": "Could not retire the entry.",
+      "start_shadow": "Start shadow trial"
+    },
+    "shadow": {
+      "title": "Start shadow trial",
+      "isolation_warning": "Only use a runtime with no access keys to real systems other than the model key.",
+      "runtime_label": "Candidate runtime",
+      "runtime_placeholder": "Select a runtime",
+      "runtime_empty": "No runtimes available.",
+      "model_label": "Candidate model",
+      "model_placeholder": "Default runtime model",
+      "work_class_prefix_label": "Work class prefix",
+      "work_class_prefix_placeholder": "All work classes",
+      "sample_rate_label": "Sample rate",
+      "sample_rate_hint": "Between 0.01 and 1",
+      "target_pairs_label": "Target pairs",
+      "target_pairs_hint": "Between 5 and 200",
+      "estimate_title": "Estimated cost",
+      "estimate_loading": "Estimating cost...",
+      "estimate_failed": "Could not estimate cost.",
+      "estimate_amount": "Estimate: {{amount}}",
+      "budget_remaining": "Budget remaining: {{amount}}",
+      "budget_none": "No budget covers this seat.",
+      "budget_exceeded": "Estimated cost exceeds the remaining budget for this seat.",
+      "confirm_cost": "I confirm starting this shadow trial above the remaining budget.",
+      "start": "Start trial",
+      "cancel": "Cancel",
+      "started": "Shadow trial started.",
+      "error_already_running": "A shadow trial is already running on this seat.",
+      "error_cost_confirm": "Confirm the cost estimate before starting.",
+      "error_owner_only": "Only an owner or admin can enable auto-promotion.",
+      "error_invalid": "Check the runtime, sample rate, and target pairs.",
+      "error_failed": "Could not start the shadow trial."
+    }
   }
 }
