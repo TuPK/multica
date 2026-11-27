@@ -32,7 +32,8 @@ func (h *Handler) serveOCFExport(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	workspaceID := h.resolveWorkspaceID(r)
-	if _, ok := h.companyActorFor(w, r, workspaceID); !ok {
+	actor, ok := h.companyActorFor(w, r, workspaceID)
+	if !ok {
 		return true
 	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
@@ -40,6 +41,9 @@ func (h *Handler) serveOCFExport(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	opts := service.ExportOptions{History: r.URL.Query().Get("history") == "true", Now: time.Now()}
+	if r.URL.Query().Get("include_principal") == "true" {
+		opts.PrincipalMember = actor.ID
+	}
 	pkg, err := service.ExportOCF(r.Context(), h.Queries, wsUUID, opts)
 	if err != nil {
 		slog.Warn("export ocf failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)

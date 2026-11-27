@@ -152,6 +152,46 @@ func TestExportHistoryValidatesAgainstSchema(t *testing.T) {
 	}
 }
 
+func TestOCFDossierHistoryRoundTrip(t *testing.T) {
+	src, _ := ocfSourceCompany(t)
+	_, agent := ownerAndLeader(t, src, "Dossier Seat")
+	for _, status := range []string{"active", "retired"} {
+		src.Insert(t, "seat_dossier_entry", testutil.Cols{
+			"workspace_id": src.WorkspaceID, "agent_id": agent, "kind": "lesson",
+			"text": status + " lesson", "status": status, "origin": "member",
+			"evidence": testutil.Raw(`'[{"type":"document","ref":"source"}]'::jsonb`),
+		})
+	}
+	data := exportOCF(t, src, ExportOptions{History: true})
+	parts := readOCFZip(t, data)
+	body, ok := parts["history/dossiers.ndjson"]
+	if !ok {
+		t.Fatal("history/dossiers.ndjson missing")
+	}
+	lines, err := ndjsonLines(body)
+	if err != nil || len(lines) != 1 {
+		t.Fatalf("dossier lines = %s, err = %v; want one active entry", body, err)
+	}
+	var row map[string]any
+	if err := json.Unmarshal(lines[0], &row); err != nil || row["text"] != "active lesson" || row["agent"] != "Dossier Seat" {
+		t.Fatalf("exported dossier = %v, err = %v", row, err)
+	}
+	dst, _ := companyWorkspace(t)
+	if _, err := importOCF(t, dst, dst.Runtime(t, "dossier import runtime"), data); err != nil {
+		t.Fatal(err)
+	}
+	imported := ocfGovernanceByKind(t, dst)["ocf.imported.dossier"]
+	if len(imported) != 1 || imported[0]["imported"] != true || imported[0]["text"] != "active lesson" {
+		t.Fatalf("imported dossiers = %v", imported)
+	}
+	if _, err := importOCF(t, dst, dst.Runtime(t, "dossier repeat runtime"), data); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(ocfGovernanceByKind(t, dst)["ocf.imported.dossier"]); got != 1 {
+		t.Fatalf("reimported dossiers = %d", got)
+	}
+}
+
 func TestImportMarksHistoryImported(t *testing.T) {
 	src, _ := ocfSourceCompany(t)
 	data := exportOCF(t, src, ExportOptions{History: true})

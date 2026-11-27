@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -53,6 +54,7 @@ const (
 	ocfImportedOutcomeKind     = "ocf.imported.outcome"
 	ocfImportedTrackRecordKind = "ocf.imported.track_record"
 	ocfImportedGovernanceKind  = "ocf.imported.governance"
+	ocfImportedDossierKind     = "ocf.imported.dossier"
 	ocfHistoryImportedKind     = "ocf.history_imported"
 )
 
@@ -113,9 +115,10 @@ type ExportOptions struct {
 	// governance log. Without it the package is the structure alone.
 	History bool
 	// Principals are the people whose profiles are exported. They need History,
-	// and each must have consented. No principal store feeds this yet, so the
-	// production export passes none.
+	// and each must have consented.
 	Principals []OCFPrincipal
+	// PrincipalMember identifies the requesting person who consented to export.
+	PrincipalMember pgtype.UUID
 	// Now stamps the package. Zero means the current time.
 	Now time.Time
 }
@@ -181,6 +184,17 @@ type ocfGovernanceEvent struct {
 	CreatedAt   string          `json:"created_at"`
 }
 
+type ocfDossierEntry struct {
+	Agent     string          `json:"agent"`
+	Kind      string          `json:"kind"`
+	Text      string          `json:"text"`
+	WorkClass string          `json:"work_class"`
+	Evidence  json.RawMessage `json:"evidence"`
+	Origin    string          `json:"origin"`
+	Uses      int32           `json:"uses"`
+	CreatedAt time.Time       `json:"created_at"`
+}
+
 // ExportOCF writes the workspace ws as an ocf/1 package. The package is validated
 // against the schema before it is returned, so an export that breaks the format
 // fails here rather than on someone's import.
@@ -189,8 +203,29 @@ func ExportOCF(ctx context.Context, q *db.Queries, ws pgtype.UUID, opts ExportOp
 	if now.IsZero() {
 		now = time.Now()
 	}
-	if len(opts.Principals) > 0 && !opts.History {
+	if (len(opts.Principals) > 0 || opts.PrincipalMember.Valid) && !opts.History {
 		return nil, errors.New("principals are exported with the history part only")
+	}
+	if opts.PrincipalMember.Valid {
+		profile, err := q.GetPrincipalProfile(ctx, db.GetPrincipalProfileParams{WorkspaceID: ws, MemberID: opts.PrincipalMember})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("export principal profile: %w", err)
+		}
+		if err == nil && profile.ConsentAt.Valid {
+			user, err := q.GetUser(ctx, opts.PrincipalMember)
+			if err != nil {
+				return nil, fmt.Errorf("export principal member: %w", err)
+			}
+			traits, err := q.ListActivePrincipalTraits(ctx, db.ListActivePrincipalTraitsParams{WorkspaceID: ws, MemberID: opts.PrincipalMember})
+			if err != nil {
+				return nil, fmt.Errorf("export principal traits: %w", err)
+			}
+			principal := OCFPrincipal{Member: user.Name, ConsentAt: profile.ConsentAt.Time, Status: profile.Status, ShareWithOwners: profile.ShareWithOwners, Version: int(profile.Version), Summary: profile.Summary, Traits: []OCFPrincipalTrait{}}
+			for _, trait := range traits {
+				principal.Traits = append(principal.Traits, OCFPrincipalTrait{DecisionKind: trait.DecisionKind, Statement: trait.Statement, Origin: trait.Origin, CreatedAt: trait.CreatedAt.Time})
+			}
+			opts.Principals = append(opts.Principals, principal)
+		}
 	}
 	for _, p := range opts.Principals {
 		if p.ConsentAt.IsZero() {
@@ -217,7 +252,7 @@ func ExportOCF(ctx context.Context, q *db.Queries, ws pgtype.UUID, opts ExportOp
 		for name, body := range history {
 			files[name] = body
 		}
-		parts = append(parts, ocfPartOutcomes, ocfPartTrackRecords, ocfPartGovernance)
+		parts = append(parts, ocfPartOutcomes, ocfPartTrackRecords, ocfPartGovernance, ocfPartDossiers)
 		if len(opts.Principals) > 0 {
 			parts = append(parts, ocfPartPrincipals)
 		}
@@ -328,6 +363,21 @@ func ocfHistoryFiles(ctx context.Context, q *db.Queries, ws pgtype.UUID, princip
 		})
 	}
 
+	allAgents, err := q.ListAllAgentsAnyKind(ctx, ws)
+	if err != nil {
+		return nil, fmt.Errorf("export dossier agents: %w", err)
+	}
+	var dossierLines []ocfDossierEntry
+	for _, agent := range allAgents {
+		entries, err := q.ListSeatDossierEntries(ctx, db.ListSeatDossierEntriesParams{WorkspaceID: ws, AgentID: agent.ID, Status: "active", RowLimit: dossierMaxActive})
+		if err != nil {
+			return nil, fmt.Errorf("export dossier entries: %w", err)
+		}
+		for _, entry := range entries {
+			dossierLines = append(dossierLines, ocfDossierEntry{agent.Name, entry.Kind, entry.Text, entry.WorkClass, entry.Evidence, entry.Origin, entry.Uses, entry.CreatedAt.Time})
+		}
+	}
+
 	files := map[string][]byte{}
 	if files[ocfPartFile(ocfPartOutcomes)], err = ndjson(outcomeLines); err != nil {
 		return nil, err
@@ -336,6 +386,9 @@ func ocfHistoryFiles(ctx context.Context, q *db.Queries, ws pgtype.UUID, princip
 		return nil, err
 	}
 	if files[ocfPartFile(ocfPartGovernance)], err = ndjson(govLines); err != nil {
+		return nil, err
+	}
+	if files[ocfPartFile(ocfPartDossiers)], err = ndjson(dossierLines); err != nil {
 		return nil, err
 	}
 	if len(principals) > 0 {
@@ -778,7 +831,7 @@ func readOCFPackage(r io.ReaderAt, size int64) (map[string][]byte, error) {
 
 // importOCFHistory writes the history parts of a package as governance events, each
 // marked imported. A package already imported (the same exported_at) writes nothing.
-// Its parts are reported as they are; principals and dossiers are not written by
+// Its parts are reported as they are; principals are not written by
 // this build.
 func importOCFHistory(ctx context.Context, q *db.Queries, txStarter TxStarter, ws pgtype.UUID, m ocfManifest, files map[string][]byte, opts ImportOptions, report *ImportReport) error {
 	exportedAt := m.ExportedAt.UTC().Format(time.RFC3339Nano)
@@ -793,7 +846,7 @@ func importOCFHistory(ctx context.Context, q *db.Queries, txStarter TxStarter, w
 		if json.Unmarshal(e.Details, &d) == nil && d["exported_at"] == exportedAt {
 			for _, part := range m.Parts {
 				switch part {
-				case ocfPartOutcomes, ocfPartTrackRecords, ocfPartGovernance:
+				case ocfPartOutcomes, ocfPartTrackRecords, ocfPartGovernance, ocfPartDossiers:
 					report.add("history", part, ImportExists, "imported before")
 				}
 			}
@@ -804,8 +857,8 @@ func importOCFHistory(ctx context.Context, q *db.Queries, txStarter TxStarter, w
 	var writes []func(q *db.Queries) error
 	for _, part := range m.Parts {
 		switch part {
-		case ocfPartOutcomes, ocfPartTrackRecords, ocfPartGovernance:
-		case ocfPartPrincipals, ocfPartDossiers, ocfPartAttestations:
+		case ocfPartOutcomes, ocfPartTrackRecords, ocfPartGovernance, ocfPartDossiers:
+		case ocfPartPrincipals, ocfPartAttestations:
 			report.add("history", part, ImportSkipped, "not imported by this build")
 			continue
 		default:
@@ -882,6 +935,9 @@ func importRowWriter(ctx context.Context, ws, actor pgtype.UUID, part string, ro
 			fields["source_verification_mode"] = source
 			return writeImportedRow(ctx, q, ws, actor, ocfImportedTrackRecordKind, "track_record",
 				fmt.Sprintf("Imported track record for %v, %v. Shown for viewing only.", fields["agent"], fields["work_class"]), fields)
+		case ocfPartDossiers:
+			return writeImportedRow(ctx, q, ws, actor, ocfImportedDossierKind, "dossier",
+				fmt.Sprintf("Imported dossier entry for %v.", fields["agent"]), fields)
 		default:
 			return writeImportedRow(ctx, q, ws, actor, ocfImportedGovernanceKind, "governance",
 				fmt.Sprintf("Imported governance event: %v.", fields["summary"]), fields)
