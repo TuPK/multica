@@ -164,9 +164,8 @@
       "all": "全部",
       "empty": "没有符合筛选条件的结果。",
       "load_failed": "无法加载结果。",
-      "limit_note": "显示最新的 100 条结果。",
       "weekly_title": "每周通过率",
-      "weekly_hint": "按结果创建的周，统计已检查结果中通过的比例。最近 100 条结果。",
+      "weekly_hint": "按结果创建的周，统计已检查结果中通过的比例。",
       "weekly_row": "{{week}}：{{rate}}%（通过 {{pass}}，已检查 {{verified}}）",
       "weekly_none": "{{week}}：暂无已检查结果"
     },

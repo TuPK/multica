@@ -164,9 +164,8 @@
       "all": "All",
       "empty": "No outcomes match these filters.",
       "load_failed": "Could not load outcomes.",
-      "limit_note": "Showing the latest 100 outcomes.",
       "weekly_title": "Pass rate by week",
-      "weekly_hint": "Passed out of checked outcomes, by the week each one was created. The latest 100 outcomes.",
+      "weekly_hint": "Passed out of checked outcomes, by the week each one was created.",
       "weekly_row": "{{week}}: {{rate}}% ({{pass}} of {{verified}} checked)",
       "weekly_none": "{{week}}: none checked"
     },

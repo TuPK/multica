@@ -164,9 +164,8 @@
       "all": "Tất cả",
       "empty": "Không có kết quả nào khớp bộ lọc.",
       "load_failed": "Không tải được kết quả.",
-      "limit_note": "Hiện 100 kết quả mới nhất.",
       "weekly_title": "Tỷ lệ đạt theo tuần",
-      "weekly_hint": "Số đạt trên các kết quả đã kiểm, theo tuần tạo ra kết quả. 100 kết quả gần nhất.",
+      "weekly_hint": "Số đạt trên các kết quả đã kiểm, theo tuần tạo ra kết quả.",
       "weekly_row": "{{week}}: {{rate}}% ({{pass}} trên {{verified}} đã kiểm)",
       "weekly_none": "{{week}}: chưa có kết quả kiểm"
     },

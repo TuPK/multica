@@ -164,9 +164,8 @@
       "all": "Tous",
       "empty": "Aucun résultat ne correspond à ces filtres.",
       "load_failed": "Impossible de charger les résultats.",
-      "limit_note": "Affichage des 100 derniers résultats.",
       "weekly_title": "Taux de réussite par semaine",
-      "weekly_hint": "Validés parmi les résultats vérifiés, par semaine de création. Les 100 derniers résultats.",
+      "weekly_hint": "Validés parmi les résultats vérifiés, par semaine de création.",
       "weekly_row": "{{week}} : {{rate}} % ({{pass}} sur {{verified}} vérifiés)",
       "weekly_none": "{{week}} : aucun résultat vérifié"
     },

@@ -164,9 +164,8 @@
       "all": "全部",
       "empty": "沒有符合篩選條件的結果。",
       "load_failed": "無法載入結果。",
-      "limit_note": "顯示最新的 100 筆結果。",
       "weekly_title": "每週通過率",
-      "weekly_hint": "依結果建立的週，統計已檢查結果中通過的比例。最近 100 筆結果。",
+      "weekly_hint": "依結果建立的週，統計已檢查結果中通過的比例。",
       "weekly_row": "{{week}}：{{rate}}%（通過 {{pass}}，已檢查 {{verified}}）",
       "weekly_none": "{{week}}：尚無已檢查結果"
     },

@@ -164,9 +164,8 @@
       "all": "Todos",
       "empty": "Ningún resultado coincide con estos filtros.",
       "load_failed": "No se pudieron cargar los resultados.",
-      "limit_note": "Se muestran los 100 resultados más recientes.",
       "weekly_title": "Tasa de aprobados por semana",
-      "weekly_hint": "Aprobados entre los resultados revisados, por semana de creación. Los 100 resultados más recientes.",
+      "weekly_hint": "Aprobados entre los resultados revisados, por semana de creación.",
       "weekly_row": "{{week}}: {{rate}} % ({{pass}} de {{verified}} revisados)",
       "weekly_none": "{{week}}: ninguno revisado"
     },

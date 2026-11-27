@@ -1,4 +1,4 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "../../api";
 import { toQueryString } from "../query-string";
 import {
@@ -70,6 +70,21 @@ export function outcomeListOptions(wsId: string, filters: OutcomeFilters = {}) {
       parseOutcomeList(await api.request(`/api/outcomes${toQueryString(filters)}`), "GET /api/outcomes"),
     enabled: !!wsId,
   });
+}
+
+export function outcomeInfiniteOptions(wsId: string, filters: OutcomeFilters = {}) {
+  return infiniteQueryOptions({
+    queryKey: [...outcomeKeys.list(wsId, filters), "infinite"] as const,
+    initialPageParam: filters.cursor ?? "",
+    queryFn: async ({ pageParam }) =>
+      parseOutcomeList(await api.request(`/api/outcomes${toQueryString({ ...filters, cursor: pageParam })}`), "GET /api/outcomes"),
+    getNextPageParam: (page) => page.next_cursor || undefined,
+    enabled: !!wsId,
+  });
+}
+
+export function useOutcomesInfinite(wsId: string, filters: OutcomeFilters = {}) {
+  return useInfiniteQuery(outcomeInfiniteOptions(wsId, filters));
 }
 
 /** One outcome with its checks. */

@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   OUTCOME_VERDICTS,
   useOutcomeSummary,
-  useOutcomes,
+  useOutcomesInfinite,
   type Outcome,
   type OutcomeSummaryGroup,
   type OutcomeVerdict,
@@ -19,14 +19,13 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@multica/ui/components/ui/chart";
+import { Button } from "@multica/ui/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { cn } from "@multica/ui/lib/utils";
 import { PAGE_GUTTER } from "../../layout/page-header";
 import { useT } from "../../i18n";
 import { VerdictChip } from "./verdict-chip";
 
-// The list reads the newest outcomes in one page. The note says so when more exist, rather than
-// paging silently.
 const PAGE_SIZE = 100;
 const ALL = "all";
 // The chart covers this many weeks, the current one included.
@@ -48,7 +47,7 @@ export function GovernanceOutcomesTab() {
 
   const agents = useQuery(agentListOptions(wsId));
   const squads = useQuery(squadListOptions(wsId));
-  const outcomes = useOutcomes(wsId, {
+  const outcomes = useOutcomesInfinite(wsId, {
     agent_id: agentId === ALL ? undefined : agentId,
     squad_id: squadId === ALL ? undefined : squadId,
     verdict: verdict === ALL ? undefined : (verdict as OutcomeVerdict),
@@ -57,8 +56,11 @@ export function GovernanceOutcomesTab() {
   const summary = useOutcomeSummary(wsId);
   // The chart reads its own window, unfiltered by the table. The window is fixed when the tab mounts.
   const [chartFrom] = useState(() => weekStart(new Date(), -(CHART_WEEKS - 1)));
-  const recent = useOutcomes(wsId, { since: chartFrom.toISOString(), limit: PAGE_SIZE });
-  const weeks = weeklyPassRates(recent.data?.outcomes ?? [], chartFrom, CHART_WEEKS);
+  const recent = useOutcomesInfinite(wsId, { since: chartFrom.toISOString(), limit: PAGE_SIZE });
+  useEffect(() => {
+    if (recent.hasNextPage && !recent.isFetching && !recent.isError) void recent.fetchNextPage();
+  }, [recent.hasNextPage, recent.isFetching, recent.isError, recent.fetchNextPage]);
+  const weeks = weeklyPassRates(recent.data?.pages.flatMap((page) => page.outcomes) ?? [], chartFrom, CHART_WEEKS);
   const chartConfig = {
     rate: { label: t(($) => $.outcomes.tab.weekly_title), color: "var(--chart-1)" },
   } satisfies ChartConfig;
@@ -67,7 +69,7 @@ export function GovernanceOutcomesTab() {
     () => new Map((agents.data ?? []).map((agent) => [agent.id, agent.name])),
     [agents.data],
   );
-  const rows = outcomes.data?.outcomes ?? [];
+  const rows = outcomes.data?.pages.flatMap((page) => page.outcomes) ?? [];
   const percent = verifiedCoverage(summary.data?.groups ?? []);
 
   const agentItems: SelectItemValue[] = [
@@ -154,8 +156,10 @@ export function GovernanceOutcomesTab() {
             ))}
           </ul>
         ) : null}
-        {outcomes.data?.next_cursor ? (
-          <p className="text-caption text-muted-foreground">{t(($) => $.outcomes.tab.limit_note)}</p>
+        {outcomes.hasNextPage ? (
+          <Button variant="outline" className="self-start" disabled={outcomes.isFetching} onClick={() => void outcomes.fetchNextPage()}>
+            {tGov(($) => $.log.load_more)}
+          </Button>
         ) : null}
       </section>
     </div>

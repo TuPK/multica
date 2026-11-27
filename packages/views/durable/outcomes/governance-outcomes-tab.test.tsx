@@ -101,6 +101,30 @@ describe("GovernanceOutcomesTab", () => {
     expect(within(chart).getByText(/0% \(0 of 1 checked\)/)).toBeInTheDocument();
   });
 
+  it("loads later list pages and counts later chart pages", async () => {
+    request.mockImplementation((path) => {
+      const url = String(path);
+      if (url.startsWith("/api/outcomes/summary")) return route(url);
+      const second = url.includes("cursor=next");
+      if (url.includes("since=")) return Promise.resolve({
+        outcomes: [{ ...outcome(second ? "chart-2" : "chart-1", second ? "fail" : "pass"), created_at: new Date().toISOString() }],
+        next_cursor: second ? "" : "next",
+      });
+      return Promise.resolve({
+        outcomes: [{ ...outcome(second ? "list-2" : "list-1", "pass"), work_class: second ? "second row" : "first row" }],
+        next_cursor: second ? "" : "next",
+      });
+    });
+    const user = userEvent.setup({ delay: null });
+    renderTab();
+    expect(await screen.findByText("first row")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("second row")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+    expect(await screen.findByText(/50% \(1 of 2 checked\)/)).toBeInTheDocument();
+    expect(request.mock.calls.filter(([path]) => String(path).includes("cursor=next"))).toHaveLength(2);
+  });
+
   it("filters the outcomes by verdict through the server", async () => {
     const user = userEvent.setup({ delay: null });
     renderTab();
