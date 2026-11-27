@@ -273,6 +273,10 @@ func (h *Handler) UndoEffect(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to load effect")
 		return
 	}
+	if h.effectHiddenFrom(r, workspaceID, ev) {
+		writeError(w, http.StatusNotFound, "effect not found")
+		return
+	}
 	if member.Role != "owner" && member.Role != "admin" && member.UserID != ev.MemberID {
 		writeError(w, http.StatusForbidden, "only the owner, an admin, or the member who acted can undo this")
 		return
@@ -370,4 +374,29 @@ func truncateEffectSummary(s string) string {
 		return string(r[:500])
 	}
 	return s
+}
+
+// effectHiddenFrom reports whether the effect was taken by a task on an issue in a project the
+// caller cannot see. An effect with no task belongs to no project. A hidden effect is answered as
+// a missing one, and a project that cannot be resolved is treated as hidden.
+func (h *Handler) effectHiddenFrom(r *http.Request, workspaceID string, ev db.EffectEvent) bool {
+	if !ev.TaskID.Valid {
+		return false
+	}
+	task, err := h.Queries.GetAgentTask(r.Context(), ev.TaskID)
+	if err != nil || !task.IssueID.Valid {
+		return false
+	}
+	projectID, err := h.Queries.GetIssueProjectID(r.Context(), task.IssueID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false
+	}
+	if err != nil {
+		return true
+	}
+	hidden, err := h.hiddenProjects(r, workspaceID)
+	if err != nil {
+		return true
+	}
+	return !hidden.CanSeeProject(projectID)
 }

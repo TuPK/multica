@@ -284,6 +284,10 @@ func (h *Handler) ApproveIntentBatch(w http.ResponseWriter, r *http.Request) {
 			out = append(out, result{ID: raw, Error: "invalid id", Status: http.StatusBadRequest})
 			continue
 		}
+		if h.intentHiddenFrom(r, workspaceID, wsUUID, id) {
+			out = append(out, result{ID: raw, Error: "intent not found", Status: http.StatusNotFound})
+			continue
+		}
 		if !h.mayDecideIntent(r, member, id) {
 			out = append(out, result{ID: raw, Error: "only the owner, an admin, or the member whose action this is can decide on it", Status: http.StatusForbidden})
 			continue

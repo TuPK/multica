@@ -22,10 +22,11 @@ const (
 // handler deletion graph must then implement that decision before CI passes.
 var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"acceptance_criterion":               workspaceDelete,
+	"effect_event":                       workspaceDelete,
+	"track_record":                       workspaceDelete,
 	"attention_ledger":                   workspaceDelete,
 	"durable_outcome_applied":            workspaceDelete,
-	"durable_outcome_cursor":             workspaceDelete,
-	"effect_event":                       workspaceDeleteKeep, // audit of external effects, kept as issued like einvoice_issuance,
+	"durable_outcome_cursor":             workspaceDeleteKeep, // one global cursor the transition reader owns; not workspace data
 	"effect_intent":                      workspaceDelete,
 	"effect_policy_override":             workspaceDelete,
 	"issue_status_transition":            workspaceDelete,
@@ -37,7 +38,6 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"seat_offer":                         workspaceDelete,
 	"shadow_config":                      workspaceDelete,
 	"shadow_pair":                        workspaceDelete,
-	"track_record":                       workspaceDeleteKeep, // signed track records kept as issued, like the attestations they back,
 	"work_outcome":                       workspaceDelete,
 	"decision_prediction":                workspaceDelete,
 	"principal_delegation":               workspaceDelete,

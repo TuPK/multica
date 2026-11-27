@@ -192,7 +192,7 @@ var routePrefixesNotProbed = map[string]string{
 // privateProjectRoutesNotProbed lists routes ("METHOD pattern") declaring a
 // project-scoped parameter that the probe cannot judge, each with the reason.
 var privateProjectRoutesNotProbed = map[string]string{
-	"POST /api/effects/{id}/undo":               "undo needs a configured provider; the test router has none, so both answers are 503",
+	"POST /api/effects/{id}/undo":               "undo needs a configured connected-apps provider, which this router lacks (both answers are 503); TestUndoHidesEffectOfPrivateProjectFromOutsider covers its visibility check",
 	"GET /api/attachments/{id}/signed-download": "the signed URL is the credential, not a session; it is minted only by the attachment routes probed here",
 	"POST /api/projects/{id}/join":              "the workspace owner's way into a private project they cannot see; TestWorkspaceOwnerJoinsPrivateProject covers who may call it",
 }

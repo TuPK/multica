@@ -2335,6 +2335,10 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 			run:  func() error { return qtx.DetachWorkspaceAuditEvents(ctx, wsID) },
 		},
 		{
+			name: "delete durable data",
+			run:  func() error { return deleteWorkspaceDurableData(ctx, tx, wsID) },
+		},
+		{
 			name: "delete principal data",
 			run: func() error {
 				if _, err := qtx.DeleteWorkspaceDecisionPredictions(ctx, wsID); err != nil {
