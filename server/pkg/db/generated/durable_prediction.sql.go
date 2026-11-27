@@ -153,6 +153,38 @@ func (q *Queries) ListActivePrincipalProfiles(ctx context.Context) ([]ListActive
 	return items, nil
 }
 
+const listPredictionKinds = `-- name: ListPredictionKinds :many
+SELECT DISTINCT decision_kind FROM decision_prediction
+WHERE workspace_id = $1 AND member_id = $2
+ORDER BY decision_kind
+`
+
+type ListPredictionKindsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	MemberID    pgtype.UUID `json:"member_id"`
+}
+
+// The decision kinds the person has predictions of, for the delegation panel's accuracy list.
+func (q *Queries) ListPredictionKinds(ctx context.Context, arg ListPredictionKindsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listPredictionKinds, arg.WorkspaceID, arg.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var decision_kind string
+		if err := rows.Scan(&decision_kind); err != nil {
+			return nil, err
+		}
+		items = append(items, decision_kind)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProfiledDeciders = `-- name: ListProfiledDeciders :many
 SELECT p.member_id FROM principal_profile p
 JOIN member m ON m.workspace_id = p.workspace_id AND m.user_id = p.member_id

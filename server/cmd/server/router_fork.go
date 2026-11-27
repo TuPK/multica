@@ -186,6 +186,7 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	// The weekly attention budget and this week's spend (durable spec 7.3, 7.5).
 	r.Get("/api/company/attention", h.GetAttentionBudget)
 	r.Put("/api/company/attention", h.SetAttentionBudget)
+	r.Get("/api/company/attention/queued", h.ListQueuedAttention)
 	r.Get("/api/company/pulse", h.GetCompanyPulse)
 	// Company as code (spec 4.9): the structure as a document, and its import.
 	r.Get("/api/company/export", h.ExportCompany)
@@ -295,8 +296,11 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	r.Patch("/api/principal/profile/traits/{id}", h.EditPrincipalTrait)
 	r.Delete("/api/principal/profile/traits/{id}", h.RetirePrincipalTrait)
 	r.Post("/api/principal/predictions", h.RecordPrincipalPrediction)
+	r.Get("/api/principal/predictions", h.GetPrincipalPrediction)
+	r.Get("/api/principal/evidence-candidates", h.ListPrincipalEvidenceCandidates)
 	// Delegation by prediction (durable spec 6.5): the person turns a kind on or off, and reverts a
 	// delegated decision within 72 hours.
+	r.Get("/api/principal/delegations", h.GetPrincipalDelegations)
 	r.Put("/api/principal/delegations", h.EnablePrincipalDelegation)
 	r.Delete("/api/principal/delegations", h.DisablePrincipalDelegation)
 	r.Post("/api/principal/decisions/{id}/revert", h.RevertDelegatedDecision)

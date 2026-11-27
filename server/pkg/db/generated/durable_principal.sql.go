@@ -416,6 +416,55 @@ func (q *Queries) ListActivePrincipalTraits(ctx context.Context, arg ListActiveP
 	return items, nil
 }
 
+const listOwnRecentProposalDecisions = `-- name: ListOwnRecentProposalDecisions :many
+SELECT p.id, p.state, p.decided_at, i.title AS issue_title
+FROM proposal p
+JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
+WHERE p.workspace_id = $1 AND p.decided_by = $2
+  AND p.decided_at IS NOT NULL
+ORDER BY p.decided_at DESC
+LIMIT 20
+`
+
+type ListOwnRecentProposalDecisionsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	MemberID    pgtype.UUID `json:"member_id"`
+}
+
+type ListOwnRecentProposalDecisionsRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	State      string             `json:"state"`
+	DecidedAt  pgtype.Timestamptz `json:"decided_at"`
+	IssueTitle string             `json:"issue_title"`
+}
+
+// The last proposals the member decided in this workspace, newest decision first. They are the
+// evidence a person can pick for a trait they add by hand.
+func (q *Queries) ListOwnRecentProposalDecisions(ctx context.Context, arg ListOwnRecentProposalDecisionsParams) ([]ListOwnRecentProposalDecisionsRow, error) {
+	rows, err := q.db.Query(ctx, listOwnRecentProposalDecisions, arg.WorkspaceID, arg.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOwnRecentProposalDecisionsRow{}
+	for rows.Next() {
+		var i ListOwnRecentProposalDecisionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.State,
+			&i.DecidedAt,
+			&i.IssueTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const retirePrincipalTrait = `-- name: RetirePrincipalTrait :execrows
 UPDATE principal_trait SET status = 'retired', retired_at = now()
 WHERE id = $1 AND workspace_id = $2 AND member_id = $3

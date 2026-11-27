@@ -129,7 +129,7 @@ func (s *DelegationService) Enable(ctx context.Context, actor PrincipalActor, ws
 	if err != nil {
 		return err
 	}
-	if n < delegationMinResolved || float64(matched) < delegationMinMatchRate*float64(n) {
+	if !delegationEligible(matched, n) {
 		return ErrDelegationNotEligible
 	}
 	if _, err := s.Queries.InsertPrincipalDelegation(ctx, db.InsertPrincipalDelegationParams{
@@ -141,6 +141,46 @@ func (s *DelegationService) Enable(ctx context.Context, actor PrincipalActor, ws
 	return s.logEvent(ctx, ws, member, GovernanceKindPrincipalDelegationOn, "principal_delegation", member, map[string]any{
 		"decision_kind": kind, "min_confidence": minConf, "matched": matched, "resolved": n,
 	})
+}
+
+// delegationEligible is the rule for delegating a kind (spec 6.5): 20 resolved predictions of it,
+// at least 85% of them matched.
+func delegationEligible(matched, n int) bool {
+	return n >= delegationMinResolved && float64(matched) >= delegationMinMatchRate*float64(n)
+}
+
+// DelegationKindAccuracy is one decision kind the person has predictions of: the match record over
+// the accuracy window, its Wilson lower bound, and whether the kind may be delegated.
+type DelegationKindAccuracy struct {
+	DecisionKind string
+	Matched      int
+	N            int
+	Lower        float64
+	Eligible     bool
+}
+
+// Status reads the person's delegations, one row per kind (the active one, or the latest disabled),
+// and the accuracy of every kind they have predictions of, for the delegation panel.
+func (s *DelegationService) Status(ctx context.Context, ws, member pgtype.UUID) ([]db.PrincipalDelegation, []DelegationKindAccuracy, error) {
+	delegations, err := s.Queries.ListPrincipalDelegationsLatest(ctx, db.ListPrincipalDelegationsLatestParams{WorkspaceID: ws, MemberID: member})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list delegations: %w", err)
+	}
+	kinds, err := s.Queries.ListPredictionKinds(ctx, db.ListPredictionKindsParams{WorkspaceID: ws, MemberID: member})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list prediction kinds: %w", err)
+	}
+	accuracy := make([]DelegationKindAccuracy, 0, len(kinds))
+	for _, kind := range kinds {
+		matched, n, lower, err := s.Predictions.Accuracy(ctx, ws, member, kind)
+		if err != nil {
+			return nil, nil, err
+		}
+		accuracy = append(accuracy, DelegationKindAccuracy{
+			DecisionKind: kind, Matched: matched, N: n, Lower: lower, Eligible: delegationEligible(matched, n),
+		})
+	}
+	return delegations, accuracy, nil
 }
 
 // DelegatedDecision names the prediction a decision path settles as the person's own (spec 6.5). The

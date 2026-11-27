@@ -106,3 +106,14 @@ DELETE FROM principal_trait WHERE workspace_id = sqlc.arg(workspace_id);
 
 -- name: DeleteWorkspacePrincipalProfiles :execrows
 DELETE FROM principal_profile WHERE workspace_id = sqlc.arg(workspace_id);
+
+-- name: ListOwnRecentProposalDecisions :many
+-- The last proposals the member decided in this workspace, newest decision first. They are the
+-- evidence a person can pick for a trait they add by hand.
+SELECT p.id, p.state, p.decided_at, i.title AS issue_title
+FROM proposal p
+JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
+WHERE p.workspace_id = sqlc.arg(workspace_id) AND p.decided_by = sqlc.arg(member_id)
+  AND p.decided_at IS NOT NULL
+ORDER BY p.decided_at DESC
+LIMIT 20;

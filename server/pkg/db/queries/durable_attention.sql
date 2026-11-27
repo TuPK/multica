@@ -80,3 +80,13 @@ UPDATE workspace
 SET attention_minutes_per_week = sqlc.arg(minutes_per_week), attention_split = sqlc.arg(split)
 WHERE id = sqlc.arg(workspace_id)
 RETURNING attention_minutes_per_week, attention_split;
+
+-- name: ListQueuedAttentionForMember :many
+-- The questions queued for one person, oldest first: the ones addressed to the member and, when
+-- include_unassigned is set (owners and admins), the ones addressed to no one (durable spec 7.5).
+SELECT subject_type, subject_id, reason, estimated_minutes::float8 AS estimated_minutes, created_at
+FROM attention_ledger
+WHERE workspace_id = sqlc.arg(workspace_id) AND state = 'queued'
+  AND (member_id = sqlc.arg(member_id) OR (sqlc.arg(include_unassigned)::boolean AND member_id IS NULL))
+ORDER BY created_at, subject_id
+LIMIT sqlc.arg(row_limit);

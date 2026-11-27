@@ -222,6 +222,49 @@ func (q *Queries) InsertPrincipalDelegation(ctx context.Context, arg InsertPrinc
 	return i, err
 }
 
+const listPrincipalDelegationsLatest = `-- name: ListPrincipalDelegationsLatest :many
+SELECT DISTINCT ON (decision_kind) id, workspace_id, member_id, decision_kind, min_confidence, enabled_at, disabled_at, disabled_reason
+FROM principal_delegation
+WHERE workspace_id = $1 AND member_id = $2
+ORDER BY decision_kind, (disabled_at IS NULL) DESC, enabled_at DESC
+`
+
+type ListPrincipalDelegationsLatestParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	MemberID    pgtype.UUID `json:"member_id"`
+}
+
+// One row per decision kind the person has delegated or turned off: the active row when there is one,
+// else the latest disabled row. Read by the delegation panel (durable spec 6.5).
+func (q *Queries) ListPrincipalDelegationsLatest(ctx context.Context, arg ListPrincipalDelegationsLatestParams) ([]PrincipalDelegation, error) {
+	rows, err := q.db.Query(ctx, listPrincipalDelegationsLatest, arg.WorkspaceID, arg.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PrincipalDelegation{}
+	for rows.Next() {
+		var i PrincipalDelegation
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.MemberID,
+			&i.DecisionKind,
+			&i.MinConfidence,
+			&i.EnabledAt,
+			&i.DisabledAt,
+			&i.DisabledReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRecentDelegatedPredictionIDs = `-- name: ListRecentDelegatedPredictionIDs :many
 SELECT id FROM decision_prediction
 WHERE workspace_id = $1 AND member_id = $2

@@ -186,6 +186,63 @@ func (q *Queries) ListQueuedAttentionAsks(ctx context.Context, arg ListQueuedAtt
 	return items, nil
 }
 
+const listQueuedAttentionForMember = `-- name: ListQueuedAttentionForMember :many
+SELECT subject_type, subject_id, reason, estimated_minutes::float8 AS estimated_minutes, created_at
+FROM attention_ledger
+WHERE workspace_id = $1 AND state = 'queued'
+  AND (member_id = $2 OR ($3::boolean AND member_id IS NULL))
+ORDER BY created_at, subject_id
+LIMIT $4
+`
+
+type ListQueuedAttentionForMemberParams struct {
+	WorkspaceID       pgtype.UUID `json:"workspace_id"`
+	MemberID          pgtype.UUID `json:"member_id"`
+	IncludeUnassigned bool        `json:"include_unassigned"`
+	RowLimit          int32       `json:"row_limit"`
+}
+
+type ListQueuedAttentionForMemberRow struct {
+	SubjectType      string             `json:"subject_type"`
+	SubjectID        pgtype.UUID        `json:"subject_id"`
+	Reason           string             `json:"reason"`
+	EstimatedMinutes float64            `json:"estimated_minutes"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
+// The questions queued for one person, oldest first: the ones addressed to the member and, when
+// include_unassigned is set (owners and admins), the ones addressed to no one (durable spec 7.5).
+func (q *Queries) ListQueuedAttentionForMember(ctx context.Context, arg ListQueuedAttentionForMemberParams) ([]ListQueuedAttentionForMemberRow, error) {
+	rows, err := q.db.Query(ctx, listQueuedAttentionForMember,
+		arg.WorkspaceID,
+		arg.MemberID,
+		arg.IncludeUnassigned,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListQueuedAttentionForMemberRow{}
+	for rows.Next() {
+		var i ListQueuedAttentionForMemberRow
+		if err := rows.Scan(
+			&i.SubjectType,
+			&i.SubjectID,
+			&i.Reason,
+			&i.EstimatedMinutes,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markAttentionAnswered = `-- name: MarkAttentionAnswered :execrows
 UPDATE attention_ledger
 SET state = 'answered', answered_at = now(), actual_seconds = $1::integer

@@ -68,3 +68,11 @@ UPDATE brief_inquiry
 SET answered_at = NULL, answer_excerpt = NULL
 WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id)
   AND answered_at IS NOT NULL AND answer_excerpt = sqlc.arg(answer_excerpt);
+
+-- name: ListPrincipalDelegationsLatest :many
+-- One row per decision kind the person has delegated or turned off: the active row when there is one,
+-- else the latest disabled row. Read by the delegation panel (durable spec 6.5).
+SELECT DISTINCT ON (decision_kind) *
+FROM principal_delegation
+WHERE workspace_id = sqlc.arg(workspace_id) AND member_id = sqlc.arg(member_id)
+ORDER BY decision_kind, (disabled_at IS NULL) DESC, enabled_at DESC;
