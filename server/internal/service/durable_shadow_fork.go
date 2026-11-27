@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -161,6 +162,8 @@ type ShadowService struct {
 	Flags     *featureflag.Service
 	// Now is the clock. Nil means time.Now.
 	Now func() time.Time
+	// beforeLink, when set, can fail the link step; tests use it to force the rollback path.
+	beforeLink func() error
 }
 
 func (s *ShadowService) enabled(ctx context.Context) bool {
@@ -244,43 +247,40 @@ func (s *ShadowService) OnPrimaryClaimed(ctx context.Context, task db.AgentTaskQ
 	if !ShadowSelected(util.UUIDToString(issue.ID), util.UUIDToString(cfg.ID), rate.Float64) {
 		return nil
 	}
-	shadowAgent, pair, created, err := s.recordPair(ctx, cfg, task)
-	if err != nil || !created {
+	return s.recordClaimedPrimary(ctx, cfg, task, issue)
+}
+
+// recordClaimedPrimary gives a sampled primary its pair and its shadow task. A pair is committed
+// only together with its link to the shadow task, so no pair exists without one. The shadow task
+// is queued before that transaction: queueing publishes events and runs its own transaction. If
+// the link fails, the pair rolls back and the queued shadow task is cancelled. The primary is not
+// affected, because its claim committed before this hook ran.
+func (s *ShadowService) recordClaimedPrimary(ctx context.Context, cfg db.ShadowConfig, task db.AgentTaskQueue, issue db.Issue) error {
+	shadowAgent, running, err := s.shadowAgentFor(ctx, cfg)
+	if err != nil || !running {
 		return err
+	}
+	if _, err := s.Queries.GetShadowPairForPrimary(ctx, task.ID); err == nil {
+		return nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("load pair for primary: %w", err)
 	}
 	shadowTask, err := s.Tasks.EnqueueVerificationTask(ctx, issue, shadowAgent)
 	if err != nil {
 		return fmt.Errorf("enqueue shadow task: %w", err)
 	}
-	n, err := s.Queries.SetShadowTaskContext(ctx, db.SetShadowTaskContextParams{
-		ID: shadowTask.ID, ShadowConfigID: util.UUIDToString(cfg.ID), ShadowPairID: util.UUIDToString(pair.ID),
-	})
-	if err != nil {
-		return fmt.Errorf("mark shadow task: %w", err)
+	created, err := s.linkPair(ctx, cfg, task, shadowTask)
+	if err != nil || !created {
+		s.cancelUnlinkedShadowTask(shadowTask.ID)
 	}
-	if n == 0 {
-		return fmt.Errorf("shadow task %s was claimed before it was marked", util.UUIDToString(shadowTask.ID))
-	}
-	if cfg.Purpose == ShadowPurposeNecessity {
-		if _, err := s.Queries.SetShadowTaskKeepSkills(ctx, shadowTask.ID); err != nil {
-			return fmt.Errorf("keep skills on shadow task: %w", err)
-		}
-	}
-	_, err = s.Queries.SetShadowPairShadowTask(ctx, db.SetShadowPairShadowTaskParams{
-		ID: pair.ID, ShadowTaskID: shadowTask.ID,
-	})
-	if err != nil {
-		return fmt.Errorf("link shadow task: %w", err)
-	}
-	return nil
+	return err
 }
 
-// recordPair locks the run, creates the shadow agent on first use, and inserts the pair
-// for the primary task. created is false when the primary already has its pair.
-func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, task db.AgentTaskQueue) (pgtype.UUID, db.ShadowPair, bool, error) {
+// shadowAgentFor returns the run's shadow agent, creating it on first use. running is false
+// when the run is no longer running.
+func (s *ShadowService) shadowAgentFor(ctx context.Context, cfg db.ShadowConfig) (pgtype.UUID, bool, error) {
 	var shadowAgent pgtype.UUID
-	var pair db.ShadowPair
-	created := false
+	running := false
 	err := s.inTx(ctx, func(q *db.Queries) error {
 		locked, err := q.LockShadowConfig(ctx, db.LockShadowConfigParams{ID: cfg.ID, WorkspaceID: cfg.WorkspaceID})
 		if err != nil {
@@ -289,18 +289,7 @@ func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, tas
 		if locked.State != "running" {
 			return nil
 		}
-		row, err := q.InsertShadowPair(ctx, db.InsertShadowPairParams{
-			ID: dbid.NewV7(), WorkspaceID: cfg.WorkspaceID, ConfigID: cfg.ID,
-			IssueID: task.IssueID, PrimaryTaskID: task.ID,
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
-			return fmt.Errorf("insert pair: %w", err)
-		}
-		created = true
-		pair = row
+		running = true
 		if locked.ShadowAgentID.Valid {
 			shadowAgent = locked.ShadowAgentID
 			return nil
@@ -337,7 +326,82 @@ func (s *ShadowService) recordPair(ctx context.Context, cfg db.ShadowConfig, tas
 		_, err = q.SetShadowConfigShadowAgent(ctx, db.SetShadowConfigShadowAgentParams{ID: cfg.ID, ShadowAgentID: agent.ID})
 		return err
 	})
-	return shadowAgent, pair, created, err
+	return shadowAgent, running, err
+}
+
+// linkPair inserts the primary's pair and links it to its queued shadow task in one transaction.
+// created is false when the run stopped or a concurrent claim already recorded the pair.
+func (s *ShadowService) linkPair(ctx context.Context, cfg db.ShadowConfig, task db.AgentTaskQueue, shadowTask db.AgentTaskQueue) (bool, error) {
+	created := false
+	err := s.inTx(ctx, func(q *db.Queries) error {
+		locked, err := q.LockShadowConfig(ctx, db.LockShadowConfigParams{ID: cfg.ID, WorkspaceID: cfg.WorkspaceID})
+		if err != nil {
+			return fmt.Errorf("lock shadow run: %w", err)
+		}
+		if locked.State != "running" {
+			return nil
+		}
+		pair, err := q.InsertShadowPair(ctx, db.InsertShadowPairParams{
+			ID: dbid.NewV7(), WorkspaceID: cfg.WorkspaceID, ConfigID: cfg.ID,
+			IssueID: task.IssueID, PrimaryTaskID: task.ID,
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("insert pair: %w", err)
+		}
+		if err := s.markShadowTask(ctx, q, cfg, pair, shadowTask); err != nil {
+			return err
+		}
+		created = true
+		return nil
+	})
+	return created, err
+}
+
+// markShadowTask marks the shadow task with its run and pair, and links the pair to it. Any
+// failure is returned so the caller's transaction rolls back the pair.
+func (s *ShadowService) markShadowTask(ctx context.Context, q *db.Queries, cfg db.ShadowConfig, pair db.ShadowPair, shadowTask db.AgentTaskQueue) error {
+	n, err := q.SetShadowTaskContext(ctx, db.SetShadowTaskContextParams{
+		ID: shadowTask.ID, ShadowConfigID: util.UUIDToString(cfg.ID), ShadowPairID: util.UUIDToString(pair.ID),
+	})
+	if err != nil {
+		return fmt.Errorf("mark shadow task: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("shadow task %s was claimed before it was marked", util.UUIDToString(shadowTask.ID))
+	}
+	if cfg.Purpose == ShadowPurposeNecessity {
+		if _, err := q.SetShadowTaskKeepSkills(ctx, shadowTask.ID); err != nil {
+			return fmt.Errorf("keep skills on shadow task: %w", err)
+		}
+	}
+	if s.beforeLink != nil {
+		if err := s.beforeLink(); err != nil {
+			return fmt.Errorf("link shadow task: %w", err)
+		}
+	}
+	n, err = q.SetShadowPairShadowTask(ctx, db.SetShadowPairShadowTaskParams{
+		ID: pair.ID, ShadowTaskID: shadowTask.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("link shadow task: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("link shadow task: pair %s is already linked", util.UUIDToString(pair.ID))
+	}
+	return nil
+}
+
+// cancelUnlinkedShadowTask cancels a shadow task queued for a pair that did not commit. It runs
+// on its own context, because the claim's context may be the reason the link failed.
+func (s *ShadowService) cancelUnlinkedShadowTask(id pgtype.UUID) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := s.Tasks.CancelTask(ctx, id); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		slog.Warn("durable shadow: cancel the unlinked shadow task failed", "task_id", util.UUIDToString(id), "error", err)
+	}
 }
 
 // RecordVerdict writes the blind verdict of a juror on a pair's labelled outputs, once.
