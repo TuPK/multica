@@ -266,14 +266,7 @@ type Handler struct {
 	LocalSkillListStore   LocalSkillListStore
 	LocalSkillImportStore LocalSkillImportStore
 	FeatureFlags          *featureflag.Service
-	// Effects logs and decides the actions the non-gateway sources take (durable
-	// spec 4.5). Nil logs nothing.
-	Effects connectedapps.EffectGate
-	// Intents holds the actions the policy rehearses until a person approves them
-	// (durable spec 5.2). Nil refuses rehearsed calls without holding them.
-	Intents *service.IntentService
-	// EffectPolicy reads and saves the workspace's effect policy overrides (durable spec 4.3).
-	EffectPolicy *service.EffectPolicyStore
+	durable               durableHandlers
 	// Collab is the live co-editing service for docs. Nil turns live editing
 	// off: docs save through the REST autosave path.
 	Collab *collab.Client

@@ -525,13 +525,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	h.Metrics = opts.BusinessMetrics
 	h.InboxReads.Metrics = opts.InboxReadMetrics
 	h.FeatureFlags = opts.FeatureFlags
-	// The effect log and gate (durable spec 4.4) serve every source that acts outside
-	// the platform; each one wires it through h.Effects.
-	h.Effects = &service.EffectService{Queries: queries, Flags: opts.FeatureFlags}
-	// Rehearsed actions wait here for a person's decision (durable spec 5.2). The
-	// connected apps gateway is set below, once it exists.
-	h.Intents = &service.IntentService{Queries: queries, TxStarter: pool, Flags: opts.FeatureFlags, Tasks: h.TaskService}
-	h.EffectPolicy = &service.EffectPolicyStore{Queries: queries, TxStarter: pool}
+	h.WireDurableServices()
 	collabClient, err := collab.NewClient(os.Getenv("COLLAB_INTERNAL_URL"), os.Getenv("COLLAB_SECRET"))
 	if err != nil {
 		slog.Error("live doc editing disabled", "error", err)
@@ -634,7 +628,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// is the single shared inbound handler injected into every Channel.
 	channelRegistry := channel.NewRegistry()
 	channelRouter := engine.NewRouter(h.IssueService, h.TaskService, queries, engine.RouterConfig{
-		Logger: slog.Default(), Lifecycle: h, Effects: h.Effects,
+		Logger: slog.Default(), Lifecycle: h, Effects: h.DurableEffects(),
 	})
 	// Debounce the per-session run trigger so a burst of messages collapses
 	// into one agent run instead of one per message (MUL-2968).
@@ -1523,8 +1517,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 							TokenSecret:   connectedapps.DeriveTokenSecret(stateSecret),
 							PublicBaseURL: callbackBase,
 							Bus:           bus,
-							Effects:       h.Effects,
-							Intents:       h.Intents,
+							Effects:       h.DurableEffects(),
+							Intents:       h.DurableIntents(),
 							Attention:     &service.AttentionService{Queries: queries, Flags: opts.FeatureFlags},
 						}
 						// Monthly app calls (MUL-10047) are metered only
@@ -1553,7 +1547,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 							appsSvc.SetResumer(h)
 							appsSvc.SetTeamConnectGate(h.TeamAppConnectGate)
 							h.ConnectedApps = appsSvc
-							h.Intents.Apps = appsSvc
+							h.DurableIntents().Apps = appsSvc
 						}
 						// Stage 3 (MUL-3721) hook: feed the per-task MCP
 						// overlay builder into TaskService so every Enqueue*
@@ -1593,7 +1587,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			slog.Info("publishing: MULTICA_PUBLISH_SECRET_KEY not set; publishing keys cannot be stored")
 		}
 		h.Publish = publish.NewService(queries, publishBox)
-		h.Publish.Effects = h.Effects
+		h.Publish.Effects = h.DurableEffects()
 	}
 
 	// Research Lab source settings. The service is always built. MULTICA_RESEARCH_SECRET_KEY seals the
@@ -2776,21 +2770,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			})
 
 			// Projects
-			// The effect log and declared actions (durable spec 4.4, 4.5, 4.6).
-			r.Route("/api/effects", func(r chi.Router) {
-				r.Get("/", h.ListEffects)
-				r.Post("/declare", h.DeclareEffect)
-				r.Post("/{id}/undo", h.UndoEffect)
-				r.Get("/policy", h.GetEffectPolicy)
-				r.Put("/policy", h.SaveEffectPolicy)
-			})
-			// Rehearsed actions awaiting a decision (durable spec 5.3).
-			r.Route("/api/intents", func(r chi.Router) {
-				r.Get("/", h.ListIntents)
-				r.Post("/approve-batch", h.ApproveIntentBatch)
-				r.Post("/{id}/approve", h.ApproveIntent)
-				r.Post("/{id}/reject", h.RejectIntent)
-			})
+			registerDurableEffectRoutes(r, h)
 			r.Route("/api/projects", func(r chi.Router) {
 				r.Get("/search", h.SearchProjects)
 				// Workspace owner only: every private project, joined or not.

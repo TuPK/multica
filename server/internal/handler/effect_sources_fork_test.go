@@ -21,7 +21,7 @@ func TestEffectCLIMiddlewareLogsMutations(t *testing.T) {
 	provider := featureflag.NewStaticProvider()
 	provider.Set(featureflags.DurableEffects, featureflag.Rule{Default: true})
 	h := *testHandler
-	h.Effects = &service.EffectService{Queries: testHandler.Queries, Flags: featureflag.NewService(provider)}
+	h.durable.Effects = &service.EffectService{Queries: testHandler.Queries, Flags: featureflag.NewService(provider)}
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `DELETE FROM effect_event WHERE workspace_id = $1 AND source = 'cli' AND target LIKE 'POST /api/effect-test%'`, testWorkspaceID)
 	})

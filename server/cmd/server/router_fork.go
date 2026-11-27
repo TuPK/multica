@@ -328,3 +328,21 @@ func registerDurableSquadEnvelopeRoutes(r chi.Router, h *handler.Handler) {
 	r.Put("/autonomy/envelope", h.SetSquadEnvelope)
 	r.Delete("/autonomy/envelope", h.ClearSquadEnvelope)
 }
+
+func registerDurableEffectRoutes(r chi.Router, h *handler.Handler) {
+	// The effect log and declared actions (durable spec 4.4, 4.5, 4.6).
+	r.Route("/api/effects", func(r chi.Router) {
+		r.Get("/", h.ListEffects)
+		r.Post("/declare", h.DeclareEffect)
+		r.Post("/{id}/undo", h.UndoEffect)
+		r.Get("/policy", h.GetEffectPolicy)
+		r.Put("/policy", h.SaveEffectPolicy)
+	})
+	// Rehearsed actions awaiting a decision (durable spec 5.3).
+	r.Route("/api/intents", func(r chi.Router) {
+		r.Get("/", h.ListIntents)
+		r.Post("/approve-batch", h.ApproveIntentBatch)
+		r.Post("/{id}/approve", h.ApproveIntent)
+		r.Post("/{id}/reject", h.RejectIntent)
+	})
+}

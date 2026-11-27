@@ -55,7 +55,7 @@ func encodeEffectBody(t *testing.T, body any) string {
 func effectsOnFixture(t *testing.T) *appsFixture {
 	t.Helper()
 	f := newAppsFixture(t, withEffectGate(true))
-	f.h.Effects = &service.EffectService{Queries: testHandler.Queries, Flags: effectFlagsOn()}
+	f.h.durable.Effects = &service.EffectService{Queries: testHandler.Queries, Flags: effectFlagsOn()}
 	f.executionAccount(t, "personal")
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `DELETE FROM effect_event WHERE workspace_id = $1 AND target LIKE 'gmail/%'`, testWorkspaceID)

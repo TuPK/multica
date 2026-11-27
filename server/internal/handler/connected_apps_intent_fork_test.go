@@ -27,7 +27,7 @@ func intentFixture(t *testing.T) (*appsFixture, *service.IntentService) {
 	intents := &service.IntentService{Queries: testHandler.Queries, TxStarter: testPool, Flags: effectFlagsOn()}
 	f := newAppsFixture(t, withEffectGate(true), func(cfg *connectedapps.Config) { cfg.Intents = intents })
 	intents.Apps = f.h.ConnectedApps
-	f.h.Intents = intents
+	f.h.durable.Intents = intents
 	f.executionAccount(t, "personal")
 	if w := f.putAgentApps(t, testUserID, []map[string]string{{"toolkit_slug": "gmail", "account_scope": "personal", "level": "write"}}); w.Code != 200 {
 		t.Fatalf("attach app: %d %s", w.Code, w.Body.String())
