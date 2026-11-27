@@ -33,7 +33,6 @@ export type EditPrincipalTraitRequest = {
 export type AnswerPrincipalInterviewRequest = {
   question: number;
   answer: string;
-  message_id: string;
 };
 
 export type EnablePrincipalDelegationRequest = {
@@ -72,6 +71,7 @@ export function useDeletePrincipalProfile(wsId: string) {
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: principalKeys.profile(wsId) });
+      void qc.invalidateQueries({ queryKey: principalKeys.delegations(wsId) });
     },
   });
 }
@@ -149,7 +149,8 @@ export function useAnswerPrincipalInterview(wsId: string) {
 }
 
 /** Enables delegation by prediction for one decision kind (PUT /api/principal/delegations). */
-export function useEnablePrincipalDelegation() {
+export function useEnablePrincipalDelegation(wsId: string) {
+  const qc = useQueryClient();
   return useMutation<DelegationEnableResult | null, Error, EnablePrincipalDelegationRequest>({
     mutationFn: async ({ decision_kind, min_confidence = DEFAULT_DELEGATION_MIN_CONFIDENCE }) =>
       parseDelegationEnableResult(
@@ -159,16 +160,23 @@ export function useEnablePrincipalDelegation() {
         }),
         "PUT /api/principal/delegations",
       ),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: principalKeys.delegations(wsId) });
+    },
   });
 }
 
 /** Disables delegation by prediction for one decision kind (DELETE /api/principal/delegations?decision_kind=). */
-export function useDisablePrincipalDelegation() {
+export function useDisablePrincipalDelegation(wsId: string) {
+  const qc = useQueryClient();
   return useMutation<void, Error, string>({
     mutationFn: async (decisionKind) => {
       await api.request(`/api/principal/delegations?decision_kind=${encodeURIComponent(decisionKind)}`, {
         method: "DELETE",
       });
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: principalKeys.delegations(wsId) });
     },
   });
 }

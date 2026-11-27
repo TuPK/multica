@@ -22,11 +22,17 @@ import { CompanyDecisionsDialog } from "./company-decisions-dialog";
 const decide = vi.hoisted(() => ({ mutate: vi.fn() }));
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 const revisions = vi.hoisted(() => ({ list: vi.fn() }));
+const apiRequest = vi.hoisted(() => vi.fn());
+const flags = vi.hoisted(() => ({ principal: false }));
 
 vi.mock("sonner", () => ({ toast: toasts }));
+vi.mock("@multica/core/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/config")>()),
+  useFeatureEnabled: (key: string, fallback: boolean) => (key === "durable_principal" ? flags.principal : fallback),
+}));
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
-  api: { listProposalRevisions: revisions.list },
+  api: { listProposalRevisions: revisions.list, request: apiRequest },
 }));
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("@multica/core/company", async (importOriginal) => ({
@@ -88,10 +94,12 @@ describe("CompanyDecisionsDialog", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    flags.principal = false;
     decide.mutate.mockReset();
     toasts.success.mockReset();
     toasts.error.mockReset();
     revisions.list.mockReset();
+    apiRequest.mockReset();
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
     queryClient.setQueryData(issueKeys.detail("ws-1", "issue-a"), { description: "Market body" });
     queryClient.setQueryData(issueKeys.detail("ws-1", "issue-b"), { description: "Launch body" });
@@ -526,6 +534,36 @@ describe("CompanyDecisionsDialog", () => {
       ]);
 
       expect(await screen.findByText("Couldn't load the current version to compare.", {}, { timeout: 3000 })).toBeTruthy();
+    });
+  });
+
+  describe("principal prediction", () => {
+    it("shows the prediction on a proposal when durable_principal is on and hides it on 404", async () => {
+      flags.principal = true;
+      apiRequest.mockImplementation(async (path: string) => {
+        if (path === "/api/principal/predictions?subject_type=proposal&subject_id=a") {
+          return {
+            predicted: "approve",
+            confidence: 0.92,
+            why: "Matches your rollout policy",
+            actual: null,
+            matched: null,
+          };
+        }
+        throw new ApiError("no prediction", 404, "Not Found");
+      });
+
+      setup({ proposals: [proposal("a")] });
+      expect((await screen.findAllByText("Predicted: approve, 92%")).length).toBeGreaterThanOrEqual(1);
+
+      cleanup();
+      setup({ proposals: [proposal("b")] });
+      await waitFor(() =>
+        expect(apiRequest).toHaveBeenCalledWith(
+          "/api/principal/predictions?subject_type=proposal&subject_id=b",
+        ),
+      );
+      expect(screen.queryByText(/Predicted:/i)).toBeNull();
     });
   });
 });

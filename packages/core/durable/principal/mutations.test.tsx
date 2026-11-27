@@ -61,7 +61,7 @@ describe("principal mutations", () => {
     expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["durable", "ws-1", "principal", "profile"] }));
   });
 
-  it("deletes the profile via DELETE /api/principal/profile and refreshes the profile", async () => {
+  it("deletes the profile via DELETE /api/principal/profile and refreshes profile and delegations", async () => {
     request.mockResolvedValueOnce(undefined);
     const { wrapper, invalidate } = setup();
     const { result } = renderHook(() => useDeletePrincipalProfile("ws-1"), { wrapper });
@@ -70,6 +70,7 @@ describe("principal mutations", () => {
 
     expect(request).toHaveBeenCalledWith("/api/principal/profile", expect.objectContaining({ method: "DELETE" }));
     expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["durable", "ws-1", "principal", "profile"] }));
+    expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["durable", "ws-1", "principal", "delegations"] }));
   });
 
   it("adds, edits and retires traits and refreshes the profile", async () => {
@@ -78,7 +79,7 @@ describe("principal mutations", () => {
       decision_kind: "general",
       statement: "Updated rule",
       origin: "edited",
-      evidence: [{ type: "comment", ref: "c-1" }],
+      evidence: [{ type: "decision", ref: "d-1" }],
       created_at: "2026-11-26T08:00:00Z",
     };
     request.mockResolvedValueOnce(trait).mockResolvedValueOnce(trait).mockResolvedValueOnce(undefined);
@@ -90,7 +91,7 @@ describe("principal mutations", () => {
         decision_kind: "general",
         statement: "Rule",
         origin: "edited",
-        evidence: [{ type: "comment", ref: "c-1" }],
+        evidence: [{ type: "decision", ref: "d-1" }],
       }),
     );
     expect(request).toHaveBeenNthCalledWith(1, "/api/principal/profile/traits", expect.objectContaining({ method: "POST" }));
@@ -106,7 +107,7 @@ describe("principal mutations", () => {
     expect(invalidate).toHaveBeenCalledTimes(3);
   });
 
-  it("records an interview answer and refreshes the profile", async () => {
+  it("records an interview answer with { question, answer } and refreshes the profile", async () => {
     request.mockResolvedValueOnce({
       id: "tr-2",
       decision_kind: "general",
@@ -119,34 +120,38 @@ describe("principal mutations", () => {
     const { result } = renderHook(() => useAnswerPrincipalInterview("ws-1"), { wrapper });
 
     await act(() =>
-      result.current.mutateAsync({ question: 0, answer: "Prefer quality", message_id: "msg-1" }),
+      result.current.mutateAsync({ question: 0, answer: "Prefer quality" }),
     );
 
     expect(request).toHaveBeenCalledWith(
       "/api/principal/interview/answers",
       expect.objectContaining({ method: "POST" }),
     );
-    expect(bodyOf(0)).toEqual({ question: 0, answer: "Prefer quality", message_id: "msg-1" });
+    expect(bodyOf(0)).toEqual({ question: 0, answer: "Prefer quality" });
     expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["durable", "ws-1", "principal", "profile"] }));
   });
 
-  it("enables delegation with default 0.90 min_confidence and disables via query string", async () => {
+  it("enables and disables delegation and invalidates the delegations query", async () => {
     request
       .mockResolvedValueOnce({ decision_kind: "proposal:general", enabled: true })
       .mockResolvedValueOnce(undefined);
-    const { wrapper } = setup();
+    const { wrapper, invalidate } = setup();
 
-    const enable = renderHook(() => useEnablePrincipalDelegation(), { wrapper });
+    const enable = renderHook(() => useEnablePrincipalDelegation("ws-1"), { wrapper });
     await act(() => enable.result.current.mutateAsync({ decision_kind: "proposal:general" }));
     expect(request).toHaveBeenNthCalledWith(1, "/api/principal/delegations", expect.objectContaining({ method: "PUT" }));
     expect(bodyOf(0)).toEqual({ decision_kind: "proposal:general", min_confidence: 0.9 });
+    expect(invalidate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ["durable", "ws-1", "principal", "delegations"] }),
+    );
 
-    const disable = renderHook(() => useDisablePrincipalDelegation(), { wrapper });
+    const disable = renderHook(() => useDisablePrincipalDelegation("ws-1"), { wrapper });
     await act(() => disable.result.current.mutateAsync("proposal:general"));
     expect(request).toHaveBeenNthCalledWith(
       2,
       "/api/principal/delegations?decision_kind=proposal%3Ageneral",
       expect.objectContaining({ method: "DELETE" }),
     );
+    expect(invalidate).toHaveBeenCalledTimes(2);
   });
 });

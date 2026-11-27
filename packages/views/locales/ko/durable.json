@@ -215,7 +215,7 @@
   "principal": {
     "title": "의사결정 프로필",
     "load_failed": "의사결정 프로필을 불러올 수 없습니다.",
-    "off_title": "의사결정 프로필이 꺼져 있습니다",
+    "off_description": "비서가 선택과 메모에서 판단 기준을 학습하고, 결정을 예측하며, 켠 항목 중 조건을 충족한 유형을 위임할 수 있게 합니다.",
     "enable": "프로필 켜기",
     "status": {
       "active": "활성",
@@ -260,7 +260,22 @@
       "edited": "특성을 업데이트했습니다.",
       "edit_failed": "특성을 업데이트할 수 없습니다.",
       "retired": "특성을 제외했습니다.",
-      "retire_failed": "특성을 제외할 수 없습니다."
+      "retire_failed": "특성을 제외할 수 없습니다.",
+      "add": "특성 추가",
+      "decision_kind_label": "결정 유형",
+      "evidence_label": "근거 결정",
+      "evidence_placeholder": "최근 결정 선택",
+      "evidence_empty": "직접 특성을 추가하려면 먼저 제안을 하나 이상 결정해야 합니다.",
+      "evidence_load_failed": "최근 결정을 불러올 수 없습니다.",
+      "statement_placeholder": "이 상황에서 어떻게 판단하는지 적어 주세요...",
+      "added": "특성을 추가했습니다.",
+      "add_failed": "특성을 추가할 수 없습니다.",
+      "decision_state": {
+        "approved": "승인됨",
+        "rejected": "거절됨",
+        "revising": "수정 중",
+        "expired": "만료됨"
+      }
     },
     "interview": {
       "title": "초기 인터뷰",
@@ -307,6 +322,25 @@
         "proposal_envelope": "자율성 범위",
         "proposal_policy": "승인 정책",
         "proposal_profile": "의사결정 프로필"
+      },
+      "load_failed": "위임 설정을 불러올 수 없습니다.",
+      "status_on": "켜짐",
+      "status_off": "꺼짐",
+      "min_confidence_value": "최소 {{percent}}%",
+      "accuracy": "{{n}}건 중 {{matched}}건 일치 · 하한 {{lower}}%",
+      "accuracy_none": "해결된 예측이 아직 없습니다",
+      "not_eligible_reason": "해결된 예측 20건 이상과 85% 이상의 일치율이 필요합니다."
+    },
+    "prediction": {
+      "line": "예측: {{predicted}}, {{confidence}}%",
+      "values": {
+        "approve": "승인",
+        "reject": "거절",
+        "revise": "수정 요청",
+        "snooze": "나중에 결정",
+        "pass": "통과",
+        "partial": "부분 통과",
+        "fail": "실패"
       }
     },
     "errors": {
@@ -316,7 +350,8 @@
       "principal_trait_invalid": "특성 문구와 결정 유형을 확인하세요(1~500자).",
       "principal_trait_edited": "직접 작성하거나 편집한 특성은 본인만 제외할 수 있습니다.",
       "delegation_not_eligible": "이 유형의 해결된 예측이 20건 이상이고 일치율이 85% 이상이어야 합니다.",
-      "delegation_forbidden_kind": "이 결정 유형은 위임할 수 없습니다."
+      "delegation_forbidden_kind": "이 결정 유형은 위임할 수 없습니다.",
+      "principal_no_secretary": "인터뷰에 답하기 전에 워크스페이스 비서를 설정하세요."
     }
   }
 }

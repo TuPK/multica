@@ -86,3 +86,33 @@ describe("governance log requests", () => {
     expect(await blob.text()).toBe("id,kind\n");
   });
 });
+
+describe("queued attention requests", () => {
+  it("GET reads queued asks from /api/company/attention/queued", async () => {
+    const fetchMock = respond({
+      asks: [
+        {
+          subject_type: "effect_intent",
+          subject_id: "intent-1",
+          reason: "irreversible",
+          estimated_minutes: 2,
+          created_at: "2026-11-26T09:00:00Z",
+        },
+      ],
+    });
+    const out = await client().getQueuedAttention();
+    expect(sentOf(fetchMock)).toEqual({
+      method: "GET",
+      path: "/api/company/attention/queued",
+      body: undefined,
+    });
+    expect(out.asks).toHaveLength(1);
+    expect(out.asks[0]?.subject_id).toBe("intent-1");
+  });
+
+  it("degrades a malformed queued attention response to an empty list", async () => {
+    respond("not-an-object");
+    const out = await client().getQueuedAttention();
+    expect(out).toEqual({ asks: [] });
+  });
+});

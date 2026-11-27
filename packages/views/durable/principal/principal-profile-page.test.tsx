@@ -12,15 +12,11 @@ vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
   api: {
     request: vi.fn(),
-    listChatSessions: vi.fn(),
-    sendChatMessage: vi.fn(),
   },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const request = vi.mocked(api.request);
-const listChatSessions = vi.mocked(api.listChatSessions);
-const sendChatMessage = vi.mocked(api.sendChatMessage);
 
 const activeProfile = {
   member_id: "u-1",
@@ -51,7 +47,6 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  listChatSessions.mockResolvedValue([]);
 });
 afterEach(() => {
   cleanup();
@@ -59,11 +54,16 @@ afterEach(() => {
 });
 
 describe("PrincipalProfilePage", () => {
-  it("maps 404 to not-enabled and opens the consent dialog", async () => {
+  it("maps 404 to not-enabled with a descriptive sentence (no repeated title) and opens the consent dialog", async () => {
     request.mockRejectedValueOnce(new ApiError("the person has no principal profile", 404, "Not Found"));
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "Principal profile is off" })).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Let the Secretary learn how you decide from your choices and notes, predict your calls, and delegate eligible kinds when you turn them on.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /principal profile/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Enable profile" }));
     expect(await screen.findByRole("heading", { name: "Enable principal profile" })).toBeInTheDocument();
   });
@@ -79,6 +79,7 @@ describe("PrincipalProfilePage", () => {
     request.mockImplementation(async (path: string, init?: RequestInit) => {
       if (path === "/api/principal/profile" && !init?.method) return activeProfile;
       if (path === "/api/principal/interview") return { questions: [] };
+      if (path === "/api/principal/delegations") return { delegations: [], kinds: [] };
       if (path === "/api/principal/profile" && init?.method === "PUT") {
         return { ...activeProfile, share_with_owners: true, version: 3, traits: [] };
       }
@@ -89,8 +90,8 @@ describe("PrincipalProfilePage", () => {
     });
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "Principal profile" })).toBeInTheDocument();
-    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(await screen.findByText("Active")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Principal profile" })).not.toBeInTheDocument();
     expect(screen.getByText("v2")).toBeInTheDocument();
     expect(screen.getByText("Prefer reversible steps first.")).toBeInTheDocument();
 
@@ -109,7 +110,7 @@ describe("PrincipalProfilePage", () => {
     expect(request).toHaveBeenCalledWith("/api/principal/profile", expect.objectContaining({ method: "DELETE" }));
   });
 
-  it("walks interview questions one at a time, sends message_id from the interview chat, and refreshes the profile", async () => {
+  it("walks interview questions one at a time, sends { question, answer }, and refreshes the profile", async () => {
     let profileCalls = 0;
     request.mockImplementation(async (path: string, init?: RequestInit) => {
       if (path === "/api/principal/profile" && !init?.method) {
@@ -118,6 +119,9 @@ describe("PrincipalProfilePage", () => {
       }
       if (path === "/api/principal/interview") {
         return { questions: ["Speed or thoroughness?", "Cost threshold?"] };
+      }
+      if (path === "/api/principal/delegations") {
+        return { delegations: [], kinds: [] };
       }
       if (path === "/api/principal/interview/answers" && init?.method === "POST") {
         return {
@@ -131,14 +135,6 @@ describe("PrincipalProfilePage", () => {
       }
       throw new Error(`unexpected ${init?.method ?? "GET"} ${path}`);
     });
-    listChatSessions.mockResolvedValueOnce([
-      { id: "sess-1", title: "Phỏng vấn hồ sơ" } as never,
-    ]);
-    sendChatMessage.mockResolvedValueOnce({
-      message_id: "msg-uuid-1",
-      task_id: "task-1",
-      created_at: "2026-11-26T10:00:00Z",
-    });
 
     renderPage();
 
@@ -151,7 +147,6 @@ describe("PrincipalProfilePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save answer" }));
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Answer saved to your profile."));
-    expect(sendChatMessage).toHaveBeenCalledWith("sess-1", "Thoroughness for external releases");
     expect(request).toHaveBeenCalledWith(
       "/api/principal/interview/answers",
       expect.objectContaining({
@@ -159,12 +154,35 @@ describe("PrincipalProfilePage", () => {
         body: JSON.stringify({
           question: 0,
           answer: "Thoroughness for external releases",
-          message_id: "msg-uuid-1",
         }),
       }),
     );
     expect(await screen.findByText("Cost threshold?")).toBeInTheDocument();
     expect(screen.getByText("Question 2 of 2")).toBeInTheDocument();
     await waitFor(() => expect(profileCalls).toBeGreaterThanOrEqual(2));
+  });
+
+  it("maps 409 principal_no_secretary when saving an interview answer", async () => {
+    request.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === "/api/principal/profile" && !init?.method) return activeProfile;
+      if (path === "/api/principal/interview") return { questions: ["Speed or thoroughness?"] };
+      if (path === "/api/principal/delegations") return { delegations: [], kinds: [] };
+      if (path === "/api/principal/interview/answers" && init?.method === "POST") {
+        throw new ApiError("no secretary", 409, "Conflict", { code: "principal_no_secretary" });
+      }
+      throw new Error(`unexpected ${init?.method ?? "GET"} ${path}`);
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("Speed or thoroughness?")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Your answer"), { target: { value: "Thoroughness" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save answer" }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Set up a workspace Secretary before answering interview questions.",
+      ),
+    );
   });
 });

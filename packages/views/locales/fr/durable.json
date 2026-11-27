@@ -215,7 +215,7 @@
   "principal": {
     "title": "Profil de décision",
     "load_failed": "Impossible de charger votre profil de décision.",
-    "off_title": "Le profil de décision est désactivé",
+    "off_description": "Permettez au Secrétariat d'apprendre comment vous décidez à partir de vos choix et notes, de prédire vos décisions et de déléguer les types éligibles lorsque vous les activez.",
     "enable": "Activer le profil",
     "status": {
       "active": "Actif",
@@ -260,7 +260,22 @@
       "edited": "Trait mis à jour.",
       "edit_failed": "Impossible de mettre à jour le trait.",
       "retired": "Trait retiré.",
-      "retire_failed": "Impossible de retirer le trait."
+      "retire_failed": "Impossible de retirer le trait.",
+      "add": "Ajouter un trait",
+      "decision_kind_label": "Type de décision",
+      "evidence_label": "Décision justificative",
+      "evidence_placeholder": "Choisir une décision récente",
+      "evidence_empty": "Décidez d'au moins une proposition avant d'ajouter un trait manuellement.",
+      "evidence_load_failed": "Impossible de charger vos décisions récentes.",
+      "statement_placeholder": "Écrivez comment vous décidez dans cette situation...",
+      "added": "Trait ajouté.",
+      "add_failed": "Impossible d'ajouter le trait.",
+      "decision_state": {
+        "approved": "Approuvée",
+        "rejected": "Rejetée",
+        "revising": "En révision",
+        "expired": "Expirée"
+      }
     },
     "interview": {
       "title": "Entretien initial",
@@ -307,6 +322,25 @@
         "proposal_envelope": "Plages d'autonomie",
         "proposal_policy": "Politiques d'approbation",
         "proposal_profile": "Profils de décision"
+      },
+      "load_failed": "Impossible de charger les paramètres de délégation.",
+      "status_on": "Activée",
+      "status_off": "Désactivée",
+      "min_confidence_value": "Min {{percent}}%",
+      "accuracy": "{{matched}} sur {{n}} correspondances · borne inférieure {{lower}}%",
+      "accuracy_none": "Aucune prédiction résolue pour le moment",
+      "not_eligible_reason": "Nécessite au moins 20 prédictions résolues avec 85% de correspondance."
+    },
+    "prediction": {
+      "line": "Prédiction : {{predicted}}, {{confidence}}%",
+      "values": {
+        "approve": "approuver",
+        "reject": "rejeter",
+        "revise": "demander des modifications",
+        "snooze": "décider plus tard",
+        "pass": "réussi",
+        "partial": "partiellement réussi",
+        "fail": "échoué"
       }
     },
     "errors": {
@@ -316,7 +350,8 @@
       "principal_trait_invalid": "Vérifiez l'énoncé du trait et le type de décision (1 à 500 caractères).",
       "principal_trait_edited": "Vous seul pouvez retirer un trait que vous avez écrit ou modifié.",
       "delegation_not_eligible": "Nécessite au moins 20 prédictions résolues de ce type avec au moins 85% de correspondance.",
-      "delegation_forbidden_kind": "Ce type de décision ne peut pas être délégué."
+      "delegation_forbidden_kind": "Ce type de décision ne peut pas être délégué.",
+      "principal_no_secretary": "Configurez un Secrétariat pour cet espace de travail avant de répondre à l'entretien."
     }
   }
 }

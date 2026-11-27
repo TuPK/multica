@@ -2,9 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { api } from "@multica/core/api";
 import {
-  PRINCIPAL_INTERVIEW_SESSION_TITLE,
   useAnswerPrincipalInterview,
   useDeletePrincipalProfile,
   useEnablePrincipalProfile,
@@ -76,9 +74,9 @@ export function PrincipalProfilePage() {
   if (!profile) {
     return (
       <div className={cn(PAGE_GUTTER, "flex max-w-2xl flex-col gap-4 py-6")}>
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="size-5 text-muted-foreground" aria-hidden="true" />
-          <h1 className="text-title-sm font-medium">{t(($) => $.principal.off_title)}</h1>
+        <div className="flex items-start gap-2.5">
+          <ShieldCheck className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <p className="text-body text-muted-foreground">{t(($) => $.principal.off_description)}</p>
         </div>
         <div>
           <Button type="button" onClick={() => setConsentOpen(true)}>
@@ -123,12 +121,9 @@ export function PrincipalProfilePage() {
 
   return (
     <div className={cn(PAGE_GUTTER, "flex max-w-3xl flex-col gap-8 py-6")}>
-      <section aria-labelledby="principal-profile-heading" className="flex flex-col gap-4">
+      <section aria-label={t(($) => $.principal.title)} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 id="principal-profile-heading" className="text-title-sm font-medium">
-              {t(($) => $.principal.title)}
-            </h1>
             <span className="inline-flex items-center rounded-md border border-surface-border px-2 py-0.5 text-caption text-foreground">
               {statusLabel(profile.status, t)}
             </span>
@@ -193,7 +188,7 @@ export function PrincipalProfilePage() {
 
       <TraitList wsId={wsId} traits={profile.traits} />
 
-      <DelegationPanel extraKinds={traitKinds} />
+      <DelegationPanel wsId={wsId} extraKinds={traitKinds} />
     </div>
   );
 }
@@ -204,7 +199,6 @@ function InterviewSection({ wsId }: { wsId: string }) {
   const answerMutation = useAnswerPrincipalInterview(wsId);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
   const questions = interview.data?.questions ?? [];
 
@@ -227,31 +221,22 @@ function InterviewSection({ wsId }: { wsId: string }) {
 
   const finished = index >= questions.length;
   const currentQuestion = finished ? "" : questions[index]!;
-  const busy = submitting || answerMutation.isPending;
+  const busy = answerMutation.isPending;
 
-  const submitAnswer = async (event: FormEvent) => {
+  const submitAnswer = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = answer.trim();
     if (!trimmed || finished || busy) return;
-    setSubmitting(true);
-    try {
-      // POST /api/principal/interview/answers requires a chat message UUID owned by the caller
-      // (durable_principal_fork.go:329-353). When the Secretary interview chat exists, send the
-      // answer there first to obtain its real message_id rather than inventing an id.
-      const messageId = await recordInterviewChatMessage(trimmed);
-      await answerMutation.mutateAsync({
-        question: index,
-        answer: trimmed,
-        message_id: messageId,
-      });
-      toast.success(t(($) => $.principal.interview.saved));
-      setAnswer("");
-      setIndex((prev) => prev + 1);
-    } catch (err: unknown) {
-      toast.error(principalErrorMessage(err, t, t(($) => $.principal.interview.save_failed)));
-    } finally {
-      setSubmitting(false);
-    }
+    answerMutation.mutateAsync({ question: index, answer: trimmed }).then(
+      () => {
+        toast.success(t(($) => $.principal.interview.saved));
+        setAnswer("");
+        setIndex((prev) => prev + 1);
+      },
+      (err: unknown) => {
+        toast.error(principalErrorMessage(err, t, t(($) => $.principal.interview.save_failed)));
+      },
+    );
   };
 
   return (
@@ -275,7 +260,7 @@ function InterviewSection({ wsId }: { wsId: string }) {
           </Button>
         </div>
       ) : (
-        <form onSubmit={(e) => void submitAnswer(e)} className="flex flex-col gap-3 rounded-md border border-surface-border p-3">
+        <form onSubmit={submitAnswer} className="flex flex-col gap-3 rounded-md border border-surface-border p-3">
           <p className="text-body font-medium text-foreground">{currentQuestion}</p>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="principal-interview-answer" className="text-caption">
@@ -327,14 +312,6 @@ function InterviewSection({ wsId }: { wsId: string }) {
       )}
     </section>
   );
-}
-
-async function recordInterviewChatMessage(answer: string): Promise<string> {
-  const sessions = await api.listChatSessions({ status: "active" });
-  const interviewSession = sessions.find((s) => s.title === PRINCIPAL_INTERVIEW_SESSION_TITLE);
-  if (!interviewSession) return "";
-  const sent = await api.sendChatMessage(interviewSession.id, answer);
-  return sent.message_id;
 }
 
 function statusLabel(status: PrincipalStatus, t: ReturnType<typeof useT<"durable">>["t"]): string {

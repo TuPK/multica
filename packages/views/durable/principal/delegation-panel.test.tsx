@@ -15,11 +15,28 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const request = vi.mocked(api.request);
 
+const sampleStatus = {
+  delegations: [
+    {
+      decision_kind: "general",
+      enabled: true,
+      min_confidence: 0.92,
+      enabled_at: "2026-11-26T08:00:00Z",
+      disabled_reason: "",
+    },
+  ],
+  kinds: [
+    { decision_kind: "general", matched: 23, n: 25, lower: 0.75, eligible: true },
+    { decision_kind: "proposal:general", matched: 20, n: 22, lower: 0.72, eligible: true },
+    { decision_kind: "inquiry", matched: 8, n: 10, lower: 0.49, eligible: false },
+  ],
+};
+
 function renderPanel() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return renderWithI18n(
     <QueryClientProvider client={qc}>
-      <DelegationPanel />
+      <DelegationPanel wsId="ws-1" />
     </QueryClientProvider>,
   );
 }
@@ -31,12 +48,22 @@ afterEach(() => {
 });
 
 describe("DelegationPanel", () => {
-  it("locks every forbidden kind from spec 6.5 and notes irreversible/urgent exclusions", () => {
+  it("reads GET /api/principal/delegations, shows on/off state, min_confidence, accuracy, and locks forbidden kinds", async () => {
+    request.mockResolvedValueOnce(sampleStatus);
     renderPanel();
 
+    expect(await screen.findByText("On")).toBeInTheDocument();
+    expect(screen.getByText("Min 92%")).toBeInTheDocument();
+    expect(screen.getByText("23 of 25 matched · lower bound 75%")).toBeInTheDocument();
+    expect(screen.getByText("20 of 22 matched · lower bound 72%")).toBeInTheDocument();
+    expect(screen.getByText("8 of 10 matched · lower bound 49%")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: "Disable General" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Enable General proposals" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Enable Secretary inquiries" })).toBeDisabled();
     expect(
-      screen.getByText(/Irreversible actions and urgent questions are never delegated/i),
-    ).toBeInTheDocument();
+      screen.getAllByText("Needs at least 20 resolved predictions with 85% matched.").length,
+    ).toBeGreaterThan(0);
 
     const lockedLabels = [
       "Organization changes",
@@ -56,11 +83,21 @@ describe("DelegationPanel", () => {
     }
   });
 
-  it("enables a delegatable kind with default min_confidence 0.90", async () => {
-    request.mockResolvedValueOnce({ decision_kind: "proposal:general", enabled: true });
+  it("enables an eligible kind with PUT /api/principal/delegations and invalidates delegations", async () => {
+    let getCalls = 0;
+    request.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === "/api/principal/delegations" && !init?.method) {
+        getCalls += 1;
+        return sampleStatus;
+      }
+      if (path === "/api/principal/delegations" && init?.method === "PUT") {
+        return { decision_kind: "proposal:general", enabled: true };
+      }
+      throw new Error(`unexpected ${init?.method ?? "GET"} ${path}`);
+    });
     renderPanel();
 
-    fireEvent.click(screen.getByRole("button", { name: "Enable General proposals" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Enable General proposals" }));
 
     await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith("Delegation enabled for General proposals."),
@@ -72,21 +109,33 @@ describe("DelegationPanel", () => {
         body: JSON.stringify({ decision_kind: "proposal:general", min_confidence: 0.9 }),
       }),
     );
+    await waitFor(() => expect(getCalls).toBeGreaterThanOrEqual(2));
   });
 
-  it("disables a kind via DELETE /api/principal/delegations?decision_kind=", async () => {
-    request.mockResolvedValueOnce(undefined);
+  it("disables an active kind via DELETE /api/principal/delegations?decision_kind= and invalidates delegations", async () => {
+    let getCalls = 0;
+    request.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === "/api/principal/delegations" && !init?.method) {
+        getCalls += 1;
+        return sampleStatus;
+      }
+      if (path === "/api/principal/delegations?decision_kind=general" && init?.method === "DELETE") {
+        return undefined;
+      }
+      throw new Error(`unexpected ${init?.method ?? "GET"} ${path}`);
+    });
     renderPanel();
 
-    fireEvent.click(screen.getByRole("button", { name: "Disable General proposals" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Disable General" }));
 
     await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith("Delegation disabled for General proposals."),
+      expect(toast.success).toHaveBeenCalledWith("Delegation disabled for General."),
     );
     expect(request).toHaveBeenCalledWith(
-      "/api/principal/delegations?decision_kind=proposal%3Ageneral",
+      "/api/principal/delegations?decision_kind=general",
       expect.objectContaining({ method: "DELETE" }),
     );
+    await waitFor(() => expect(getCalls).toBeGreaterThanOrEqual(2));
   });
 
   it.each([
@@ -96,10 +145,16 @@ describe("DelegationPanel", () => {
     ],
     ["delegation_forbidden_kind", "This decision kind cannot be delegated."],
   ])("maps 422 %s to localized copy", async (code, expected) => {
-    request.mockRejectedValueOnce(new ApiError("err", 422, "Unprocessable Entity", { code }));
+    request.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === "/api/principal/delegations" && !init?.method) return sampleStatus;
+      if (path === "/api/principal/delegations" && init?.method === "PUT") {
+        throw new ApiError("err", 422, "Unprocessable Entity", { code });
+      }
+      throw new Error(`unexpected ${init?.method ?? "GET"} ${path}`);
+    });
     renderPanel();
 
-    fireEvent.click(screen.getByRole("button", { name: "Enable General" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Enable General proposals" }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expected));
   });

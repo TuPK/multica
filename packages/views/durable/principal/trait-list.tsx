@@ -3,36 +3,88 @@
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
+  useAddPrincipalTrait,
   useEditPrincipalTrait,
+  usePrincipalEvidenceCandidates,
   useRetirePrincipalTrait,
+  type PrincipalEvidenceCandidate,
   type PrincipalOrigin,
   type PrincipalTrait,
 } from "@multica/core/durable/principal";
 import { Button } from "@multica/ui/components/ui/button";
 import { Label } from "@multica/ui/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { Textarea } from "@multica/ui/components/ui/textarea";
-import { Loader2, Pencil, Trash2 } from "@multica/ui/icons";
-import { useT } from "../../i18n";
-import { decisionKindLabel, principalErrorMessage } from "./error-copy";
+import { Loader2, Pencil, Plus, Trash2 } from "@multica/ui/icons";
+import { useLocale, useT } from "../../i18n";
+import { KNOWN_DECISION_KINDS, decisionKindLabel, principalErrorMessage } from "./error-copy";
 
 // Mirror server/internal/service/durable_principal_fork.go:principalStatementMax.
 const MAX_STATEMENT_LENGTH = 500;
 
 /**
- * Lists the person's active principal traits grouped by `decision_kind` (durable spec 6.2–6.3).
- * Manual trait creation is intentionally hidden: POST /api/principal/profile/traits requires valid
- * UUID evidence owned by the person (a proposal decision, comment, or chat message) and no picker
- * endpoint exists, so the UI does not invent evidence.
+ * Lists the person's active principal traits grouped by `decision_kind` (durable spec 6.2–6.3),
+ * and lets the person add a manual trait backed by one of their own recent proposal decisions.
  */
 export function TraitList({ wsId, traits }: { wsId: string; traits: PrincipalTrait[] }) {
   const { t } = useT("durable");
+  const locale = useLocale();
+  const add = useAddPrincipalTrait(wsId);
   const edit = useEditPrincipalTrait(wsId);
   const retire = useRetirePrincipalTrait(wsId);
+  const [adding, setAdding] = useState(false);
+  const [evidenceRef, setEvidenceRef] = useState<string | null>(null);
+  const [decisionKind, setDecisionKind] = useState<string>("general");
+  const [newStatement, setNewStatement] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [retiringId, setRetiringId] = useState<string | null>(null);
 
+  const candidatesQuery = usePrincipalEvidenceCandidates(wsId, adding);
+  const candidates = candidatesQuery.data?.decisions ?? [];
+
   const grouped = groupByKind(traits);
+
+  const kindItems = KNOWN_DECISION_KINDS.map((kind) => ({
+    value: kind,
+    label: decisionKindLabel(kind, t),
+  }));
+
+  const candidateItems = candidates.map((candidate) => ({
+    value: candidate.id,
+    label: formatCandidateLabel(candidate, locale, t),
+  }));
+
+  const resetAddForm = () => {
+    setAdding(false);
+    setEvidenceRef(null);
+    setDecisionKind("general");
+    setNewStatement("");
+  };
+
+  const canSubmitAdd = Boolean(evidenceRef) && newStatement.trim().length > 0 && !add.isPending;
+
+  const submitAdd = (event: FormEvent) => {
+    event.preventDefault();
+    const statement = newStatement.trim();
+    if (!evidenceRef || !statement || add.isPending) return;
+    add
+      .mutateAsync({
+        decision_kind: decisionKind,
+        statement,
+        origin: "edited",
+        evidence: [{ type: "decision", ref: evidenceRef }],
+      })
+      .then(
+        () => {
+          toast.success(t(($) => $.principal.traits.added));
+          resetAddForm();
+        },
+        (err: unknown) => {
+          toast.error(principalErrorMessage(err, t, t(($) => $.principal.traits.add_failed)));
+        },
+      );
+  };
 
   const startEdit = (trait: PrincipalTrait) => {
     setEditingId(trait.id);
@@ -78,9 +130,117 @@ export function TraitList({ wsId, traits }: { wsId: string; traits: PrincipalTra
 
   return (
     <section aria-labelledby="principal-traits-heading" className="flex flex-col gap-3">
-      <h2 id="principal-traits-heading" className="text-title-sm font-medium">
-        {t(($) => $.principal.traits.title)}
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="principal-traits-heading" className="text-title-sm font-medium">
+          {t(($) => $.principal.traits.title)}
+        </h2>
+        {!adding ? (
+          <Button type="button" size="sm" variant="outline" onClick={() => setAdding(true)}>
+            <Plus className="size-3.5" />
+            {t(($) => $.principal.traits.add)}
+          </Button>
+        ) : null}
+      </div>
+
+      {adding ? (
+        <form
+          onSubmit={submitAdd}
+          className="flex flex-col gap-3 rounded-md border border-surface-border p-3"
+        >
+          <div className="flex flex-col gap-1.5">
+            <span className="text-caption font-medium">
+              {t(($) => $.principal.traits.evidence_label)}
+            </span>
+            {candidatesQuery.isError ? (
+              <p role="alert" className="text-caption text-destructive">
+                {t(($) => $.principal.traits.evidence_load_failed)}
+              </p>
+            ) : candidatesQuery.isPending ? (
+              <div className="flex items-center py-1">
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : candidateItems.length === 0 ? (
+              <p className="text-caption text-muted-foreground">
+                {t(($) => $.principal.traits.evidence_empty)}
+              </p>
+            ) : (
+              <Select
+                items={candidateItems}
+                value={evidenceRef}
+                disabled={add.isPending}
+                onValueChange={(next) => setEvidenceRef(next ?? null)}
+              >
+                <SelectTrigger
+                  aria-label={t(($) => $.principal.traits.evidence_label)}
+                  className="w-full"
+                >
+                  <SelectValue placeholder={t(($) => $.principal.traits.evidence_placeholder)} />
+                </SelectTrigger>
+                <SelectContent>
+                  {candidateItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-caption font-medium">
+              {t(($) => $.principal.traits.decision_kind_label)}
+            </span>
+            <Select
+              items={kindItems}
+              value={decisionKind}
+              disabled={add.isPending}
+              onValueChange={(next) => {
+                if (next) setDecisionKind(next);
+              }}
+            >
+              <SelectTrigger
+                aria-label={t(($) => $.principal.traits.decision_kind_label)}
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {kindItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="principal-trait-new-statement" className="text-caption font-medium">
+              {t(($) => $.principal.traits.statement_label)}
+            </Label>
+            <Textarea
+              id="principal-trait-new-statement"
+              value={newStatement}
+              rows={2}
+              maxLength={MAX_STATEMENT_LENGTH}
+              placeholder={t(($) => $.principal.traits.statement_placeholder)}
+              disabled={add.isPending}
+              onChange={(e) => setNewStatement(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button type="submit" size="sm" disabled={!canSubmitAdd} aria-busy={add.isPending || undefined}>
+              {add.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              {t(($) => $.principal.traits.add)}
+            </Button>
+            <Button type="button" size="sm" variant="outline" disabled={add.isPending} onClick={resetAddForm}>
+              {t(($) => $.principal.cancel)}
+            </Button>
+          </div>
+        </form>
+      ) : null}
 
       {traits.length === 0 ? (
         <p className="text-body text-muted-foreground">{t(($) => $.principal.traits.empty)}</p>
@@ -171,6 +331,40 @@ export function TraitList({ wsId, traits }: { wsId: string; traits: PrincipalTra
       )}
     </section>
   );
+}
+
+function formatCandidateLabel(
+  candidate: PrincipalEvidenceCandidate,
+  locale: string,
+  t: ReturnType<typeof useT<"durable">>["t"],
+): string {
+  const title = candidate.title || candidate.id;
+  const state = decisionStateLabel(candidate.decision, t);
+  const date = formatShortDate(candidate.decided_at, locale);
+  const meta = [state, date].filter(Boolean).join(" · ");
+  return meta ? `${title} (${meta})` : title;
+}
+
+function decisionStateLabel(decision: string, t: ReturnType<typeof useT<"durable">>["t"]): string {
+  switch (decision.trim().toLowerCase()) {
+    case "approved":
+      return t(($) => $.principal.traits.decision_state.approved);
+    case "rejected":
+      return t(($) => $.principal.traits.decision_state.rejected);
+    case "revising":
+      return t(($) => $.principal.traits.decision_state.revising);
+    case "expired":
+      return t(($) => $.principal.traits.decision_state.expired);
+    default:
+      return decision;
+  }
+}
+
+function formatShortDate(value: string, locale: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
 }
 
 function originLabel(origin: PrincipalOrigin, t: ReturnType<typeof useT<"durable">>["t"]): string {

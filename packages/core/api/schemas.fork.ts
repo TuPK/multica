@@ -1824,3 +1824,25 @@ export const RoomWorkflowCheckSchema = z.object({
   message: z.string().nullish(),
   squad_id: z.string().nullish(),
 });
+
+// Principal profile, delegation, prediction, evidence candidate, and queued attention schemas.
+export {
+  DelegationEnableResultSchema,
+  EMPTY_PRINCIPAL_DELEGATIONS,
+  EMPTY_PRINCIPAL_EVIDENCE_CANDIDATES,
+  PrincipalDelegationSchema,
+  PrincipalDelegationsSchema,
+  PrincipalEvidenceCandidateSchema,
+  PrincipalEvidenceCandidatesSchema,
+  PrincipalEvidenceSchema,
+  PrincipalInterviewSchema,
+  PrincipalKindAccuracySchema,
+  PrincipalPredictionSchema,
+  PrincipalProfileSchema,
+  PrincipalTraitSchema,
+} from "../durable/principal/schemas";
+export {
+  EMPTY_QUEUED_ATTENTION,
+  QueuedAttentionAskSchema,
+  QueuedAttentionListSchema,
+} from "../governance/attention";

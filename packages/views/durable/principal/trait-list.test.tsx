@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { api, ApiError } from "@multica/core/api";
@@ -43,6 +44,17 @@ const sampleTraits: PrincipalTrait[] = [
   },
 ];
 
+const sampleCandidates = {
+  decisions: [
+    {
+      id: "00000000-0000-0000-0000-000000000010",
+      title: "Roll out self-serve pricing",
+      decision: "approved",
+      decided_at: "2026-11-25T10:00:00Z",
+    },
+  ],
+};
+
 function renderList(traits: PrincipalTrait[] = sampleTraits) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return renderWithI18n(
@@ -59,7 +71,7 @@ afterEach(() => {
 });
 
 describe("TraitList", () => {
-  it("groups traits by decision_kind, shows origin labels, and hides manual add", () => {
+  it("groups traits by decision_kind, shows origin labels, and offers manual add", () => {
     renderList();
 
     expect(screen.getByText("general")).toBeInTheDocument();
@@ -68,7 +80,85 @@ describe("TraitList", () => {
     expect(screen.getByText("Interview")).toBeInTheDocument();
     expect(screen.getByText("Learned")).toBeInTheDocument();
     expect(screen.getByText("Edited")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /add/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add trait" })).toBeInTheDocument();
+  });
+
+  it("adds a manual trait with a picked decision candidate and origin edited", async () => {
+    const user = userEvent.setup({ delay: null });
+    request.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === "/api/principal/evidence-candidates") return sampleCandidates;
+      if (path === "/api/principal/profile/traits" && init?.method === "POST") {
+        return {
+          id: "tr-new",
+          decision_kind: "proposal:general",
+          statement: "Prefer small phased launches",
+          origin: "edited",
+          evidence: [{ type: "decision", ref: "00000000-0000-0000-0000-000000000010" }],
+          created_at: "2026-11-27T08:00:00Z",
+        };
+      }
+      throw new Error(`unexpected ${init?.method ?? "GET"} ${path}`);
+    });
+    renderList();
+
+    await user.click(screen.getByRole("button", { name: "Add trait" }));
+    const evidenceTrigger = await screen.findByRole("combobox", { name: "Supporting decision" });
+    await user.click(evidenceTrigger);
+    await user.click(await screen.findByRole("option", { name: /Roll out self-serve pricing/ }));
+
+    const kindTrigger = screen.getByRole("combobox", { name: "Decision kind" });
+    await user.click(kindTrigger);
+    await user.click(await screen.findByRole("option", { name: "General proposals" }));
+
+    await user.type(screen.getByLabelText("Trait statement"), "Prefer small phased launches");
+    await user.click(screen.getByRole("button", { name: "Add trait" }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Trait added."));
+    expect(request).toHaveBeenCalledWith(
+      "/api/principal/profile/traits",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          decision_kind: "proposal:general",
+          statement: "Prefer small phased launches",
+          origin: "edited",
+          evidence: [{ type: "decision", ref: "00000000-0000-0000-0000-000000000010" }],
+        }),
+      }),
+    );
+    expect(screen.getByRole("button", { name: "Add trait" })).toBeEnabled();
+  });
+
+  it.each([
+    [
+      "principal_evidence_invalid",
+      422,
+      "This trait requires valid evidence from your own decisions, comments, or interview chat.",
+    ],
+    [
+      "principal_trait_limit",
+      409,
+      "You have reached the 200 active trait limit. Retire a trait first.",
+    ],
+  ])("maps manual add error %s (%i) and keeps the add button ready", async (code, status, expected) => {
+    const user = userEvent.setup({ delay: null });
+    request.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === "/api/principal/evidence-candidates") return sampleCandidates;
+      if (path === "/api/principal/profile/traits" && init?.method === "POST") {
+        throw new ApiError("err", status, "Error", { code });
+      }
+      throw new Error(`unexpected ${init?.method ?? "GET"} ${path}`);
+    });
+    renderList();
+
+    await user.click(screen.getByRole("button", { name: "Add trait" }));
+    await user.click(await screen.findByRole("combobox", { name: "Supporting decision" }));
+    await user.click(await screen.findByRole("option", { name: /Roll out self-serve pricing/ }));
+    await user.type(screen.getByLabelText("Trait statement"), "Keep changes reversible");
+    await user.click(screen.getByRole("button", { name: "Add trait" }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expected));
+    expect(screen.getByRole("button", { name: "Add trait" })).toBeEnabled();
   });
 
   it("edits a trait statement via PATCH /api/principal/profile/traits/:id", async () => {
@@ -101,12 +191,6 @@ describe("TraitList", () => {
   });
 
   it.each([
-    ["principal_trait_limit", 409, "You have reached the 200 active trait limit. Retire a trait first."],
-    [
-      "principal_evidence_invalid",
-      422,
-      "This trait requires valid evidence from your own decisions, comments, or interview chat.",
-    ],
     ["principal_trait_invalid", 422, "Check the trait statement and decision kind (1 to 500 characters)."],
     ["principal_trait_edited", 403, "Only you can retire a trait you wrote or edited."],
   ])("maps server error code %s (%i) to localized copy", async (code, status, expected) => {

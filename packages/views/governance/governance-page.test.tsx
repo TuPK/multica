@@ -19,6 +19,7 @@ const api = vi.hoisted(() => ({
   listBudgets: vi.fn(),
   listBudgetHolds: vi.fn(),
   listGoals: vi.fn(),
+  getQueuedAttention: vi.fn(),
   request: vi.fn(),
 }));
 const flags = vi.hoisted(() => ({ principal: false }));
@@ -73,6 +74,7 @@ describe("GovernancePage", () => {
     api.listBudgets.mockResolvedValue({ budgets: [] });
     api.listBudgetHolds.mockResolvedValue([]);
     api.listGoals.mockResolvedValue([]);
+    api.getQueuedAttention.mockResolvedValue({ asks: [] });
   });
   afterEach(cleanup);
 
@@ -142,7 +144,38 @@ describe("GovernancePage", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Principal" }));
     await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/acme/governance?tab=principal"));
-    expect(await screen.findByRole("heading", { name: "Principal profile is off" })).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "Let the Secretary learn how you decide from your choices and notes, predict your calls, and delegate eligible kinds when you turn them on.",
+      ),
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Enable profile" })).toBeTruthy();
+  });
+
+  it("opens the Controls tab and shows the Queued attention section when durable_principal is on", async () => {
+    flags.principal = true;
+    api.getQueuedAttention.mockResolvedValue({ asks: [] });
+
+    function StatefulGovernance() {
+      const [, setTick] = useState(0);
+      nav.replace.mockImplementation((url: string) => {
+        const query = url.split("?")[1] ?? "";
+        nav.searchParams = new URLSearchParams(query);
+        setTick((n) => n + 1);
+      });
+      return <GovernancePage />;
+    }
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderWithI18n(
+      <QueryClientProvider client={queryClient}>
+        <StatefulGovernance />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Controls" }));
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/acme/governance?tab=controls"));
+    expect(await screen.findByRole("heading", { name: "Queued" })).toBeTruthy();
+    expect(await screen.findByText("No questions are queued.")).toBeTruthy();
   });
 });

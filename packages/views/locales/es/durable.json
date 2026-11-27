@@ -215,7 +215,7 @@
   "principal": {
     "title": "Perfil de decisión",
     "load_failed": "No se pudo cargar tu perfil de decisión.",
-    "off_title": "El perfil de decisión está desactivado",
+    "off_description": "Permite que la Secretaría aprenda cómo decides a partir de tus elecciones y notas, prediga tus decisiones y delegue los tipos elegibles cuando los actives.",
     "enable": "Activar perfil",
     "status": {
       "active": "Activo",
@@ -260,7 +260,22 @@
       "edited": "Rasgo actualizado.",
       "edit_failed": "No se pudo actualizar el rasgo.",
       "retired": "Rasgo retirado.",
-      "retire_failed": "No se pudo retirar el rasgo."
+      "retire_failed": "No se pudo retirar el rasgo.",
+      "add": "Añadir rasgo",
+      "decision_kind_label": "Tipo de decisión",
+      "evidence_label": "Decisión de respaldo",
+      "evidence_placeholder": "Elige una decisión reciente",
+      "evidence_empty": "Decide al menos una propuesta antes de añadir un rasgo manualmente.",
+      "evidence_load_failed": "No se pudieron cargar tus decisiones recientes.",
+      "statement_placeholder": "Escribe cómo decides en esta situación...",
+      "added": "Rasgo añadido.",
+      "add_failed": "No se pudo añadir el rasgo.",
+      "decision_state": {
+        "approved": "Aprobada",
+        "rejected": "Rechazada",
+        "revising": "En revisión",
+        "expired": "Expirada"
+      }
     },
     "interview": {
       "title": "Entrevista inicial",
@@ -307,6 +322,25 @@
         "proposal_envelope": "Límites de autonomía",
         "proposal_policy": "Políticas de aprobación",
         "proposal_profile": "Perfiles de decisión"
+      },
+      "load_failed": "No se pudo cargar la configuración de delegación.",
+      "status_on": "Activada",
+      "status_off": "Desactivada",
+      "min_confidence_value": "Mín. {{percent}}%",
+      "accuracy": "{{matched}} de {{n}} aciertos · límite inferior {{lower}}%",
+      "accuracy_none": "Aún no hay predicciones resueltas",
+      "not_eligible_reason": "Requiere al menos 20 predicciones resueltas con un 85% de aciertos."
+    },
+    "prediction": {
+      "line": "Predicción: {{predicted}}, {{confidence}}%",
+      "values": {
+        "approve": "aprobar",
+        "reject": "rechazar",
+        "revise": "pedir cambios",
+        "snooze": "decidir más tarde",
+        "pass": "aprobado",
+        "partial": "parcialmente aprobado",
+        "fail": "fallido"
       }
     },
     "errors": {
@@ -316,7 +350,8 @@
       "principal_trait_invalid": "Revisa la declaración del rasgo y el tipo de decisión (de 1 a 500 caracteres).",
       "principal_trait_edited": "Solo tú puedes retirar un rasgo que escribiste o editaste.",
       "delegation_not_eligible": "Requiere al menos 20 predicciones resueltas de este tipo con al menos un 85% de aciertos.",
-      "delegation_forbidden_kind": "Este tipo de decisión no se puede delegar."
+      "delegation_forbidden_kind": "Este tipo de decisión no se puede delegar.",
+      "principal_no_secretary": "Configura una Secretaría en el espacio de trabajo antes de responder la entrevista."
     }
   }
 }

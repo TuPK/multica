@@ -215,7 +215,7 @@
   "principal": {
     "title": "Hồ sơ người quyết định",
     "load_failed": "Không tải được hồ sơ người quyết định của bạn.",
-    "off_title": "Hồ sơ người quyết định đang tắt",
+    "off_description": "Cho phép Thư ký học cách bạn quyết định từ các lựa chọn và ghi chú, dự đoán phán đoán của bạn và uỷ quyền các loại đủ điều kiện khi bạn bật.",
     "enable": "Bật hồ sơ",
     "status": {
       "active": "Đang bật",
@@ -260,7 +260,22 @@
       "edited": "Đã cập nhật đặc điểm.",
       "edit_failed": "Không cập nhật được đặc điểm.",
       "retired": "Đã gỡ đặc điểm.",
-      "retire_failed": "Không gỡ được đặc điểm."
+      "retire_failed": "Không gỡ được đặc điểm.",
+      "add": "Thêm đặc điểm",
+      "decision_kind_label": "Loại quyết định",
+      "evidence_label": "Quyết định làm bằng chứng",
+      "evidence_placeholder": "Chọn một quyết định gần đây",
+      "evidence_empty": "Hãy quyết định ít nhất một đề xuất trước khi tự thêm đặc điểm.",
+      "evidence_load_failed": "Không tải được danh sách quyết định gần đây.",
+      "statement_placeholder": "Viết cách bạn thường quyết định trong tình huống này...",
+      "added": "Đã thêm đặc điểm.",
+      "add_failed": "Không thêm được đặc điểm.",
+      "decision_state": {
+        "approved": "Đã duyệt",
+        "rejected": "Đã từ chối",
+        "revising": "Đang sửa",
+        "expired": "Hết hạn"
+      }
     },
     "interview": {
       "title": "Phỏng vấn khởi đầu",
@@ -307,6 +322,25 @@
         "proposal_envelope": "Khoảng tự chủ",
         "proposal_policy": "Chính sách phê duyệt",
         "proposal_profile": "Hồ sơ người quyết định"
+      },
+      "load_failed": "Không tải được thiết lập uỷ quyền.",
+      "status_on": "Đang bật",
+      "status_off": "Đang tắt",
+      "min_confidence_value": "Tối thiểu {{percent}}%",
+      "accuracy": "Khớp {{matched}} / {{n}} · cận dưới {{lower}}%",
+      "accuracy_none": "Chưa có dự đoán đã chốt",
+      "not_eligible_reason": "Cần ít nhất 20 dự đoán đã chốt với tối thiểu 85% khớp."
+    },
+    "prediction": {
+      "line": "Dự đoán: {{predicted}}, {{confidence}}%",
+      "values": {
+        "approve": "duyệt",
+        "reject": "từ chối",
+        "revise": "yêu cầu sửa",
+        "snooze": "quyết định sau",
+        "pass": "đạt",
+        "partial": "đạt một phần",
+        "fail": "không đạt"
       }
     },
     "errors": {
@@ -316,7 +350,8 @@
       "principal_trait_invalid": "Kiểm tra lại nội dung đặc điểm và loại quyết định (từ 1 đến 500 ký tự).",
       "principal_trait_edited": "Chỉ bạn mới có thể gỡ đặc điểm do chính bạn viết hoặc sửa.",
       "delegation_not_eligible": "Cần ít nhất 20 dự đoán đã chốt của loại này với tối thiểu 85% khớp.",
-      "delegation_forbidden_kind": "Loại quyết định này không bao giờ được uỷ quyền."
+      "delegation_forbidden_kind": "Loại quyết định này không bao giờ được uỷ quyền.",
+      "principal_no_secretary": "Hãy thiết lập Thư ký cho workspace trước khi trả lời phỏng vấn."
     }
   }
 }

@@ -9,6 +9,7 @@ const PRINCIPAL_ERROR_CODES = [
   "principal_evidence_invalid",
   "principal_trait_invalid",
   "principal_trait_edited",
+  "principal_no_secretary",
   "delegation_not_eligible",
   "delegation_forbidden_kind",
 ] as const;
@@ -63,9 +64,31 @@ const KNOWN_KIND_TO_KEY = {
   "proposal:profile": "proposal_profile",
 } as const;
 
-type KnownKind = keyof typeof KNOWN_KIND_TO_KEY;
+export type KnownDecisionKind = keyof typeof KNOWN_KIND_TO_KEY;
 
-function isKnownKind(kind: string): kind is KnownKind {
+/** All standard decision kinds supported by the principal profile UI. */
+export const KNOWN_DECISION_KINDS: readonly KnownDecisionKind[] = [
+  "general",
+  "outcome",
+  "inquiry",
+  "proposal:general",
+  "proposal:hire",
+  "proposal:promote",
+  "effect:write",
+  "effect:send",
+  "proposal:org_change",
+  "proposal:launch",
+  "proposal:stage_gate",
+  "effect:spend",
+  "effect:share",
+  "proposal:budget",
+  "proposal:autonomy",
+  "proposal:envelope",
+  "proposal:policy",
+  "proposal:profile",
+];
+
+function isKnownKind(kind: string): kind is KnownDecisionKind {
   return Object.prototype.hasOwnProperty.call(KNOWN_KIND_TO_KEY, kind);
 }
 
@@ -76,4 +99,20 @@ export function decisionKindLabel(kind: string, t: DurableTranslate): string {
     return t(($) => $.principal.delegation.kinds[key]);
   }
   return kind;
+}
+
+const PREDICTED_VALUES = ["approve", "reject", "revise", "snooze", "pass", "partial", "fail"] as const;
+type KnownPredictedValue = (typeof PREDICTED_VALUES)[number];
+
+function isKnownPredictedValue(value: string): value is KnownPredictedValue {
+  return (PREDICTED_VALUES as readonly string[]).includes(value);
+}
+
+/** Human-readable label for a predicted decision token, falling back to the raw text. */
+export function predictedDecisionLabel(predicted: string, t: DurableTranslate): string {
+  const normalized = predicted.trim().toLowerCase();
+  if (isKnownPredictedValue(normalized)) {
+    return t(($) => $.principal.prediction.values[normalized]);
+  }
+  return predicted;
 }

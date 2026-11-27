@@ -9,6 +9,7 @@ import type { Squad } from "@multica/core/types";
 import { Dialog, DialogContent, DialogTitle } from "@multica/ui/components/ui/dialog";
 import { cn } from "@multica/ui/lib/utils";
 import { ReadonlyContent } from "../../editor/readonly-content";
+import { PrincipalPredictionLine } from "../../durable/principal/prediction-line";
 import { useT } from "../../i18n";
 import { useDecisionQueue } from "../lib/decision-queue";
 import { CompanyProposalDecision } from "./company-proposal-decision";
@@ -79,6 +80,7 @@ export function CompanyDecisionsDialog({
           <span className="text-caption text-muted-foreground">
             {squads.find((squad) => squad.id === proposal.squad_id)?.name ?? ""}
           </span>
+          <PrincipalPredictionLine subjectType="proposal" subjectId={proposal.id} className="w-full truncate" />
         </button>
       </li>
     );
@@ -152,6 +154,7 @@ function ProposalDetail({
           <CompanyProposalKindLabel kind={proposal.kind} />
         </div>
         <h3 className="text-heading">{proposal.title}</h3>
+        <PrincipalPredictionLine subjectType="proposal" subjectId={proposal.id} />
         <CompanyProposalStatus proposal={proposal} squadName={from?.name ?? null} />
         {proposal.kind === "publish" ? (
           <PublishProposalSummary proposal={proposal} />

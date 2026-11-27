@@ -134,7 +134,28 @@
     "attention_invalid": "請輸入 0 到 {{max}} 之間的整數分鐘數。",
     "attention_save": "儲存預算",
     "attention_saved": "注意力預算已儲存",
-    "attention_save_failed": "無法儲存注意力預算，請再試一次。"
+    "attention_save_failed": "無法儲存注意力預算，請再試一次。",
+    "attention_queue_heading": "排隊中",
+    "attention_queue_empty": "目前沒有排隊中的問題。",
+    "attention_queue_load_failed": "無法載入排隊中的問題。",
+    "attention_queue_minutes": "{{minutes}} 分鐘",
+    "attention_subject_type": {
+      "proposal": "提案",
+      "effect_intent": "操作審批",
+      "outcome_check": "結果核驗",
+      "app_action_request": "應用程式請求",
+      "inquiry": "詢問",
+      "unknown": "問題"
+    },
+    "attention_reason": {
+      "judgment": "需要判斷",
+      "irreversible": "不可逆",
+      "missing_access": "缺少權限",
+      "missing_info": "缺少資訊",
+      "policy": "策略要求",
+      "verification": "核驗",
+      "unknown": "其他"
+    }
   },
   "log": {
     "filter_kind": "類型",

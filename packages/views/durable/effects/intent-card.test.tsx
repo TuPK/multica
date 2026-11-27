@@ -7,7 +7,13 @@ import type { Intent } from "@multica/core/durable/intents";
 import { renderWithI18n } from "../../test/i18n";
 import { IntentCard } from "./intent-card";
 
+const flags = vi.hoisted(() => ({ principal: false }));
+
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
+vi.mock("@multica/core/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/config")>()),
+  useFeatureEnabled: (key: string, fallback: boolean) => (key === "durable_principal" ? flags.principal : fallback),
+}));
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
   api: { request: vi.fn() },
@@ -75,6 +81,7 @@ function bodyOfCall(n: number): unknown {
 }
 
 beforeEach(() => {
+  flags.principal = false;
   vi.clearAllMocks();
 });
 
@@ -199,5 +206,31 @@ describe("IntentCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
     await waitFor(() => expect(onDecided).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows the principal prediction when durable_principal is on, and hides it on 404", async () => {
+    flags.principal = true;
+    request.mockResolvedValueOnce({
+      predicted: "approve",
+      confidence: 0.92,
+      why: "Routine customer quote",
+      actual: null,
+      matched: null,
+    });
+    const first = renderCard(emailIntent);
+    expect(await screen.findByText("Predicted: approve, 92%")).toBeInTheDocument();
+    expect(request).toHaveBeenCalledWith(
+      "/api/principal/predictions?subject_type=effect_intent&subject_id=i-1",
+    );
+    first.unmount();
+
+    request.mockRejectedValueOnce(new ApiError("no prediction", 404, "Not Found"));
+    renderCard(recordIntent);
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith(
+        "/api/principal/predictions?subject_type=effect_intent&subject_id=i-2",
+      ),
+    );
+    expect(screen.queryByText(/Predicted:/i)).not.toBeInTheDocument();
   });
 });

@@ -134,7 +134,28 @@
     "attention_invalid": "0 から {{max}} までの整数の分を入力してください。",
     "attention_save": "予算を保存",
     "attention_saved": "注意の予算を保存しました",
-    "attention_save_failed": "注意の予算を保存できませんでした。もう一度お試しください。"
+    "attention_save_failed": "注意の予算を保存できませんでした。もう一度お試しください。",
+    "attention_queue_heading": "待機中",
+    "attention_queue_empty": "待機中の質問はありません。",
+    "attention_queue_load_failed": "待機中の質問を読み込めませんでした。",
+    "attention_queue_minutes": "{{minutes}} 分",
+    "attention_subject_type": {
+      "proposal": "提案",
+      "effect_intent": "操作の承認",
+      "outcome_check": "成果チェック",
+      "app_action_request": "アプリ操作依頼",
+      "inquiry": "確認事項",
+      "unknown": "質問"
+    },
+    "attention_reason": {
+      "judgment": "判断が必要",
+      "irreversible": "不可逆",
+      "missing_access": "権限不足",
+      "missing_info": "情報不足",
+      "policy": "ポリシー制御",
+      "verification": "検証",
+      "unknown": "その他"
+    }
   },
   "log": {
     "filter_kind": "種類",

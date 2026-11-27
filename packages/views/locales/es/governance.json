@@ -134,7 +134,28 @@
     "attention_invalid": "Escribe un número entero de minutos de 0 a {{max}}.",
     "attention_save": "Guardar presupuesto",
     "attention_saved": "Presupuesto de atención guardado",
-    "attention_save_failed": "No se pudo guardar el presupuesto de atención. Inténtalo de nuevo."
+    "attention_save_failed": "No se pudo guardar el presupuesto de atención. Inténtalo de nuevo.",
+    "attention_queue_heading": "En cola",
+    "attention_queue_empty": "No hay preguntas en cola.",
+    "attention_queue_load_failed": "No se pudieron cargar las preguntas en cola.",
+    "attention_queue_minutes": "{{minutes}} min",
+    "attention_subject_type": {
+      "proposal": "Propuesta",
+      "effect_intent": "Aprobación de acción",
+      "outcome_check": "Comprobación de resultado",
+      "app_action_request": "Solicitud de aplicación",
+      "inquiry": "Consulta",
+      "unknown": "Pregunta"
+    },
+    "attention_reason": {
+      "judgment": "Requiere criterio",
+      "irreversible": "Irreversible",
+      "missing_access": "Falta de acceso",
+      "missing_info": "Falta información",
+      "policy": "Política requerida",
+      "verification": "Verificación",
+      "unknown": "Otro"
+    }
   },
   "log": {
     "filter_kind": "Tipo",

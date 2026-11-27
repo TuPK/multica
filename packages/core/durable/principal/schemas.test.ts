@@ -3,9 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vite
 import { setSchemaLogger } from "../../api/schema";
 import { noopLogger, type Logger } from "../../logger";
 import {
+  DEFAULT_DELEGATION_MIN_CONFIDENCE,
+  EMPTY_PRINCIPAL_DELEGATIONS,
+  EMPTY_PRINCIPAL_EVIDENCE_CANDIDATES,
   isForbiddenDelegationKind,
   parseDelegationEnableResult,
+  parsePrincipalDelegations,
+  parsePrincipalEvidenceCandidates,
   parsePrincipalInterview,
+  parsePrincipalPrediction,
   parsePrincipalProfile,
   parsePrincipalTrait,
 } from "./schemas";
@@ -106,6 +112,119 @@ describe("principal schemas", () => {
         "PUT /api/principal/delegations",
       ),
     ).toBeNull();
+  });
+
+  it("parses delegations and per-kind accuracy, defaulting missing fields and dropping bad rows", () => {
+    const valid = {
+      delegations: [
+        {
+          decision_kind: "proposal:general",
+          enabled: true,
+          min_confidence: 0.92,
+          enabled_at: "2026-11-26T08:00:00Z",
+          disabled_reason: "",
+        },
+      ],
+      kinds: [
+        {
+          decision_kind: "proposal:general",
+          matched: 22,
+          n: 24,
+          lower: 0.74,
+          eligible: true,
+        },
+      ],
+    };
+    expect(parsePrincipalDelegations(valid, "GET /api/principal/delegations")).toEqual(valid);
+    expect(warn).not.toHaveBeenCalled();
+
+    const partial = parsePrincipalDelegations(
+      {
+        delegations: [null, { decision_kind: "" }, { decision_kind: "general", min_confidence: 99 }],
+        kinds: [42, { decision_kind: "general", matched: -1, n: "bad", lower: 2, eligible: "yes" }],
+      },
+      "GET /api/principal/delegations",
+    );
+    expect(partial).toEqual({
+      delegations: [
+        {
+          decision_kind: "general",
+          enabled: false,
+          min_confidence: DEFAULT_DELEGATION_MIN_CONFIDENCE,
+          enabled_at: "",
+          disabled_reason: "",
+        },
+      ],
+      kinds: [
+        {
+          decision_kind: "general",
+          matched: 0,
+          n: 0,
+          lower: 0,
+          eligible: false,
+        },
+      ],
+    });
+
+    expect(parsePrincipalDelegations(null, "GET /api/principal/delegations")).toEqual(
+      EMPTY_PRINCIPAL_DELEGATIONS,
+    );
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it("parses predictions with nullable actual/matched and returns null on malformed payloads", () => {
+    const pending = {
+      predicted: "approve",
+      confidence: 0.92,
+      why: "Matches prior reversible rollout approvals.",
+      actual: null,
+      matched: null,
+    };
+    expect(parsePrincipalPrediction(pending, "GET /api/principal/predictions")).toEqual(pending);
+    expect(warn).not.toHaveBeenCalled();
+
+    expect(
+      parsePrincipalPrediction({ predicted: "reject", confidence: 5 }, "GET /api/principal/predictions"),
+    ).toEqual({
+      predicted: "reject",
+      confidence: 0,
+      why: "",
+      actual: null,
+      matched: null,
+    });
+
+    expect(parsePrincipalPrediction({ predicted: "" }, "GET /api/principal/predictions")).toBeNull();
+    expect(parsePrincipalPrediction(null, "GET /api/principal/predictions")).toBeNull();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it("parses evidence candidates, drops rows without ids, and falls back to empty", () => {
+    const payload = {
+      decisions: [
+        {
+          id: "00000000-0000-0000-0000-000000000010",
+          title: "Launch pricing pilot",
+          decision: "approved",
+          decided_at: "2026-11-25T10:00:00Z",
+        },
+      ],
+    };
+    expect(parsePrincipalEvidenceCandidates(payload, "GET /api/principal/evidence-candidates")).toEqual(payload);
+    expect(warn).not.toHaveBeenCalled();
+
+    expect(
+      parsePrincipalEvidenceCandidates(
+        { decisions: [null, { id: "" }, { id: "d-1" }] },
+        "GET /api/principal/evidence-candidates",
+      ),
+    ).toEqual({
+      decisions: [{ id: "d-1", title: "", decision: "", decided_at: "" }],
+    });
+
+    expect(parsePrincipalEvidenceCandidates("bad", "GET /api/principal/evidence-candidates")).toEqual(
+      EMPTY_PRINCIPAL_EVIDENCE_CANDIDATES,
+    );
+    expect(warn).toHaveBeenCalled();
   });
 });
 

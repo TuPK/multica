@@ -17,6 +17,7 @@ import { Button } from "@multica/ui/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@multica/ui/components/ui/collapsible";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { useT } from "../../i18n";
+import { PrincipalPredictionLine } from "../principal/prediction-line";
 
 type Panel = "none" | "edit" | "reject";
 
@@ -102,6 +103,8 @@ export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: 
       <h3 id={`intent-${intent.id}-title`} className="text-title-sm font-medium break-words">
         {title}
       </h3>
+
+      <PrincipalPredictionLine subjectType="effect_intent" subjectId={intent.id} />
 
       {preview.recipients.length > 0 ? (
         <p className="text-caption text-muted-foreground">

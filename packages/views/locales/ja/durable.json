@@ -215,7 +215,7 @@
   "principal": {
     "title": "意思決定プロファイル",
     "load_failed": "意思決定プロファイルを読み込めませんでした。",
-    "off_title": "意思決定プロファイルはオフです",
+    "off_description": "秘書があなたの判断やメモから意思決定の傾向を学び、判断を予測し、有効にした対象種別を委任できるようにします。",
     "enable": "プロファイルを有効にする",
     "status": {
       "active": "有効",
@@ -260,7 +260,22 @@
       "edited": "特性を更新しました。",
       "edit_failed": "特性を更新できませんでした。",
       "retired": "特性を除外しました。",
-      "retire_failed": "特性を除外できませんでした。"
+      "retire_failed": "特性を除外できませんでした。",
+      "add": "特性を追加",
+      "decision_kind_label": "判断種別",
+      "evidence_label": "根拠となる判断",
+      "evidence_placeholder": "最近の判断を選択",
+      "evidence_empty": "手動で特性を追加する前に、少なくとも1件の提案を判断してください。",
+      "evidence_load_failed": "最近の判断を読み込めませんでした。",
+      "statement_placeholder": "この状況での判断基準を書いてください...",
+      "added": "特性を追加しました。",
+      "add_failed": "特性を追加できませんでした。",
+      "decision_state": {
+        "approved": "承認済み",
+        "rejected": "却下済み",
+        "revising": "修正中",
+        "expired": "期限切れ"
+      }
     },
     "interview": {
       "title": "初期インタビュー",
@@ -307,6 +322,25 @@
         "proposal_envelope": "自律範囲",
         "proposal_policy": "承認ポリシー",
         "proposal_profile": "意思決定プロファイル"
+      },
+      "load_failed": "委任設定を読み込めませんでした。",
+      "status_on": "オン",
+      "status_off": "オフ",
+      "min_confidence_value": "最小 {{percent}}%",
+      "accuracy": "{{n}}件中{{matched}}件一致 · 下限 {{lower}}%",
+      "accuracy_none": "解決済みの予測はまだありません",
+      "not_eligible_reason": "解決済み予測が20件以上、一致率85%以上が必要です。"
+    },
+    "prediction": {
+      "line": "予測: {{predicted}}、{{confidence}}%",
+      "values": {
+        "approve": "承認",
+        "reject": "却下",
+        "revise": "修正依頼",
+        "snooze": "後で判断",
+        "pass": "合格",
+        "partial": "一部合格",
+        "fail": "不合格"
       }
     },
     "errors": {
@@ -316,7 +350,8 @@
       "principal_trait_invalid": "特性の文面と判断種別を確認してください（1〜500文字）。",
       "principal_trait_edited": "自分で作成・編集した特性を除外できるのは本人のみです。",
       "delegation_not_eligible": "この種別で解決済み予測が20件以上かつ一致率85%以上必要です。",
-      "delegation_forbidden_kind": "この判断種別は委任できません。"
+      "delegation_forbidden_kind": "この判断種別は委任できません。",
+      "principal_no_secretary": "インタビューに回答する前に、ワークスペースの秘書を設定してください。"
     }
   }
 }

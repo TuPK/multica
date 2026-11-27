@@ -134,7 +134,28 @@
     "attention_invalid": "Enter a whole number of minutes from 0 to {{max}}.",
     "attention_save": "Save budget",
     "attention_saved": "Attention budget saved",
-    "attention_save_failed": "Could not save the attention budget. Try again."
+    "attention_save_failed": "Could not save the attention budget. Try again.",
+    "attention_queue_heading": "Queued",
+    "attention_queue_empty": "No questions are queued.",
+    "attention_queue_load_failed": "Could not load queued questions.",
+    "attention_queue_minutes": "{{minutes}} min",
+    "attention_subject_type": {
+      "proposal": "Proposal",
+      "effect_intent": "Action approval",
+      "outcome_check": "Outcome check",
+      "app_action_request": "App request",
+      "inquiry": "Inquiry",
+      "unknown": "Question"
+    },
+    "attention_reason": {
+      "judgment": "Needs judgment",
+      "irreversible": "Irreversible",
+      "missing_access": "Missing access",
+      "missing_info": "Missing information",
+      "policy": "Policy gate",
+      "verification": "Verification",
+      "unknown": "Other"
+    }
   },
   "log": {
     "filter_kind": "Kind",

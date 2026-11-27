@@ -215,7 +215,7 @@
   "principal": {
     "title": "决策画像",
     "load_failed": "无法加载你的决策画像。",
-    "off_title": "决策画像未开启",
+    "off_description": "让秘书从你的决策和备注中学习判断偏好，预测你的决定，并在你开启后代为处理符合条件的类型。",
     "enable": "开启画像",
     "status": {
       "active": "已开启",
@@ -260,7 +260,22 @@
       "edited": "已更新特征。",
       "edit_failed": "无法更新特征。",
       "retired": "已移除特征。",
-      "retire_failed": "无法移除特征。"
+      "retire_failed": "无法移除特征。",
+      "add": "添加特征",
+      "decision_kind_label": "决策类型",
+      "evidence_label": "依据决策",
+      "evidence_placeholder": "选择一条近期决策",
+      "evidence_empty": "手动添加特征前，请先决定至少一条提案。",
+      "evidence_load_failed": "无法加载你的近期决策。",
+      "statement_placeholder": "写下你在此类情况下的判断原则...",
+      "added": "已添加特征。",
+      "add_failed": "无法添加特征。",
+      "decision_state": {
+        "approved": "已批准",
+        "rejected": "已拒绝",
+        "revising": "修改中",
+        "expired": "已过期"
+      }
     },
     "interview": {
       "title": "初始访谈",
@@ -307,6 +322,25 @@
         "proposal_envelope": "自主范围",
         "proposal_policy": "审批策略",
         "proposal_profile": "决策画像"
+      },
+      "load_failed": "无法加载授权设置。",
+      "status_on": "已开启",
+      "status_off": "已关闭",
+      "min_confidence_value": "最低 {{percent}}%",
+      "accuracy": "命中 {{matched}} / {{n}} · 下界 {{lower}}%",
+      "accuracy_none": "暂无已确认预测",
+      "not_eligible_reason": "需要至少 20 次已确认预测且匹配率达到 85%。"
+    },
+    "prediction": {
+      "line": "预测：{{predicted}}，{{confidence}}%",
+      "values": {
+        "approve": "批准",
+        "reject": "拒绝",
+        "revise": "要求修改",
+        "snooze": "稍后决定",
+        "pass": "通过",
+        "partial": "部分通过",
+        "fail": "未通过"
       }
     },
     "errors": {
@@ -316,7 +350,8 @@
       "principal_trait_invalid": "请检查特征内容与决策类型（1 至 500 个字符）。",
       "principal_trait_edited": "只有你可以移除自己编写或编辑的特征。",
       "delegation_not_eligible": "该类型至少需要 20 次已确认预测且匹配率不低于 85%。",
-      "delegation_forbidden_kind": "该决策类型不可授权。"
+      "delegation_forbidden_kind": "该决策类型不可授权。",
+      "principal_no_secretary": "请先为工作区配置秘书，再回答访谈问题。"
     }
   }
 }

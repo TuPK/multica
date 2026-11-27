@@ -215,7 +215,7 @@
   "principal": {
     "title": "決策畫像",
     "load_failed": "無法載入你的決策畫像。",
-    "off_title": "決策畫像尚未開啟",
+    "off_description": "讓秘書從你的決策與備註中學習判斷偏好，預測你的決定，並在你開啟後代為處理符合條件的類型。",
     "enable": "開啟畫像",
     "status": {
       "active": "已開啟",
@@ -260,7 +260,22 @@
       "edited": "已更新特徵。",
       "edit_failed": "無法更新特徵。",
       "retired": "已移除特徵。",
-      "retire_failed": "無法移除特徵。"
+      "retire_failed": "無法移除特徵。",
+      "add": "新增特徵",
+      "decision_kind_label": "決策類型",
+      "evidence_label": "依據決策",
+      "evidence_placeholder": "選擇一筆近期決策",
+      "evidence_empty": "手動新增特徵前，請先決定至少一筆提案。",
+      "evidence_load_failed": "無法載入你的近期決策。",
+      "statement_placeholder": "寫下你在此類情況下的判斷原則...",
+      "added": "已新增特徵。",
+      "add_failed": "無法新增特徵。",
+      "decision_state": {
+        "approved": "已核准",
+        "rejected": "已拒絕",
+        "revising": "修改中",
+        "expired": "已過期"
+      }
     },
     "interview": {
       "title": "初始訪談",
@@ -307,6 +322,25 @@
         "proposal_envelope": "自主範圍",
         "proposal_policy": "審批策略",
         "proposal_profile": "決策畫像"
+      },
+      "load_failed": "無法載入授權設定。",
+      "status_on": "已開啟",
+      "status_off": "已關閉",
+      "min_confidence_value": "最低 {{percent}}%",
+      "accuracy": "命中 {{matched}} / {{n}} · 下界 {{lower}}%",
+      "accuracy_none": "尚無已確認預測",
+      "not_eligible_reason": "需要至少 20 次已確認預測且匹配率達 85%。"
+    },
+    "prediction": {
+      "line": "預測：{{predicted}}，{{confidence}}%",
+      "values": {
+        "approve": "核准",
+        "reject": "拒絕",
+        "revise": "要求修改",
+        "snooze": "稍後決定",
+        "pass": "通過",
+        "partial": "部分通過",
+        "fail": "未通過"
       }
     },
     "errors": {
@@ -316,7 +350,8 @@
       "principal_trait_invalid": "請檢查特徵內容與決策類型（1 至 500 個字元）。",
       "principal_trait_edited": "只有你可以移除自己編寫或編輯的特徵。",
       "delegation_not_eligible": "該類型至少需要 20 次已確認預測且匹配率不低於 85%。",
-      "delegation_forbidden_kind": "該決策類型不可授權。"
+      "delegation_forbidden_kind": "該決策類型不可授權。",
+      "principal_no_secretary": "請先為工作區設定秘書，再回答訪談問題。"
     }
   }
 }

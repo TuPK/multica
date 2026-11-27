@@ -134,7 +134,28 @@
     "attention_invalid": "Введите целое число минут от 0 до {{max}}.",
     "attention_save": "Сохранить бюджет",
     "attention_saved": "Бюджет внимания сохранён",
-    "attention_save_failed": "Не удалось сохранить бюджет внимания. Попробуйте ещё раз."
+    "attention_save_failed": "Не удалось сохранить бюджет внимания. Попробуйте ещё раз.",
+    "attention_queue_heading": "В очереди",
+    "attention_queue_empty": "В очереди нет вопросов.",
+    "attention_queue_load_failed": "Не удалось загрузить вопросы в очереди.",
+    "attention_queue_minutes": "{{minutes}} мин",
+    "attention_subject_type": {
+      "proposal": "Предложение",
+      "effect_intent": "Одобрение действия",
+      "outcome_check": "Проверка результата",
+      "app_action_request": "Запрос приложения",
+      "inquiry": "Вопрос",
+      "unknown": "Вопрос"
+    },
+    "attention_reason": {
+      "judgment": "Нужно решение",
+      "irreversible": "Необратимо",
+      "missing_access": "Нет доступа",
+      "missing_info": "Не хватает данных",
+      "policy": "Требование политики",
+      "verification": "Проверка",
+      "unknown": "Другое"
+    }
   },
   "log": {
     "filter_kind": "Kind",

@@ -128,7 +128,12 @@ describe("Account settings to Principal profile navigation", () => {
     expect(screen.getByText("Principal profile")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Manage" }));
 
-    expect(await screen.findByRole("heading", { name: "Principal profile is off" })).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Let the Secretary learn how you decide from your choices and notes, predict your calls, and delegate eligible kinds when you turn them on.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enable profile" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Principal" }).getAttribute("aria-selected")).toBe("true");
   });
 });
