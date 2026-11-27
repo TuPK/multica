@@ -2,7 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { setSchemaLogger } from "../../api/schema";
 import { noopLogger, type Logger } from "../../logger";
-import { parseShadowEstimate, parseShadowRun, shadowNeedsCostConfirmation } from "./schemas";
+import {
+  parseShadowEstimate,
+  parseShadowRun,
+  parseShadowRuns,
+  shadowNeedsCostConfirmation,
+} from "./schemas";
 
 describe("shadow schemas", () => {
   let warn: Mock<(msg: string, ...data: unknown[]) => void>;
@@ -76,5 +81,90 @@ describe("shadow schemas", () => {
     expect(shadowNeedsCostConfirmation({ estimate_micros: 500_000, remaining_micros: 1_000_000, warn: false })).toBe(false);
     expect(shadowNeedsCostConfirmation({ estimate_micros: 500_000, remaining_micros: 1_000_000, warn: true })).toBe(true);
     expect(shadowNeedsCostConfirmation({ estimate_micros: 1_500_000, remaining_micros: 1_000_000, warn: false })).toBe(true);
+  });
+
+  it("parses shadow run list items with reports, drops malformed items, and falls back unknown enums", () => {
+    const runs = parseShadowRuns(
+      {
+        runs: [
+          {
+            id: "sr-1",
+            agent_id: "a-1",
+            candidate_runtime_id: "rt-2",
+            candidate_model: "claude-sonnet-4",
+            sample_rate: 0.3,
+            target_pairs: 20,
+            auto_promote: false,
+            state: "completed",
+            purpose: "model_trial",
+            work_class_prefix: "flow:pr:",
+            created_at: "2026-11-26T09:00:00Z",
+            completed_at: "2026-11-27T01:00:00Z",
+            report: {
+              pairs: 20,
+              shadow: 12,
+              tie: 5,
+              primary: 3,
+              unable: 2,
+              not_losing_lower: 0.64,
+              primary_cost_avg_micros: 450_000,
+              shadow_cost_avg_micros: 320_000,
+            },
+          },
+          { state: "running" },
+          "junk",
+          {
+            id: "sr-2",
+            state: "future_state",
+            purpose: "future_purpose",
+            report: "bad",
+          },
+        ],
+      },
+      "GET /api/agents/:id/shadow",
+    );
+
+    expect(runs).toHaveLength(2);
+    expect(runs[0]).toMatchObject({
+      id: "sr-1",
+      candidate_model: "claude-sonnet-4",
+      state: "completed",
+      purpose: "model_trial",
+      work_class_prefix: "flow:pr:",
+      completed_at: "2026-11-27T01:00:00Z",
+      report: {
+        pairs: 20,
+        shadow: 12,
+        tie: 5,
+        primary: 3,
+        unable: 2,
+        not_losing_lower: 0.64,
+        primary_cost_avg_micros: 450_000,
+        shadow_cost_avg_micros: 320_000,
+      },
+    });
+    expect(runs[1]).toMatchObject({
+      id: "sr-2",
+      state: "running",
+      purpose: "model_trial",
+      completed_at: null,
+      report: {
+        pairs: 0,
+        shadow: 0,
+        tie: 0,
+        primary: 0,
+        unable: 0,
+        not_losing_lower: 0,
+        primary_cost_avg_micros: 0,
+        shadow_cost_avg_micros: 0,
+      },
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("falls back to an empty list when the shadow runs body is malformed", () => {
+    expect(parseShadowRuns(null, "GET /api/agents/:id/shadow")).toEqual([]);
+    expect(parseShadowRuns("oops", "GET /api/agents/:id/shadow")).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(2);
   });
 });

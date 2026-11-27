@@ -210,6 +210,35 @@
       "clear": "Retirer la plage",
       "cleared": "Plage retirée.",
       "clear_failed": "Impossible de retirer la plage."
+    },
+    "jury": {
+      "title": "Jury de désaccord",
+      "load_failed": "Impossible de charger les panels du jury.",
+      "state": {
+        "open": "Les jurés votent encore.",
+        "unanimous": "Verdict unanime",
+        "split": "Jury partagé",
+        "escalated": "Escaladé pour revue",
+        "resolved": "Résolu",
+        "timed_out": "Délai du jury expiré"
+      },
+      "diversity": {
+        "provider": "Fournisseurs différents",
+        "model_only": "Modèles différents, même fournisseur",
+        "none": "Même modèle"
+      },
+      "same_model_warning": "Tous les jurés utilisent le même modèle.",
+      "juror_label": "Juré {{number}}",
+      "no_note": "Aucune raison indiquée.",
+      "no_votes": "Aucun vote enregistré.",
+      "controls": {
+        "heading": "Jury de désaccord",
+        "rule": "Utilisé uniquement pour le travail important. Le vivier nécessite au moins deux agents.",
+        "empty": "Aucun vivier de jury défini",
+        "pool_one": "{{count}} agent dans le vivier",
+        "pool_other": "{{count}} agents dans le vivier",
+        "work_classes_label": "Types de travail : {{classes}}"
+      }
     }
   },
   "seats": {
@@ -296,6 +325,25 @@
       "error_owner_only": "Seul un propriétaire ou un administrateur peut activer la promotion automatique.",
       "error_invalid": "Vérifiez le runtime, le taux d'échantillonnage et les paires cibles.",
       "error_failed": "Impossible de lancer l'essai en ombre."
+    },
+    "shadow_runs": {
+      "title": "Exécutions en ombre",
+      "loading": "Chargement des exécutions en ombre...",
+      "load_failed": "Impossible de charger les exécutions en ombre.",
+      "empty": "Aucune exécution en ombre pour l'instant.",
+      "state": {
+        "running": "En cours",
+        "completed": "Terminée",
+        "stopped": "Arrêtée"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} paires",
+      "shadow_count": "Ombre : {{count}}",
+      "tie_count": "Égalité : {{count}}",
+      "primary_count": "Principal : {{count}}",
+      "unable_count": "Non comparé : {{count}}",
+      "not_losing_lower": "Borne inférieure sans défaite : {{percent}}",
+      "primary_cost_avg": "Coût moy. principal : {{amount}}",
+      "shadow_cost_avg": "Coût moy. ombre : {{amount}}"
     }
   }
 }

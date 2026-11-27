@@ -210,6 +210,34 @@
       "clear": "清除区间",
       "cleared": "已清除区间。",
       "clear_failed": "无法清除区间。"
+    },
+    "jury": {
+      "title": "分歧评审团",
+      "load_failed": "无法加载评审团记录。",
+      "state": {
+        "open": "评审员仍在投票。",
+        "unanimous": "一致通过",
+        "split": "评审分歧",
+        "escalated": "已升级待审核",
+        "resolved": "已裁定",
+        "timed_out": "评审超时"
+      },
+      "diversity": {
+        "provider": "不同提供商",
+        "model_only": "同提供商不同模型",
+        "none": "相同模型"
+      },
+      "same_model_warning": "所有评审员均使用相同模型。",
+      "juror_label": "评审员 {{number}}",
+      "no_note": "未填写理由。",
+      "no_votes": "暂无投票记录。",
+      "controls": {
+        "heading": "分歧评审团",
+        "rule": "仅用于重要工作，候选池至少需要两个智能体。",
+        "empty": "未设置评审团候选池",
+        "pool_other": "候选池中有 {{count}} 个智能体",
+        "work_classes_label": "工作类型：{{classes}}"
+      }
     }
   },
   "seats": {
@@ -296,6 +324,25 @@
       "error_owner_only": "只有所有者或管理员可以开启自动切换。",
       "error_invalid": "请检查运行时、抽样比例和目标对比组数。",
       "error_failed": "无法发起影子试跑。"
+    },
+    "shadow_runs": {
+      "title": "影子试跑记录",
+      "loading": "正在加载影子试跑记录...",
+      "load_failed": "无法加载影子试跑记录。",
+      "empty": "还没有影子试跑记录。",
+      "state": {
+        "running": "运行中",
+        "completed": "已完成",
+        "stopped": "已停止"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} 组对比",
+      "shadow_count": "影子胜：{{count}}",
+      "tie_count": "平局：{{count}}",
+      "primary_count": "主席位胜：{{count}}",
+      "unable_count": "无法对比：{{count}}",
+      "not_losing_lower": "不败率下界：{{percent}}",
+      "primary_cost_avg": "主席位均价：{{amount}}",
+      "shadow_cost_avg": "影子均价：{{amount}}"
     }
   }
 }

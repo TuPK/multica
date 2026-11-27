@@ -210,6 +210,35 @@
       "clear": "Quitar rango",
       "cleared": "Rango quitado.",
       "clear_failed": "No se pudo quitar el rango."
+    },
+    "jury": {
+      "title": "Jurado de desacuerdo",
+      "load_failed": "No se pudieron cargar los paneles del jurado.",
+      "state": {
+        "open": "Los miembros del jurado siguen votando.",
+        "unanimous": "Veredicto unánime",
+        "split": "Jurado dividido",
+        "escalated": "Escalado para revisión",
+        "resolved": "Resuelto",
+        "timed_out": "Tiempo de votación agotado"
+      },
+      "diversity": {
+        "provider": "Proveedores distintos",
+        "model_only": "Modelos distintos, mismo proveedor",
+        "none": "Mismo modelo"
+      },
+      "same_model_warning": "Todos los miembros del jurado usan el mismo modelo.",
+      "juror_label": "Jurado {{number}}",
+      "no_note": "Sin motivo indicado.",
+      "no_votes": "Sin votos registrados.",
+      "controls": {
+        "heading": "Jurado de desacuerdo",
+        "rule": "Solo se usa en trabajo importante. El grupo requiere al menos dos agentes.",
+        "empty": "Sin grupo de jurado configurado",
+        "pool_one": "{{count}} agente en el grupo",
+        "pool_other": "{{count}} agentes en el grupo",
+        "work_classes_label": "Tipos de trabajo: {{classes}}"
+      }
     }
   },
   "seats": {
@@ -296,6 +325,25 @@
       "error_owner_only": "Solo un propietario o administrador puede activar la autopromoción.",
       "error_invalid": "Revisa el runtime, la tasa de muestreo y los pares objetivo.",
       "error_failed": "No se pudo iniciar la prueba en sombra."
+    },
+    "shadow_runs": {
+      "title": "Ejecuciones en sombra",
+      "loading": "Cargando ejecuciones en sombra...",
+      "load_failed": "No se pudieron cargar las ejecuciones en sombra.",
+      "empty": "Aún no hay ejecuciones en sombra.",
+      "state": {
+        "running": "En curso",
+        "completed": "Completada",
+        "stopped": "Detenida"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} pares",
+      "shadow_count": "Sombra: {{count}}",
+      "tie_count": "Empate: {{count}}",
+      "primary_count": "Principal: {{count}}",
+      "unable_count": "Sin comparar: {{count}}",
+      "not_losing_lower": "Cota inferior sin perder: {{percent}}",
+      "primary_cost_avg": "Costo prom. principal: {{amount}}",
+      "shadow_cost_avg": "Costo prom. sombra: {{amount}}"
     }
   }
 }

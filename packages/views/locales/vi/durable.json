@@ -210,6 +210,34 @@
       "clear": "Bỏ khoảng",
       "cleared": "Đã bỏ khoảng.",
       "clear_failed": "Không bỏ được khoảng."
+    },
+    "jury": {
+      "title": "Hội đồng bất đồng",
+      "load_failed": "Không tải được hội đồng kiểm chứng.",
+      "state": {
+        "open": "Các giám khảo vẫn đang bỏ phiếu.",
+        "unanimous": "Đồng thuận",
+        "split": "Hội đồng bất đồng",
+        "escalated": "Đã chuyển người xem xét",
+        "resolved": "Đã chốt",
+        "timed_out": "Hết hạn bỏ phiếu"
+      },
+      "diversity": {
+        "provider": "Khác nhà cung cấp",
+        "model_only": "Khác mô hình, cùng nhà cung cấp",
+        "none": "Cùng mô hình"
+      },
+      "same_model_warning": "Tất cả giám khảo đều dùng cùng một mô hình.",
+      "juror_label": "Giám khảo {{number}}",
+      "no_note": "Không có lý do.",
+      "no_votes": "Chưa có phiếu nào.",
+      "controls": {
+        "heading": "Hội đồng bất đồng",
+        "rule": "Chỉ dùng cho việc quan trọng. Nhóm cần ít nhất hai agent.",
+        "empty": "Chưa thiết lập nhóm hội đồng",
+        "pool_other": "{{count}} agent trong nhóm",
+        "work_classes_label": "Loại việc: {{classes}}"
+      }
     }
   },
   "seats": {
@@ -296,6 +324,25 @@
       "error_owner_only": "Chỉ chủ sở hữu hoặc quản trị viên được bật tự nâng cấp.",
       "error_invalid": "Hãy kiểm tra runtime, tỷ lệ lấy mẫu và số cặp mục tiêu.",
       "error_failed": "Không bắt đầu được đợt chạy thử bóng."
+    },
+    "shadow_runs": {
+      "title": "Các đợt chạy bóng",
+      "loading": "Đang tải các đợt chạy bóng...",
+      "load_failed": "Không tải được các đợt chạy bóng.",
+      "empty": "Chưa có đợt chạy bóng nào.",
+      "state": {
+        "running": "Đang chạy",
+        "completed": "Hoàn tất",
+        "stopped": "Đã dừng"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} cặp",
+      "shadow_count": "Bóng thắng: {{count}}",
+      "tie_count": "Hoà: {{count}}",
+      "primary_count": "Chính thắng: {{count}}",
+      "unable_count": "Không so được: {{count}}",
+      "not_losing_lower": "Cận dưới không thua: {{percent}}",
+      "primary_cost_avg": "Chi phí TB bản chính: {{amount}}",
+      "shadow_cost_avg": "Chi phí TB bản bóng: {{amount}}"
     }
   }
 }

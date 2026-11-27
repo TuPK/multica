@@ -210,6 +210,34 @@
       "clear": "範囲を解除",
       "cleared": "範囲を解除しました。",
       "clear_failed": "範囲を解除できませんでした。"
+    },
+    "jury": {
+      "title": "合議審査",
+      "load_failed": "審査パネルを読み込めませんでした。",
+      "state": {
+        "open": "審査員が投票中です。",
+        "unanimous": "全員一致",
+        "split": "意見が割れました",
+        "escalated": "レビューへエスカレーション済み",
+        "resolved": "解決済み",
+        "timed_out": "投票期限切れ"
+      },
+      "diversity": {
+        "provider": "異なるプロバイダー",
+        "model_only": "異なるモデル（同一プロバイダー）",
+        "none": "同一モデル"
+      },
+      "same_model_warning": "すべての審査員が同じモデルを使用しています。",
+      "juror_label": "審査員 {{number}}",
+      "no_note": "理由は記載されていません。",
+      "no_votes": "投票は記録されていません。",
+      "controls": {
+        "heading": "合議審査",
+        "rule": "重要な作業にのみ使用されます。プールには最低 2 体のエージェントが必要です。",
+        "empty": "審査員プールは未設定です",
+        "pool_other": "プール内エージェント {{count}} 体",
+        "work_classes_label": "作業種類: {{classes}}"
+      }
     }
   },
   "seats": {
@@ -296,6 +324,25 @@
       "error_owner_only": "自動昇格を有効にできるのはオーナーまたは管理者のみです。",
       "error_invalid": "ランタイム、サンプル率、目標ペア数を確認してください。",
       "error_failed": "シャドウ試行を開始できませんでした。"
+    },
+    "shadow_runs": {
+      "title": "シャドウ実行",
+      "loading": "シャドウ実行を読み込み中...",
+      "load_failed": "シャドウ実行を読み込めませんでした。",
+      "empty": "シャドウ実行はまだありません。",
+      "state": {
+        "running": "実行中",
+        "completed": "完了",
+        "stopped": "停止済み"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} ペア",
+      "shadow_count": "シャドウ: {{count}}",
+      "tie_count": "引き分け: {{count}}",
+      "primary_count": "現行: {{count}}",
+      "unable_count": "比較不能: {{count}}",
+      "not_losing_lower": "非劣性下限: {{percent}}",
+      "primary_cost_avg": "現行平均コスト: {{amount}}",
+      "shadow_cost_avg": "シャドウ平均コスト: {{amount}}"
     }
   }
 }

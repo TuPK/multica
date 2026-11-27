@@ -59,7 +59,10 @@ afterEach(cleanup);
 
 describe("SeatDossierTab", () => {
   it("renders active entries with kind, text, work_class, origin, and date", async () => {
-    request.mockResolvedValueOnce({ entries: [activeEntry] });
+    request.mockImplementation(async (path) => {
+      if (String(path).endsWith("/shadow")) return { runs: [] };
+      return { entries: [activeEntry] };
+    });
     renderTab();
 
     expect(await screen.findByText("Always verify migration numbers before pushing")).toBeInTheDocument();
@@ -70,7 +73,10 @@ describe("SeatDossierTab", () => {
   });
 
   it("shows an empty state when the seat has no entries", async () => {
-    request.mockResolvedValueOnce({ entries: [] });
+    request.mockImplementation(async (path) => {
+      if (String(path).endsWith("/shadow")) return { runs: [] };
+      return { entries: [] };
+    });
     renderTab();
 
     expect(await screen.findByText("No dossier entries yet.")).toBeInTheDocument();

@@ -245,6 +245,7 @@
     "./durable/effects": "./durable/effects/index.ts",
     "./durable/intents": "./durable/intents/index.ts",
     "./durable/track-records": "./durable/track-records/index.ts",
+    "./durable/jury": "./durable/jury/index.ts",
     "./durable/dossier": "./durable/dossier/index.ts",
     "./durable/shadow": "./durable/shadow/index.ts"
   },

@@ -26,6 +26,7 @@ import { Label } from "@multica/ui/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { useT } from "../../i18n";
+import { ShadowReport } from "./shadow-report";
 import { ShadowTrialDialog } from "./shadow-trial-dialog";
 
 function formatCreatedDate(iso: string): string {
@@ -396,6 +397,8 @@ export function SeatDossierTab({ agentId }: { agentId: string }) {
           })}
         </ul>
       ) : null}
+
+      <ShadowReport wsId={wsId} agentId={agentId} />
 
       <ShadowTrialDialog open={shadowOpen} onOpenChange={setShadowOpen} wsId={wsId} agentId={agentId} />
     </section>

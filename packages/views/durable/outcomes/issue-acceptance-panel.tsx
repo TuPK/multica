@@ -35,6 +35,7 @@ import { UI_EASE_OUT, UI_MOTION_DURATION } from "@multica/ui/lib/motion";
 import { useT } from "../../i18n";
 import { IssueSidebarSectionHeader } from "../../issues/components/issue-sidebar-section";
 import { VerdictChip } from "./verdict-chip";
+import { JurySplitCard } from "./jury-split-card";
 import { useOutcomesEnabled } from "./use-outcomes-enabled";
 
 const noop = () => {};
@@ -116,6 +117,7 @@ function AcceptanceBlock({ wsId, issueId }: { wsId: string; issueId: string }) {
             </AnimatePresence>
           </ul>
         ) : null}
+        {outcome ? <JurySplitCard wsId={wsId} outcomeId={outcome.id} /> : null}
       </div>
       <AddCriterionDialog open={adding} onOpenChange={setAdding} wsId={wsId} issueId={issueId} />
     </section>

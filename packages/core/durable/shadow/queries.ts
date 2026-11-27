@@ -3,6 +3,7 @@ import { api } from "../../api";
 import { toQueryString } from "../query-string";
 import {
   parseShadowEstimate,
+  parseShadowRuns,
   SHADOW_MAX_TARGET_PAIRS,
   SHADOW_MIN_TARGET_PAIRS,
 } from "./schemas";
@@ -11,6 +12,7 @@ import {
 export const shadowKeys = {
   all: (wsId: string) => ["durable", wsId, "shadow"] as const,
   agent: (wsId: string, agentId: string) => [...shadowKeys.all(wsId), agentId] as const,
+  runs: (wsId: string, agentId: string) => [...shadowKeys.agent(wsId, agentId), "runs"] as const,
   estimate: (wsId: string, agentId: string, params: ShadowEstimateParams) =>
     [...shadowKeys.agent(wsId, agentId), "estimate", params] as const,
 };
@@ -65,4 +67,21 @@ export function useShadowEstimate(
   enabled = true,
 ) {
   return useQuery(shadowEstimateOptions(wsId, agentId, params, enabled));
+}
+
+/** Recent shadow runs and reports for a seat (GET /api/agents/{id}/shadow). */
+export function shadowRunsOptions(wsId: string, agentId: string, enabled = true) {
+  return queryOptions({
+    queryKey: shadowKeys.runs(wsId, agentId),
+    queryFn: async () =>
+      parseShadowRuns(
+        await api.request(`/api/agents/${encodeURIComponent(agentId)}/shadow`),
+        "GET /api/agents/:id/shadow",
+      ),
+    enabled: enabled && !!wsId && !!agentId,
+  });
+}
+
+export function useSeatShadowRuns(wsId: string, agentId: string, enabled = true) {
+  return useQuery(shadowRunsOptions(wsId, agentId, enabled));
 }

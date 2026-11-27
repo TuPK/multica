@@ -210,6 +210,35 @@
       "clear": "Clear range",
       "cleared": "Range cleared.",
       "clear_failed": "Could not clear the range."
+    },
+    "jury": {
+      "title": "Disagreement jury",
+      "load_failed": "Could not load jury panels.",
+      "state": {
+        "open": "Jurors are still voting.",
+        "unanimous": "Unanimous verdict",
+        "split": "Jury split",
+        "escalated": "Escalated for review",
+        "resolved": "Resolved",
+        "timed_out": "Jury timed out"
+      },
+      "diversity": {
+        "provider": "Different providers",
+        "model_only": "Different models, same provider",
+        "none": "Same model"
+      },
+      "same_model_warning": "All jurors use the same model.",
+      "juror_label": "Juror {{number}}",
+      "no_note": "No reason provided.",
+      "no_votes": "No votes recorded.",
+      "controls": {
+        "heading": "Disagreement jury",
+        "rule": "Used for important work only. The pool needs at least two agents.",
+        "empty": "No jury pool set",
+        "pool_one": "{{count}} agent in pool",
+        "pool_other": "{{count}} agents in pool",
+        "work_classes_label": "Work classes: {{classes}}"
+      }
     }
   },
   "seats": {
@@ -296,6 +325,25 @@
       "error_owner_only": "Only an owner or admin can enable auto-promotion.",
       "error_invalid": "Check the runtime, sample rate, and target pairs.",
       "error_failed": "Could not start the shadow trial."
+    },
+    "shadow_runs": {
+      "title": "Shadow runs",
+      "loading": "Loading shadow runs...",
+      "load_failed": "Could not load shadow runs.",
+      "empty": "No shadow runs yet.",
+      "state": {
+        "running": "Running",
+        "completed": "Completed",
+        "stopped": "Stopped"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} pairs",
+      "shadow_count": "Shadow: {{count}}",
+      "tie_count": "Tie: {{count}}",
+      "primary_count": "Primary: {{count}}",
+      "unable_count": "Unable: {{count}}",
+      "not_losing_lower": "Not-losing lower bound: {{percent}}",
+      "primary_cost_avg": "Primary avg cost: {{amount}}",
+      "shadow_cost_avg": "Shadow avg cost: {{amount}}"
     }
   }
 }

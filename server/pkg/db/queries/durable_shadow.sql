@@ -132,3 +132,10 @@ SELECT id FROM agent_task_queue
 WHERE agent_id = @agent_id AND status = 'completed' AND completed_at >= @since
 ORDER BY completed_at DESC
 LIMIT @row_limit;
+
+-- name: ListShadowConfigsForAgent :many
+-- The shadow runs of one seat, newest first. Reads only: the report route summarises each run.
+SELECT * FROM shadow_config
+WHERE workspace_id = @workspace_id AND agent_id = @agent_id
+ORDER BY created_at DESC, id DESC
+LIMIT @row_limit;

@@ -44,6 +44,7 @@ import { PAGE_GUTTER } from "../layout/page-header";
 import { useT } from "../i18n";
 import { GovernanceHealthSection } from "./governance-health-section";
 import { AttentionBudgetSection } from "./attention-budget-section";
+import { JurySettingsLine } from "./jury-settings-line";
 import { EffectPolicyGrid } from "../durable/effects/effect-policy-grid";
 import { useEffectsEnabled } from "../durable/effects/use-effects-enabled";
 
@@ -172,6 +173,8 @@ export function GovernanceControlsTab() {
       <DigestModeSection wsId={wsId} editable={editable} />
 
       <AttentionBudgetSection wsId={wsId} editable={editable} />
+
+      <JurySettingsLine />
 
       <GovernanceHealthSection />
 

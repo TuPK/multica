@@ -210,6 +210,34 @@
       "clear": "범위 해제",
       "cleared": "범위를 해제했습니다.",
       "clear_failed": "범위를 해제하지 못했습니다."
+    },
+    "jury": {
+      "title": "불일치 심사단",
+      "load_failed": "심사단 패널을 불러오지 못했습니다.",
+      "state": {
+        "open": "심사원이 투표 중입니다.",
+        "unanimous": "만장일치 판정",
+        "split": "심사 의견 불일치",
+        "escalated": "검토를 위해 에스컬레이션됨",
+        "resolved": "해결됨",
+        "timed_out": "심사 시간 초과"
+      },
+      "diversity": {
+        "provider": "서로 다른 제공자",
+        "model_only": "서로 다른 모델, 같은 제공자",
+        "none": "같은 모델"
+      },
+      "same_model_warning": "모든 심사원이 같은 모델을 사용합니다.",
+      "juror_label": "심사원 {{number}}",
+      "no_note": "사유가 없습니다.",
+      "no_votes": "기록된 투표가 없습니다.",
+      "controls": {
+        "heading": "불일치 심사단",
+        "rule": "중요한 작업에만 사용됩니다. 풀에는 최소 2명의 에이전트가 필요합니다.",
+        "empty": "설정된 심사단 풀이 없습니다",
+        "pool_other": "풀에 에이전트 {{count}}명",
+        "work_classes_label": "작업 유형: {{classes}}"
+      }
     }
   },
   "seats": {
@@ -296,6 +324,25 @@
       "error_owner_only": "소유자 또는 관리자만 자동 승격을 켤 수 있습니다.",
       "error_invalid": "런타임, 샘플링 비율, 목표 쌍 수를 확인하세요.",
       "error_failed": "섀도우 시험을 시작하지 못했습니다."
+    },
+    "shadow_runs": {
+      "title": "섀도우 실행",
+      "loading": "섀도우 실행 불러오는 중...",
+      "load_failed": "섀도우 실행을 불러오지 못했습니다.",
+      "empty": "아직 섀도우 실행이 없습니다.",
+      "state": {
+        "running": "실행 중",
+        "completed": "완료됨",
+        "stopped": "중지됨"
+      },
+      "pairs_progress": "{{pairs}} / {{target}} 쌍",
+      "shadow_count": "섀도우: {{count}}",
+      "tie_count": "동률: {{count}}",
+      "primary_count": "기본: {{count}}",
+      "unable_count": "비교 불가: {{count}}",
+      "not_losing_lower": "비열위 하한: {{percent}}",
+      "primary_cost_avg": "기본 평균 비용: {{amount}}",
+      "shadow_cost_avg": "섀도우 평균 비용: {{amount}}"
     }
   }
 }

@@ -1,6 +1,11 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isValidShadowEstimateParams, shadowEstimateOptions, shadowKeys } from "./queries";
+import {
+  isValidShadowEstimateParams,
+  shadowEstimateOptions,
+  shadowKeys,
+  shadowRunsOptions,
+} from "./queries";
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("../../api", async (importOriginal) => ({
@@ -47,5 +52,53 @@ describe("shadow estimate query", () => {
     expect(shadowEstimateOptions("ws-1", "").enabled).toBe(false);
     expect(shadowEstimateOptions("ws-1", "a-1", { sample_rate: 0, target_pairs: 20 }).enabled).toBe(false);
     expect(shadowEstimateOptions("ws-1", "a-1", { sample_rate: 0.3, target_pairs: 20 }, false).enabled).toBe(false);
+  });
+});
+
+describe("shadow runs query", () => {
+  it("scopes the runs query key by workspace id and agent id", () => {
+    expect(shadowKeys.runs("ws-1", "a-1")).toEqual(["durable", "ws-1", "shadow", "a-1", "runs"]);
+    expect(shadowRunsOptions("ws-1", "a-1").queryKey).not.toEqual(shadowRunsOptions("ws-2", "a-1").queryKey);
+  });
+
+  it("calls GET /api/agents/{id}/shadow and parses the run list", async () => {
+    request.mockResolvedValueOnce({
+      runs: [
+        {
+          id: "sr-1",
+          agent_id: "a-1",
+          candidate_runtime_id: "rt-2",
+          candidate_model: "gpt-5",
+          sample_rate: 0.3,
+          target_pairs: 20,
+          auto_promote: false,
+          state: "running",
+          purpose: "model_trial",
+          work_class_prefix: "",
+          created_at: "2026-11-26T09:00:00Z",
+          completed_at: null,
+          report: {
+            pairs: 4,
+            shadow: 2,
+            tie: 1,
+            primary: 1,
+            unable: 0,
+            not_losing_lower: 0.3,
+            primary_cost_avg_micros: 200_000,
+            shadow_cost_avg_micros: 150_000,
+          },
+        },
+      ],
+    });
+    const runs = await shadowRunsOptions("ws-1", "a-1").queryFn!({} as never);
+    expect(request).toHaveBeenCalledWith("/api/agents/a-1/shadow");
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ id: "sr-1", candidate_model: "gpt-5", report: { pairs: 4, shadow: 2 } });
+  });
+
+  it("disables the runs query without workspace or agent id", () => {
+    expect(shadowRunsOptions("", "a-1").enabled).toBe(false);
+    expect(shadowRunsOptions("ws-1", "").enabled).toBe(false);
+    expect(shadowRunsOptions("ws-1", "a-1", false).enabled).toBe(false);
   });
 });

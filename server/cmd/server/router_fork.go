@@ -277,6 +277,7 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	r.Get("/api/outcomes", h.ListWorkOutcomes)
 	r.Get("/api/outcomes/summary", h.SummarizeWorkOutcomes)
 	r.Get("/api/outcomes/{id}", h.GetWorkOutcome)
+	r.Get("/api/outcomes/{id}/jury", h.ListOutcomeJuryPanels)
 	r.Post("/api/outcomes/{id}/verifications", h.RecordOutcomeVerification)
 	r.With(handler.RequireHumanActor).Post("/api/outcomes/{id}/override", h.OverrideOutcome)
 	r.Get("/api/issues/{id}/outcome", h.GetIssueOutcome)
@@ -317,6 +318,7 @@ func registerDurableSeatRoutes(r chi.Router, h *handler.Handler) {
 	r.Post("/dossier/{entryId}/retire", h.RetireSeatDossierEntry)
 	// A shadow run is a person's decision to try a model on a seat (durable spec 9.4): the
 	// estimate is read by any member, the start is a person's request.
+	r.Get("/shadow", h.ListSeatShadowRuns)
 	r.Get("/shadow/estimate", h.GetShadowEstimate)
 	r.With(handler.RequireHumanActor).Post("/shadow", h.StartShadowRun)
 }
