@@ -102,6 +102,17 @@ async function askToSend(subject: string, body: string): Promise<{ status: strin
   return { status: answer.status, intentId: answer.intent_id ?? "" };
 }
 
+/** The sends the fake provider executed for one subject: each one's tool and the payload it received. */
+async function executedSends(subject: string): Promise<Array<{ tool: string; arguments: Record<string, unknown> }>> {
+  const fake = new URL(requireEnv("COMPOSIO_BASE_URL"));
+  const res = await fetch(`${fake.origin}/__executions`);
+  expect(res.ok, "the fake records its executions").toBe(true);
+  const { executions } = (await res.json()) as {
+    executions: Array<{ tool: string; arguments: Record<string, unknown> }>;
+  };
+  return executions.filter((execution) => execution.tool === "GMAIL_SEND_EMAIL" && execution.arguments.subject === subject);
+}
+
 /** A running task for an agent, with the mat_ token its CLI carries. Removed in afterAll. */
 async function seedRun(agent: string): Promise<{ id: string; token: string }> {
   const run = await api.seedRunningTask(agent);
@@ -267,6 +278,11 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
       [intentEdited],
     );
     expect(row).toMatchObject({ state: "executed", body: BODY_EDITED });
+
+    // The provider received the edited text, once.
+    const sends = await executedSends(SUBJECT_EDITED);
+    expect(sends).toHaveLength(1);
+    expect(sends[0].arguments).toMatchObject({ to: RECIPIENT, subject: SUBJECT_EDITED, body: BODY_EDITED });
   });
 
   test("a second approval is refused, and the ledger holds one send", async () => {
@@ -279,6 +295,7 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
       [intentEdited],
     );
     expect(events.filter((event) => event.status === "executed")).toHaveLength(1);
+    expect(await executedSends(SUBJECT_EDITED)).toHaveLength(1);
   });
 
   test("a person rejects a second send with a reason, and nothing is sent", async ({ page }) => {
