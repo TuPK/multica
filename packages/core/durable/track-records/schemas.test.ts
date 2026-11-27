@@ -41,7 +41,7 @@ describe("track record schemas", () => {
   });
 
   it("gives missing counts and flags their defaults", () => {
-    const r = TrackRecordSchema.parse({ agent_id: "a-2" });
+    const r = TrackRecordSchema.parse({ agent_id: "a-2", work_class: "review" });
     expect(r).toMatchObject({ n_pass: 0, n_fail: 0, score_lower: 0, mode_pinned: false, verification_mode: "full" });
   });
 
@@ -109,5 +109,26 @@ describe("autonomy envelope schemas", () => {
       mode_pinned: true,
     });
     expect(parseTrackRecord("oops", "PUT /api/track-records/pin")).toBeNull();
+  });
+});
+
+
+describe("required track record and envelope identifiers", () => {
+  it("rejects invalid track records while retaining valid list rows", () => {
+    const badRows: unknown[] = [{}];
+    for (const field of ["agent_id", "work_class"]) {
+      for (const value of [undefined, "", 42]) badRows.push({ ...recordRow, [field]: value });
+    }
+    for (const bad of badRows) {
+      expect(parseTrackRecord(bad, "PUT /api/track-records/pin")).toBeNull();
+      expect(parseTrackRecordList({ track_records: [recordRow, bad] }, "GET /api/track-records")).toHaveLength(1);
+    }
+  });
+
+  it("treats an envelope with an invalid squad id as absent", () => {
+    for (const envelope of [{}, ...[undefined, "", 42].map((squad_id) => ({ ...envelopeView.envelope, squad_id }))]) {
+      expect(parseSquadEnvelope({ envelope, reputation: envelopeView.reputation }, "GET /api/squads/:id/autonomy/envelope")).toMatchObject({ envelope: null, reputation: { n: 14 } });
+    }
+    expect(parseSquadEnvelope({}, "GET /api/squads/:id/autonomy/envelope").envelope).toBeNull();
   });
 });

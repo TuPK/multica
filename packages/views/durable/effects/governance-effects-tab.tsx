@@ -1,9 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { toast } from "sonner";
 import { errorCode } from "@multica/core/api";
-import { useEffects, useUndoEffect, type Effect } from "@multica/core/durable/effects";
+import {
+  EFFECT_CLASSES,
+  EFFECT_SOURCES,
+  useEffectsInfinite,
+  useUndoEffect,
+  type Effect,
+  type EffectClass,
+  type EffectSource,
+} from "@multica/core/durable/effects";
 import { useWorkspaceId } from "@multica/core/hooks";
+import { Button } from "@multica/ui/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { Empty, EmptyHeader, EmptyTitle } from "@multica/ui/components/ui/empty";
 import { PAGE_GUTTER } from "../../layout/page-header";
 import { cn } from "@multica/ui/lib/utils";
@@ -17,11 +28,18 @@ import { EffectRow } from "./effect-row";
  */
 export function GovernanceEffectsTab() {
   const { t } = useT("durable");
+  const { t: tGov } = useT("governance");
   const wsId = useWorkspaceId();
-  const log = useEffects(wsId, { limit: 200 });
+  const [effectClass, setEffectClass] = useState("all");
+  const [source, setSource] = useState("all");
+  const log = useEffectsInfinite(wsId, {
+    limit: 200,
+    effect_class: effectClass === "all" ? undefined : effectClass as EffectClass,
+    source: source === "all" ? undefined : source as EffectSource,
+  });
   const undo = useUndoEffect(wsId);
 
-  const effects: Effect[] = log.data ?? [];
+  const effects: Effect[] = log.data?.pages.flat() ?? [];
   const controlled = effects.filter((e) => e.source !== "declared");
   const declared = effects.filter((e) => e.source === "declared");
 
@@ -41,41 +59,76 @@ export function GovernanceEffectsTab() {
     );
   };
 
-  if (log.isError) {
-    return (
-      <div className={cn(PAGE_GUTTER, "py-4")}>
-        <p role="alert" className="text-caption text-destructive">
-          {t(($) => $.effects.load_failed)}
-        </p>
-      </div>
-    );
-  }
-
-  if (!log.isPending && effects.length === 0) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>{t(($) => $.effects.empty)}</EmptyTitle>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
+  const classItems = [
+    { value: "all", label: t(($) => $.outcomes.tab.all) },
+    ...EFFECT_CLASSES.map((value) => ({ value, label: t(($) => $.intent.effect_class[value]) })),
+  ];
+  const sourceItems = [
+    { value: "all", label: t(($) => $.outcomes.tab.all) },
+    ...EFFECT_SOURCES.map((value) => ({ value, label: t(($) => $.intent.source[value]) })),
+  ];
 
   return (
     <div className={cn(PAGE_GUTTER, "flex flex-col gap-8 py-4")}>
-      <EffectSection
-        id="effects-controlled"
-        title={t(($) => $.effects.controlled)}
-        effects={controlled}
-        onUndo={onUndo}
-        undoing={undo.isPending}
-      />
-      <EffectSection
-        id="effects-declared"
-        title={t(($) => $.effects.declared)}
-        hint={t(($) => $.effects.declared_hint)}
-        effects={declared}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 text-caption">
+          {t(($) => $.effects.class_filter)}
+          <Select
+            items={classItems}
+            value={effectClass}
+            onValueChange={(next) => {
+              if (next) setEffectClass(next);
+            }}
+          >
+            <SelectTrigger aria-label={t(($) => $.effects.class_filter)} className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {classItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <label className="flex items-center gap-2 text-caption">
+          {t(($) => $.effects.source_filter)}
+          <Select
+            items={sourceItems}
+            value={source}
+            onValueChange={(next) => {
+              if (next) setSource(next);
+            }}
+          >
+            <SelectTrigger aria-label={t(($) => $.effects.source_filter)} className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {sourceItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+      </div>
+      {log.isError ? (
+        <p role="alert" className="text-caption text-destructive">{t(($) => $.effects.load_failed)}</p>
+      ) : !log.isPending && effects.length === 0 ? (
+        <Empty><EmptyHeader><EmptyTitle>{t(($) => $.effects.empty)}</EmptyTitle></EmptyHeader></Empty>
+      ) : (
+        <>
+          <EffectSection id="effects-controlled" title={t(($) => $.effects.controlled)} effects={controlled} onUndo={onUndo} undoing={undo.isPending} />
+          <EffectSection id="effects-declared" title={t(($) => $.effects.declared)} hint={t(($) => $.effects.declared_hint)} effects={declared} />
+          {log.hasNextPage ? (
+            <Button variant="outline" className="self-start" disabled={log.isFetching} onClick={() => void log.fetchNextPage()}>
+              {tGov(($) => $.log.load_more)}
+            </Button>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

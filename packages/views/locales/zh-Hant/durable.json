@@ -51,6 +51,8 @@
     "approve_all_failed": "無法核准這些操作。"
   },
   "effects": {
+    "class_filter": "影響類型",
+    "source_filter": "來源",
     "controlled": "由平台控管",
     "declared": "智慧代理自行申報",
     "declared_hint": "平台已記錄，但無法阻止這些操作。",
@@ -153,7 +155,14 @@
       "pending_now": "待定 · 即將結算",
       "archive": "封存標準",
       "archived": "已封存標準。",
-      "archive_failed": "無法封存標準。"
+      "archive_failed": "無法封存標準。",
+      "rubric_label": "評分標準",
+      "run_label": "要執行的指令",
+      "expect_exit_label": "預期結束代碼（選填）",
+      "artifact_kind_label": "文件類型",
+      "metric_key_label": "指標鍵",
+      "metric_value_label": "不低於",
+      "within_days_label": "時限（天）"
     },
     "tab": {
       "coverage": "驗證覆蓋率",
@@ -164,9 +173,8 @@
       "all": "全部",
       "empty": "沒有符合篩選條件的結果。",
       "load_failed": "無法載入結果。",
-      "limit_note": "顯示最新的 100 筆結果。",
       "weekly_title": "每週通過率",
-      "weekly_hint": "依結果建立的週，統計已檢查結果中通過的比例。最近 100 筆結果。",
+      "weekly_hint": "依結果建立的週，統計已檢查結果中通過的比例。",
       "weekly_row": "{{week}}：{{rate}}%（通過 {{pass}}，已檢查 {{verified}}）",
       "weekly_none": "{{week}}：尚無已檢查結果"
     },

@@ -151,6 +151,54 @@ describe("IssueAcceptancePanel", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add criterion" })).not.toBeInTheDocument());
   });
 
+  it("sends the command's check spec with the criterion", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderPanel();
+    await screen.findByText("Unit tests pass");
+    request.mockImplementation((path, init) => {
+      if (init?.method === "POST") return Promise.resolve({ ...criterion, id: "c-2", text: "Tests pass" });
+      return route(String(path));
+    });
+
+    await user.click(screen.getByRole("button", { name: "Add criterion" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add criterion" });
+    await user.type(within(dialog).getByLabelText("Criterion"), "Tests pass");
+    await user.click(within(dialog).getByRole("combobox", { name: "Check" }));
+    await user.click(await screen.findByRole("option", { name: "Command" }));
+    await user.type(within(dialog).getByLabelText("Command to run"), "npm test");
+    await user.click(within(dialog).getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith(
+        "/api/issues/i-1/criteria",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ text: "Tests pass", check_kind: "command", check_spec: { run: "npm test" } }),
+        }),
+      ),
+    );
+  });
+
+  it("keeps Add disabled until a metric check has a window of 1 to 365 days", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderPanel();
+    await screen.findByText("Unit tests pass");
+
+    await user.click(screen.getByRole("button", { name: "Add criterion" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add criterion" });
+    await user.type(within(dialog).getByLabelText("Criterion"), "Revenue grows");
+    await user.click(within(dialog).getByRole("combobox", { name: "Check" }));
+    await user.click(await screen.findByRole("option", { name: "Metric" }));
+    await user.type(within(dialog).getByLabelText("Metric key"), "revenue");
+    await user.type(within(dialog).getByLabelText("At least"), "1000");
+    await user.type(within(dialog).getByLabelText("Within days"), "0");
+    expect(within(dialog).getByRole("button", { name: "Add" })).toBeDisabled();
+
+    await user.clear(within(dialog).getByLabelText("Within days"));
+    await user.type(within(dialog).getByLabelText("Within days"), "30");
+    expect(within(dialog).getByRole("button", { name: "Add" })).toBeEnabled();
+  });
+
   it("archives a criterion and removes its row", async () => {
     const user = userEvent.setup({ delay: null });
     renderPanel();

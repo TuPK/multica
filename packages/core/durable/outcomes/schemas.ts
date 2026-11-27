@@ -31,8 +31,8 @@ const jsonRecord = z.record(z.string(), z.unknown()).catch({}).default({});
 
 export const VerificationSchema = z
   .object({
-    id: str,
-    outcome_id: str,
+    id: z.string().min(1),
+    outcome_id: z.string().min(1),
     criterion_id: nullableStr,
     verifier_type: enumOr(VERIFIER_TYPES, "system"),
     verifier_id: nullableStr,
@@ -47,8 +47,8 @@ export const VerificationSchema = z
 
 export const OutcomeSchema = z
   .object({
-    id: str,
-    issue_id: str,
+    id: z.string().min(1),
+    issue_id: z.string().min(1),
     agent_id: nullableStr,
     member_id: nullableStr,
     squad_id: nullableStr,
@@ -69,8 +69,8 @@ export const OutcomeSchema = z
 
 export const CriterionSchema = z
   .object({
-    id: str,
-    issue_id: str,
+    id: z.string().min(1),
+    issue_id: z.string().min(1),
     position: count,
     text: str,
     check_kind: enumOr(CHECK_KINDS, "manual"),

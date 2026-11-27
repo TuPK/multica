@@ -8,8 +8,8 @@ import { VERIFICATION_MODES } from "../outcomes/schemas";
 // assumption to check when A6 lands. Pin and envelope routes are not in this file.
 export const TrackRecordSchema = z
   .object({
-    agent_id: str,
-    work_class: str,
+    agent_id: z.string().min(1),
+    work_class: z.string().min(1),
     window_days: z.coerce.number().catch(30).default(30),
     model: str,
     n_pass: count,
@@ -41,7 +41,7 @@ const level = z.coerce.number().int().min(0).max(3).catch(0).default(0);
 
 export const SquadEnvelopeSchema = z
   .object({
-    squad_id: str,
+    squad_id: z.string().min(1),
     floor_level: level,
     ceiling_level: level,
     reason: str,

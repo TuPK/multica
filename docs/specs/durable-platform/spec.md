@@ -1286,7 +1286,7 @@ Còn chưa kiểm: dữ liệu thật của `activity_log` (U2, cần truy vấn
 
 ### 17.2 Kịch bản nghiệm thu tổng
 
-1. **Một tuần của một squad (giai đoạn A):** squad L1 có envelope `[1, 2]` làm 12 việc có tiêu chí; 11 `pass`, 1 mở lại; chế độ lên `sampled`; squad chưa lên L2 vì thiếu mẫu; brief hiện đúng các con số.
+1. **Một tuần của một squad (giai đoạn A):** squad L1 có envelope `[1, 2]` làm 25 việc có tiêu chí; 24 `pass`, 1 mở lại. Cặp lên `sampled` vì cận dưới Wilson của 24/25 là 0.805 ≥ 0.80 (11/12 chỉ cho 0.646 nên không đủ, xem 3.3); squad chưa lên L2 vì thiếu mẫu; brief hiện đúng các con số.
 2. **Một email ra khách (giai đoạn B và C):** agent L1 gửi email qua connected app; chính sách `rehearse`; ý định có preview; dự đoán "duyệt 90%"; người sửa một câu rồi duyệt; email gửi đúng bản sửa; ledger ghi 0.5 phút; hoàn tác không có (email `irreversible`) và giao diện nói vậy.
 3. **Một model mới (giai đoạn D):** bật shadow cho một ghế với model ứng viên; 20 cặp; task bóng không tạo hệ quả nào ngoài `read`; báo cáo đủ số; proposal `runtime_change`; duyệt; probation bắt đầu.
 

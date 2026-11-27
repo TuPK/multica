@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
@@ -49,6 +49,22 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => request.mockReset());
 
 describe("IntentBatchCard", () => {
+  it("shows each email's recipients and full content in its own row", () => {
+    const first = intent("i-1", "gmail:first");
+    first.preview = { ...first.preview, kind: "email", recipients: ["first@example.com"], body_markdown: "First line\n  Second line", fields: [{ label: "Subject", before: "Old", after: "New" }] };
+    const second = intent("i-2", "gmail:second");
+    second.preview = { ...second.preview, kind: "email", recipients: ["second@example.com"], body_markdown: "Another email body" };
+    renderBatch([first, second]);
+
+    const rows = screen.getAllByRole("listitem");
+    expect(within(rows[0]!).getByText("first@example.com")).toBeInTheDocument();
+    expect(within(rows[0]!).getByText("First line\n  Second line", { normalizer: (text) => text })).toHaveClass("whitespace-pre-wrap");
+    expect(within(rows[0]!).getByText("Old")).toBeInTheDocument();
+    expect(within(rows[0]!).getByText("New")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("second@example.com")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("Another email body")).toBeInTheDocument();
+  });
+
   it("titles the batch with its count and lists each action", () => {
     renderBatch([intent("i-1", "gmail:first"), intent("i-2", "gmail:second")]);
 
@@ -85,6 +101,40 @@ describe("IntentBatchCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve all" }));
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("1 approved, 1 could not be approved."));
+  });
+
+  it("counts failed states, conflicts, and missing results as failures", async () => {
+    request.mockResolvedValueOnce({
+      results: [
+        { id: "i-1", state: "executed", error: "", status: 200 },
+        { id: "i-2", state: "failed", error: "provider failed", status: 200 },
+        { id: "i-3", state: "", error: "already decided", status: 409 },
+      ],
+    });
+    renderBatch([intent("i-1", "first"), intent("i-2", "second"), intent("i-3", "third"), intent("i-4", "fourth")]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve all" }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("1 approved, 3 could not be approved."));
+  });
+
+  it("reports an error, not a success, when no action was approved", async () => {
+    request.mockResolvedValueOnce({ results: [{ id: "i-1", state: "", error: "already decided", status: 409 }] });
+    renderBatch([intent("i-1", "first")]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve all" }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not approve these actions."));
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("counts an approved declared intent as successful", async () => {
+    request.mockResolvedValueOnce({ results: [{ id: "i-1", state: "approved", error: "", status: 200 }] });
+    renderBatch([intent("i-1", "declared")]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve all" }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("1 actions approved."));
   });
 
   it("still reports the outcome after the card unmounts before the request settles", async () => {

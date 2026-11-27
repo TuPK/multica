@@ -142,6 +142,30 @@ test("tools, tool execution and tool-router sessions match the spec", async () =
   });
 });
 
+// The end-to-end tests read what the fake executed (GET /__executions) to check the payload a send
+// carried and how many sends ran. DELETE clears the record, so a test starts from nothing.
+test("executed tools are recorded with their payload, and DELETE clears them", async () => {
+  const cleared = await fetch(`${origin}/__executions`, { method: "DELETE" });
+  assert.equal(cleared.status, 200);
+
+  const args = { to: "customer@example.com", subject: "Quote", body: "Hello, valid for 14 days." };
+  await call("POST /tools/execute/{tool_slug}", "/tools/execute/GMAIL_SEND_EMAIL", {
+    body: { arguments: args, user_id: "u_recorded" },
+  });
+
+  const recorded = await fetch(`${origin}/__executions`);
+  assert.equal(recorded.status, 200);
+  const { executions } = await recorded.json();
+  assert.equal(executions.length, 1, "one execution is recorded");
+  assert.equal(executions[0].tool, "GMAIL_SEND_EMAIL");
+  assert.deepEqual(executions[0].arguments, args);
+  assert.equal(executions[0].user_id, "u_recorded");
+
+  await fetch(`${origin}/__executions`, { method: "DELETE" });
+  const empty = await (await fetch(`${origin}/__executions`)).json();
+  assert.deepEqual(empty.executions, []);
+});
+
 // Runs last: node:test runs a file's top-level tests in order.
 test("every operation the Go client calls was checked", () => {
   const missing = OPERATIONS.filter((op) => !checked.has(`${op} ${successStatus(spec, op)}`));

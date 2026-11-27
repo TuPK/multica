@@ -416,12 +416,23 @@ ${body}
 </div></body></html>`;
   }
 
+  // Every tool execution, for the end-to-end tests: what was sent and how many times. Not part of
+  // Composio's API; DELETE clears it.
+  const executions = [];
+
   async function route(req, res) {
     const url = new URL(req.url, baseURL);
     const path = url.pathname;
     const method = req.method;
 
     if (path === "/health") return send(res, 200, { ok: true });
+    if (path === "/__executions") {
+      if (method === "DELETE") {
+        executions.length = 0;
+        return send(res, 200, { ok: true });
+      }
+      return send(res, 200, { executions });
+    }
 
     if (path === "/connect") {
       const token = url.searchParams.get("token") ?? "";
@@ -560,6 +571,12 @@ ${body}
       if (account && account.status !== "ACTIVE") {
         return send(res, 200, { successful: false, error: "connected account is not active", data: {} });
       }
+      executions.push({
+        tool: toolSlug,
+        connected_account_id: body.connected_account_id ?? null,
+        user_id: body.user_id ?? null,
+        arguments: body.arguments ?? {},
+      });
       log(`execute ${toolSlug} as ${body.connected_account_id ?? body.user_id ?? "?"}`);
       return send(res, 200, { successful: true, error: null, data: cannedResult(toolSlug, body.arguments ?? {}), log_id: `log_${seq++}` });
     }

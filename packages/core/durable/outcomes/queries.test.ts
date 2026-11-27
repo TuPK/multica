@@ -5,6 +5,7 @@ import {
   issueCriteriaOptions,
   issueOutcomeOptions,
   outcomeListOptions,
+  outcomeInfiniteOptions,
   outcomeOptions,
   outcomeSummaryOptions,
 } from "./queries";
@@ -76,6 +77,18 @@ describe("outcome queries", () => {
     const page = await outcomeListOptions("ws-1", { verdict: "fail", agent_id: "a-1", since: undefined, work_class: "" }).queryFn!({} as never);
     expect(request).toHaveBeenCalledWith("/api/outcomes?verdict=fail&agent_id=a-1");
     expect(page.outcomes[0]?.id).toBe("o-1");
+  });
+
+  it("passes the cursor to the next page and stops at an empty cursor", async () => {
+    const options = outcomeInfiniteOptions("ws-1", { since: "2026-01-01", limit: 100 });
+    request.mockResolvedValueOnce({ outcomes: [outcomeRow, {}, { ...outcomeRow, id: 42 }, { ...outcomeRow, id: "" }], next_cursor: "next" });
+    const first = await options.queryFn!({ pageParam: "" } as never);
+    expect(first.outcomes).toHaveLength(1);
+    expect(options.getNextPageParam(first, [first], "", [""])).toBe("next");
+    request.mockResolvedValueOnce({ outcomes: [outcomeRow], next_cursor: "" });
+    const second = await options.queryFn!({ pageParam: "next" } as never);
+    expect(request).toHaveBeenLastCalledWith("/api/outcomes?since=2026-01-01&limit=100&cursor=next");
+    expect(options.getNextPageParam(second, [first, second], "next", ["", "next"])).toBeUndefined();
   });
 
   it("reads a criteria list as its items", async () => {

@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
@@ -48,6 +49,40 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => request.mockReset());
 
 describe("GovernanceEffectsTab", () => {
+  it("loads full pages until a short page and retains all effects", async () => {
+    const pages = [
+      Array.from({ length: 200 }, (_, i) => effect(`first-${i}`, { created_at: `2026-11-25T08:00:00Z` })),
+      Array.from({ length: 200 }, (_, i) => effect(`second-${i}`, { created_at: `2026-11-24T08:00:00Z` })),
+      [effect("last", { created_at: "2026-11-23T08:00:00Z", source: "declared" })],
+    ];
+    request.mockImplementation((path) => {
+      const before = new URL(String(path), "https://example.test").searchParams.get("before");
+      return Promise.resolve({ effects: pages[before === "2026-11-25T08:00:00Z" ? 1 : before === "2026-11-24T08:00:00Z" ? 2 : 0] });
+    });
+    const user = userEvent.setup({ delay: null });
+    renderTab();
+    expect(await screen.findByText("Summary first-0")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("Summary second-0")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("Summary last")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(401);
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  });
+
+  it("filters by effect class and keeps filters visible for empty results", async () => {
+    request.mockImplementation((path) => Promise.resolve({ effects: String(path).includes("effect_class=send") ? [] : [effect("one")] }));
+    const user = userEvent.setup({ delay: null });
+    renderTab();
+    await screen.findByText("Summary one");
+    await user.click(screen.getByRole("combobox", { name: "Effect class" }));
+    await user.click(await screen.findByRole("option", { name: "Send" }));
+    expect(await screen.findByText("No effects yet.")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Effect class" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Source" })).toBeInTheDocument();
+    expect(request.mock.calls.some(([path]) => String(path).includes("effect_class=send"))).toBe(true);
+  });
+
   it("keeps the effects the platform controlled apart from the ones agents only declared", async () => {
     request.mockResolvedValueOnce({
       effects: [

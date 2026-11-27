@@ -51,6 +51,8 @@
     "approve_all_failed": "これらのアクションを承認できませんでした。"
   },
   "effects": {
+    "class_filter": "エフェクトの種類",
+    "source_filter": "ソース",
     "controlled": "プラットフォームが管理",
     "declared": "エージェントが申告",
     "declared_hint": "プラットフォームは記録しましたが、止めることはできませんでした。",
@@ -153,7 +155,14 @@
       "pending_now": "保留中 · まもなく確定",
       "archive": "基準をアーカイブ",
       "archived": "基準をアーカイブしました。",
-      "archive_failed": "基準をアーカイブできませんでした。"
+      "archive_failed": "基準をアーカイブできませんでした。",
+      "rubric_label": "採点基準",
+      "run_label": "実行するコマンド",
+      "expect_exit_label": "期待する終了コード（任意）",
+      "artifact_kind_label": "ドキュメントの種類",
+      "metric_key_label": "指標キー",
+      "metric_value_label": "以上",
+      "within_days_label": "期間（日）"
     },
     "tab": {
       "coverage": "検証カバー率",
@@ -164,9 +173,8 @@
       "all": "すべて",
       "empty": "条件に合う結果がありません。",
       "load_failed": "結果を読み込めませんでした。",
-      "limit_note": "最新の100件を表示しています。",
       "weekly_title": "週ごとの合格率",
-      "weekly_hint": "作成された週ごとに、確認済みの結果のうち合格の割合です。直近100件。",
+      "weekly_hint": "作成された週ごとに、確認済みの結果のうち合格の割合です。",
       "weekly_row": "{{week}}: {{rate}}%（合格 {{pass}}、確認済み {{verified}}）",
       "weekly_none": "{{week}}: 確認済みの結果なし"
     },

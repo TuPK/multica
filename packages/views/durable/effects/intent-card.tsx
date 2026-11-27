@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleContent } from "@multica/ui/components/ui/colla
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { useT } from "../../i18n";
 import { PrincipalPredictionLine } from "../principal/prediction-line";
+import { IntentPreview } from "./intent-preview";
 
 type Panel = "none" | "edit" | "reject";
 
@@ -85,7 +86,6 @@ export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: 
   };
 
   const preview = intent.preview;
-  const title = preview.title || intent.target;
 
   return (
     <article
@@ -100,41 +100,9 @@ export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: 
         <span>{t(($) => $.intent.source[intent.source])}</span>
       </header>
 
-      <h3 id={`intent-${intent.id}-title`} className="text-title-sm font-medium break-words">
-        {title}
-      </h3>
+      <IntentPreview intent={intent} />
 
       <PrincipalPredictionLine subjectType="effect_intent" subjectId={intent.id} />
-
-      {preview.recipients.length > 0 ? (
-        <p className="text-caption text-muted-foreground">
-          <span>{t(($) => $.intent.recipients)}: </span>
-          <span className="break-all text-foreground">{preview.recipients.join(", ")}</span>
-        </p>
-      ) : null}
-
-      {preview.body_markdown ? (
-        <p className="whitespace-pre-wrap break-words text-body text-foreground">{preview.body_markdown}</p>
-      ) : null}
-
-      {preview.fields.length > 0 ? (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-caption">
-          {preview.fields.map((field, index) => (
-            <div key={`${field.label}-${index}`} className="contents">
-              <dt className="text-muted-foreground">{field.label}</dt>
-              <dd className="flex flex-wrap items-center gap-x-1.5 break-all text-foreground">
-                {field.before ? (
-                  <>
-                    <span className="text-muted-foreground line-through">{field.before}</span>
-                    <span aria-hidden className="text-muted-foreground">→</span>
-                  </>
-                ) : null}
-                <span>{field.after}</span>
-              </dd>
-            </div>
-          ))}
-        </dl>
-      ) : null}
 
       {intent.rationale ? (
         <div className="rounded-md bg-muted/50 px-3 py-2 text-caption">

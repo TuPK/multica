@@ -6,6 +6,7 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { Button } from "@multica/ui/components/ui/button";
 import { useT } from "../../i18n";
 import { PrincipalPredictionLine } from "../principal/prediction-line";
+import { IntentPreview } from "./intent-preview";
 
 /**
  * Pending intents of one batch key, as one card (durable spec 5.5). "Approve all" decides them
@@ -23,13 +24,13 @@ export function IntentBatchCard({ intents }: { intents: Intent[] }) {
       .mutateAsync({ ids: intents.map((intent) => intent.id) })
       .then(
         (results) => {
-          if (results.length === 0) {
-            toast.error(t(($) => $.batch.approve_all_failed));
-            return;
-          }
-          const approved = results.filter((r) => r.status === 200).length;
-          const failed = results.length - approved;
-          if (failed === 0) toast.success(t(($) => $.batch.approved_all, { count: approved }));
+          const approved = intents.filter((intent) => {
+            const result = results.find((r) => r.id === intent.id);
+            return result?.status === 200 && (result.state === "approved" || result.state === "executed");
+          }).length;
+          const failed = intents.length - approved;
+          if (approved === 0) toast.error(t(($) => $.batch.approve_all_failed));
+          else if (failed === 0) toast.success(t(($) => $.batch.approved_all, { count: approved }));
           else toast.success(t(($) => $.batch.approved_partial, { approved, failed }));
         },
         () => {
@@ -55,9 +56,9 @@ export function IntentBatchCard({ intents }: { intents: Intent[] }) {
       </header>
       <ul className="flex flex-col divide-y">
         {intents.map((intent) => (
-          <li key={intent.id} className="flex items-center justify-between gap-3 py-2">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="min-w-0 break-words text-body">{intent.preview.title || intent.target}</span>
+          <li key={intent.id} className="flex items-start justify-between gap-3 py-2">
+            <div className="flex min-w-0 flex-col gap-3">
+              <IntentPreview intent={intent} />
               <PrincipalPredictionLine subjectType="effect_intent" subjectId={intent.id} />
             </div>
             <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => approveRow(intent)}>

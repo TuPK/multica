@@ -51,6 +51,8 @@
     "approve_all_failed": "이 작업들을 승인하지 못했습니다."
   },
   "effects": {
+    "class_filter": "효과 유형",
+    "source_filter": "출처",
     "controlled": "플랫폼이 관리",
     "declared": "에이전트 신고",
     "declared_hint": "플랫폼이 기록했지만 막을 수는 없었던 작업입니다.",
@@ -153,7 +155,14 @@
       "pending_now": "보류 중 · 곧 확정",
       "archive": "기준 보관",
       "archived": "기준을 보관했습니다.",
-      "archive_failed": "기준을 보관하지 못했습니다."
+      "archive_failed": "기준을 보관하지 못했습니다.",
+      "rubric_label": "채점 기준",
+      "run_label": "실행할 명령",
+      "expect_exit_label": "예상 종료 코드(선택)",
+      "artifact_kind_label": "문서 종류",
+      "metric_key_label": "지표 키",
+      "metric_value_label": "이상",
+      "within_days_label": "기간(일)"
     },
     "tab": {
       "coverage": "검증 범위",
@@ -164,9 +173,8 @@
       "all": "전체",
       "empty": "조건에 맞는 결과가 없습니다.",
       "load_failed": "결과를 불러오지 못했습니다.",
-      "limit_note": "최근 결과 100개를 표시합니다.",
       "weekly_title": "주간 통과율",
-      "weekly_hint": "생성된 주 기준으로, 검사된 결과 중 통과한 비율입니다. 최근 결과 100개.",
+      "weekly_hint": "생성된 주 기준으로, 검사된 결과 중 통과한 비율입니다.",
       "weekly_row": "{{week}}: {{rate}}% (통과 {{pass}}, 검사 {{verified}})",
       "weekly_none": "{{week}}: 검사된 결과 없음"
     },

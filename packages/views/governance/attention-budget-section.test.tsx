@@ -9,6 +9,12 @@ import { renderWithI18n } from "../test/i18n";
 import { AttentionBudgetSection } from "./attention-budget-section";
 
 const api = vi.hoisted(() => ({ getAttentionBudget: vi.fn(), setAttentionBudget: vi.fn() }));
+const flag = vi.hoisted(() => ({ on: true }));
+
+vi.mock("@multica/core/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/config")>()),
+  useFeatureEnabled: () => flag.on,
+}));
 
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
@@ -34,6 +40,7 @@ function renderSection(editable = true) {
 
 describe("AttentionBudgetSection", () => {
   beforeEach(() => {
+    flag.on = true;
     api.getAttentionBudget.mockReset();
     api.setAttentionBudget.mockReset();
   });
@@ -45,6 +52,21 @@ describe("AttentionBudgetSection", () => {
 
     await waitFor(() => expect(api.getAttentionBudget).toHaveBeenCalled());
     expect(screen.queryByText("Attention budget")).toBeNull();
+  });
+
+  it("hides the form when the live durable_principal flag is off, even with a cached enabled budget", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["governance", "ws-1", "attention"], ON);
+    flag.on = false;
+    renderWithI18n(
+      <QueryClientProvider client={client}>
+        <AttentionBudgetSection wsId="ws-1" editable />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.queryByText("Attention budget")).toBeNull();
+    expect(screen.queryByLabelText("Minutes per week")).toBeNull();
+    expect(api.getAttentionBudget).not.toHaveBeenCalled();
   });
 
   it("shows the budget and what this week has used", async () => {

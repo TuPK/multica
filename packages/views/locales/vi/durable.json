@@ -51,6 +51,8 @@
     "approve_all_failed": "Không duyệt được các hành động này."
   },
   "effects": {
+    "class_filter": "Loại tác động",
+    "source_filter": "Nguồn",
     "controlled": "Nền tảng kiểm soát",
     "declared": "Agent tự khai báo",
     "declared_hint": "Nền tảng ghi nhận các việc này nhưng không chặn được.",
@@ -153,7 +155,14 @@
       "pending_now": "Đang chờ · sắp chốt",
       "archive": "Lưu trữ tiêu chí",
       "archived": "Đã lưu trữ tiêu chí.",
-      "archive_failed": "Không lưu trữ được tiêu chí."
+      "archive_failed": "Không lưu trữ được tiêu chí.",
+      "rubric_label": "Tiêu chí chấm",
+      "run_label": "Lệnh cần chạy",
+      "expect_exit_label": "Mã thoát mong đợi (không bắt buộc)",
+      "artifact_kind_label": "Loại tài liệu",
+      "metric_key_label": "Khóa chỉ số",
+      "metric_value_label": "Tối thiểu",
+      "within_days_label": "Trong vòng (ngày)"
     },
     "tab": {
       "coverage": "Độ phủ kiểm chứng",
@@ -164,9 +173,8 @@
       "all": "Tất cả",
       "empty": "Không có kết quả nào khớp bộ lọc.",
       "load_failed": "Không tải được kết quả.",
-      "limit_note": "Hiện 100 kết quả mới nhất.",
       "weekly_title": "Tỷ lệ đạt theo tuần",
-      "weekly_hint": "Số đạt trên các kết quả đã kiểm, theo tuần tạo ra kết quả. 100 kết quả gần nhất.",
+      "weekly_hint": "Số đạt trên các kết quả đã kiểm, theo tuần tạo ra kết quả.",
       "weekly_row": "{{week}}: {{rate}}% ({{pass}} trên {{verified}} đã kiểm)",
       "weekly_none": "{{week}}: chưa có kết quả kiểm"
     },

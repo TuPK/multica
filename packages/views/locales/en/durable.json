@@ -51,6 +51,8 @@
     "approve_all_failed": "Could not approve these actions."
   },
   "effects": {
+    "class_filter": "Effect class",
+    "source_filter": "Source",
     "controlled": "Controlled by the platform",
     "declared": "Declared by agents",
     "declared_hint": "The platform recorded these but could not stop them.",
@@ -153,7 +155,14 @@
       "pending_now": "Pending · settles soon",
       "archive": "Archive criterion",
       "archived": "Criterion archived.",
-      "archive_failed": "Could not archive the criterion."
+      "archive_failed": "Could not archive the criterion.",
+      "rubric_label": "Rubric",
+      "run_label": "Command to run",
+      "expect_exit_label": "Expected exit code (optional)",
+      "artifact_kind_label": "Document kind",
+      "metric_key_label": "Metric key",
+      "metric_value_label": "At least",
+      "within_days_label": "Within days"
     },
     "tab": {
       "coverage": "Verified coverage",
@@ -164,9 +173,8 @@
       "all": "All",
       "empty": "No outcomes match these filters.",
       "load_failed": "Could not load outcomes.",
-      "limit_note": "Showing the latest 100 outcomes.",
       "weekly_title": "Pass rate by week",
-      "weekly_hint": "Passed out of checked outcomes, by the week each one was created. The latest 100 outcomes.",
+      "weekly_hint": "Passed out of checked outcomes, by the week each one was created.",
       "weekly_row": "{{week}}: {{rate}}% ({{pass}} of {{verified}} checked)",
       "weekly_none": "{{week}}: none checked"
     },

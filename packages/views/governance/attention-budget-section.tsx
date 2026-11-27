@@ -10,6 +10,8 @@ import {
   type AttentionBudget,
   type AttentionSplit,
 } from "@multica/core/governance";
+import { useFeatureEnabled } from "@multica/core/config";
+import { DURABLE_FLAGS } from "@multica/core/durable";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
@@ -30,8 +32,10 @@ const MAX_MINUTES_PER_WEEK = 7 * 24 * 60;
  * Shown only while durable_principal is on.
  */
 export function AttentionBudgetSection({ wsId, editable }: { wsId: string; editable: boolean }) {
-  const { data } = useQuery(attentionBudgetOptions(wsId));
-  if (!data?.enabled) return null;
+  // The live flag decides: a cached answer from before the flag changed must not show the form.
+  const principalOn = useFeatureEnabled(DURABLE_FLAGS.principal, false);
+  const { data } = useQuery({ ...attentionBudgetOptions(wsId), enabled: !!wsId && principalOn });
+  if (!principalOn || !data?.enabled) return null;
   return (
     <AttentionBudgetForm
       key={`${data.minutes_per_week}:${data.split}`}

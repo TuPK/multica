@@ -51,6 +51,8 @@
     "approve_all_failed": "无法批准这些操作。"
   },
   "effects": {
+    "class_filter": "影响类型",
+    "source_filter": "来源",
     "controlled": "由平台控制",
     "declared": "智能体自行申报",
     "declared_hint": "平台已记录，但无法阻止这些操作。",
@@ -153,7 +155,14 @@
       "pending_now": "待定 · 即将结算",
       "archive": "归档标准",
       "archived": "已归档标准。",
-      "archive_failed": "无法归档标准。"
+      "archive_failed": "无法归档标准。",
+      "rubric_label": "评分标准",
+      "run_label": "要运行的命令",
+      "expect_exit_label": "预期退出码（可选）",
+      "artifact_kind_label": "文档类型",
+      "metric_key_label": "指标键",
+      "metric_value_label": "不低于",
+      "within_days_label": "时限（天）"
     },
     "tab": {
       "coverage": "验证覆盖率",
@@ -164,9 +173,8 @@
       "all": "全部",
       "empty": "没有符合筛选条件的结果。",
       "load_failed": "无法加载结果。",
-      "limit_note": "显示最新的 100 条结果。",
       "weekly_title": "每周通过率",
-      "weekly_hint": "按结果创建的周，统计已检查结果中通过的比例。最近 100 条结果。",
+      "weekly_hint": "按结果创建的周，统计已检查结果中通过的比例。",
       "weekly_row": "{{week}}：{{rate}}%（通过 {{pass}}，已检查 {{verified}}）",
       "weekly_none": "{{week}}：暂无已检查结果"
     },
