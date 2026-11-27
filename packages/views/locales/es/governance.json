@@ -8,7 +8,8 @@
     "log": "Registro",
     "controls": "Controles",
     "effects": "Efectos",
-    "outcomes": "Resultados"
+    "outcomes": "Resultados",
+    "principal": "Principal"
   },
   "placeholder": {
     "title": "Aún no hay nada que mostrar"

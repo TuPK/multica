@@ -211,5 +211,112 @@
       "cleared": "範囲を解除しました。",
       "clear_failed": "範囲を解除できませんでした。"
     }
+  },
+  "principal": {
+    "title": "意思決定プロファイル",
+    "load_failed": "意思決定プロファイルを読み込めませんでした。",
+    "off_title": "意思決定プロファイルはオフです",
+    "enable": "プロファイルを有効にする",
+    "status": {
+      "active": "有効",
+      "paused": "一時停止"
+    },
+    "version": "v{{version}}",
+    "consented_at": "同意日: {{date}}",
+    "share_with_owners": "ワークスペースオーナーと共有する",
+    "share_saved": "共有設定を保存しました。",
+    "share_failed": "共有設定を更新できませんでした。",
+    "delete": "プロファイルを削除",
+    "delete_dialog_title": "意思決定プロファイルを削除しますか？",
+    "delete_dialog_description": "このワークスペース内のプロファイル、特性、委任を削除します。過去の予測一致件数は理由や特性を除いて保持されます。",
+    "delete_confirm": "プロファイルを削除",
+    "deleted": "意思決定プロファイルを削除しました。",
+    "delete_failed": "意思決定プロファイルを削除できませんでした。",
+    "cancel": "キャンセル",
+    "consent": {
+      "title": "意思決定プロファイルを有効にする",
+      "point_data": "読み取られるデータ: このワークスペース内のあなたの判断・メモ、およびインタビュー回答。",
+      "point_access": "閲覧できる人: あなた本人、ワークスペースの秘書、および許可した場合のみ他のオーナー。",
+      "point_no_eval": "人物評価、スコアカード、レビュー、組織変更には一切使用されません。",
+      "point_delete": "プロファイルとすべての特性はいつでも削除できます。",
+      "checkbox": "内容を理解し、Delegora がこのワークスペースに意思決定プロファイルを保持することに同意します。",
+      "share_with_owners": "ワークスペースオーナーによるプロファイル閲覧を許可する",
+      "confirm": "プロファイルを有効にする",
+      "enabled": "意思決定プロファイルを有効にしました。",
+      "enable_failed": "意思決定プロファイルを有効にできませんでした。"
+    },
+    "traits": {
+      "title": "判断特性",
+      "empty": "有効な特性はまだありません。",
+      "origin": {
+        "learned": "学習",
+        "interview": "インタビュー",
+        "edited": "編集済み"
+      },
+      "edit": "編集",
+      "retire": "除外",
+      "statement_label": "特性の内容",
+      "save": "保存",
+      "edited": "特性を更新しました。",
+      "edit_failed": "特性を更新できませんでした。",
+      "retired": "特性を除外しました。",
+      "retire_failed": "特性を除外できませんでした。"
+    },
+    "interview": {
+      "title": "初期インタビュー",
+      "progress": "質問 {{current}} / {{total}}",
+      "answer_label": "回答",
+      "answer_placeholder": "判断の基準を書いてください...",
+      "submit": "回答を保存",
+      "previous": "前へ",
+      "next": "次へ",
+      "completed": "インタビューの質問はすべて終了しました。",
+      "restart": "質問を見直す",
+      "saved": "回答をプロファイルに保存しました。",
+      "save_failed": "回答を保存できませんでした。",
+      "load_failed": "インタビューの質問を読み込めませんでした。"
+    },
+    "delegation": {
+      "title": "予測による委任",
+      "rules_note": "不可逆な操作と緊急の質問は委任されません。有効化には解決済み予測が20件以上、一致率85%以上が必要です。",
+      "min_confidence": "最小信頼度",
+      "enable": "有効化",
+      "disable": "無効化",
+      "locked": "ロック済み",
+      "locked_reason": "常に人の判断が必要です。",
+      "enabled": "{{kind}} の委任を有効にしました。",
+      "enable_failed": "委任を有効にできませんでした。",
+      "disabled": "{{kind}} の委任を無効にしました。",
+      "disable_failed": "委任を無効にできませんでした。",
+      "kinds": {
+        "general": "全般",
+        "outcome": "成果チェック",
+        "inquiry": "秘書からの確認",
+        "proposal_general": "一般提案",
+        "proposal_hire": "採用提案",
+        "proposal_promote": "昇格提案",
+        "effect_write": "外部書き込み",
+        "effect_send": "外部送信",
+        "proposal_org_change": "組織変更",
+        "proposal_launch": "ローンチゲート",
+        "proposal_stage_gate": "ステージゲート",
+        "effect_spend": "支出を伴う操作",
+        "effect_share": "外部共有",
+        "proposal_budget": "予算変更",
+        "proposal_autonomy": "自律レベル変更",
+        "proposal_envelope": "自律範囲",
+        "proposal_policy": "承認ポリシー",
+        "proposal_profile": "意思決定プロファイル"
+      }
+    },
+    "errors": {
+      "profile_consent_required": "プロファイルを有効にするには同意文が必要です。",
+      "principal_trait_limit": "有効な特性の上限（200件）に達しました。先に1件除外してください。",
+      "principal_evidence_invalid": "特性には自身の判断、コメント、またはインタビューチャットからの有効な根拠が必要です。",
+      "principal_trait_invalid": "特性の文面と判断種別を確認してください（1〜500文字）。",
+      "principal_trait_edited": "自分で作成・編集した特性を除外できるのは本人のみです。",
+      "delegation_not_eligible": "この種別で解決済み予測が20件以上かつ一致率85%以上必要です。",
+      "delegation_forbidden_kind": "この判断種別は委任できません。"
+    }
   }
 }

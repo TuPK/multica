@@ -724,7 +724,9 @@
     "delete_account_recent_login_sign_out": "Cerrar sesión",
     "delete_account_success_title": "Cuenta programada para eliminación",
     "delete_account_success_description": "Tu cuenta se eliminará el {{date}}. Se ha cerrado tu sesión.",
-    "delete_account_success_sign_out": "Cerrar sesión"
+    "delete_account_success_sign_out": "Cerrar sesión",
+    "principal_profile_title": "Perfil de decisión",
+    "principal_profile_button": "Gestionar"
   },
   "notifications": {
     "title": "Bandeja de entrada",

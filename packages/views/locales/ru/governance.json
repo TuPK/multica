@@ -8,7 +8,8 @@
     "log": "Log",
     "controls": "Controls",
     "effects": "Последствия",
-    "outcomes": "Результаты"
+    "outcomes": "Результаты",
+    "principal": "Профиль решений"
   },
   "placeholder": {
     "title": "Nothing to show yet"

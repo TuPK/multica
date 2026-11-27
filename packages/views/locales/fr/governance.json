@@ -8,7 +8,8 @@
     "log": "Journal",
     "controls": "Contrôles",
     "effects": "Effets",
-    "outcomes": "Résultats"
+    "outcomes": "Résultats",
+    "principal": "Décideur"
   },
   "placeholder": {
     "title": "Rien à afficher pour l'instant"

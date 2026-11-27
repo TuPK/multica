@@ -211,5 +211,112 @@
       "cleared": "Rango quitado.",
       "clear_failed": "No se pudo quitar el rango."
     }
+  },
+  "principal": {
+    "title": "Perfil de decisión",
+    "load_failed": "No se pudo cargar tu perfil de decisión.",
+    "off_title": "El perfil de decisión está desactivado",
+    "enable": "Activar perfil",
+    "status": {
+      "active": "Activo",
+      "paused": "En pausa"
+    },
+    "version": "v{{version}}",
+    "consented_at": "Consentimiento el {{date}}",
+    "share_with_owners": "Compartir con propietarios del espacio de trabajo",
+    "share_saved": "Preferencia de uso compartido guardada.",
+    "share_failed": "No se pudo actualizar la preferencia de uso compartido.",
+    "delete": "Eliminar perfil",
+    "delete_dialog_title": "¿Eliminar el perfil de decisión?",
+    "delete_dialog_description": "Elimina tu perfil, rasgos y delegaciones en este espacio de trabajo. Los recuentos de aciertos anteriores se conservan sin motivos ni rasgos.",
+    "delete_confirm": "Eliminar perfil",
+    "deleted": "Perfil de decisión eliminado.",
+    "delete_failed": "No se pudo eliminar el perfil de decisión.",
+    "cancel": "Cancelar",
+    "consent": {
+      "title": "Activar perfil de decisión",
+      "point_data": "Datos leídos: tus decisiones y notas en este espacio de trabajo, y tus respuestas de la entrevista.",
+      "point_access": "Quién puede leerlo: tú, la Secretaría del espacio de trabajo y otros propietarios solo si lo permites.",
+      "point_no_eval": "Nunca se usa para evaluar personas, cuadros de mando, revisiones ni cambios de organización.",
+      "point_delete": "Puedes eliminar tu perfil y todos sus rasgos en cualquier momento.",
+      "checkbox": "Entiendo y consiento que Delegora mantenga mi perfil de decisión en este espacio de trabajo.",
+      "share_with_owners": "Permitir que los propietarios del espacio de trabajo lean mi perfil",
+      "confirm": "Activar perfil",
+      "enabled": "Perfil de decisión activado.",
+      "enable_failed": "No se pudo activar el perfil de decisión."
+    },
+    "traits": {
+      "title": "Rasgos",
+      "empty": "Aún no hay rasgos activos.",
+      "origin": {
+        "learned": "Aprendido",
+        "interview": "Entrevista",
+        "edited": "Editado"
+      },
+      "edit": "Editar",
+      "retire": "Retirar",
+      "statement_label": "Declaración del rasgo",
+      "save": "Guardar",
+      "edited": "Rasgo actualizado.",
+      "edit_failed": "No se pudo actualizar el rasgo.",
+      "retired": "Rasgo retirado.",
+      "retire_failed": "No se pudo retirar el rasgo."
+    },
+    "interview": {
+      "title": "Entrevista inicial",
+      "progress": "Pregunta {{current}} de {{total}}",
+      "answer_label": "Tu respuesta",
+      "answer_placeholder": "Escribe cómo decides...",
+      "submit": "Guardar respuesta",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "completed": "Has llegado al final de las preguntas de la entrevista.",
+      "restart": "Revisar preguntas",
+      "saved": "Respuesta guardada en tu perfil.",
+      "save_failed": "No se pudo guardar tu respuesta.",
+      "load_failed": "No se pudieron cargar las preguntas de la entrevista."
+    },
+    "delegation": {
+      "title": "Delegación por predicción",
+      "rules_note": "Las acciones irreversibles y las preguntas urgentes nunca se delegan. Activarla requiere al menos 20 predicciones resueltas con un 85% de precisión.",
+      "min_confidence": "Confianza mínima",
+      "enable": "Activar",
+      "disable": "Desactivar",
+      "locked": "Bloqueado",
+      "locked_reason": "Siempre requiere una persona.",
+      "enabled": "Delegación activada para {{kind}}.",
+      "enable_failed": "No se pudo activar la delegación.",
+      "disabled": "Delegación desactivada para {{kind}}.",
+      "disable_failed": "No se pudo desactivar la delegación.",
+      "kinds": {
+        "general": "General",
+        "outcome": "Comprobaciones de resultados",
+        "inquiry": "Consultas de la Secretaría",
+        "proposal_general": "Propuestas generales",
+        "proposal_hire": "Propuestas de contratación",
+        "proposal_promote": "Propuestas de ascenso",
+        "effect_write": "Escrituras externas",
+        "effect_send": "Envíos externos",
+        "proposal_org_change": "Cambios de organización",
+        "proposal_launch": "Puerta de lanzamiento",
+        "proposal_stage_gate": "Puertas de etapa",
+        "effect_spend": "Acciones de gasto",
+        "effect_share": "Uso compartido externo",
+        "proposal_budget": "Cambios de presupuesto",
+        "proposal_autonomy": "Cambios de autonomía",
+        "proposal_envelope": "Límites de autonomía",
+        "proposal_policy": "Políticas de aprobación",
+        "proposal_profile": "Perfiles de decisión"
+      }
+    },
+    "errors": {
+      "profile_consent_required": "Se requiere aceptar el texto de consentimiento antes de activar el perfil.",
+      "principal_trait_limit": "Has alcanzado el límite de 200 rasgos activos. Retira uno primero.",
+      "principal_evidence_invalid": "Este rasgo requiere evidencia válida de tus propias decisiones, comentarios o chat de entrevista.",
+      "principal_trait_invalid": "Revisa la declaración del rasgo y el tipo de decisión (de 1 a 500 caracteres).",
+      "principal_trait_edited": "Solo tú puedes retirar un rasgo que escribiste o editaste.",
+      "delegation_not_eligible": "Requiere al menos 20 predicciones resueltas de este tipo con al menos un 85% de aciertos.",
+      "delegation_forbidden_kind": "Este tipo de decisión no se puede delegar."
+    }
   }
 }

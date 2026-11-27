@@ -8,7 +8,8 @@
     "log": "로그",
     "controls": "제어",
     "effects": "효과",
-    "outcomes": "결과"
+    "outcomes": "결과",
+    "principal": "의사결정자"
   },
   "placeholder": {
     "title": "아직 표시할 내용이 없습니다"

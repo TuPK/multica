@@ -8,7 +8,8 @@
     "log": "Log",
     "controls": "Controls",
     "effects": "Effects",
-    "outcomes": "Outcomes"
+    "outcomes": "Outcomes",
+    "principal": "Principal"
   },
   "placeholder": {
     "title": "Nothing to show yet"

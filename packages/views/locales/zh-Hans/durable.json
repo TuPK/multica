@@ -211,5 +211,112 @@
       "cleared": "已清除区间。",
       "clear_failed": "无法清除区间。"
     }
+  },
+  "principal": {
+    "title": "决策画像",
+    "load_failed": "无法加载你的决策画像。",
+    "off_title": "决策画像未开启",
+    "enable": "开启画像",
+    "status": {
+      "active": "已开启",
+      "paused": "已暂停"
+    },
+    "version": "v{{version}}",
+    "consented_at": "同意时间：{{date}}",
+    "share_with_owners": "与工作区所有者共享",
+    "share_saved": "已保存共享设置。",
+    "share_failed": "无法更新共享设置。",
+    "delete": "删除画像",
+    "delete_dialog_title": "删除决策画像？",
+    "delete_dialog_description": "删除你在此工作区的画像、特征与授权设置。历史预测命中次数会保留，但原因与关联特征会被清除。",
+    "delete_confirm": "删除画像",
+    "deleted": "已删除决策画像。",
+    "delete_failed": "无法删除决策画像。",
+    "cancel": "取消",
+    "consent": {
+      "title": "开启决策画像",
+      "point_data": "读取的数据：你在此工作区中的决策、备注以及访谈回答。",
+      "point_access": "谁可查看：你自己、工作区秘书，以及仅在你允许时的其他所有者。",
+      "point_no_eval": "绝不用于评价个人、计分卡、评审或组织变更。",
+      "point_delete": "你随时可以删除画像及其全部特征。",
+      "checkbox": "我已了解并同意 Delegora 在此工作区中保存我的决策画像。",
+      "share_with_owners": "允许工作区所有者查看我的画像",
+      "confirm": "开启画像",
+      "enabled": "已开启决策画像。",
+      "enable_failed": "无法开启决策画像。"
+    },
+    "traits": {
+      "title": "判断特征",
+      "empty": "暂无生效中的特征。",
+      "origin": {
+        "learned": "学习",
+        "interview": "访谈",
+        "edited": "已编辑"
+      },
+      "edit": "编辑",
+      "retire": "移除",
+      "statement_label": "特征内容",
+      "save": "保存",
+      "edited": "已更新特征。",
+      "edit_failed": "无法更新特征。",
+      "retired": "已移除特征。",
+      "retire_failed": "无法移除特征。"
+    },
+    "interview": {
+      "title": "初始访谈",
+      "progress": "第 {{current}} / {{total}} 题",
+      "answer_label": "你的回答",
+      "answer_placeholder": "写下你的判断原则...",
+      "submit": "保存回答",
+      "previous": "上一题",
+      "next": "下一题",
+      "completed": "已完成全部访谈问题。",
+      "restart": "重新查看问题",
+      "saved": "已将回答保存到画像。",
+      "save_failed": "无法保存回答。",
+      "load_failed": "无法加载访谈问题。"
+    },
+    "delegation": {
+      "title": "按预测授权",
+      "rules_note": "不可逆操作与紧急问题绝不授权。开启需至少 20 次已确认预测且准确率达到 85%。",
+      "min_confidence": "最低置信度",
+      "enable": "开启",
+      "disable": "关闭",
+      "locked": "已锁定",
+      "locked_reason": "始终需由人工决定。",
+      "enabled": "已为 {{kind}} 开启授权。",
+      "enable_failed": "无法开启授权。",
+      "disabled": "已为 {{kind}} 关闭授权。",
+      "disable_failed": "无法关闭授权。",
+      "kinds": {
+        "general": "通用",
+        "outcome": "结果核验",
+        "inquiry": "秘书询问",
+        "proposal_general": "常规提案",
+        "proposal_hire": "招聘提案",
+        "proposal_promote": "晋升提案",
+        "effect_write": "外部写入",
+        "effect_send": "外部发送",
+        "proposal_org_change": "组织变更",
+        "proposal_launch": "发布关卡",
+        "proposal_stage_gate": "阶段关卡",
+        "effect_spend": "支出操作",
+        "effect_share": "外部共享",
+        "proposal_budget": "预算变更",
+        "proposal_autonomy": "自主级别变更",
+        "proposal_envelope": "自主范围",
+        "proposal_policy": "审批策略",
+        "proposal_profile": "决策画像"
+      }
+    },
+    "errors": {
+      "profile_consent_required": "开启画像前必须确认同意说明。",
+      "principal_trait_limit": "已达到 200 条生效特征上限，请先移除一条。",
+      "principal_evidence_invalid": "特征需要引用你本人的决策、评论或访谈聊天记录。",
+      "principal_trait_invalid": "请检查特征内容与决策类型（1 至 500 个字符）。",
+      "principal_trait_edited": "只有你可以移除自己编写或编辑的特征。",
+      "delegation_not_eligible": "该类型至少需要 20 次已确认预测且匹配率不低于 85%。",
+      "delegation_forbidden_kind": "该决策类型不可授权。"
+    }
   }
 }

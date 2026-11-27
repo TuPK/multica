@@ -211,5 +211,112 @@
       "cleared": "Đã bỏ khoảng.",
       "clear_failed": "Không bỏ được khoảng."
     }
+  },
+  "principal": {
+    "title": "Hồ sơ người quyết định",
+    "load_failed": "Không tải được hồ sơ người quyết định của bạn.",
+    "off_title": "Hồ sơ người quyết định đang tắt",
+    "enable": "Bật hồ sơ",
+    "status": {
+      "active": "Đang bật",
+      "paused": "Tạm dừng"
+    },
+    "version": "v{{version}}",
+    "consented_at": "Đồng ý lúc {{date}}",
+    "share_with_owners": "Chia sẻ với các chủ sở hữu workspace",
+    "share_saved": "Đã lưu tuỳ chọn chia sẻ.",
+    "share_failed": "Không cập nhật được tuỳ chọn chia sẻ.",
+    "delete": "Xoá hồ sơ",
+    "delete_dialog_title": "Xoá hồ sơ người quyết định?",
+    "delete_dialog_description": "Xoá vĩnh viễn hồ sơ, các đặc điểm và uỷ quyền của bạn trong workspace này. Số liệu khớp của dự đoán cũ được giữ lại nhưng xoá lý do và đặc điểm liên kết.",
+    "delete_confirm": "Xoá hồ sơ",
+    "deleted": "Đã xoá hồ sơ người quyết định.",
+    "delete_failed": "Không xoá được hồ sơ người quyết định.",
+    "cancel": "Huỷ",
+    "consent": {
+      "title": "Bật hồ sơ người quyết định",
+      "point_data": "Dữ liệu được đọc: các quyết định và ghi chú của bạn trong workspace này, cùng câu trả lời phỏng vấn.",
+      "point_access": "Ai đọc được: bạn, Thư ký của workspace, và các chủ sở hữu khác chỉ khi bạn cho phép.",
+      "point_no_eval": "Không bao giờ dùng để đánh giá con người, bảng điểm, đánh giá định kỳ hay thay đổi tổ chức.",
+      "point_delete": "Bạn có thể xoá hồ sơ và toàn bộ đặc điểm của mình bất cứ lúc nào.",
+      "checkbox": "Tôi hiểu và đồng ý để Delegora lưu giữ hồ sơ người quyết định của tôi trong workspace này.",
+      "share_with_owners": "Cho phép chủ sở hữu workspace đọc hồ sơ của tôi",
+      "confirm": "Bật hồ sơ",
+      "enabled": "Đã bật hồ sơ người quyết định.",
+      "enable_failed": "Không bật được hồ sơ người quyết định."
+    },
+    "traits": {
+      "title": "Đặc điểm phán đoán",
+      "empty": "Chưa có đặc điểm đang hoạt động.",
+      "origin": {
+        "learned": "Đã học",
+        "interview": "Phỏng vấn",
+        "edited": "Đã sửa"
+      },
+      "edit": "Sửa",
+      "retire": "Gỡ bỏ",
+      "statement_label": "Nội dung đặc điểm",
+      "save": "Lưu",
+      "edited": "Đã cập nhật đặc điểm.",
+      "edit_failed": "Không cập nhật được đặc điểm.",
+      "retired": "Đã gỡ đặc điểm.",
+      "retire_failed": "Không gỡ được đặc điểm."
+    },
+    "interview": {
+      "title": "Phỏng vấn khởi đầu",
+      "progress": "Câu {{current}} / {{total}}",
+      "answer_label": "Câu trả lời của bạn",
+      "answer_placeholder": "Viết cách bạn thường quyết định...",
+      "submit": "Lưu câu trả lời",
+      "previous": "Câu trước",
+      "next": "Câu sau",
+      "completed": "Bạn đã đi hết các câu hỏi phỏng vấn.",
+      "restart": "Xem lại câu hỏi",
+      "saved": "Đã lưu câu trả lời vào hồ sơ.",
+      "save_failed": "Không lưu được câu trả lời.",
+      "load_failed": "Không tải được danh sách câu hỏi phỏng vấn."
+    },
+    "delegation": {
+      "title": "Uỷ quyền bằng dự đoán",
+      "rules_note": "Hành động không đảo ngược được và câu hỏi khẩn không bao giờ được uỷ quyền. Cần ít nhất 20 dự đoán đã chốt với độ chính xác tối thiểu 85%.",
+      "min_confidence": "Độ tin cậy tối thiểu",
+      "enable": "Bật",
+      "disable": "Tắt",
+      "locked": "Đã khoá",
+      "locked_reason": "Luôn cần người quyết định.",
+      "enabled": "Đã bật uỷ quyền cho {{kind}}.",
+      "enable_failed": "Không bật được uỷ quyền.",
+      "disabled": "Đã tắt uỷ quyền cho {{kind}}.",
+      "disable_failed": "Không tắt được uỷ quyền.",
+      "kinds": {
+        "general": "Chung",
+        "outcome": "Kiểm chứng kết quả",
+        "inquiry": "Câu hỏi của Thư ký",
+        "proposal_general": "Đề xuất chung",
+        "proposal_hire": "Đề xuất tuyển thêm",
+        "proposal_promote": "Đề xuất thăng cấp",
+        "effect_write": "Ghi dữ liệu bên ngoài",
+        "effect_send": "Gửi ra bên ngoài",
+        "proposal_org_change": "Thay đổi tổ chức",
+        "proposal_launch": "Cổng Ra mắt",
+        "proposal_stage_gate": "Cổng giai đoạn",
+        "effect_spend": "Hành động chi tiền",
+        "effect_share": "Mở quyền truy cập bên ngoài",
+        "proposal_budget": "Thay đổi ngân sách",
+        "proposal_autonomy": "Thay đổi mức tự chủ",
+        "proposal_envelope": "Khoảng tự chủ",
+        "proposal_policy": "Chính sách phê duyệt",
+        "proposal_profile": "Hồ sơ người quyết định"
+      }
+    },
+    "errors": {
+      "profile_consent_required": "Cần xác nhận văn bản đồng ý trước khi bật hồ sơ.",
+      "principal_trait_limit": "Bạn đã đạt giới hạn 200 đặc điểm đang hoạt động. Hãy gỡ bớt một đặc điểm trước.",
+      "principal_evidence_invalid": "Đặc điểm cần bằng chứng hợp lệ từ quyết định, bình luận hoặc cuộc chat phỏng vấn của chính bạn.",
+      "principal_trait_invalid": "Kiểm tra lại nội dung đặc điểm và loại quyết định (từ 1 đến 500 ký tự).",
+      "principal_trait_edited": "Chỉ bạn mới có thể gỡ đặc điểm do chính bạn viết hoặc sửa.",
+      "delegation_not_eligible": "Cần ít nhất 20 dự đoán đã chốt của loại này với tối thiểu 85% khớp.",
+      "delegation_forbidden_kind": "Loại quyết định này không bao giờ được uỷ quyền."
+    }
   }
 }

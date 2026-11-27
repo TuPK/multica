@@ -719,7 +719,9 @@
     "delete_account_recent_login_sign_out": "로그아웃",
     "delete_account_success_title": "계정 삭제가 예약되었습니다",
     "delete_account_success_description": "계정은 {{date}}에 삭제됩니다. 로그아웃되었습니다.",
-    "delete_account_success_sign_out": "로그아웃"
+    "delete_account_success_sign_out": "로그아웃",
+    "principal_profile_title": "의사결정 프로필",
+    "principal_profile_button": "관리"
   },
   "notifications": {
     "title": "인박스",

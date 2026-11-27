@@ -724,7 +724,9 @@
     "delete_account_recent_login_sign_out": "Se déconnecter",
     "delete_account_success_title": "Suppression du compte programmée",
     "delete_account_success_description": "Votre compte sera supprimé le {{date}}. Vous avez été déconnecté.",
-    "delete_account_success_sign_out": "Se déconnecter"
+    "delete_account_success_sign_out": "Se déconnecter",
+    "principal_profile_title": "Profil de décision",
+    "principal_profile_button": "Gérer"
   },
   "notifications": {
     "title": "Boîte de réception",

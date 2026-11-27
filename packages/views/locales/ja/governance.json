@@ -8,7 +8,8 @@
     "log": "ログ",
     "controls": "管理",
     "effects": "影響",
-    "outcomes": "成果"
+    "outcomes": "成果",
+    "principal": "意思決定者"
   },
   "placeholder": {
     "title": "まだ表示するものはありません"

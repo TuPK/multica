@@ -719,7 +719,9 @@
     "delete_account_recent_login_sign_out": "退出登入",
     "delete_account_success_title": "帳戶已排程刪除",
     "delete_account_success_description": "你的帳戶將於 {{date}} 刪除。你已退出登入。",
-    "delete_account_success_sign_out": "退出登入"
+    "delete_account_success_sign_out": "退出登入",
+    "principal_profile_title": "決策畫像",
+    "principal_profile_button": "管理"
   },
   "notifications": {
     "title": "收件箱",
