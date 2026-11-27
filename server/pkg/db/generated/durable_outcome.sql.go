@@ -14,7 +14,8 @@ import (
 const claimOutcomeTransition = `-- name: ClaimOutcomeTransition :execrows
 INSERT INTO durable_outcome_applied (transition_id)
 VALUES ($1)
-ON CONFLICT (transition_id) DO NOTHING
+ON CONFLICT (transition_id) DO UPDATE SET status = 'applied'
+WHERE durable_outcome_applied.status = 'failed'
 `
 
 // Returns 1 when this transaction applies the transition, 0 when an earlier run
@@ -239,27 +240,34 @@ func (q *Queries) ListIssueLabelNames(ctx context.Context, issueID pgtype.UUID) 
 
 const listIssueTransitionsAfterCursor = `-- name: ListIssueTransitionsAfterCursor :many
 SELECT
-    t.id, t.workspace_id, t.issue_id, t.from_status_key, t.to_status_key, t.created_at,
-    i.assignee_type, i.assignee_id,
+    t.id, t.seq, t.workspace_id, t.issue_id, t.from_status_key, t.to_status_key, t.created_at,
+    t.assignee_type, t.assignee_id, t.label_names, w.settings AS workspace_settings,
+    COALESCE(p.outcomes_disabled, false)::boolean AS outcomes_disabled,
     fs.category AS from_catalog_category,
     ts.category AS to_catalog_category
 FROM issue_status_transition t
 JOIN issue i ON i.id = t.issue_id AND i.workspace_id = t.workspace_id
+JOIN workspace w ON w.id = t.workspace_id
+LEFT JOIN project p ON p.id = i.project_id AND p.workspace_id = t.workspace_id
+LEFT JOIN durable_outcome_applied a ON a.transition_id = t.id
 LEFT JOIN issue_status fs ON fs.workspace_id = t.workspace_id AND fs.key = t.from_status_key
 LEFT JOIN issue_status ts ON ts.workspace_id = t.workspace_id AND ts.key = t.to_status_key
-WHERE (t.created_at, t.id) > ($1::timestamptz, $2::uuid)
-ORDER BY t.created_at, t.id
+WHERE t.seq > $1::bigint
+  AND ((NOT $2::boolean AND a.transition_id IS NULL)
+       OR ($2::boolean AND a.status = 'failed'))
+ORDER BY t.seq
 LIMIT $3
 `
 
 type ListIssueTransitionsAfterCursorParams struct {
-	AfterAt  pgtype.Timestamptz `json:"after_at"`
-	AfterID  pgtype.UUID        `json:"after_id"`
-	RowLimit int32              `json:"row_limit"`
+	AfterSeq    int64 `json:"after_seq"`
+	RetryFailed bool  `json:"retry_failed"`
+	RowLimit    int32 `json:"row_limit"`
 }
 
 type ListIssueTransitionsAfterCursorRow struct {
 	ID                  pgtype.UUID        `json:"id"`
+	Seq                 int64              `json:"seq"`
 	WorkspaceID         pgtype.UUID        `json:"workspace_id"`
 	IssueID             pgtype.UUID        `json:"issue_id"`
 	FromStatusKey       pgtype.Text        `json:"from_status_key"`
@@ -267,15 +275,19 @@ type ListIssueTransitionsAfterCursorRow struct {
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	AssigneeType        pgtype.Text        `json:"assignee_type"`
 	AssigneeID          pgtype.UUID        `json:"assignee_id"`
+	LabelNames          []string           `json:"label_names"`
+	WorkspaceSettings   []byte             `json:"workspace_settings"`
+	OutcomesDisabled    bool               `json:"outcomes_disabled"`
 	FromCatalogCategory pgtype.Text        `json:"from_catalog_category"`
 	ToCatalogCategory   pgtype.Text        `json:"to_catalog_category"`
 }
 
-// Transitions after the outcome cursor, oldest first. Categories come from
-// issue_status (D32); a built-in key with no catalog row is NULL and the Go side
-// maps it (LifecycleCategoryOf). A transition whose issue is gone is skipped.
+// Unapplied transitions after the safe sequence cursor, oldest seq first.
+// Categories come from issue_status (D32); a built-in key with no catalog row is
+// NULL and the Go side maps it (LifecycleCategoryOf). A transition whose issue is
+// gone is skipped.
 func (q *Queries) ListIssueTransitionsAfterCursor(ctx context.Context, arg ListIssueTransitionsAfterCursorParams) ([]ListIssueTransitionsAfterCursorRow, error) {
-	rows, err := q.db.Query(ctx, listIssueTransitionsAfterCursor, arg.AfterAt, arg.AfterID, arg.RowLimit)
+	rows, err := q.db.Query(ctx, listIssueTransitionsAfterCursor, arg.AfterSeq, arg.RetryFailed, arg.RowLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -285,6 +297,7 @@ func (q *Queries) ListIssueTransitionsAfterCursor(ctx context.Context, arg ListI
 		var i ListIssueTransitionsAfterCursorRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Seq,
 			&i.WorkspaceID,
 			&i.IssueID,
 			&i.FromStatusKey,
@@ -292,6 +305,9 @@ func (q *Queries) ListIssueTransitionsAfterCursor(ctx context.Context, arg ListI
 			&i.CreatedAt,
 			&i.AssigneeType,
 			&i.AssigneeID,
+			&i.LabelNames,
+			&i.WorkspaceSettings,
+			&i.OutcomesDisabled,
 			&i.FromCatalogCategory,
 			&i.ToCatalogCategory,
 		); err != nil {
@@ -303,6 +319,49 @@ func (q *Queries) ListIssueTransitionsAfterCursor(ctx context.Context, arg ListI
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockWorkOutcomeForSettle = `-- name: LockWorkOutcomeForSettle :one
+SELECT id, workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id, runtime_provider, model, work_class, verification_mode, sampled, verdict, severity, fail_cause, criteria_results, evidence, cost_micros, verification_cost_micros, settle_at, settled_at, superseded_by, created_at, updated_at FROM work_outcome
+WHERE id = $1 AND workspace_id = $2
+FOR UPDATE
+`
+
+type LockWorkOutcomeForSettleParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) LockWorkOutcomeForSettle(ctx context.Context, arg LockWorkOutcomeForSettleParams) (WorkOutcome, error) {
+	row := q.db.QueryRow(ctx, lockWorkOutcomeForSettle, arg.ID, arg.WorkspaceID)
+	var i WorkOutcome
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.IssueID,
+		&i.DoneTransitionID,
+		&i.AgentID,
+		&i.MemberID,
+		&i.SquadID,
+		&i.RuntimeProvider,
+		&i.Model,
+		&i.WorkClass,
+		&i.VerificationMode,
+		&i.Sampled,
+		&i.Verdict,
+		&i.Severity,
+		&i.FailCause,
+		&i.CriteriaResults,
+		&i.Evidence,
+		&i.CostMicros,
+		&i.VerificationCostMicros,
+		&i.SettleAt,
+		&i.SettledAt,
+		&i.SupersededBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const reopenCurrentWorkOutcome = `-- name: ReopenCurrentWorkOutcome :execrows

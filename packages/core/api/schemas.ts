@@ -2006,6 +2006,7 @@ const ProjectProgressSchema = z.object({
 }).loose();
 
 export const ProjectSchema = z.object({
+  outcomes_disabled: z.boolean().default(false).catch(false),
   id: z.string(),
   workspace_id: z.string(),
   title: z.string(),

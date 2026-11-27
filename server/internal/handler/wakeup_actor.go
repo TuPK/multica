@@ -44,7 +44,7 @@ func (h *Handler) beginWakeupWrite(ctx context.Context) (pgx.Tx, error) {
 		return nil, err
 	}
 	if actor, ok := ctx.Value(wakeupActorKey{}).(wakeupActor); ok {
-		_, err = tx.Exec(ctx, `SELECT set_config('multica.actor_type',$1,true),set_config('multica.actor_id',$2,true),set_config('multica.source_task_id',$3,true)`, actor.kind, actor.id, actor.task)
+		err = h.setWakeupActorSession(ctx, tx, actor)
 		if err != nil {
 			_ = tx.Rollback(ctx)
 			return nil, err

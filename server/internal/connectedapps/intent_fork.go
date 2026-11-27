@@ -54,12 +54,9 @@ func takeRationale(args map[string]any) string {
 // the gateway resolves for them. If that account is not the one the call was
 // rehearsed with, it refuses rather than run the call on another account.
 func (s *Service) ExecuteIntent(ctx context.Context, workspaceID, memberID pgtype.UUID, toolkit string, call CanonicalCall) (map[string]any, error) {
-	data, accountID, err := s.executeAs(ctx, workspaceID, memberID, toolkit, call.Tool, call.Args)
+	data, _, err := s.executeAs(ctx, workspaceID, memberID, toolkit, call.Tool, call.AccountID, call.Args)
 	if err != nil {
 		return nil, err
-	}
-	if call.AccountID != "" && accountID != call.AccountID {
-		return nil, ErrIntentAccountChanged
 	}
 	return data, nil
 }

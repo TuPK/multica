@@ -210,6 +210,7 @@ func (h *Handler) openGraphTasks(ctx context.Context, run *flowRun, rows []flowT
 			Description: issueworkflow.GraphTaskDescription(g, h.graphTaskText(run, rows, o, prefix, stepName)),
 			Stage:       stage, Step: run.state.Step, Key: o.Key, Round: round,
 			AssigneeTyp: a.typ, AssigneeID: a.id,
+			flowTaskCreateFork: flowTaskCreateFork{Effects: o.Task.Effects},
 		})
 		if err != nil {
 			return advanceOutcome{}, err

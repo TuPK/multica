@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimEffectEventUndo = `-- name: ClaimEffectEventUndo :execrows
+UPDATE effect_event SET status = 'undoing'
+WHERE id = $1::uuid
+    AND workspace_id = $2::uuid
+    AND status = 'executed'
+`
+
+type ClaimEffectEventUndoParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+// Claims an executed effect before calling the inverse tool so concurrent undo
+// requests cannot invoke the external provider twice.
+func (q *Queries) ClaimEffectEventUndo(ctx context.Context, arg ClaimEffectEventUndoParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimEffectEventUndo, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countAgentSendsSince = `-- name: CountAgentSendsSince :one
 SELECT count(*)::integer FROM effect_event
 WHERE workspace_id = $1::uuid
@@ -38,9 +60,10 @@ const finishEffectEvent = `-- name: FinishEffectEvent :execrows
 UPDATE effect_event SET
     status = $1::text,
     undo = COALESCE($2::jsonb, undo),
-    undo_until = COALESCE($3::timestamptz, undo_until)
-WHERE id = $4::uuid
-    AND workspace_id = $5::uuid
+    undo_until = COALESCE($3::timestamptz, undo_until),
+    result = COALESCE($4::jsonb, result)
+WHERE id = $5::uuid
+    AND workspace_id = $6::uuid
     AND status = 'awaiting'
 `
 
@@ -48,17 +71,19 @@ type FinishEffectEventParams struct {
 	Status      string             `json:"status"`
 	Undo        []byte             `json:"undo"`
 	UndoUntil   pgtype.Timestamptz `json:"undo_until"`
+	Result      []byte             `json:"result"`
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 }
 
-// Moves an awaiting event to its outcome. undo and undo_until are set together, when
-// the forward call succeeded and its undo is known.
+// Moves an awaiting event to its outcome. undo, undo_until and result are set
+// when the forward call succeeded.
 func (q *Queries) FinishEffectEvent(ctx context.Context, arg FinishEffectEventParams) (int64, error) {
 	result, err := q.db.Exec(ctx, finishEffectEvent,
 		arg.Status,
 		arg.Undo,
 		arg.UndoUntil,
+		arg.Result,
 		arg.ID,
 		arg.WorkspaceID,
 	)
@@ -69,7 +94,7 @@ func (q *Queries) FinishEffectEvent(ctx context.Context, arg FinishEffectEventPa
 }
 
 const getEffectEvent = `-- name: GetEffectEvent :one
-SELECT id, workspace_id, task_id, agent_id, member_id, source, target, effect_class, reversibility, decision, status, summary, undo, undo_until, intent_id, app_tool_call_id, created_at FROM effect_event
+SELECT id, workspace_id, task_id, agent_id, member_id, source, target, effect_class, reversibility, decision, status, summary, undo, undo_until, intent_id, app_tool_call_id, created_at, result FROM effect_event
 WHERE id = $1::uuid AND workspace_id = $2::uuid
 `
 
@@ -99,6 +124,7 @@ func (q *Queries) GetEffectEvent(ctx context.Context, arg GetEffectEventParams) 
 		&i.IntentID,
 		&i.AppToolCallID,
 		&i.CreatedAt,
+		&i.Result,
 	)
 	return i, err
 }
@@ -166,7 +192,7 @@ func (q *Queries) InsertEffectEvent(ctx context.Context, arg InsertEffectEventPa
 }
 
 const listEffectEvents = `-- name: ListEffectEvents :many
-SELECT id, workspace_id, task_id, agent_id, member_id, source, target, effect_class, reversibility, decision, status, summary, undo, undo_until, intent_id, app_tool_call_id, created_at FROM effect_event
+SELECT id, workspace_id, task_id, agent_id, member_id, source, target, effect_class, reversibility, decision, status, summary, undo, undo_until, intent_id, app_tool_call_id, created_at, result FROM effect_event
 WHERE workspace_id = $1::uuid
     AND ($2::text IS NULL OR effect_class = $2::text)
     AND ($3::text IS NULL OR source = $3::text)
@@ -227,6 +253,7 @@ func (q *Queries) ListEffectEvents(ctx context.Context, arg ListEffectEventsPara
 			&i.IntentID,
 			&i.AppToolCallID,
 			&i.CreatedAt,
+			&i.Result,
 		); err != nil {
 			return nil, err
 		}
@@ -242,7 +269,7 @@ const markEffectEventUndone = `-- name: MarkEffectEventUndone :execrows
 UPDATE effect_event SET status = 'undone'
 WHERE id = $1::uuid
     AND workspace_id = $2::uuid
-    AND status = 'executed'
+    AND status = 'undoing'
 `
 
 type MarkEffectEventUndoneParams struct {
@@ -250,9 +277,30 @@ type MarkEffectEventUndoneParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 }
 
-// The second status move (durable spec 4.4): executed to undone, once.
+// The second status move (durable spec 4.4): undoing to undone, once.
 func (q *Queries) MarkEffectEventUndone(ctx context.Context, arg MarkEffectEventUndoneParams) (int64, error) {
 	result, err := q.db.Exec(ctx, markEffectEventUndone, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const revertEffectEventUndo = `-- name: RevertEffectEventUndo :execrows
+UPDATE effect_event SET status = 'executed'
+WHERE id = $1::uuid
+    AND workspace_id = $2::uuid
+    AND status = 'undoing'
+`
+
+type RevertEffectEventUndoParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+// Returns a claimed undo to executed when the inverse tool fails.
+func (q *Queries) RevertEffectEventUndo(ctx context.Context, arg RevertEffectEventUndoParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revertEffectEventUndo, arg.ID, arg.WorkspaceID)
 	if err != nil {
 		return 0, err
 	}

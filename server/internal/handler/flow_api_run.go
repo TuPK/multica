@@ -213,7 +213,7 @@ func (h *Handler) ExitIssueFlow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	actor := h.flowActorFor(r, userID, uuidToString(request.WorkspaceID))
-	state, err := h.ExitFlow(r.Context(), request, chi.URLParam(r, "edgeId"), actor)
+	state, err := h.ExitFlow(withFlowActorContext(r, actor), request, chi.URLParam(r, "edgeId"), actor)
 	if err != nil {
 		writeFlowError(w, r, err)
 		return
@@ -248,6 +248,7 @@ func (h *Handler) canTakeExit(ctx context.Context, run *flowRun, step issueworkf
 // ExitFlow takes the manual edge a person chose: it records the checkpoint, clears
 // unreviewed and moves the request on as an automatic edge would.
 func (h *Handler) ExitFlow(ctx context.Context, request db.Issue, edgeID string, actor flowActor) (IssueFlowStateResponse, error) {
+	ctx = withFlowActorValue(ctx, actor)
 	tx, qtx, run, err := h.lockFlowRun(ctx, request)
 	if err != nil {
 		return IssueFlowStateResponse{}, err

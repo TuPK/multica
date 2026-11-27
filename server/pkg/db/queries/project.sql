@@ -55,6 +55,7 @@ INSERT INTO project (
 
 -- name: UpdateProject :one
 UPDATE project SET
+    outcomes_disabled = COALESCE(sqlc.narg('outcomes_disabled')::boolean, outcomes_disabled),
     title = COALESCE(sqlc.narg('title'), title),
     description = CASE WHEN sqlc.arg('description_set')::boolean THEN sqlc.narg('description') ELSE description END,
     icon = CASE WHEN sqlc.arg('icon_set')::boolean THEN sqlc.narg('icon') ELSE icon END,

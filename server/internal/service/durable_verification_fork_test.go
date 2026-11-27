@@ -52,6 +52,7 @@ func newVerificationFixture(t *testing.T) verificationFixture {
 		Queries:   f.q,
 		TxStarter: f.Pool,
 		Tasks:     &TaskService{Queries: f.q, TxStarter: f.Pool, Bus: events.New()},
+		Flags:     outcomes.Flags,
 	}
 	outcomes.Verification = vf.checks
 	return vf
@@ -178,8 +179,8 @@ func TestNoEligibleVerifierYieldsUnable(t *testing.T) {
 	runtime := f.Runtime(t, "solo runtime")
 	solo := f.Agent(t, "solo doer", runtime)
 	ws := util.MustParseUUID(f.WorkspaceID)
-	checks := &VerificationService{Queries: f.q, TxStarter: f.Pool, Tasks: &TaskService{Queries: f.q, TxStarter: f.Pool, Bus: events.New()}}
 	outcomes, _ := outcomeService(t, f, true)
+	checks := &VerificationService{Queries: f.q, TxStarter: f.Pool, Tasks: &TaskService{Queries: f.q, TxStarter: f.Pool, Bus: events.New()}, Flags: outcomes.Flags}
 	outcomes.Verification = checks
 
 	issue := outcomeIssue(t, f, "todo")

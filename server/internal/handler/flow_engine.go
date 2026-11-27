@@ -741,6 +741,9 @@ func (h *Handler) advanceOnce(ctx context.Context, request db.Issue) (advanceOut
 	}
 	defer tx.Rollback(ctx)
 	qtx := h.Queries.WithTx(tx)
+	if err := applyFlowActorSession(ctx, qtx); err != nil {
+		return advanceOutcome{}, err
+	}
 	locked, err := qtx.LockIssueForFlow(ctx, db.LockIssueForFlowParams{ID: request.ID, WorkspaceID: request.WorkspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return advanceOutcome{}, errFlowNotManaged
@@ -935,6 +938,7 @@ type flowTaskCreate struct {
 	Round       int
 	AssigneeTyp string
 	AssigneeID  pgtype.UUID
+	flowTaskCreateFork
 }
 
 // createFlowTask opens one task issue. It reports false when another run of the
@@ -960,18 +964,23 @@ func (h *Handler) createFlowTask(ctx context.Context, run *flowRun, prefix strin
 		params.AssigneeType = pgtype.Text{String: c.AssigneeTyp, Valid: true}
 		params.AssigneeID = c.AssigneeID
 	}
-	_, err := h.IssueService.Create(ctx, params, service.IssueCreateOpts{
+	opts := service.IssueCreateOpts{
 		BroadcastPayload: func(issue db.Issue, atts []db.Attachment, labels []db.IssueLabel) map[string]any {
 			resp := issueToResponse(issue, prefix)
 			h.fillStatusCategory(ctx, issue.WorkspaceID, projectaccess.Hidden{}, &resp)
 			return map[string]any{"issue": resp}
 		},
-	})
+	}
+	h.prepareFlowTaskCreateOpts(ctx, c, &opts)
+	res, err := h.IssueService.Create(ctx, params, opts)
 	if err != nil {
 		if isFlowTaskOnce(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("open task %s: %w", c.Key, err)
+	}
+	if err := h.maybeHoldExternalFlowTask(ctx, run, c, res.Issue); err != nil {
+		return false, err
 	}
 	return true, nil
 }
@@ -1145,6 +1154,9 @@ func (h *Handler) stallFlow(ctx context.Context, current *flowRun, code, reason,
 	}
 	defer tx.Rollback(ctx)
 	qtx := h.Queries.WithTx(tx)
+	if err := applyFlowActorSession(ctx, qtx); err != nil {
+		return advanceOutcome{}, err
+	}
 	locked, err := qtx.LockIssueForFlow(ctx, db.LockIssueForFlowParams{ID: current.issue.ID, WorkspaceID: current.issue.WorkspaceID})
 	if err != nil {
 		return advanceOutcome{}, err

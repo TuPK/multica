@@ -15,6 +15,10 @@ describe("project creator response compatibility", () => {
     expect(parsed.creator_type).toBeNull();
     expect(parsed.creator_id).toBeNull();
   });
+  it("defaults an absent or malformed outcomes setting", () => {
+    expect(ProjectSchema.parse(project).outcomes_disabled).toBe(false);
+    expect(ProjectSchema.parse({ ...project, outcomes_disabled: "yes" }).outcomes_disabled).toBe(false);
+  });
   it("preserves creators and unknown future types without granting rights", () => {
     for (const type of ["member", "agent", "future"]) {
       const parsed = ProjectSchema.parse({ ...project, creator_type: type, creator_id: "creator" });

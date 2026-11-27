@@ -24,13 +24,14 @@ import (
 )
 
 type ProjectResponse struct {
-	ID          string  `json:"id"`
-	WorkspaceID string  `json:"workspace_id"`
-	Title       string  `json:"title"`
-	Description *string `json:"description"`
-	Icon        *string `json:"icon"`
-	Status      string  `json:"status"`
-	Priority    string  `json:"priority"`
+	OutcomesDisabled bool    `json:"outcomes_disabled"`
+	ID               string  `json:"id"`
+	WorkspaceID      string  `json:"workspace_id"`
+	Title            string  `json:"title"`
+	Description      *string `json:"description"`
+	Icon             *string `json:"icon"`
+	Status           string  `json:"status"`
+	Priority         string  `json:"priority"`
 	// Access is the stored mode: "workspace" or "restricted".
 	Access string `json:"access"`
 	// CanManageAccess is true when the caller may manage project access (owner
@@ -102,22 +103,23 @@ func (h *Handler) publishProjectUpdate(ctx context.Context, workspaceID string, 
 
 func projectToResponse(p db.Project) ProjectResponse {
 	return ProjectResponse{
-		ID:          uuidToString(p.ID),
-		WorkspaceID: uuidToString(p.WorkspaceID),
-		Title:       p.Title,
-		Description: textToPtr(p.Description),
-		Icon:        textToPtr(p.Icon),
-		Status:      p.Status,
-		Priority:    p.Priority,
-		Access:      p.Access,
-		LeadType:    textToPtr(p.LeadType),
-		LeadID:      uuidToPtr(p.LeadID),
-		CreatorType: textToPtr(p.CreatorType),
-		CreatorID:   uuidToPtr(p.CreatorID),
-		StartDate:   dateToPtr(p.StartDate),
-		DueDate:     dateToPtr(p.DueDate),
-		CreatedAt:   timestampToString(p.CreatedAt),
-		UpdatedAt:   timestampToString(p.UpdatedAt),
+		OutcomesDisabled: p.OutcomesDisabled,
+		ID:               uuidToString(p.ID),
+		WorkspaceID:      uuidToString(p.WorkspaceID),
+		Title:            p.Title,
+		Description:      textToPtr(p.Description),
+		Icon:             textToPtr(p.Icon),
+		Status:           p.Status,
+		Priority:         p.Priority,
+		Access:           p.Access,
+		LeadType:         textToPtr(p.LeadType),
+		LeadID:           uuidToPtr(p.LeadID),
+		CreatorType:      textToPtr(p.CreatorType),
+		CreatorID:        uuidToPtr(p.CreatorID),
+		StartDate:        dateToPtr(p.StartDate),
+		DueDate:          dateToPtr(p.DueDate),
+		CreatedAt:        timestampToString(p.CreatedAt),
+		UpdatedAt:        timestampToString(p.UpdatedAt),
 		// Until issue stats are applied, the project's own edits are its activity.
 		LastActivityAt: timestampToString(p.UpdatedAt),
 		SquadIDs:       projectSquadIDStrings(p.SquadIds),
@@ -309,15 +311,16 @@ type CreateProjectResourceRequestPayload struct {
 }
 
 type UpdateProjectRequest struct {
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-	Icon        *string `json:"icon"`
-	Status      *string `json:"status"`
-	Priority    *string `json:"priority"`
-	LeadType    *string `json:"lead_type"`
-	LeadID      *string `json:"lead_id"`
-	StartDate   *string `json:"start_date"`
-	DueDate     *string `json:"due_date"`
+	OutcomesDisabled *bool   `json:"outcomes_disabled"`
+	Title            *string `json:"title"`
+	Description      *string `json:"description"`
+	Icon             *string `json:"icon"`
+	Status           *string `json:"status"`
+	Priority         *string `json:"priority"`
+	LeadType         *string `json:"lead_type"`
+	LeadID           *string `json:"lead_id"`
+	StartDate        *string `json:"start_date"`
+	DueDate          *string `json:"due_date"`
 	// Visibility switches between "workspace" and "private" (MUL-8472).
 	// MemberIDs adds project members to a project that is or becomes
 	// "private"; see prepareProjectAccessUpdate.
@@ -827,6 +830,9 @@ func (h *Handler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(bodyBytes, &rawFields)
 
 	params := db.UpdateProjectParams{ID: prevProject.ID}
+	if req.OutcomesDisabled != nil {
+		params.OutcomesDisabled = pgtype.Bool{Bool: *req.OutcomesDisabled, Valid: true}
+	}
 	_, params.DescriptionSet = rawFields["description"]
 	_, params.IconSet = rawFields["icon"]
 	_, params.LeadTypeSet = rawFields["lead_type"]

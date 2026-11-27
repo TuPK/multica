@@ -457,10 +457,15 @@ func (s *Service) executeApproved(ctx context.Context, req db.AppActionRequest) 
 	if Decide(req.ToolkitSlug, app.Level, class, rule) == PolicyBlock {
 		return fail("a rule now blocks this call")
 	}
+	effect := s.gateApprovedEffect(ctx, req, class)
+	if effect.policy == PolicyBlock {
+		return fail("the effect policy now blocks this call")
+	}
 	// Last: it counts the call, which runs right after.
 	if s.quota != nil {
 		countedIn, exceeded := s.quota.Admit(ctx, req.WorkspaceID)
 		if exceeded != nil {
+			s.settleEffect(ctx, effect, "blocked", nil)
 			return failAs("quota_exceeded", exceeded.Message())
 		}
 		call.meteredPeriod = countedIn
@@ -468,13 +473,16 @@ func (s *Service) executeApproved(ctx context.Context, req db.AppActionRequest) 
 	resp, err := s.composio.ExecuteTool(ctx, acct.connectedAccountID, acct.composioUserID, *tool, args)
 	s.touch(ctx, req.WorkspaceID, acct)
 	if err != nil {
+		s.settleEffect(ctx, effect, "failed", nil)
 		logExecutionFailure(ctx, call, "request_failed")
 		return fail(truncate(err.Error(), 500))
 	}
 	if !resp.Successful {
+		s.settleEffect(ctx, effect, "failed", nil)
 		logExecutionFailure(ctx, call, "tool_unsuccessful")
 		return fail(truncate(resp.Error, 500))
 	}
+	s.settleEffect(ctx, effect, "executed", resp.Data)
 	result, err := json.Marshal(resp.Data)
 	if err != nil || len(result) > maxResultBytes {
 		result = []byte(`{"truncated":true}`)

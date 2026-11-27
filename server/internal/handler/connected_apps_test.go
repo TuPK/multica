@@ -32,8 +32,11 @@ type appsFakeSDK struct {
 	mu              sync.Mutex
 	executed        []sdk.ExecuteToolRequest
 	executeErr      error
-	toolError       string
-	beforeListTools func()
+	executeData     map[string]any
+	toolError         string
+	beforeListTools   func()
+	beforeGetTool     func()
+	beforeExecuteTool func()
 }
 
 var appsFakeGmailTools = []sdk.Tool{
@@ -57,6 +60,9 @@ func (f *appsFakeSDK) ListTools(_ context.Context, req sdk.ListToolsRequest) (*s
 }
 
 func (f *appsFakeSDK) GetTool(_ context.Context, slug string) (*sdk.Tool, error) {
+	if f.beforeGetTool != nil {
+		f.beforeGetTool()
+	}
 	for i := range appsFakeGmailTools {
 		if appsFakeGmailTools[i].Slug == slug {
 			return &appsFakeGmailTools[i], nil
@@ -66,6 +72,9 @@ func (f *appsFakeSDK) GetTool(_ context.Context, slug string) (*sdk.Tool, error)
 }
 
 func (f *appsFakeSDK) ExecuteTool(_ context.Context, slug string, req sdk.ExecuteToolRequest) (*sdk.ExecuteToolResponse, error) {
+	if f.beforeExecuteTool != nil {
+		f.beforeExecuteTool()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.executed = append(f.executed, req)
@@ -77,6 +86,9 @@ func (f *appsFakeSDK) ExecuteTool(_ context.Context, slug string, req sdk.Execut
 	}
 	if f.toolError != "" {
 		return &sdk.ExecuteToolResponse{Error: f.toolError}, nil
+	}
+	if f.executeData != nil {
+		return &sdk.ExecuteToolResponse{Successful: true, Data: f.executeData}, nil
 	}
 	return &sdk.ExecuteToolResponse{Successful: true, Data: map[string]any{"tool": slug}}, nil
 }

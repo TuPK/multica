@@ -1,0 +1,1 @@
+ALTER TABLE effect_event DROP COLUMN IF EXISTS result;

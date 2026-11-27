@@ -335,3 +335,23 @@ func TestIntentFlagOffStopsWrites(t *testing.T) {
 		t.Fatalf("state %q, want pending", state)
 	}
 }
+
+func TestExecuteIntentChecksAccountBeforeProvider(t *testing.T) {
+	f := newAppsFixture(t)
+	_, _, _, account := f.executionAccount(t, "personal")
+	call := connectedapps.CanonicalCall{Tool: "GMAIL_SEND_EMAIL", AccountID: account + "-old", Args: map[string]any{"to": "customer@example.com"}}
+	_, err := f.h.ConnectedApps.ExecuteIntent(context.Background(), parseUUID(testWorkspaceID), parseUUID(testUserID), "gmail", call)
+	if !errors.Is(err, connectedapps.ErrIntentAccountChanged) {
+		t.Errorf("changed account error = %v, want ErrIntentAccountChanged", err)
+	}
+	if n := len(f.sdk.executions()); n != 0 {
+		t.Errorf("changed account provider calls = %d, want 0", n)
+	}
+	call.AccountID = account
+	if _, err := f.h.ConnectedApps.ExecuteIntent(context.Background(), parseUUID(testWorkspaceID), parseUUID(testUserID), "gmail", call); err != nil {
+		t.Errorf("matching account: %v", err)
+	}
+	if n := len(f.sdk.executions()); n != 1 {
+		t.Errorf("matching account provider calls = %d, want 1 total", n)
+	}
+}

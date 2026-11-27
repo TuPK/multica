@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -27,14 +28,10 @@ func DurableOutcomeJob(runner OutcomeRunner) JobSpec {
 		RunTimeout: 50 * time.Second, StaleTimeout: 2 * time.Minute, HeartbeatInterval: 10 * time.Second,
 		AllowStaleReentry: true, MaxAttempts: 1, Scopes: StaticScopes(ScopeGlobal),
 		Handler: func(ctx context.Context, _ HandlerInput) (HandlerResult, error) {
-			if _, err := runner.ProcessTransitions(ctx); err != nil {
-				return HandlerResult{}, err
-			}
-			if _, err := runner.ScheduleChecks(ctx); err != nil {
-				return HandlerResult{}, err
-			}
-			_, err := runner.Settle(ctx, time.Now())
-			return HandlerResult{}, err
+			_, processErr := runner.ProcessTransitions(ctx)
+			_, scheduleErr := runner.ScheduleChecks(ctx)
+			_, settleErr := runner.Settle(ctx, time.Now())
+			return HandlerResult{}, errors.Join(processErr, scheduleErr, settleErr)
 		},
 	}
 }

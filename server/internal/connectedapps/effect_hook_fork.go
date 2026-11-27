@@ -5,7 +5,12 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
+
+type effectResultFinisher interface {
+	FinishWithResult(ctx context.Context, workspaceID, eventID pgtype.UUID, outcome string, undo *UndoSpec, result map[string]any) error
+}
 
 // effectTicket is one gated call: the decision to enforce, and the event and undo
 // to settle once the call has run.
@@ -50,9 +55,23 @@ func (s *Service) gateEffect(ctx context.Context, rn *run, toolkit, tool, class,
 	return effectTicket{policy: rec.Decision, ws: rn.workspaceID, event: rec.EventID, undo: undo, req: req}
 }
 
+// gateApprovedEffect routes an already-approved app action request through the
+// same effect gate as the gateway. Prior is PolicyAllow so an approved request is
+// not re-prompted, while blocking effect policies (e.g. shadow tasks, paused
+// company, block overrides) still stop execution and record the blocked event.
+func (s *Service) gateApprovedEffect(ctx context.Context, req db.AppActionRequest, class string) effectTicket {
+	rn := &run{
+		workspaceID: req.WorkspaceID,
+		task:        db.AgentTaskQueue{ID: req.TaskID, IssueID: req.IssueID},
+		agent:       db.Agent{ID: req.AgentID},
+		triggeredBy: req.ApproverUserID,
+	}
+	return s.gateEffect(ctx, rn, req.ToolkitSlug, req.ToolSlug, class, req.Summary, PolicyAllow)
+}
+
 // settleEffect records the outcome of a gated call: executed (with its undo, resolved
-// from the result), failed, or blocked when a later refusal stopped it. It does
-// nothing for a ticket with no event.
+// from the result, and the provider result), failed, or blocked when a later refusal
+// stopped it. It does nothing for a ticket with no event.
 func (s *Service) settleEffect(ctx context.Context, t effectTicket, outcome string, result map[string]any) {
 	if s.effects == nil || !t.event.Valid {
 		return
@@ -61,7 +80,13 @@ func (s *Service) settleEffect(ctx context.Context, t effectTicket, outcome stri
 	if outcome == "executed" {
 		undo = ResolveUndo(t.undo, result)
 	}
-	if err := s.effects.Finish(ctx, t.ws, t.event, outcome, undo); err != nil {
+	var err error
+	if f, ok := s.effects.(effectResultFinisher); ok {
+		err = f.FinishWithResult(ctx, t.ws, t.event, outcome, undo, result)
+	} else {
+		err = s.effects.Finish(ctx, t.ws, t.event, outcome, undo)
+	}
+	if err != nil {
 		slog.Error("effect settle failed", "error", err, "outcome", outcome)
 	}
 }

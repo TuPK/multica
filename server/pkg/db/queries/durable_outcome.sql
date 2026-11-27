@@ -1,18 +1,25 @@
 -- name: ListIssueTransitionsAfterCursor :many
--- Transitions after the outcome cursor, oldest first. Categories come from
--- issue_status (D32); a built-in key with no catalog row is NULL and the Go side
--- maps it (LifecycleCategoryOf). A transition whose issue is gone is skipped.
+-- Unapplied transitions after the safe sequence cursor, oldest seq first.
+-- Categories come from issue_status (D32); a built-in key with no catalog row is
+-- NULL and the Go side maps it (LifecycleCategoryOf). A transition whose issue is
+-- gone is skipped.
 SELECT
-    t.id, t.workspace_id, t.issue_id, t.from_status_key, t.to_status_key, t.created_at,
-    i.assignee_type, i.assignee_id,
+    t.id, t.seq, t.workspace_id, t.issue_id, t.from_status_key, t.to_status_key, t.created_at,
+    t.assignee_type, t.assignee_id, t.label_names, w.settings AS workspace_settings,
+    COALESCE(p.outcomes_disabled, false)::boolean AS outcomes_disabled,
     fs.category AS from_catalog_category,
     ts.category AS to_catalog_category
 FROM issue_status_transition t
 JOIN issue i ON i.id = t.issue_id AND i.workspace_id = t.workspace_id
+JOIN workspace w ON w.id = t.workspace_id
+LEFT JOIN project p ON p.id = i.project_id AND p.workspace_id = t.workspace_id
+LEFT JOIN durable_outcome_applied a ON a.transition_id = t.id
 LEFT JOIN issue_status fs ON fs.workspace_id = t.workspace_id AND fs.key = t.from_status_key
 LEFT JOIN issue_status ts ON ts.workspace_id = t.workspace_id AND ts.key = t.to_status_key
-WHERE (t.created_at, t.id) > (sqlc.arg(after_at)::timestamptz, sqlc.arg(after_id)::uuid)
-ORDER BY t.created_at, t.id
+WHERE t.seq > sqlc.arg(after_seq)::bigint
+  AND ((NOT sqlc.arg(retry_failed)::boolean AND a.transition_id IS NULL)
+       OR (sqlc.arg(retry_failed)::boolean AND a.status = 'failed'))
+ORDER BY t.seq
 LIMIT sqlc.arg(row_limit);
 
 -- name: ListIssueLabelNames :many
@@ -69,6 +76,11 @@ WHERE settle_at <= sqlc.arg(due_at)::timestamptz AND settled_at IS NULL
 ORDER BY settle_at, id
 LIMIT sqlc.arg(row_limit);
 
+-- name: LockWorkOutcomeForSettle :one
+SELECT * FROM work_outcome
+WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id)
+FOR UPDATE;
+
 -- name: SettleWorkOutcome :execrows
 UPDATE work_outcome
 SET verdict = sqlc.arg(verdict), severity = sqlc.arg(severity), fail_cause = sqlc.arg(fail_cause),
@@ -80,7 +92,8 @@ WHERE id = sqlc.arg(id) AND settled_at IS NULL;
 -- already did. The caller skips the transition on 0 (durable spec 2.4).
 INSERT INTO durable_outcome_applied (transition_id)
 VALUES (sqlc.arg(transition_id))
-ON CONFLICT (transition_id) DO NOTHING;
+ON CONFLICT (transition_id) DO UPDATE SET status = 'applied'
+WHERE durable_outcome_applied.status = 'failed';
 
 -- name: CountWorkOutcomesSettledBetween :one
 -- The outcomes settled in a brief's period, by verdict. reopened counts the fails that

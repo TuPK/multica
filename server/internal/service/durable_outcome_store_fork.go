@@ -1,8 +1,8 @@
 package service
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -19,13 +19,14 @@ import (
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
+// ErrOutcomesOff: a write that needs durable_outcomes was asked while the flag is off.
+var ErrOutcomesOff = errors.New("durable outcomes is off")
+
 const (
 	// outcomeCursorName is the name of the one cursor row the transition reader owns.
 	outcomeCursorName = "outcome"
 	// outcomeBatchSize bounds the rows one transaction reads or settles.
 	outcomeBatchSize = 200
-	// outcomeOverlap is how far before the cursor each run starts reading (spec 2.4).
-	outcomeOverlap = 5 * time.Minute
 	// defaultOutcomeSettleWindow is settle_days = 7 (spec 2.4). The workspace
 	// setting, 1 to 60 days, replaces it when the setting exists.
 	defaultOutcomeSettleWindow = 7 * 24 * time.Hour
@@ -53,13 +54,15 @@ type OutcomeService struct {
 	// Dossier files the lesson task of a seat whose outcome settles fail or partial (spec
 	// 9.2). Nil files none.
 	Dossier *DossierService
+	// testApplyErr is a test-only seam to inject a deterministic apply error for a transition.
+	testApplyErr func(r db.ListIssueTransitionsAfterCursorRow) error
 }
 
 func (s *OutcomeService) trackRecords() *TrackRecordService {
 	if s.TrackRecords != nil {
 		return s.TrackRecords
 	}
-	return &TrackRecordService{Queries: s.Queries, TxStarter: s.TxStarter}
+	return &TrackRecordService{Queries: s.Queries, TxStarter: s.TxStarter, Flags: s.Flags}
 }
 
 func (s *OutcomeService) enabled(ctx context.Context) bool {
@@ -73,14 +76,14 @@ func (s *OutcomeService) now() time.Time {
 	return time.Now()
 }
 
-// ProcessTransitions applies the transitions the cursor has not moved past, one
-// page per transaction, until none are left. It returns how many transitions it read.
+// ProcessTransitions applies unapplied transitions after the safe sequence cursor,
+// one page per transaction, until none are left. It returns how many transitions it read.
 //
-// A run starts outcomeOverlap before the cursor and reads forward by (created_at, id).
-// A transaction that commits after a later one was read can carry an earlier
-// created_at, and this overlap reads it. durable_outcome_applied keeps a rereading
-// from applying a transition twice. Transactions longer than outcomeOverlap can still
-// be skipped (spec 2.4; see the A2 report).
+// Each transition carries a monotonic seq assigned at insert. last_seq advances past
+// a sequence only once every transaction that could hold a lower sequence has ended
+// (tracked via Postgres snapshot xmin/xmax), so a long-running transaction that commits
+// late is never skipped regardless of how old its created_at is (V2.2).
+// durable_outcome_applied keeps every transition idempotent.
 func (s *OutcomeService) ProcessTransitions(ctx context.Context) (int, error) {
 	if !s.enabled(ctx) {
 		return 0, nil
@@ -89,47 +92,45 @@ func (s *OutcomeService) ProcessTransitions(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	after := outcomeEpochKey()
-	if found {
-		after = outcomeKey{At: pgtype.Timestamptz{Time: cursor.At.Time.Add(-outcomeOverlap), Valid: true}, ID: outcomeZeroID()}
+	// Retry recorded failures once per run before reading new transitions.
+	var retryAfter int64
+	for {
+		page, err := s.applyPage(ctx, retryAfter, outcomeKey{}, false, true)
+		if err != nil {
+			return 0, err
+		}
+		if page.read < outcomeBatchSize {
+			break
+		}
+		retryAfter = page.lastSeq
 	}
+	afterSeq := cursor.LastSeq
 	total := 0
 	for {
-		page, err := s.applyPage(ctx, after, cursor)
+		page, err := s.applyPage(ctx, afterSeq, cursor, found, false)
 		if err != nil {
 			return total, err
 		}
 		total += page.read
 		cursor = page.cursor
+		if page.read > 0 {
+			found = true
+		}
 		if page.read < outcomeBatchSize {
 			return total, nil
 		}
-		after = page.last
+		afterSeq = page.lastSeq
 	}
 }
 
-// outcomeKey orders transitions by (created_at, id), the order the job reads in.
+// outcomeKey tracks the sequence cursor and its snapshot barrier, plus the last
+// processed (created_at, id) for observability.
 type outcomeKey struct {
-	At pgtype.Timestamptz
-	ID pgtype.UUID
-}
-
-func outcomeEpochKey() outcomeKey {
-	return outcomeKey{At: pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, ID: outcomeZeroID()}
-}
-
-// outcomeZeroID is a valid, zero UUID. A NULL id would make the row comparison match
-// nothing.
-func outcomeZeroID() pgtype.UUID {
-	return pgtype.UUID{Valid: true}
-}
-
-// after reports whether a comes after b in (created_at, id) order.
-func (a outcomeKey) after(b outcomeKey) bool {
-	if !a.At.Time.Equal(b.At.Time) {
-		return a.At.Time.After(b.At.Time)
-	}
-	return bytes.Compare(a.ID.Bytes[:], b.ID.Bytes[:]) > 0
+	At          pgtype.Timestamptz
+	ID          pgtype.UUID
+	LastSeq     int64
+	PendingSeq  int64
+	PendingXmax int64
 }
 
 // readCursor returns the stored cursor. found is false before the first run that
@@ -138,7 +139,13 @@ func (s *OutcomeService) readCursor(ctx context.Context) (outcomeKey, bool, erro
 	cur, err := s.Queries.GetDurableOutcomeCursor(ctx, outcomeCursorName)
 	switch {
 	case err == nil:
-		return outcomeKey{At: cur.CreatedAt, ID: cur.TransitionID}, true, nil
+		return outcomeKey{
+			At:          cur.CreatedAt,
+			ID:          cur.TransitionID,
+			LastSeq:     cur.LastSeq,
+			PendingSeq:  cur.PendingSeq,
+			PendingXmax: cur.PendingXmax,
+		}, true, nil
 	case errors.Is(err, pgx.ErrNoRows):
 		return outcomeKey{}, false, nil
 	default:
@@ -148,15 +155,15 @@ func (s *OutcomeService) readCursor(ctx context.Context) (outcomeKey, bool, erro
 
 // outcomePage is the result of one transaction over a page of transitions.
 type outcomePage struct {
-	read   int        // transitions read in this page
-	last   outcomeKey // key of the last transition read, where the next page starts
-	cursor outcomeKey // the cursor after this page: the furthest transition read
+	read    int        // transitions read in this page
+	lastSeq int64      // seq of the last transition read, where the next page starts
+	cursor  outcomeKey // the cursor after this page
 }
 
-// applyPage reads one page after the key and applies each transition not yet in
-// durable_outcome_applied, moving the cursor to the furthest transition read. All of
-// it, including the cursor, commits or rolls back together.
-func (s *OutcomeService) applyPage(ctx context.Context, after, cursor outcomeKey) (outcomePage, error) {
+// applyPage reads one page of unapplied transitions after afterSeq and applies each
+// transition not yet in durable_outcome_applied, updating the sequence cursor once
+// snapshot bounds confirm no uncommitted lower sequence can still arrive.
+func (s *OutcomeService) applyPage(ctx context.Context, afterSeq int64, cursor outcomeKey, found bool, retry bool) (outcomePage, error) {
 	tx, err := s.TxStarter.Begin(ctx)
 	if err != nil {
 		return outcomePage{}, fmt.Errorf("begin outcome page: %w", err)
@@ -164,38 +171,84 @@ func (s *OutcomeService) applyPage(ctx context.Context, after, cursor outcomeKey
 	defer tx.Rollback(ctx)
 	q := s.Queries.WithTx(tx)
 
+	snapBefore, err := q.GetCurrentSnapshotBounds(ctx)
+	if err != nil {
+		return outcomePage{}, fmt.Errorf("read snapshot before transitions: %w", err)
+	}
 	rows, err := q.ListIssueTransitionsAfterCursor(ctx, db.ListIssueTransitionsAfterCursorParams{
-		AfterAt:  after.At,
-		AfterID:  after.ID,
-		RowLimit: outcomeBatchSize,
+		AfterSeq:    afterSeq,
+		RetryFailed: retry,
+		RowLimit:    outcomeBatchSize,
 	})
 	if err != nil {
 		return outcomePage{}, fmt.Errorf("list transitions: %w", err)
 	}
-	page := outcomePage{read: len(rows), cursor: cursor}
-	for _, r := range rows {
-		key := outcomeKey{At: r.CreatedAt, ID: r.ID}
-		if key.after(page.cursor) {
-			page.cursor = key
-		}
-		page.last = key
+	snapAfter, err := q.GetCurrentSnapshotBounds(ctx)
+	if err != nil {
+		return outcomePage{}, fmt.Errorf("read snapshot after transitions: %w", err)
+	}
 
+	page := outcomePage{read: len(rows), lastSeq: afterSeq, cursor: cursor}
+	for _, r := range rows {
+		if r.Seq > page.lastSeq {
+			page.lastSeq = r.Seq
+		}
+		if r.Seq > page.cursor.PendingSeq {
+			page.cursor.PendingSeq = r.Seq
+			page.cursor.PendingXmax = snapAfter.Xmax
+			page.cursor.At = r.CreatedAt
+			page.cursor.ID = r.ID
+		} else if !page.cursor.At.Valid {
+			page.cursor.At = r.CreatedAt
+			page.cursor.ID = r.ID
+		}
+
+		if _, err := tx.Exec(ctx, "SAVEPOINT outcome_transition"); err != nil {
+			return outcomePage{}, err
+		}
 		claimed, err := q.ClaimOutcomeTransition(ctx, r.ID)
+		if err == nil && claimed != 0 {
+			err = s.apply(ctx, q, r)
+		}
 		if err != nil {
-			return outcomePage{}, fmt.Errorf("claim transition %s: %w", util.UUIDToString(r.ID), err)
+			if _, rollbackErr := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT outcome_transition"); rollbackErr != nil {
+				return outcomePage{}, fmt.Errorf("rollback transition %s: %w", util.UUIDToString(r.ID), rollbackErr)
+			}
+			_, recordErr := tx.Exec(ctx, `INSERT INTO durable_outcome_applied (transition_id, status, attempts, last_error)
+				VALUES ($1, 'failed', 1, $2)
+				ON CONFLICT (transition_id) DO UPDATE SET
+				attempts = durable_outcome_applied.attempts + 1,
+				status = CASE WHEN durable_outcome_applied.attempts + 1 >= 3 THEN 'dead_letter' ELSE 'failed' END,
+				last_error = EXCLUDED.last_error
+				WHERE durable_outcome_applied.status = 'failed'`, r.ID, err.Error())
+			if recordErr != nil {
+				return outcomePage{}, fmt.Errorf("record transition failure %s: %w", util.UUIDToString(r.ID), recordErr)
+			}
+			slog.Error("outcome transition failed", "transition_id", util.UUIDToString(r.ID), "error", err)
 		}
-		if claimed == 0 {
-			continue
-		}
-		if err := s.apply(ctx, q, r); err != nil {
-			return outcomePage{}, fmt.Errorf("apply transition %s: %w", util.UUIDToString(r.ID), err)
+		if _, err := tx.Exec(ctx, "RELEASE SAVEPOINT outcome_transition"); err != nil {
+			return outcomePage{}, err
 		}
 	}
-	if page.read > 0 {
+
+	// Only advance last_seq once this is the final page of the run (no unapplied
+	// rows remain after afterSeq) and every transaction active when pending_seq was
+	// observed has ended.
+	if !retry && page.read < outcomeBatchSize && page.cursor.PendingSeq > page.cursor.LastSeq {
+		noConcurrentWriters := snapBefore.Xmin == snapBefore.Xmax && snapAfter.Xmin == snapAfter.Xmax
+		if noConcurrentWriters || snapBefore.Xmin >= page.cursor.PendingXmax {
+			page.cursor.LastSeq = page.cursor.PendingSeq
+		}
+	}
+
+	if !retry && (page.read > 0 || (found && page.cursor != cursor)) {
 		if err := q.UpsertDurableOutcomeCursor(ctx, db.UpsertDurableOutcomeCursorParams{
 			Name:         outcomeCursorName,
 			CreatedAt:    page.cursor.At,
 			TransitionID: page.cursor.ID,
+			LastSeq:      page.cursor.LastSeq,
+			PendingSeq:   page.cursor.PendingSeq,
+			PendingXmax:  page.cursor.PendingXmax,
 		}); err != nil {
 			return outcomePage{}, fmt.Errorf("move outcome cursor: %w", err)
 		}
@@ -210,6 +263,11 @@ func (s *OutcomeService) applyPage(ctx context.Context, after, cursor outcomeKey
 // outcome. Leaving done for an unfinished category reopens the current outcome,
 // and leaving done for cancelled reverts it. Any other change is not an outcome event.
 func (s *OutcomeService) apply(ctx context.Context, q *db.Queries, r db.ListIssueTransitionsAfterCursorRow) error {
+	if s.testApplyErr != nil {
+		if err := s.testApplyErr(r); err != nil {
+			return err
+		}
+	}
 	from := ""
 	if r.FromStatusKey.Valid {
 		from = LifecycleCategoryOf(r.FromCatalogCategory, r.FromStatusKey.String)
@@ -235,10 +293,17 @@ func (s *OutcomeService) apply(ctx context.Context, q *db.Queries, r db.ListIssu
 }
 
 func (s *OutcomeService) enterDone(ctx context.Context, q *db.Queries, r db.ListIssueTransitionsAfterCursorRow) error {
-	labels, err := q.ListIssueLabelNames(ctx, r.IssueID)
-	if err != nil {
-		return fmt.Errorf("list labels: %w", err)
+	if r.OutcomesDisabled {
+		return nil
 	}
+	settleWindow := defaultOutcomeSettleWindow
+	var settings struct {
+		SettleDays int `json:"settle_days"`
+	}
+	if json.Unmarshal(r.WorkspaceSettings, &settings) == nil && settings.SettleDays >= 1 && settings.SettleDays <= 60 {
+		settleWindow = time.Duration(settings.SettleDays) * 24 * time.Hour
+	}
+	labels := r.LabelNames
 	if slices.Contains(labels, outcomeSkipLabel) {
 		return nil
 	}
@@ -249,7 +314,7 @@ func (s *OutcomeService) enterDone(ctx context.Context, q *db.Queries, r db.List
 		WorkspaceID:      r.WorkspaceID,
 		IssueID:          r.IssueID,
 		DoneTransitionID: r.ID,
-		SettleAt:         pgtype.Timestamptz{Time: s.now().Add(defaultOutcomeSettleWindow), Valid: true},
+		SettleAt:         pgtype.Timestamptz{Time: s.now().Add(settleWindow), Valid: true},
 	}
 	// The doer is the issue's assignee. A member's outcome keeps no agent id, so it
 	// stays out of agent track records (spec 2.4).
@@ -280,6 +345,7 @@ func (s *OutcomeService) enterDone(ctx context.Context, q *db.Queries, r db.List
 		case err == nil:
 			params.RuntimeProvider = m.Provider
 			params.Model = m.Model
+			params.SquadID = m.HomeSquadID
 		case errors.Is(err, pgx.ErrNoRows):
 			// The agent is gone; the outcome keeps no model. Failing here would stall the cursor.
 		default:
@@ -374,6 +440,20 @@ func (s *OutcomeService) settleOne(ctx context.Context, o db.WorkOutcome, at pgt
 	defer tx.Rollback(ctx)
 	q := s.Queries.WithTx(tx)
 
+	fresh, err := q.LockWorkOutcomeForSettle(ctx, db.LockWorkOutcomeForSettleParams{
+		ID: o.ID, WorkspaceID: o.WorkspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("lock outcome %s: %w", util.UUIDToString(o.ID), err)
+	}
+	if fresh.SettledAt.Valid {
+		return 0, nil
+	}
+	o = fresh
+
 	results, notMet, err := s.criterionResults(ctx, q, o)
 	if err != nil {
 		return 0, err
@@ -398,7 +478,7 @@ func (s *OutcomeService) settleOne(ctx context.Context, o db.WorkOutcome, at pgt
 		// A settled high fail drops its squad one level in this transaction (spec 3.4).
 		settled := o
 		settled.Verdict, settled.Severity = v.Verdict, v.Severity
-		if err := (&EnvelopeService{Now: s.now}).OnHighFail(ctx, q, settled); err != nil {
+		if err := (&EnvelopeService{Now: s.now, Flags: s.Flags}).OnHighFail(ctx, q, settled); err != nil {
 			return 0, err
 		}
 	}

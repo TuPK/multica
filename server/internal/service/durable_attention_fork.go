@@ -380,6 +380,9 @@ func (s *AttentionService) Budget(ctx context.Context, ws pgtype.UUID) (Attentio
 
 // SetBudget saves the workspace's weekly budget and split, then reads it back.
 func (s *AttentionService) SetBudget(ctx context.Context, ws pgtype.UUID, minutesPerWeek int32, split string) (AttentionBudget, error) {
+	if !s.on(ctx) {
+		return AttentionBudget{}, ErrPrincipalDisabled
+	}
 	if minutesPerWeek < 0 || minutesPerWeek > attentionMaxMinutesPerWeek {
 		return AttentionBudget{}, ErrAttentionBudgetRange
 	}

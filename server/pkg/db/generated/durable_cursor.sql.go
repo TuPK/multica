@@ -11,30 +11,75 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getCurrentSnapshotBounds = `-- name: GetCurrentSnapshotBounds :one
+SELECT
+    pg_snapshot_xmin(pg_current_snapshot())::text::bigint AS xmin,
+    pg_snapshot_xmax(pg_current_snapshot())::text::bigint AS xmax
+`
+
+type GetCurrentSnapshotBoundsRow struct {
+	Xmin int64 `json:"xmin"`
+	Xmax int64 `json:"xmax"`
+}
+
+// Returns the current transaction snapshot's oldest active XID (xmin) and next
+// unassigned XID (xmax). Used to advance last_seq only once every transaction
+// that could hold a lower sequence number has committed or rolled back (V2.2).
+func (q *Queries) GetCurrentSnapshotBounds(ctx context.Context) (GetCurrentSnapshotBoundsRow, error) {
+	row := q.db.QueryRow(ctx, getCurrentSnapshotBounds)
+	var i GetCurrentSnapshotBoundsRow
+	err := row.Scan(&i.Xmin, &i.Xmax)
+	return i, err
+}
+
 const getDurableOutcomeCursor = `-- name: GetDurableOutcomeCursor :one
-SELECT name, created_at, transition_id, updated_at
+SELECT name, created_at, transition_id, last_seq, pending_seq, pending_xmax, updated_at
 FROM durable_outcome_cursor
 WHERE name = $1
 `
 
-func (q *Queries) GetDurableOutcomeCursor(ctx context.Context, name string) (DurableOutcomeCursor, error) {
+type GetDurableOutcomeCursorRow struct {
+	Name         string             `json:"name"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	TransitionID pgtype.UUID        `json:"transition_id"`
+	LastSeq      int64              `json:"last_seq"`
+	PendingSeq   int64              `json:"pending_seq"`
+	PendingXmax  int64              `json:"pending_xmax"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetDurableOutcomeCursor(ctx context.Context, name string) (GetDurableOutcomeCursorRow, error) {
 	row := q.db.QueryRow(ctx, getDurableOutcomeCursor, name)
-	var i DurableOutcomeCursor
+	var i GetDurableOutcomeCursorRow
 	err := row.Scan(
 		&i.Name,
 		&i.CreatedAt,
 		&i.TransitionID,
+		&i.LastSeq,
+		&i.PendingSeq,
+		&i.PendingXmax,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const upsertDurableOutcomeCursor = `-- name: UpsertDurableOutcomeCursor :exec
-INSERT INTO durable_outcome_cursor (name, created_at, transition_id, updated_at)
-VALUES ($1, $2, $3, now())
+INSERT INTO durable_outcome_cursor (name, created_at, transition_id, last_seq, pending_seq, pending_xmax, updated_at)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    now()
+)
 ON CONFLICT (name) DO UPDATE SET
     created_at = EXCLUDED.created_at,
     transition_id = EXCLUDED.transition_id,
+    last_seq = EXCLUDED.last_seq,
+    pending_seq = EXCLUDED.pending_seq,
+    pending_xmax = EXCLUDED.pending_xmax,
     updated_at = now()
 `
 
@@ -42,11 +87,21 @@ type UpsertDurableOutcomeCursorParams struct {
 	Name         string             `json:"name"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	TransitionID pgtype.UUID        `json:"transition_id"`
+	LastSeq      int64              `json:"last_seq"`
+	PendingSeq   int64              `json:"pending_seq"`
+	PendingXmax  int64              `json:"pending_xmax"`
 }
 
 // Moves the cursor. The job calls this in the transaction that wrote the outcomes
-// of the rows it read (durable spec 2.4).
+// of the rows it read (durable spec 2.4, V2.2).
 func (q *Queries) UpsertDurableOutcomeCursor(ctx context.Context, arg UpsertDurableOutcomeCursorParams) error {
-	_, err := q.db.Exec(ctx, upsertDurableOutcomeCursor, arg.Name, arg.CreatedAt, arg.TransitionID)
+	_, err := q.db.Exec(ctx, upsertDurableOutcomeCursor,
+		arg.Name,
+		arg.CreatedAt,
+		arg.TransitionID,
+		arg.LastSeq,
+		arg.PendingSeq,
+		arg.PendingXmax,
+	)
 	return err
 }

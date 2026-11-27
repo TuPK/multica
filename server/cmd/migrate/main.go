@@ -177,6 +177,7 @@ var concurrentIndexCleanups = map[string]string{
 	"1119_necessity_test_running_uidx":                          "necessity_test_running_uidx",
 	"1121_reach_snapshot_day_uidx":                              "reach_snapshot_day_uidx",
 	"1123_seat_offer_uidx":                                      "seat_offer_workspace_id_uidx",
+	"1127_issue_status_transition_seq_uidx":                     "issue_status_transition_seq_uidx",
 	"1101_principal_profile_uidx":                               "principal_profile_member_uidx",
 	"1102_principal_trait_member_idx":                           "principal_trait_member_kind_idx",
 	"1104_decision_prediction_subject_uidx":                     "decision_prediction_subject_uidx",

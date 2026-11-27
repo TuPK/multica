@@ -13,7 +13,7 @@ import (
 // tool's data.
 func (s *Service) ExecuteUndo(ctx context.Context, workspaceID, memberID pgtype.UUID, target string, spec UndoSpec) (map[string]any, error) {
 	toolkit := strings.SplitN(target, "/", 2)[0]
-	data, _, err := s.executeAs(ctx, workspaceID, memberID, toolkit, spec.Tool, spec.Args)
+	data, _, err := s.executeAs(ctx, workspaceID, memberID, toolkit, spec.Tool, "", spec.Args)
 	if err != nil {
 		return nil, fmt.Errorf("undo: %w", err)
 	}
@@ -21,9 +21,11 @@ func (s *Service) ExecuteUndo(ctx context.Context, workspaceID, memberID pgtype.
 }
 
 // executeAs runs one tool as memberID, through the account the gateway would pick for
-// them: a personal account when the app is personal, the team account otherwise. It
-// returns the tool's data and the connected account id it used.
-func (s *Service) executeAs(ctx context.Context, workspaceID, memberID pgtype.UUID, toolkit, tool string, args map[string]any) (map[string]any, string, error) {
+// them: a personal account when the app is personal, the team account otherwise. When
+// expectedAccountID is non-empty, it rejects with ErrIntentAccountChanged before
+// calling the provider if the resolved account differs. It returns the tool's data and
+// the connected account id it used.
+func (s *Service) executeAs(ctx context.Context, workspaceID, memberID pgtype.UUID, toolkit, tool, expectedAccountID string, args map[string]any) (map[string]any, string, error) {
 	slug := NormalizeSlug(toolkit)
 	app, _ := Curated(slug)
 	scope := app.Scope
@@ -33,6 +35,9 @@ func (s *Service) executeAs(ctx context.Context, workspaceID, memberID pgtype.UU
 	acct, err := s.resolveAccount(ctx, workspaceID, memberID, slug, scope)
 	if err != nil {
 		return nil, "", fmt.Errorf("resolve account: %w", err)
+	}
+	if expectedAccountID != "" && acct.connectedAccountID != expectedAccountID {
+		return nil, acct.connectedAccountID, ErrIntentAccountChanged
 	}
 	t, err := s.composio.GetTool(ctx, slug, tool)
 	if err != nil {

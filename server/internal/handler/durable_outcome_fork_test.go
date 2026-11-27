@@ -32,6 +32,7 @@ type outcomeFixture struct {
 
 func newOutcomeFixture(t *testing.T) outcomeFixture {
 	t.Helper()
+	withFeatureFlag(t, testHandler, featureflags.DurableOutcomes, true)
 	fx := newCompanyWorkspace(t)
 	wsfx := testutil.New(testPool, fx.ID, fx.Owner)
 	runtime := wsfx.Runtime(t, "outcome runtime")
@@ -277,5 +278,42 @@ func TestClaimBriefCarriesTheChecksNotTheVerdicts(t *testing.T) {
 	testHandler.applyDurableClaimBrief(ctx, doerTask, &resp)
 	if !strings.Contains(resp.Agent.Instructions, "Tiêu chí nghiệm thu của issue này") || strings.Contains(resp.Agent.Instructions, "multica outcome verify") {
 		t.Fatalf("doer briefing = %q, want the criteria and no verification brief", resp.Agent.Instructions)
+	}
+}
+
+func TestOutcomePrivateProjectVisibility(t *testing.T) {
+	o := newOutcomeFixture(t)
+	o.criterion(t, "Private criterion")
+	project := o.wsfx.Project(t, "Private outcome project", testutil.Cols{"visibility": "private"})
+	o.wsfx.Exec(t, `UPDATE issue SET project_id=$1 WHERE id=$2 AND workspace_id=$3`, project, o.issue, o.fx.ID)
+	o.wsfx.Exec(t, `INSERT INTO project_member (workspace_id, project_id, user_id) VALUES ($1,$2,$3)`, o.fx.ID, project, o.fx.Owner)
+	o.wsfx.Cleanup(t, `DELETE FROM project_member WHERE workspace_id=$1 AND project_id=$2`, o.fx.ID, project)
+	row := loadIssueRow(t, o.issue)
+	identifier := fmt.Sprintf("%s-%d", testHandler.getIssuePrefix(context.Background(), row.WorkspaceID), row.Number)
+	for _, ref := range []string{o.issue, identifier} {
+		for _, route := range []struct {
+			name    string
+			handler http.HandlerFunc
+		}{{"outcome", testHandler.GetIssueOutcome}, {"criteria", testHandler.ListIssueCriteria}} {
+			t.Run(ref+"/"+route.name, func(t *testing.T) {
+				path := "/api/issues/" + ref + "/" + route.name
+				req := testutil.WithURLParams(companyReq(o.fx.Member, o.fx.ID, http.MethodGet, path, nil), "id", ref)
+				testutil.Call(t, route.handler, req).WantOneOf(http.StatusForbidden, http.StatusNotFound)
+				req = testutil.WithURLParams(companyReq(o.fx.Owner, o.fx.ID, http.MethodGet, path, nil), "id", ref)
+				testutil.Call(t, route.handler, req).Want(http.StatusOK)
+			})
+		}
+	}
+	var hidden OutcomeListResponse
+	testutil.Call(t, testHandler.ListWorkOutcomes, companyReq(o.fx.Member, o.fx.ID, http.MethodGet, "/api/outcomes?agent_id="+o.doer, nil)).Want(http.StatusOK).JSON(&hidden)
+	for _, outcome := range hidden.Outcomes {
+		if outcome.ID == o.outcome {
+			t.Errorf("private outcome %s appeared in non-member list", o.outcome)
+		}
+	}
+	var visible OutcomeListResponse
+	testutil.Call(t, testHandler.ListWorkOutcomes, companyReq(o.fx.Owner, o.fx.ID, http.MethodGet, "/api/outcomes?agent_id="+o.doer, nil)).Want(http.StatusOK).JSON(&visible)
+	if len(visible.Outcomes) != 1 || visible.Outcomes[0].ID != o.outcome {
+		t.Errorf("project member outcomes = %+v, want %s", visible.Outcomes, o.outcome)
 	}
 }

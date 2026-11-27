@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/multica-ai/multica/server/internal/connectedapps"
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // policyStoreFixture returns a store on the fixture's pool, with the workspace's
@@ -17,7 +19,9 @@ func policyStoreFixture(t *testing.T) (*EffectPolicyStore, principalFixture) {
 	f, _ := companyWorkspace(t)
 	f.Cleanup(t, `DELETE FROM effect_policy_override WHERE workspace_id = $1`, f.WorkspaceID)
 	f.Cleanup(t, `DELETE FROM governance_event WHERE workspace_id = $1`, f.WorkspaceID)
-	return &EffectPolicyStore{Queries: db.New(f.Pool), TxStarter: f.Pool}, f
+	provider := featureflag.NewStaticProvider()
+	provider.Set(featureflags.DurableEffects, featureflag.Rule{Default: true})
+	return &EffectPolicyStore{Queries: db.New(f.Pool), TxStarter: f.Pool, Flags: featureflag.NewService(provider)}, f
 }
 
 // TestEffectPolicyOverrideSavedAndRead: a stricter override is accepted, stored

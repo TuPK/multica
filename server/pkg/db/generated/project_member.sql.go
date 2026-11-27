@@ -744,7 +744,7 @@ func (q *Queries) TouchProjectSearchIndexEntries(ctx context.Context, arg TouchP
 const updateProjectVisibility = `-- name: UpdateProjectVisibility :one
 UPDATE project SET visibility = $1, updated_at = now()
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type UpdateProjectVisibilityParams struct {
@@ -769,6 +769,7 @@ func (q *Queries) UpdateProjectVisibility(ctx context.Context, arg UpdateProject
 		&i.UpdatedAt,
 		&i.Priority,
 		&i.Access,
+		&i.OutcomesDisabled,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,

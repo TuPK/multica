@@ -18,7 +18,7 @@ UPDATE project SET
     archived_by_id = $4,
     updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type ArchiveProjectParams struct {
@@ -51,6 +51,7 @@ func (q *Queries) ArchiveProject(ctx context.Context, arg ArchiveProjectParams) 
 		&i.UpdatedAt,
 		&i.Priority,
 		&i.Access,
+		&i.OutcomesDisabled,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -71,7 +72,7 @@ UPDATE project SET squad_ids = array_remove(squad_ids, $1::uuid), updated_at = n
 WHERE project.workspace_id = $2
   AND $1::uuid = ANY(project.squad_ids) AND project.id <> $3
   AND ($4::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($4::uuid[])))
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type ClearSquadFromOtherProjectsParams struct {
@@ -110,6 +111,7 @@ func (q *Queries) ClearSquadFromOtherProjects(ctx context.Context, arg ClearSqua
 			&i.UpdatedAt,
 			&i.Priority,
 			&i.Access,
+			&i.OutcomesDisabled,
 			&i.StartDate,
 			&i.DueDate,
 			&i.WorkflowID,
@@ -136,7 +138,7 @@ const clearSquadProjects = `-- name: ClearSquadProjects :many
 UPDATE project SET squad_ids = array_remove(squad_ids, $1::uuid), updated_at = now()
 WHERE project.workspace_id = $2 AND $1::uuid = ANY(project.squad_ids)
   AND ($3::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type ClearSquadProjectsParams struct {
@@ -169,6 +171,7 @@ func (q *Queries) ClearSquadProjects(ctx context.Context, arg ClearSquadProjects
 			&i.UpdatedAt,
 			&i.Priority,
 			&i.Access,
+			&i.OutcomesDisabled,
 			&i.StartDate,
 			&i.DueDate,
 			&i.WorkflowID,
@@ -217,7 +220,7 @@ INSERT INTO project (
     creator_type, creator_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
-) RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+) RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type CreateProjectParams struct {
@@ -264,6 +267,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.UpdatedAt,
 		&i.Priority,
 		&i.Access,
+		&i.OutcomesDisabled,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -295,7 +299,7 @@ func (q *Queries) DeleteProject(ctx context.Context, arg DeleteProjectParams) er
 }
 
 const getOpenSquadProject = `-- name: GetOpenSquadProject :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE workspace_id = $1
   AND $2::uuid = ANY(squad_ids) AND id <> $3
   AND status NOT IN ('completed', 'cancelled')
@@ -325,6 +329,7 @@ func (q *Queries) GetOpenSquadProject(ctx context.Context, arg GetOpenSquadProje
 		&i.UpdatedAt,
 		&i.Priority,
 		&i.Access,
+		&i.OutcomesDisabled,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -341,7 +346,7 @@ func (q *Queries) GetOpenSquadProject(ctx context.Context, arg GetOpenSquadProje
 }
 
 const getProjectInWorkspace = `-- name: GetProjectInWorkspace :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -366,6 +371,7 @@ func (q *Queries) GetProjectInWorkspace(ctx context.Context, arg GetProjectInWor
 		&i.UpdatedAt,
 		&i.Priority,
 		&i.Access,
+		&i.OutcomesDisabled,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -645,7 +651,7 @@ func (q *Queries) ListProjectProgressIssues(ctx context.Context, arg ListProject
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE workspace_id = $1
   AND ($2::text IS NULL OR status = $2)
   AND ($3::text IS NULL OR priority = $3)
@@ -687,6 +693,7 @@ func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]P
 			&i.UpdatedAt,
 			&i.Priority,
 			&i.Access,
+			&i.OutcomesDisabled,
 			&i.StartDate,
 			&i.DueDate,
 			&i.WorkflowID,
@@ -710,7 +717,7 @@ func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]P
 }
 
 const listProjectsForSquad = `-- name: ListProjectsForSquad :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE workspace_id = $1::uuid
   AND $2::uuid = ANY(squad_ids)
 AND ($3::uuid[] IS NULL OR NOT (COALESCE(project.id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($3::uuid[])))
@@ -748,6 +755,7 @@ func (q *Queries) ListProjectsForSquad(ctx context.Context, arg ListProjectsForS
 			&i.UpdatedAt,
 			&i.Priority,
 			&i.Access,
+			&i.OutcomesDisabled,
 			&i.StartDate,
 			&i.DueDate,
 			&i.WorkflowID,
@@ -811,7 +819,7 @@ func (q *Queries) LockProjectForDelete(ctx context.Context, arg LockProjectForDe
 }
 
 const lockProjectForSquadChange = `-- name: LockProjectForSquadChange :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids FROM project
 WHERE id = $1::uuid
   AND workspace_id = $2::uuid
 FOR UPDATE
@@ -840,6 +848,7 @@ func (q *Queries) LockProjectForSquadChange(ctx context.Context, arg LockProject
 		&i.UpdatedAt,
 		&i.Priority,
 		&i.Access,
+		&i.OutcomesDisabled,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -862,7 +871,7 @@ UPDATE project SET
     archived_by_id = NULL,
     updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND archived_at IS NOT NULL
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type RestoreProjectParams struct {
@@ -886,6 +895,7 @@ func (q *Queries) RestoreProject(ctx context.Context, arg RestoreProjectParams) 
 		&i.UpdatedAt,
 		&i.Priority,
 		&i.Access,
+		&i.OutcomesDisabled,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -904,7 +914,7 @@ func (q *Queries) RestoreProject(ctx context.Context, arg RestoreProjectParams) 
 const setProjectSquadIDs = `-- name: SetProjectSquadIDs :one
 UPDATE project SET squad_ids = $1::uuid[], updated_at = now()
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type SetProjectSquadIDsParams struct {
@@ -930,6 +940,7 @@ func (q *Queries) SetProjectSquadIDs(ctx context.Context, arg SetProjectSquadIDs
 		&i.UpdatedAt,
 		&i.Priority,
 		&i.Access,
+		&i.OutcomesDisabled,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -947,42 +958,45 @@ func (q *Queries) SetProjectSquadIDs(ctx context.Context, arg SetProjectSquadIDs
 
 const updateProject = `-- name: UpdateProject :one
 UPDATE project SET
-    title = COALESCE($2, title),
-    description = CASE WHEN $3::boolean THEN $4 ELSE description END,
-    icon = CASE WHEN $5::boolean THEN $6 ELSE icon END,
-    status = COALESCE($7, status),
-    priority = COALESCE($8, priority),
-    lead_type = CASE WHEN $9::boolean THEN $10 ELSE lead_type END,
-    lead_id = CASE WHEN $11::boolean THEN $12 ELSE lead_id END,
-    start_date = CASE WHEN $13::boolean THEN $14 ELSE start_date END,
-    due_date = CASE WHEN $15::boolean THEN $16 ELSE due_date END,
+    outcomes_disabled = COALESCE($2::boolean, outcomes_disabled),
+    title = COALESCE($3, title),
+    description = CASE WHEN $4::boolean THEN $5 ELSE description END,
+    icon = CASE WHEN $6::boolean THEN $7 ELSE icon END,
+    status = COALESCE($8, status),
+    priority = COALESCE($9, priority),
+    lead_type = CASE WHEN $10::boolean THEN $11 ELSE lead_type END,
+    lead_id = CASE WHEN $12::boolean THEN $13 ELSE lead_id END,
+    start_date = CASE WHEN $14::boolean THEN $15 ELSE start_date END,
+    due_date = CASE WHEN $16::boolean THEN $17 ELSE due_date END,
     updated_at = now()
 WHERE id = $1
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, outcomes_disabled, start_date, due_date, workflow_id, creator_type, creator_id, visibility, archived_at, archived_by_type, archived_by_id, folder_id, squad_ids
 `
 
 type UpdateProjectParams struct {
-	ID             pgtype.UUID `json:"id"`
-	Title          pgtype.Text `json:"title"`
-	DescriptionSet bool        `json:"description_set"`
-	Description    pgtype.Text `json:"description"`
-	IconSet        bool        `json:"icon_set"`
-	Icon           pgtype.Text `json:"icon"`
-	Status         pgtype.Text `json:"status"`
-	Priority       pgtype.Text `json:"priority"`
-	LeadTypeSet    bool        `json:"lead_type_set"`
-	LeadType       pgtype.Text `json:"lead_type"`
-	LeadIDSet      bool        `json:"lead_id_set"`
-	LeadID         pgtype.UUID `json:"lead_id"`
-	StartDateSet   bool        `json:"start_date_set"`
-	StartDate      pgtype.Date `json:"start_date"`
-	DueDateSet     bool        `json:"due_date_set"`
-	DueDate        pgtype.Date `json:"due_date"`
+	ID               pgtype.UUID `json:"id"`
+	OutcomesDisabled pgtype.Bool `json:"outcomes_disabled"`
+	Title            pgtype.Text `json:"title"`
+	DescriptionSet   bool        `json:"description_set"`
+	Description      pgtype.Text `json:"description"`
+	IconSet          bool        `json:"icon_set"`
+	Icon             pgtype.Text `json:"icon"`
+	Status           pgtype.Text `json:"status"`
+	Priority         pgtype.Text `json:"priority"`
+	LeadTypeSet      bool        `json:"lead_type_set"`
+	LeadType         pgtype.Text `json:"lead_type"`
+	LeadIDSet        bool        `json:"lead_id_set"`
+	LeadID           pgtype.UUID `json:"lead_id"`
+	StartDateSet     bool        `json:"start_date_set"`
+	StartDate        pgtype.Date `json:"start_date"`
+	DueDateSet       bool        `json:"due_date_set"`
+	DueDate          pgtype.Date `json:"due_date"`
 }
 
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error) {
 	row := q.db.QueryRow(ctx, updateProject,
 		arg.ID,
+		arg.OutcomesDisabled,
 		arg.Title,
 		arg.DescriptionSet,
 		arg.Description,
@@ -1013,6 +1027,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.UpdatedAt,
 		&i.Priority,
 		&i.Access,
+		&i.OutcomesDisabled,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,

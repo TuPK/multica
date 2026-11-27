@@ -357,6 +357,9 @@ func (s *EnvelopeService) Get(ctx context.Context, ws, squadID pgtype.UUID) (Env
 // the actor is recorded). A level the squad holds outside the new envelope is moved to the
 // nearest bound in the same transaction, as the boss's own change.
 func (s *EnvelopeService) Set(ctx context.Context, ws, squadID pgtype.UUID, floor, ceiling int, reason string, actor GovernanceActor) (EnvelopeView, error) {
+	if !featureflags.DurableOutcomesEnabled(ctx, s.Flags) {
+		return EnvelopeView{}, ErrOutcomesOff
+	}
 	reason = strings.TrimSpace(reason)
 	if floor < 0 || ceiling > 3 || floor > ceiling {
 		return EnvelopeView{}, ErrEnvelopeInvalid
@@ -398,6 +401,9 @@ func (s *EnvelopeService) Set(ctx context.Context, ws, squadID pgtype.UUID, floo
 // Clear removes a squad's envelope. The squad keeps its level and no longer moves by
 // itself.
 func (s *EnvelopeService) Clear(ctx context.Context, ws, squadID pgtype.UUID, actor GovernanceActor) error {
+	if !featureflags.DurableOutcomesEnabled(ctx, s.Flags) {
+		return ErrOutcomesOff
+	}
 	return s.inTx(ctx, func(q *db.Queries) error {
 		if err := requireGovernanceBoss(ctx, q, ws, actor); err != nil {
 			return err

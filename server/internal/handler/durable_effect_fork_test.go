@@ -250,3 +250,80 @@ func TestListEffectsFilters(t *testing.T) {
 		}
 	}
 }
+
+func TestUndoConcurrentClaimsBeforeCallingTool(t *testing.T) {
+	withGmailDraftTools(t)
+	f := effectsOnFixture(t)
+	id := seedGmailDraftEffect(t, f, time.Now().Add(time.Hour), true)
+	entered := make(chan struct{}, 2)
+	release := make(chan struct{})
+	f.sdk.beforeExecuteTool = func() { entered <- struct{}{}; <-release }
+	reqs := []*http.Request{effectUndoRequest(t, id, testUserID), effectUndoRequest(t, id, testUserID)}
+	responses := make(chan int, 2)
+	run := func(req *http.Request) { w := httptest.NewRecorder(); f.h.UndoEffect(w, req); responses <- w.Code }
+	go run(reqs[0])
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		close(release)
+		t.Fatal("first undo did not reach the provider")
+	}
+	go run(reqs[1])
+	// The second call must finish with a conflict while the first is still in the provider.
+	var second int
+	select {
+	case second = <-responses:
+	case <-entered:
+	case <-time.After(5 * time.Second):
+	}
+	close(release)
+	if second == 0 {
+		second = <-responses
+	}
+	first := <-responses
+	if !((first == http.StatusOK && second == http.StatusConflict) || (second == http.StatusOK && first == http.StatusConflict)) {
+		t.Errorf("undo statuses = %d, %d; want one 200 and one 409", first, second)
+	}
+	if n := len(f.sdk.executions()); n != 1 {
+		t.Errorf("provider calls = %d, want 1", n)
+	}
+}
+
+func TestUndoFlagOffDoesNotCallProvider(t *testing.T) {
+	withGmailDraftTools(t)
+	f := effectsOnFixture(t)
+	id := seedGmailDraftEffect(t, f, time.Now().Add(time.Hour), true)
+	off := featureflag.NewStaticProvider()
+	off.Set(featureflags.DurableEffects, featureflag.Rule{Default: false})
+	f.h.Effects = &service.EffectService{Queries: testHandler.Queries, Flags: featureflag.NewService(off)}
+	f.h.FeatureFlags = featureflag.NewService(off)
+	w := httptest.NewRecorder()
+	f.h.UndoEffect(w, effectUndoRequest(t, id, testUserID))
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("undo status = %d, want 503: %s", w.Code, w.Body.String())
+	}
+	if n := len(f.sdk.executions()); n != 0 {
+		t.Errorf("provider calls = %d, want 0", n)
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE id=$1 AND status='executed'`, id); n != 1 {
+		t.Error("effect did not remain executed")
+	}
+}
+
+func TestUndoProviderFailureLeavesEffectExecuted(t *testing.T) {
+	withGmailDraftTools(t)
+	f := effectsOnFixture(t)
+	id := seedGmailDraftEffect(t, f, time.Now().Add(time.Hour), true)
+	f.sdk.toolError = "provider failed"
+	w := httptest.NewRecorder()
+	f.h.UndoEffect(w, effectUndoRequest(t, id, testUserID))
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("undo status = %d, want 502", w.Code)
+	}
+	if n := len(f.sdk.executions()); n != 1 {
+		t.Errorf("provider calls = %d, want 1", n)
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE id=$1 AND status='executed'`, id); n != 1 {
+		t.Error("effect did not remain executed")
+	}
+}

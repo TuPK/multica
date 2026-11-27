@@ -146,7 +146,8 @@ func (h *Handler) outcomeCallerFor(w http.ResponseWriter, r *http.Request, works
 func (h *Handler) outcomeService() *service.VerificationService {
 	return &service.VerificationService{
 		Queries: h.Queries, TxStarter: h.TxStarter, Tasks: h.TaskService,
-		Jury: service.NewJuryService(h.Queries, h.TxStarter, h.TaskService),
+		Jury:  service.NewJuryService(h.Queries, h.TxStarter, h.TaskService),
+		Flags: h.FeatureFlags,
 	}
 }
 
@@ -174,6 +175,7 @@ func writeOutcomeError(w http.ResponseWriter, err error) bool {
 		{service.ErrNotVerificationTask, mapped{http.StatusForbidden, "not_verification_task"}},
 		{service.ErrTrackModeInvalid, mapped{http.StatusBadRequest, "verification_mode_invalid"}},
 		{service.ErrTrackAgentNotFound, mapped{http.StatusNotFound, "agent_not_found"}},
+		{service.ErrOutcomesOff, mapped{http.StatusServiceUnavailable, "durable_outcomes_off"}},
 	}
 	for _, row := range table {
 		if errors.Is(err, row.target) {
@@ -261,38 +263,10 @@ func timestampPtr(t pgtype.Timestamptz) *string {
 	return &s
 }
 
-// issueForOutcomeRoute loads the issue named in the path, by id or identifier.
-func (h *Handler) issueForOutcomeRoute(w http.ResponseWriter, r *http.Request, workspaceID string) (db.Issue, bool) {
-	raw := chi.URLParam(r, "id")
-	issue, found, err := h.resolveIssueByIdentifier(r.Context(), raw, workspaceID)
-	if writeQueryCancellation(w, r, err) {
-		return db.Issue{}, false
-	}
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to load issue")
-		return db.Issue{}, false
-	}
-	if found {
-		return issue, true
-	}
-	id, ok := parseUUIDOrBadRequest(w, raw, "issue id")
-	if !ok {
-		return db.Issue{}, false
-	}
-	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
-	if !ok {
-		return db.Issue{}, false
-	}
-	issue, err = h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: id, WorkspaceID: wsUUID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		writeError(w, http.StatusNotFound, "issue not found")
-		return db.Issue{}, false
-	}
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to load issue")
-		return db.Issue{}, false
-	}
-	return issue, true
+// issueForOutcomeRoute loads the issue named in the path, by id or identifier,
+// enforcing project visibility through loadIssueForUser.
+func (h *Handler) issueForOutcomeRoute(w http.ResponseWriter, r *http.Request, _ string) (db.Issue, bool) {
+	return h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
 }
 
 // ListWorkOutcomes returns outcomes newest first, filtered and paged by cursor.
@@ -305,8 +279,16 @@ func (h *Handler) ListWorkOutcomes(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	hidden, ok := h.requestHiddenProjects(w, r, workspaceID)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
-	params := db.ListWorkOutcomesParams{WorkspaceID: wsUUID, RowLimit: outcomePageDefault}
+	params := db.ListWorkOutcomesParams{
+		WorkspaceID:      wsUUID,
+		HiddenProjectIds: hidden.Param(),
+		RowLimit:         outcomePageDefault,
+	}
 	for name, dst := range map[string]*pgtype.UUID{"agent_id": &params.AgentID, "squad_id": &params.SquadID} {
 		if raw := q.Get(name); raw != "" {
 			id, ok := parseUUIDOrBadRequest(w, raw, name)
@@ -416,6 +398,9 @@ func (h *Handler) GetWorkOutcome(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		writeOutcomeFailure(w, r, "read outcome", err)
+		return
+	}
+	if !h.requireIssueIDVisible(w, r, workspaceID, o.IssueID, http.StatusNotFound, "outcome not found") {
 		return
 	}
 	checks, err := h.Queries.ListOutcomeVerifications(r.Context(), db.ListOutcomeVerificationsParams{OutcomeID: id, WorkspaceID: wsUUID})
@@ -592,6 +577,14 @@ func (h *Handler) RecordOutcomeVerification(w http.ResponseWriter, r *http.Reque
 	if !decodeInitiativeBody(w, r, &req) {
 		return
 	}
+	if o, err := h.Queries.GetWorkOutcomeInWorkspace(r.Context(), db.GetWorkOutcomeInWorkspaceParams{ID: outcomeID, WorkspaceID: wsUUID}); err == nil {
+		if !h.requireIssueIDVisible(w, r, workspaceID, o.IssueID, http.StatusNotFound, "outcome not found") {
+			return
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		writeOutcomeFailure(w, r, "read outcome", err)
+		return
+	}
 	in := service.VerificationInput{
 		Result: req.Result, Severity: req.Severity, Note: req.Note, Evidence: req.Evidence, TaskID: caller.task,
 	}
@@ -644,6 +637,14 @@ func (h *Handler) OverrideOutcome(w http.ResponseWriter, r *http.Request) {
 	if !decodeInitiativeBody(w, r, &req) {
 		return
 	}
+	if o, err := h.Queries.GetWorkOutcomeInWorkspace(r.Context(), db.GetWorkOutcomeInWorkspaceParams{ID: outcomeID, WorkspaceID: wsUUID}); err == nil {
+		if !h.requireIssueIDVisible(w, r, workspaceID, o.IssueID, http.StatusNotFound, "outcome not found") {
+			return
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		writeOutcomeFailure(w, r, "read outcome", err)
+		return
+	}
 	o, err := h.outcomeService().Override(r.Context(), wsUUID, caller.actor, outcomeID, service.VerificationInput{
 		Result: req.Result, Severity: req.Severity, Note: req.Note,
 	})
@@ -684,8 +685,13 @@ func (h *Handler) SummarizeWorkOutcomes(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "period must be week or month")
 		return
 	}
+	hidden, ok := h.requestHiddenProjects(w, r, workspaceID)
+	if !ok {
+		return
+	}
 	rows, err := h.Queries.SummarizeWorkOutcomes(r.Context(), db.SummarizeWorkOutcomesParams{
 		GroupBy: groupBy, WorkspaceID: wsUUID, Since: pgtype.Timestamptz{Time: time.Now().Add(-window), Valid: true},
+		HiddenProjectIds: hidden.Param(),
 	})
 	if err != nil {
 		writeOutcomeFailure(w, r, "summarize outcomes", err)

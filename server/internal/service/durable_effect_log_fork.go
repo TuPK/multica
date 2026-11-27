@@ -37,6 +37,7 @@ const (
 	effectPolicyCacheTTL = 60 * time.Second
 	effectTargetMax      = 300
 	effectSummaryMax     = 500
+	effectResultMaxBytes = 64 << 10
 )
 
 // EffectService decides and logs effects (durable spec 4.3 and 4.4). The gateway and
@@ -128,6 +129,12 @@ func (s *EffectService) Gate(ctx context.Context, in EffectInput) (EffectDecisio
 // longer awaiting returns ErrEffectSettled. An invalid event id, which the gate
 // returns while the flag is off, is a no-op.
 func (s *EffectService) Finish(ctx context.Context, workspaceID, eventID pgtype.UUID, outcome string, undo *connectedapps.UndoSpec) error {
+	return s.FinishWithResult(ctx, workspaceID, eventID, outcome, undo, nil)
+}
+
+// FinishWithResult settles an awaiting event and, on executed, also stores the
+// provider result payload on the effect event.
+func (s *EffectService) FinishWithResult(ctx context.Context, workspaceID, eventID pgtype.UUID, outcome string, undo *connectedapps.UndoSpec, result map[string]any) error {
 	if !eventID.Valid {
 		return nil
 	}
@@ -148,6 +155,13 @@ func (s *EffectService) Finish(ctx context.Context, workspaceID, eventID pgtype.
 		}
 		params.Undo = raw
 		params.UndoUntil = pgtype.Timestamptz{Time: s.now().Add(effectUndoWindow), Valid: true}
+	}
+	if result != nil && outcome == "executed" {
+		raw, err := json.Marshal(result)
+		if err != nil || len(raw) > effectResultMaxBytes {
+			raw = []byte(`{"truncated":true}`)
+		}
+		params.Result = raw
 	}
 	n, err := s.Queries.FinishEffectEvent(ctx, params)
 	if err != nil {

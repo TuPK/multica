@@ -74,5 +74,5 @@ func (h *Handler) advanceFlowAfterRun(ctx context.Context, task *db.AgentTaskQue
 	if err != nil || !issue.FlowTask.Valid || !issue.ParentIssueID.Valid {
 		return
 	}
-	h.advanceFlowRequests(ctx, projectaccess.Hidden{}, issue.ParentIssueID)
+	h.advanceFlowRequests(withFlowTaskActorContext(ctx, task), projectaccess.Hidden{}, issue.ParentIssueID)
 }
