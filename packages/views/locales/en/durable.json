@@ -344,6 +344,38 @@
       "not_losing_lower": "Not-losing lower bound: {{percent}}",
       "primary_cost_avg": "Primary avg cost: {{amount}}",
       "shadow_cost_avg": "Shadow avg cost: {{amount}}"
+    },
+    "necessity": {
+      "title": "Necessity tests",
+      "loading": "Loading necessity tests...",
+      "load_failed": "Could not load necessity tests.",
+      "empty": "No necessity tests yet.",
+      "start": "Start necessity test",
+      "state": {
+        "running": "Running",
+        "not_needed": "Not needed",
+        "needed": "Needed",
+        "inconclusive": "Inconclusive",
+        "stopped": "Stopped"
+      },
+      "pairs_count": "Pairs: {{count}}",
+      "wins_count": "Wins: {{count}}",
+      "losses_count": "Losses: {{count}}",
+      "waiting_for_decision": "Waiting for a person's decision",
+      "dialog_title": "Start necessity test",
+      "dialog_note": "A test runs the seat's work without the skill in a shadow trial, and the skill is removed only after a person approves the proposal.",
+      "skill_label": "Skill",
+      "skill_placeholder": "Select a skill",
+      "skills_loading": "Loading skills...",
+      "skills_load_failed": "Could not load the seat's skills.",
+      "skills_empty": "This seat has no skills to test.",
+      "submit": "Start test",
+      "cancel": "Cancel",
+      "started": "Necessity test started.",
+      "error_running": "A necessity test for this skill is already running.",
+      "error_shadow_running": "A shadow trial is already running on this seat.",
+      "error_invalid": "This skill cannot be tested on this seat.",
+      "error_failed": "Could not start the necessity test."
     }
   }
 }

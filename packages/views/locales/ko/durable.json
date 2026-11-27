@@ -343,6 +343,38 @@
       "not_losing_lower": "비열위 하한: {{percent}}",
       "primary_cost_avg": "기본 평균 비용: {{amount}}",
       "shadow_cost_avg": "섀도우 평균 비용: {{amount}}"
+    },
+    "necessity": {
+      "title": "필요성 테스트",
+      "loading": "필요성 테스트 불러오는 중...",
+      "load_failed": "필요성 테스트를 불러오지 못했습니다.",
+      "empty": "아직 필요성 테스트가 없습니다.",
+      "start": "필요성 테스트 시작",
+      "state": {
+        "running": "실행 중",
+        "not_needed": "불필요",
+        "needed": "필요",
+        "inconclusive": "판정 보류",
+        "stopped": "중지됨"
+      },
+      "pairs_count": "쌍: {{count}}",
+      "wins_count": "승: {{count}}",
+      "losses_count": "패: {{count}}",
+      "waiting_for_decision": "사람의 결정을 기다리는 중",
+      "dialog_title": "필요성 테스트 시작",
+      "dialog_note": "이 테스트는 해당 skill 없이 좌석의 작업을 섀도우 시험으로 실행하며, 사람이 제안을 승인한 뒤에만 skill을 제거합니다.",
+      "skill_label": "Skill",
+      "skill_placeholder": "skill 선택",
+      "skills_loading": "skill 불러오는 중...",
+      "skills_load_failed": "이 좌석의 skill을 불러오지 못했습니다.",
+      "skills_empty": "이 좌석에 테스트할 skill이 없습니다.",
+      "submit": "테스트 시작",
+      "cancel": "취소",
+      "started": "필요성 테스트를 시작했습니다.",
+      "error_running": "이 skill에 대한 필요성 테스트가 이미 실행 중입니다.",
+      "error_shadow_running": "이 좌석에서 이미 섀도우 시험이 실행 중입니다.",
+      "error_invalid": "이 좌석에서는 해당 skill을 테스트할 수 없습니다.",
+      "error_failed": "필요성 테스트를 시작하지 못했습니다."
     }
   }
 }

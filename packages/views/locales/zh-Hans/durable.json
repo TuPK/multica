@@ -343,6 +343,38 @@
       "not_losing_lower": "不败率下界：{{percent}}",
       "primary_cost_avg": "主席位均价：{{amount}}",
       "shadow_cost_avg": "影子均价：{{amount}}"
+    },
+    "necessity": {
+      "title": "必要性测试",
+      "loading": "正在加载必要性测试...",
+      "load_failed": "无法加载必要性测试。",
+      "empty": "还没有必要性测试。",
+      "start": "发起必要性测试",
+      "state": {
+        "running": "运行中",
+        "not_needed": "无需保留",
+        "needed": "需要保留",
+        "inconclusive": "尚无结论",
+        "stopped": "已停止"
+      },
+      "pairs_count": "对比组数：{{count}}",
+      "wins_count": "胜：{{count}}",
+      "losses_count": "负：{{count}}",
+      "waiting_for_decision": "等待人工决定",
+      "dialog_title": "发起必要性测试",
+      "dialog_note": "测试会在影子试跑中不加载该 skill 执行席位的工作，且仅在人工批准提案后才会移除该 skill。",
+      "skill_label": "Skill",
+      "skill_placeholder": "选择 skill",
+      "skills_loading": "正在加载 skill...",
+      "skills_load_failed": "无法加载该席位的 skill。",
+      "skills_empty": "该席位没有可测试的 skill。",
+      "submit": "开始测试",
+      "cancel": "取消",
+      "started": "已发起必要性测试。",
+      "error_running": "该 skill 已有正在运行的必要性测试。",
+      "error_shadow_running": "该席位已有正在运行的影子试跑。",
+      "error_invalid": "该 skill 无法在此席位上测试。",
+      "error_failed": "无法发起必要性测试。"
     }
   }
 }

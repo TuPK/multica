@@ -343,6 +343,38 @@
       "not_losing_lower": "非劣性下限: {{percent}}",
       "primary_cost_avg": "現行平均コスト: {{amount}}",
       "shadow_cost_avg": "シャドウ平均コスト: {{amount}}"
+    },
+    "necessity": {
+      "title": "必要性テスト",
+      "loading": "必要性テストを読み込み中...",
+      "load_failed": "必要性テストを読み込めませんでした。",
+      "empty": "必要性テストはまだありません。",
+      "start": "必要性テストを開始",
+      "state": {
+        "running": "実行中",
+        "not_needed": "不要",
+        "needed": "必要",
+        "inconclusive": "判定不能",
+        "stopped": "停止済み"
+      },
+      "pairs_count": "ペア: {{count}}",
+      "wins_count": "勝ち: {{count}}",
+      "losses_count": "負け: {{count}}",
+      "waiting_for_decision": "人の判断を待っています",
+      "dialog_title": "必要性テストを開始",
+      "dialog_note": "このテストは対象の skill を外した状態でシートの作業をシャドウ試行し、人が提案を承認した場合にのみ skill を削除します。",
+      "skill_label": "Skill",
+      "skill_placeholder": "skill を選択",
+      "skills_loading": "skill を読み込み中...",
+      "skills_load_failed": "このシートの skill を読み込めませんでした。",
+      "skills_empty": "このシートにはテストできる skill がありません。",
+      "submit": "テストを開始",
+      "cancel": "キャンセル",
+      "started": "必要性テストを開始しました。",
+      "error_running": "この skill の必要性テストはすでに実行中です。",
+      "error_shadow_running": "このシートではすでにシャドウ試行が実行中です。",
+      "error_invalid": "この skill はこのシートでテストできません。",
+      "error_failed": "必要性テストを開始できませんでした。"
     }
   }
 }

@@ -343,6 +343,38 @@
       "not_losing_lower": "Cận dưới không thua: {{percent}}",
       "primary_cost_avg": "Chi phí TB bản chính: {{amount}}",
       "shadow_cost_avg": "Chi phí TB bản bóng: {{amount}}"
+    },
+    "necessity": {
+      "title": "Bài kiểm tra cần thiết",
+      "loading": "Đang tải các bài kiểm tra cần thiết...",
+      "load_failed": "Không tải được các bài kiểm tra cần thiết.",
+      "empty": "Chưa có bài kiểm tra cần thiết nào.",
+      "start": "Chạy kiểm tra cần thiết",
+      "state": {
+        "running": "Đang chạy",
+        "not_needed": "Không cần",
+        "needed": "Cần thiết",
+        "inconclusive": "Chưa kết luận",
+        "stopped": "Đã dừng"
+      },
+      "pairs_count": "Số cặp: {{count}}",
+      "wins_count": "Thắng: {{count}}",
+      "losses_count": "Thua: {{count}}",
+      "waiting_for_decision": "Đang chờ người quyết định",
+      "dialog_title": "Chạy kiểm tra cần thiết",
+      "dialog_note": "Bài kiểm tra chạy việc của ghế không có skill trong đợt chạy bóng, và skill chỉ được gỡ sau khi người duyệt đề xuất.",
+      "skill_label": "Skill",
+      "skill_placeholder": "Chọn skill",
+      "skills_loading": "Đang tải danh sách skill...",
+      "skills_load_failed": "Không tải được danh sách skill của ghế.",
+      "skills_empty": "Ghế này chưa có skill để kiểm tra.",
+      "submit": "Bắt đầu kiểm tra",
+      "cancel": "Huỷ",
+      "started": "Đã bắt đầu bài kiểm tra cần thiết.",
+      "error_running": "Skill này đang có một bài kiểm tra cần thiết đang chạy.",
+      "error_shadow_running": "Ghế này đang có một đợt chạy thử bóng.",
+      "error_invalid": "Không thể kiểm tra skill này trên ghế hiện tại.",
+      "error_failed": "Không bắt đầu được bài kiểm tra cần thiết."
     }
   }
 }

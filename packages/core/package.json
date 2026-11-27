@@ -247,7 +247,8 @@
     "./durable/track-records": "./durable/track-records/index.ts",
     "./durable/jury": "./durable/jury/index.ts",
     "./durable/dossier": "./durable/dossier/index.ts",
-    "./durable/shadow": "./durable/shadow/index.ts"
+    "./durable/shadow": "./durable/shadow/index.ts",
+    "./durable/necessity": "./durable/necessity/index.ts"
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "catalog:",

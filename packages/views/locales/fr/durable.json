@@ -344,6 +344,38 @@
       "not_losing_lower": "Borne inférieure sans défaite : {{percent}}",
       "primary_cost_avg": "Coût moy. principal : {{amount}}",
       "shadow_cost_avg": "Coût moy. ombre : {{amount}}"
+    },
+    "necessity": {
+      "title": "Tests de nécessité",
+      "loading": "Chargement des tests de nécessité...",
+      "load_failed": "Impossible de charger les tests de nécessité.",
+      "empty": "Aucun test de nécessité pour l'instant.",
+      "start": "Lancer un test de nécessité",
+      "state": {
+        "running": "En cours",
+        "not_needed": "Non nécessaire",
+        "needed": "Nécessaire",
+        "inconclusive": "Non concluant",
+        "stopped": "Arrêté"
+      },
+      "pairs_count": "Paires : {{count}}",
+      "wins_count": "Victoires : {{count}}",
+      "losses_count": "Défaites : {{count}}",
+      "waiting_for_decision": "En attente de la décision d'une personne",
+      "dialog_title": "Lancer un test de nécessité",
+      "dialog_note": "Un test exécute le travail du poste sans le skill lors d'un essai en ombre, et le skill n'est retiré qu'après l'approbation de la proposition par une personne.",
+      "skill_label": "Skill",
+      "skill_placeholder": "Sélectionner un skill",
+      "skills_loading": "Chargement des skills...",
+      "skills_load_failed": "Impossible de charger les skills de ce poste.",
+      "skills_empty": "Ce poste n'a aucun skill à tester.",
+      "submit": "Lancer le test",
+      "cancel": "Annuler",
+      "started": "Test de nécessité lancé.",
+      "error_running": "Un test de nécessité est déjà en cours pour ce skill.",
+      "error_shadow_running": "Un essai en ombre est déjà en cours sur ce poste.",
+      "error_invalid": "Ce skill ne peut pas être testé sur ce poste.",
+      "error_failed": "Impossible de lancer le test de nécessité."
     }
   }
 }

@@ -344,6 +344,38 @@
       "not_losing_lower": "Cota inferior sin perder: {{percent}}",
       "primary_cost_avg": "Costo prom. principal: {{amount}}",
       "shadow_cost_avg": "Costo prom. sombra: {{amount}}"
+    },
+    "necessity": {
+      "title": "Pruebas de necesidad",
+      "loading": "Cargando pruebas de necesidad...",
+      "load_failed": "No se pudieron cargar las pruebas de necesidad.",
+      "empty": "Aún no hay pruebas de necesidad.",
+      "start": "Iniciar prueba de necesidad",
+      "state": {
+        "running": "En curso",
+        "not_needed": "No necesaria",
+        "needed": "Necesaria",
+        "inconclusive": "No concluyente",
+        "stopped": "Detenida"
+      },
+      "pairs_count": "Pares: {{count}}",
+      "wins_count": "Victorias: {{count}}",
+      "losses_count": "Derrotas: {{count}}",
+      "waiting_for_decision": "Esperando la decisión de una persona",
+      "dialog_title": "Iniciar prueba de necesidad",
+      "dialog_note": "La prueba ejecuta el trabajo del puesto sin la skill en una prueba en sombra, y la skill solo se retira después de que una persona apruebe la propuesta.",
+      "skill_label": "Skill",
+      "skill_placeholder": "Selecciona una skill",
+      "skills_loading": "Cargando skills...",
+      "skills_load_failed": "No se pudieron cargar las skills del puesto.",
+      "skills_empty": "Este puesto no tiene skills para probar.",
+      "submit": "Iniciar prueba",
+      "cancel": "Cancelar",
+      "started": "Prueba de necesidad iniciada.",
+      "error_running": "Ya hay una prueba de necesidad en curso para esta skill.",
+      "error_shadow_running": "Ya hay una prueba en sombra en curso en este puesto.",
+      "error_invalid": "Esta skill no se puede probar en este puesto.",
+      "error_failed": "No se pudo iniciar la prueba de necesidad."
     }
   }
 }

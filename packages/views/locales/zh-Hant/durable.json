@@ -343,6 +343,38 @@
       "not_losing_lower": "不敗率下界：{{percent}}",
       "primary_cost_avg": "主席位均價：{{amount}}",
       "shadow_cost_avg": "影子均價：{{amount}}"
+    },
+    "necessity": {
+      "title": "必要性測試",
+      "loading": "正在載入必要性測試...",
+      "load_failed": "無法載入必要性測試。",
+      "empty": "尚無必要性測試。",
+      "start": "發起必要性測試",
+      "state": {
+        "running": "執行中",
+        "not_needed": "無須保留",
+        "needed": "需要保留",
+        "inconclusive": "尚無結論",
+        "stopped": "已停止"
+      },
+      "pairs_count": "對比組數：{{count}}",
+      "wins_count": "勝：{{count}}",
+      "losses_count": "負：{{count}}",
+      "waiting_for_decision": "等待人工決定",
+      "dialog_title": "發起必要性測試",
+      "dialog_note": "測試會在影子試跑中不載入該 skill 執行席位的工作，且僅在人工核准提案後才會移除該 skill。",
+      "skill_label": "Skill",
+      "skill_placeholder": "選擇 skill",
+      "skills_loading": "正在載入 skill...",
+      "skills_load_failed": "無法載入此席位的 skill。",
+      "skills_empty": "此席位沒有可測試的 skill。",
+      "submit": "開始測試",
+      "cancel": "取消",
+      "started": "已發起必要性測試。",
+      "error_running": "該 skill 已有正在執行的必要性測試。",
+      "error_shadow_running": "此席位已有正在執行的影子試跑。",
+      "error_invalid": "該 skill 無法在此席位上測試。",
+      "error_failed": "無法發起必要性測試。"
     }
   }
 }
