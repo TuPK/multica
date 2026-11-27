@@ -58,6 +58,9 @@ func Normalize(b *hub.Bundle) (*Pack, error) {
 		return p.Skills[i].Dir < p.Skills[j].Dir
 	})
 	p.References, p.ReferencesOmitted = capDocReferences(listReferences(b, p))
+	if err := readPackAttestations(b, p); err != nil {
+		return nil, err
+	}
 	return p, nil
 }
 

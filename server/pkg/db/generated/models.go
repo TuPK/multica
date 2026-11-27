@@ -3330,17 +3330,22 @@ type SeatDossierEntry struct {
 }
 
 type SeatOffer struct {
-	ID              pgtype.UUID        `json:"id"`
-	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
-	Name            string             `json:"name"`
-	Role            string             `json:"role"`
-	SquadID         pgtype.UUID        `json:"squad_id"`
-	RuntimeID       pgtype.UUID        `json:"runtime_id"`
-	OutcomeCriteria string             `json:"outcome_criteria"`
-	Rationale       string             `json:"rationale"`
-	Status          string             `json:"status"`
-	CreatedBy       pgtype.UUID        `json:"created_by"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ID                      pgtype.UUID        `json:"id"`
+	WorkspaceID             pgtype.UUID        `json:"workspace_id"`
+	Name                    string             `json:"name"`
+	Role                    string             `json:"role"`
+	SquadID                 pgtype.UUID        `json:"squad_id"`
+	RuntimeID               pgtype.UUID        `json:"runtime_id"`
+	OutcomeCriteria         string             `json:"outcome_criteria"`
+	Rationale               string             `json:"rationale"`
+	Status                  string             `json:"status"`
+	CreatedBy               pgtype.UUID        `json:"created_by"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	WorkClass               string             `json:"work_class"`
+	ProposedBudgetMicros    pgtype.Int8        `json:"proposed_budget_micros"`
+	ProposedBudgetPeriod    string             `json:"proposed_budget_period"`
+	ProposedEnvelopeFloor   pgtype.Int4        `json:"proposed_envelope_floor"`
+	ProposedEnvelopeCeiling pgtype.Int4        `json:"proposed_envelope_ceiling"`
 }
 
 type ShadowConfig struct {

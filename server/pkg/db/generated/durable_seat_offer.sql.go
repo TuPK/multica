@@ -11,24 +11,74 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const closeSeatOfferInWorkspace = `-- name: CloseSeatOfferInWorkspace :one
+UPDATE seat_offer
+SET status = 'closed'
+WHERE id = $1 AND workspace_id = $2 AND status = 'open'
+RETURNING id, workspace_id, name, role, squad_id, runtime_id, outcome_criteria, rationale, status, created_by, created_at, work_class, proposed_budget_micros, proposed_budget_period, proposed_envelope_floor, proposed_envelope_ceiling
+`
+
+type CloseSeatOfferInWorkspaceParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) CloseSeatOfferInWorkspace(ctx context.Context, arg CloseSeatOfferInWorkspaceParams) (SeatOffer, error) {
+	row := q.db.QueryRow(ctx, closeSeatOfferInWorkspace, arg.ID, arg.WorkspaceID)
+	var i SeatOffer
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Role,
+		&i.SquadID,
+		&i.RuntimeID,
+		&i.OutcomeCriteria,
+		&i.Rationale,
+		&i.Status,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.WorkClass,
+		&i.ProposedBudgetMicros,
+		&i.ProposedBudgetPeriod,
+		&i.ProposedEnvelopeFloor,
+		&i.ProposedEnvelopeCeiling,
+	)
+	return i, err
+}
+
 const createSeatOffer = `-- name: CreateSeatOffer :one
 
-INSERT INTO seat_offer (id, workspace_id, name, role, squad_id, runtime_id, outcome_criteria, rationale, created_by)
-VALUES ($1, $2, $3, $4, $5,
-        $6, $7, $8, $9)
-RETURNING id, workspace_id, name, role, squad_id, runtime_id, outcome_criteria, rationale, status, created_by, created_at
+INSERT INTO seat_offer (
+    id, workspace_id, name, role, work_class, squad_id, runtime_id, outcome_criteria,
+    proposed_budget_micros, proposed_budget_period, proposed_envelope_floor, proposed_envelope_ceiling,
+    rationale, created_by
+)
+VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8,
+    $9, $10,
+    $11, $12,
+    $13, $14
+)
+RETURNING id, workspace_id, name, role, squad_id, runtime_id, outcome_criteria, rationale, status, created_by, created_at, work_class, proposed_budget_micros, proposed_budget_period, proposed_envelope_floor, proposed_envelope_ceiling
 `
 
 type CreateSeatOfferParams struct {
-	ID              pgtype.UUID `json:"id"`
-	WorkspaceID     pgtype.UUID `json:"workspace_id"`
-	Name            string      `json:"name"`
-	Role            string      `json:"role"`
-	SquadID         pgtype.UUID `json:"squad_id"`
-	RuntimeID       pgtype.UUID `json:"runtime_id"`
-	OutcomeCriteria string      `json:"outcome_criteria"`
-	Rationale       string      `json:"rationale"`
-	CreatedBy       pgtype.UUID `json:"created_by"`
+	ID                      pgtype.UUID `json:"id"`
+	WorkspaceID             pgtype.UUID `json:"workspace_id"`
+	Name                    string      `json:"name"`
+	Role                    string      `json:"role"`
+	WorkClass               string      `json:"work_class"`
+	SquadID                 pgtype.UUID `json:"squad_id"`
+	RuntimeID               pgtype.UUID `json:"runtime_id"`
+	OutcomeCriteria         string      `json:"outcome_criteria"`
+	ProposedBudgetMicros    pgtype.Int8 `json:"proposed_budget_micros"`
+	ProposedBudgetPeriod    string      `json:"proposed_budget_period"`
+	ProposedEnvelopeFloor   pgtype.Int4 `json:"proposed_envelope_floor"`
+	ProposedEnvelopeCeiling pgtype.Int4 `json:"proposed_envelope_ceiling"`
+	Rationale               string      `json:"rationale"`
+	CreatedBy               pgtype.UUID `json:"created_by"`
 }
 
 // The seat offers of a Hub org (durable spec 13.3, E4). Every query filters by workspace_id.
@@ -38,9 +88,14 @@ func (q *Queries) CreateSeatOffer(ctx context.Context, arg CreateSeatOfferParams
 		arg.WorkspaceID,
 		arg.Name,
 		arg.Role,
+		arg.WorkClass,
 		arg.SquadID,
 		arg.RuntimeID,
 		arg.OutcomeCriteria,
+		arg.ProposedBudgetMicros,
+		arg.ProposedBudgetPeriod,
+		arg.ProposedEnvelopeFloor,
+		arg.ProposedEnvelopeCeiling,
 		arg.Rationale,
 		arg.CreatedBy,
 	)
@@ -57,12 +112,17 @@ func (q *Queries) CreateSeatOffer(ctx context.Context, arg CreateSeatOfferParams
 		&i.Status,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.WorkClass,
+		&i.ProposedBudgetMicros,
+		&i.ProposedBudgetPeriod,
+		&i.ProposedEnvelopeFloor,
+		&i.ProposedEnvelopeCeiling,
 	)
 	return i, err
 }
 
 const getSeatOfferInWorkspace = `-- name: GetSeatOfferInWorkspace :one
-SELECT id, workspace_id, name, role, squad_id, runtime_id, outcome_criteria, rationale, status, created_by, created_at FROM seat_offer
+SELECT id, workspace_id, name, role, squad_id, runtime_id, outcome_criteria, rationale, status, created_by, created_at, work_class, proposed_budget_micros, proposed_budget_period, proposed_envelope_floor, proposed_envelope_ceiling FROM seat_offer
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -86,6 +146,62 @@ func (q *Queries) GetSeatOfferInWorkspace(ctx context.Context, arg GetSeatOfferI
 		&i.Status,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.WorkClass,
+		&i.ProposedBudgetMicros,
+		&i.ProposedBudgetPeriod,
+		&i.ProposedEnvelopeFloor,
+		&i.ProposedEnvelopeCeiling,
 	)
 	return i, err
+}
+
+const listSeatOffersByWorkspace = `-- name: ListSeatOffersByWorkspace :many
+SELECT id, workspace_id, name, role, squad_id, runtime_id, outcome_criteria, rationale, status, created_by, created_at, work_class, proposed_budget_micros, proposed_budget_period, proposed_envelope_floor, proposed_envelope_ceiling FROM seat_offer
+WHERE workspace_id = $1
+  AND ($2::text = '' OR status = $2::text)
+ORDER BY created_at DESC, id DESC
+LIMIT $3
+`
+
+type ListSeatOffersByWorkspaceParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Status      string      `json:"status"`
+	RowLimit    int32       `json:"row_limit"`
+}
+
+func (q *Queries) ListSeatOffersByWorkspace(ctx context.Context, arg ListSeatOffersByWorkspaceParams) ([]SeatOffer, error) {
+	rows, err := q.db.Query(ctx, listSeatOffersByWorkspace, arg.WorkspaceID, arg.Status, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SeatOffer{}
+	for rows.Next() {
+		var i SeatOffer
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.Role,
+			&i.SquadID,
+			&i.RuntimeID,
+			&i.OutcomeCriteria,
+			&i.Rationale,
+			&i.Status,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.WorkClass,
+			&i.ProposedBudgetMicros,
+			&i.ProposedBudgetPeriod,
+			&i.ProposedEnvelopeFloor,
+			&i.ProposedEnvelopeCeiling,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

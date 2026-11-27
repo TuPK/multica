@@ -277,6 +277,20 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 			r.Delete("/", h.DeleteHubSource)
 			r.Post("/sync", h.SyncHubSource)
 		})
+		// Seat offers on the Hub (durable spec 13.3, F12). Reads are for workspace
+		// members. Posting and closing an offer are for owners and admins, as a person.
+		// Applying files a hire proposal into the offer's squad.
+		r.Route("/seat-offers", func(r chi.Router) {
+			r.Get("/", h.ListSeatOffers)
+			r.Get("/{id}", h.GetSeatOffer)
+			r.Post("/{id}/apply", h.ApplySeatOffer)
+			r.Group(func(r chi.Router) {
+				r.Use(handler.RequireHumanActor)
+				r.Use(middleware.RequireWorkspaceRole(queries, "owner", "admin"))
+				r.Post("/", h.CreateSeatOffer)
+				r.Post("/{id}/close", h.CloseSeatOffer)
+			})
+		})
 	})
 
 	// Work outcomes, acceptance criteria and checks (durable spec 2.7). Reads are for

@@ -7,6 +7,8 @@ package pack
 
 import (
 	"errors"
+
+	"github.com/multica-ai/multica/server/internal/hub"
 )
 
 // Format is how a bundle was recognised.
@@ -43,6 +45,9 @@ type Pack struct {
 	// ReferencesOmitted is how many doc references the cap left out of References (spec 16.1).
 	ReferencesOmitted int
 	Ignored           []Ignored
+	// Attestations are the signed track-record documents carried in attestations/*.json
+	// inside a Hub agent template bundle (durable spec 13.3, F12).
+	Attestations []hub.BundleAttestation
 }
 
 // Agent is one agent of a bundle.

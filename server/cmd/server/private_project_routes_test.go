@@ -160,6 +160,7 @@ var routeParamsOutsideProjects = map[string]outsideProjectParam{
 	"system-wakeups/{rule}":            {why: "a system wakeup rule name", value: func(*privateRouteFixture) string { return "child_done" }},
 	"members/{userId}":                 {why: "a user", value: func(f *privateRouteFixture) string { return f.fx.UserID }},
 	"collaborators/{userId}":           {why: "a user", value: func(f *privateRouteFixture) string { return f.fx.UserID }},
+	"seat-offers/{id}":                 {why: "a Hub seat offer of the workspace's Hub org, not stored in a project"},
 	"sessions/{sessionId}":             {why: "a chat or agent-builder session, which only its creator reaches; a hidden project drops out of its runs' context instead"},
 	"queued-tasks/{taskId}":            {why: "a run of the caller's own chat session"},
 	"draft-restores/{restoreId}":       {why: "a draft of the caller's own chat session"},
