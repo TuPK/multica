@@ -1867,6 +1867,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	r.With(authVerifyRL).Get("/auth/sso/callback", ssoHandler.Callback)
 	r.With(authVerifyRL).Post("/auth/sso/mobile/exchange", ssoHandler.MobileExchange)
 	r.Post("/auth/logout", h.Logout)
+	// Track-record attestations (durable spec 13.2): the published keys and verification need no session.
+	registerForkPublicRoutes(r, h, queries, middleware.RateLimit(rdb, envPositiveInt("RATE_LIMIT_ATTESTATION_VERIFY", 30), time.Minute, trustedProxies))
 
 	// Public API
 	r.Get("/api/config", h.GetConfig)

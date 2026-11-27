@@ -948,6 +948,11 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.DurableEnvelopeJob(envelopes)); err != nil {
 		slog.Error("scheduler: register durable envelope", "error", err)
 	}
+	// Daily: every workspace's Reach Map is recomputed from the last 30 days (durable spec 11.2).
+	reach := &service.ReachService{Queries: queries, Issues: h.IssueService, Verification: durableChecks, Flags: flags}
+	if err := schedulerMgr.Register(scheduler.DurableReachJob(reach)); err != nil {
+		slog.Error("scheduler: register durable reach", "error", err)
+	}
 	if err := schedulerMgr.Register(scheduler.FlowSweepJob(h)); err != nil {
 		slog.Error("scheduler: register flow sweep", "error", err)
 	}

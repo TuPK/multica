@@ -3128,6 +3128,20 @@ type QuotaRequest struct {
 	DecidedAt        pgtype.Timestamptz `json:"decided_at"`
 }
 
+type ReachSnapshot struct {
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	SnapshotDate    pgtype.Date        `json:"snapshot_date"`
+	Surface         string             `json:"surface"`
+	State           string             `json:"state"`
+	Effects30d      int32              `json:"effects_30d"`
+	AgentEffects30d int32              `json:"agent_effects_30d"`
+	HumanMinutes30d pgtype.Numeric     `json:"human_minutes_30d"`
+	GapAsks30d      int32              `json:"gap_asks_30d"`
+	TopAskIds       []pgtype.UUID      `json:"top_ask_ids"`
+	GapIssueID      pgtype.UUID        `json:"gap_issue_id"`
+	ComputedAt      pgtype.Timestamptz `json:"computed_at"`
+}
+
 type RemoteAppConnection struct {
 	ID            pgtype.UUID        `json:"id"`
 	AppSlug       string             `json:"app_slug"`
