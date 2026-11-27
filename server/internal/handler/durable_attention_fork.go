@@ -77,6 +77,9 @@ func (h *Handler) SetAttentionBudget(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := h.attentionService().SetBudget(r.Context(), wsUUID, req.MinutesPerWeek, req.Split)
 	switch {
+	case errors.Is(err, service.ErrPrincipalDisabled):
+		writeError(w, http.StatusServiceUnavailable, err.Error())
+		return
 	case errors.Is(err, service.ErrAttentionBudgetRange), errors.Is(err, service.ErrAttentionSplit):
 		writeError(w, http.StatusBadRequest, err.Error())
 		return

@@ -789,29 +789,34 @@ func (q *Queries) ListSchedulableOutcomes(ctx context.Context, arg ListSchedulab
 }
 
 const listWorkOutcomes = `-- name: ListWorkOutcomes :many
-SELECT id, workspace_id, issue_id, done_transition_id, agent_id, member_id, squad_id, runtime_provider, model, work_class, verification_mode, sampled, verdict, severity, fail_cause, criteria_results, evidence, cost_micros, verification_cost_micros, settle_at, settled_at, superseded_by, created_at, updated_at FROM work_outcome
-WHERE workspace_id = $1
-  AND ($2::uuid IS NULL OR agent_id = $2::uuid)
-  AND ($3::uuid IS NULL OR squad_id = $3::uuid)
-  AND ($4::text IS NULL OR work_class = $4::text)
-  AND ($5::text IS NULL OR verdict = $5::text)
-  AND ($6::timestamptz IS NULL OR created_at >= $6::timestamptz)
+SELECT o.id, o.workspace_id, o.issue_id, o.done_transition_id, o.agent_id, o.member_id, o.squad_id, o.runtime_provider, o.model, o.work_class, o.verification_mode, o.sampled, o.verdict, o.severity, o.fail_cause, o.criteria_results, o.evidence, o.cost_micros, o.verification_cost_micros, o.settle_at, o.settled_at, o.superseded_by, o.created_at, o.updated_at FROM work_outcome o
+LEFT JOIN issue i ON i.id = o.issue_id AND i.workspace_id = o.workspace_id
+WHERE o.workspace_id = $1
+  AND ($2::uuid IS NULL OR o.agent_id = $2::uuid)
+  AND ($3::uuid IS NULL OR o.squad_id = $3::uuid)
+  AND ($4::text IS NULL OR o.work_class = $4::text)
+  AND ($5::text IS NULL OR o.verdict = $5::text)
+  AND ($6::timestamptz IS NULL OR o.created_at >= $6::timestamptz)
   AND ($7::timestamptz IS NULL
-       OR (created_at, id) < ($7::timestamptz, $8::uuid))
-ORDER BY created_at DESC, id DESC
-LIMIT $9
+       OR (o.created_at, o.id) < ($7::timestamptz, $8::uuid))
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($9::uuid[] IS NULL
+       OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($9::uuid[])))
+ORDER BY o.created_at DESC, o.id DESC
+LIMIT $10
 `
 
 type ListWorkOutcomesParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	AgentID     pgtype.UUID        `json:"agent_id"`
-	SquadID     pgtype.UUID        `json:"squad_id"`
-	WorkClass   pgtype.Text        `json:"work_class"`
-	Verdict     pgtype.Text        `json:"verdict"`
-	Since       pgtype.Timestamptz `json:"since"`
-	BeforeAt    pgtype.Timestamptz `json:"before_at"`
-	BeforeID    pgtype.UUID        `json:"before_id"`
-	RowLimit    int32              `json:"row_limit"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	AgentID          pgtype.UUID        `json:"agent_id"`
+	SquadID          pgtype.UUID        `json:"squad_id"`
+	WorkClass        pgtype.Text        `json:"work_class"`
+	Verdict          pgtype.Text        `json:"verdict"`
+	Since            pgtype.Timestamptz `json:"since"`
+	BeforeAt         pgtype.Timestamptz `json:"before_at"`
+	BeforeID         pgtype.UUID        `json:"before_id"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
+	RowLimit         int32              `json:"row_limit"`
 }
 
 // Newest first. The cursor is (created_at, id) of the last row of the previous page.
@@ -825,6 +830,7 @@ func (q *Queries) ListWorkOutcomes(ctx context.Context, arg ListWorkOutcomesPara
 		arg.Since,
 		arg.BeforeAt,
 		arg.BeforeID,
+		arg.HiddenProjectIds,
 		arg.RowLimit,
 	)
 	if err != nil {
@@ -954,27 +960,32 @@ func (q *Queries) SetWorkOutcomeOverride(ctx context.Context, arg SetWorkOutcome
 const summarizeWorkOutcomes = `-- name: SummarizeWorkOutcomes :many
 SELECT
     CASE $1::text
-        WHEN 'agent' THEN COALESCE(agent_id::text, '')
-        WHEN 'squad' THEN COALESCE(squad_id::text, '')
-        ELSE work_class
+        WHEN 'agent' THEN COALESCE(o.agent_id::text, '')
+        WHEN 'squad' THEN COALESCE(o.squad_id::text, '')
+        ELSE o.work_class
     END::text AS group_key,
     count(*)::bigint AS total,
-    count(*) FILTER (WHERE verdict = 'pass')::bigint AS passed,
-    count(*) FILTER (WHERE verdict = 'partial')::bigint AS partial,
-    count(*) FILTER (WHERE verdict = 'fail')::bigint AS failed,
-    count(*) FILTER (WHERE verdict = 'unverified')::bigint AS unverified,
-    count(*) FILTER (WHERE verdict = 'pending')::bigint AS pending
-FROM work_outcome
-WHERE workspace_id = $2
-  AND created_at >= $3::timestamptz
+    count(*) FILTER (WHERE o.verdict = 'pass')::bigint AS passed,
+    count(*) FILTER (WHERE o.verdict = 'partial')::bigint AS partial,
+    count(*) FILTER (WHERE o.verdict = 'fail')::bigint AS failed,
+    count(*) FILTER (WHERE o.verdict = 'unverified')::bigint AS unverified,
+    count(*) FILTER (WHERE o.verdict = 'pending')::bigint AS pending
+FROM work_outcome o
+LEFT JOIN issue i ON i.id = o.issue_id AND i.workspace_id = o.workspace_id
+WHERE o.workspace_id = $2
+  AND o.created_at >= $3::timestamptz
+  -- MUL-8472: private projects the caller cannot see.
+  AND ($4::uuid[] IS NULL
+       OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY($4::uuid[])))
 GROUP BY group_key
 ORDER BY total DESC, group_key
 `
 
 type SummarizeWorkOutcomesParams struct {
-	GroupBy     string             `json:"group_by"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Since       pgtype.Timestamptz `json:"since"`
+	GroupBy          string             `json:"group_by"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Since            pgtype.Timestamptz `json:"since"`
+	HiddenProjectIds []pgtype.UUID      `json:"hidden_project_ids"`
 }
 
 type SummarizeWorkOutcomesRow struct {
@@ -989,7 +1000,12 @@ type SummarizeWorkOutcomesRow struct {
 
 // One row per group. group_by is agent, squad or work_class; the caller checks it.
 func (q *Queries) SummarizeWorkOutcomes(ctx context.Context, arg SummarizeWorkOutcomesParams) ([]SummarizeWorkOutcomesRow, error) {
-	rows, err := q.db.Query(ctx, summarizeWorkOutcomes, arg.GroupBy, arg.WorkspaceID, arg.Since)
+	rows, err := q.db.Query(ctx, summarizeWorkOutcomes,
+		arg.GroupBy,
+		arg.WorkspaceID,
+		arg.Since,
+		arg.HiddenProjectIds,
+	)
 	if err != nil {
 		return nil, err
 	}

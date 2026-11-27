@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/multica-ai/multica/server/internal/connectedapps"
@@ -111,6 +112,10 @@ func (h *Handler) SaveEffectPolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "the effect policy is not configured")
 		return
 	}
+	if !h.durableEffectsEnabled(r.Context()) {
+		writeError(w, http.StatusServiceUnavailable, "durable effects is off")
+		return
+	}
 	if lock := service.OverrideLock(req.AutonomyLevel, req.EffectClass, req.Reversibility, req.Decision); lock != service.LockNone {
 		writeErrorCode(w, http.StatusUnprocessableEntity, lock, "this decision is not allowed for that cell")
 		return
@@ -122,6 +127,10 @@ func (h *Handler) SaveEffectPolicy(w http.ResponseWriter, r *http.Request) {
 		Decision:      req.Decision,
 	}
 	if err := h.EffectPolicy.Save(r.Context(), wsUUID, member.UserID, override); err != nil {
+		if errors.Is(err, service.ErrEffectsOff) {
+			writeError(w, http.StatusServiceUnavailable, err.Error())
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "failed to save the effect policy")
 		return
 	}

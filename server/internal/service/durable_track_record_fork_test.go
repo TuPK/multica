@@ -211,7 +211,7 @@ func TestPinnedModeSurvivesRecompute(t *testing.T) {
 	ctx := context.Background()
 	agent := vf.doer
 	vf.Cleanup(t, `DELETE FROM track_record WHERE agent_id = $1`, agent)
-	svc := &TrackRecordService{Queries: vf.q, TxStarter: vf.Pool}
+	svc := &TrackRecordService{Queries: vf.q, TxStarter: vf.Pool, Flags: vf.outcomes.Flags}
 	spot := "spot"
 
 	if _, err := svc.Pin(ctx, vf.ws, vf.member, util.MustParseUUID(agent), "general", &spot); err != nil {

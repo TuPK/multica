@@ -6,7 +6,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/connectedapps"
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // GovernanceKindEffectPolicy records a workspace loosening one cell of the
@@ -17,6 +19,7 @@ const GovernanceKindEffectPolicy = "effect_policy_changed"
 type EffectPolicyStore struct {
 	Queries   *db.Queries
 	TxStarter TxStarter
+	Flags     *featureflag.Service
 }
 
 // Overrides returns the workspace's saved overrides in cell order. DecideEffect
@@ -42,6 +45,9 @@ func (s *EffectPolicyStore) Overrides(ctx context.Context, workspaceID pgtype.UU
 // ValidateOverride allows it, and it is recorded in the governance log in the same
 // transaction as the save.
 func (s *EffectPolicyStore) Save(ctx context.Context, workspaceID, actorID pgtype.UUID, o Override) error {
+	if !featureflags.DurableEffectsEnabled(ctx, s.Flags) {
+		return ErrEffectsOff
+	}
 	if err := ValidateOverride(o.AutonomyLevel, o.Effect, o.Reversibility, o.Decision); err != nil {
 		return err
 	}

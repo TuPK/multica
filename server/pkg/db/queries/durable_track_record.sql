@@ -75,13 +75,26 @@ WHERE workspace_id = sqlc.arg(workspace_id)
     AND model = '';
 
 -- name: ListTrackRecords :many
-SELECT * FROM track_record
-WHERE workspace_id = sqlc.arg(workspace_id)
-    AND (sqlc.narg(agent_id)::uuid IS NULL OR agent_id = sqlc.narg(agent_id)::uuid)
-    AND (sqlc.narg(work_class)::text IS NULL OR work_class = sqlc.narg(work_class)::text)
-    AND (sqlc.narg(window_days)::int IS NULL OR window_days = sqlc.narg(window_days)::int)
-    AND model = ''
-ORDER BY agent_id, work_class, window_days
+SELECT tr.* FROM track_record tr
+WHERE tr.workspace_id = sqlc.arg(workspace_id)
+    AND (sqlc.narg(agent_id)::uuid IS NULL OR tr.agent_id = sqlc.narg(agent_id)::uuid)
+    AND (sqlc.narg(squad_id)::uuid IS NULL
+        OR EXISTS (
+            SELECT 1 FROM squad_member sm
+            WHERE sm.squad_id = sqlc.narg(squad_id)::uuid
+              AND sm.member_type = 'agent'
+              AND sm.member_id = tr.agent_id
+        )
+        OR EXISTS (
+            SELECT 1 FROM squad s
+            WHERE s.id = sqlc.narg(squad_id)::uuid
+              AND s.workspace_id = sqlc.arg(workspace_id)
+              AND s.leader_id = tr.agent_id
+        ))
+    AND (sqlc.narg(work_class)::text IS NULL OR tr.work_class = sqlc.narg(work_class)::text)
+    AND (sqlc.narg(window_days)::int IS NULL OR tr.window_days = sqlc.narg(window_days)::int)
+    AND tr.model = ''
+ORDER BY tr.agent_id, tr.work_class, tr.window_days
 LIMIT sqlc.arg(row_limit);
 
 -- name: ListSettledTrackPairsSince :many
@@ -96,7 +109,7 @@ ORDER BY workspace_id, agent_id, work_class;
 -- name: GetAgentRuntimeModel :one
 -- The model and runtime provider an agent has now. A missing agent in this workspace is
 -- no row. The outcome copies these when it is created (spec 2.3).
-SELECT COALESCE(a.model, '')::text AS model, COALESCE(r.provider, '')::text AS provider
+SELECT COALESCE(a.model, '')::text AS model, COALESCE(r.provider, '')::text AS provider, a.home_squad_id
 FROM agent a
 LEFT JOIN agent_runtime r ON r.id = a.runtime_id
 WHERE a.id = sqlc.arg(id) AND a.workspace_id = sqlc.arg(workspace_id);

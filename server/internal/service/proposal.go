@@ -684,6 +684,9 @@ func (s *ProposalService) settleInTx(ctx context.Context, tx pgx.Tx, qtx *db.Que
 	}
 	result.Proposal = decided
 
+	if err := setProposalActorSession(ctx, qtx, p); err != nil {
+		return ProposalDecideResult{}, err
+	}
 	updated, err := qtx.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{
 		ID: issue.ID, WorkspaceID: p.WorkspaceID, Status: issueStatus,
 	})
@@ -1170,7 +1173,7 @@ func (s *ProposalService) resumeWaitingIssues(ctx context.Context, p ProposalDec
 		if start == "" {
 			start = "todo"
 		}
-		moved, err := q.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: waiting.ID, WorkspaceID: p.WorkspaceID, Status: start})
+		moved, err := s.resumeWaitingIssueStatus(ctx, p, waiting.ID, start)
 		if err != nil {
 			slog.Warn("proposal decision: could not release a blocked issue",
 				"issue_id", m[1], "error", err)

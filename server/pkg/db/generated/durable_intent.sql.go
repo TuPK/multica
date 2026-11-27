@@ -137,7 +137,7 @@ func (q *Queries) FinishEffectEventForIntent(ctx context.Context, arg FinishEffe
 }
 
 const getEffectEventByIntent = `-- name: GetEffectEventByIntent :one
-SELECT id, workspace_id, task_id, agent_id, member_id, source, target, effect_class, reversibility, decision, status, summary, undo, undo_until, intent_id, app_tool_call_id, created_at FROM effect_event
+SELECT id, workspace_id, task_id, agent_id, member_id, source, target, effect_class, reversibility, decision, status, summary, undo, undo_until, intent_id, app_tool_call_id, created_at, result FROM effect_event
 WHERE intent_id = $1::uuid AND workspace_id = $2::uuid
 ORDER BY created_at ASC
 LIMIT 1
@@ -170,6 +170,7 @@ func (q *Queries) GetEffectEventByIntent(ctx context.Context, arg GetEffectEvent
 		&i.IntentID,
 		&i.AppToolCallID,
 		&i.CreatedAt,
+		&i.Result,
 	)
 	return i, err
 }

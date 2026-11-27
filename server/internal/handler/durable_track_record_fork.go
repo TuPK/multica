@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/service"
@@ -69,7 +71,7 @@ func trackRecordResponse(r db.TrackRecord) TrackRecordResponse {
 }
 
 func (h *Handler) trackRecordService() *service.TrackRecordService {
-	return &service.TrackRecordService{Queries: h.Queries, TxStarter: h.TxStarter}
+	return &service.TrackRecordService{Queries: h.Queries, TxStarter: h.TxStarter, Flags: h.FeatureFlags}
 }
 
 // ListTrackRecords lists track record rows, filtered by agent, work class and window.
@@ -90,6 +92,23 @@ func (h *Handler) ListTrackRecords(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		params.AgentID = agentID
+	}
+	if raw := query.Get("squad_id"); raw != "" {
+		squadID, ok := parseUUIDOrBadRequest(w, raw, "squad_id")
+		if !ok {
+			return
+		}
+		if _, err := h.Queries.GetSquadInWorkspace(r.Context(), db.GetSquadInWorkspaceParams{
+			ID: squadID, WorkspaceID: wsUUID,
+		}); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "squad not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to load squad")
+			return
+		}
+		params.SquadID = squadID
 	}
 	if raw := query.Get("work_class"); raw != "" {
 		if len(raw) > 200 {

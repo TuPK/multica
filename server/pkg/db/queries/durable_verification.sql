@@ -67,35 +67,43 @@ WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id);
 
 -- name: ListWorkOutcomes :many
 -- Newest first. The cursor is (created_at, id) of the last row of the previous page.
-SELECT * FROM work_outcome
-WHERE workspace_id = sqlc.arg(workspace_id)
-  AND (sqlc.narg(agent_id)::uuid IS NULL OR agent_id = sqlc.narg(agent_id)::uuid)
-  AND (sqlc.narg(squad_id)::uuid IS NULL OR squad_id = sqlc.narg(squad_id)::uuid)
-  AND (sqlc.narg(work_class)::text IS NULL OR work_class = sqlc.narg(work_class)::text)
-  AND (sqlc.narg(verdict)::text IS NULL OR verdict = sqlc.narg(verdict)::text)
-  AND (sqlc.narg(since)::timestamptz IS NULL OR created_at >= sqlc.narg(since)::timestamptz)
+SELECT o.* FROM work_outcome o
+LEFT JOIN issue i ON i.id = o.issue_id AND i.workspace_id = o.workspace_id
+WHERE o.workspace_id = sqlc.arg(workspace_id)
+  AND (sqlc.narg(agent_id)::uuid IS NULL OR o.agent_id = sqlc.narg(agent_id)::uuid)
+  AND (sqlc.narg(squad_id)::uuid IS NULL OR o.squad_id = sqlc.narg(squad_id)::uuid)
+  AND (sqlc.narg(work_class)::text IS NULL OR o.work_class = sqlc.narg(work_class)::text)
+  AND (sqlc.narg(verdict)::text IS NULL OR o.verdict = sqlc.narg(verdict)::text)
+  AND (sqlc.narg(since)::timestamptz IS NULL OR o.created_at >= sqlc.narg(since)::timestamptz)
   AND (sqlc.narg(before_at)::timestamptz IS NULL
-       OR (created_at, id) < (sqlc.narg(before_at)::timestamptz, sqlc.narg(before_id)::uuid))
-ORDER BY created_at DESC, id DESC
+       OR (o.created_at, o.id) < (sqlc.narg(before_at)::timestamptz, sqlc.narg(before_id)::uuid))
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL
+       OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
+ORDER BY o.created_at DESC, o.id DESC
 LIMIT sqlc.arg(row_limit);
 
 -- name: SummarizeWorkOutcomes :many
 -- One row per group. group_by is agent, squad or work_class; the caller checks it.
 SELECT
     CASE sqlc.arg(group_by)::text
-        WHEN 'agent' THEN COALESCE(agent_id::text, '')
-        WHEN 'squad' THEN COALESCE(squad_id::text, '')
-        ELSE work_class
+        WHEN 'agent' THEN COALESCE(o.agent_id::text, '')
+        WHEN 'squad' THEN COALESCE(o.squad_id::text, '')
+        ELSE o.work_class
     END::text AS group_key,
     count(*)::bigint AS total,
-    count(*) FILTER (WHERE verdict = 'pass')::bigint AS passed,
-    count(*) FILTER (WHERE verdict = 'partial')::bigint AS partial,
-    count(*) FILTER (WHERE verdict = 'fail')::bigint AS failed,
-    count(*) FILTER (WHERE verdict = 'unverified')::bigint AS unverified,
-    count(*) FILTER (WHERE verdict = 'pending')::bigint AS pending
-FROM work_outcome
-WHERE workspace_id = sqlc.arg(workspace_id)
-  AND created_at >= sqlc.arg(since)::timestamptz
+    count(*) FILTER (WHERE o.verdict = 'pass')::bigint AS passed,
+    count(*) FILTER (WHERE o.verdict = 'partial')::bigint AS partial,
+    count(*) FILTER (WHERE o.verdict = 'fail')::bigint AS failed,
+    count(*) FILTER (WHERE o.verdict = 'unverified')::bigint AS unverified,
+    count(*) FILTER (WHERE o.verdict = 'pending')::bigint AS pending
+FROM work_outcome o
+LEFT JOIN issue i ON i.id = o.issue_id AND i.workspace_id = o.workspace_id
+WHERE o.workspace_id = sqlc.arg(workspace_id)
+  AND o.created_at >= sqlc.arg(since)::timestamptz
+  -- MUL-8472: private projects the caller cannot see.
+  AND (sqlc.narg('hidden_project_ids')::uuid[] IS NULL
+       OR NOT (COALESCE(i.project_id, '00000000-0000-0000-0000-000000000000'::uuid) = ANY(sqlc.narg('hidden_project_ids')::uuid[])))
 GROUP BY group_key
 ORDER BY total DESC, group_key;
 

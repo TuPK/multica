@@ -505,6 +505,9 @@ func (s *InitiativeService) moveTo(ctx context.Context, q *db.Queries, ini db.In
 	statusKey := StatusKeyForStage(toKey)
 	assigneeType, assigneeID, hasOwner := handoffFor(def, statusKey, issue.CreatorType, issue.CreatorID)
 
+	if err := setInitiativeActorSession(ctx, q, actor); err != nil {
+		return db.Initiative{}, err
+	}
 	if _, err := q.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: issue.ID, WorkspaceID: ini.WorkspaceID, Status: statusKey}); err != nil {
 		return db.Initiative{}, fmt.Errorf("move initiative issue: %w", err)
 	}
@@ -889,6 +892,9 @@ func (s *InitiativeService) closeLocked(ctx context.Context, q *db.Queries, ini 
 	issue, err := q.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: ini.IssueID, WorkspaceID: ini.WorkspaceID})
 	if err != nil {
 		return db.Initiative{}, fmt.Errorf("load initiative issue: %w", err)
+	}
+	if err := setInitiativeActorSession(ctx, q, actor); err != nil {
+		return db.Initiative{}, err
 	}
 	if _, err := q.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: issue.ID, WorkspaceID: ini.WorkspaceID, Status: "done"}); err != nil {
 		return db.Initiative{}, fmt.Errorf("close initiative issue: %w", err)

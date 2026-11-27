@@ -1239,6 +1239,9 @@ type DocVersion struct {
 type DurableOutcomeApplied struct {
 	TransitionID pgtype.UUID        `json:"transition_id"`
 	AppliedAt    pgtype.Timestamptz `json:"applied_at"`
+	Status       string             `json:"status"`
+	Attempts     int32              `json:"attempts"`
+	LastError    string             `json:"last_error"`
 }
 
 type DurableOutcomeCursor struct {
@@ -1246,6 +1249,9 @@ type DurableOutcomeCursor struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	TransitionID pgtype.UUID        `json:"transition_id"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	LastSeq      int64              `json:"last_seq"`
+	PendingSeq   int64              `json:"pending_seq"`
+	PendingXmax  int64              `json:"pending_xmax"`
 }
 
 type EffectEvent struct {
@@ -1266,6 +1272,7 @@ type EffectEvent struct {
 	IntentID      pgtype.UUID        `json:"intent_id"`
 	AppToolCallID pgtype.UUID        `json:"app_tool_call_id"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	Result        []byte             `json:"result"`
 }
 
 type EffectIntent struct {
@@ -1930,6 +1937,10 @@ type IssueStatusTransition struct {
 	TaskID        pgtype.UUID        `json:"task_id"`
 	Source        string             `json:"source"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	Seq           int64              `json:"seq"`
+	AssigneeType  pgtype.Text        `json:"assignee_type"`
+	AssigneeID    pgtype.UUID        `json:"assignee_id"`
+	LabelNames    []string           `json:"label_names"`
 }
 
 type IssueSubscriber struct {
@@ -2928,29 +2939,30 @@ type PrincipalTrait struct {
 }
 
 type Project struct {
-	ID             pgtype.UUID        `json:"id"`
-	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
-	Title          string             `json:"title"`
-	Description    pgtype.Text        `json:"description"`
-	Icon           pgtype.Text        `json:"icon"`
-	Status         string             `json:"status"`
-	LeadType       pgtype.Text        `json:"lead_type"`
-	LeadID         pgtype.UUID        `json:"lead_id"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	Priority       string             `json:"priority"`
-	Access         string             `json:"access"`
-	StartDate      pgtype.Date        `json:"start_date"`
-	DueDate        pgtype.Date        `json:"due_date"`
-	WorkflowID     pgtype.UUID        `json:"workflow_id"`
-	CreatorType    pgtype.Text        `json:"creator_type"`
-	CreatorID      pgtype.UUID        `json:"creator_id"`
-	Visibility     string             `json:"visibility"`
-	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
-	ArchivedByType pgtype.Text        `json:"archived_by_type"`
-	ArchivedByID   pgtype.UUID        `json:"archived_by_id"`
-	FolderID       pgtype.UUID        `json:"folder_id"`
-	SquadIds       []pgtype.UUID      `json:"squad_ids"`
+	ID               pgtype.UUID        `json:"id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Title            string             `json:"title"`
+	Description      pgtype.Text        `json:"description"`
+	Icon             pgtype.Text        `json:"icon"`
+	Status           string             `json:"status"`
+	LeadType         pgtype.Text        `json:"lead_type"`
+	LeadID           pgtype.UUID        `json:"lead_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Priority         string             `json:"priority"`
+	Access           string             `json:"access"`
+	OutcomesDisabled bool               `json:"outcomes_disabled"`
+	StartDate        pgtype.Date        `json:"start_date"`
+	DueDate          pgtype.Date        `json:"due_date"`
+	WorkflowID       pgtype.UUID        `json:"workflow_id"`
+	CreatorType      pgtype.Text        `json:"creator_type"`
+	CreatorID        pgtype.UUID        `json:"creator_id"`
+	Visibility       string             `json:"visibility"`
+	ArchivedAt       pgtype.Timestamptz `json:"archived_at"`
+	ArchivedByType   pgtype.Text        `json:"archived_by_type"`
+	ArchivedByID     pgtype.UUID        `json:"archived_by_id"`
+	FolderID         pgtype.UUID        `json:"folder_id"`
+	SquadIds         []pgtype.UUID      `json:"squad_ids"`
 }
 
 type ProjectFolder struct {

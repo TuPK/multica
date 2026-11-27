@@ -89,7 +89,7 @@ func (q *Queries) EnsureTrackRecordRow(ctx context.Context, arg EnsureTrackRecor
 }
 
 const getAgentRuntimeModel = `-- name: GetAgentRuntimeModel :one
-SELECT COALESCE(a.model, '')::text AS model, COALESCE(r.provider, '')::text AS provider
+SELECT COALESCE(a.model, '')::text AS model, COALESCE(r.provider, '')::text AS provider, a.home_squad_id
 FROM agent a
 LEFT JOIN agent_runtime r ON r.id = a.runtime_id
 WHERE a.id = $1 AND a.workspace_id = $2
@@ -101,8 +101,9 @@ type GetAgentRuntimeModelParams struct {
 }
 
 type GetAgentRuntimeModelRow struct {
-	Model    string `json:"model"`
-	Provider string `json:"provider"`
+	Model       string      `json:"model"`
+	Provider    string      `json:"provider"`
+	HomeSquadID pgtype.UUID `json:"home_squad_id"`
 }
 
 // The model and runtime provider an agent has now. A missing agent in this workspace is
@@ -110,7 +111,7 @@ type GetAgentRuntimeModelRow struct {
 func (q *Queries) GetAgentRuntimeModel(ctx context.Context, arg GetAgentRuntimeModelParams) (GetAgentRuntimeModelRow, error) {
 	row := q.db.QueryRow(ctx, getAgentRuntimeModel, arg.ID, arg.WorkspaceID)
 	var i GetAgentRuntimeModelRow
-	err := row.Scan(&i.Model, &i.Provider)
+	err := row.Scan(&i.Model, &i.Provider, &i.HomeSquadID)
 	return i, err
 }
 
@@ -256,19 +257,33 @@ func (q *Queries) ListTrackModeChangesBetween(ctx context.Context, arg ListTrack
 }
 
 const listTrackRecords = `-- name: ListTrackRecords :many
-SELECT workspace_id, agent_id, work_class, window_days, model, n_pass, n_partial, n_fail, n_unverified, n_high_fail, score_lower, last_high_fail_at, verification_mode, mode_pinned, mode_changed_at, computed_at FROM track_record
-WHERE workspace_id = $1
-    AND ($2::uuid IS NULL OR agent_id = $2::uuid)
-    AND ($3::text IS NULL OR work_class = $3::text)
-    AND ($4::int IS NULL OR window_days = $4::int)
-    AND model = ''
-ORDER BY agent_id, work_class, window_days
-LIMIT $5
+SELECT tr.workspace_id, tr.agent_id, tr.work_class, tr.window_days, tr.model, tr.n_pass, tr.n_partial, tr.n_fail, tr.n_unverified, tr.n_high_fail, tr.score_lower, tr.last_high_fail_at, tr.verification_mode, tr.mode_pinned, tr.mode_changed_at, tr.computed_at FROM track_record tr
+WHERE tr.workspace_id = $1
+    AND ($2::uuid IS NULL OR tr.agent_id = $2::uuid)
+    AND ($3::uuid IS NULL
+        OR EXISTS (
+            SELECT 1 FROM squad_member sm
+            WHERE sm.squad_id = $3::uuid
+              AND sm.member_type = 'agent'
+              AND sm.member_id = tr.agent_id
+        )
+        OR EXISTS (
+            SELECT 1 FROM squad s
+            WHERE s.id = $3::uuid
+              AND s.workspace_id = $1
+              AND s.leader_id = tr.agent_id
+        ))
+    AND ($4::text IS NULL OR tr.work_class = $4::text)
+    AND ($5::int IS NULL OR tr.window_days = $5::int)
+    AND tr.model = ''
+ORDER BY tr.agent_id, tr.work_class, tr.window_days
+LIMIT $6
 `
 
 type ListTrackRecordsParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	AgentID     pgtype.UUID `json:"agent_id"`
+	SquadID     pgtype.UUID `json:"squad_id"`
 	WorkClass   pgtype.Text `json:"work_class"`
 	WindowDays  pgtype.Int4 `json:"window_days"`
 	RowLimit    int32       `json:"row_limit"`
@@ -278,6 +293,7 @@ func (q *Queries) ListTrackRecords(ctx context.Context, arg ListTrackRecordsPara
 	rows, err := q.db.Query(ctx, listTrackRecords,
 		arg.WorkspaceID,
 		arg.AgentID,
+		arg.SquadID,
 		arg.WorkClass,
 		arg.WindowDays,
 		arg.RowLimit,

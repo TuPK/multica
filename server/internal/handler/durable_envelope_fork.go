@@ -50,7 +50,7 @@ type SetSquadEnvelopeRequest struct {
 }
 
 func (h *Handler) envelopeService() *service.EnvelopeService {
-	return &service.EnvelopeService{Queries: h.Queries, TxStarter: h.TxStarter}
+	return &service.EnvelopeService{Queries: h.Queries, TxStarter: h.TxStarter, Flags: h.FeatureFlags}
 }
 
 func squadEnvelopeView(v service.EnvelopeView) SquadEnvelopeView {
@@ -131,6 +131,9 @@ func (h *Handler) SetSquadEnvelope(w http.ResponseWriter, r *http.Request) {
 	}
 	view, err := h.envelopeService().Set(r.Context(), wsUUID, squadID, *req.FloorLevel, *req.CeilingLevel, req.Reason, actor)
 	switch {
+	case errors.Is(err, service.ErrOutcomesOff):
+		writeError(w, http.StatusServiceUnavailable, err.Error())
+		return
 	case errors.Is(err, service.ErrEnvelopeInvalid), errors.Is(err, service.ErrAutonomyReasonRequired):
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -165,6 +168,9 @@ func (h *Handler) ClearSquadEnvelope(w http.ResponseWriter, r *http.Request) {
 	}
 	err := h.envelopeService().Clear(r.Context(), wsUUID, squadID, actor)
 	switch {
+	case errors.Is(err, service.ErrOutcomesOff):
+		writeError(w, http.StatusServiceUnavailable, err.Error())
+		return
 	case errors.Is(err, service.ErrEnvelopeNotFound):
 		writeError(w, http.StatusNotFound, err.Error())
 		return

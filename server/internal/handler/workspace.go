@@ -734,6 +734,13 @@ func (h *Handler) UpdateWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Settings != nil {
 		if incoming, ok := req.Settings.(map[string]any); ok {
+			if days, exists := incoming["settle_days"]; exists {
+				n, valid := days.(float64)
+				if !valid || n < 1 || n > 60 || n != float64(int(n)) {
+					writeError(w, http.StatusBadRequest, "settle_days must be an integer from 1 to 60")
+					return
+				}
+			}
 			// Only an old client's flip of the retired PR switch needs the
 			// stored value; see reconcilePRMergeSettings.
 			var stored map[string]any

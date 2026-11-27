@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -132,9 +133,16 @@ func (s *VerificationService) now() time.Time {
 	return time.Now()
 }
 
+func (s *VerificationService) outcomesEnabled(ctx context.Context) bool {
+	return featureflags.DurableOutcomesEnabled(ctx, s.Flags)
+}
+
 // AddCriterion writes a criterion on an issue. The open-criteria limit is checked under
 // the issue's row lock, so two writers cannot both take the last slot.
 func (s *VerificationService) AddCriterion(ctx context.Context, ws, issue pgtype.UUID, actor GovernanceActor, in CriterionInput) (db.AcceptanceCriterion, error) {
+	if !s.outcomesEnabled(ctx) {
+		return db.AcceptanceCriterion{}, ErrOutcomesOff
+	}
 	source := in.Source
 	if source == "" {
 		source = criterionSourceMember
@@ -210,6 +218,9 @@ func (s *VerificationService) ListCriteria(ctx context.Context, ws, issue pgtype
 // once the issue's outcome has settled, or while its pending outcome already has a check
 // on the criterion: the verifier judged the text it had.
 func (s *VerificationService) UpdateCriterion(ctx context.Context, ws, issue, criterion pgtype.UUID, actor GovernanceActor, patch CriterionPatch) (db.AcceptanceCriterion, error) {
+	if !s.outcomesEnabled(ctx) {
+		return db.AcceptanceCriterion{}, ErrOutcomesOff
+	}
 	var out db.AcceptanceCriterion
 	err := s.inTx(ctx, func(q *db.Queries) error {
 		if _, err := q.GetAcceptanceCriterion(ctx, db.GetAcceptanceCriterionParams{ID: criterion, WorkspaceID: ws, IssueID: issue}); err != nil {
@@ -387,6 +398,9 @@ func validateCriterionSpec(kind string, spec map[string]any) ([]byte, error) {
 // the verification task it was given for that criterion, and never if it did the work
 // or wrote the criterion.
 func (s *VerificationService) Record(ctx context.Context, ws pgtype.UUID, actor GovernanceActor, outcomeID pgtype.UUID, in VerificationInput) (db.OutcomeVerification, error) {
+	if !s.outcomesEnabled(ctx) {
+		return db.OutcomeVerification{}, ErrOutcomesOff
+	}
 	var out db.OutcomeVerification
 	err := s.inTx(ctx, func(q *db.Queries) error {
 		o, err := q.GetWorkOutcomeInWorkspace(ctx, db.GetWorkOutcomeInWorkspaceParams{ID: outcomeID, WorkspaceID: ws})
@@ -516,6 +530,9 @@ func verificationParams(ws, outcome pgtype.UUID, in VerificationInput, verifierT
 // It writes a member check on the outcome and the new verdict, and a governance event.
 // fail_cause is member for a fail a person made.
 func (s *VerificationService) Override(ctx context.Context, ws pgtype.UUID, actor GovernanceActor, outcomeID pgtype.UUID, in VerificationInput) (db.WorkOutcome, error) {
+	if !s.outcomesEnabled(ctx) {
+		return db.WorkOutcome{}, ErrOutcomesOff
+	}
 	var out db.WorkOutcome
 	err := s.inTx(ctx, func(q *db.Queries) error {
 		o, err := q.GetWorkOutcomeInWorkspace(ctx, db.GetWorkOutcomeInWorkspaceParams{ID: outcomeID, WorkspaceID: ws})
@@ -564,7 +581,7 @@ func (s *VerificationService) Override(ctx context.Context, ws pgtype.UUID, acto
 		}
 		changed := o
 		changed.Verdict, changed.Severity = in.Result, severity
-		if err := (&EnvelopeService{Now: s.now}).OnHighFail(ctx, q, changed); err != nil {
+		if err := (&EnvelopeService{Now: s.now, Flags: s.Flags}).OnHighFail(ctx, q, changed); err != nil {
 			return err
 		}
 		if err := NewGovernanceLog().Record(ctx, q, GovernanceEvent{
@@ -693,6 +710,9 @@ func (s *VerificationService) ScheduleChecks(ctx context.Context) (int, error) {
 // Each step is idempotent, so the job calls Schedule for an outcome again each minute
 // until every criterion is handled.
 func (s *VerificationService) Schedule(ctx context.Context, o db.WorkOutcome) error {
+	if !s.outcomesEnabled(ctx) {
+		return nil
+	}
 	if !o.Sampled || o.SettledAt.Valid || o.SupersededBy.Valid {
 		return nil
 	}
@@ -900,6 +920,9 @@ func durableOutcomeOf(task db.AgentTaskQueue) string {
 // stays open and comes up again on the next run; a deployment with more open metric
 // criteria than metricCheckBatch would need keyset paging here.
 func (s *VerificationService) CheckMetrics(ctx context.Context, now time.Time) (int, error) {
+	if !s.outcomesEnabled(ctx) {
+		return 0, nil
+	}
 	rows, err := s.Queries.ListOpenSystemCriteria(ctx, db.ListOpenSystemCriteriaParams{CheckKind: CheckKindMetric, RowLimit: metricCheckBatch})
 	if err != nil {
 		return 0, fmt.Errorf("list metric criteria: %w", err)

@@ -120,6 +120,7 @@ export interface ProjectActivityPage {
 }
 
 export interface Project {
+  outcomes_disabled?: boolean;
   id: string;
   workspace_id: string;
   title: string;
@@ -191,6 +192,7 @@ export interface CreateProjectRequest {
 }
 
 export interface UpdateProjectRequest {
+  outcomes_disabled?: boolean;
   title?: string;
   visibility?: ProjectVisibility;
   member_ids?: string[];

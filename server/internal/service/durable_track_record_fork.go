@@ -69,6 +69,9 @@ func (s *TrackRecordService) ModeFor(ctx context.Context, ws, agentID pgtype.UUI
 // Recompute rewrites the windows of one pair and moves its mode if the rules say so, in
 // one transaction.
 func (s *TrackRecordService) Recompute(ctx context.Context, ws, agentID pgtype.UUID, workClass string) error {
+	if !featureflags.DurableOutcomesEnabled(ctx, s.Flags) {
+		return nil
+	}
 	return s.inTx(ctx, func(q *db.Queries) error {
 		return recordTrack(ctx, q, ws, agentID, workClass, s.now())
 	})
@@ -98,6 +101,9 @@ func (s *TrackRecordService) RecomputeAll(ctx context.Context) (int, error) {
 // recompute moves it. A change of the mode is one governance event by the actor. It
 // returns the 30-day row after the change.
 func (s *TrackRecordService) Pin(ctx context.Context, ws pgtype.UUID, actor GovernanceActor, agentID pgtype.UUID, workClass string, mode *string) (db.TrackRecord, error) {
+	if !featureflags.DurableOutcomesEnabled(ctx, s.Flags) {
+		return db.TrackRecord{}, ErrOutcomesOff
+	}
 	if mode != nil && !validVerificationMode(*mode) {
 		return db.TrackRecord{}, ErrTrackModeInvalid
 	}

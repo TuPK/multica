@@ -33,11 +33,24 @@ ORDER BY t.created_at DESC
 LIMIT 1
 `
 
+type LatestDoneTransitionRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	IssueID       pgtype.UUID        `json:"issue_id"`
+	FromStatusKey pgtype.Text        `json:"from_status_key"`
+	ToStatusKey   string             `json:"to_status_key"`
+	ActorType     string             `json:"actor_type"`
+	ActorID       pgtype.UUID        `json:"actor_id"`
+	TaskID        pgtype.UUID        `json:"task_id"`
+	Source        string             `json:"source"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 // A transition into done: the catalog category is done, or there is no catalog
 // row and the key is the built-in done (the only built-in key in that category).
-func (q *Queries) LatestDoneTransition(ctx context.Context, issueID pgtype.UUID) (IssueStatusTransition, error) {
+func (q *Queries) LatestDoneTransition(ctx context.Context, issueID pgtype.UUID) (LatestDoneTransitionRow, error) {
 	row := q.db.QueryRow(ctx, latestDoneTransition, issueID)
-	var i IssueStatusTransition
+	var i LatestDoneTransitionRow
 	err := row.Scan(
 		&i.ID,
 		&i.WorkspaceID,

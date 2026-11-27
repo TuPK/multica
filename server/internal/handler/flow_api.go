@@ -168,7 +168,7 @@ func (h *Handler) PlanIssueFlow(w http.ResponseWriter, r *http.Request) {
 	if !decodeFlowBody(w, r, &req) {
 		return
 	}
-	request, _, _, ok := h.loadOperatedRun(w, r, true)
+	request, _, actor, ok := h.loadOperatedRun(w, r, true)
 	if !ok {
 		return
 	}
@@ -176,7 +176,7 @@ func (h *Handler) PlanIssueFlow(w http.ResponseWriter, r *http.Request) {
 	if req.Blocked != nil {
 		in.Blocked = &FlowPlanBlocked{Missing: req.Blocked.Missing, Reason: req.Blocked.Reason}
 	}
-	state, err := h.PlanFlow(r.Context(), request, in)
+	state, err := h.PlanFlow(withFlowActorContext(r, actor), request, in)
 	if err != nil {
 		writeFlowError(w, r, err)
 		return
@@ -186,11 +186,11 @@ func (h *Handler) PlanIssueFlow(w http.ResponseWriter, r *http.Request) {
 
 // AdvanceIssueFlow runs the engine on a request.
 func (h *Handler) AdvanceIssueFlow(w http.ResponseWriter, r *http.Request) {
-	request, _, _, ok := h.loadOperatedRun(w, r, true)
+	request, _, actor, ok := h.loadOperatedRun(w, r, true)
 	if !ok {
 		return
 	}
-	resp, err := h.AdvanceFlow(r.Context(), request)
+	resp, err := h.AdvanceFlow(withFlowActorContext(r, actor), request)
 	if err != nil {
 		writeFlowError(w, r, err)
 		return
@@ -233,7 +233,7 @@ func (h *Handler) ResumeIssueFlow(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	state, err := h.ResumeFlow(r.Context(), request, FlowResumeInput{
+	state, err := h.ResumeFlow(withFlowActorContext(r, actor), request, FlowResumeInput{
 		ToStep: req.ToStep, ResetRework: req.ResetRework, ResetLoops: req.ResetLoops, SkipCancelled: req.SkipCancelled,
 		AcknowledgeSkipCheckpoint: req.AcknowledgeSkipCheckpoint, By: actor.ID,
 	})
@@ -252,11 +252,11 @@ func (h *Handler) DetachIssueFlow(w http.ResponseWriter, r *http.Request) {
 	if !decodeFlowBody(w, r, &req) {
 		return
 	}
-	request, _, _, ok := h.loadOperatedRun(w, r, false)
+	request, _, actor, ok := h.loadOperatedRun(w, r, false)
 	if !ok {
 		return
 	}
-	if err := h.DetachFlow(r.Context(), request, req.CancelTasks); err != nil {
+	if err := h.DetachFlow(withFlowActorContext(r, actor), request, req.CancelTasks); err != nil {
 		writeFlowError(w, r, err)
 		return
 	}

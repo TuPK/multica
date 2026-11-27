@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -13,6 +14,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/connectedapps"
+	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -257,6 +260,10 @@ func (h *Handler) UndoEffect(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "undo is not configured")
 		return
 	}
+	if !h.durableEffectsEnabled(r.Context()) {
+		writeError(w, http.StatusServiceUnavailable, "durable effects is off")
+		return
+	}
 	ev, err := h.Queries.GetEffectEvent(r.Context(), db.GetEffectEventParams{ID: id, WorkspaceID: wsUUID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "effect not found")
@@ -287,13 +294,27 @@ func (h *Handler) UndoEffect(w http.ResponseWriter, r *http.Request) {
 		writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "this effect cannot be taken back")
 		return
 	}
+	claimed, err := h.Queries.ClaimEffectEventUndo(r.Context(), db.ClaimEffectEventUndoParams{ID: id, WorkspaceID: wsUUID})
+	if err != nil {
+		slog.Error("undo effect: claim", "error", err, "effect_id", uuidToString(id))
+		writeError(w, http.StatusInternalServerError, "could not claim effect for undo")
+		return
+	}
+	if claimed == 0 {
+		writeErrorCode(w, http.StatusConflict, "effect_not_executed", "only an executed effect can be undone")
+		return
+	}
 	if _, err := h.ConnectedApps.ExecuteUndo(r.Context(), wsUUID, ev.MemberID, ev.Target, spec); err != nil {
+		if _, revertErr := h.Queries.RevertEffectEventUndo(r.Context(), db.RevertEffectEventUndoParams{ID: id, WorkspaceID: wsUUID}); revertErr != nil {
+			slog.Error("undo effect: revert claim", "error", revertErr, "effect_id", uuidToString(id))
+		}
 		slog.Error("undo effect", "error", err, "effect_id", uuidToString(id))
 		writeError(w, http.StatusBadGateway, "the undo call failed; the effect is unchanged")
 		return
 	}
-	if _, err := h.Queries.MarkEffectEventUndone(r.Context(), db.MarkEffectEventUndoneParams{ID: id, WorkspaceID: wsUUID}); err != nil {
-		slog.Error("undo effect: mark undone", "error", err, "effect_id", uuidToString(id))
+	updated, err := h.Queries.MarkEffectEventUndone(r.Context(), db.MarkEffectEventUndoneParams{ID: id, WorkspaceID: wsUUID})
+	if err != nil || updated == 0 {
+		slog.Error("undo effect: mark undone", "error", err, "updated", updated, "effect_id", uuidToString(id))
 		writeError(w, http.StatusInternalServerError, "the undo ran but the effect could not be marked undone")
 		return
 	}
@@ -335,6 +356,13 @@ func validDeclaredReversibility(rev string) bool {
 		return true
 	}
 	return false
+}
+
+func (h *Handler) durableEffectsEnabled(ctx context.Context) bool {
+	if svc, ok := h.Effects.(*service.EffectService); ok && svc != nil && svc.Flags != nil {
+		return featureflags.DurableEffectsEnabled(ctx, svc.Flags)
+	}
+	return featureflags.DurableEffectsEnabled(ctx, h.FeatureFlags)
 }
 
 func truncateEffectSummary(s string) string {

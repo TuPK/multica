@@ -20,7 +20,7 @@ func TestEffectEventAppendOnly(t *testing.T) {
 	// to the next WHERE or RETURNING keyword.
 	updates := regexp.MustCompile(`(?is)\bUPDATE\s+effect_event\s+SET\s+(.*?)\s+(?:WHERE|RETURNING)\b`)
 	assignments := regexp.MustCompile(`(?is)([a-z_]+)\s*=`)
-	allowed := map[string]bool{"status": true, "undo": true, "undo_until": true, "intent_id": true}
+	allowed := map[string]bool{"status": true, "undo": true, "undo_until": true, "intent_id": true, "result": true}
 	sawUpdate := false
 	for _, path := range queries {
 		body, err := os.ReadFile(path)

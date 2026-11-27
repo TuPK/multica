@@ -38,6 +38,10 @@ func (h *Handler) lockFlowRun(ctx context.Context, request db.Issue) (pgx.Tx, *d
 		return nil, nil, nil, fmt.Errorf("begin flow transaction: %w", err)
 	}
 	qtx := h.Queries.WithTx(tx)
+	if err := applyFlowActorSession(ctx, qtx); err != nil {
+		tx.Rollback(ctx)
+		return nil, nil, nil, err
+	}
 	locked, err := qtx.LockIssueForFlow(ctx, db.LockIssueForFlowParams{ID: request.ID, WorkspaceID: request.WorkspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		tx.Rollback(ctx)
@@ -431,6 +435,7 @@ type FlowResumeInput struct {
 // work tasks a person cancelled in the round that goes on stand cancelled. A
 // request of a schema 2 flow re-enters the step: its tasks open in a new entry.
 func (h *Handler) ResumeFlow(ctx context.Context, request db.Issue, in FlowResumeInput) (IssueFlowStateResponse, error) {
+	ctx = withFlowMemberContext(ctx, in.By)
 	tx, qtx, run, err := h.lockFlowRun(ctx, request)
 	if err != nil {
 		return IssueFlowStateResponse{}, err
@@ -587,6 +592,9 @@ func (h *Handler) DetachFlow(ctx context.Context, request db.Issue, cancelTasks 
 	}
 	defer tx.Rollback(ctx)
 	qtx := h.Queries.WithTx(tx)
+	if err := applyFlowActorSession(ctx, qtx); err != nil {
+		return err
+	}
 	locked, err := qtx.LockIssueForFlow(ctx, db.LockIssueForFlowParams{ID: request.ID, WorkspaceID: request.WorkspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errFlowNotManaged

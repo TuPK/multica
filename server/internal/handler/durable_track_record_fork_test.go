@@ -57,3 +57,40 @@ func TestTrackRecordPinRejectsUnknownMode(t *testing.T) {
 	req := companyReq(o.fx.Owner, o.fx.ID, http.MethodPut, "/api/track-records/pin", body)
 	wantOutcomeCode(t, testutil.Call(t, testHandler.PinTrackRecord, req), http.StatusBadRequest, "verification_mode_invalid")
 }
+
+func TestListTrackRecordsFiltersBySquad(t *testing.T) {
+	o := newOutcomeFixture(t)
+	squad := o.wsfx.Squad(t, "track-record squad", o.doer)
+	o.wsfx.SquadMember(t, squad, "agent", o.doer)
+	o.wsfx.Cleanup(t, `DELETE FROM track_record WHERE workspace_id = $1`, o.fx.ID)
+
+	for _, agent := range []string{o.doer, o.verifier} {
+		o.wsfx.Exec(t, `INSERT INTO track_record (workspace_id, agent_id, work_class, window_days, model, verification_mode)
+			VALUES ($1, $2, 'general', 30, '', 'full')`, o.fx.ID, agent)
+	}
+
+	// (a) Filtering by squad_id returns only agents belonging to that squad.
+	var filtered TrackRecordList
+	req := companyReq(o.fx.Member, o.fx.ID, http.MethodGet, "/api/track-records?squad_id="+squad, nil)
+	testutil.Call(t, testHandler.ListTrackRecords, req).Want(http.StatusOK).JSON(&filtered)
+	if len(filtered.TrackRecords) != 1 || filtered.TrackRecords[0].AgentID != o.doer {
+		t.Errorf("filtered by squad_id = %+v, want only doer %s", filtered.TrackRecords, o.doer)
+	}
+
+	// (b) A squad belonging to another workspace is rejected with 404.
+	other := newCompanyWorkspace(t)
+	otherFx := testutil.New(testPool, other.ID, other.Owner)
+	otherRuntime := otherFx.Runtime(t, "other rt")
+	otherAgent := otherFx.Agent(t, "other agent", otherRuntime)
+	otherSquad := otherFx.Squad(t, "other ws squad", otherAgent)
+	crossReq := companyReq(o.fx.Member, o.fx.ID, http.MethodGet, "/api/track-records?squad_id="+otherSquad, nil)
+	testutil.Call(t, testHandler.ListTrackRecords, crossReq).Want(http.StatusNotFound)
+
+	// (c) Without squad_id, both agents in the workspace are returned.
+	var all TrackRecordList
+	allReq := companyReq(o.fx.Member, o.fx.ID, http.MethodGet, "/api/track-records", nil)
+	testutil.Call(t, testHandler.ListTrackRecords, allReq).Want(http.StatusOK).JSON(&all)
+	if len(all.TrackRecords) != 2 {
+		t.Errorf("unfiltered track records = %d, want 2", len(all.TrackRecords))
+	}
+}

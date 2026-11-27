@@ -23,12 +23,13 @@ VALUES (
 RETURNING id;
 
 -- name: FinishEffectEvent :execrows
--- Moves an awaiting event to its outcome. undo and undo_until are set together, when
--- the forward call succeeded and its undo is known.
+-- Moves an awaiting event to its outcome. undo, undo_until and result are set
+-- when the forward call succeeded.
 UPDATE effect_event SET
     status = sqlc.arg('status')::text,
     undo = COALESCE(sqlc.narg('undo')::jsonb, undo),
-    undo_until = COALESCE(sqlc.narg('undo_until')::timestamptz, undo_until)
+    undo_until = COALESCE(sqlc.narg('undo_until')::timestamptz, undo_until),
+    result = COALESCE(sqlc.narg('result')::jsonb, result)
 WHERE id = sqlc.arg('id')::uuid
     AND workspace_id = sqlc.arg('workspace_id')::uuid
     AND status = 'awaiting';
@@ -60,9 +61,24 @@ WHERE workspace_id = sqlc.arg('workspace_id')::uuid
 ORDER BY created_at DESC
 LIMIT sqlc.arg('row_limit')::integer;
 
--- name: MarkEffectEventUndone :execrows
--- The second status move (durable spec 4.4): executed to undone, once.
-UPDATE effect_event SET status = 'undone'
+-- name: ClaimEffectEventUndo :execrows
+-- Claims an executed effect before calling the inverse tool so concurrent undo
+-- requests cannot invoke the external provider twice.
+UPDATE effect_event SET status = 'undoing'
 WHERE id = sqlc.arg('id')::uuid
     AND workspace_id = sqlc.arg('workspace_id')::uuid
     AND status = 'executed';
+
+-- name: RevertEffectEventUndo :execrows
+-- Returns a claimed undo to executed when the inverse tool fails.
+UPDATE effect_event SET status = 'executed'
+WHERE id = sqlc.arg('id')::uuid
+    AND workspace_id = sqlc.arg('workspace_id')::uuid
+    AND status = 'undoing';
+
+-- name: MarkEffectEventUndone :execrows
+-- The second status move (durable spec 4.4): undoing to undone, once.
+UPDATE effect_event SET status = 'undone'
+WHERE id = sqlc.arg('id')::uuid
+    AND workspace_id = sqlc.arg('workspace_id')::uuid
+    AND status = 'undoing';

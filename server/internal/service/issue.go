@@ -149,6 +149,7 @@ type IssueCreateOpts struct {
 	// still resolving, then promotes the returned task after attachment binding.
 	// Zero preserves the ordinary immediate enqueue path.
 	AssignedAgentRunFireAt time.Time
+	IssueCreateOptsFork
 }
 
 // ErrActiveDuplicate signals that the duplicate guard found an active
@@ -669,7 +670,7 @@ func (s *IssueService) createOnce(ctx context.Context, p IssueCreateParams, opts
 
 	s.publishIssueCreated(issue, attachments, labels, p.CreatorType, actorID, opts)
 	s.captureCreatedAnalytics(issue, p.CreatorType, actorID, opts)
-	if opts.AssignedAgentRunFireAt.IsZero() {
+	if opts.AssignedAgentRunFireAt.IsZero() && !opts.SkipAutoEnqueue {
 		assignedTaskID = s.maybeEnqueueOnAssign(enqueueCtx, issue, p.CreatorType, actorID, opts.AssignedAgentRunFireAt)
 	}
 
