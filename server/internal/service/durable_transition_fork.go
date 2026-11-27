@@ -82,3 +82,34 @@ func ListIssueStatusTransitionRecords(ctx context.Context, q *db.Queries, worksp
 	}
 	return out, nil
 }
+
+// IssueEnteredDone is the transition event emitted when an issue moves into
+// the done lifecycle category from a non-done category (durable spec 2.2, A1).
+type IssueEnteredDone struct {
+	Transition IssueStatusTransitionRecord
+}
+
+// IssueLeftDone is the transition event emitted when an issue leaves the done
+// lifecycle category. Reopened is true for moves back to an active/unstarted
+// category and false for moves into closed (cancelled, spec 2.2).
+type IssueLeftDone struct {
+	Transition IssueStatusTransitionRecord
+	Reopened   bool
+}
+
+// ClassifyIssueTransition classifies one resolved transition record into an
+// IssueEnteredDone or IssueLeftDone event, or (nil, nil) if the transition
+// neither enters nor leaves the done lifecycle category.
+func ClassifyIssueTransition(rec IssueStatusTransitionRecord) (*IssueEnteredDone, *IssueLeftDone) {
+	switch {
+	case rec.ToCategory == "done" && rec.FromCategory != "done":
+		return &IssueEnteredDone{Transition: rec}, nil
+	case rec.FromCategory == "done" && rec.ToCategory != "done":
+		return nil, &IssueLeftDone{
+			Transition: rec,
+			Reopened:   rec.ToCategory != "closed",
+		}
+	default:
+		return nil, nil
+	}
+}

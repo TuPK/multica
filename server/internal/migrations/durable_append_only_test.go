@@ -7,11 +7,22 @@ import (
 	"testing"
 )
 
-// TestOutcomeAppendOnlyVerifications: outcome_verification is append-only (spec
+// TestOutcomeVerificationAppendOnly: outcome_verification is append-only (spec
 // 2.3). No query under pkg/db/queries may update or delete a verification; a new
 // verification is a new row, and a settled verdict changes only through a new
 // verification of the member's own, as governance_event does.
+func TestOutcomeVerificationAppendOnly(t *testing.T) {
+	assertOutcomeVerificationAppendOnly(t)
+}
+
+// TestOutcomeAppendOnlyVerifications preserves the existing test name while
+// delegating to the same append-only check as TestOutcomeVerificationAppendOnly.
 func TestOutcomeAppendOnlyVerifications(t *testing.T) {
+	assertOutcomeVerificationAppendOnly(t)
+}
+
+func assertOutcomeVerificationAppendOnly(t *testing.T) {
+	t.Helper()
 	createsTable := regexp.MustCompile(`(?is)\bCREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?outcome_verification\b`)
 	migrations, err := filepath.Glob(filepath.Join(realMigrationsDir(t), "*.up.sql"))
 	if err != nil || len(migrations) == 0 {

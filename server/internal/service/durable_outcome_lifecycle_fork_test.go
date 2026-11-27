@@ -403,3 +403,95 @@ func TestReplayedOverlapAppliesOnce(t *testing.T) {
 		t.Fatalf("replayed overlap: applied %d times, want once", n)
 	}
 }
+
+// TestOutcomeLifecycle (plan Task A2, spec 2.4): exercises the full lifecycle
+// of a work outcome on real DB fixtures:
+//   - entering done opens one pending work_outcome with settle_at = now + 7d;
+//   - reopening inside the settle window marks it fail/reopened (unsettled);
+//   - entering done again opens a new pending outcome and sets superseded_by on
+//     the prior outcome;
+//   - issues labelled wc:skip never produce an outcome;
+//   - done -> cancelled settles the current outcome as fail/reverted.
+func TestOutcomeLifecycle(t *testing.T) {
+	f, _ := companyWorkspace(t)
+	svc, _ := outcomeService(t, f, true)
+	t0 := time.Date(2026, 11, 27, 10, 0, 0, 0, time.UTC)
+	svc.Now = func() time.Time { return t0 }
+
+	issue := labelIssue(t, f, "todo", "wc:billing")
+	skipped := labelIssue(t, f, "todo", "wc:skip")
+	cancelled := outcomeIssue(t, f, "todo")
+
+	// 1. Entering done creates one pending outcome with settle_at = now + 7d;
+	// wc:skip creates none.
+	f.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, issue)
+	f.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, skipped)
+	firstDoneID := latestTransitionTo(t, f, issue, "done")
+	runOutcomeJob(t, svc)
+	runOutcomeJob(t, svc)
+
+	if got := outcomesOf(t, f, skipped); len(got) != 0 {
+		t.Fatalf("wc:skip issue produced %d outcomes, want 0", len(got))
+	}
+	got := outcomesOf(t, f, issue)
+	if len(got) != 1 {
+		t.Fatalf("after first done: want 1 outcome, got %d: %+v", len(got), got)
+	}
+	first := got[0]
+	if first.DoneTransitionID != firstDoneID {
+		t.Fatalf("done_transition_id = %s, want %s", first.DoneTransitionID, firstDoneID)
+	}
+	if first.Verdict != "pending" || first.Settled || first.SupersededBy != "" {
+		t.Fatalf("first outcome = %+v, want pending, unsettled, current", first)
+	}
+	if first.WorkClass != "label:billing" {
+		t.Fatalf("work_class = %q, want label:billing", first.WorkClass)
+	}
+	if !first.SettleAt.Equal(t0.Add(outcomeSettleWindow)) {
+		t.Fatalf("settle_at = %v, want %v (now + 7d)", first.SettleAt, t0.Add(outcomeSettleWindow))
+	}
+
+	// 2. Reopen inside window -> fail/reopened, still unsettled.
+	f.Exec(t, `UPDATE issue SET status = 'in_progress' WHERE id = $1`, issue)
+	runOutcomeJob(t, svc)
+	got = outcomesOf(t, f, issue)
+	if len(got) != 1 || got[0].Verdict != "fail" || got[0].FailCause != "reopened" || got[0].Settled {
+		t.Fatalf("after reopen: got %+v, want fail/reopened unsettled", got)
+	}
+
+	// 3. Re-entering done creates a new pending outcome and links superseded_by on the first.
+	t1 := t0.Add(24 * time.Hour)
+	svc.Now = func() time.Time { return t1 }
+	f.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, issue)
+	secondDoneID := latestTransitionTo(t, f, issue, "done")
+	runOutcomeJob(t, svc)
+	runOutcomeJob(t, svc)
+
+	got = outcomesOf(t, f, issue)
+	if len(got) != 2 {
+		t.Fatalf("after second done: want 2 outcomes, got %d: %+v", len(got), got)
+	}
+	old, cur := got[0], got[1]
+	if old.ID != first.ID || old.Verdict != "fail" || old.FailCause != "reopened" {
+		t.Fatalf("old outcome = %+v, want original fail/reopened", old)
+	}
+	if old.SupersededBy != cur.ID {
+		t.Fatalf("old.superseded_by = %q, want %q", old.SupersededBy, cur.ID)
+	}
+	if cur.DoneTransitionID != secondDoneID || cur.Verdict != "pending" || cur.FailCause != "" || cur.Settled || cur.SupersededBy != "" {
+		t.Fatalf("new outcome = %+v, want pending current outcome for %s", cur, secondDoneID)
+	}
+	if !cur.SettleAt.Equal(t1.Add(outcomeSettleWindow)) {
+		t.Fatalf("new settle_at = %v, want %v", cur.SettleAt, t1.Add(outcomeSettleWindow))
+	}
+
+	// 4. done -> cancelled settles as fail/reverted.
+	f.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, cancelled)
+	runOutcomeJob(t, svc)
+	f.Exec(t, `UPDATE issue SET status = 'cancelled' WHERE id = $1`, cancelled)
+	runOutcomeJob(t, svc)
+	cGot := outcomesOf(t, f, cancelled)
+	if len(cGot) != 1 || cGot[0].Verdict != "fail" || cGot[0].FailCause != "reverted" || !cGot[0].Settled {
+		t.Fatalf("cancelled outcome = %+v, want fail/reverted settled", cGot)
+	}
+}
