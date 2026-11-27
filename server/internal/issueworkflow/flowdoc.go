@@ -330,9 +330,7 @@ type DocTask struct {
 	Skills       []string      `json:"skills,omitempty"`
 	Deadline     *TaskDeadline `json:"deadline,omitempty"`
 	Instructions string        `json:"instructions,omitempty"`
-	// Effects marks work whose result lands outside the platform. "external" holds the
-	// task until a person approves it (durable spec 5.4). Empty is ordinary work.
-	Effects string `json:"effects,omitempty"`
+	DocTaskFork
 }
 
 // NeedsVerdict reports whether the task closes only with a verdict: a gate
