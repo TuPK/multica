@@ -53,7 +53,7 @@ func syncQoderIssue(ctx context.Context, q *db.Queries, task db.AgentTaskQueue, 
 			return nil, nil
 		}
 	}
-	updated, err := q.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{
+	updated, err := updateQoderIssueStatus(ctx, q, task, db.UpdateIssueStatusParams{
 		ID: issue.ID, WorkspaceID: issue.WorkspaceID, Status: target, SourceTaskID: task.ID,
 	})
 	if err != nil {
