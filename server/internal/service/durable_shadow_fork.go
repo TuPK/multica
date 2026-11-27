@@ -336,6 +336,18 @@ func (s *ShadowService) shadowAgentFor(ctx context.Context, cfg db.ShadowConfig)
 				return fmt.Errorf("copy seat skills: %w", err)
 			}
 		}
+		if cfg.Purpose != ShadowPurposeNecessity {
+			// A model trial runs the seat's skills on the candidate model, so the shadow agent holds them all.
+			skills, err := q.ListEffectiveAgentSkills(ctx, cfg.AgentID)
+			if err != nil {
+				return fmt.Errorf("list seat skills for shadow: %w", err)
+			}
+			for _, sk := range skills {
+				if err := q.AddAgentSkill(ctx, db.AddAgentSkillParams{AgentID: agent.ID, SkillID: sk.ID}); err != nil {
+					return fmt.Errorf("copy seat skill to shadow: %w", err)
+				}
+			}
+		}
 		shadowAgent = agent.ID
 		_, err = q.SetShadowConfigShadowAgent(ctx, db.SetShadowConfigShadowAgentParams{ID: cfg.ID, ShadowAgentID: agent.ID})
 		return err

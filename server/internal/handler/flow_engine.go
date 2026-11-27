@@ -971,16 +971,11 @@ func (h *Handler) createFlowTask(ctx context.Context, run *flowRun, prefix strin
 			return map[string]any{"issue": resp}
 		},
 	}
-	h.prepareFlowTaskCreateOpts(ctx, c, &opts)
-	res, err := h.IssueService.Create(ctx, params, opts)
-	if err != nil {
+	if _, err := h.IssueService.Create(ctx, params, opts); err != nil {
 		if isFlowTaskOnce(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("open task %s: %w", c.Key, err)
-	}
-	if err := h.maybeHoldExternalFlowTask(ctx, run, c, res.Issue); err != nil {
-		return false, err
 	}
 	return true, nil
 }

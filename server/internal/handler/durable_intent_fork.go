@@ -99,6 +99,25 @@ func (h *Handler) intentDecider(w http.ResponseWriter, r *http.Request, workspac
 	return member, true
 }
 
+// intentHiddenFrom reports whether the intent names an issue in a project the caller cannot see.
+// The decider's role check admits an owner or admin outside the project, so the project check
+// is separate. A hidden intent is answered as a missing one.
+func (h *Handler) intentHiddenFrom(r *http.Request, workspaceID string, wsUUID, id pgtype.UUID) bool {
+	it, err := h.Queries.GetEffectIntent(r.Context(), db.GetEffectIntentParams{ID: id, WorkspaceID: wsUUID})
+	if err != nil || !it.IssueID.Valid {
+		return false
+	}
+	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: it.IssueID, WorkspaceID: wsUUID})
+	if err != nil {
+		return false
+	}
+	hidden, err := h.hiddenProjects(r, workspaceID)
+	if err != nil {
+		return true // fail closed: answer as a missing intent
+	}
+	return !hidden.CanSeeProject(issue.ProjectID)
+}
+
 // mayDecideIntent reports whether member may decide on an intent: the owner, an
 // admin, or the member whose awaiting event the intent is.
 func (h *Handler) mayDecideIntent(r *http.Request, member db.Member, id pgtype.UUID) bool {
@@ -161,6 +180,10 @@ func (h *Handler) ApproveIntent(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if h.intentHiddenFrom(r, workspaceID, wsUUID, id) {
+		writeError(w, http.StatusNotFound, "intent not found")
+		return
+	}
 	var req struct {
 		EditedCall *connectedapps.CanonicalCall `json:"edited_call"`
 		Note       string                       `json:"note"`
@@ -198,6 +221,10 @@ func (h *Handler) RejectIntent(w http.ResponseWriter, r *http.Request) {
 	}
 	member, ok := h.intentDecider(w, r, workspaceID, id)
 	if !ok {
+		return
+	}
+	if h.intentHiddenFrom(r, workspaceID, wsUUID, id) {
+		writeError(w, http.StatusNotFound, "intent not found")
 		return
 	}
 	var req struct {

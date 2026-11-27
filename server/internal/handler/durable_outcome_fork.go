@@ -401,7 +401,12 @@ func (h *Handler) GetWorkOutcome(w http.ResponseWriter, r *http.Request) {
 		writeOutcomeFailure(w, r, "read outcome", err)
 		return
 	}
-	if !h.requireIssueIDVisible(w, r, workspaceID, o.IssueID, http.StatusNotFound, "outcome not found") {
+	hidden, ok := h.outcomeHiddenFrom(w, r, workspaceID, o.IssueID)
+	if !ok {
+		return
+	}
+	if hidden {
+		writeOutcomeNotFound(w)
 		return
 	}
 	checks, err := h.Queries.ListOutcomeVerifications(r.Context(), db.ListOutcomeVerificationsParams{OutcomeID: id, WorkspaceID: wsUUID})
@@ -578,12 +583,7 @@ func (h *Handler) RecordOutcomeVerification(w http.ResponseWriter, r *http.Reque
 	if !decodeInitiativeBody(w, r, &req) {
 		return
 	}
-	if o, err := h.Queries.GetWorkOutcomeInWorkspace(r.Context(), db.GetWorkOutcomeInWorkspaceParams{ID: outcomeID, WorkspaceID: wsUUID}); err == nil {
-		if !h.requireIssueIDVisible(w, r, workspaceID, o.IssueID, http.StatusNotFound, "outcome not found") {
-			return
-		}
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		writeOutcomeFailure(w, r, "read outcome", err)
+	if h.outcomeUnreachable(w, r, workspaceID, wsUUID, outcomeID) {
 		return
 	}
 	in := service.VerificationInput{
@@ -638,12 +638,7 @@ func (h *Handler) OverrideOutcome(w http.ResponseWriter, r *http.Request) {
 	if !decodeInitiativeBody(w, r, &req) {
 		return
 	}
-	if o, err := h.Queries.GetWorkOutcomeInWorkspace(r.Context(), db.GetWorkOutcomeInWorkspaceParams{ID: outcomeID, WorkspaceID: wsUUID}); err == nil {
-		if !h.requireIssueIDVisible(w, r, workspaceID, o.IssueID, http.StatusNotFound, "outcome not found") {
-			return
-		}
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		writeOutcomeFailure(w, r, "read outcome", err)
+	if h.outcomeUnreachable(w, r, workspaceID, wsUUID, outcomeID) {
 		return
 	}
 	o, err := h.outcomeService().Override(r.Context(), wsUUID, caller.actor, outcomeID, service.VerificationInput{
@@ -728,4 +723,54 @@ func (h *Handler) applyDurableClaimBrief(ctx context.Context, task db.AgentTaskQ
 	} else {
 		resp.Agent.Instructions = resp.Agent.Instructions + "\n\n" + brief
 	}
+}
+
+// writeOutcomeNotFound is the answer for an outcome the caller cannot reach: a missing one and one
+// on a private project the caller cannot see get the same body.
+func writeOutcomeNotFound(w http.ResponseWriter) {
+	writeErrorCode(w, http.StatusNotFound, "outcome_not_found", "outcome not found")
+}
+
+// outcomeHiddenFrom reports whether the issue an outcome belongs to is in a project the caller
+// cannot see. ok is false when the answer could not be resolved, and the failure is written.
+func (h *Handler) outcomeHiddenFrom(w http.ResponseWriter, r *http.Request, workspaceID string, issueID pgtype.UUID) (hidden, ok bool) {
+	projects, ok := h.requestHiddenProjects(w, r, workspaceID)
+	if !ok {
+		return false, false
+	}
+	if projects.Empty() {
+		return false, true
+	}
+	projectID, err := h.Queries.GetIssueProjectID(r.Context(), issueID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, true
+	}
+	if err != nil {
+		writeOutcomeFailure(w, r, "read outcome project", err)
+		return false, false
+	}
+	return !projects.CanSeeProject(projectID), true
+}
+
+// outcomeUnreachable answers an outcome the caller cannot reach (missing, or on a hidden project)
+// with the same 404, and reports true when it wrote that answer or a failure.
+func (h *Handler) outcomeUnreachable(w http.ResponseWriter, r *http.Request, workspaceID string, wsUUID, outcomeID pgtype.UUID) bool {
+	o, err := h.Queries.GetWorkOutcomeInWorkspace(r.Context(), db.GetWorkOutcomeInWorkspaceParams{ID: outcomeID, WorkspaceID: wsUUID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeOutcomeNotFound(w)
+		return true
+	}
+	if err != nil {
+		writeOutcomeFailure(w, r, "read outcome", err)
+		return true
+	}
+	hidden, ok := h.outcomeHiddenFrom(w, r, workspaceID, o.IssueID)
+	if !ok {
+		return true
+	}
+	if hidden {
+		writeOutcomeNotFound(w)
+		return true
+	}
+	return false
 }

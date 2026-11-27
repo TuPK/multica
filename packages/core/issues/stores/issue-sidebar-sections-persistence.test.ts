@@ -14,6 +14,7 @@ const SAVED_ORDER = [
   "pull_requests", "environments", "deliverables", "apps", "execution_log", "details", "metadata",
 ];
 const RETIRED = new Set(["sub_issues", "details", "waiting", "duplicates"]);
+const ADDED_SINCE_SAVE = new Set(["handoff", "relations", "acceptance"]);
 
 async function reloadPreferences() {
   const saved = localStorage.getItem(STORAGE_KEY)!;
@@ -39,7 +40,8 @@ describe("issue sidebar persisted preferences", () => {
     await useIssueSidebarSectionsStore.persist.rehydrate();
     const state = useIssueSidebarSectionsStore.getState();
     const order = [...selectIssueSidebarOrder(state)];
-    expect(order.filter((id) => id !== "handoff" && id !== "relations")).toEqual(savedOrder.filter((id) => !RETIRED.has(id)));
+    // Sections added after the save (handoff, relations, acceptance) are not in the saved order.
+    expect(order.filter((id) => !ADDED_SINCE_SAVE.has(id))).toEqual(savedOrder.filter((id) => !RETIRED.has(id)));
     expect(order.indexOf("relations")).toBe(order.indexOf("parent") + 1);
     expect(state.hidden).toEqual(["parent", "apps"]);
     await reloadPreferences();

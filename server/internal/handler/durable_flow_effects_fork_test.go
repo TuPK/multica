@@ -32,32 +32,46 @@ func TestFlowExternalTaskWaitsForApproval(t *testing.T) {
 			}})
 			request := rig.newRequest()
 			t.Cleanup(func() {
-				testPool.Exec(context.Background(), `DELETE FROM effect_intent WHERE workspace_id=$1 AND target='flow/collect.docs' AND issue_id IN (SELECT id FROM issue WHERE parent_issue_id=$2)`, testWorkspaceID, request.ID)
+				testPool.Exec(context.Background(), `DELETE FROM effect_intent WHERE workspace_id=$1 AND target LIKE 'flow/collect.docs#%' AND issue_id IN (SELECT id FROM issue WHERE parent_issue_id=$2)`, testWorkspaceID, request.ID)
 			})
 			rig.complete(request, nil)
 			issue := rig.rows(request, "collect", 0)["docs"]
-			if issue == "" {
-				t.Fatal("external flow task was not created")
+			if enabled {
+				// The task is held before the engine creates it: no issue until its intent is approved.
+				if issue != "" {
+					t.Fatalf("before approval: external task %s was created", issue)
+				}
+			} else if issue == "" {
+				t.Fatal("flag off: external flow task was not created")
 			}
 			if !enabled {
 				if n := queuedRuns(t, issue); n == 0 {
 					t.Error("flag off: expected runnable task")
 				}
-				if n := dbfx.Count(t, `SELECT count(*) FROM effect_intent WHERE workspace_id=$1 AND issue_id=$2 AND target='flow/collect.docs'`, testWorkspaceID, issue); n != 0 {
+				if n := dbfx.Count(t, `SELECT count(*) FROM effect_intent WHERE workspace_id=$1 AND issue_id=$2 AND target LIKE 'flow/collect.docs#%'`, testWorkspaceID, issue); n != 0 {
 					t.Errorf("flag off: got %d intents, want 0", n)
 				}
 				return
 			}
-			if n := queuedRuns(t, issue); n != 0 {
-				t.Errorf("before approval: %d runnable runs, want 0", n)
-			}
 			var intent string
-			err := testPool.QueryRow(context.Background(), `SELECT id::text FROM effect_intent WHERE workspace_id=$1 AND issue_id=$2 AND target='flow/collect.docs' AND state='pending'`, testWorkspaceID, issue).Scan(&intent)
+			err := testPool.QueryRow(context.Background(), `SELECT id::text FROM effect_intent WHERE workspace_id=$1 AND target LIKE 'flow/collect.docs#%' AND state='pending' AND issue_id=$2`, testWorkspaceID, request.ID).Scan(&intent)
 			if err != nil {
 				t.Fatalf("pending approval intent: %v", err)
 			}
 			if _, err := testHandler.durable.Intents.Approve(context.Background(), parseUUID(testWorkspaceID), parseUUID(testUserID), parseUUID(intent), nil, "approved"); err != nil {
 				t.Fatalf("approve: %v", err)
+			}
+			// The request's next advance opens the approved task (spec 5.4; approval runs nothing itself).
+			current, err := testHandler.Queries.GetIssue(context.Background(), request.ID)
+			if err != nil {
+				t.Fatalf("load request: %v", err)
+			}
+			if _, err := testHandler.AdvanceFlow(context.Background(), current); err != nil {
+				t.Fatalf("advance: %v", err)
+			}
+			issue = rig.rows(request, "collect", 0)["docs"]
+			if issue == "" {
+				t.Fatal("after approval: the next advance did not open the task")
 			}
 			if n := queuedRuns(t, issue); n == 0 {
 				t.Error("after approval: task is not runnable")

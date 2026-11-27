@@ -16,12 +16,14 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/events"
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/service"
 	dbfx "github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // A route parameter is keyed by the literal path segment before it and its
@@ -57,6 +59,12 @@ var projectScopedRouteParams = map[string]privateRouteResolver{
 	// The inbox is where a member route names an issue as {issueId}; the
 	// caller has a notification about it, so marking it read has an effect.
 	"issues/{issueId}": func(f *privateRouteFixture, caller string) string { f.inboxItem(caller); return f.issue() },
+	// A work outcome, a criterion, a rehearsed intent and an effect event each belong to the
+	// private issue (or to its run), so their routes must hide them from an outsider.
+	"outcomes/{id}":  func(f *privateRouteFixture, _ string) string { return f.outcome() },
+	"criteria/{cid}": func(f *privateRouteFixture, _ string) string { return f.criterion() },
+	"intents/{id}":   func(f *privateRouteFixture, _ string) string { return f.intent() },
+	"effects/{id}":   func(f *privateRouteFixture, _ string) string { return f.effectEvent() },
 }
 
 // outsideProjectParam is a route parameter that cannot name an object inside a
@@ -108,6 +116,8 @@ var routeParamsOutsideProjects = map[string]outsideProjectParam{
 	"vars/{key}":                       {why: "a flow variable of an issue route that is probed", value: func(*privateRouteFixture) string { return "x" }},
 	"versions/{versionId}":             {why: "a version of a workspace object"},
 	"workspaces/{id}":                  {why: "the workspace itself"},
+	"decisions/{id}":                   {why: "a principal's decision record, not an object in a project", value: func(*privateRouteFixture) string { return "x" }},
+	"traits/{id}":                      {why: "a trait of a principal profile, not an object in a project", value: func(*privateRouteFixture) string { return "x" }},
 	"members/{memberId}":               {why: "a workspace membership"},
 	"invitations/{id}":                 {why: "the caller's own workspace invitation"},
 	"invitations/{invitationId}":       {why: "a workspace invitation"},
@@ -182,6 +192,7 @@ var routePrefixesNotProbed = map[string]string{
 // privateProjectRoutesNotProbed lists routes ("METHOD pattern") declaring a
 // project-scoped parameter that the probe cannot judge, each with the reason.
 var privateProjectRoutesNotProbed = map[string]string{
+	"POST /api/effects/{id}/undo":               "undo needs a configured provider; the test router has none, so both answers are 503",
 	"GET /api/attachments/{id}/signed-download": "the signed URL is the credential, not a session; it is minted only by the attachment routes probed here",
 	"POST /api/projects/{id}/join":              "the workspace owner's way into a private project they cannot see; TestWorkspaceOwnerJoinsPrivateProject covers who may call it",
 }
@@ -199,6 +210,7 @@ var privateProjectRouteRequests = map[string]privateRouteRequest{
 		return fmt.Sprintf(`{"label_id":%q}`, f.shared.labelID)
 	}},
 	"PUT /api/issues/{id}/metadata/{key}": {body: func(*privateRouteFixture, string) string { return `{"value":"probe"}` }},
+	"POST /api/intents/{id}/reject":       {body: func(*privateRouteFixture, string) string { return `{"note":"probe"}` }},
 	"POST /api/comments/{commentId}/sub-issues": {body: func(f *privateRouteFixture, _ string) string {
 		return fmt.Sprintf(`{"mode":"manual","capture_token":%q,"issue":{"title":"Probe sub-issue"}}`, f.captureToken())
 	}},
@@ -526,7 +538,12 @@ func TestEveryRouteByProjectObjectIDHidesPrivateProjects(t *testing.T) {
 	t.Setenv("LOCAL_UPLOAD_BASE_URL", "")
 	shared.uploadDir = t.TempDir()
 	t.Setenv("LOCAL_UPLOAD_DIR", shared.uploadDir)
-	router, _ := NewRouterWithOptions(testPool, realtime.NewHub(), events.New(), analytics.NoopClient{}, nil, RouterOptions{})
+	// The durable effect and outcome routes answer 503 while their flags are off, so the probe
+	// turns them on: an outsider must get the same answer for a hidden object as for a missing one.
+	durableFlags := featureflag.NewStaticProvider()
+	durableFlags.Set(featureflags.DurableEffects, featureflag.Rule{Default: true})
+	durableFlags.Set(featureflags.DurableOutcomes, featureflag.Rule{Default: true})
+	router, _ := NewRouterWithOptions(testPool, realtime.NewHub(), events.New(), analytics.NoopClient{}, nil, RouterOptions{FeatureFlags: featureflag.NewService(durableFlags)})
 	call := func(token, method, path, body string) routeAnswer {
 		var req *http.Request
 		switch method {
@@ -662,4 +679,51 @@ func TestEveryRouteByProjectObjectIDHidesPrivateProjects(t *testing.T) {
 			t.Errorf("privateProjectRouteRequests lists %q, which the router no longer registers", key)
 		}
 	}
+}
+
+// outcome is a work outcome of the private issue (opened when the issue was done).
+func (f *privateRouteFixture) outcome() string {
+	return f.once("outcome", func() string {
+		done := f.fx.Insert(f.t, "issue_status_transition", dbfx.Cols{
+			"workspace_id": f.fx.WorkspaceID, "issue_id": f.issue(), "to_status_key": "done",
+			"actor_type": "member", "actor_id": f.shared.insiderID,
+		})
+		return f.fx.Insert(f.t, "work_outcome", dbfx.Cols{
+			"workspace_id": f.fx.WorkspaceID, "issue_id": f.issue(), "done_transition_id": done, "verification_mode": "full", "sampled": false, "work_class": "probe", "settle_at": dbfx.Raw("now() + interval '7 days'"),
+			"verdict": "pending", "severity": "none", "fail_cause": "",
+		})
+	})
+}
+
+// criterion is an acceptance criterion of the private issue.
+func (f *privateRouteFixture) criterion() string {
+	return f.once("criterion", func() string {
+		return f.fx.Insert(f.t, "acceptance_criterion", dbfx.Cols{
+			"workspace_id": f.fx.WorkspaceID, "issue_id": f.issue(), "text": "Private route probe criterion",
+			"check_kind": "manual", "source": "member", "created_by_type": "member", "created_by_id": f.shared.insiderID,
+		})
+	})
+}
+
+// intent is a rehearsed action taken by the private issue's run, waiting for a decision.
+func (f *privateRouteFixture) intent() string {
+	return f.once("intent", func() string {
+		return f.fx.Insert(f.t, "effect_intent", dbfx.Cols{
+			"workspace_id": f.fx.WorkspaceID, "task_id": f.issueRun(), "agent_id": f.shared.agentID,
+			"issue_id": f.issue(), "source": "connected_app", "target": "probe.target", "effect_class": "write",
+			"reversibility": "compensable", "call": "{}", "call_sha256": "probe", "preview": "{}",
+			"predicted": "{}", "state": "pending", "expires_at": dbfx.Raw("now() + interval '1 day'"),
+		})
+	})
+}
+
+// effectEvent is an effect the private issue's run took, kept in the effect log.
+func (f *privateRouteFixture) effectEvent() string {
+	return f.once("effectEvent", func() string {
+		return f.fx.Insert(f.t, "effect_event", dbfx.Cols{
+			"workspace_id": f.fx.WorkspaceID, "task_id": f.issueRun(), "agent_id": f.shared.agentID,
+			"source": "connected_app", "target": "probe.target", "effect_class": "write",
+			"reversibility": "compensable", "decision": "allow", "status": "executed", "summary": "Private route probe effect",
+		})
+	})
 }

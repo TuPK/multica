@@ -151,7 +151,9 @@ func TestDigest_CharterSectionAndWorkspaceCounts(t *testing.T) {
 	assertDigestKeys(t, "digest", d,
 		"since", "until", "workspace", "squads", "omitted_squad_count", "quiet", "knowledge",
 		"inquiries", "pipeline", "goals", "overdue_requests", "blocked_directives", "requests_past_deadline", "people", "auto_approved", "budget",
-		"mode", "scope", "floors", "system_risks", "autonomy_auto_changes")
+		"mode", "scope", "floors", "system_risks", "autonomy_auto_changes",
+		// The attention budget (queued_asks) and the minutes per done (attention_minutes_per_done).
+		"queued_asks", "attention_minutes_per_done")
 
 	ws := digestObjectAt(t, "workspace", d["workspace"])
 	off := digestObjectAt(t, "workspace.routines_not_on_time", ws["routines_not_on_time"])

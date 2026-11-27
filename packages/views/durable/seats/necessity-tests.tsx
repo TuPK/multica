@@ -73,7 +73,7 @@ export function NecessityTests({ wsId, agentId }: { wsId: string; agentId: strin
           <DialogTrigger render={<Button type="button" size="sm" variant="outline" />}>
             {t(($) => $.seats.necessity.start)}
           </DialogTrigger>
-          <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-h-[85%] overflow-y-auto">
             {startOpen ? (
               <StartNecessityForm
                 wsId={wsId}

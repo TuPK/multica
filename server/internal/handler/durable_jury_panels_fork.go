@@ -56,6 +56,9 @@ func (h *Handler) ListOutcomeJuryPanels(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
+	if h.outcomeUnreachable(w, r, workspaceID, wsUUID, id) {
+		return
+	}
 	views, err := service.ListOutcomeJuryPanels(r.Context(), h.Queries, wsUUID, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list jury panels")

@@ -57,7 +57,7 @@ export function ShadowTrialDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85%] overflow-y-auto">
         {open ? (
           <ShadowTrialForm
             wsId={wsId}

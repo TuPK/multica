@@ -291,8 +291,9 @@ describe("PublishProposalView and publishPayload", () => {
       const dateInput = screen.getByLabelText("Until");
       expect(dateInput).toBeInTheDocument();
 
-      // Enter a valid future date
-      const futureDate = "2026-11-25";
+      // Enter a valid future date. Computed from today: a fixed date goes stale and the
+      // component refuses it as past.
+      const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       fireEvent.change(dateInput, { target: { value: futureDate } });
 
       // Confirm snooze
