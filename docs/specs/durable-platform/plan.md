@@ -35,33 +35,33 @@ Những trường hợp spec ngầm định mà dễ hỏng nhất với ngườ
 
 ## Trạng thái thực tế (cập nhật 2026-11-27)
 
-Bảng này ghi trạng thái theo mã nhánh trên `durable-platform` (tip `4ba65dade4`), đối chiếu với file, route và test có trong cây. Các ô `[ ]` trong từng task chưa được tick lại; mỗi task chỉ được tick khi phiên làm task đó xác nhận từng bước.
+Bảng này ghi trạng thái theo mã nhánh trên `durable-platform` (tip `1811940ade`), đối chiếu với file, route và test có trong cây. Các ô `[ ]` trong từng task chưa được tick lại; mỗi task chỉ được tick khi phiên làm task đó xác nhận từng bước.
 
 | Task | Trạng thái | Bằng chứng / còn thiếu |
 |---|---|---|
 | P0.1–P0.3 | Xong | `p0-findings.md`, `packages/core/durable/flags.ts` |
-| A1–A9 | Đã merge | `packages/views/durable/outcomes`, `e2e/durable/outcomes.spec.ts`. Chưa có `TestEveryStatusWriterRecordsOneTransition` (trọng tâm rà soát 1) |
-| B1–B4 | Đã merge | `durable_intent_fork.go`, `connected_apps_intent_fork_test.go` (test chốt một lần thực thi). Chưa có `durable_intent_fork_test.go` đúng tên plan |
+| A1–A9 | Đã merge | `packages/views/durable/outcomes`, `e2e/durable/outcomes.spec.ts`. Trigger và truy vấn transition có (migration 1044, `durable_transition.sql`). Chưa có các test: `TestEveryStatusWriterRecordsOneTransition` (trọng tâm rà soát 1), `TestEveryWriterSetsActorSession`, `TestTransitionNotRecordedWhenFlagOff`, `TestReopenDetected`, `TestOutcomeLifecycle`, `TestOutcomeVerificationAppendOnly` |
+| B1–B4 | Đã merge | `durable_intent_fork.go`, `connected_apps_intent_fork_test.go` (test chốt một lần thực thi). Chưa có `durable_intent_fork_test.go` đúng tên plan. Thiếu: `TestEditedApproveRehashesAndComments`, `TestExpireWakesAgentOnce` (B4), `TestEffectEventNoDelete` (B2), `TestUndoInternalRevisionKinds` (B3) |
 | B5 | Đã xong (commit `f951a1b1a4` trên nhánh, chưa push) | Trường `effects` trong `DocTask` (`flowdoc.go`) và schema 1 `Task` (`flow.go`), lift `liftTask`, kiểm tra `validateFlow` trong `scripts/catalog/lib/build-workflows.mjs`, giữ task ở cả hai đường mở (`flowTaskMayOpen`, `HoldFlowTask` theo vòng). Test: `TestExternalFlowTaskWaitsForApproval`, `TestHoldFlowTask*`, `TestLift_CarriesEffectsMark`, catalog `marks a task … external`. Ghi chú: duyệt mở task ở lượt sweep kế tiếp (≤30 giây); intent bị từ chối giữ bước chờ, chưa có đường dừng |
 | B6 | Đã merge | `packages/views/durable/effects` |
 | B7 | Đã merge | `e2e/durable/effects.spec.ts` |
-| C1 | Đã xong (chưa commit) | `attention.minutes_per_done` là metric nội tại trong `metrics_builtin.go` qua `attentionMinutesReadings` (`durable_attention_fork.go`), chỉ ghi khi `durable_principal` bật; test `TestAttentionMinutesPerDoneReading`. Không cần migration. Còn lại: `actual_seconds` chưa được handler truyền số đo (luôn `nil`) |
+| C1 | Đã xong (commit `10e0c1769b`) | `attention.minutes_per_done` là metric nội tại trong `metrics_builtin.go` qua `attentionMinutesReadings` (`durable_attention_fork.go`), chỉ ghi khi `durable_principal` bật; test `TestAttentionMinutesPerDoneReading`. Không cần migration. Còn lại: `actual_seconds` chưa được handler truyền số đo (luôn `nil`) |
 | C2–C4 | Đã merge | Principal, dự đoán, học, uỷ quyền, phỏng vấn (merge `35b8a186e4`) |
-| C5 | Chưa làm | Không có UI principal, dự đoán, phỏng vấn |
-| C6 | Chưa làm | Không có E2E giai đoạn C |
+| C5 | Đã merge (`1811940ade`, từ `636a462f53`) | `packages/views/durable/principal/`; `AttentionQueueSection` trong `packages/views/governance/` |
+| C6 | Chưa làm | Chưa có kịch bản F5/F6 trong `e2e/durable/`. Hiện chỉ có `outcomes.spec.ts` và `effects.spec.ts` (chưa kiểm nội dung `effects.spec.ts`) |
 | D1 | Đã merge | `durable_jury_fork.go`, `TestJuryWithOneAgentEscalates` |
 | D2 | Đã merge | Hồ sơ ghế (merge `235d48f272`) |
-| D3 | Đã merge | Shadow run, merge `4ba65dade4` |
+| D3 | Đã merge (merge `0d6b48fe26`) | Shadow run, sửa cặp shadow (`677c458f6b`). Chưa có `TestShadowGatewayWriteBlocked` |
 | D4 | Đã merge | `runtime_change` và tự hoàn tác (trong nhánh D3) |
 | D5 | Đã xong (commit `f951a1b1a4` trên nhánh, chưa push) | Migration 1118–1119; `durable_necessity_fork.go` (start, job tuần, verdict, `skill_change`, thống kê bước); route `GET/POST /agents/{id}/necessity`; job `durable_necessity_weekly` và `durable_flow_stage_monthly`. Test: `TestNotNeededFilesOneProposal`, `TestWeeklyMaxTwoPerSquad`, `TestShadowOmitsSkillUnderTest`, `TestFlowStageCandidatesCountFirstRound`, `TestNecessityRoute_StartAndList`. Chưa làm: bài kiểm tra cho khối chỉ dẫn (`instruction_block`), đưa thống kê bước vào brief, phút người tiêu ở cổng (F6) |
-| D6 | Chưa làm | Không có UI hồ sơ ghế, shadow, jury |
-| D7 | Chưa làm | Không có E2E giai đoạn D |
-| E1 | Một phần | `durable_reach_fork.go` có; chưa thấy route và job scheduler reach |
-| E2 | Một phần | `durable_ocf_fork.go`, `docs/specs/durable-platform/ocf`. Thiếu: OCF lịch sử không xuất dossier, handler không cấp principal (review 2026-11-27, mục 27) |
-| E3 | Một phần | `durable_attestation_fork.go` có; chưa thấy route `POST /api/attestations/verify`, well-known keys, lệnh CLI |
-| E4 | Một phần (chưa commit) | Migration 1122 (`seat_offer`) và 1123 (index CONCURRENTLY, đã đăng ký cleanup); `durable_seat_offer_fork.go` có `Post`, `Hire`, `SeatAttestationVerified`; test `durable_seat_offer_fork_test.go`. Chưa có: `TestHiredSeatStartsFull` (chưa có envelope theo ghế), ngân sách/envelope/work class của offer, route, UI, lấy khoá host từ xa, kiểm vai trò owner/admin |
-| E5 | Chưa làm | Không có UI giai đoạn E |
-| F1 | Chưa làm | Chạy sau mỗi giai đoạn |
+| D6 | Đã merge (`8bd67750c3`) | `packages/views/durable/seats/` (hồ sơ ghế, shadow, necessity); jury trong `packages/views/durable/outcomes/jury-split-card.tsx` |
+| D7 | Chưa làm | Thiếu `e2e/durable/shadow.spec.ts` |
+| E1 | Một phần | `durable_reach_fork.go`, job `jobs_durable_reach_fork.go`, route `GET /api/reach` và `POST /api/reach/gaps` đã có. Thiếu `TestCloseGapCreatesIssueWithMetricCriterion` và toàn bộ UI reach (E5) |
+| E2 | Một phần | `durable_ocf_fork.go`, `docs/specs/durable-platform/ocf`. Lệnh `company export --history` đã có. Thiếu: OCF lịch sử không xuất dossier, handler không cấp principal; chưa có `server/cmd/multica-ocf-adapter/` (D29) |
+| E3 | Một phần | `durable_attestation_fork.go`, route `POST /api/attestations/verify`, `/.well-known/multica-attestation-keys.json`, `POST /api/attestations/issue`, lệnh `cmd_attestation_fork.go` đã có. Chưa đối chiếu test E3 với plan (ví dụ `TestIssueDisabledWithoutKey`, `TestVerifyRateLimited`) |
+| E4 | Một phần (commit `10e0c1769b`) | Migration 1122 (`seat_offer`) và 1123 (index CONCURRENTLY, đã đăng ký cleanup); `durable_seat_offer_fork.go` có `Post`, `Hire`, `SeatAttestationVerified`; test `durable_seat_offer_fork_test.go`. Chưa có: `TestHiredSeatStartsFull` (chưa có envelope theo ghế), ngân sách/envelope/work class của offer, route, UI, lấy khoá host từ xa, kiểm vai trò owner/admin |
+| E5 | Chưa làm | Chưa có `packages/core/durable/{reach,ocf,attestations}` và `packages/views/durable/{reach,open}` |
+| F1 | Chưa làm | Chưa chạy `make check`, e2e durable, sync:contract/coverage, security-review; chưa có `rollout.md` |
 | F2 | Chưa làm | Bật thử trên máy chủ dev, chỉ khi người dùng đồng ý |
 
 ## P0. Nền
