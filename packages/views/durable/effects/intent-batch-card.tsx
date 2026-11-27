@@ -23,13 +23,13 @@ export function IntentBatchCard({ intents }: { intents: Intent[] }) {
       .mutateAsync({ ids: intents.map((intent) => intent.id) })
       .then(
         (results) => {
-          if (results.length === 0) {
-            toast.error(t(($) => $.batch.approve_all_failed));
-            return;
-          }
-          const approved = results.filter((r) => r.status === 200).length;
-          const failed = results.length - approved;
-          if (failed === 0) toast.success(t(($) => $.batch.approved_all, { count: approved }));
+          const approved = intents.filter((intent) => {
+            const result = results.find((r) => r.id === intent.id);
+            return result?.status === 200 && (result.state === "approved" || result.state === "executed");
+          }).length;
+          const failed = intents.length - approved;
+          if (approved === 0) toast.error(t(($) => $.batch.approve_all_failed));
+          else if (failed === 0) toast.success(t(($) => $.batch.approved_all, { count: approved }));
           else toast.success(t(($) => $.batch.approved_partial, { approved, failed }));
         },
         () => {

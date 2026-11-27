@@ -103,6 +103,40 @@ describe("IntentBatchCard", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("1 approved, 1 could not be approved."));
   });
 
+  it("counts failed states, conflicts, and missing results as failures", async () => {
+    request.mockResolvedValueOnce({
+      results: [
+        { id: "i-1", state: "executed", error: "", status: 200 },
+        { id: "i-2", state: "failed", error: "provider failed", status: 200 },
+        { id: "i-3", state: "", error: "already decided", status: 409 },
+      ],
+    });
+    renderBatch([intent("i-1", "first"), intent("i-2", "second"), intent("i-3", "third"), intent("i-4", "fourth")]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve all" }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("1 approved, 3 could not be approved."));
+  });
+
+  it("reports an error, not a success, when no action was approved", async () => {
+    request.mockResolvedValueOnce({ results: [{ id: "i-1", state: "", error: "already decided", status: 409 }] });
+    renderBatch([intent("i-1", "first")]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve all" }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not approve these actions."));
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("counts an approved declared intent as successful", async () => {
+    request.mockResolvedValueOnce({ results: [{ id: "i-1", state: "approved", error: "", status: 200 }] });
+    renderBatch([intent("i-1", "declared")]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve all" }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("1 actions approved."));
+  });
+
   it("still reports the outcome after the card unmounts before the request settles", async () => {
     let finish!: (value: unknown) => void;
     request.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
