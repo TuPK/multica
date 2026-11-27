@@ -304,7 +304,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.e2e == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -410,6 +410,34 @@ jobs:
           -e CI -e DATABASE_URL -e PORT -e FRONTEND_ORIGIN -e PLAYWRIGHT_BASE_URL
           "$IMAGE"
           node_modules/.bin/playwright test e2e/guest.spec.ts e2e/inbox-section-header-locales.spec.ts e2e/app-rail-labels-locales.spec.ts
+
+      # The effects spec needs the API with durable effects on, and a fake Composio it can reach. The
+      # fake stands in for Composio, so no provider is called and the state secret is a CI-only value.
+      # The API restarts here, after the specs above have run against the default one.
+      - name: Restart the API with durable effects and the fake Composio
+        run: |
+          node scripts/fake-composio.mjs serve --port 8765 > "$RUNNER_TEMP/fake-composio.log" 2>&1 &
+          for _ in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:8765/health && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8765/health || { echo "fake Composio did not answer within 30s"; exit 1; }
+          pkill -f bin/server || true
+          for _ in $(seq 1 20); do pgrep -f bin/server > /dev/null || break; sleep 1; done
+          (cd server && FF_DURABLE_EFFECTS=true FF_COMPOSIO_MCP_APPS=true COMPOSIO_API_KEY=fake-composio COMPOSIO_BASE_URL=http://127.0.0.1:8765/api/v3.1 COMPOSIO_STATE_SECRET=ci-fake-composio-state nohup ./bin/server > "$RUNNER_TEMP/api-durable.log" 2>&1 &)
+          for _ in $(seq 1 60); do curl -sf -o /dev/null http://localhost:8080/health && break; sleep 1; done
+          curl -sf -o /dev/null http://localhost:8080/health || { echo "the API did not answer after the restart within 60s"; exit 1; }
+
+      - name: Run the durable effects spec against the fake Composio
+        env:
+          IMAGE: ${{ steps.playwright.outputs.image }}
+          FF_DURABLE_EFFECTS: "true"
+          COMPOSIO_BASE_URL: http://127.0.0.1:8765/api/v3.1
+          COMPOSIO_STATE_SECRET: ci-fake-composio-state
+        run: >-
+          docker run --rm --network host --ipc host
+          -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE"
+          -e CI -e DATABASE_URL -e PORT -e FRONTEND_ORIGIN -e PLAYWRIGHT_BASE_URL
+          -e FF_DURABLE_EFFECTS -e COMPOSIO_BASE_URL -e COMPOSIO_STATE_SECRET
+          "$IMAGE"
+          node_modules/.bin/playwright test e2e/durable/effects.spec.ts
 
       - name: Upload logs and Playwright results
         if: ${{ failure() }}
