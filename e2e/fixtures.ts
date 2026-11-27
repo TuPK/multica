@@ -606,6 +606,14 @@ export class TestApiClient {
     await this.authedFetch(`/api/workspaces/${this.workspaceId}`, { method: "DELETE" });
   }
 
+  /** Deletes a runtime this client's workspace owns. The server refuses while an active agent is bound to it. */
+  async deleteRuntime(runtimeId: string) {
+    const res = await this.authedFetch(`/api/runtimes/${runtimeId}`, { method: "DELETE" });
+    if (!res.ok) {
+      throw new Error(`delete runtime failed: ${res.status} ${await res.text()}`);
+    }
+  }
+
   /** Server-side issue search, for comparing against what the UI shows. */
   async searchIssues(q: string, opts: { includeClosed?: boolean; limit?: number } = {}) {
     const params = new URLSearchParams({ q, limit: String(opts.limit ?? 20) });

@@ -232,7 +232,11 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
       await api.queryDb(`DELETE FROM agent_task_queue WHERE id = $1`, [id]);
     }
     await api.queryDb(`DELETE FROM user_composio_connection WHERE connected_account_id = $1`, [ACCOUNT_ID]);
+    // Dependency order: the agents first (cleanup archives the ones the run created), then the runtime
+    // they ran on, which the server refuses to delete while an active agent is bound to it, then the workspace.
     await api.cleanup();
+    if (runtimeId) await api.deleteRuntime(runtimeId);
+    await api.deleteWorkspace();
   });
 
   test("the agent's send is held for a person, with the agent's reason kept apart", async () => {
