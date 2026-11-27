@@ -57,7 +57,7 @@ Bảng này ghi trạng thái theo mã nhánh trên `durable-platform` (tip `4ba
 | D6 | Chưa làm | Không có UI hồ sơ ghế, shadow, jury |
 | D7 | Chưa làm | Không có E2E giai đoạn D |
 | E1 | Một phần | `durable_reach_fork.go` có; chưa thấy route và job scheduler reach |
-| E2 | Đã merge | `durable_ocf_fork.go`, `docs/specs/durable-platform/ocf` |
+| E2 | Một phần | Export đã có dossier lịch sử và principal theo đồng ý; reader import chưa nhập `history/dossiers.ndjson` (spec mục 6.6). |
 | E3 | Một phần | `durable_attestation_fork.go` có; chưa thấy route `POST /api/attestations/verify`, well-known keys, lệnh CLI |
 | E4 | Chưa làm | Không có offer ghế trên Hub |
 | E5 | Chưa làm | Không có UI giai đoạn E |
