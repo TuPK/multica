@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -146,9 +147,61 @@ func (s *NecessityService) Start(ctx context.Context, ws pgtype.UUID, actor Gove
 	return test, nil
 }
 
-// WeeklySchedule opens the necessity tests a workspace is due (spec 10.3): a skill of a seat
-// that did at least 40 tasks in 30 days and was not tested in the last 180 days. Never-tested
-// skills come first, then the least recently tested. At most two run per squad at a time.
+// StartInstructionBlock opens a necessity test on one level-2 instruction block ("## <heading>")
+// of a seat (durable spec 10.2). The shadow agent keeps every skill and every other block of the
+// seat, with only the named H2 section stripped. Stripping the block must leave non-empty
+// instructions so a not_needed verdict can file a valid instruction_change proposal.
+func (s *NecessityService) StartInstructionBlock(ctx context.Context, ws pgtype.UUID, actor GovernanceActor, agentID pgtype.UUID, heading string) (db.NecessityTest, error) {
+	if !s.enabled(ctx) {
+		return db.NecessityTest{}, ErrDurableSeatsOff
+	}
+	heading = strings.TrimSpace(heading)
+	if heading == "" {
+		return db.NecessityTest{}, fmt.Errorf("%w: instruction block heading", ErrNecessityInvalid)
+	}
+	seat, err := s.Queries.GetAgent(ctx, agentID)
+	if err != nil || seat.WorkspaceID != ws || seat.ArchivedAt.Valid || seat.ShadowOfAgentID.Valid || !seat.RuntimeID.Valid {
+		return db.NecessityTest{}, fmt.Errorf("%w: seat", ErrNecessityInvalid)
+	}
+	stripped, found := StripInstructionBlock(seat.Instructions, heading)
+	if !found || strings.TrimSpace(stripped) == "" {
+		return db.NecessityTest{}, fmt.Errorf("%w: the seat has no removable instruction block %q", ErrNecessityInvalid, heading)
+	}
+	test, err := s.Queries.InsertNecessityTest(ctx, db.InsertNecessityTestParams{
+		ID: dbid.NewV7(), WorkspaceID: ws, SubjectType: "instruction_block", SubjectRef: InstructionBlockRef(agentID, heading),
+		AgentID: agentID, Margin: numericOf(necessityMargin), MinPairs: necessityMinPairs,
+		CreatedByType: actor.Type, CreatedByID: actor.ID,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return db.NecessityTest{}, ErrNecessityRunning
+		}
+		return db.NecessityTest{}, fmt.Errorf("insert necessity test: %w", err)
+	}
+	cfg, err := s.Shadow.Start(ctx, ws, actor, ShadowStartInput{
+		AgentID: agentID, CandidateRuntimeID: seat.RuntimeID, CandidateModel: seat.Model.String,
+		Purpose: ShadowPurposeNecessity, NecessityTestID: test.ID,
+		SampleRate: necessitySampleRate, TargetPairs: 2 * necessityMinPairs,
+	})
+	if err != nil {
+		if _, stopErr := s.Queries.SetNecessityTestStopped(ctx, db.SetNecessityTestStoppedParams{ID: test.ID, WorkspaceID: ws}); stopErr != nil {
+			return db.NecessityTest{}, fmt.Errorf("stop necessity test: %w", stopErr)
+		}
+		return db.NecessityTest{}, err
+	}
+	if _, err := s.Queries.SetNecessityTestShadowConfig(ctx, db.SetNecessityTestShadowConfigParams{
+		ID: test.ID, WorkspaceID: ws, ShadowConfigID: cfg.ID,
+	}); err != nil {
+		return db.NecessityTest{}, fmt.Errorf("link necessity test: %w", err)
+	}
+	test.ShadowConfigID = cfg.ID
+	return test, nil
+}
+
+// WeeklySchedule opens the necessity tests a workspace is due (spec 10.3): each skill and each H2
+// instruction block of a seat that did at least 40 tasks in 30 days and was not tested in the last
+// 180 days. Never-tested pieces come first, then the least recently tested. At most two run per
+// squad at a time.
 func (s *NecessityService) WeeklySchedule(ctx context.Context, ws pgtype.UUID) (int, error) {
 	if !s.enabled(ctx) {
 		return 0, nil
@@ -163,20 +216,58 @@ func (s *NecessityService) WeeklySchedule(ctx context.Context, ws pgtype.UUID) (
 			perSquad[util.UUIDToString(r.SquadID)] = r.Running
 		}
 	}
+	type duePiece struct {
+		subjectType  string
+		agentID      pgtype.UUID
+		squadID      pgtype.UUID
+		skillID      pgtype.UUID
+		heading      string
+		lastTestedAt pgtype.Timestamptz
+	}
+	stale := time.Now().AddDate(0, 0, -necessityStaleDays)
+	var due []duePiece
+
 	candidates, err := s.Queries.ListNecessityCandidateSkills(ctx, ws)
 	if err != nil {
 		return 0, fmt.Errorf("list skills: %w", err)
 	}
-	stale := time.Now().AddDate(0, 0, -necessityStaleDays)
-	var due []db.ListNecessityCandidateSkillsRow
 	for _, c := range candidates {
 		if c.Tasks30d < necessityMinTasks || (c.LastTestedAt.Valid && c.LastTestedAt.Time.After(stale)) {
 			continue
 		}
-		due = append(due, c)
+		due = append(due, duePiece{
+			subjectType: "skill", agentID: c.AgentID, squadID: c.SquadID, skillID: c.SkillID, lastTestedAt: c.LastTestedAt,
+		})
+	}
+	seats, err := s.Queries.ListNecessityCandidateSeats(ctx, ws)
+	if err != nil {
+		return 0, fmt.Errorf("list seats: %w", err)
+	}
+	for _, seat := range seats {
+		if seat.Tasks30d < necessityMinTasks {
+			continue
+		}
+		for _, heading := range InstructionBlockHeadings(seat.Instructions) {
+			stripped, ok := StripInstructionBlock(seat.Instructions, heading)
+			if !ok || strings.TrimSpace(stripped) == "" {
+				continue
+			}
+			lastTested, err := s.Queries.LastNecessityTestForSubject(ctx, db.LastNecessityTestForSubjectParams{
+				WorkspaceID: ws, AgentID: seat.AgentID, SubjectType: "instruction_block", SubjectRef: InstructionBlockRef(seat.AgentID, heading),
+			})
+			if err != nil {
+				return 0, fmt.Errorf("last tested instruction block: %w", err)
+			}
+			if lastTested.Valid && lastTested.Time.After(stale) {
+				continue
+			}
+			due = append(due, duePiece{
+				subjectType: "instruction_block", agentID: seat.AgentID, squadID: seat.SquadID, heading: heading, lastTestedAt: lastTested,
+			})
+		}
 	}
 	sort.SliceStable(due, func(i, j int) bool {
-		a, b := due[i].LastTestedAt, due[j].LastTestedAt
+		a, b := due[i].lastTestedAt, due[j].lastTestedAt
 		if a.Valid != b.Valid {
 			return !a.Valid
 		}
@@ -184,16 +275,21 @@ func (s *NecessityService) WeeklySchedule(ctx context.Context, ws pgtype.UUID) (
 	})
 	started := 0
 	for _, c := range due {
-		key := util.UUIDToString(c.SquadID)
+		key := util.UUIDToString(c.squadID)
 		if perSquad[key] >= necessitySquadCap {
 			continue
 		}
-		seat, err := s.Queries.GetAgent(ctx, c.AgentID)
+		seat, err := s.Queries.GetAgent(ctx, c.agentID)
 		if err != nil || !seat.OwnerID.Valid {
 			continue
 		}
 		actor := GovernanceActor{Type: GovernanceActorMember, ID: seat.OwnerID}
-		if _, err := s.Start(ctx, ws, actor, c.AgentID, c.SkillID); err != nil {
+		if c.subjectType == "instruction_block" {
+			_, err = s.StartInstructionBlock(ctx, ws, actor, c.agentID, c.heading)
+		} else {
+			_, err = s.Start(ctx, ws, actor, c.agentID, c.skillID)
+		}
+		if err != nil {
 			if errors.Is(err, ErrShadowAlreadyRunning) || errors.Is(err, ErrNecessityInvalid) || errors.Is(err, ErrNecessityRunning) {
 				continue
 			}
@@ -258,9 +354,16 @@ func (s *NecessityService) OnVerdicts(ctx context.Context, cfg db.ShadowConfig) 
 		return err
 	}
 	var proposal pgtype.UUID
-	if verdict == "not_needed" && test.SubjectType == "skill" {
-		if proposal, err = s.fileSkillRemoval(ctx, test); err != nil {
-			return err
+	if verdict == "not_needed" {
+		switch test.SubjectType {
+		case "skill":
+			if proposal, err = s.fileSkillRemoval(ctx, test); err != nil {
+				return err
+			}
+		case "instruction_block":
+			if proposal, err = s.fileInstructionBlockRemoval(ctx, test); err != nil {
+				return err
+			}
 		}
 	}
 	result, err := json.Marshal(necessityResultOf(comparisons, margin.Float64))
@@ -346,14 +449,67 @@ func (s *NecessityService) fileSkillRemoval(ctx context.Context, test db.Necessi
 	return res.Proposal.ID, nil
 }
 
+// fileInstructionBlockRemoval files the one proposal that removes the tested H2 instruction block
+// from the seat (durable spec 10.2). Nothing is changed on the seat until the owner approves.
+func (s *NecessityService) fileInstructionBlockRemoval(ctx context.Context, test db.NecessityTest) (pgtype.UUID, error) {
+	seat, err := s.Queries.GetAgent(ctx, test.AgentID)
+	if err != nil {
+		return pgtype.UUID{}, fmt.Errorf("load seat: %w", err)
+	}
+	if !seat.HomeSquadID.Valid {
+		return pgtype.UUID{}, errors.New("the seat has no squad to file its instruction change in")
+	}
+	_, heading, ok := ParseInstructionBlockRef(test.SubjectRef)
+	if !ok {
+		return pgtype.UUID{}, fmt.Errorf("invalid instruction block ref %q", test.SubjectRef)
+	}
+	stripped, found := StripInstructionBlock(seat.Instructions, heading)
+	if !found || strings.TrimSpace(stripped) == "" {
+		return pgtype.UUID{}, fmt.Errorf("instruction block %q is no longer removable from seat instructions", heading)
+	}
+	payload, err := json.Marshal(instructionChangePayload{
+		Type:         OrgChangeInstruction,
+		AgentID:      util.UUIDToString(test.AgentID),
+		Instructions: stripped,
+		DiffSummary:  fmt.Sprintf("Remove instruction block ## %s", heading),
+		Rationale:    "A necessity test ran the seat without this instruction block and found no loss.",
+	})
+	if err != nil {
+		return pgtype.UUID{}, fmt.Errorf("encode instruction change: %w", err)
+	}
+	res, err := s.Proposals.Create(ctx, ProposalCreateParams{
+		WorkspaceID: test.WorkspaceID,
+		SquadID:     seat.HomeSquadID,
+		Content: ProposalContent{
+			Title:          fmt.Sprintf("Remove instruction block %q the seat does not need", heading),
+			Summary:        "A necessity test ran the seat beside its own work without this instruction block.",
+			Evidence:       []string{fmt.Sprintf("Necessity test %s", util.UUIDToString(test.ID))},
+			Recommendation: "Approve the removal.",
+			Options:        []string{"Approve", "Keep the block"},
+			CostRisk:       "Removing the block shortens the seat's instructions, not its cost.",
+			Ask:            fmt.Sprintf("Remove the instruction block %q from the seat?", heading),
+		},
+		CreatorType: GovernanceActorMember,
+		CreatorID:   test.CreatedByID,
+		Kind:        proposalkinds.KeyOrgChange,
+		Payload:     payload,
+	})
+	if err != nil {
+		return pgtype.UUID{}, fmt.Errorf("file instruction removal: %w", err)
+	}
+	return res.Proposal.ID, nil
+}
+
 // StageStat is a gate's first-round record over the window (spec 10.4): the verdicts on round 0,
-// how many approved at once, and how many sent the work back.
+// how many approved at once, how many sent the work back, and human attention minutes spent at the
+// gate (F6).
 type StageStat struct {
-	Step          string
-	Task          string
-	Passes        int
-	ApprovedFirst int
-	Resends       int
+	Step             string
+	Task             string
+	Passes           int
+	ApprovedFirst    int
+	Resends          int
+	AttentionMinutes float64
 }
 
 // Rate is the share of first-round verdicts that approved.
@@ -371,7 +527,7 @@ func FlowStageCandidate(s StageStat) bool {
 }
 
 // FlowStageCandidates returns the gates of a workspace that pass FlowStageCandidate over the
-// window. It reads only; the brief entry for the flow's writer is not written here.
+// window, including human attention minutes spent at each gate (F6).
 func (s *NecessityService) FlowStageCandidates(ctx context.Context, ws pgtype.UUID) ([]StageStat, error) {
 	since := time.Now().AddDate(0, 0, -flowStageWindowDays)
 	rows, err := s.Queries.ListFlowGateVerdictsSince(ctx, db.ListFlowGateVerdictsSinceParams{
@@ -385,6 +541,7 @@ func (s *NecessityService) FlowStageCandidates(ctx context.Context, ws pgtype.UU
 		stat := StageStat{
 			Step: r.FlowStep.String, Task: r.FlowTask.String,
 			Passes: int(r.Passes), ApprovedFirst: int(r.ApprovedFirst), Resends: int(r.Resends),
+			AttentionMinutes: r.AttentionMinutes,
 		}
 		if FlowStageCandidate(stat) {
 			out = append(out, stat)

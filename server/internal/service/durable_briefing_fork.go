@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -226,4 +227,131 @@ func quoteBriefingText(s string) string {
 		lines[i] = "> " + strings.TrimRight(line, " \t\r")
 	}
 	return strings.Join(lines, "\n")
+}
+
+// InstructionBlockRef builds the subject_ref of an instruction_block necessity test
+// (durable spec 10.2: "<agent_id>#<block_heading>").
+func InstructionBlockRef(agentID pgtype.UUID, heading string) string {
+	return util.UUIDToString(agentID) + "#" + strings.TrimSpace(heading)
+}
+
+// ParseInstructionBlockRef splits "<agent_id>#<block_heading>" into its seat id and H2 heading.
+func ParseInstructionBlockRef(ref string) (agentID, heading string, ok bool) {
+	id, h, found := strings.Cut(ref, "#")
+	id = strings.TrimSpace(id)
+	h = strings.TrimSpace(h)
+	if !found || id == "" || h == "" {
+		return "", "", false
+	}
+	return id, h, true
+}
+
+// InstructionBlockHeadings returns every level-2 Markdown heading ("## <heading>") in
+// instructions in order of appearance, ignoring headings inside fenced code blocks (spec 10.3).
+func InstructionBlockHeadings(instructions string) []string {
+	lines := strings.Split(instructions, "\n")
+	inFence := false
+	seen := map[string]bool{}
+	var out []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "## ") {
+			heading := strings.TrimSpace(strings.TrimPrefix(trimmed, "## "))
+			if heading != "" && !seen[heading] {
+				seen[heading] = true
+				out = append(out, heading)
+			}
+		}
+	}
+	return out
+}
+
+// StripInstructionBlock removes the level-2 Markdown section titled heading from instructions,
+// up to the next level-1 or level-2 heading outside fenced code blocks (durable spec 10.2).
+// It reports whether the heading was found.
+func StripInstructionBlock(instructions, heading string) (string, bool) {
+	target := strings.TrimSpace(heading)
+	if target == "" {
+		return instructions, false
+	}
+	lines := strings.Split(instructions, "\n")
+	start := -1
+	end := len(lines)
+	inFence := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
+		if start < 0 {
+			if strings.HasPrefix(trimmed, "## ") && strings.TrimSpace(strings.TrimPrefix(trimmed, "## ")) == target {
+				start = i
+			}
+			continue
+		}
+		if strings.HasPrefix(trimmed, "## ") || strings.HasPrefix(trimmed, "# ") {
+			end = i
+			break
+		}
+	}
+	if start < 0 {
+		return instructions, false
+	}
+	before := strings.TrimRight(strings.Join(lines[:start], "\n"), "\n")
+	after := strings.TrimLeft(strings.Join(lines[end:], "\n"), "\n")
+	switch {
+	case before == "":
+		return after, true
+	case after == "":
+		return before, true
+	default:
+		return before + "\n\n" + after, true
+	}
+}
+
+// FlowStageBriefMarkdown formats flow gate candidates for the company brief (durable spec 10.4):
+// each gate with >= 95% first-round approval on >= 30 passes, with its approval share, resend count,
+// and human attention minutes spent at the gate (F6). Returns empty when there are no candidates.
+func FlowStageBriefMarkdown(candidates []StageStat) string {
+	if len(candidates) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("**Ứng viên gộp hoặc bỏ cổng (flow stages):**\n")
+	for _, c := range candidates {
+		fmt.Fprintf(&b, "- `%s:%s`: duyệt lần đầu %d/%d (%.1f%%), gửi lại %d, phút người tiêu ở cổng: %.1f phút.\n",
+			c.Step, c.Task, c.ApprovedFirst, c.Passes, c.Rate()*100, c.Resends, c.AttentionMinutes)
+	}
+	return b.String()
+}
+
+// BriefWithFlowStageCandidates places flow-stage merge/drop candidates into a company brief's
+// Progress section (durable spec 10.4). An empty candidate list leaves the brief unchanged.
+func BriefWithFlowStageCandidates(body string, candidates []StageStat) string {
+	return BriefWithFacts(body, FlowStageBriefMarkdown(candidates))
+}
+
+// FlowStageBriefFor reads a workspace's flow-stage candidates and formats them for the brief
+// while durable_seats is on. Returns empty when the flag is off or there are no candidates.
+func FlowStageBriefFor(ctx context.Context, q *db.Queries, flags *featureflag.Service, ws pgtype.UUID) (string, error) {
+	if !featureflags.DurableSeatsEnabled(ctx, flags) {
+		return "", nil
+	}
+	ns := &NecessityService{Queries: q, Flags: flags}
+	candidates, err := ns.FlowStageCandidates(ctx, ws)
+	if err != nil {
+		return "", err
+	}
+	return FlowStageBriefMarkdown(candidates), nil
 }

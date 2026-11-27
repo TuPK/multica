@@ -578,3 +578,64 @@ func TestAttentionMinutesPerDoneReading(t *testing.T) {
 		t.Fatalf("flag off: %d attention readings written, want none", count)
 	}
 }
+
+// TestMeasureAndParseAttentionSeconds: MeasureAttentionSeconds and ParseOpenedAtSeconds compute
+// elapsed seconds clamped to 30 minutes and AnswerAppRequestWithDuration persists actual_seconds
+// (durable spec 7.2, plan C1).
+func TestMeasureAndParseAttentionSeconds(t *testing.T) {
+	now := time.Date(2026, 11, 27, 12, 0, 0, 0, time.UTC)
+
+	if got := MeasureAttentionSeconds(time.Time{}, now); got != nil {
+		t.Fatalf("zero openedAt = %v, want nil", *got)
+	}
+	if got := MeasureAttentionSeconds(now.Add(time.Minute), now); got != nil {
+		t.Fatalf("future openedAt = %v, want nil", *got)
+	}
+	if got := MeasureAttentionSeconds(now.Add(-45*time.Second), now); got == nil || *got != 45 {
+		t.Fatalf("45s elapsed = %v, want 45", got)
+	}
+	if got := MeasureAttentionSeconds(now.Add(-2*time.Hour), now); got == nil || *got != attentionMaxSeconds {
+		t.Fatalf("2h elapsed = %v, want %d", got, attentionMaxSeconds)
+	}
+
+	if got := ParseOpenedAtSeconds("", now); got != nil {
+		t.Fatalf("empty = %v, want nil", *got)
+	}
+	if got := ParseOpenedAtSeconds("not-a-time", now); got != nil {
+		t.Fatalf("invalid = %v, want nil", *got)
+	}
+	if got := ParseOpenedAtSeconds("-5", now); got != nil {
+		t.Fatalf("negative seconds = %v, want nil", *got)
+	}
+	if got := ParseOpenedAtSeconds("90", now); got == nil || *got != 90 {
+		t.Fatalf("90s string = %v, want 90", got)
+	}
+	if got := ParseOpenedAtSeconds("9999", now); got == nil || *got != attentionMaxSeconds {
+		t.Fatalf("9999s string = %v, want %d", got, attentionMaxSeconds)
+	}
+	if got := ParseOpenedAtSeconds(now.Add(-120*time.Second).Format(time.RFC3339), now); got == nil || *got != 120 {
+		t.Fatalf("RFC3339 120s ago = %v, want 120", got)
+	}
+
+	// End-to-end check on attention_ledger via AnswerAppRequestWithDuration.
+	f := newAttentionFixture(t, true)
+	ctx := context.Background()
+	ask := f.outcomeAsk()
+	ask.SubjectType, ask.Reason = "app_action_request", "policy"
+	if _, err := f.attention.Admit(ctx, ask); err != nil {
+		t.Fatalf("admit: %v", err)
+	}
+	secs := ParseOpenedAtSeconds(now.Add(-75*time.Second).Format(time.RFC3339), now)
+	if err := f.attention.AnswerAppRequestWithDuration(ctx, ask.SubjectID, secs); err != nil {
+		t.Fatalf("AnswerAppRequestWithDuration: %v", err)
+	}
+	var state string
+	var stored int32
+	if err := f.Pool.QueryRow(ctx,
+		`SELECT state, actual_seconds FROM attention_ledger WHERE subject_id = $1`, ask.SubjectID).Scan(&state, &stored); err != nil {
+		t.Fatalf("read row: %v", err)
+	}
+	if state != "answered" || stored != 75 {
+		t.Fatalf("ledger row = (%q, %d), want (answered, 75)", state, stored)
+	}
+}

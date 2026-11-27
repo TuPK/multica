@@ -16,6 +16,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
@@ -144,12 +145,13 @@ func (s *IntentService) Approve(ctx context.Context, ws, actor, id pgtype.UUID, 
 	if !s.enabled(ctx) {
 		return db.EffectIntent{}, ErrEffectsOff
 	}
-	it, call, err := s.claimForApproval(ctx, ws, actor, id, edited, note)
+	it, call, wasEdited, err := s.claimForApproval(ctx, ws, actor, id, edited, note)
 	if err != nil {
 		return db.EffectIntent{}, err
 	}
 	if it.Source == connectedapps.SourceDeclared {
 		// A declared action is not run by the platform. The decision goes back to the agent.
+		s.postIntentComment(ctx, it, "approved", wasEdited, "")
 		s.wake(ctx, it, actor, "approved: "+note)
 		return s.Get(ctx, ws, id)
 	}
@@ -171,6 +173,9 @@ func (s *IntentService) Approve(ctx context.Context, ws, actor, id pgtype.UUID, 
 	}); err != nil {
 		slog.Error("intent: finish event", "error", err, "intent_id", util.UUIDToString(id))
 	}
+	if outcome == "executed" {
+		s.postIntentComment(ctx, it, outcome, wasEdited, "")
+	}
 	wakeNote := "approved and run"
 	if outcome == "failed" {
 		wakeNote = "approved, but the call failed: " + resultNote
@@ -182,62 +187,95 @@ func (s *IntentService) Approve(ctx context.Context, ws, actor, id pgtype.UUID, 
 	return s.Get(ctx, ws, id)
 }
 
+// postIntentComment leaves the system comment on the issue after an approved intent runs
+// (durable spec 5.3). When the approver edited the call text, the comment says so.
+func (s *IntentService) postIntentComment(ctx context.Context, it db.EffectIntent, outcome string, edited bool, extra string) {
+	if !it.IssueID.Valid {
+		return
+	}
+	content := fmt.Sprintf("Hành động %s đã được duyệt (%s).", it.Target, outcome)
+	if edited {
+		content = fmt.Sprintf("Hành động %s đã được duyệt (%s, đã sửa trước khi gửi).", it.Target, outcome)
+	}
+	if extra != "" {
+		content += " " + extra
+	}
+	if _, err := s.Queries.CreateComment(ctx, db.CreateCommentParams{
+		ID:          dbid.NewV7(),
+		IssueID:     it.IssueID,
+		WorkspaceID: it.WorkspaceID,
+		AuthorType:  "system",
+		AuthorID:    pgtype.UUID{Valid: true},
+		Content:     content,
+		Type:        "system",
+		ParentID:    pgtype.UUID{},
+	}); err != nil {
+		slog.Warn("intent: post system comment", "error", err, "intent_id", util.UUIDToString(it.ID))
+	}
+}
+
 // claimForApproval locks the intent, checks it is still pending and not expired,
 // stores the approved call and its hash, and commits. Only one caller can claim an
 // intent, so the call runs once.
-func (s *IntentService) claimForApproval(ctx context.Context, ws, actor, id pgtype.UUID, edited *connectedapps.CanonicalCall, note string) (db.EffectIntent, connectedapps.CanonicalCall, error) {
+func (s *IntentService) claimForApproval(ctx context.Context, ws, actor, id pgtype.UUID, edited *connectedapps.CanonicalCall, note string) (db.EffectIntent, connectedapps.CanonicalCall, bool, error) {
 	tx, err := s.TxStarter.Begin(ctx)
 	if err != nil {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, err
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, err
 	}
 	defer tx.Rollback(ctx)
 	q := s.Queries.WithTx(tx)
 	it, err := q.GetEffectIntentForUpdate(ctx, db.GetEffectIntentForUpdateParams{ID: id, WorkspaceID: ws})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, ErrIntentNotFound
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, ErrIntentNotFound
 	}
 	if err != nil {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, err
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, err
 	}
 	if it.State != "pending" {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, ErrIntentNotPending
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, ErrIntentNotPending
 	}
 	if !s.now().Before(it.ExpiresAt.Time) {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, ErrIntentExpired
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, ErrIntentExpired
 	}
 	var call connectedapps.CanonicalCall
 	if err := json.Unmarshal(it.Call, &call); err != nil {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, fmt.Errorf("decode intent call: %w", err)
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, fmt.Errorf("decode intent call: %w", err)
 	}
+	origSHA := it.CallSha256
+	wasEdited := false
 	if edited != nil {
 		if err := validateEdit(call, *edited); err != nil {
-			return db.EffectIntent{}, connectedapps.CanonicalCall{}, err
+			return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, err
 		}
 		call = *edited
+		wasEdited = true
 	}
 	sum := CallSHA256(call)
 	if sum == "" {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, errors.New("the call cannot be encoded for approval")
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, errors.New("the call cannot be encoded for approval")
+	}
+	if wasEdited && sum == origSHA {
+		wasEdited = false
 	}
 	callJSON, err := json.Marshal(call)
 	if err != nil {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, fmt.Errorf("encode call: %w", err)
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, fmt.Errorf("encode call: %w", err)
 	}
 	n, err := q.ApproveEffectIntent(ctx, db.ApproveEffectIntentParams{
 		ID: id, WorkspaceID: ws, Call: callJSON, CallSha256: sum,
 		DecidedBy: actor, DecisionNote: note,
 	})
 	if err != nil {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, err
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, err
 	}
 	if n == 0 {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, ErrIntentNotPending
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, ErrIntentNotPending
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return db.EffectIntent{}, connectedapps.CanonicalCall{}, err
+		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, err
 	}
 	it.Call, it.CallSha256 = callJSON, sum
-	return it, call, nil
+	return it, call, wasEdited, nil
 }
 
 // validateEdit allows the text of a message to change and nothing else: the tool, the

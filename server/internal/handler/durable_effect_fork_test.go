@@ -327,3 +327,140 @@ func TestUndoProviderFailureLeavesEffectExecuted(t *testing.T) {
 		t.Error("effect did not remain executed")
 	}
 }
+
+// TestUndoInternalRevisionKinds: v1 write_internal undo supports the three revision kinds
+// (issue_description, agent_instruction, knowledge_draft); any other kind or a published
+// knowledge link answers 422 "không hoàn tác được" (durable spec 4.6, plan B3).
+func TestUndoInternalRevisionKinds(t *testing.T) {
+	f := effectsOnFixture(t)
+	ctx := context.Background()
+
+	seedInternal := func(target string, undoJSON string) string {
+		t.Helper()
+		id := dbfx.Insert(t, "effect_event", testutil.Cols{
+			"workspace_id": testWorkspaceID, "task_id": f.taskID, "agent_id": f.agentID, "member_id": testUserID,
+			"source": "cli", "target": target, "effect_class": connectedapps.EffectWriteInternal,
+			"reversibility": connectedapps.ReversibilityReversible, "decision": "allow", "status": "executed",
+			"summary":    "internal edit",
+			"undo":       testutil.Raw(quoteSQLJSON(undoJSON)),
+			"undo_until": time.Now().Add(time.Hour),
+		})
+		t.Cleanup(func() {
+			testPool.Exec(context.Background(), `DELETE FROM effect_event WHERE id = $1 OR summary = $2`, id, "Hoàn tác "+id)
+		})
+		return id
+	}
+
+	t.Run("issue_description restores prior revision", func(t *testing.T) {
+		issueID := dbfx.Issue(t, "undo desc issue", testutil.Cols{"description": "after agent edit"})
+		if _, err := testPool.Exec(ctx,
+			`INSERT INTO issue_description_revision (issue_id, workspace_id, revision, content) VALUES ($1, $2, 1, 'before agent edit')`,
+			issueID, testWorkspaceID); err != nil {
+			t.Fatalf("seed description revision: %v", err)
+		}
+		t.Cleanup(func() {
+			testPool.Exec(context.Background(), `DELETE FROM issue_description_revision WHERE issue_id = $1`, issueID)
+		})
+		evID := seedInternal("issue/description", `{"kind":"issue_description","target_id":"`+issueID+`","revision":1}`)
+
+		w := httptest.NewRecorder()
+		f.h.UndoEffect(w, effectUndoRequest(t, evID, testUserID))
+		if w.Code != http.StatusOK {
+			t.Fatalf("undo issue_description: %d %s", w.Code, w.Body.String())
+		}
+		var desc string
+		if err := testPool.QueryRow(ctx, `SELECT description FROM issue WHERE id = $1`, issueID).Scan(&desc); err != nil {
+			t.Fatalf("read issue description: %v", err)
+		}
+		if desc != "before agent edit" {
+			t.Fatalf("issue description = %q, want %q", desc, "before agent edit")
+		}
+		if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE id=$1 AND status='undone'`, evID); n != 1 {
+			t.Fatal("effect event not marked undone")
+		}
+	})
+
+	t.Run("agent_instruction restores prior revision", func(t *testing.T) {
+		rtID := dbfx.Runtime(t, "undo instr runtime")
+		agentID := dbfx.Agent(t, "undo instr agent", rtID, testutil.Cols{"instructions": "v2 agent instructions"})
+		if _, err := testPool.Exec(ctx, `
+			INSERT INTO agent_instruction_revision (workspace_id, agent_id, revision, instructions, source, actor_type, actor_id)
+			VALUES ($1, $2, 1, 'v1 original instructions', 'human', 'member', $3)`,
+			testWorkspaceID, agentID, testUserID); err != nil {
+			t.Fatalf("seed instruction revision: %v", err)
+		}
+		t.Cleanup(func() {
+			testPool.Exec(context.Background(), `DELETE FROM agent_instruction_revision WHERE agent_id = $1`, agentID)
+		})
+		evID := seedInternal("agent/instructions", `{"kind":"agent_instruction","target_id":"`+agentID+`","revision":1}`)
+
+		w := httptest.NewRecorder()
+		f.h.UndoEffect(w, effectUndoRequest(t, evID, testUserID))
+		if w.Code != http.StatusOK {
+			t.Fatalf("undo agent_instruction: %d %s", w.Code, w.Body.String())
+		}
+		var instr string
+		if err := testPool.QueryRow(ctx, `SELECT instructions FROM agent WHERE id = $1`, agentID).Scan(&instr); err != nil {
+			t.Fatalf("read agent instructions: %v", err)
+		}
+		if instr != "v1 original instructions" {
+			t.Fatalf("agent instructions = %q, want %q", instr, "v1 original instructions")
+		}
+		if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE id=$1 AND status='undone'`, evID); n != 1 {
+			t.Fatal("effect event not marked undone")
+		}
+	})
+
+	t.Run("knowledge_draft discards draft and refuses published", func(t *testing.T) {
+		kbID := dbfx.Insert(t, "knowledge_base", testutil.Cols{
+			"workspace_id": testWorkspaceID, "weknora_kb_id": "kb-undo-test", "key": "undo-" + f.taskID[:8], "name": "Undo KB",
+		})
+		draftID := dbfx.Insert(t, "knowledge_link", testutil.Cols{
+			"workspace_id": testWorkspaceID, "knowledge_base_id": kbID, "weknora_knowledge_id": "",
+			"source_type": "issue", "idempotency_key": "draft-" + f.taskID, "state": "draft",
+			"created_by_type": "agent", "created_by_id": f.agentID,
+		})
+		pubID := dbfx.Insert(t, "knowledge_link", testutil.Cols{
+			"workspace_id": testWorkspaceID, "knowledge_base_id": kbID, "weknora_knowledge_id": "",
+			"source_type": "issue", "idempotency_key": "pub-" + f.taskID, "state": "published",
+			"created_by_type": "agent", "created_by_id": f.agentID,
+		})
+
+		draftEv := seedInternal("knowledge/draft", `{"kind":"knowledge_draft","target_id":"`+draftID+`"}`)
+		w := httptest.NewRecorder()
+		f.h.UndoEffect(w, effectUndoRequest(t, draftEv, testUserID))
+		if w.Code != http.StatusOK {
+			t.Fatalf("undo knowledge_draft: %d %s", w.Code, w.Body.String())
+		}
+		if n := dbfx.Count(t, `SELECT count(*) FROM knowledge_link WHERE id = $1`, draftID); n != 0 {
+			t.Fatalf("draft knowledge_link still exists (%d)", n)
+		}
+		if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE id=$1 AND status='undone'`, draftEv); n != 1 {
+			t.Fatal("draft effect event not marked undone")
+		}
+
+		pubEv := seedInternal("knowledge/draft", `{"kind":"knowledge_draft","target_id":"`+pubID+`"}`)
+		w2 := httptest.NewRecorder()
+		f.h.UndoEffect(w2, effectUndoRequest(t, pubEv, testUserID))
+		if w2.Code != http.StatusUnprocessableEntity || !strings.Contains(w2.Body.String(), "không hoàn tác được") {
+			t.Fatalf("undo published knowledge link: %d %s, want 422 không hoàn tác được", w2.Code, w2.Body.String())
+		}
+		if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE id=$1 AND status='executed'`, pubEv); n != 1 {
+			t.Fatal("published effect event should stay executed")
+		}
+	})
+
+	t.Run("unsupported kind answers 422 không hoàn tác được", func(t *testing.T) {
+		for _, kind := range []string{"comment", "issue_status", "unknown_kind"} {
+			evID := seedInternal("issue/"+kind, `{"kind":"`+kind+`","target_id":"`+f.taskID+`"}`)
+			w := httptest.NewRecorder()
+			f.h.UndoEffect(w, effectUndoRequest(t, evID, testUserID))
+			if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "không hoàn tác được") {
+				t.Fatalf("undo kind %q: %d %s, want 422 không hoàn tác được", kind, w.Code, w.Body.String())
+			}
+			if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE id=$1 AND status='executed'`, evID); n != 1 {
+				t.Fatalf("kind %q event should stay executed", kind)
+			}
+		}
+	})
+}

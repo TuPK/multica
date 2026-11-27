@@ -16,6 +16,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
+	sdk "github.com/multica-ai/multica/server/pkg/composio"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
@@ -353,5 +354,51 @@ func TestExecuteIntentChecksAccountBeforeProvider(t *testing.T) {
 	}
 	if n := len(f.sdk.executions()); n != 1 {
 		t.Errorf("matching account provider calls = %d, want 1 total", n)
+	}
+}
+
+// TestShadowGatewayWriteBlocked: a shadow task calling a write or send tool through the
+// connected apps gateway receives block even when the agent holds write permission on the
+// toolkit, and the provider is never called; read tools still run (durable spec 4.8 item 3,
+// 9.4 D18, 9.7 item 3, plan D3).
+func TestShadowGatewayWriteBlocked(t *testing.T) {
+	old := appsFakeGmailTools
+	appsFakeGmailTools = append(append([]sdk.Tool{}, old...),
+		sdk.Tool{Slug: "GMAIL_CREATE_DRAFT", Name: "Create draft", Toolkit: sdk.Toolkit{Slug: "gmail"}})
+	t.Cleanup(func() { appsFakeGmailTools = old })
+
+	f, _ := intentFixture(t)
+	if _, err := testPool.Exec(context.Background(),
+		`UPDATE agent_task_queue SET context = '{"durable_kind":"shadow"}'::jsonb WHERE id = $1`, f.taskID); err != nil {
+		t.Fatalf("mark task shadow: %v", err)
+	}
+	token := f.token(t)
+
+	for _, tool := range []string{"GMAIL_CREATE_DRAFT", "GMAIL_SEND_EMAIL", "GMAIL_DELETE_MESSAGE"} {
+		_, text, isErr := f.gateway(t, token, "apps_run_tool", map[string]any{
+			"tool":      tool,
+			"arguments": map[string]any{"user_id": "me", "to": "customer@example.com", "subject": "Test", "body": "Hi"},
+		})
+		if !isErr {
+			t.Fatalf("shadow call to %s succeeded (%s), want block", tool, text)
+		}
+		if n := dbfx.Count(t, `SELECT count(*) FROM effect_event WHERE task_id=$1 AND target=$2 AND decision='block' AND status='blocked'`,
+			f.taskID, "gmail/"+tool); n != 1 {
+			t.Fatalf("shadow call to %s logged %d blocked events, want 1", tool, n)
+		}
+	}
+	if n := len(f.sdk.executions()); n != 0 {
+		t.Fatalf("provider calls after blocked shadow writes = %d, want 0", n)
+	}
+
+	// Read calls remain allowed for a shadow task.
+	if _, text, isErr := f.gateway(t, token, "apps_run_tool", map[string]any{
+		"tool":      "GMAIL_FETCH_EMAILS",
+		"arguments": map[string]any{"user_id": "me"},
+	}); isErr {
+		t.Fatalf("shadow read failed: %s", text)
+	}
+	if n := len(f.sdk.executions()); n != 1 {
+		t.Fatalf("provider calls after shadow read = %d, want 1", n)
 	}
 }

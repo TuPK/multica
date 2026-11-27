@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -419,6 +420,50 @@ func (s *AttentionService) Answered(ctx context.Context, subjectType string, sub
 // AnswerAppRequest records that a person decided an app action request.
 func (s *AttentionService) AnswerAppRequest(ctx context.Context, id pgtype.UUID) error {
 	return s.Answered(ctx, "app_action_request", id, nil)
+}
+
+// AnswerAppRequestWithDuration records that a person decided an app action request, with the
+// measured time in seconds from opening it to deciding (durable spec 7.2).
+func (s *AttentionService) AnswerAppRequestWithDuration(ctx context.Context, id pgtype.UUID, actualSeconds *int) error {
+	return s.Answered(ctx, "app_action_request", id, actualSeconds)
+}
+
+// MeasureAttentionSeconds returns the elapsed seconds between openedAt and decidedAt, clamped to
+// [0, attentionMaxSeconds] (30 minutes, durable spec 7.2). Returns nil when openedAt is zero or
+// after decidedAt so unmeasured requests stay NULL in attention_ledger.
+func MeasureAttentionSeconds(openedAt, decidedAt time.Time) *int {
+	if openedAt.IsZero() || decidedAt.Before(openedAt) {
+		return nil
+	}
+	secs := int(decidedAt.Sub(openedAt) / time.Second)
+	if secs > attentionMaxSeconds {
+		secs = attentionMaxSeconds
+	}
+	return &secs
+}
+
+// ParseOpenedAtSeconds turns a handler-supplied timing hint into measured seconds for Answered
+// (durable spec 7.2). It accepts either a non-negative integer second count or an RFC 3339
+// timestamp of when the person opened the question, clamped to [0, attentionMaxSeconds].
+// Blank or unparseable values return nil so the decision still succeeds without a measurement.
+func ParseOpenedAtSeconds(raw string, now time.Time) *int {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	if n, err := strconv.Atoi(raw); err == nil {
+		if n < 0 {
+			return nil
+		}
+		if n > attentionMaxSeconds {
+			n = attentionMaxSeconds
+		}
+		return &n
+	}
+	if ts, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return MeasureAttentionSeconds(ts, now)
+	}
+	return nil
 }
 
 // AdmitAppRequest puts an app action request in the ledger. A connect request is missing

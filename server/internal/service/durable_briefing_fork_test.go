@@ -135,3 +135,32 @@ func TestBriefingEmptyWhenFlagOff(t *testing.T) {
 		t.Fatalf("verifier blocks with the flag on = %d, want 1", n)
 	}
 }
+
+// TestInstructionBlockHelpers: H2 extraction ignores code fences, StripInstructionBlock removes
+// only the named section, and ref helpers round-trip cleanly (durable spec 10.2, 10.3).
+func TestInstructionBlockHelpers(t *testing.T) {
+	doc := "Intro line.\n\n## First\nKeep me.\n```md\n## Inside Fence\n```\n\n## Second\nDrop me.\n### Subheading\nAlso dropped.\n\n## Third\nStay too."
+	headings := InstructionBlockHeadings(doc)
+	if len(headings) != 3 || headings[0] != "First" || headings[1] != "Second" || headings[2] != "Third" {
+		t.Fatalf("InstructionBlockHeadings = %v, want [First Second Third]", headings)
+	}
+	stripped, ok := StripInstructionBlock(doc, "Second")
+	if !ok {
+		t.Fatal("StripInstructionBlock did not find Second")
+	}
+	if strings.Contains(stripped, "Drop me.") || strings.Contains(stripped, "Also dropped.") {
+		t.Fatalf("stripped still contains dropped block:\n%s", stripped)
+	}
+	if !strings.Contains(stripped, "## First") || !strings.Contains(stripped, "## Inside Fence") || !strings.Contains(stripped, "## Third") {
+		t.Fatalf("stripped lost preserved content:\n%s", stripped)
+	}
+	if _, ok := StripInstructionBlock(doc, "Missing"); ok {
+		t.Fatal("StripInstructionBlock matched missing heading")
+	}
+	id := util.MustParseUUID("11111111-1111-1111-1111-111111111111")
+	ref := InstructionBlockRef(id, "Second")
+	gotID, gotH, ok := ParseInstructionBlockRef(ref)
+	if !ok || gotID != "11111111-1111-1111-1111-111111111111" || gotH != "Second" {
+		t.Fatalf("ParseInstructionBlockRef(%q) = (%q, %q, %v)", ref, gotID, gotH, ok)
+	}
+}

@@ -321,19 +321,45 @@ func (s *ShadowService) shadowAgentFor(ctx context.Context, cfg db.ShadowConfig)
 			return fmt.Errorf("create shadow agent: %w", err)
 		}
 		if cfg.Purpose == ShadowPurposeNecessity {
-			// The shadow agent of a necessity test holds the seat's skills but the one under test.
 			test, err := q.GetNecessityTest(ctx, db.GetNecessityTestParams{ID: cfg.NecessityTestID, WorkspaceID: cfg.WorkspaceID})
 			if err != nil {
 				return fmt.Errorf("load necessity test: %w", err)
 			}
-			subject, err := util.ParseUUID(test.SubjectRef)
-			if err != nil {
-				return fmt.Errorf("necessity subject: %w", err)
-			}
-			if _, err := q.CopyAgentSkillsExcept(ctx, db.CopyAgentSkillsExceptParams{
-				ShadowAgentID: agent.ID, SeatID: cfg.AgentID, ExceptSkillID: subject,
-			}); err != nil {
-				return fmt.Errorf("copy seat skills: %w", err)
+			switch test.SubjectType {
+			case "skill":
+				// The shadow agent holds the seat's skills except the one under test (spec 10.2).
+				subject, err := util.ParseUUID(test.SubjectRef)
+				if err != nil {
+					return fmt.Errorf("necessity subject: %w", err)
+				}
+				if _, err := q.CopyAgentSkillsExcept(ctx, db.CopyAgentSkillsExceptParams{
+					ShadowAgentID: agent.ID, SeatID: cfg.AgentID, ExceptSkillID: subject,
+				}); err != nil {
+					return fmt.Errorf("copy seat skills: %w", err)
+				}
+			case "instruction_block":
+				// Keep every skill of the seat and drop only the H2 instruction block under test (spec 10.2).
+				skills, err := q.ListEffectiveAgentSkills(ctx, cfg.AgentID)
+				if err != nil {
+					return fmt.Errorf("list seat skills for instruction necessity: %w", err)
+				}
+				for _, sk := range skills {
+					if err := q.AddAgentSkill(ctx, db.AddAgentSkillParams{AgentID: agent.ID, SkillID: sk.ID}); err != nil {
+						return fmt.Errorf("copy seat skill to shadow: %w", err)
+					}
+				}
+				_, heading, ok := ParseInstructionBlockRef(test.SubjectRef)
+				if !ok {
+					return fmt.Errorf("necessity instruction subject: %q", test.SubjectRef)
+				}
+				if stripped, found := StripInstructionBlock(seat.Instructions, heading); found {
+					if _, err := q.UpdateAgent(ctx, db.UpdateAgentParams{
+						ID:           agent.ID,
+						Instructions: pgtype.Text{String: stripped, Valid: true},
+					}); err != nil {
+						return fmt.Errorf("strip shadow instruction block: %w", err)
+					}
+				}
 			}
 		}
 		if cfg.Purpose != ShadowPurposeNecessity {

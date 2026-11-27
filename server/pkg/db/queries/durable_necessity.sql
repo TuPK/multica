@@ -59,11 +59,23 @@ WHERE a.workspace_id = @workspace_id
 
 -- name: ListFlowGateVerdictsSince :many
 -- First-round gate verdicts per flow step and gate task since a time (spec 10.4). A task of round 0
--- is the step's first pass; a rejection there is a resend.
+-- is the step's first pass; a rejection there is a resend. attention_minutes sums the human
+-- attention ledger minutes spent on asks linked to those gate issues (F6).
 SELECT i.flow_step, i.flow_task,
        count(*)::bigint AS passes,
        count(*) FILTER (WHERE i.outcome = 'approved')::bigint AS approved_first,
-       count(*) FILTER (WHERE i.outcome = 'rejected')::bigint AS resends
+       count(*) FILTER (WHERE i.outcome = 'rejected')::bigint AS resends,
+       COALESCE(SUM(
+           (SELECT COALESCE(SUM(al.estimated_minutes), 0)
+            FROM attention_ledger al
+            WHERE al.workspace_id = i.workspace_id
+              AND al.state IN ('delivered', 'answered')
+              AND (
+                  (al.subject_type = 'proposal' AND al.subject_id IN (SELECT p.id FROM proposal p WHERE p.issue_id = i.id))
+                  OR (al.subject_type = 'effect_intent' AND al.subject_id IN (SELECT ei.id FROM effect_intent ei WHERE ei.issue_id = i.id))
+                  OR (al.subject_type = 'outcome_check' AND al.subject_id IN (SELECT wo.id FROM work_outcome wo WHERE wo.issue_id = i.id))
+              ))
+       ), 0)::float8 AS attention_minutes
 FROM issue i
 WHERE i.workspace_id = @workspace_id
   AND i.flow_task IS NOT NULL
@@ -72,6 +84,29 @@ WHERE i.workspace_id = @workspace_id
   AND i.created_at >= @since
 GROUP BY i.flow_step, i.flow_task
 ORDER BY i.flow_step, i.flow_task;
+
+-- name: ListNecessityCandidateSeats :many
+-- Active seats in a squad with instructions and their 30-day task count, so the weekly job can
+-- schedule H2 instruction-block necessity tests alongside skills (spec 10.3).
+SELECT a.id AS agent_id, a.home_squad_id AS squad_id, a.instructions,
+       (SELECT count(*) FROM agent_task_queue t
+        WHERE t.agent_id = a.id AND t.created_at >= now() - interval '30 days')::bigint AS tasks_30d
+FROM agent a
+WHERE a.workspace_id = @workspace_id
+  AND a.archived_at IS NULL
+  AND a.shadow_of_agent_id IS NULL
+  AND a.home_squad_id IS NOT NULL
+  AND a.runtime_id IS NOT NULL
+  AND a.instructions <> '';
+
+-- name: LastNecessityTestForSubject :one
+-- When one subject (skill or instruction_block) on a seat was last tested, or NULL if never.
+SELECT max(created_at)::timestamptz AS last_tested_at
+FROM necessity_test
+WHERE workspace_id = @workspace_id
+  AND agent_id = @agent_id
+  AND subject_type = @subject_type
+  AND subject_ref = @subject_ref;
 
 -- name: CountAgentSkillLink :one
 SELECT count(*)::bigint FROM agent_skill WHERE agent_id = @agent_id AND skill_id = @skill_id;

@@ -2,12 +2,16 @@ package service
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
@@ -185,5 +189,74 @@ func TestGateRehearseAndFinish(t *testing.T) {
 	}
 	if err := svc.Finish(ctx, util.MustParseUUID(fx.WorkspaceID), write.EventID, "failed", nil); err == nil {
 		t.Fatal("second Finish: want an error for an event already settled")
+	}
+}
+
+// TestEffectEventNoDelete: effect_event is append-only except for the two status moves
+// (awaiting -> executed|blocked|failed and executed -> undone) and its undo/intent/result
+// fields (durable spec 4.4, plan B2). No SQL query in pkg/db/queries may DELETE from
+// effect_event, and an event already settled cannot be re-settled.
+func TestEffectEventNoDelete(t *testing.T) {
+	queries, err := filepath.Glob(filepath.Join("..", "..", "pkg", "db", "queries", "*.sql"))
+	if err != nil || len(queries) == 0 {
+		t.Fatalf("no query files found: %v", err)
+	}
+	commentRe := regexp.MustCompile(`(?m)--.*$`)
+	deleteRe := regexp.MustCompile(`(?is)\bDELETE\s+FROM\s+effect_event\b`)
+	updateRe := regexp.MustCompile(`(?is)\bUPDATE\s+effect_event\s+SET\s+(.*?)\s+(?:WHERE|RETURNING)\b`)
+	assignRe := regexp.MustCompile(`(?is)([a-z_]+)\s*=`)
+	allowed := map[string]bool{"status": true, "undo": true, "undo_until": true, "intent_id": true, "result": true}
+
+	sawUpdate := false
+	for _, path := range queries {
+		body, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		src := commentRe.ReplaceAll(body, nil)
+		if m := deleteRe.Find(src); m != nil {
+			t.Errorf("%s deletes from effect_event (%q); effect_event is append-only (spec 4.4)", filepath.Base(path), m)
+		}
+		for _, m := range updateRe.FindAllSubmatch(src, -1) {
+			sawUpdate = true
+			for _, a := range assignRe.FindAllSubmatch(m[1], -1) {
+				if col := string(a[1]); !allowed[col] {
+					t.Errorf("%s updates effect_event.%s; only status, undo, undo_until, intent_id and result may change", filepath.Base(path), col)
+				}
+			}
+		}
+	}
+	if !sawUpdate {
+		t.Fatal("no UPDATE effect_event query found; check query glob")
+	}
+
+	// Verify the two allowed status transitions on a real row: awaiting -> executed -> undone.
+	fx := newEffectFixture(t, "")
+	svc, _ := effectService(t, fx.principalFixture, true)
+	ctx := context.Background()
+	ws := util.MustParseUUID(fx.WorkspaceID)
+
+	rec, err := svc.Gate(ctx, fx.request(connectedapps.SourceConnectedApp, connectedapps.EffectWrite, connectedapps.ReversibilityReversible))
+	if err != nil {
+		t.Fatalf("Gate: %v", err)
+	}
+	if err := svc.Finish(ctx, ws, rec.EventID, "executed", nil); err != nil {
+		t.Fatalf("Finish executed: %v", err)
+	}
+	if err := svc.Finish(ctx, ws, rec.EventID, "blocked", nil); err == nil {
+		t.Fatal("Finish on executed event must fail")
+	}
+	claimed, err := fx.q.ClaimEffectEventUndo(ctx, db.ClaimEffectEventUndoParams{ID: rec.EventID, WorkspaceID: ws})
+	if err != nil || claimed != 1 {
+		t.Fatalf("ClaimEffectEventUndo = (%d, %v), want (1, nil)", claimed, err)
+	}
+	undone, err := fx.q.MarkEffectEventUndone(ctx, db.MarkEffectEventUndoneParams{ID: rec.EventID, WorkspaceID: ws})
+	if err != nil || undone != 1 {
+		t.Fatalf("MarkEffectEventUndone = (%d, %v), want (1, nil)", undone, err)
+	}
+	// Once undone, claiming undo again must affect 0 rows.
+	again, err := fx.q.ClaimEffectEventUndo(ctx, db.ClaimEffectEventUndoParams{ID: rec.EventID, WorkspaceID: ws})
+	if err != nil || again != 0 {
+		t.Fatalf("ClaimEffectEventUndo after undone = (%d, %v), want (0, nil)", again, err)
 	}
 }

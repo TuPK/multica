@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/multica-ai/multica/server/internal/events"
@@ -380,5 +381,191 @@ func TestFlowStageCandidatesCountFirstRound(t *testing.T) {
 	}
 	if !FlowStageCandidate(*found) {
 		t.Fatalf("collect/gate at 29 of 30 should be a candidate")
+	}
+}
+
+// TestNecessityInstructionBlockOmitsOnlyTargetBlock: an instruction_block necessity test runs a
+// shadow agent that keeps every skill of the seat and strips only the tested H2 block from its
+// instructions (durable spec 10.2, plan D5).
+func TestNecessityInstructionBlockOmitsOnlyTargetBlock(t *testing.T) {
+	ne := newNecessityEnv(t, true)
+	ctx := context.Background()
+	instructions := "Core role.\n\n## Tone rules\nWrite politely.\n\n## Legacy checklist\nAlways attach a cover sheet."
+	ne.fx.Exec(t, `UPDATE agent SET instructions = $2 WHERE id = $1`, ne.seat, instructions)
+
+	test, err := ne.ns.StartInstructionBlock(ctx, ne.ws, ne.actor(), util.MustParseUUID(ne.seat), "Legacy checklist")
+	if err != nil {
+		t.Fatalf("StartInstructionBlock: %v", err)
+	}
+	if test.SubjectType != "instruction_block" || test.SubjectRef != ne.seat+"#Legacy checklist" {
+		t.Fatalf("test subject = (%q, %q), want instruction_block %q", test.SubjectType, test.SubjectRef, ne.seat+"#Legacy checklist")
+	}
+	cfg, err := ne.q.GetShadowConfig(ctx, db.GetShadowConfigParams{ID: test.ShadowConfigID, WorkspaceID: ne.ws})
+	if err != nil {
+		t.Fatalf("load shadow config: %v", err)
+	}
+	ne.fx.Exec(t, `UPDATE shadow_config SET sample_rate = 1 WHERE id = $1`, util.UUIDToString(cfg.ID))
+
+	issue := ne.fx.Issue(t, "instruction block claim issue")
+	primaryID := ne.fx.Task(t, ne.seat, testutil.Cols{"issue_id": issue, "status": "running", "runtime_id": ne.runtime})
+	primary, err := ne.q.GetAgentTask(ctx, util.MustParseUUID(primaryID))
+	if err != nil {
+		t.Fatalf("load primary task: %v", err)
+	}
+	if err := ne.shadow.OnPrimaryClaimed(ctx, primary); err != nil {
+		t.Fatalf("OnPrimaryClaimed: %v", err)
+	}
+	cfg, err = ne.q.GetShadowConfig(ctx, db.GetShadowConfigParams{ID: cfg.ID, WorkspaceID: ne.ws})
+	if err != nil || !cfg.ShadowAgentID.Valid {
+		t.Fatalf("shadow config lacks shadow agent: %v", err)
+	}
+	shadowAgent, err := ne.q.GetAgent(ctx, cfg.ShadowAgentID)
+	if err != nil {
+		t.Fatalf("load shadow agent: %v", err)
+	}
+	if strings.Contains(shadowAgent.Instructions, "Legacy checklist") || strings.Contains(shadowAgent.Instructions, "cover sheet") {
+		t.Fatalf("shadow agent still has stripped block:\n%s", shadowAgent.Instructions)
+	}
+	if !strings.Contains(shadowAgent.Instructions, "## Tone rules") || !strings.Contains(shadowAgent.Instructions, "Core role.") {
+		t.Fatalf("shadow agent lost other instructions:\n%s", shadowAgent.Instructions)
+	}
+	// Every skill of the seat stays on the shadow agent.
+	if n := ne.fx.Count(t, `SELECT COUNT(*) FROM agent_skill WHERE agent_id = $1 AND skill_id IN ($2, $3)`,
+		util.UUIDToString(cfg.ShadowAgentID), ne.subject, ne.other); n != 2 {
+		t.Fatalf("shadow agent skills = %d, want 2", n)
+	}
+}
+
+// TestNecessityInstructionBlockNotNeededFilesProposal: a not_needed verdict on an
+// instruction_block files one org_change instruction_change proposal removing that H2 block and
+// leaves the seat's instructions unchanged until approval (durable spec 10.2, D20, plan D5).
+func TestNecessityInstructionBlockNotNeededFilesProposal(t *testing.T) {
+	ne := newNecessityEnv(t, true)
+	ctx := context.Background()
+	orig := "Core role.\n\n## Tone rules\nWrite politely.\n\n## Legacy checklist\nAlways attach a cover sheet."
+	ne.fx.Exec(t, `UPDATE agent SET instructions = $2 WHERE id = $1`, ne.seat, orig)
+
+	test, err := ne.ns.StartInstructionBlock(ctx, ne.ws, ne.actor(), util.MustParseUUID(ne.seat), "Legacy checklist")
+	if err != nil {
+		t.Fatalf("StartInstructionBlock: %v", err)
+	}
+	ne.fx.Exec(t, `UPDATE necessity_test SET margin = 0.10 WHERE id = $1`, util.UUIDToString(test.ID))
+	ne.comparedPairs(t, util.UUIDToString(test.ShadowConfigID), "tie", 40)
+
+	if err := ne.shadow.finishIfComplete(ctx, ne.ws, test.ShadowConfigID); err != nil {
+		t.Fatalf("finishIfComplete: %v", err)
+	}
+	got, err := ne.q.GetNecessityTest(ctx, db.GetNecessityTestParams{ID: test.ID, WorkspaceID: ne.ws})
+	if err != nil || got.State != "not_needed" || !got.ProposalID.Valid {
+		t.Fatalf("necessity test = (state=%q, proposal=%v, err=%v), want not_needed with proposal", got.State, got.ProposalID.Valid, err)
+	}
+	var payloadInstr string
+	if err := ne.fx.Pool.QueryRow(ctx,
+		`SELECT payload->>'instructions' FROM proposal WHERE id = $1 AND kind = 'org_change' AND payload->>'type' = 'instruction_change'`,
+		got.ProposalID).Scan(&payloadInstr); err != nil {
+		t.Fatalf("load instruction_change proposal: %v", err)
+	}
+	if strings.Contains(payloadInstr, "Legacy checklist") || !strings.Contains(payloadInstr, "## Tone rules") {
+		t.Fatalf("proposal instructions = %q, want Legacy checklist removed and Tone rules kept", payloadInstr)
+	}
+	// Seat instructions stay intact until the proposal is approved.
+	seat, err := ne.q.GetAgent(ctx, util.MustParseUUID(ne.seat))
+	if err != nil {
+		t.Fatalf("reload seat: %v", err)
+	}
+	if seat.Instructions != orig {
+		t.Fatalf("seat instructions changed without approval: %q", seat.Instructions)
+	}
+}
+
+// TestNecessityWeeklyIncludesInstructionBlocks: the weekly scheduler picks H2 instruction blocks
+// of busy seats when due, still honoring the two-per-squad cap (durable spec 10.3, plan D5).
+func TestNecessityWeeklyIncludesInstructionBlocks(t *testing.T) {
+	ne := newNecessityEnv(t, true)
+	ctx := context.Background()
+	for i := 0; i < 3; i++ {
+		agent := ne.fx.Agent(t, fmt.Sprintf("block seat %d", i), ne.runtime, testutil.Cols{
+			"home_squad_id": util.UUIDToString(ne.squad),
+			"model":         "claude-seat",
+			"instructions":  "Role.\n\n## Block A\nBody A.\n\n## Block B\nBody B.",
+		})
+		for k := 0; k < 40; k++ {
+			ne.fx.Task(t, agent, testutil.Cols{"status": "completed", "runtime_id": ne.runtime})
+		}
+	}
+	started, err := ne.ns.WeeklySchedule(ctx, ne.ws)
+	if err != nil {
+		t.Fatalf("WeeklySchedule: %v", err)
+	}
+	if started != 2 {
+		t.Fatalf("started = %d, want 2 (squad cap)", started)
+	}
+	if n := ne.fx.Count(t, `SELECT COUNT(*) FROM necessity_test WHERE workspace_id = $1 AND subject_type = 'instruction_block' AND state = 'running'`,
+		util.UUIDToString(ne.ws)); n != 2 {
+		t.Fatalf("running instruction_block necessity tests = %d, want 2", n)
+	}
+}
+
+// TestFlowStageCandidatesIncludeGateAttentionMinutes: FlowStageCandidates sums human attention
+// minutes spent at the gate (F6 attention_ledger rows linked to gate issues) and
+// FlowStageBriefMarkdown / BriefWithFlowStageCandidates places them into the brief (spec 10.4, plan D5).
+func TestFlowStageCandidatesIncludeGateAttentionMinutes(t *testing.T) {
+	ne := newNecessityEnv(t, true)
+	ctx := context.Background()
+	ws := util.UUIDToString(ne.ws)
+	ne.fx.Cleanup(t, `DELETE FROM attention_ledger WHERE workspace_id = $1`, ws)
+	ne.fx.Cleanup(t, `DELETE FROM proposal WHERE workspace_id = $1`, ws)
+
+	for i := 0; i < 30; i++ {
+		issueID := ne.fx.Issue(t, fmt.Sprintf("gate pass %d", i), testutil.Cols{
+			"flow_step": "review", "flow_task": "approval_gate", "flow_round": 0, "outcome": "approved",
+		})
+		if i < 3 {
+			// Three gate issues each had a proposal costing 3.5 minutes in attention_ledger (10.5 min total).
+			propID := ne.fx.Insert(t, "proposal", testutil.Cols{
+				"workspace_id": ws, "squad_id": util.UUIDToString(ne.squad), "issue_id": issueID,
+				"created_by_type": "member", "created_by_id": util.UUIDToString(ne.owner),
+				"state": "approved", "kind": "general",
+			})
+			ne.fx.Insert(t, "attention_ledger", testutil.Cols{
+				"workspace_id": ws, "squad_id": util.UUIDToString(ne.squad),
+				"subject_type": "proposal", "subject_id": propID,
+				"reason": "judgment", "estimated_minutes": 3.5, "state": "answered", "week_start": "2026-11-23",
+			})
+		}
+	}
+
+	stats, err := ne.ns.FlowStageCandidates(ctx, ne.ws)
+	if err != nil {
+		t.Fatalf("FlowStageCandidates: %v", err)
+	}
+	var found *StageStat
+	for i := range stats {
+		if stats[i].Step == "review" && stats[i].Task == "approval_gate" {
+			found = &stats[i]
+		}
+	}
+	if found == nil {
+		t.Fatalf("review/approval_gate not returned in candidates: %+v", stats)
+	}
+	if found.AttentionMinutes != 10.5 {
+		t.Fatalf("AttentionMinutes = %v, want 10.5", found.AttentionMinutes)
+	}
+
+	brief := "# Weekly Brief\n\n## Progress\nShipped v1.\n\n## Next\nPlan v2.\n"
+	rendered := BriefWithFlowStageCandidates(brief, stats)
+	for _, want := range []string{"Ứng viên gộp hoặc bỏ cổng", "review:approval_gate", "30/30", "10.5 phút"} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("rendered brief missing %q:\n%s", want, rendered)
+		}
+	}
+
+	section, err := FlowStageBriefFor(ctx, ne.q, ne.flags, ne.ws)
+	if err != nil || !strings.Contains(section, "review:approval_gate") {
+		t.Fatalf("FlowStageBriefFor flag on = (%q, %v), want review:approval_gate", section, err)
+	}
+	offFlags := featureflag.NewService(featureflag.NewStaticProvider())
+	if offSection, err := FlowStageBriefFor(ctx, ne.q, offFlags, ne.ws); err != nil || offSection != "" {
+		t.Fatalf("FlowStageBriefFor flag off = (%q, %v), want empty", offSection, err)
 	}
 }

@@ -202,11 +202,51 @@ func (q *Queries) InsertNecessityTest(ctx context.Context, arg InsertNecessityTe
 	return i, err
 }
 
+const lastNecessityTestForSubject = `-- name: LastNecessityTestForSubject :one
+SELECT max(created_at)::timestamptz AS last_tested_at
+FROM necessity_test
+WHERE workspace_id = $1
+  AND agent_id = $2
+  AND subject_type = $3
+  AND subject_ref = $4
+`
+
+type LastNecessityTestForSubjectParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	AgentID     pgtype.UUID `json:"agent_id"`
+	SubjectType string      `json:"subject_type"`
+	SubjectRef  string      `json:"subject_ref"`
+}
+
+// When one subject (skill or instruction_block) on a seat was last tested, or NULL if never.
+func (q *Queries) LastNecessityTestForSubject(ctx context.Context, arg LastNecessityTestForSubjectParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, lastNecessityTestForSubject,
+		arg.WorkspaceID,
+		arg.AgentID,
+		arg.SubjectType,
+		arg.SubjectRef,
+	)
+	var last_tested_at pgtype.Timestamptz
+	err := row.Scan(&last_tested_at)
+	return last_tested_at, err
+}
+
 const listFlowGateVerdictsSince = `-- name: ListFlowGateVerdictsSince :many
 SELECT i.flow_step, i.flow_task,
        count(*)::bigint AS passes,
        count(*) FILTER (WHERE i.outcome = 'approved')::bigint AS approved_first,
-       count(*) FILTER (WHERE i.outcome = 'rejected')::bigint AS resends
+       count(*) FILTER (WHERE i.outcome = 'rejected')::bigint AS resends,
+       COALESCE(SUM(
+           (SELECT COALESCE(SUM(al.estimated_minutes), 0)
+            FROM attention_ledger al
+            WHERE al.workspace_id = i.workspace_id
+              AND al.state IN ('delivered', 'answered')
+              AND (
+                  (al.subject_type = 'proposal' AND al.subject_id IN (SELECT p.id FROM proposal p WHERE p.issue_id = i.id))
+                  OR (al.subject_type = 'effect_intent' AND al.subject_id IN (SELECT ei.id FROM effect_intent ei WHERE ei.issue_id = i.id))
+                  OR (al.subject_type = 'outcome_check' AND al.subject_id IN (SELECT wo.id FROM work_outcome wo WHERE wo.issue_id = i.id))
+              ))
+       ), 0)::float8 AS attention_minutes
 FROM issue i
 WHERE i.workspace_id = $1
   AND i.flow_task IS NOT NULL
@@ -223,15 +263,17 @@ type ListFlowGateVerdictsSinceParams struct {
 }
 
 type ListFlowGateVerdictsSinceRow struct {
-	FlowStep      pgtype.Text `json:"flow_step"`
-	FlowTask      pgtype.Text `json:"flow_task"`
-	Passes        int64       `json:"passes"`
-	ApprovedFirst int64       `json:"approved_first"`
-	Resends       int64       `json:"resends"`
+	FlowStep         pgtype.Text `json:"flow_step"`
+	FlowTask         pgtype.Text `json:"flow_task"`
+	Passes           int64       `json:"passes"`
+	ApprovedFirst    int64       `json:"approved_first"`
+	Resends          int64       `json:"resends"`
+	AttentionMinutes float64     `json:"attention_minutes"`
 }
 
 // First-round gate verdicts per flow step and gate task since a time (spec 10.4). A task of round 0
-// is the step's first pass; a rejection there is a resend.
+// is the step's first pass; a rejection there is a resend. attention_minutes sums the human
+// attention ledger minutes spent on asks linked to those gate issues (F6).
 func (q *Queries) ListFlowGateVerdictsSince(ctx context.Context, arg ListFlowGateVerdictsSinceParams) ([]ListFlowGateVerdictsSinceRow, error) {
 	rows, err := q.db.Query(ctx, listFlowGateVerdictsSince, arg.WorkspaceID, arg.Since)
 	if err != nil {
@@ -247,6 +289,54 @@ func (q *Queries) ListFlowGateVerdictsSince(ctx context.Context, arg ListFlowGat
 			&i.Passes,
 			&i.ApprovedFirst,
 			&i.Resends,
+			&i.AttentionMinutes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNecessityCandidateSeats = `-- name: ListNecessityCandidateSeats :many
+SELECT a.id AS agent_id, a.home_squad_id AS squad_id, a.instructions,
+       (SELECT count(*) FROM agent_task_queue t
+        WHERE t.agent_id = a.id AND t.created_at >= now() - interval '30 days')::bigint AS tasks_30d
+FROM agent a
+WHERE a.workspace_id = $1
+  AND a.archived_at IS NULL
+  AND a.shadow_of_agent_id IS NULL
+  AND a.home_squad_id IS NOT NULL
+  AND a.runtime_id IS NOT NULL
+  AND a.instructions <> ''
+`
+
+type ListNecessityCandidateSeatsRow struct {
+	AgentID      pgtype.UUID `json:"agent_id"`
+	SquadID      pgtype.UUID `json:"squad_id"`
+	Instructions string      `json:"instructions"`
+	Tasks30d     int64       `json:"tasks_30d"`
+}
+
+// Active seats in a squad with instructions and their 30-day task count, so the weekly job can
+// schedule H2 instruction-block necessity tests alongside skills (spec 10.3).
+func (q *Queries) ListNecessityCandidateSeats(ctx context.Context, workspaceID pgtype.UUID) ([]ListNecessityCandidateSeatsRow, error) {
+	rows, err := q.db.Query(ctx, listNecessityCandidateSeats, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListNecessityCandidateSeatsRow{}
+	for rows.Next() {
+		var i ListNecessityCandidateSeatsRow
+		if err := rows.Scan(
+			&i.AgentID,
+			&i.SquadID,
+			&i.Instructions,
+			&i.Tasks30d,
 		); err != nil {
 			return nil, err
 		}

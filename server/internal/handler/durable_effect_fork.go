@@ -256,7 +256,7 @@ func (h *Handler) UndoEffect(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if h.durable.Effects == nil || h.ConnectedApps == nil {
+	if h.durable.Effects == nil {
 		writeError(w, http.StatusServiceUnavailable, "undo is not configured")
 		return
 	}
@@ -286,16 +286,24 @@ func (h *Handler) UndoEffect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if ev.Undo == nil {
-		writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "this effect cannot be taken back")
+		writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "không hoàn tác được")
 		return
 	}
 	if !effectUndoOpen(ev, time.Now()) {
 		writeErrorCode(w, http.StatusConflict, "undo_window_closed", "the undo window for this effect has closed")
 		return
 	}
+	if ev.EffectClass == connectedapps.EffectWriteInternal {
+		h.undoInternalEffect(w, r, wsUUID, id, member, ev)
+		return
+	}
+	if h.ConnectedApps == nil {
+		writeError(w, http.StatusServiceUnavailable, "undo is not configured")
+		return
+	}
 	var spec connectedapps.UndoSpec
 	if err := json.Unmarshal(ev.Undo, &spec); err != nil || spec.Tool == "" {
-		writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "this effect cannot be taken back")
+		writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "không hoàn tác được")
 		return
 	}
 	claimed, err := h.Queries.ClaimEffectEventUndo(r.Context(), db.ClaimEffectEventUndoParams{ID: id, WorkspaceID: wsUUID})
@@ -343,6 +351,170 @@ func (h *Handler) UndoEffect(w http.ResponseWriter, r *http.Request) {
 		"status":        "undone",
 		"undo_event_id": undoEventID,
 	})
+}
+
+// Supported v1 internal revision undo kinds (durable spec 4.6). Any other kind answers 422
+// "không hoàn tác được".
+const (
+	InternalUndoIssueDescription = "issue_description"
+	InternalUndoAgentInstruction = "agent_instruction"
+	InternalUndoKnowledgeDraft   = "knowledge_draft"
+)
+
+// internalUndoSpec is stored in effect_event.undo for reversible write_internal actions.
+type internalUndoSpec struct {
+	Kind     string `json:"kind"`
+	TargetID string `json:"target_id"`
+	Revision int64  `json:"revision,omitempty"`
+}
+
+var errInternalNotUndoable = errors.New("không hoàn tác được")
+
+func (h *Handler) undoInternalEffect(w http.ResponseWriter, r *http.Request, wsUUID, id pgtype.UUID, member db.Member, ev db.EffectEvent) {
+	var spec internalUndoSpec
+	if err := json.Unmarshal(ev.Undo, &spec); err != nil {
+		writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "không hoàn tác được")
+		return
+	}
+	switch spec.Kind {
+	case InternalUndoIssueDescription, InternalUndoAgentInstruction, InternalUndoKnowledgeDraft:
+	default:
+		writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "không hoàn tác được")
+		return
+	}
+	targetID, err := util.ParseUUID(spec.TargetID)
+	if err != nil || !targetID.Valid {
+		writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "không hoàn tác được")
+		return
+	}
+	// Pre-check that a knowledge_draft undo targets a draft before claiming the event.
+	if spec.Kind == InternalUndoKnowledgeDraft {
+		link, err := h.Queries.GetKnowledgeLink(r.Context(), db.GetKnowledgeLinkParams{ID: targetID, WorkspaceID: wsUUID})
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && link.State != service.KnowledgeLinkDraft) {
+			writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "không hoàn tác được")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not load knowledge draft")
+			return
+		}
+	}
+
+	claimed, err := h.Queries.ClaimEffectEventUndo(r.Context(), db.ClaimEffectEventUndoParams{ID: id, WorkspaceID: wsUUID})
+	if err != nil {
+		slog.Error("undo internal effect: claim", "error", err, "effect_id", uuidToString(id))
+		writeError(w, http.StatusInternalServerError, "could not claim effect for undo")
+		return
+	}
+	if claimed == 0 {
+		writeErrorCode(w, http.StatusConflict, "effect_not_executed", "only an executed effect can be undone")
+		return
+	}
+
+	undoErr := h.applyInternalUndo(r.Context(), wsUUID, member, spec, targetID)
+	if undoErr != nil {
+		if _, revertErr := h.Queries.RevertEffectEventUndo(r.Context(), db.RevertEffectEventUndoParams{ID: id, WorkspaceID: wsUUID}); revertErr != nil {
+			slog.Error("undo internal effect: revert claim", "error", revertErr, "effect_id", uuidToString(id))
+		}
+		if errors.Is(undoErr, errInternalNotUndoable) {
+			writeErrorCode(w, http.StatusUnprocessableEntity, "not_undoable", "không hoàn tác được")
+			return
+		}
+		slog.Error("undo internal effect", "error", undoErr, "effect_id", uuidToString(id), "kind", spec.Kind)
+		writeError(w, http.StatusInternalServerError, "the undo failed; the effect is unchanged")
+		return
+	}
+
+	updated, err := h.Queries.MarkEffectEventUndone(r.Context(), db.MarkEffectEventUndoneParams{ID: id, WorkspaceID: wsUUID})
+	if err != nil || updated == 0 {
+		slog.Error("undo internal effect: mark undone", "error", err, "updated", updated, "effect_id", uuidToString(id))
+		writeError(w, http.StatusInternalServerError, "the undo ran but the effect could not be marked undone")
+		return
+	}
+	undoEventID := ""
+	if undoID, err := h.Queries.InsertEffectEvent(r.Context(), db.InsertEffectEventParams{
+		WorkspaceID:   wsUUID,
+		MemberID:      member.UserID,
+		Source:        ev.Source,
+		Target:        ev.Target,
+		EffectClass:   ev.EffectClass,
+		Reversibility: ev.Reversibility,
+		Decision:      connectedapps.PolicyAllow,
+		Status:        "executed",
+		Summary:       truncateEffectSummary("Hoàn tác " + uuidToString(id)),
+	}); err != nil {
+		slog.Error("undo internal effect: record undo event", "error", err, "effect_id", uuidToString(id))
+	} else {
+		undoEventID = uuidToString(undoID)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"effect_id":     uuidToString(id),
+		"status":        "undone",
+		"undo_event_id": undoEventID,
+	})
+}
+
+func (h *Handler) applyInternalUndo(ctx context.Context, wsUUID pgtype.UUID, member db.Member, spec internalUndoSpec, targetID pgtype.UUID) error {
+	switch spec.Kind {
+	case InternalUndoIssueDescription:
+		issue, err := h.Queries.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: targetID, WorkspaceID: wsUUID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errInternalNotUndoable
+		}
+		if err != nil {
+			return err
+		}
+		content, err := h.Queries.GetIssueDescriptionRevisionContent(ctx, db.GetIssueDescriptionRevisionContentParams{
+			IssueID: targetID, Revision: spec.Revision,
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errInternalNotUndoable
+		}
+		if err != nil {
+			return err
+		}
+		_, err = h.Queries.UpdateIssue(ctx, db.UpdateIssueParams{
+			ID:                 issue.ID,
+			Description:        pgtype.Text{String: content, Valid: true},
+			AssigneeType:       issue.AssigneeType,
+			AssigneeID:         issue.AssigneeID,
+			Position:           pgtype.Float8{Float64: issue.Position, Valid: true},
+			StartDate:          issue.StartDate,
+			DueDate:            issue.DueDate,
+			ParentIssueID:      issue.ParentIssueID,
+			ProjectID:          issue.ProjectID,
+			Stage:              issue.Stage,
+			DuplicateOfIssueID: issue.DuplicateOfIssueID,
+		})
+		return err
+
+	case InternalUndoAgentInstruction:
+		if spec.Revision <= 0 {
+			return errInternalNotUndoable
+		}
+		_, _, err := service.RestoreAgentInstructionRevision(ctx, h.Queries, wsUUID, targetID, int32(spec.Revision), service.GovernanceActor{
+			Type: service.GovernanceActorMember, ID: member.UserID,
+		})
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, service.ErrInstructionsUnchanged) {
+			return errInternalNotUndoable
+		}
+		return err
+
+	case InternalUndoKnowledgeDraft:
+		link, err := h.Queries.GetKnowledgeLink(ctx, db.GetKnowledgeLinkParams{ID: targetID, WorkspaceID: wsUUID})
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && link.State != service.KnowledgeLinkDraft) {
+			return errInternalNotUndoable
+		}
+		if err != nil {
+			return err
+		}
+		if h.Knowledge != nil && link.WeknoraKnowledgeID != "" {
+			return h.Knowledge.DiscardDocument(ctx, wsUUID, targetID)
+		}
+		_, err = h.Queries.DeleteKnowledgeLink(ctx, db.DeleteKnowledgeLinkParams{ID: targetID, WorkspaceID: wsUUID})
+		return err
+	}
+	return errInternalNotUndoable
 }
 
 func validDeclaredClass(class string) bool {
