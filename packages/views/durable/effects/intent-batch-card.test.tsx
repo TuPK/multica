@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
@@ -49,6 +49,22 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => request.mockReset());
 
 describe("IntentBatchCard", () => {
+  it("shows each email's recipients and full content in its own row", () => {
+    const first = intent("i-1", "gmail:first");
+    first.preview = { ...first.preview, kind: "email", recipients: ["first@example.com"], body_markdown: "First line\n  Second line", fields: [{ label: "Subject", before: "Old", after: "New" }] };
+    const second = intent("i-2", "gmail:second");
+    second.preview = { ...second.preview, kind: "email", recipients: ["second@example.com"], body_markdown: "Another email body" };
+    renderBatch([first, second]);
+
+    const rows = screen.getAllByRole("listitem");
+    expect(within(rows[0]!).getByText("first@example.com")).toBeInTheDocument();
+    expect(within(rows[0]!).getByText("First line\n  Second line", { normalizer: (text) => text })).toHaveClass("whitespace-pre-wrap");
+    expect(within(rows[0]!).getByText("Old")).toBeInTheDocument();
+    expect(within(rows[0]!).getByText("New")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("second@example.com")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("Another email body")).toBeInTheDocument();
+  });
+
   it("titles the batch with its count and lists each action", () => {
     renderBatch([intent("i-1", "gmail:first"), intent("i-2", "gmail:second")]);
 
