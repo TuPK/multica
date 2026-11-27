@@ -51,6 +51,8 @@
     "approve_all_failed": "Could not approve these actions."
   },
   "effects": {
+    "class_filter": "Effect class",
+    "source_filter": "Source",
     "controlled": "Controlled by the platform",
     "declared": "Declared by agents",
     "declared_hint": "The platform recorded these but could not stop them.",

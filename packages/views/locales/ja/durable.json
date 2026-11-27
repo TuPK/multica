@@ -51,6 +51,8 @@
     "approve_all_failed": "これらのアクションを承認できませんでした。"
   },
   "effects": {
+    "class_filter": "エフェクトの種類",
+    "source_filter": "ソース",
     "controlled": "プラットフォームが管理",
     "declared": "エージェントが申告",
     "declared_hint": "プラットフォームは記録しましたが、止めることはできませんでした。",

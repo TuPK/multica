@@ -51,6 +51,8 @@
     "approve_all_failed": "이 작업들을 승인하지 못했습니다."
   },
   "effects": {
+    "class_filter": "효과 유형",
+    "source_filter": "출처",
     "controlled": "플랫폼이 관리",
     "declared": "에이전트 신고",
     "declared_hint": "플랫폼이 기록했지만 막을 수는 없었던 작업입니다.",

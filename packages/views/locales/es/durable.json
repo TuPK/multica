@@ -51,6 +51,8 @@
     "approve_all_failed": "No se pudieron aprobar estas acciones."
   },
   "effects": {
+    "class_filter": "Tipo de efecto",
+    "source_filter": "Origen",
     "controlled": "Controlado por la plataforma",
     "declared": "Declarado por agentes",
     "declared_hint": "La plataforma registró estas acciones, pero no pudo detenerlas.",

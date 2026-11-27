@@ -51,6 +51,8 @@
     "approve_all_failed": "Không duyệt được các hành động này."
   },
   "effects": {
+    "class_filter": "Loại tác động",
+    "source_filter": "Nguồn",
     "controlled": "Nền tảng kiểm soát",
     "declared": "Agent tự khai báo",
     "declared_hint": "Nền tảng ghi nhận các việc này nhưng không chặn được.",

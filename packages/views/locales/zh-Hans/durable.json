@@ -51,6 +51,8 @@
     "approve_all_failed": "无法批准这些操作。"
   },
   "effects": {
+    "class_filter": "影响类型",
+    "source_filter": "来源",
     "controlled": "由平台控制",
     "declared": "智能体自行申报",
     "declared_hint": "平台已记录，但无法阻止这些操作。",

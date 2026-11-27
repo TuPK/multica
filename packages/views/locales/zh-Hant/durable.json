@@ -51,6 +51,8 @@
     "approve_all_failed": "無法核准這些操作。"
   },
   "effects": {
+    "class_filter": "影響類型",
+    "source_filter": "來源",
     "controlled": "由平台控管",
     "declared": "智慧代理自行申報",
     "declared_hint": "平台已記錄，但無法阻止這些操作。",

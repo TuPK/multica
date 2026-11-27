@@ -51,6 +51,8 @@
     "approve_all_failed": "Impossible d'approuver ces actions."
   },
   "effects": {
+    "class_filter": "Type d’effet",
+    "source_filter": "Source",
     "controlled": "Contrôlées par la plateforme",
     "declared": "Déclarées par les agents",
     "declared_hint": "La plateforme les a enregistrées sans pouvoir les arrêter.",
