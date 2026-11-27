@@ -11,6 +11,153 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearPredictionsLearned = `-- name: ClearPredictionsLearned :execrows
+UPDATE decision_prediction
+SET learning_task_id = NULL
+WHERE workspace_id = $1
+  AND member_id = $2
+  AND learning_task_id = $3
+`
+
+type ClearPredictionsLearnedParams struct {
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+	MemberID       pgtype.UUID `json:"member_id"`
+	LearningTaskID pgtype.UUID `json:"learning_task_id"`
+}
+
+// Releases the learning marker if task enqueue fails outside a transaction.
+func (q *Queries) ClearPredictionsLearned(ctx context.Context, arg ClearPredictionsLearnedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearPredictionsLearned, arg.WorkspaceID, arg.MemberID, arg.LearningTaskID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const enqueuePrincipalLearningTask = `-- name: EnqueuePrincipalLearningTask :one
+WITH enqueue_agent AS MATERIALIZED (
+    SELECT a.id, a.runtime_id, a.owner_id
+    FROM agent a
+    WHERE a.id = $4
+      AND a.workspace_id = $5
+      AND a.archived_at IS NULL
+      AND a.runtime_id IS NOT NULL
+      AND lock_task_owner_rows(a.id, NULL, a.runtime_id)
+    FOR KEY SHARE OF a
+)
+INSERT INTO agent_task_queue (
+    id, agent_id, runtime_id, issue_id, status, priority, trigger_summary, context,
+    accountable_user_id, originator_source
+)
+SELECT
+    $1,
+    enqueue_agent.id,
+    enqueue_agent.runtime_id,
+    NULL,
+    'queued',
+    0,
+    $2,
+    $3::jsonb,
+    enqueue_agent.owner_id,
+    CASE WHEN enqueue_agent.owner_id IS NOT NULL THEN 'owner_fallback' ELSE 'unattributed' END
+FROM enqueue_agent
+RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, chat_session_id, autopilot_run_id, attempt, max_attempts, parent_task_id, failure_reason, trigger_summary, force_fresh_session, is_leader_task, wait_reason, initiator_user_id, handoff_note, prepare_lease_expires_at, squad_id, runtime_mcp_overlay, escalation_for_task_id, fire_at, originator_user_id, runtime_connected_apps, coalesced_comment_ids, delivered_comment_ids, chat_input_task_id, chat_finalize_deferred_at, originator_source, delegated_from_task_id, retry_of_task_id, rerun_of_task_id, rule_version_id, trigger_evidence_kind, trigger_evidence_ref_id, accountable_user_id, session_rollout_missing, retired_session_id, quick_actions_disabled, regenerate_quick_actions_for, branch_name, durable_work_dir, channel_context_revision, comment_thread_id, cancelled_by_type, cancelled_by_id, cancelled_by_name, issue_snapshot, workflow_step, branch_merge_status, branch_merge_error, usage_squad_id, doc_id, doc_thread_id, doc_comment_id, budget_accounted_micros, reply_chat_session_id, chat_route
+`
+
+type EnqueuePrincipalLearningTaskParams struct {
+	ID             pgtype.UUID `json:"id"`
+	TriggerSummary pgtype.Text `json:"trigger_summary"`
+	Context        []byte      `json:"context"`
+	AgentID        pgtype.UUID `json:"agent_id"`
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+}
+
+// Enqueues a routine task for the workspace Secretary to update a member's principal profile
+// (durable spec 6.3, V1.9). Follows row lock order: locks the agent row first, then
+// lock_task_owner_rows locks workspace and runtime.
+func (q *Queries) EnqueuePrincipalLearningTask(ctx context.Context, arg EnqueuePrincipalLearningTaskParams) (AgentTaskQueue, error) {
+	row := q.db.QueryRow(ctx, enqueuePrincipalLearningTask,
+		arg.ID,
+		arg.TriggerSummary,
+		arg.Context,
+		arg.AgentID,
+		arg.WorkspaceID,
+	)
+	var i AgentTaskQueue
+	err := row.Scan(
+		&i.ID,
+		&i.AgentID,
+		&i.IssueID,
+		&i.Status,
+		&i.Priority,
+		&i.DispatchedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.Result,
+		&i.Error,
+		&i.CreatedAt,
+		&i.Context,
+		&i.RuntimeID,
+		&i.SessionID,
+		&i.WorkDir,
+		&i.TriggerCommentID,
+		&i.ChatSessionID,
+		&i.AutopilotRunID,
+		&i.Attempt,
+		&i.MaxAttempts,
+		&i.ParentTaskID,
+		&i.FailureReason,
+		&i.TriggerSummary,
+		&i.ForceFreshSession,
+		&i.IsLeaderTask,
+		&i.WaitReason,
+		&i.InitiatorUserID,
+		&i.HandoffNote,
+		&i.PrepareLeaseExpiresAt,
+		&i.SquadID,
+		&i.RuntimeMcpOverlay,
+		&i.EscalationForTaskID,
+		&i.FireAt,
+		&i.OriginatorUserID,
+		&i.RuntimeConnectedApps,
+		&i.CoalescedCommentIds,
+		&i.DeliveredCommentIds,
+		&i.ChatInputTaskID,
+		&i.ChatFinalizeDeferredAt,
+		&i.OriginatorSource,
+		&i.DelegatedFromTaskID,
+		&i.RetryOfTaskID,
+		&i.RerunOfTaskID,
+		&i.RuleVersionID,
+		&i.TriggerEvidenceKind,
+		&i.TriggerEvidenceRefID,
+		&i.AccountableUserID,
+		&i.SessionRolloutMissing,
+		&i.RetiredSessionID,
+		&i.QuickActionsDisabled,
+		&i.RegenerateQuickActionsFor,
+		&i.BranchName,
+		&i.DurableWorkDir,
+		&i.ChannelContextRevision,
+		&i.CommentThreadID,
+		&i.CancelledByType,
+		&i.CancelledByID,
+		&i.CancelledByName,
+		&i.IssueSnapshot,
+		&i.WorkflowStep,
+		&i.BranchMergeStatus,
+		&i.BranchMergeError,
+		&i.UsageSquadID,
+		&i.DocID,
+		&i.DocThreadID,
+		&i.DocCommentID,
+		&i.BudgetAccountedMicros,
+		&i.ReplyChatSessionID,
+		&i.ChatRoute,
+	)
+	return i, err
+}
+
 const forgetPredictionReasons = `-- name: ForgetPredictionReasons :execrows
 UPDATE decision_prediction SET why = '', trait_ids = '{}'
 WHERE workspace_id = $1 AND member_id = $2
@@ -31,7 +178,7 @@ func (q *Queries) ForgetPredictionReasons(ctx context.Context, arg ForgetPredict
 }
 
 const getDecisionPrediction = `-- name: GetDecisionPrediction :one
-SELECT id, workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, why, trait_ids, profile_version, predictor_task_id, actual, matched, applied_by_delegation, created_at, resolved_at FROM decision_prediction
+SELECT id, workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, why, trait_ids, profile_version, predictor_task_id, actual, matched, applied_by_delegation, created_at, resolved_at, learning_task_id FROM decision_prediction
 WHERE workspace_id = $1 AND member_id = $2
   AND subject_type = $3 AND subject_id = $4
 `
@@ -69,6 +216,7 @@ func (q *Queries) GetDecisionPrediction(ctx context.Context, arg GetDecisionPred
 		&i.AppliedByDelegation,
 		&i.CreatedAt,
 		&i.ResolvedAt,
+		&i.LearningTaskID,
 	)
 	return i, err
 }
@@ -108,19 +256,44 @@ func (q *Queries) InsertPendingPrediction(ctx context.Context, arg InsertPending
 	return result.RowsAffected(), nil
 }
 
-const latestAssistantMessageAt = `-- name: LatestAssistantMessageAt :one
-SELECT created_at FROM chat_message
-WHERE chat_session_id = $1 AND role = 'assistant'
-ORDER BY created_at DESC
-LIMIT 1
+const insertResolvedPredictionTombstones = `-- name: InsertResolvedPredictionTombstones :execrows
+INSERT INTO decision_prediction (
+    id, workspace_id, member_id, subject_type, subject_id, decision_kind,
+    predicted, actual, matched, resolved_at
+)
+SELECT gen_random_uuid(), p.workspace_id, p.member_id,
+       $1, $2, 'general',
+       '', $3, NULL, now()
+FROM principal_profile p
+WHERE p.workspace_id = $4 AND p.status = 'active'
+ON CONFLICT (subject_type, subject_id, member_id) DO UPDATE SET
+    actual = EXCLUDED.actual,
+    matched = CASE WHEN decision_prediction.predicted <> '' THEN (decision_prediction.predicted = EXCLUDED.actual) ELSE NULL END,
+    resolved_at = EXCLUDED.resolved_at
+WHERE decision_prediction.resolved_at IS NULL
 `
 
-// When the Secretary last wrote into a chat session.
-func (q *Queries) LatestAssistantMessageAt(ctx context.Context, chatSessionID pgtype.UUID) (pgtype.Timestamptz, error) {
-	row := q.db.QueryRow(ctx, latestAssistantMessageAt, chatSessionID)
-	var created_at pgtype.Timestamptz
-	err := row.Scan(&created_at)
-	return created_at, err
+type InsertResolvedPredictionTombstonesParams struct {
+	SubjectType string      `json:"subject_type"`
+	SubjectID   pgtype.UUID `json:"subject_id"`
+	Actual      pgtype.Text `json:"actual"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+// Persists the decision outcome for every active profiled member who has no resolved row
+// yet for this subject, so a late Record after Resolve is refused (V1.8). Race-safe with
+// concurrent Record via ON CONFLICT (subject_type, subject_id, member_id).
+func (q *Queries) InsertResolvedPredictionTombstones(ctx context.Context, arg InsertResolvedPredictionTombstonesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertResolvedPredictionTombstones,
+		arg.SubjectType,
+		arg.SubjectID,
+		arg.Actual,
+		arg.WorkspaceID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const listActivePrincipalProfiles = `-- name: ListActivePrincipalProfiles :many
@@ -216,22 +389,24 @@ func (q *Queries) ListRecentResolvedPredictions(ctx context.Context, arg ListRec
 	return items, nil
 }
 
-const listResolvedPredictionsSince = `-- name: ListResolvedPredictionsSince :many
-SELECT subject_type, subject_id, decision_kind, predicted, actual, matched, resolved_at
+const listUnlearnedResolvedPredictionsSince = `-- name: ListUnlearnedResolvedPredictionsSince :many
+SELECT id, subject_type, subject_id, decision_kind, predicted, actual, matched, resolved_at
 FROM decision_prediction
 WHERE workspace_id = $1 AND member_id = $2
   AND resolved_at IS NOT NULL AND resolved_at >= $3
-ORDER BY resolved_at DESC
+  AND learning_task_id IS NULL
+ORDER BY resolved_at DESC, id DESC
 LIMIT 20
 `
 
-type ListResolvedPredictionsSinceParams struct {
+type ListUnlearnedResolvedPredictionsSinceParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	MemberID    pgtype.UUID        `json:"member_id"`
 	Since       pgtype.Timestamptz `json:"since"`
 }
 
-type ListResolvedPredictionsSinceRow struct {
+type ListUnlearnedResolvedPredictionsSinceRow struct {
+	ID           pgtype.UUID        `json:"id"`
 	SubjectType  string             `json:"subject_type"`
 	SubjectID    pgtype.UUID        `json:"subject_id"`
 	DecisionKind string             `json:"decision_kind"`
@@ -241,17 +416,18 @@ type ListResolvedPredictionsSinceRow struct {
 	ResolvedAt   pgtype.Timestamptz `json:"resolved_at"`
 }
 
-// The predictions resolved since a time, newest first, for one profile update batch (spec 6.3).
-func (q *Queries) ListResolvedPredictionsSince(ctx context.Context, arg ListResolvedPredictionsSinceParams) ([]ListResolvedPredictionsSinceRow, error) {
-	rows, err := q.db.Query(ctx, listResolvedPredictionsSince, arg.WorkspaceID, arg.MemberID, arg.Since)
+// The unconsumed decisions resolved since a time, newest first, for one profile update batch (spec 6.3).
+func (q *Queries) ListUnlearnedResolvedPredictionsSince(ctx context.Context, arg ListUnlearnedResolvedPredictionsSinceParams) ([]ListUnlearnedResolvedPredictionsSinceRow, error) {
+	rows, err := q.db.Query(ctx, listUnlearnedResolvedPredictionsSince, arg.WorkspaceID, arg.MemberID, arg.Since)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListResolvedPredictionsSinceRow{}
+	items := []ListUnlearnedResolvedPredictionsSinceRow{}
 	for rows.Next() {
-		var i ListResolvedPredictionsSinceRow
+		var i ListUnlearnedResolvedPredictionsSinceRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.SubjectType,
 			&i.SubjectID,
 			&i.DecisionKind,
@@ -270,6 +446,37 @@ func (q *Queries) ListResolvedPredictionsSince(ctx context.Context, arg ListReso
 	return items, nil
 }
 
+const markPredictionsLearned = `-- name: MarkPredictionsLearned :execrows
+UPDATE decision_prediction
+SET learning_task_id = $1
+WHERE workspace_id = $2
+  AND member_id = $3
+  AND id = ANY($4::uuid[])
+  AND learning_task_id IS NULL
+`
+
+type MarkPredictionsLearnedParams struct {
+	LearningTaskID pgtype.UUID   `json:"learning_task_id"`
+	WorkspaceID    pgtype.UUID   `json:"workspace_id"`
+	MemberID       pgtype.UUID   `json:"member_id"`
+	Ids            []pgtype.UUID `json:"ids"`
+}
+
+// Stamps each resolved decision with the routine task that picked it up. The NULL guard keeps
+// concurrent runs from enqueuing a second task for the same decisions.
+func (q *Queries) MarkPredictionsLearned(ctx context.Context, arg MarkPredictionsLearnedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markPredictionsLearned,
+		arg.LearningTaskID,
+		arg.WorkspaceID,
+		arg.MemberID,
+		arg.Ids,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const recordDecisionPrediction = `-- name: RecordDecisionPrediction :one
 INSERT INTO decision_prediction (id, workspace_id, member_id, subject_type, subject_id, decision_kind,
                                  predicted, confidence, why, trait_ids, profile_version, predictor_task_id)
@@ -285,7 +492,7 @@ ON CONFLICT (subject_type, subject_id, member_id) DO UPDATE SET
     profile_version = EXCLUDED.profile_version,
     predictor_task_id = EXCLUDED.predictor_task_id
 WHERE decision_prediction.resolved_at IS NULL
-RETURNING id, workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, why, trait_ids, profile_version, predictor_task_id, actual, matched, applied_by_delegation, created_at, resolved_at
+RETURNING id, workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, why, trait_ids, profile_version, predictor_task_id, actual, matched, applied_by_delegation, created_at, resolved_at, learning_task_id
 `
 
 type RecordDecisionPredictionParams struct {
@@ -338,15 +545,18 @@ func (q *Queries) RecordDecisionPrediction(ctx context.Context, arg RecordDecisi
 		&i.AppliedByDelegation,
 		&i.CreatedAt,
 		&i.ResolvedAt,
+		&i.LearningTaskID,
 	)
 	return i, err
 }
 
 const resolveDecisionPredictions = `-- name: ResolveDecisionPredictions :execrows
 UPDATE decision_prediction
-SET actual = $1, matched = (predicted = $1), resolved_at = now()
+SET actual = $1,
+    matched = CASE WHEN predicted <> '' THEN (predicted = $1) ELSE NULL END,
+    resolved_at = now()
 WHERE workspace_id = $2 AND subject_type = $3
-  AND subject_id = $4 AND resolved_at IS NULL AND predicted <> ''
+  AND subject_id = $4 AND resolved_at IS NULL
 `
 
 type ResolveDecisionPredictionsParams struct {
@@ -356,8 +566,9 @@ type ResolveDecisionPredictionsParams struct {
 	SubjectID   pgtype.UUID `json:"subject_id"`
 }
 
-// The person decided the question: every prediction of it that is still open is resolved, and
-// matched says whether the prediction was the decision.
+// The person decided the question: every open row for this subject is resolved. Rows that
+// carried a prediction record whether it matched; pending rows with no prediction keep
+// matched = NULL so they do not skew accuracy, while resolved_at blocks late writes.
 func (q *Queries) ResolveDecisionPredictions(ctx context.Context, arg ResolveDecisionPredictionsParams) (int64, error) {
 	result, err := q.db.Exec(ctx, resolveDecisionPredictions,
 		arg.Actual,

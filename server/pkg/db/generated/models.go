@@ -1120,6 +1120,7 @@ type DecisionPrediction struct {
 	AppliedByDelegation bool               `json:"applied_by_delegation"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	ResolvedAt          pgtype.Timestamptz `json:"resolved_at"`
+	LearningTaskID      pgtype.UUID        `json:"learning_task_id"`
 }
 
 type DingtalkBotIdentity struct {

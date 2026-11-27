@@ -148,7 +148,7 @@ func (q *Queries) GetActivePrincipalDelegation(ctx context.Context, arg GetActiv
 }
 
 const getDecisionPredictionByID = `-- name: GetDecisionPredictionByID :one
-SELECT id, workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, why, trait_ids, profile_version, predictor_task_id, actual, matched, applied_by_delegation, created_at, resolved_at FROM decision_prediction
+SELECT id, workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, why, trait_ids, profile_version, predictor_task_id, actual, matched, applied_by_delegation, created_at, resolved_at, learning_task_id FROM decision_prediction
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -178,6 +178,7 @@ func (q *Queries) GetDecisionPredictionByID(ctx context.Context, arg GetDecision
 		&i.AppliedByDelegation,
 		&i.CreatedAt,
 		&i.ResolvedAt,
+		&i.LearningTaskID,
 	)
 	return i, err
 }

@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-// PrincipalLearner posts the profile update batches of the principal profiles (durable spec 6.3).
+// PrincipalLearner enqueues the routine profile-update tasks for active principal profiles (durable spec 6.3).
 type PrincipalLearner interface {
 	LearnBatches(ctx context.Context, now time.Time) (int, error)
 }
 
-// PrincipalLearningJob runs every six hours. Each person gets at most one batch per window, so a run
-// that finds the window's batch already posted writes nothing.
+// PrincipalLearningJob runs every six hours. Decisions already picked up by a previous routine task
+// are skipped, so re-running the job writes nothing new for the same decisions.
 func PrincipalLearningJob(learner PrincipalLearner) JobSpec {
 	return JobSpec{
 		Name:              "principal_learning",
