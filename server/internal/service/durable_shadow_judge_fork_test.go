@@ -8,9 +8,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
 // shadowTestTicks is one USD: the cost of one task in the shadow run's cost tests.
@@ -246,5 +248,91 @@ func (f budgetFixture) squadBudget(t *testing.T, squadID string, amount int64) {
 		SoftPercent: 80, Mode: BudgetModeHold,
 	}); err != nil {
 		t.Fatalf("create squad budget: %v", err)
+	}
+}
+
+// TestShadowReconcileUnjudgedPairs: a pair whose primary and shadow tasks completed while
+// durable_seats was off is settled once the flag turns back on. Reconciliation writes
+// nothing while the flag is off, and a second pass opens no second juror.
+func TestShadowReconcileUnjudgedPairs(t *testing.T) {
+	sf := newShadowFixture(t, true)
+	sf.svc.Tasks.Shadow = sf.svc
+	ctx := context.Background()
+	sf.start(t)
+
+	juror := sf.Agent(t, "reconcile-juror", sf.Runtime(t, "reconcile juror runtime", testutil.Cols{"provider": "google"}))
+	pool, err := json.Marshal(map[string]any{"jury_pool": []string{juror}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sf.Exec(t, `UPDATE workspace SET settings = $2::jsonb WHERE id = $1`, sf.WorkspaceID, string(pool))
+
+	primary := sf.primaryTask(t)
+	if err := sf.svc.OnPrimaryClaimed(ctx, primary); err != nil {
+		t.Fatalf("OnPrimaryClaimed: %v", err)
+	}
+	pair, err := sf.q.GetShadowPairForPrimary(ctx, primary.ID)
+	if err != nil {
+		t.Fatalf("load pair: %v", err)
+	}
+	pairIDStr := util.UUIDToString(pair.ID)
+
+	// Turn durable_seats off before both tasks complete so the completion hook skips settlement.
+	sf.provider.Set(featureflags.DurableSeats, featureflag.Rule{Default: false})
+	sf.completeTask(t, util.UUIDToString(primary.ID), "primary answer")
+	sf.completeTask(t, util.UUIDToString(pair.ShadowTaskID), "shadow answer")
+
+	if n, err := sf.q.CountShadowJurorTasksForPair(ctx, pairIDStr); err != nil {
+		t.Fatal(err)
+	} else if n != 0 {
+		t.Fatalf("juror tasks while flag off = %d, want 0", n)
+	}
+
+	// Flag off: reconciliation writes nothing.
+	if n, err := sf.svc.ReconcileUnjudgedPairs(ctx); err != nil {
+		t.Fatalf("reconcile while flag off: %v", err)
+	} else if n != 0 {
+		t.Fatalf("reconciled while flag off = %d, want 0", n)
+	}
+	if n, err := sf.q.CountShadowJurorTasksForPair(ctx, pairIDStr); err != nil {
+		t.Fatal(err)
+	} else if n != 0 {
+		t.Fatalf("juror tasks after flag-off reconcile = %d, want 0", n)
+	}
+
+	// Flag back on: reconciliation opens the juror panel once.
+	sf.provider.Set(featureflags.DurableSeats, featureflag.Rule{Default: true})
+	if _, err := sf.svc.ReconcileUnjudgedPairs(ctx); err != nil {
+		t.Fatalf("first reconcile: %v", err)
+	}
+	if n, err := sf.q.CountShadowJurorTasksForPair(ctx, pairIDStr); err != nil {
+		t.Fatal(err)
+	} else if n != 1 {
+		t.Fatalf("juror tasks after first reconcile = %d, want 1", n)
+	}
+	var firstJurorTaskID string
+	if err := sf.Pool.QueryRow(ctx, `SELECT id::text FROM agent_task_queue
+		WHERE context->>'durable_kind' = 'verification' AND context->>'shadow_pair_id' = $1`,
+		pairIDStr).Scan(&firstJurorTaskID); err != nil {
+		t.Fatalf("load juror task: %v", err)
+	}
+
+	// Second pass: idempotent, no second juror task opened.
+	if _, err := sf.svc.ReconcileUnjudgedPairs(ctx); err != nil {
+		t.Fatalf("second reconcile: %v", err)
+	}
+	if n, err := sf.q.CountShadowJurorTasksForPair(ctx, pairIDStr); err != nil {
+		t.Fatal(err)
+	} else if n != 1 {
+		t.Fatalf("juror tasks after second reconcile = %d, want 1", n)
+	}
+	var afterSecondJurorTaskID string
+	if err := sf.Pool.QueryRow(ctx, `SELECT id::text FROM agent_task_queue
+		WHERE context->>'durable_kind' = 'verification' AND context->>'shadow_pair_id' = $1`,
+		pairIDStr).Scan(&afterSecondJurorTaskID); err != nil {
+		t.Fatalf("reload juror task: %v", err)
+	}
+	if afterSecondJurorTaskID != firstJurorTaskID {
+		t.Fatalf("juror task changed across reconcile passes: %s != %s", afterSecondJurorTaskID, firstJurorTaskID)
 	}
 }

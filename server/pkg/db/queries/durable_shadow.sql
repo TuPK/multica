@@ -132,3 +132,24 @@ SELECT id FROM agent_task_queue
 WHERE agent_id = @agent_id AND status = 'completed' AND completed_at >= @since
 ORDER BY completed_at DESC
 LIMIT @row_limit;
+
+-- name: ListUnjudgedCompletedShadowPairs :many
+-- Pairs of running or completed shadow runs whose primary and shadow tasks have both
+-- completed, with no comparison written and no juror task opened yet.
+SELECT sp.*
+FROM shadow_pair sp
+JOIN shadow_config sc ON sc.id = sp.config_id AND sc.workspace_id = sp.workspace_id
+JOIN agent_task_queue pt ON pt.id = sp.primary_task_id
+JOIN agent_task_queue st ON st.id = sp.shadow_task_id
+WHERE sp.comparison IS NULL
+  AND sp.shadow_task_id IS NOT NULL
+  AND sc.state IN ('running', 'completed')
+  AND pt.status = 'completed'
+  AND st.status = 'completed'
+  AND NOT EXISTS (
+      SELECT 1 FROM agent_task_queue jt
+      WHERE jt.context->>'durable_kind' = 'verification'
+        AND jt.context->>'shadow_pair_id' = sp.id::text
+  )
+ORDER BY sp.created_at, sp.id
+LIMIT @row_limit;

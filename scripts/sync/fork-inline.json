@@ -257,6 +257,11 @@
      "kind": "matches",
      "path": "server/cmd/server/main.go",
      "pattern": "featureflags\\.RequireDurableDependencies\\("
+    },
+    {
+     "kind": "matches",
+     "path": "server/cmd/server/main.go",
+     "pattern": "registerDurableShadowJobs\\("
     }
    ]
   },

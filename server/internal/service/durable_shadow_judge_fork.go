@@ -31,6 +31,8 @@ const (
 	shadowEstimateRows = 500
 	// shadowBudgetUnlimited is the remaining budget when no budget is active.
 	shadowBudgetUnlimited = int64(-1)
+	// shadowReconcileBatch bounds how many unjudged pairs one reconciliation pass settles.
+	shadowReconcileBatch = 100
 )
 
 // durableMarkerOf reads the durable kind and shadow pair a task context carries.
@@ -114,6 +116,44 @@ func (s *ShadowService) OnTaskSettled(ctx context.Context, task db.AgentTaskQueu
 		return s.openJuror(ctx, pair)
 	}
 	return nil
+}
+
+// ReconcileUnjudgedPairs finds completed shadow pairs with no comparison and no juror
+// task yet (for example because durable_seats was off when the tasks finished) and
+// settles them through openJuror. It writes nothing while durable_seats is off, and
+// checks for an existing juror task before opening one.
+func (s *ShadowService) ReconcileUnjudgedPairs(ctx context.Context) (int, error) {
+	if !s.enabled(ctx) {
+		return 0, nil
+	}
+	pairs, err := s.Queries.ListUnjudgedCompletedShadowPairs(ctx, shadowReconcileBatch)
+	if err != nil {
+		return 0, fmt.Errorf("list unjudged shadow pairs: %w", err)
+	}
+	settled := 0
+	var firstErr error
+	for _, pair := range pairs {
+		n, err := s.Queries.CountShadowJurorTasksForPair(ctx, util.UUIDToString(pair.ID))
+		if err != nil {
+			slog.Warn("durable shadow reconcile: count juror tasks failed", "pair_id", util.UUIDToString(pair.ID), "error", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		if n > 0 {
+			continue
+		}
+		if err := s.openJuror(ctx, pair); err != nil {
+			slog.Warn("durable shadow reconcile: open juror failed", "pair_id", util.UUIDToString(pair.ID), "error", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		settled++
+	}
+	return settled, firstErr
 }
 
 // ShadowPrimaryClaimed samples a seat's claimed task into its shadow run (durable spec 9.4). A

@@ -941,6 +941,7 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.DurableEnvelopeJob(envelopes)); err != nil {
 		slog.Error("scheduler: register durable envelope", "error", err)
 	}
+	registerDurableShadowJobs(schedulerMgr, taskSvc.Shadow)
 	if err := schedulerMgr.Register(scheduler.FlowSweepJob(h)); err != nil {
 		slog.Error("scheduler: register flow sweep", "error", err)
 	}
