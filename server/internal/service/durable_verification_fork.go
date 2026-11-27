@@ -712,8 +712,26 @@ func (s *VerificationService) Schedule(ctx context.Context, o db.WorkOutcome) er
 	if err != nil {
 		return err
 	}
+	openPanels := map[string]bool{}
+	if s.Jury != nil {
+		panels, err := s.Queries.ListJuryPanelsForOutcome(ctx, db.ListJuryPanelsForOutcomeParams{WorkspaceID: o.WorkspaceID, OutcomeID: o.ID})
+		if err != nil {
+			return fmt.Errorf("list jury panels: %w", err)
+		}
+		for _, p := range panels {
+			if p.State == juryStateOpen {
+				openPanels[util.UUIDToString(p.CriterionID)] = true
+			}
+		}
+	}
 	var agentChecks []db.AcceptanceCriterion
 	for _, c := range open {
+		if openPanels[util.UUIDToString(c.ID)] {
+			if err := s.Jury.Open(ctx, o, c); err != nil {
+				return err
+			}
+			continue
+		}
 		if handled[util.UUIDToString(c.ID)] {
 			continue
 		}
