@@ -44,9 +44,9 @@ export function useDecideInitiativeGate(wsId: string) {
   return useMutation<
     Proposal,
     Error,
-    { id: string } & Extract<DecideProposalRequest, { decision: "approve" | "reject" }>
+    { id: string; openedAt?: number } & Extract<DecideProposalRequest, { decision: "approve" | "reject" }>
   >({
-    mutationFn: ({ id, ...data }) => api.decideProposal(id, data),
+    mutationFn: ({ id, openedAt, ...data }) => api.decideProposal(id, data, openedAt),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.all(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });

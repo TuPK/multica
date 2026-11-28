@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ApiError } from "@multica/core/api";
+import { ApiClient, ApiError } from "@multica/core/api";
 import type { InitiativeDetail, Pipeline } from "@multica/core/pipeline";
 import type { Squad } from "@multica/core/types";
 import { renderWithI18n } from "../test/i18n";
@@ -148,7 +148,11 @@ describe("InitiativePanel", () => {
     toasts.success.mockReset();
     toasts.error.mockReset();
   });
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
 
   it("shows the loading state before the detail arrives", () => {
     renderPanel();
@@ -237,12 +241,12 @@ describe("InitiativePanel", () => {
     fireEvent.change(screen.getByLabelText("Why it is rejected"), { target: { value: "Market is too small" } });
     fireEvent.click(screen.getByRole("button", { name: "Reject gate" }));
     await waitFor(() =>
-      expect(api.decideProposal).toHaveBeenCalledWith("p-9", { decision: "reject", note: "Market is too small" }),
+      expect(api.decideProposal).toHaveBeenCalledWith("p-9", { decision: "reject", note: "Market is too small" }, expect.any(Number)),
     );
 
     api.decideProposal.mockClear();
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(api.decideProposal).toHaveBeenCalledWith("p-9", { decision: "approve" }));
+    await waitFor(() => expect(api.decideProposal).toHaveBeenCalledWith("p-9", { decision: "approve" }, expect.any(Number)));
   });
 
   it("decides an operate review with one of its three outcomes", async () => {
@@ -257,7 +261,48 @@ describe("InitiativePanel", () => {
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Scale" }));
-    await waitFor(() => expect(api.decideProposal).toHaveBeenCalledWith("p-30", { decision: "approve", outcome: "scale" }));
+    await waitFor(() => expect(api.decideProposal).toHaveBeenCalledWith("p-30", { decision: "approve", outcome: "scale" }, expect.any(Number)));
+  });
+
+  it("sends X-Attention-Opened-At with elapsed seconds when approving or rejecting a gate", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_000_000);
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ id: "p-9", state: "approved" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const realClient = new ApiClient("https://api.example.test");
+    api.decideProposal.mockImplementation((id, data, openedAt) =>
+      realClient.decideProposal(id, data, openedAt),
+    );
+
+    renderPanel();
+    expect(await screen.findByText("Commit to a product?")).toBeTruthy();
+
+    vi.setSystemTime(1_700_000_028_400);
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const approveInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect((approveInit.headers as Record<string, string>)["X-Attention-Opened-At"]).toBe("28");
+    const approveBody = JSON.parse(String(approveInit.body)) as Record<string, unknown>;
+    expect(approveBody).toEqual({ decision: "approve" });
+    expect("openedAt" in approveBody).toBe(false);
+
+    vi.setSystemTime(1_700_000_045_900);
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    fireEvent.change(screen.getByLabelText("Why it is rejected"), { target: { value: "Too risky" } });
+    fireEvent.click(screen.getByRole("button", { name: "Reject gate" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const rejectInit = fetchMock.mock.calls[1]?.[1] as RequestInit;
+    expect((rejectInit.headers as Record<string, string>)["X-Attention-Opened-At"]).toBe("45");
+    const rejectBody = JSON.parse(String(rejectInit.body)) as Record<string, unknown>;
+    expect(rejectBody).toEqual({ decision: "reject", note: "Too risky" });
+    expect("openedAt" in rejectBody).toBe(false);
   });
 
   it("hides gate decisions from a member", async () => {

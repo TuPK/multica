@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { api } from "../../api";
+import { api, attentionOpenedHeaders } from "../../api";
 import { effectKeys } from "../effects/queries";
 import { intentKeys } from "./queries";
 import {
@@ -15,9 +15,16 @@ export type ApproveIntentRequest = {
   /** The call with the person's edited text. Omitted when the call runs as the agent proposed it. */
   editedCall?: CanonicalCall;
   note?: string;
+  /** Epoch milliseconds when the person opened the intent card (durable spec 7.2). */
+  openedAt?: number;
 };
 
-export type RejectIntentRequest = { id: string; note: string };
+export type RejectIntentRequest = {
+  id: string;
+  note: string;
+  /** Epoch milliseconds when the person opened the intent card (durable spec 7.2). */
+  openedAt?: number;
+};
 
 // A decision changes both the intent and the effect it belongs to. The follow-up lives on
 // useMutation's onSettled, so it runs even when the caller has unmounted.
@@ -30,10 +37,11 @@ function refreshDecisions(qc: QueryClient, wsId: string) {
 export function useApproveIntent(wsId: string) {
   const qc = useQueryClient();
   return useMutation<Intent | null, Error, ApproveIntentRequest>({
-    mutationFn: async ({ id, editedCall, note }) =>
+    mutationFn: async ({ id, editedCall, note, openedAt }) =>
       parseIntent(
         await api.request(`/api/intents/${encodeURIComponent(id)}/approve`, {
           method: "POST",
+          headers: attentionOpenedHeaders(openedAt),
           body: JSON.stringify({ edited_call: editedCall, note: note ?? "" }),
         }),
         "POST /api/intents/:id/approve",
@@ -46,10 +54,11 @@ export function useApproveIntent(wsId: string) {
 export function useRejectIntent(wsId: string) {
   const qc = useQueryClient();
   return useMutation<Intent | null, Error, RejectIntentRequest>({
-    mutationFn: async ({ id, note }) =>
+    mutationFn: async ({ id, note, openedAt }) =>
       parseIntent(
         await api.request(`/api/intents/${encodeURIComponent(id)}/reject`, {
           method: "POST",
+          headers: attentionOpenedHeaders(openedAt),
           body: JSON.stringify({ note }),
         }),
         "POST /api/intents/:id/reject",
@@ -61,11 +70,12 @@ export function useRejectIntent(wsId: string) {
 /** Approves several intents in one request. Each one is decided and reported on its own. */
 export function useApproveIntentBatch(wsId: string) {
   const qc = useQueryClient();
-  return useMutation<BatchResult[], Error, { ids: string[] }>({
-    mutationFn: async ({ ids }) =>
+  return useMutation<BatchResult[], Error, { ids: string[]; openedAt?: number }>({
+    mutationFn: async ({ ids, openedAt }) =>
       parseBatchResults(
         await api.request("/api/intents/approve-batch", {
           method: "POST",
+          headers: attentionOpenedHeaders(openedAt),
           body: JSON.stringify({ ids }),
         }),
         "POST /api/intents/approve-batch",

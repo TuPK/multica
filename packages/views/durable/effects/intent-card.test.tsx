@@ -80,6 +80,11 @@ function bodyOfCall(n: number): unknown {
   return JSON.parse(init?.body ?? "null");
 }
 
+function headersOfCall(n: number): Record<string, string> | undefined {
+  const init = request.mock.calls[n]?.[1] as { headers?: Record<string, string> } | undefined;
+  return init?.headers;
+}
+
 beforeEach(() => {
   flags.principal = false;
   vi.clearAllMocks();
@@ -87,6 +92,7 @@ beforeEach(() => {
 
 afterEach(() => {
   request.mockReset();
+  vi.useRealTimers();
 });
 
 describe("IntentCard", () => {
@@ -232,5 +238,52 @@ describe("IntentCard", () => {
       ),
     );
     expect(screen.queryByText(/Predicted:/i)).not.toBeInTheDocument();
+  });
+
+  it("sends X-Attention-Opened-At with elapsed seconds on approve", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_000_000);
+    request.mockResolvedValueOnce({ ...emailIntent, state: "executed" });
+    renderCard(emailIntent);
+
+    vi.setSystemTime(1_700_000_017_600);
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
+    expect(headersOfCall(0)).toEqual({ "X-Attention-Opened-At": "17" });
+  });
+
+  it("sends X-Attention-Opened-At from initial mount time on edited approve", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_000_000);
+    request.mockResolvedValueOnce({ ...emailIntent, state: "executed" });
+    renderCard(emailIntent);
+
+    vi.setSystemTime(1_700_000_010_000);
+    fireEvent.click(screen.getByRole("button", { name: "Edit and approve" }));
+    fireEvent.change(screen.getByLabelText("Message text"), { target: { value: "Bản đã sửa" } });
+
+    vi.setSystemTime(1_700_000_025_400);
+    fireEvent.click(screen.getByRole("button", { name: "Approve edited version" }));
+
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
+    expect(headersOfCall(0)).toEqual({ "X-Attention-Opened-At": "25" });
+  });
+
+  it("sends X-Attention-Opened-At with elapsed seconds on reject", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_000_000);
+    request.mockResolvedValueOnce({ ...emailIntent, state: "rejected" });
+    renderCard(emailIntent);
+
+    vi.setSystemTime(1_700_000_005_000);
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    fireEvent.change(screen.getByLabelText("Reason (the agent reads it)"), { target: { value: "Giá chưa đúng" } });
+
+    vi.setSystemTime(1_700_000_031_900);
+    fireEvent.click(screen.getByRole("button", { name: "Send rejection" }));
+
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
+    expect(headersOfCall(0)).toEqual({ "X-Attention-Opened-At": "31" });
   });
 });

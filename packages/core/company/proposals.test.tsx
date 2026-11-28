@@ -23,7 +23,32 @@ describe("useDecideProposal", () => {
       await result.current.mutateAsync({ id: "p1", decision: "revise", note: "Cite the numbers" }).catch(() => undefined);
     });
 
-    expect(decideProposal).toHaveBeenCalledWith("p1", { decision: "revise", note: "Cite the numbers" });
+    expect(decideProposal).toHaveBeenCalledWith("p1", { decision: "revise", note: "Cite the numbers" }, undefined);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: proposalKeys.all("ws-1") });
+  });
+
+  it("strips openedAt from the payload and passes it as the third argument to api.decideProposal", async () => {
+    const decideProposal = vi.fn().mockResolvedValue({ id: "p1", state: "approved" });
+    setApiInstance({ decideProposal } as unknown as ApiClient);
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    const { result } = renderHook(() => useDecideProposal("ws-1"), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: "p1",
+        decision: "approve",
+        note: "Ship it",
+        openedAt: 1_700_000_000_000,
+      });
+    });
+
+    expect(decideProposal).toHaveBeenCalledWith(
+      "p1",
+      { decision: "approve", note: "Ship it" },
+      1_700_000_000_000,
+    );
+    expect("openedAt" in (decideProposal.mock.calls[0]?.[1] as Record<string, unknown>)).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
+import { useQuestionOpenedAt } from "@multica/core/durable/attention";
 import { useApproveIntent, useApproveIntentBatch, type Intent } from "@multica/core/durable/intents";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { Button } from "@multica/ui/components/ui/button";
@@ -15,13 +16,14 @@ import { IntentPreview } from "./intent-preview";
 export function IntentBatchCard({ intents }: { intents: Intent[] }) {
   const { t } = useT("durable");
   const wsId = useWorkspaceId();
+  const openedAt = useQuestionOpenedAt();
   const approveBatch = useApproveIntentBatch(wsId);
   const approveOne = useApproveIntent(wsId);
   const busy = approveBatch.isPending || approveOne.isPending;
 
   const approveAll = () => {
     approveBatch
-      .mutateAsync({ ids: intents.map((intent) => intent.id) })
+      .mutateAsync({ ids: intents.map((intent) => intent.id), openedAt })
       .then(
         (results) => {
           const approved = intents.filter((intent) => {
@@ -40,7 +42,7 @@ export function IntentBatchCard({ intents }: { intents: Intent[] }) {
   };
 
   const approveRow = (intent: Intent) => {
-    approveOne.mutateAsync({ id: intent.id }).then(
+    approveOne.mutateAsync({ id: intent.id, openedAt }).then(
       () => toast.success(t(($) => $.intent.approved)),
       () => toast.error(t(($) => $.intent.approve_failed)),
     );

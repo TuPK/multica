@@ -43,9 +43,15 @@ function bodyOf(n: number): unknown {
   return JSON.parse(init?.body ?? "null");
 }
 
+function headersOf(n: number): Record<string, string> | undefined {
+  const init = request.mock.calls[n]?.[1] as { headers?: Record<string, string> } | undefined;
+  return init?.headers;
+}
+
 afterEach(() => {
   cleanup();
   request.mockReset();
+  vi.useRealTimers();
 });
 
 describe("useApproveIntent", () => {
@@ -85,6 +91,29 @@ describe("useApproveIntent", () => {
     expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["durable", "ws-1", "intents"] }));
     expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["durable", "ws-1", "effects"] }));
   });
+
+  it("sends X-Attention-Opened-At with elapsed seconds when openedAt is given, and omits it from body", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_042_800);
+    request.mockResolvedValueOnce(intentRow);
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useApproveIntent("ws-1"), { wrapper });
+
+    await act(() => result.current.mutateAsync({ id: "i-1", openedAt: 1_700_000_000_000 }));
+
+    expect(headersOf(0)).toEqual({ "X-Attention-Opened-At": "42" });
+    expect(bodyOf(0)).toEqual({ note: "" });
+  });
+
+  it("does not send X-Attention-Opened-At when openedAt is omitted", async () => {
+    request.mockResolvedValueOnce(intentRow);
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useApproveIntent("ws-1"), { wrapper });
+
+    await act(() => result.current.mutateAsync({ id: "i-1" }));
+
+    expect(headersOf(0)?.["X-Attention-Opened-At"]).toBeUndefined();
+  });
 });
 
 describe("useRejectIntent", () => {
@@ -96,6 +125,20 @@ describe("useRejectIntent", () => {
     await act(() => result.current.mutateAsync({ id: "i-1", note: "Giá chưa đúng" }));
 
     expect(request).toHaveBeenCalledWith("/api/intents/i-1/reject", expect.objectContaining({ method: "POST" }));
+    expect(bodyOf(0)).toEqual({ note: "Giá chưa đúng" });
+    expect(headersOf(0)?.["X-Attention-Opened-At"]).toBeUndefined();
+  });
+
+  it("sends X-Attention-Opened-At when openedAt is given, and omits it from body", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_018_400);
+    request.mockResolvedValueOnce({ ...intentRow, state: "rejected" });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useRejectIntent("ws-1"), { wrapper });
+
+    await act(() => result.current.mutateAsync({ id: "i-1", note: "Giá chưa đúng", openedAt: 1_700_000_000_000 }));
+
+    expect(headersOf(0)).toEqual({ "X-Attention-Opened-At": "18" });
     expect(bodyOf(0)).toEqual({ note: "Giá chưa đúng" });
   });
 });
@@ -118,9 +161,25 @@ describe("useApproveIntentBatch", () => {
 
     expect(request).toHaveBeenCalledWith("/api/intents/approve-batch", expect.objectContaining({ method: "POST" }));
     expect(bodyOf(0)).toEqual({ ids: ["i-1", "i-2"] });
+    expect(headersOf(0)?.["X-Attention-Opened-At"]).toBeUndefined();
     expect(outcomes).toEqual([
       { id: "i-1", state: "executed", error: "", status: 200 },
       { id: "i-2", state: "", error: "already decided", status: 409 },
     ]);
+  });
+
+  it("sends X-Attention-Opened-At when openedAt is given, and omits it from body", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_065_900);
+    request.mockResolvedValueOnce({
+      results: [{ id: "i-1", state: "executed", status: 200 }],
+    });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useApproveIntentBatch("ws-1"), { wrapper });
+
+    await act(() => result.current.mutateAsync({ ids: ["i-1"], openedAt: 1_700_000_000_000 }));
+
+    expect(headersOf(0)).toEqual({ "X-Attention-Opened-At": "65" });
+    expect(bodyOf(0)).toEqual({ ids: ["i-1"] });
   });
 });

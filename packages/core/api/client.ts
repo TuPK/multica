@@ -1,4 +1,5 @@
 import { ForkApiMethods } from "./client.fork";
+import { attentionOpenedHeaders } from "./attention-opened";
 import type { ListWeixinInstallationsResponse } from "../types/weixin";
 import { ListWeixinInstallationsSchema, EMPTY_WEIXIN_INSTALLATIONS } from "../weixin/schema";
 import {
@@ -6675,9 +6676,10 @@ export class ApiClient extends ForkApiMethods {
     });
   }
 
-  async decideProposal(id: string, data: DecideProposalRequest): Promise<Proposal> {
+  async decideProposal(id: string, data: DecideProposalRequest, openedAt?: number): Promise<Proposal> {
     const raw = await this.fetch<unknown>(`/api/proposals/${id}/decision`, {
       method: "POST",
+      headers: attentionOpenedHeaders(openedAt),
       body: JSON.stringify(data),
     });
     return parseWithFallback(raw, ProposalSchema, FALLBACK_PROPOSAL, {

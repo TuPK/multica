@@ -98,7 +98,9 @@ describe("App request card for a new app", () => {
     const user = userEvent.setup();
     renderCard();
     await user.click(await screen.findByRole("button", { name: "Add Google Calendar to Ops Assistant" }));
-    await waitFor(() => expect(api.approveAppRequest).toHaveBeenCalledWith("req-1", undefined));
+    await waitFor(() =>
+      expect(api.approveAppRequest).toHaveBeenCalledWith("req-1", undefined, expect.any(Number)),
+    );
   });
 
   it("shows others the request without the approver's actions", async () => {

@@ -198,7 +198,12 @@ describe("CompanyBriefDialog", () => {
   it("lets an owner approve a proposal from its card", () => {
     setup({ briefs: [brief("b1", { proposal_ids: ["p1"] })] });
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-    expect(mocks.decide.mock.calls[0]?.[0]).toEqual({ id: "p1", decision: "approve", note: undefined });
+    expect(mocks.decide.mock.calls[0]?.[0]).toEqual({
+      id: "p1",
+      decision: "approve",
+      note: undefined,
+      openedAt: expect.any(Number),
+    });
   });
 
   it("shows a decided proposal as read-only", () => {
@@ -259,7 +264,12 @@ describe("CompanyBriefDialog", () => {
 
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Add the cost" } });
     fireEvent.click(screen.getByRole("button", { name: "Ask for changes" }));
-    expect(mocks.decide.mock.calls[0]?.[0]).toEqual({ id: "p1", decision: "revise", note: "Add the cost" });
+    expect(mocks.decide.mock.calls[0]?.[0]).toEqual({
+      id: "p1",
+      decision: "revise",
+      note: "Add the cost",
+      openedAt: expect.any(Number),
+    });
   });
 
   it("hides a proposal put aside with Decide later until its date, as the decision queue does", () => {

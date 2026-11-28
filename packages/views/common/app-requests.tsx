@@ -12,6 +12,7 @@ import { cn } from "@multica/ui/lib/utils";
 import { ApiError, api } from "@multica/core/api";
 import { useAuthStore } from "@multica/core/auth";
 import { useFeatureEnabled } from "@multica/core/config";
+import { useQuestionOpenedAt } from "@multica/core/durable/attention";
 import { COMPOSIO_MCP_APPS_FLAG } from "@multica/core/feature-flags";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { FEATURE_LOCKED_CODE, workspaceFeatureKeys } from "@multica/core/billing";
@@ -226,11 +227,30 @@ function AppRequestList({
   highlightId?: string;
   highlightToken?: number;
 }) {
-  const { t } = useT("settings");
-  const viewerId = useAuthStore((s) => s.user?.id);
-  const decide = useDecideAppRequest();
   const visible = showDecided ? requests : requests.filter((r) => r.status === "pending");
   if (visible.length === 0) return null;
+  return (
+    <AppRequestListContent
+      visible={visible}
+      highlightId={highlightId}
+      highlightToken={highlightToken}
+    />
+  );
+}
+
+function AppRequestListContent({
+  visible,
+  highlightId,
+  highlightToken,
+}: {
+  visible: AppRequest[];
+  highlightId?: string;
+  highlightToken?: number;
+}) {
+  const { t } = useT("settings");
+  const viewerId = useAuthStore((s) => s.user?.id);
+  const openedAt = useQuestionOpenedAt();
+  const decide = useDecideAppRequest();
 
   const batch = visible.filter(
     (r) => r.status === "pending" && r.kind === "action" && r.approver_user_id === viewerId,
@@ -240,7 +260,7 @@ function AppRequestList({
     let limited = 0;
     for (const r of batch) {
       try {
-        await decide.mutateAsync({ id: r.id, decision: "approve" });
+        await decide.mutateAsync({ id: r.id, decision: "approve", openedAt });
       } catch (e) {
         if (e instanceof ApiError && e.status === 429) limited++;
         else failed++;
@@ -316,6 +336,7 @@ function AppRequestCard({
     return () => clearTimeout(timer);
   }, [highlightToken]);
   const { getActorName } = useActorName();
+  const openedAt = useQuestionOpenedAt();
   const decide = useDecideAppRequest();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(() => prettyArgs(request.arguments));
@@ -351,7 +372,7 @@ function AppRequestCard({
       }
     }
     decide.mutate(
-      { id: request.id, decision: "approve", arguments: args },
+      { id: request.id, decision: "approve", arguments: args, openedAt },
       {
         onSuccess: () => toast.success(t(($) => $.connected_apps.request.toast_approved)),
         onError: (e) => toast.error(approveErrorMessage(e, t)),
@@ -360,7 +381,7 @@ function AppRequestCard({
   };
   const reject = () =>
     decide.mutate(
-      { id: request.id, decision: "reject", reason: reason.trim() || undefined },
+      { id: request.id, decision: "reject", reason: reason.trim() || undefined, openedAt },
       {
         onSuccess: () => toast.success(t(($) => $.connected_apps.request.toast_rejected)),
         onError: () => toast.error(t(($) => $.connected_apps.request.toast_failed)),
@@ -368,7 +389,7 @@ function AppRequestCard({
     );
   const withdraw = () =>
     decide.mutate(
-      { id: request.id, decision: "reject" },
+      { id: request.id, decision: "reject", openedAt },
       {
         onSuccess: () => toast.success(t(($) => $.connected_apps.account_row.toast_withdrawn)),
         onError: () => toast.error(t(($) => $.connected_apps.request.toast_failed)),

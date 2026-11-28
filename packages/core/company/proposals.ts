@@ -78,8 +78,8 @@ export function useCreateProposal(wsId: string) {
  */
 export function useDecideProposal(wsId: string) {
   const qc = useQueryClient();
-  return useMutation<Proposal, Error, { id: string } & DecideProposalRequest>({
-    mutationFn: ({ id, ...data }) => api.decideProposal(id, data),
+  return useMutation<Proposal, Error, { id: string; openedAt?: number } & DecideProposalRequest>({
+    mutationFn: ({ id, openedAt, ...data }) => api.decideProposal(id, data, openedAt),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.all(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });

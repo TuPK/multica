@@ -31,6 +31,7 @@ export type { DuplicateIssueErrorBody } from "./schemas";
 export { WSClient } from "./ws-client";
 export { setApiRequestObserver } from "./request-observer";
 export type { ApiRequestObserver } from "./request-observer";
+export { ATTENTION_OPENED_HEADER, attentionOpenedHeaders } from "./attention-opened";
 
 import type { ApiClient as ApiClientType } from "./client";
 

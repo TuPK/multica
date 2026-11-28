@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useQuestionOpenedAt } from "@multica/core/durable/attention";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useDecideInitiativeGate, type InitiativeGate } from "@multica/core/pipeline";
 import type { GateOutcome } from "@multica/core/company";
@@ -54,6 +55,7 @@ function GateRow({
 }) {
   const { t } = useT("pipeline");
   const wsId = useWorkspaceId();
+  const openedAt = useQuestionOpenedAt();
   const decide = useDecideInitiativeGate(wsId);
   const [rejecting, setRejecting] = useState(false);
   const [note, setNote] = useState("");
@@ -64,7 +66,7 @@ function GateRow({
 
   const approve = (outcome?: GateOutcome) =>
     decide.mutate(
-      { id: gate.id, decision: "approve", ...(outcome ? { outcome } : {}) },
+      { id: gate.id, decision: "approve", ...(outcome ? { outcome } : {}), openedAt },
       {
         onSuccess: () => toast.success(t(($) => $.toast.approved)),
         onError: () => toast.error(t(($) => $.toast.decide_failed)),
@@ -78,7 +80,7 @@ function GateRow({
       return;
     }
     decide.mutate(
-      { id: gate.id, decision: "reject", note: trimmed },
+      { id: gate.id, decision: "reject", note: trimmed, openedAt },
       {
         onSuccess: () => {
           toast.success(t(($) => $.toast.rejected));

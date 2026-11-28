@@ -171,7 +171,7 @@ describe("CompanyDecisionsDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
     expect(decide.mutate).toHaveBeenCalledWith(
-      { id: "a", decision: "approve", note: "Go ahead" },
+      { id: "a", decision: "approve", note: "Go ahead", openedAt: expect.any(Number) },
       expect.any(Object),
     );
   });
@@ -182,7 +182,10 @@ describe("CompanyDecisionsDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reject" }));
 
-    expect(decide.mutate).toHaveBeenCalledWith({ id: "a", decision: "reject", note: undefined }, expect.any(Object));
+    expect(decide.mutate).toHaveBeenCalledWith(
+      { id: "a", decision: "reject", note: undefined, openedAt: expect.any(Number) },
+      expect.any(Object),
+    );
   });
 
   it("reads only, for someone who cannot decide", async () => {
@@ -223,7 +226,7 @@ describe("CompanyDecisionsDialog", () => {
       fireEvent.click(screen.getByRole("button", { name: "Ask for changes" }));
 
       expect(decide.mutate).toHaveBeenCalledWith(
-        { id: "a", decision: "revise", note: "Price the pilot per seat" },
+        { id: "a", decision: "revise", note: "Price the pilot per seat", openedAt: expect.any(Number) },
         expect.any(Object),
       );
     });

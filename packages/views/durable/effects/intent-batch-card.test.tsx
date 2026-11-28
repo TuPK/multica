@@ -36,6 +36,11 @@ function intent(id: string, target: string): Intent {
 
 const request = vi.mocked(api.request);
 
+function headersOfCall(n: number): Record<string, string> | undefined {
+  const init = request.mock.calls[n]?.[1] as { headers?: Record<string, string> } | undefined;
+  return init?.headers;
+}
+
 function renderBatch(intents: Intent[]) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return renderWithI18n(
@@ -46,7 +51,10 @@ function renderBatch(intents: Intent[]) {
 }
 
 beforeEach(() => vi.clearAllMocks());
-afterEach(() => request.mockReset());
+afterEach(() => {
+  request.mockReset();
+  vi.useRealTimers();
+});
 
 describe("IntentBatchCard", () => {
   it("shows each email's recipients and full content in its own row", () => {
@@ -150,5 +158,39 @@ describe("IntentBatchCard", () => {
     );
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("2 actions approved."));
+  });
+
+  it("sends X-Attention-Opened-At with elapsed seconds on approve all", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_000_000);
+    request.mockResolvedValueOnce({
+      results: [
+        { id: "i-1", state: "executed", error: "", status: 200 },
+        { id: "i-2", state: "executed", error: "", status: 200 },
+      ],
+    });
+    renderBatch([intent("i-1", "gmail:first"), intent("i-2", "gmail:second")]);
+
+    vi.setSystemTime(1_700_000_019_900);
+    fireEvent.click(screen.getByRole("button", { name: "Approve all" }));
+
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
+    expect(request).toHaveBeenCalledWith("/api/intents/approve-batch", expect.objectContaining({ method: "POST" }));
+    expect(headersOfCall(0)).toEqual({ "X-Attention-Opened-At": "19" });
+  });
+
+  it("sends X-Attention-Opened-At with elapsed seconds when approving a single row", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_000_000);
+    request.mockResolvedValueOnce({ ...intent("i-1", "gmail:first"), state: "executed" });
+    renderBatch([intent("i-1", "gmail:first"), intent("i-2", "gmail:second")]);
+
+    vi.setSystemTime(1_700_000_012_400);
+    const rows = screen.getAllByRole("listitem");
+    fireEvent.click(within(rows[0]!).getByRole("button", { name: "Approve" }));
+
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
+    expect(request).toHaveBeenCalledWith("/api/intents/i-1/approve", expect.objectContaining({ method: "POST" }));
+    expect(headersOfCall(0)).toEqual({ "X-Attention-Opened-At": "12" });
   });
 });

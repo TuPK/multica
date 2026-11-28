@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { errorCode } from "@multica/core/api";
+import { useQuestionOpenedAt } from "@multica/core/durable/attention";
 import {
   buildEditedCall,
   canEditIntent,
@@ -31,6 +32,7 @@ type Panel = "none" | "edit" | "reject";
 export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: () => void }) {
   const { t } = useT("durable");
   const wsId = useWorkspaceId();
+  const openedAt = useQuestionOpenedAt();
   const approve = useApproveIntent(wsId);
   const reject = useRejectIntent(wsId);
   const editable = canEditIntent(intent);
@@ -43,7 +45,7 @@ export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: 
 
   const reportApproval = (editedCall?: CanonicalCall) => {
     approve
-      .mutateAsync({ id: intent.id, editedCall })
+      .mutateAsync({ id: intent.id, editedCall, openedAt })
       .then(
         (result) => {
           if (result?.state === "failed") toast.error(t(($) => $.intent.approve_failed));
@@ -68,7 +70,7 @@ export function IntentCard({ intent, onDecided }: { intent: Intent; onDecided?: 
 
   const sendRejection = () => {
     reject
-      .mutateAsync({ id: intent.id, note: note.trim() })
+      .mutateAsync({ id: intent.id, note: note.trim(), openedAt })
       .then(
         (result) => {
           if (result) toast.success(t(($) => $.intent.rejected));

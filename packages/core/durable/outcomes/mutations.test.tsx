@@ -40,6 +40,11 @@ function bodyOf(n: number): unknown {
   return JSON.parse(init?.body ?? "null");
 }
 
+function headersOf(n: number): Record<string, string> | undefined {
+  const init = request.mock.calls[n]?.[1] as { headers?: Record<string, string> } | undefined;
+  return init?.headers;
+}
+
 function deferred<T>() {
   let resolve!: (v: T) => void;
   const promise = new Promise<T>((r) => (resolve = r));
@@ -49,6 +54,7 @@ function deferred<T>() {
 afterEach(() => {
   cleanup();
   request.mockReset();
+  vi.useRealTimers();
 });
 
 describe("useAddCriterion", () => {
@@ -137,7 +143,28 @@ describe("useVerifyOutcome", () => {
 
     expect(request).toHaveBeenCalledWith("/api/outcomes/o-1/verifications", expect.objectContaining({ method: "POST" }));
     expect(bodyOf(0)).toEqual({ result: "pass", note: "checked" });
+    expect(headersOf(0)?.["X-Attention-Opened-At"]).toBeUndefined();
     expect(v).toMatchObject({ id: "v-1", result: "pass" });
     expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["durable", "ws-1", "outcomes"] }));
+  });
+
+  it("sends X-Attention-Opened-At when openedAt is given, and omits it from body", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_120_750);
+    request.mockResolvedValueOnce({ id: "v-1", outcome_id: "o-1", result: "pass" });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useVerifyOutcome("ws-1"), { wrapper });
+
+    await act(() =>
+      result.current.mutateAsync({
+        outcomeId: "o-1",
+        result: "pass",
+        note: "checked",
+        openedAt: 1_700_000_000_000,
+      }),
+    );
+
+    expect(headersOf(0)).toEqual({ "X-Attention-Opened-At": "120" });
+    expect(bodyOf(0)).toEqual({ result: "pass", note: "checked" });
   });
 });

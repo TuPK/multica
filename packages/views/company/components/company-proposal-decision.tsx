@@ -8,6 +8,7 @@ import {
   useDecideProposal,
   type Proposal,
 } from "@multica/core/company";
+import { useQuestionOpenedAt } from "@multica/core/durable/attention";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
@@ -37,6 +38,7 @@ export function CompanyProposalDecision({
 }) {
   const { t } = useT("issues");
   const wsId = useWorkspaceId();
+  const openedAt = useQuestionOpenedAt();
   const decide = useDecideProposal(wsId);
   const [note, setNote] = useState("");
   const [noteMissing, setNoteMissing] = useState(false);
@@ -61,7 +63,7 @@ export function CompanyProposalDecision({
 
   const approveOrReject = (decision: "approve" | "reject") =>
     decide.mutate(
-      { id: proposal.id, decision, note: trimmedNote || undefined },
+      { id: proposal.id, decision, note: trimmedNote || undefined, openedAt },
       {
         onSuccess: () =>
           toast.success(
@@ -79,7 +81,7 @@ export function CompanyProposalDecision({
       return;
     }
     decide.mutate(
-      { id: proposal.id, decision: "revise", note: trimmedNote },
+      { id: proposal.id, decision: "revise", note: trimmedNote, openedAt },
       {
         onSuccess: () => toast.success(t(($) => $.company.decision_revise_asked, { identifier: proposal.issue_identifier })),
         onError: fail,

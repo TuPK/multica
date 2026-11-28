@@ -114,11 +114,11 @@ export function useDecideAppRequest() {
   const wsId = useWorkspaceId();
   return useMutation({
     mutationFn: (input:
-      | { id: string; decision: "approve"; arguments?: Record<string, unknown> }
-      | { id: string; decision: "reject"; reason?: string }) =>
+      | { id: string; decision: "approve"; arguments?: Record<string, unknown>; openedAt?: number }
+      | { id: string; decision: "reject"; reason?: string; openedAt?: number }) =>
       input.decision === "approve"
-        ? api.approveAppRequest(input.id, input.arguments)
-        : api.rejectAppRequest(input.id, input.reason),
+        ? api.approveAppRequest(input.id, input.arguments, input.openedAt)
+        : api.rejectAppRequest(input.id, input.reason, input.openedAt),
     onSettled: () => qc.invalidateQueries({ queryKey: connectedAppsKeys.requests(wsId) }),
   });
 }

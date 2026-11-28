@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { api } from "../../api";
+import { api, attentionOpenedHeaders } from "../../api";
 import { outcomeKeys } from "./queries";
 import {
   parseCriterion,
@@ -24,6 +24,8 @@ export type VerifyOutcomeRequest = {
   severity?: Severity;
   note?: string;
   evidence?: unknown;
+  /** Epoch milliseconds when the person opened the outcome check (durable spec 7.2). */
+  openedAt?: number;
 };
 
 // The follow-up work lives on useMutation's own onSettled, not on per-call callbacks: it runs
@@ -70,10 +72,11 @@ export function useArchiveCriterion(wsId: string, issueId: string) {
 export function useVerifyOutcome(wsId: string) {
   const qc = useQueryClient();
   return useMutation<Verification | null, Error, VerifyOutcomeRequest>({
-    mutationFn: async ({ outcomeId, ...body }) =>
+    mutationFn: async ({ outcomeId, openedAt, ...body }) =>
       parseVerification(
         await api.request(`/api/outcomes/${encodeURIComponent(outcomeId)}/verifications`, {
           method: "POST",
+          headers: attentionOpenedHeaders(openedAt),
           body: JSON.stringify(body),
         }),
         "POST /api/outcomes/:id/verifications",

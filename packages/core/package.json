@@ -241,6 +241,7 @@
     "./runtimes/qoder": "./runtimes/qoder.ts",
     "./docs": "./docs/index.ts",
     "./durable": "./durable/index.ts",
+    "./durable/attention": "./durable/attention/index.ts",
     "./durable/outcomes": "./durable/outcomes/index.ts",
     "./durable/effects": "./durable/effects/index.ts",
     "./durable/intents": "./durable/intents/index.ts",

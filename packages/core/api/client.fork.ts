@@ -25,6 +25,7 @@ import type { PackPreview } from "../types/pack";
 import type { CreateQuotaRequestInput, QuotaRequest, QuotaRequestListResponse } from "../types/quota-request";
 import { createSafeId } from "../utils";
 import { parseWithFallback } from "./schema";
+import { attentionOpenedHeaders } from "./attention-opened";
 import { LoginAttemptSchema, LoginResponseSchema, type LoginAttempt } from "./login-schemas";
 import { NO_SSO, SSOConnectionSchema, SSODiscoverySchema, type SSOConnection, type SSOConnectionInput, type SSODiscovery } from "./sso-schemas";
 import { DEFAULT_WORKSPACE_POLICY, MFAConfirmResponseSchema, MFAEnrollResponseSchema, NO_SSO_DOMAINS, SSODomainListSchema, SSODomainSchema, WorkspacePolicySchema, type MFAConfirmResponse, type MFAEnrollResponse, type SSODomain, type SSODomainList, type WorkspacePolicy, type WorkspacePolicyInput } from "./security-schemas";
@@ -1660,16 +1661,22 @@ export abstract class ForkApiMethods {
       endpoint: "GET /api/app-requests",
     });
   }
-  async approveAppRequest(requestId: string, args?: Record<string, unknown>): Promise<AppRequest | null> {
+  async approveAppRequest(
+    requestId: string,
+    args?: Record<string, unknown>,
+    openedAt?: number,
+  ): Promise<AppRequest | null> {
     const raw = await this.fetch<unknown>(`/api/app-requests/${requestId}/approve`, {
       method: "POST",
+      headers: attentionOpenedHeaders(openedAt),
       body: JSON.stringify(args ? { arguments: args } : {}),
     });
     return parseWithFallback(raw, AppRequestSchema, null, { endpoint: "POST /api/app-requests/:id/approve" });
   }
-  async rejectAppRequest(requestId: string, reason?: string): Promise<AppRequest | null> {
+  async rejectAppRequest(requestId: string, reason?: string, openedAt?: number): Promise<AppRequest | null> {
     const raw = await this.fetch<unknown>(`/api/app-requests/${requestId}/reject`, {
       method: "POST",
+      headers: attentionOpenedHeaders(openedAt),
       body: JSON.stringify(reason ? { reason } : {}),
     });
     return parseWithFallback(raw, AppRequestSchema, null, { endpoint: "POST /api/app-requests/:id/reject" });
