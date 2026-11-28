@@ -317,6 +317,87 @@ func TestMetricCriterionFailsAfterWindow(t *testing.T) {
 	}
 }
 
+// A metric criterion takes op ">=" or "<=" and nothing else.
+func TestMetricCriterionOpIsAtLeastOrAtMost(t *testing.T) {
+	spec := func(op string) map[string]any {
+		return map[string]any{"metric_key": "k", "scope": "company", "op": op, "value": 1, "within_days": 30}
+	}
+	for _, op := range []string{">=", "<="} {
+		if _, err := validateCriterionSpec(CheckKindMetric, spec(op)); err != nil {
+			t.Errorf("op %q: %v", op, err)
+		}
+	}
+	for _, op := range []string{"", ">", "<", "==", "!="} {
+		if _, err := validateCriterionSpec(CheckKindMetric, spec(op)); !errors.Is(err, ErrCriterionInvalid) {
+			t.Errorf("op %q: err = %v, want ErrCriterionInvalid", op, err)
+		}
+	}
+}
+
+// TestMetricAtMostPassesOnReadingInWindow: a "<=" criterion stays open while the only
+// reading in its window is above the value, and passes once a reading falls to the value.
+func TestMetricAtMostPassesOnReadingInWindow(t *testing.T) {
+	vf := newVerificationFixture(t)
+	ctx := context.Background()
+	issue := vf.doneIssue(t, vf.doer)
+	c := vf.addCriterion(t, issue, "Halve the gap.", "metric", map[string]any{
+		"metric_key": "gap-met", "scope": "company", "op": "<=", "value": 1, "within_days": 1,
+	})
+	outcomeID := util.UUIDToString(vf.currentOutcome(t, issue).ID)
+	reading := func(v int) {
+		vf.Insert(t, "metric_reading", testutil.Cols{
+			"workspace_id": vf.WorkspaceID, "metric_key": "gap-met", "scope_type": "company",
+			"value": v, "observed_at": testutil.Raw("now()"), "actor_type": "system",
+		})
+	}
+
+	reading(3)
+	if _, err := vf.checks.CheckMetrics(ctx, time.Now()); err != nil {
+		t.Fatalf("check metrics: %v", err)
+	}
+	if rows := verificationsOf(t, vf.principalFixture, outcomeID); len(rows) != 0 {
+		t.Fatalf("a reading above the value decided a <= criterion: %+v", rows)
+	}
+
+	reading(1)
+	if _, err := vf.checks.CheckMetrics(ctx, time.Now()); err != nil {
+		t.Fatalf("check metrics: %v", err)
+	}
+	rows := verificationsOf(t, vf.principalFixture, outcomeID)
+	if len(rows) != 1 || rows[0].Result != "pass" || rows[0].VerifierType != "metric" || rows[0].CriterionID != util.UUIDToString(c.ID) {
+		t.Fatalf("<= metric verifications = %+v, want one metric pass", rows)
+	}
+}
+
+// TestMetricAtMostFailsAfterWindow: a "<=" criterion fails once its window has passed with no
+// reading in the window at or below the value. A low reading from before the criterion was
+// written does not count.
+func TestMetricAtMostFailsAfterWindow(t *testing.T) {
+	vf := newVerificationFixture(t)
+	ctx := context.Background()
+	issue := vf.doneIssue(t, vf.doer)
+	c := vf.addCriterion(t, issue, "Halve the gap.", "metric", map[string]any{
+		"metric_key": "gap-late", "scope": "company", "op": "<=", "value": 1, "within_days": 1,
+	})
+	vf.Exec(t, `UPDATE acceptance_criterion SET created_at = now() - interval '2 days' WHERE id = $1`, util.UUIDToString(c.ID))
+	vf.Insert(t, "metric_reading", testutil.Cols{
+		"workspace_id": vf.WorkspaceID, "metric_key": "gap-late", "scope_type": "company",
+		"value": 0, "observed_at": testutil.Raw("now() - interval '3 days'"), "actor_type": "system",
+	})
+	vf.Insert(t, "metric_reading", testutil.Cols{
+		"workspace_id": vf.WorkspaceID, "metric_key": "gap-late", "scope_type": "company",
+		"value": 3, "observed_at": testutil.Raw("now()"), "actor_type": "system",
+	})
+
+	if _, err := vf.checks.CheckMetrics(ctx, time.Now()); err != nil {
+		t.Fatalf("check metrics: %v", err)
+	}
+	rows := verificationsOf(t, vf.principalFixture, util.UUIDToString(vf.currentOutcome(t, issue).ID))
+	if len(rows) != 1 || rows[0].Result != "fail" || rows[0].VerifierType != "metric" {
+		t.Fatalf("expired <= metric verifications = %+v, want one metric fail", rows)
+	}
+}
+
 // TestVerificationRunClassHeldByBudget: a hold budget with no room holds the
 // verification and shadow classes, and admits a human run.
 func TestVerificationRunClassHeldByBudget(t *testing.T) {

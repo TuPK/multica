@@ -901,6 +901,29 @@ func (q *Queries) LockIssueForCriterionWrite(ctx context.Context, arg LockIssueF
 	return id, err
 }
 
+const lowestMetricReadingSince = `-- name: LowestMetricReadingSince :one
+SELECT min(value)::numeric AS best FROM metric_reading
+WHERE workspace_id = $1
+  AND metric_key = $2
+  AND scope_type = 'company'
+  AND observed_at >= $3::timestamptz
+`
+
+type LowestMetricReadingSinceParams struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	MetricKey   string             `json:"metric_key"`
+	Since       pgtype.Timestamptz `json:"since"`
+}
+
+// The lowest company-scope reading of a metric since the criterion was written, for a
+// criterion that passes at or below its value. Returns NULL when there is no reading.
+func (q *Queries) LowestMetricReadingSince(ctx context.Context, arg LowestMetricReadingSinceParams) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, lowestMetricReadingSince, arg.WorkspaceID, arg.MetricKey, arg.Since)
+	var best pgtype.Numeric
+	err := row.Scan(&best)
+	return best, err
+}
+
 const setAgentTaskDurableContext = `-- name: SetAgentTaskDurableContext :execrows
 UPDATE agent_task_queue
 SET context = COALESCE(context, '{}'::jsonb)

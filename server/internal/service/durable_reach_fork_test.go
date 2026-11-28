@@ -250,8 +250,9 @@ func TestSnapshotIdempotentPerDay(t *testing.T) {
 	}
 }
 
-// Closing a gap opens one issue for the squad, with the criterion that the gap halves (spec 11.3).
-func TestCloseGapCreatesGapIssueWithCriterion(t *testing.T) {
+// Closing a gap opens one issue for the squad, with a metric criterion that the gap halves
+// within 30 days (spec 11.3).
+func TestCloseGapCreatesIssueWithMetricCriterion(t *testing.T) {
 	e := newReachEnv(t, true)
 	ctx := context.Background()
 	e.ask(t, "connected_app", "jira_create", "missing_access")
@@ -267,8 +268,16 @@ func TestCloseGapCreatesGapIssueWithCriterion(t *testing.T) {
 	if issue.AssigneeType.String != "squad" || util.UUIDToString(issue.AssigneeID) != util.UUIDToString(e.squad) {
 		t.Errorf("assignee = %s %s, want squad %s", issue.AssigneeType.String, util.UUIDToString(issue.AssigneeID), util.UUIDToString(e.squad))
 	}
-	if n := e.fx.Count(t, `SELECT COUNT(*) FROM acceptance_criterion WHERE issue_id = $1 AND check_kind = 'manual' AND check_spec->>'baseline' = '2'`, util.UUIDToString(issue.ID)); n != 1 {
-		t.Errorf("gap criteria with baseline 2 = %d, want 1", n)
+	if n := e.fx.Count(t, `SELECT COUNT(*) FROM acceptance_criterion
+		WHERE issue_id = $1 AND check_kind = 'metric'
+		  AND check_spec->>'metric_key' = 'reach.gap_asks_30d'
+		  AND check_spec->>'op' = '<='
+		  AND check_spec->>'value' = '1'
+		  AND check_spec->>'within_days' = '30'
+		  AND check_spec->>'scope' = 'company'
+		  AND check_spec->>'surface' = 'app:jira'
+		  AND check_spec->>'baseline' = '2'`, util.UUIDToString(issue.ID)); n != 1 {
+		t.Errorf("gap metric criteria with baseline 2 halving to 1 = %d, want 1", n)
 	}
 	if n := e.fx.Count(t, `SELECT COUNT(*) FROM reach_snapshot WHERE workspace_id = $1 AND surface = 'app:jira' AND gap_issue_id = $2`,
 		util.UUIDToString(e.ws), util.UUIDToString(issue.ID)); n != 1 {

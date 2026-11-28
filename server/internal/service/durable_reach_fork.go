@@ -366,8 +366,16 @@ func (s *ReachService) CloseGap(ctx context.Context, ws pgtype.UUID, actor Gover
 	}
 	if _, err := s.Verification.AddCriterion(ctx, ws, res.Issue.ID, actor, CriterionInput{
 		Text:      fmt.Sprintf("Số câu hỏi thiếu quyền hoặc thông tin của %s giảm còn một nửa (từ %d) trong 30 ngày.", surface, row.GapAsks30d),
-		CheckKind: CheckKindManual,
-		CheckSpec: map[string]any{"metric": "reach.gap_asks_30d", "surface": surface, "baseline": row.GapAsks30d},
+		CheckKind: CheckKindMetric,
+		CheckSpec: map[string]any{
+			"metric_key":  "reach.gap_asks_30d",
+			"scope":       "company",
+			"op":          "<=",
+			"value":       float64(row.GapAsks30d) / 2,
+			"within_days": reachWindowDays,
+			"surface":     surface,
+			"baseline":    row.GapAsks30d,
+		},
 	}); err != nil {
 		return db.Issue{}, fmt.Errorf("add gap criterion: %w", err)
 	}

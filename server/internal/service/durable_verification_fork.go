@@ -373,8 +373,8 @@ func validateCriterionSpec(kind string, spec map[string]any) ([]byte, error) {
 		if scope, _ := spec["scope"].(string); scope != "company" {
 			return nil, invalid("metric scope must be company")
 		}
-		if op, _ := spec["op"].(string); op != ">=" {
-			return nil, invalid("metric op must be >=")
+		if op, _ := spec["op"].(string); op != ">=" && op != "<=" {
+			return nil, invalid("metric op must be >= or <=")
 		}
 		if _, ok := asNumber(spec["value"]); !ok {
 			return nil, invalid("metric needs a numeric value")
@@ -959,32 +959,64 @@ func (s *VerificationService) CheckMetrics(ctx context.Context, now time.Time) (
 	return written, nil
 }
 
+// metricCheckSpec is the check_spec of a metric criterion (validateCriterionSpec).
+type metricCheckSpec struct {
+	MetricKey  string  `json:"metric_key"`
+	Op         string  `json:"op"`
+	Value      float64 `json:"value"`
+	WithinDays int     `json:"within_days"`
+}
+
 // decideMetric writes the verdict of one metric criterion when it has one.
 func (s *VerificationService) decideMetric(ctx context.Context, now time.Time, r db.ListOpenSystemCriteriaRow) (bool, error) {
-	var spec struct {
-		MetricKey  string  `json:"metric_key"`
-		Value      float64 `json:"value"`
-		WithinDays int     `json:"within_days"`
-	}
+	var spec metricCheckSpec
 	if err := json.Unmarshal(r.CheckSpec, &spec); err != nil {
 		return false, fmt.Errorf("metric spec: %w", err)
 	}
 	since := r.CriterionCreatedAt.Time
-	best, err := s.Queries.LatestMetricReadingSince(ctx, db.LatestMetricReadingSinceParams{
-		WorkspaceID: r.WorkspaceID, MetricKey: spec.MetricKey, Since: pgtype.Timestamptz{Time: since, Valid: true},
-	})
+	reached, err := s.metricReached(ctx, r.WorkspaceID, spec, since)
 	if err != nil {
-		return false, fmt.Errorf("read metric: %w", err)
+		return false, err
 	}
-	if best.Valid {
-		if f, err := best.Float64Value(); err == nil && f.Valid && f.Float64 >= spec.Value {
-			return s.writeMetricCheck(ctx, r, "pass", fmt.Sprintf("%s reached %v.", spec.MetricKey, spec.Value))
-		}
+	reachedWord, missedWord := "reached", "did not reach"
+	if spec.Op == "<=" {
+		reachedWord, missedWord = "fell to", "did not fall to"
+	}
+	if reached {
+		return s.writeMetricCheck(ctx, r, "pass", fmt.Sprintf("%s %s %v.", spec.MetricKey, reachedWord, spec.Value))
 	}
 	if now.Before(since.Add(time.Duration(spec.WithinDays) * 24 * time.Hour)) {
 		return false, nil
 	}
-	return s.writeMetricCheck(ctx, r, "fail", fmt.Sprintf("%s did not reach %v within %d days.", spec.MetricKey, spec.Value, spec.WithinDays))
+	return s.writeMetricCheck(ctx, r, "fail", fmt.Sprintf("%s %s %v within %d days.", spec.MetricKey, missedWord, spec.Value, spec.WithinDays))
+}
+
+// metricReached reports whether some company reading of the metric since the criterion was
+// written reaches the value: at or above it for ">=", at or below it for "<=". One reading in
+// the window is enough for either, so a count that dips to half once passes the criterion.
+func (s *VerificationService) metricReached(ctx context.Context, ws pgtype.UUID, spec metricCheckSpec, since time.Time) (bool, error) {
+	ts := pgtype.Timestamptz{Time: since, Valid: true}
+	var best pgtype.Numeric
+	var err error
+	if spec.Op == "<=" {
+		best, err = s.Queries.LowestMetricReadingSince(ctx, db.LowestMetricReadingSinceParams{WorkspaceID: ws, MetricKey: spec.MetricKey, Since: ts})
+	} else {
+		best, err = s.Queries.LatestMetricReadingSince(ctx, db.LatestMetricReadingSinceParams{WorkspaceID: ws, MetricKey: spec.MetricKey, Since: ts})
+	}
+	if err != nil {
+		return false, fmt.Errorf("read metric: %w", err)
+	}
+	if !best.Valid {
+		return false, nil
+	}
+	f, err := best.Float64Value()
+	if err != nil || !f.Valid {
+		return false, nil
+	}
+	if spec.Op == "<=" {
+		return f.Float64 <= spec.Value, nil
+	}
+	return f.Float64 >= spec.Value, nil
 }
 
 func (s *VerificationService) writeMetricCheck(ctx context.Context, r db.ListOpenSystemCriteriaRow, result, note string) (bool, error) {
