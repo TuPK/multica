@@ -24,20 +24,20 @@ import (
 // HubItemResponse is one row of GET /api/hub/items. Fields that Phase 5 (source
 // sync) owns are returned from their columns, which hold their defaults until it writes them.
 type HubItemResponse struct {
-	ID              string  `json:"id"`
-	Kind            string  `json:"kind"`
-	RefID           string  `json:"ref_id"`
-	SourceID        *string `json:"source_id"`
-	SourceRef       string  `json:"source_ref"`
-	Tracking        string  `json:"tracking"`
-	LatestVersion   string  `json:"latest_version"`
-	BundleDigest    string  `json:"bundle_digest"`
-	SizeBytes       int64   `json:"size_bytes"`
-	FileCount       int32   `json:"file_count"`
-	ScanStatus      string  `json:"scan_status"`
-	UpdateAvailable bool    `json:"update_available"`
-	RemoteDigest    string  `json:"remote_digest"`
-	CheckedAt       *string `json:"checked_at"`
+	ID              string                      `json:"id"`
+	Kind            string                      `json:"kind"`
+	RefID           string                      `json:"ref_id"`
+	SourceID        *string                     `json:"source_id"`
+	SourceRef       string                      `json:"source_ref"`
+	Tracking        string                      `json:"tracking"`
+	LatestVersion   string                      `json:"latest_version"`
+	BundleDigest    string                      `json:"bundle_digest"`
+	SizeBytes       int64                       `json:"size_bytes"`
+	FileCount       int32                       `json:"file_count"`
+	ScanStatus      string                      `json:"scan_status"`
+	UpdateAvailable bool                        `json:"update_available"`
+	RemoteDigest    string                      `json:"remote_digest"`
+	CheckedAt       *string                     `json:"checked_at"`
 	LocalModified   bool                        `json:"local_modified"`
 	Attestation     *HubItemAttestationResponse `json:"attestation,omitempty"`
 	CreatedAt       string                      `json:"created_at"`
@@ -130,7 +130,7 @@ func (h *Handler) ListHubItems(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		// A row whose skill or plugin is gone is left over from a delete; it is not listed.
 		// Agent template rows live directly in hub_item.
-		if row.Kind != string(hub.KindAgent) && !live[row.Kind+":"+uuidToString(row.RefID)] {
+		if !h.hubItemEnabled(ctx, row) || (row.Kind != string(hub.KindAgent) && !live[row.Kind+":"+uuidToString(row.RefID)]) {
 			continue
 		}
 		itemResp := hubItemToResponse(row)
@@ -190,6 +190,10 @@ func (h *Handler) GetHubItem(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load item")
+		return
+	}
+	if !h.hubItemEnabled(ctx, row) {
+		writeError(w, http.StatusNotFound, "item not found")
 		return
 	}
 	itemResp := hubItemToResponse(row)

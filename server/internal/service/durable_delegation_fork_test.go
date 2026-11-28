@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -107,7 +108,17 @@ func (d decideEnv) predicted(t *testing.T, decision, kind string, confidence flo
 	t.Helper()
 	ctx := context.Background()
 	squad := d.squad("Delegated "+util.UUIDToString(dbid.NewV7()), AutonomyLevelWork)
-	proposal := d.file(squad, "", "{}", false).Proposal.ID
+	// The proposal's own kind must be the predicted kind: a prediction is recorded only for a
+	// decision that exists under that kind (spec 6.2).
+	fileKind := ""
+	if strings.HasPrefix(kind, "proposal:") && kind != "proposal:general" {
+		fileKind = strings.TrimPrefix(kind, "proposal:")
+	}
+	payload := "{}"
+	if fileKind == "goal" {
+		payload = `{"title":"Ship the seat","period_start":"2026-12-01","period_end":"2026-12-31"}`
+	}
+	proposal := d.file(squad, fileKind, payload, false).Proposal.ID
 	if err := d.props.Principal.Request(ctx, AskInput{WorkspaceID: d.ws, SubjectType: "proposal", SubjectID: proposal}); err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -253,7 +264,7 @@ func TestDelegatedDecisionRefusedWhenIneligible(t *testing.T) {
 	}{
 		{"a different decision", ProposalDecisionReject, "proposal:general", 0.95, nil},
 		{"a low confidence", ProposalDecisionApprove, "proposal:general", 0.5, nil},
-		{"a kind never delegated", ProposalDecisionApprove, "proposal:budget", 0.95, nil},
+		{"a kind never delegated", ProposalDecisionApprove, "proposal:goal", 0.95, nil},
 		{"a decider who is not the boss", ProposalDecisionApprove, "proposal:general", 0.95,
 			func(d decideEnv) pgtype.UUID { return dbid.NewV7() }},
 	}

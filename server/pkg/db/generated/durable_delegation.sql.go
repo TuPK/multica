@@ -33,7 +33,7 @@ func (q *Queries) AnswerBriefInquiryAsPrincipal(ctx context.Context, arg AnswerB
 }
 
 const countDelegationReverts = `-- name: CountDelegationReverts :one
-SELECT COUNT(*)::int FROM governance_event
+SELECT COUNT(DISTINCT subject_id)::int FROM governance_event
 WHERE workspace_id = $1 AND kind = 'principal_delegation_reverted'
   AND subject_type = 'decision_prediction' AND subject_id = ANY($2::uuid[])
 `
@@ -43,7 +43,7 @@ type CountDelegationRevertsParams struct {
 	SubjectIds  []pgtype.UUID `json:"subject_ids"`
 }
 
-// How many of the given delegated decisions the person reverted, as the governance log has them.
+// How many distinct delegated decisions the person reverted, as the governance log has them.
 func (q *Queries) CountDelegationReverts(ctx context.Context, arg CountDelegationRevertsParams) (int32, error) {
 	row := q.db.QueryRow(ctx, countDelegationReverts, arg.WorkspaceID, arg.SubjectIds)
 	var column_1 int32
@@ -183,6 +183,28 @@ func (q *Queries) GetDecisionPredictionByID(ctx context.Context, arg GetDecision
 	return i, err
 }
 
+const hasDelegationRevertEvent = `-- name: HasDelegationRevertEvent :one
+SELECT EXISTS(
+    SELECT 1 FROM governance_event
+    WHERE workspace_id = $1
+      AND kind = 'principal_delegation_reverted'
+      AND subject_type = 'decision_prediction'
+      AND subject_id = $2
+)
+`
+
+type HasDelegationRevertEventParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	SubjectID   pgtype.UUID `json:"subject_id"`
+}
+
+func (q *Queries) HasDelegationRevertEvent(ctx context.Context, arg HasDelegationRevertEventParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasDelegationRevertEvent, arg.WorkspaceID, arg.SubjectID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const insertPrincipalDelegation = `-- name: InsertPrincipalDelegation :one
 
 INSERT INTO principal_delegation (id, workspace_id, member_id, decision_kind, min_confidence)
@@ -299,6 +321,43 @@ func (q *Queries) ListRecentDelegatedPredictionIDs(ctx context.Context, arg List
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockDecisionPredictionByID = `-- name: LockDecisionPredictionByID :one
+SELECT id, workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, why, trait_ids, profile_version, predictor_task_id, actual, matched, applied_by_delegation, created_at, resolved_at, learning_task_id FROM decision_prediction
+WHERE id = $1 AND workspace_id = $2
+FOR UPDATE
+`
+
+type LockDecisionPredictionByIDParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) LockDecisionPredictionByID(ctx context.Context, arg LockDecisionPredictionByIDParams) (DecisionPrediction, error) {
+	row := q.db.QueryRow(ctx, lockDecisionPredictionByID, arg.ID, arg.WorkspaceID)
+	var i DecisionPrediction
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.MemberID,
+		&i.SubjectType,
+		&i.SubjectID,
+		&i.DecisionKind,
+		&i.Predicted,
+		&i.Confidence,
+		&i.Why,
+		&i.TraitIds,
+		&i.ProfileVersion,
+		&i.PredictorTaskID,
+		&i.Actual,
+		&i.Matched,
+		&i.AppliedByDelegation,
+		&i.CreatedAt,
+		&i.ResolvedAt,
+		&i.LearningTaskID,
+	)
+	return i, err
 }
 
 const markPredictionAppliedByDelegation = `-- name: MarkPredictionAppliedByDelegation :execrows

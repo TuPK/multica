@@ -308,13 +308,34 @@ func (s *OutcomeService) enterDone(ctx context.Context, q *db.Queries, r db.List
 		return nil
 	}
 
+	settleAt := s.now().Add(settleWindow)
+	// A metric criterion whose observation window (e.g. Reach's 30-day gap window) extends
+	// past the default settle_days must keep the outcome open until that deadline so hourly
+	// metric checks can evaluate it before settlement (spec 2.5, 11.3).
+	if criteria, err := q.ListIssueAcceptanceCriteria(ctx, db.ListIssueAcceptanceCriteriaParams{
+		WorkspaceID: r.WorkspaceID, IssueID: r.IssueID,
+	}); err == nil {
+		for _, c := range criteria {
+			if c.ArchivedAt.Valid || c.CheckKind != CheckKindMetric {
+				continue
+			}
+			var spec metricCheckSpec
+			if json.Unmarshal(c.CheckSpec, &spec) == nil && spec.WithinDays > 0 {
+				deadline := c.CreatedAt.Time.Add(time.Duration(spec.WithinDays) * 24 * time.Hour)
+				if deadline.After(settleAt) {
+					settleAt = deadline
+				}
+			}
+		}
+	}
+
 	in := WorkClassInput{LabelNames: labels}
 	params := db.CreateWorkOutcomeParams{
 		ID:               dbid.NewV7(),
 		WorkspaceID:      r.WorkspaceID,
 		IssueID:          r.IssueID,
 		DoneTransitionID: r.ID,
-		SettleAt:         pgtype.Timestamptz{Time: s.now().Add(settleWindow), Valid: true},
+		SettleAt:         pgtype.Timestamptz{Time: settleAt, Valid: true},
 	}
 	// The doer is the issue's assignee. A member's outcome keeps no agent id, so it
 	// stays out of agent track records (spec 2.4).
@@ -587,6 +608,11 @@ func (s *OutcomeService) postSettledNote(ctx context.Context, q *db.Queries, o d
 		Type:        "system",
 		ParentID:    pgtype.UUID{},
 	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// The issue (or workspace) was deleted before settlement (no FK cascade).
+			// Skip the note so one deleted issue never poisons the global Settle sweep.
+			return nil
+		}
 		return fmt.Errorf("post settled note: %w", err)
 	}
 	return nil

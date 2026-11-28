@@ -10,8 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
@@ -26,7 +28,7 @@ func predictionAsk(pt principalTest, subject pgtype.UUID) AskInput {
 func TestNoProfileNoPrediction(t *testing.T) {
 	pt := newPrincipalTest(t, true)
 	ctx := context.Background()
-	subject := util.MustParseUUID(pt.Issue(t, "a question"))
+	subject := realProposal(t, pt)
 	if err := pt.pred().Request(ctx, predictionAsk(pt, subject)); err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -39,7 +41,7 @@ func TestNoPredictionAboutSelf(t *testing.T) {
 	pt := newPrincipalTest(t, true)
 	pt.enable(t)
 	ctx := context.Background()
-	subject := util.MustParseUUID(pt.Issue(t, "an org change about the owner's own role"))
+	subject := realProposal(t, pt)
 	ask := predictionAsk(pt, subject)
 	ask.AboutMember = pt.owner.ID
 	if err := pt.pred().Request(ctx, ask); err != nil {
@@ -54,7 +56,7 @@ func TestResolveSetsMatch(t *testing.T) {
 	pt := newPrincipalTest(t, true)
 	pt.enable(t)
 	ctx := context.Background()
-	subject := util.MustParseUUID(pt.Issue(t, "a budget question"))
+	subject := realProposal(t, pt)
 	if err := pt.pred().Request(ctx, predictionAsk(pt, subject)); err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -81,7 +83,7 @@ func TestPredictionRecordedOnlyByTheSecretary(t *testing.T) {
 	pt := newPrincipalTest(t, true)
 	pt.enable(t)
 	ctx := context.Background()
-	subject := util.MustParseUUID(pt.Issue(t, "a question for the secretary"))
+	subject := realProposal(t, pt)
 	in := PredictionInput{
 		WorkspaceID: pt.ws, MemberID: pt.owner.ID, SubjectType: "proposal", SubjectID: subject,
 		DecisionKind: "proposal:budget", Predicted: "approve", Confidence: 0.8,
@@ -137,7 +139,7 @@ func TestPredictionRequestFlagOff(t *testing.T) {
 	ctx := context.Background()
 	pt.svc.Flags = flagsWith(false)
 	pred := &PredictionService{Queries: pt.q, Flags: pt.svc.Flags}
-	subject := util.MustParseUUID(pt.Issue(t, "a question with the flag off"))
+	subject := realProposal(t, pt)
 	if err := pred.Request(ctx, predictionAsk(pt, subject)); err != nil {
 		t.Fatalf("request with the flag off: %v", err)
 	}
@@ -163,7 +165,7 @@ func TestDeleteKeepsMatchCountsOnly(t *testing.T) {
 	pt := newPrincipalTest(t, true)
 	pt.enable(t)
 	ctx := context.Background()
-	subject := util.MustParseUUID(pt.Issue(t, "a question to be forgotten"))
+	subject := realProposal(t, pt)
 	if err := pt.pred().Request(ctx, predictionAsk(pt, subject)); err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -245,6 +247,23 @@ func TestProfileUpdateJobBatches(t *testing.T) {
 	}
 	if len(payload.Decisions) != 3 {
 		t.Fatalf("task context has %d decisions, want 3", len(payload.Decisions))
+	}
+}
+
+func TestProfileUpdateJobIncludesOldUnlearnedDecision(t *testing.T) {
+	pt := newPrincipalTest(t, true)
+	pt.enable(t)
+	pt.Cleanup(t, `DELETE FROM agent_task_queue WHERE agent_id = $1`, util.UUIDToString(pt.secretary.ID))
+	pt.Exec(t, `INSERT INTO decision_prediction
+		(workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, actual, matched, resolved_at)
+		VALUES ($1, $2, 'proposal', gen_random_uuid(), 'proposal:general', 'approve', 0.9, 'approve', true, now() - interval '7 hours')`,
+		pt.WorkspaceID, pt.owner.ID)
+	ok, err := pt.pred().learnBatch(context.Background(), pt.ws, pt.owner.ID, time.Now())
+	if err != nil || !ok {
+		t.Fatalf("enqueue old unlearned decision: enqueued=%v err=%v", ok, err)
+	}
+	if n := pt.Count(t, `SELECT COUNT(*) FROM decision_prediction WHERE workspace_id = $1 AND member_id = $2 AND learning_task_id IS NOT NULL`, pt.WorkspaceID, pt.owner.ID); n != 1 {
+		t.Fatalf("learned decisions = %d, want 1", n)
 	}
 }
 
@@ -385,7 +404,7 @@ func TestPredictionResolveBeforeRecord(t *testing.T) {
 		pt := newPrincipalTest(t, true)
 		pt.enable(t)
 		ctx := context.Background()
-		subject := util.MustParseUUID(pt.Issue(t, "decided while pending"))
+		subject := realProposal(t, pt)
 		if err := pt.pred().Request(ctx, predictionAsk(pt, subject)); err != nil {
 			t.Fatalf("request: %v", err)
 		}
@@ -416,7 +435,7 @@ func TestPredictionResolveBeforeRecord(t *testing.T) {
 		pt := newPrincipalTest(t, true)
 		pt.enable(t)
 		ctx := context.Background()
-		subject := util.MustParseUUID(pt.Issue(t, "decided without pending row"))
+		subject := realProposal(t, pt)
 		if err := pt.pred().Resolve(ctx, pt.ws, "proposal", subject, "reject"); err != nil {
 			t.Fatalf("resolve: %v", err)
 		}
@@ -444,7 +463,7 @@ func TestPredictionRecordBeforeResolveAndSecondRecordAfterResolve(t *testing.T) 
 	pt := newPrincipalTest(t, true)
 	pt.enable(t)
 	ctx := context.Background()
-	subject := util.MustParseUUID(pt.Issue(t, "normal record then resolve"))
+	subject := realProposal(t, pt)
 	if err := pt.pred().Request(ctx, predictionAsk(pt, subject)); err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -480,7 +499,7 @@ func TestPredictionResolveAndRecordFlagOff(t *testing.T) {
 	pt.enable(t)
 	ctx := context.Background()
 	pred := &PredictionService{Queries: pt.q, Flags: flagsWith(false)}
-	subject := util.MustParseUUID(pt.Issue(t, "flag off decision"))
+	subject := realProposal(t, pt)
 	if err := pred.Resolve(ctx, pt.ws, "proposal", subject, "approve"); err != nil {
 		t.Fatalf("resolve with flag off: %v", err)
 	}
@@ -493,4 +512,16 @@ func TestPredictionResolveAndRecordFlagOff(t *testing.T) {
 	if n := pt.Count(t, `SELECT COUNT(*) FROM decision_prediction WHERE subject_id = $1`, util.UUIDToString(subject)); n != 0 {
 		t.Fatalf("%d rows written with flag off, want 0", n)
 	}
+}
+
+// realProposal files a pending proposal of the budget kind for the prediction tests to subject a
+// prediction to. A prediction is recorded only for a decision that exists (spec 6.2, 6.4).
+func realProposal(t *testing.T, pt principalTest) pgtype.UUID {
+	t.Helper()
+	squad := pt.Squad(t, "Predict "+util.UUIDToString(dbid.NewV7()), util.UUIDToString(pt.secretary.ID))
+	issue := pt.Issue(t, "a budget question")
+	return util.MustParseUUID(pt.Insert(t, "proposal", testutil.Cols{
+		"workspace_id": util.UUIDToString(pt.ws), "squad_id": squad, "issue_id": issue,
+		"created_by_type": "member", "created_by_id": util.UUIDToString(pt.owner.ID), "kind": "budget",
+	}))
 }

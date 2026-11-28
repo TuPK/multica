@@ -209,6 +209,11 @@ func (sf shadowFixture) primaryTask(t *testing.T) db.AgentTaskQueue {
 // TestShadowFlagOffStopsWrites: with durable_seats off, a claimed primary writes no pair
 // and enqueues no shadow task, even when the run is running (spec 0 rule 5).
 func TestShadowFlagOffStopsWrites(t *testing.T) {
+	other := newShadowFixture(t, true)
+	other.start(t)
+	if err := other.svc.OnPrimaryClaimed(context.Background(), other.primaryTask(t)); err != nil {
+		t.Fatalf("enqueue another workspace's shadow task: %v", err)
+	}
 	sf := newShadowFixture(t, true)
 	sf.start(t)
 	task := sf.primaryTask(t)
@@ -221,7 +226,7 @@ func TestShadowFlagOffStopsWrites(t *testing.T) {
 	if n := sf.Count(t, `SELECT COUNT(*) FROM shadow_pair WHERE workspace_id = $1`, sf.WorkspaceID); n != 0 {
 		t.Errorf("shadow_pair rows with the flag off = %d, want 0", n)
 	}
-	if n := sf.Count(t, `SELECT COUNT(*) FROM agent_task_queue WHERE context->>'durable_kind' = 'shadow'`); n != 0 {
+	if n := sf.Count(t, `SELECT COUNT(*) FROM agent_task_queue WHERE issue_id = $1 AND context->>'durable_kind' = 'shadow'`, sf.issue); n != 0 {
 		t.Errorf("shadow tasks with the flag off = %d, want 0", n)
 	}
 	if _, err := sf.svc.Start(context.Background(), sf.ws, sf.owner, ShadowStartInput{
@@ -236,6 +241,11 @@ func TestShadowFlagOffStopsWrites(t *testing.T) {
 // shadow agent; a second claim of the same primary changes nothing. The shadow agent
 // runs the candidate runtime and model, and is linked to the seat.
 func TestShadowOneTaskPerPrimary(t *testing.T) {
+	other := newShadowFixture(t, true)
+	other.start(t)
+	if err := other.svc.OnPrimaryClaimed(context.Background(), other.primaryTask(t)); err != nil {
+		t.Fatalf("enqueue another workspace's shadow task: %v", err)
+	}
 	sf := newShadowFixture(t, true)
 	sf.start(t)
 	task := sf.primaryTask(t)
@@ -250,7 +260,7 @@ func TestShadowOneTaskPerPrimary(t *testing.T) {
 	if n := sf.Count(t, `SELECT COUNT(*) FROM shadow_pair WHERE primary_task_id = $1`, util.UUIDToString(task.ID)); n != 1 {
 		t.Errorf("pairs for the primary = %d, want 1", n)
 	}
-	if n := sf.Count(t, `SELECT COUNT(*) FROM agent_task_queue WHERE context->>'durable_kind' = 'shadow' AND context->>'shadow_pair_id' IS NOT NULL`); n != 1 {
+	if n := sf.Count(t, `SELECT COUNT(*) FROM agent_task_queue WHERE issue_id = $1 AND context->>'durable_kind' = 'shadow' AND context->>'shadow_pair_id' IS NOT NULL`, sf.issue); n != 1 {
 		t.Errorf("shadow tasks = %d, want 1", n)
 	}
 	var shadowAgent string

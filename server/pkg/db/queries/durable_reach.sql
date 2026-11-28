@@ -9,20 +9,52 @@ WHERE workspace_id = sqlc.arg(workspace_id)
 GROUP BY source, target, decision, by_agent;
 
 -- name: ReachAskCounts :many
--- Attention asks in [window_start, window_end) whose subject is an effect intent, by the
--- intent's source and target (the surface), the ask's reason and squad. Minutes are the
+-- Attention asks in [window_start, window_end) mapped to their surface across all ask
+-- subject types (effect_intent, app_action_request, outcome_check, proposal, inquiry),
+-- grouped by source, target, reason and squad (durable spec 11.2). Minutes are the
 -- actual time when the person answered, else the estimate. The newest ask ids are kept.
-SELECT e.source, e.target, a.reason, a.squad_id,
+SELECT
+    mapped.source::text AS source,
+    mapped.target::text AS target,
+    mapped.reason,
+    mapped.squad_id,
     COUNT(*)::bigint AS n,
-    COALESCE(SUM(COALESCE(a.actual_seconds / 60.0, a.estimated_minutes)), 0)::float8 AS minutes,
-    ((ARRAY_AGG(a.id ORDER BY a.created_at DESC))[1:5])::uuid[] AS top_ask_ids
-FROM attention_ledger a
-JOIN effect_intent e ON e.id = a.subject_id AND e.workspace_id = a.workspace_id
-WHERE a.workspace_id = sqlc.arg(workspace_id)
-    AND a.subject_type = 'effect_intent'
-    AND a.created_at >= sqlc.arg(window_start)::timestamptz
-    AND a.created_at < sqlc.arg(window_end)::timestamptz
-GROUP BY e.source, e.target, a.reason, a.squad_id;
+    COALESCE(SUM(COALESCE(mapped.actual_seconds / 60.0, mapped.estimated_minutes)), 0)::float8 AS minutes,
+    ((ARRAY_AGG(mapped.id ORDER BY mapped.created_at DESC))[1:5])::uuid[] AS top_ask_ids
+FROM (
+    SELECT
+        a.id, a.reason, a.squad_id, a.actual_seconds, a.estimated_minutes, a.created_at,
+        CASE a.subject_type
+            WHEN 'effect_intent' THEN e.source
+            WHEN 'app_action_request' THEN 'connected_app'
+            WHEN 'outcome_check' THEN 'outcome_check'
+            WHEN 'proposal' THEN 'proposal'
+            WHEN 'inquiry' THEN 'inquiry'
+        END AS source,
+        CASE a.subject_type
+            WHEN 'effect_intent' THEN e.target
+            WHEN 'app_action_request' THEN ar.toolkit_slug
+            WHEN 'outcome_check' THEN o.work_class
+            WHEN 'proposal' THEN 'squad:' || p.squad_id::text
+            WHEN 'inquiry' THEN 'squad:' || bi.squad_id::text
+        END AS target
+    FROM attention_ledger a
+    LEFT JOIN effect_intent e
+        ON a.subject_type = 'effect_intent' AND e.id = a.subject_id AND e.workspace_id = a.workspace_id
+    LEFT JOIN app_action_request ar
+        ON a.subject_type = 'app_action_request' AND ar.id = a.subject_id AND ar.workspace_id = a.workspace_id
+    LEFT JOIN work_outcome o
+        ON a.subject_type = 'outcome_check' AND o.id = a.subject_id AND o.workspace_id = a.workspace_id
+    LEFT JOIN proposal p
+        ON a.subject_type = 'proposal' AND p.id = a.subject_id AND p.workspace_id = a.workspace_id
+    LEFT JOIN brief_inquiry bi
+        ON a.subject_type = 'inquiry' AND bi.id = a.subject_id AND bi.workspace_id = a.workspace_id
+    WHERE a.workspace_id = sqlc.arg(workspace_id)
+        AND a.created_at >= sqlc.arg(window_start)::timestamptz
+        AND a.created_at < sqlc.arg(window_end)::timestamptz
+) mapped
+WHERE mapped.source IS NOT NULL AND mapped.target IS NOT NULL AND mapped.target <> ''
+GROUP BY mapped.source, mapped.target, mapped.reason, mapped.squad_id;
 
 -- name: UpsertReachSnapshotRow :exec
 -- One surface's row for one day. Running the same day again rewrites the row. gap_issue_id is
@@ -75,3 +107,24 @@ WHERE r.workspace_id = sqlc.arg(workspace_id)
     AND r.snapshot_date = (
         SELECT MAX(l.snapshot_date) FROM reach_snapshot l WHERE l.workspace_id = sqlc.arg(workspace_id)
     );
+
+-- name: LockReachSnapshotRowsForSurface :many
+-- Serializes CloseGap for one surface in a workspace so concurrent calls open at most one issue.
+SELECT * FROM reach_snapshot
+WHERE workspace_id = sqlc.arg(workspace_id) AND surface = sqlc.arg(surface)
+ORDER BY snapshot_date DESC
+FOR UPDATE;
+
+-- name: LowestReachGapAsksSince :one
+-- Lowest gap_asks_30d recorded for a surface in reach_snapshot since a timestamp (spec 11.3).
+SELECT MIN(gap_asks_30d)::numeric AS best FROM reach_snapshot
+WHERE workspace_id = sqlc.arg(workspace_id)
+    AND surface = sqlc.arg(surface)
+    AND computed_at >= sqlc.arg(since)::timestamptz;
+
+-- name: HighestReachGapAsksSince :one
+-- Highest gap_asks_30d recorded for a surface in reach_snapshot since a timestamp.
+SELECT MAX(gap_asks_30d)::numeric AS best FROM reach_snapshot
+WHERE workspace_id = sqlc.arg(workspace_id)
+    AND surface = sqlc.arg(surface)
+    AND computed_at >= sqlc.arg(since)::timestamptz;

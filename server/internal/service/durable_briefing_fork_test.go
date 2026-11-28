@@ -20,6 +20,32 @@ func briefingFlags(on bool) *featureflag.Service {
 	return featureflag.NewService(provider)
 }
 
+func TestEffectDeclarationBriefingFollowsFlag(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("enabled=%t", enabled), func(t *testing.T) {
+			provider := featureflag.NewStaticProvider()
+			provider.Set(featureflags.DurableEffects, featureflag.Rule{Default: enabled})
+			provider.Set(featureflags.DurableSeats, featureflag.Rule{Default: false})
+			task := db.AgentTaskQueue{AgentID: util.MustParseUUID("11111111-1111-1111-1111-111111111111")}
+			blocks := DurableBriefingBlocks(context.Background(), nil, featureflag.NewService(provider), task)
+			if !enabled {
+				if len(blocks) != 0 {
+					t.Fatalf("flag off: got blocks %+v", blocks)
+				}
+				return
+			}
+			if len(blocks) != 1 {
+				t.Fatalf("flag on: got blocks %+v, want declaration", blocks)
+			}
+			for _, want := range []string{"multica effect declare", "send", "share", "delete", "spend", "không hoàn tác được", "exit 0", "exit 3", "exit 4", "không phải hàng rào"} {
+				if !strings.Contains(blocks[0].Body, want) {
+					t.Errorf("declaration missing %q: %s", want, blocks[0].Body)
+				}
+			}
+		})
+	}
+}
+
 // doerTaskFor queues a task the doer runs on issue, and returns it as a claim reads it.
 func (vf verificationFixture) doerTaskFor(t *testing.T, issue string) db.AgentTaskQueue {
 	t.Helper()

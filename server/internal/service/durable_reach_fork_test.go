@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
@@ -225,6 +228,18 @@ func TestSnapshotStatesFromEffects(t *testing.T) {
 	}
 }
 
+func TestSnapshotDeclaredAgentEffect(t *testing.T) {
+	e := newReachEnv(t, true)
+	e.effect(t, "declared", "https://example.com/x", "allow", true)
+	if err := e.reach.Snapshot(context.Background(), e.ws, reachFixedNow); err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	row := e.snapshotRows(t, reachFixedNow)["external:example.com"]
+	if row.State != "declared_only" {
+		t.Errorf("state = %q, want declared_only", row.State)
+	}
+}
+
 // A second run of the same day rewrites its rows and does not add new ones (spec 11.5, 3).
 func TestSnapshotIdempotentPerDay(t *testing.T) {
 	e := newReachEnv(t, true)
@@ -376,4 +391,185 @@ func TestReachFlagOffWritesNothing(t *testing.T) {
 	if n := e.fx.Count(t, `SELECT COUNT(*) FROM issue WHERE workspace_id = $1`, util.UUIDToString(e.ws)); n != 0 {
 		t.Errorf("issues with the flag off = %d, want 0", n)
 	}
+}
+
+// Q4: ReachAskCounts maps non-effect_intent attention asks (app_action_request, proposal, inquiry)
+// onto their surfaces alongside effect_intent.
+func TestSnapshotIncludesAllAttentionAskTypes(t *testing.T) {
+	e := newReachEnv(t, true)
+	ctx := context.Background()
+	askedAt := reachFixedNow.AddDate(0, 0, -2)
+
+	// 1. app_action_request ask (missing_access on toolkit "linear") -> app:linear human_only.
+	reqID := dbid.NewV7()
+	e.fx.Exec(t, `INSERT INTO app_action_request
+		(id, workspace_id, kind, status, task_id, agent_id, approver_user_id, account_scope, toolkit_slug, tool_slug, action_class, expires_at)
+		VALUES ($1, $2, 'connect', 'pending', $3, $4, $5, 'team', 'linear', '', 'write', $6)`,
+		util.UUIDToString(reqID), util.UUIDToString(e.ws), util.UUIDToString(dbid.NewV7()),
+		util.UUIDToString(e.agent), util.UUIDToString(e.owner), reachFixedNow.AddDate(0, 0, 1))
+	e.fx.Exec(t, `INSERT INTO attention_ledger
+		(workspace_id, squad_id, subject_type, subject_id, reason, estimated_minutes, state, week_start, created_at)
+		VALUES ($1, $2, 'app_action_request', $3, 'missing_access', 5, 'delivered', '2026-11-16'::date, $4)`,
+		util.UUIDToString(e.ws), util.UUIDToString(e.squad), util.UUIDToString(reqID), askedAt)
+
+	// 2. proposal ask (missing_info) -> area:squad:<squad_id>.
+	prop := e.file(e.squad, "", "{}", false).Proposal
+	e.fx.Exec(t, `INSERT INTO attention_ledger
+		(workspace_id, squad_id, subject_type, subject_id, reason, estimated_minutes, state, week_start, created_at)
+		VALUES ($1, $2, 'proposal', $3, 'missing_info', 4, 'delivered', '2026-11-16'::date, $4)`,
+		util.UUIDToString(e.ws), util.UUIDToString(e.squad), util.UUIDToString(prop.ID), askedAt)
+
+	// 3. inquiry ask (missing_info) -> area:squad:<squad_id>.
+	inqID := dbid.NewV7()
+	e.fx.Exec(t, `INSERT INTO brief_inquiry
+		(id, workspace_id, asked_by_agent_id, squad_id, question, asked_on, created_at)
+		VALUES ($1, $2, $3, $4, 'Which pricing tier?', '2026-11-18'::date, $5)`,
+		util.UUIDToString(inqID), util.UUIDToString(e.ws), util.UUIDToString(e.agent), util.UUIDToString(e.squad), askedAt)
+	e.fx.Exec(t, `INSERT INTO attention_ledger
+		(workspace_id, squad_id, subject_type, subject_id, reason, estimated_minutes, state, week_start, created_at)
+		VALUES ($1, $2, 'inquiry', $3, 'missing_info', 3, 'delivered', '2026-11-16'::date, $4)`,
+		util.UUIDToString(e.ws), util.UUIDToString(e.squad), util.UUIDToString(inqID), askedAt)
+
+	if err := e.reach.Snapshot(ctx, e.ws, reachFixedNow); err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	rows := e.snapshotRows(t, reachFixedNow)
+	if got := rows["app:linear"]; got.State != "human_only" || got.GapAsks30d != 1 {
+		t.Errorf("app:linear = (state=%q, gap_asks=%d), want (human_only, 1)", got.State, got.GapAsks30d)
+	}
+	squadSurface := "area:squad:" + util.UUIDToString(e.squad)
+	if got := rows[squadSurface]; got.GapAsks30d != 2 {
+		t.Errorf("%s gap_asks_30d = %d, want 2 (proposal + inquiry)", squadSurface, got.GapAsks30d)
+	}
+}
+
+// Q3: reach.gap_asks_30d reads from reach_snapshot (not metric_reading) and keeps the outcome
+// open across the 30-day metric window rather than settling prematurely after 7 days.
+func TestReachGapMetricReadsReachSnapshotWith30DayWindow(t *testing.T) {
+	e := newReachEnv(t, true)
+	ctx := context.Background()
+	for i := 0; i < 4; i++ {
+		e.ask(t, "connected_app", "jira_create", "missing_access")
+	}
+	if err := e.reach.Snapshot(ctx, e.ws, reachFixedNow); err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	issue, err := e.reach.CloseGap(ctx, e.ws, e.boss(), "app:jira", e.squad)
+	if err != nil {
+		t.Fatalf("close gap: %v", err)
+	}
+
+	// Move gap issue to done and create its work_outcome.
+	e.fx.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, util.UUIDToString(issue.ID))
+	outcomes := &OutcomeService{
+		Queries:      e.q,
+		TxStarter:    e.fx.Pool,
+		Flags:        flagsOpenAndOutcomes(),
+		Verification: e.reach.Verification,
+	}
+	if _, err := outcomes.ProcessTransitions(ctx); err != nil {
+		t.Fatalf("process transitions: %v", err)
+	}
+	outcome, err := e.q.GetCurrentWorkOutcomeForIssue(ctx, db.GetCurrentWorkOutcomeForIssueParams{
+		WorkspaceID: e.ws, IssueID: issue.ID,
+	})
+	if err != nil {
+		t.Fatalf("load gap outcome: %v", err)
+	}
+	// After 10 days (> default 7-day settle window, < 30-day metric window), outcome must stay open.
+	if _, err := outcomes.Settle(ctx, time.Now().Add(10*24*time.Hour)); err != nil {
+		t.Fatalf("settle at day 10: %v", err)
+	}
+	reloaded, err := e.q.GetWorkOutcomeInWorkspace(ctx, db.GetWorkOutcomeInWorkspaceParams{ID: outcome.ID, WorkspaceID: e.ws})
+	if err != nil {
+		t.Fatalf("reload gap outcome: %v", err)
+	}
+	if reloaded.SettledAt.Valid {
+		t.Fatalf("gap outcome settled prematurely at day 10 (settle_at=%v)", reloaded.SettleAt.Time)
+	}
+
+	// Write a newer reach_snapshot row with gap_asks_30d = 1 (<= baseline/2 = 2) and no metric_reading.
+	var zero pgtype.Numeric
+	_ = zero.Scan("0")
+	day15 := time.Now().Add(15 * 24 * time.Hour)
+	if err := e.q.UpsertReachSnapshotRow(ctx, db.UpsertReachSnapshotRowParams{
+		WorkspaceID: e.ws, SnapshotDate: pgtype.Date{Time: reachDay(day15), Valid: true},
+		Surface: "app:jira", State: "agent_with_confirm", GapAsks30d: 1,
+		HumanMinutes30d: zero, TopAskIds: []pgtype.UUID{},
+		ComputedAt: pgtype.Timestamptz{Time: day15, Valid: true},
+	}); err != nil {
+		t.Fatalf("upsert day 15 snapshot: %v", err)
+	}
+	if _, err := e.reach.Verification.CheckMetrics(ctx, day15); err != nil {
+		t.Fatalf("CheckMetrics: %v", err)
+	}
+	if n := e.fx.Count(t, `SELECT COUNT(*) FROM outcome_verification
+		WHERE outcome_id = $1 AND verifier_type = 'metric' AND result = 'pass'`, util.UUIDToString(outcome.ID)); n != 1 {
+		t.Fatalf("passed reach metric verifications = %d, want 1", n)
+	}
+}
+
+// Q5: CloseGap is atomic (concurrent calls create one issue; failures roll back without orphan issues).
+func TestCloseGapAtomicAndConcurrent(t *testing.T) {
+	t.Run("concurrent close gap creates exactly one issue", func(t *testing.T) {
+		e := newReachEnv(t, true)
+		ctx := context.Background()
+		e.ask(t, "connected_app", "jira_create", "missing_access")
+		if err := e.reach.Snapshot(ctx, e.ws, reachFixedNow); err != nil {
+			t.Fatalf("snapshot: %v", err)
+		}
+
+		const workers = 5
+		var wg sync.WaitGroup
+		ids := make([]string, workers)
+		errs := make([]error, workers)
+		start := make(chan struct{})
+		for i := 0; i < workers; i++ {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+				<-start
+				iss, err := e.reach.CloseGap(ctx, e.ws, e.boss(), "app:jira", e.squad)
+				if err != nil {
+					errs[idx] = err
+					return
+				}
+				ids[idx] = util.UUIDToString(iss.ID)
+			}(i)
+		}
+		close(start)
+		wg.Wait()
+
+		first := ""
+		for i := 0; i < workers; i++ {
+			if errs[i] != nil {
+				t.Fatalf("worker %d failed: %v", i, errs[i])
+			}
+			if first == "" {
+				first = ids[i]
+			} else if ids[i] != first {
+				t.Fatalf("worker %d returned issue %s, want %s", i, ids[i], first)
+			}
+		}
+		if n := e.fx.Count(t, `SELECT COUNT(*) FROM issue WHERE workspace_id = $1 AND title = 'Lấp khoảng trống: app:jira'`, util.UUIDToString(e.ws)); n != 1 {
+			t.Fatalf("gap issues created = %d, want 1", n)
+		}
+	})
+
+	t.Run("criterion failure leaves no orphan issue", func(t *testing.T) {
+		e := newReachEnv(t, true)
+		ctx := context.Background()
+		e.ask(t, "connected_app", "jira_create", "missing_access")
+		if err := e.reach.Snapshot(ctx, e.ws, reachFixedNow); err != nil {
+			t.Fatalf("snapshot: %v", err)
+		}
+		// Turn durable_outcomes off so adding the metric criterion fails.
+		e.reach.Verification.Flags = flagsOpen(true)
+		if _, err := e.reach.CloseGap(ctx, e.ws, e.boss(), "app:jira", e.squad); !errors.Is(err, ErrOutcomesOff) {
+			t.Fatalf("CloseGap err = %v, want ErrOutcomesOff", err)
+		}
+		if n := e.fx.Count(t, `SELECT COUNT(*) FROM issue WHERE workspace_id = $1 AND title = 'Lấp khoảng trống: app:jira'`, util.UUIDToString(e.ws)); n != 0 {
+			t.Fatalf("orphan gap issues = %d, want 0", n)
+		}
+	})
 }

@@ -69,8 +69,11 @@ func (h *Handler) GetPrincipalDelegations(w http.ResponseWriter, r *http.Request
 //
 //	{decision_kind, min_confidence}
 func (h *Handler) EnablePrincipalDelegation(w http.ResponseWriter, r *http.Request) {
+	if rejectPrincipalMachineCredential(w, r) {
+		return
+	}
 	c, ok := h.principalCallerFor(w, r, true)
-	if !ok {
+	if !ok || !requirePrincipalPerson(w, c) {
 		return
 	}
 	var req struct {
@@ -98,8 +101,11 @@ func (h *Handler) EnablePrincipalDelegation(w http.ResponseWriter, r *http.Reque
 // DisablePrincipalDelegation turns a delegation off at the person's word (DELETE
 // /api/principal/delegations?decision_kind=).
 func (h *Handler) DisablePrincipalDelegation(w http.ResponseWriter, r *http.Request) {
+	if rejectPrincipalMachineCredential(w, r) {
+		return
+	}
 	c, ok := h.principalCallerFor(w, r, true)
-	if !ok {
+	if !ok || !requirePrincipalPerson(w, c) {
 		return
 	}
 	if err := h.delegationService().Disable(r.Context(), c.actor, c.ws, c.actor.ID, r.URL.Query().Get("decision_kind")); err != nil {
@@ -112,8 +118,11 @@ func (h *Handler) DisablePrincipalDelegation(w http.ResponseWriter, r *http.Requ
 // RevertDelegatedDecision undoes a delegated decision within 72 hours (POST
 // /api/principal/decisions/{id}/revert). Two reverts in the last twenty turn the delegation off.
 func (h *Handler) RevertDelegatedDecision(w http.ResponseWriter, r *http.Request) {
+	if rejectPrincipalMachineCredential(w, r) {
+		return
+	}
 	c, ok := h.principalCallerFor(w, r, true)
-	if !ok {
+	if !ok || !requirePrincipalPerson(w, c) {
 		return
 	}
 	predID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "decision id")
@@ -125,6 +134,15 @@ func (h *Handler) RevertDelegatedDecision(w http.ResponseWriter, r *http.Request
 	case errors.Is(err, service.ErrDelegationRevertWindow):
 		writeErrorCode(w, http.StatusUnprocessableEntity, "delegation_revert_window", err.Error())
 		return
+	case errors.Is(err, service.ErrDelegationUndoInProgress):
+		writeErrorCode(w, http.StatusConflict, "undo_in_progress", err.Error())
+		return
+	case errors.Is(err, service.ErrDelegationNotUndoable):
+		writeErrorCode(w, http.StatusConflict, "not_undoable", err.Error())
+		return
+	case errors.Is(err, service.ErrDelegationOutcomeSettled):
+		writeErrorCode(w, http.StatusConflict, "outcome_settled", err.Error())
+		return
 	case err != nil:
 		writePrincipalError(w, err)
 		return
@@ -133,5 +151,16 @@ func (h *Handler) RevertDelegatedDecision(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handler) delegationService() *service.DelegationService {
-	return &service.DelegationService{Queries: h.Queries, Flags: h.FeatureFlags, Predictions: &service.PredictionService{Queries: h.Queries, Flags: h.FeatureFlags}}
+	var appsUndo service.IntentUndoExecutor
+	if h.ConnectedApps != nil {
+		appsUndo = h.ConnectedApps
+	}
+	return &service.DelegationService{
+		Queries:     h.Queries,
+		TxStarter:   h.TxStarter,
+		Flags:       h.FeatureFlags,
+		Predictions: &service.PredictionService{Queries: h.Queries, TxStarter: h.TxStarter, Tasks: h.TaskService, Flags: h.FeatureFlags},
+		AppsUndo:    appsUndo,
+		Checks:      h.outcomeService(),
+	}
 }

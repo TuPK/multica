@@ -47,14 +47,21 @@ type principalCaller struct {
 }
 
 // requirePrincipalPerson refuses an agent: consenting, editing, deleting and the interview are the
-// person's own (durable spec 6.6). Checked in the handler, not by route middleware, so the route
-// table does not gain a middleware chain.
+// person's own (durable spec 6.6). Person-only routes also carry RequireHumanActor on the router.
 func requirePrincipalPerson(w http.ResponseWriter, c principalCaller) bool {
 	if c.actor.Type != service.GovernanceActorMember {
 		writeError(w, http.StatusForbidden, "this endpoint is only available to the person")
 		return false
 	}
 	return true
+}
+
+func rejectPrincipalMachineCredential(w http.ResponseWriter, r *http.Request) bool {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return true
+	}
+	return false
 }
 
 // principalCallerFor resolves the caller. With requireFlag, a server with durable_principal off
@@ -182,6 +189,9 @@ func (h *Handler) GetPrincipalProfile(w http.ResponseWriter, r *http.Request) {
 //
 //	{consent_text, share_with_owners}
 func (h *Handler) EnablePrincipalProfile(w http.ResponseWriter, r *http.Request) {
+	if rejectPrincipalMachineCredential(w, r) {
+		return
+	}
 	c, ok := h.principalCallerFor(w, r, true)
 	if !ok {
 		return
@@ -207,6 +217,9 @@ func (h *Handler) EnablePrincipalProfile(w http.ResponseWriter, r *http.Request)
 // DeletePrincipalProfile removes the caller's profile and its traits (DELETE /api/principal/profile).
 // It answers 204 with the flag off too: a person can always remove what was kept.
 func (h *Handler) DeletePrincipalProfile(w http.ResponseWriter, r *http.Request) {
+	if rejectPrincipalMachineCredential(w, r) {
+		return
+	}
 	c, ok := h.principalCallerFor(w, r, false)
 	if !ok {
 		return
@@ -267,6 +280,9 @@ func (h *Handler) AddPrincipalTrait(w http.ResponseWriter, r *http.Request) {
 //
 //	{statement}
 func (h *Handler) EditPrincipalTrait(w http.ResponseWriter, r *http.Request) {
+	if rejectPrincipalMachineCredential(w, r) {
+		return
+	}
 	c, ok := h.principalCallerFor(w, r, true)
 	if !ok {
 		return
@@ -317,6 +333,9 @@ func (h *Handler) RetirePrincipalTrait(w http.ResponseWriter, r *http.Request) {
 // GetPrincipalInterview lists the eight questions of the start-up interview
 // (GET /api/principal/interview). Only a person is interviewed.
 func (h *Handler) GetPrincipalInterview(w http.ResponseWriter, r *http.Request) {
+	if rejectPrincipalMachineCredential(w, r) {
+		return
+	}
 	c, ok := h.principalCallerFor(w, r, true)
 	if !ok || !requirePrincipalPerson(w, c) {
 		return
@@ -330,6 +349,9 @@ func (h *Handler) GetPrincipalInterview(w http.ResponseWriter, r *http.Request) 
 //
 //	{question, answer}
 func (h *Handler) AnswerPrincipalInterview(w http.ResponseWriter, r *http.Request) {
+	if rejectPrincipalMachineCredential(w, r) {
+		return
+	}
 	c, ok := h.principalCallerFor(w, r, true)
 	if !ok {
 		return

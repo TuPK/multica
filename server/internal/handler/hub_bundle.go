@@ -203,6 +203,10 @@ func (h *Handler) hubBundleForRequest(w http.ResponseWriter, r *http.Request) (d
 		writeError(w, http.StatusInternalServerError, "failed to load the item")
 		return db.HubItem{}, false
 	}
+	if !h.hubItemEnabled(ctx, item) {
+		writeError(w, http.StatusNotFound, "item not found")
+		return db.HubItem{}, false
+	}
 	item, err = h.currentHubBundle(ctx, ws, user, item)
 	switch {
 	case errors.Is(err, errHubItemNotFound):
@@ -262,7 +266,13 @@ func (h *Handler) hubItemForRef(ctx context.Context, ws pgtype.UUID, kind string
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.HubItem{}, errHubItemNotFound
 		}
-		return item, err
+		if err != nil {
+			return db.HubItem{}, err
+		}
+		if !h.hubItemEnabled(ctx, item) {
+			return db.HubItem{}, errHubItemNotFound
+		}
+		return item, nil
 	default:
 		return db.HubItem{}, errHubItemNotFound
 	}

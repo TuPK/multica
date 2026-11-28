@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/hub"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/testutil"
@@ -29,6 +30,7 @@ type hubAttestationFixture struct {
 func newHubAttestationFixture(t *testing.T) hubAttestationFixture {
 	t.Helper()
 	setupHubImportTest(t)
+	withFeatureFlag(t, testHandler, featureflags.DurableOpen, true)
 
 	ws := dbfx.Workspace(t, hubTestLabel(t, "att-ws"), hubTestSlug(t))
 	owner := dbfx.User(t, hubTestLabel(t, "att-owner"), hubTestEmail(t))
@@ -95,11 +97,15 @@ func newHubAttestationFixture(t *testing.T) hubAttestationFixture {
 	}
 }
 
-func (f hubAttestationFixture) signAttestation(t *testing.T, host string) []byte {
+func (f hubAttestationFixture) signAttestation(t *testing.T, host string, refs ...string) []byte {
 	t.Helper()
+	ref := "hub:agent-reviewer@1.0.0"
+	if len(refs) > 0 {
+		ref = refs[0]
+	}
 	doc, err := service.Sign(map[string]any{
 		"format":  "ocf-attestation/1",
-		"subject": map[string]any{"template_ref": "hub:agent-reviewer@1.0.0", "seat_label": "Code Reviewer"},
+		"subject": map[string]any{"template_ref": ref, "seat_label": "Code Reviewer"},
 		"issuer":  map[string]any{"host": host},
 		"period":  map[string]any{"from": "2026-08-01", "to": "2026-11-01"},
 		"work_classes": []map[string]any{{
@@ -175,18 +181,18 @@ func TestHubItemAttestation_Valid(t *testing.T) {
 	if detail.Attestation == nil {
 		t.Fatalf("expected attestation on item detail, got nil")
 	}
-	if !detail.Attestation.Verified || detail.Attestation.IssuerHost != f.remoteHost {
-		t.Fatalf("detail.Attestation = %+v, want verified=true issuer_host=%q", detail.Attestation, f.remoteHost)
+	if detail.Attestation.Verified || detail.Attestation.IssuerHost != f.remoteHost {
+		t.Fatalf("detail.Attestation = %+v, want verified=false issuer_host=%q", detail.Attestation, f.remoteHost)
 	}
 
-	// ListHubItems also includes the agent item and its verified attestation.
+	// ListHubItems includes the same unverified attestation.
 	listed := listHubItemsForTest(t, f.ws, f.owner)
 	listedItem, ok := findHubItemResponse(listed, refID)
 	if !ok {
 		t.Fatalf("agent item %s missing from ListHubItems", refID)
 	}
-	if listedItem.Attestation == nil || !listedItem.Attestation.Verified || listedItem.Attestation.IssuerHost != f.remoteHost {
-		t.Fatalf("listedItem.Attestation = %+v, want verified=true issuer_host=%q", listedItem.Attestation, f.remoteHost)
+	if listedItem.Attestation == nil || listedItem.Attestation.Verified || listedItem.Attestation.IssuerHost != f.remoteHost {
+		t.Fatalf("listedItem.Attestation = %+v, want verified=false issuer_host=%q", listedItem.Attestation, f.remoteHost)
 	}
 
 	// Bundle route and activity filter accept kind=agent.
@@ -202,7 +208,7 @@ func TestHubItemAttestation_Valid(t *testing.T) {
 
 func TestHubItemAttestation_TamperedSignature(t *testing.T) {
 	f := newHubAttestationFixture(t)
-	signed := f.signAttestation(t, f.remoteHost)
+	signed := f.signAttestation(t, f.remoteHost, "acme/code-reviewer@1.0.0")
 	tampered := bytes.Replace(signed, []byte(`"n":64`), []byte(`"n":65`), 1)
 	if bytes.Equal(signed, tampered) {
 		t.Fatal("failed to tamper with signed attestation")
@@ -280,7 +286,7 @@ func TestHubItemAttestation_AbsentOmitsField(t *testing.T) {
 
 func TestHubItemAttestation_MultipleFilesPicksFirstByPath(t *testing.T) {
 	f := newHubAttestationFixture(t)
-	signed := f.signAttestation(t, f.remoteHost)
+	signed := f.signAttestation(t, f.remoteHost, "acme/code-reviewer@1.0.0")
 	tampered := bytes.Replace(signed, []byte(`"n":64`), []byte(`"n":65`), 1)
 
 	refID, _ := f.insertAgentItem(t, map[string][]byte{
@@ -315,7 +321,7 @@ func TestHubItemAttestation_OwnServerKeyWithoutNetworkFetch(t *testing.T) {
 		}
 	}
 
-	signed := f.signAttestation(t, ownHost)
+	signed := f.signAttestation(t, ownHost, "acme/code-reviewer@1.0.0")
 	refID, _ := f.insertAgentItem(t, map[string][]byte{
 		"pack.json":               []byte(`{"name":"Own Key Agent","version":"1.0.0"}`),
 		"attestations/local.json": signed,
@@ -325,5 +331,18 @@ func TestHubItemAttestation_OwnServerKeyWithoutNetworkFetch(t *testing.T) {
 	f.getHubItemRaw(t, string(hub.KindAgent), refID).Want(http.StatusOK).JSON(&detail)
 	if detail.Attestation == nil || !detail.Attestation.Verified || detail.Attestation.IssuerHost != ownHost {
 		t.Fatalf("own-host attestation = %+v, want verified=true issuer_host=%q", detail.Attestation, ownHost)
+	}
+}
+
+func TestHubItemAttestation_FlagOff(t *testing.T) {
+	f := newHubAttestationFixture(t)
+	signed := f.signAttestation(t, f.remoteHost, "acme/code-reviewer@1.0.0")
+	ref, _ := f.insertAgentItem(t, map[string][]byte{"attestations/a.json": signed})
+	withFeatureFlag(t, testHandler, featureflags.DurableOpen, false)
+	f.getHubItemRaw(t, string(hub.KindAgent), ref).Want(http.StatusNotFound)
+	listed := listHubItemsForTest(t, f.ws, f.owner)
+	item, ok := findHubItemResponse(listed, ref)
+	if ok {
+		t.Fatalf("agent item listed with flag off: %+v", item)
 	}
 }

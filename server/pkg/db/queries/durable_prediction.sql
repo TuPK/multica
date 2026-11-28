@@ -16,22 +16,49 @@ WHERE p.workspace_id = sqlc.arg(workspace_id) AND p.status = 'active' AND m.role
 ORDER BY p.member_id;
 
 -- name: RecordDecisionPrediction :one
--- The Secretary's prediction. A resolved question keeps its outcome: no row comes back.
+-- The Secretary's prediction. A resolved question keeps its outcome, and an existing
+-- pending row never has its decision_kind overwritten: no row comes back.
 INSERT INTO decision_prediction (id, workspace_id, member_id, subject_type, subject_id, decision_kind,
                                  predicted, confidence, why, trait_ids, profile_version, predictor_task_id)
 VALUES (sqlc.arg(id), sqlc.arg(workspace_id), sqlc.arg(member_id), sqlc.arg(subject_type), sqlc.arg(subject_id),
         sqlc.arg(decision_kind), sqlc.arg(predicted), sqlc.arg(confidence)::numeric, sqlc.arg(why),
         sqlc.arg(trait_ids)::uuid[], sqlc.arg(profile_version), sqlc.narg(predictor_task_id)::uuid)
 ON CONFLICT (subject_type, subject_id, member_id) DO UPDATE SET
-    decision_kind = EXCLUDED.decision_kind,
     predicted = EXCLUDED.predicted,
     confidence = EXCLUDED.confidence,
     why = EXCLUDED.why,
     trait_ids = EXCLUDED.trait_ids,
     profile_version = EXCLUDED.profile_version,
-    predictor_task_id = EXCLUDED.predictor_task_id
+    predictor_task_id = COALESCE(EXCLUDED.predictor_task_id, decision_prediction.predictor_task_id)
 WHERE decision_prediction.resolved_at IS NULL
+  AND decision_prediction.workspace_id = EXCLUDED.workspace_id
+  AND decision_prediction.decision_kind = EXCLUDED.decision_kind
 RETURNING *;
+
+-- name: ExistsBriefInquiryInWorkspace :one
+SELECT EXISTS(
+    SELECT 1 FROM brief_inquiry
+    WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id)
+);
+
+-- name: SetPendingPredictionTaskID :execrows
+-- Links newly requested pending predictions to the Secretary routine task that will predict them.
+UPDATE decision_prediction
+SET predictor_task_id = sqlc.arg(predictor_task_id)
+WHERE workspace_id = sqlc.arg(workspace_id)
+  AND subject_type = sqlc.arg(subject_type)
+  AND subject_id = sqlc.arg(subject_id)
+  AND member_id = ANY(sqlc.arg(member_ids)::uuid[])
+  AND predictor_task_id IS NULL;
+
+-- name: ListRecentResolvedDecisionsForKind :many
+-- The last ten resolved decisions of one kind for the Secretary prediction task context (spec 6.4).
+SELECT id, subject_type, subject_id, predicted, actual, matched, resolved_at
+FROM decision_prediction
+WHERE workspace_id = sqlc.arg(workspace_id) AND member_id = sqlc.arg(member_id)
+  AND decision_kind = sqlc.arg(decision_kind) AND resolved_at IS NOT NULL
+ORDER BY resolved_at DESC, id DESC
+LIMIT 10;
 
 -- name: GetDecisionPrediction :one
 SELECT * FROM decision_prediction
@@ -68,6 +95,11 @@ ON CONFLICT (subject_type, subject_id, member_id) DO UPDATE SET
     resolved_at = EXCLUDED.resolved_at
 WHERE decision_prediction.resolved_at IS NULL;
 
+-- name: ListResolvedPredictionOwnersForSubject :many
+SELECT DISTINCT member_id, decision_kind FROM decision_prediction
+WHERE workspace_id = sqlc.arg(workspace_id) AND subject_type = sqlc.arg(subject_type)
+  AND subject_id = sqlc.arg(subject_id) AND resolved_at IS NOT NULL AND matched IS NOT NULL;
+
 -- name: ListRecentResolvedPredictions :many
 -- The last resolved predictions of one kind, newest first, for the accuracy window (spec 6.4).
 SELECT matched FROM decision_prediction
@@ -81,14 +113,14 @@ LIMIT 50;
 UPDATE decision_prediction SET why = '', trait_ids = '{}'
 WHERE workspace_id = sqlc.arg(workspace_id) AND member_id = sqlc.arg(member_id);
 
--- name: ListUnlearnedResolvedPredictionsSince :many
--- The unconsumed decisions resolved since a time, newest first, for one profile update batch (spec 6.3).
+-- name: ListUnlearnedResolvedPredictions :many
+-- The unconsumed decisions, oldest first, for one profile update batch (spec 6.3).
 SELECT id, subject_type, subject_id, decision_kind, predicted, actual, matched, resolved_at
 FROM decision_prediction
 WHERE workspace_id = sqlc.arg(workspace_id) AND member_id = sqlc.arg(member_id)
-  AND resolved_at IS NOT NULL AND resolved_at >= sqlc.arg(since)
+  AND resolved_at IS NOT NULL
   AND learning_task_id IS NULL
-ORDER BY resolved_at DESC, id DESC
+ORDER BY resolved_at ASC, id ASC
 LIMIT 20;
 
 -- name: MarkPredictionsLearned :execrows

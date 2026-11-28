@@ -50,7 +50,7 @@ func (f seatOfferHandlerFixture) signAttestation(t *testing.T, host string) []by
 	t.Helper()
 	doc, err := service.Sign(map[string]any{
 		"format":  "ocf-attestation/1",
-		"subject": map[string]any{"template_ref": "hub:critic@1.0.0", "seat_label": "Reviewer"},
+		"subject": map[string]any{"template_ref": "critic", "seat_label": "Reviewer"},
 		"issuer":  map[string]any{"host": host},
 		"period":  map[string]any{"from": "2026-08-01", "to": "2026-11-01"},
 		"work_classes": []map[string]any{{
@@ -222,6 +222,16 @@ func TestSeatOfferHandler_ApplyWithRemoteWellKnownAndMalformedAttestation(t *tes
 	testutil.Call(t, testHandler.ApplySeatOffer, tamperedReq).Want(http.StatusCreated).JSON(&unverified)
 	if unverified.ProposalID == "" || unverified.AttestationVerified {
 		t.Fatalf("tampered attestation response = %+v, want verified=false", unverified)
+	}
+
+	// A valid signature for another template is not verified.
+	mismatchReq := testutil.WithURLParams(companyReq(f.fx.Member, f.fx.ID, http.MethodPost, "/api/hub/seat-offers/"+offer.ID+"/apply", map[string]any{
+		"template_ref": "code_reviewer", "attestation": json.RawMessage(signed),
+	}), "id", offer.ID)
+	var mismatch ApplySeatOfferResponse
+	testutil.Call(t, testHandler.ApplySeatOffer, mismatchReq).Want(http.StatusCreated).JSON(&mismatch)
+	if mismatch.AttestationVerified {
+		t.Fatalf("mismatched template verified: %+v", mismatch)
 	}
 
 	// Malformed attestation payloads (non-JSON body, JSON array, string, null) are refused 400.

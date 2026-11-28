@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -120,8 +119,7 @@ func (h *Handler) CloseReachGap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req CloseReachGapRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if !readCappedJSON(w, r, durableRequestBodyLimit, &req, "invalid request body") {
 		return
 	}
 	squad := pgtype.UUID{}
@@ -143,6 +141,8 @@ func (h *Handler) CloseReachGap(w http.ResponseWriter, r *http.Request) {
 		writeErrorCode(w, http.StatusNotFound, "reach_surface_unknown", err.Error())
 	case errors.Is(err, service.ErrReachNoSquad):
 		writeErrorCode(w, http.StatusConflict, "reach_no_squad", err.Error())
+	case errors.Is(err, service.ErrReachSquadNotFound):
+		writeErrorCode(w, http.StatusNotFound, "squad_not_found", err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "failed to open the gap issue")
 	}

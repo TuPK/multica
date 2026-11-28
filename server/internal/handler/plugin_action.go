@@ -902,18 +902,31 @@ func (h *Handler) GetPluginStorage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, publicapiv1.StorageValueResponse{Value: value})
 }
 
+const pluginStorageBodyLimit int64 = 256 << 10
+
 // PutPluginStorage — PUT /v1/storage/{scope}/{key}
 func (h *Handler) PutPluginStorage(w http.ResponseWriter, r *http.Request) {
 	caller, actor, ok := h.pluginCaller(w, r, "")
 	if !ok {
 		return
 	}
+	rec, settle, allowed := h.pluginWriteGate(w, r, caller.WorkspaceID, "PUT plugin storage")
+	if !allowed {
+		return
+	}
+	defer settle()
+	w = rec
 	scopeType, scopeID, ok := h.pluginStorageScope(w, r, caller, actor)
 	if !ok {
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, pluginStorageBodyLimit)
 	var req publicapiv1.PutStorageValueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if isBodyTooLarge(err) {
+			publicapiv1.WriteProblem(w, r, http.StatusRequestEntityTooLarge, "payload_too_large", fmt.Sprintf("the request body is larger than %d bytes", pluginStorageBodyLimit))
+			return
+		}
 		publicapiv1.WriteProblem(w, r, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
@@ -930,6 +943,12 @@ func (h *Handler) DeletePluginStorage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	rec, settle, allowed := h.pluginWriteGate(w, r, caller.WorkspaceID, "DELETE plugin storage")
+	if !allowed {
+		return
+	}
+	defer settle()
+	w = rec
 	scopeType, scopeID, ok := h.pluginStorageScope(w, r, caller, actor)
 	if !ok {
 		return

@@ -47,7 +47,10 @@ func newSeatOfferEnv(t *testing.T, flagOn bool) seatOfferEnv {
 		}
 	})
 	priv := testKey(t, testSeed)
-	doc, err := Sign(testAttestation(), priv, "k1")
+	// The attestation certifies the template the seat hires: the instruction template "critic".
+	att := testAttestation()
+	att["subject"].(map[string]any)["template_ref"] = "critic"
+	doc, err := Sign(att, priv, "k1")
 	if err != nil {
 		t.Fatalf("sign attestation: %v", err)
 	}
@@ -433,7 +436,7 @@ func TestWellKnownKeyFetcherRemoteAndMalformed(t *testing.T) {
 		},
 	}
 
-	payload, _ := json.Marshal(hirePayload{Type: OrgChangeHire, Attestation: signed})
+	payload, _ := json.Marshal(hirePayload{Type: OrgChangeHire, Template: "hub:flow-reviewer@1.2.0", Attestation: signed})
 	ok, err := VerifySeatAttestation(ctx, payload, fetcher)
 	if err != nil || !ok {
 		t.Fatalf("VerifySeatAttestation(remote valid) = (%v, %v), want (true, nil)", ok, err)
@@ -481,7 +484,7 @@ func TestWellKnownKeyFetcherRemoteAndMalformed(t *testing.T) {
 	localAtt := testAttestation()
 	localAtt["issuer"] = map[string]any{"host": "local.example.test"}
 	localSigned, _ := Sign(localAtt, priv, "k1")
-	localPayload, _ := json.Marshal(hirePayload{Type: OrgChangeHire, Attestation: localSigned})
+	localPayload, _ := json.Marshal(hirePayload{Type: OrgChangeHire, Template: "hub:flow-reviewer@1.2.0", Attestation: localSigned})
 	if ok, err := VerifySeatAttestation(ctx, localPayload, localFetcher); err != nil || !ok {
 		t.Fatalf("VerifySeatAttestation(own host) = (%v, %v), want (true, nil)", ok, err)
 	}

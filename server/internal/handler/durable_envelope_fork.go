@@ -108,6 +108,10 @@ func (h *Handler) GetSquadEnvelope(w http.ResponseWriter, r *http.Request) {
 
 // SetSquadEnvelope sets a squad's envelope. Owners and admins only, as a person.
 func (h *Handler) SetSquadEnvelope(w http.ResponseWriter, r *http.Request) {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return
+	}
 	workspaceID := h.resolveWorkspaceID(r)
 	actor, ok := h.governanceBossFor(w, r, workspaceID)
 	if !ok {
@@ -153,6 +157,10 @@ func (h *Handler) SetSquadEnvelope(w http.ResponseWriter, r *http.Request) {
 
 // ClearSquadEnvelope removes a squad's envelope. Owners and admins only, as a person.
 func (h *Handler) ClearSquadEnvelope(w http.ResponseWriter, r *http.Request) {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return
+	}
 	workspaceID := h.resolveWorkspaceID(r)
 	actor, ok := h.governanceBossFor(w, r, workspaceID)
 	if !ok {

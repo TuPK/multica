@@ -62,6 +62,9 @@ type cachedValue[T any] struct {
 // Gate decides one action and writes its event. A blocked action is written as
 // blocked. Anything else is written as awaiting until Finish settles it. The
 // decision is the stricter of the caller's Prior and the effect policy.
+// Task run class (shadow/verification/human) and workspace pause state are
+// evaluated inline in InsertGatedEffectEvent so warm calls issue zero SELECTs
+// (spec 14.7) and never observe stale shadow or pause state.
 func (s *EffectService) Gate(ctx context.Context, in EffectInput) (EffectDecision, error) {
 	if !featureflags.DurableEffectsEnabled(ctx, s.Flags) {
 		return EffectDecision{Decision: in.Prior}, nil
@@ -78,14 +81,6 @@ func (s *EffectService) Gate(ctx context.Context, in EffectInput) (EffectDecisio
 	if err != nil {
 		return EffectDecision{}, err
 	}
-	runClass, err := s.runClass(ctx, in)
-	if err != nil {
-		return EffectDecision{}, err
-	}
-	state, err := s.companyState(ctx, in.WS)
-	if err != nil {
-		return EffectDecision{}, err
-	}
 	sends := 0
 	if in.Class == connectedapps.EffectSend && level == 3 && in.AgentID.Valid {
 		sends, err = s.sendsToday(ctx, in.WS, in.AgentID)
@@ -93,18 +88,10 @@ func (s *EffectService) Gate(ctx context.Context, in EffectInput) (EffectDecisio
 			return EffectDecision{}, err
 		}
 	}
-	policy := DecideEffect(level, in.Class, rev, overrides, runClass, state, sends)
-	final := connectedapps.Stricter(in.Prior, policy)
+	policy := DecideEffect(level, in.Class, rev, overrides, "", "", sends)
+	baseDecision := connectedapps.Stricter(in.Prior, policy)
 
-	// A declared action is not enforced, so its event is only recorded (spec 4.5).
-	status := "awaiting"
-	switch {
-	case in.Source == connectedapps.SourceDeclared:
-		status = "declared"
-	case final == connectedapps.PolicyBlock:
-		status = "blocked"
-	}
-	id, err := s.Queries.InsertEffectEvent(ctx, db.InsertEffectEventParams{
+	row, err := s.Queries.InsertGatedEffectEvent(ctx, db.InsertGatedEffectEventParams{
 		WorkspaceID:   in.WS,
 		TaskID:        in.TaskID,
 		AgentID:       in.AgentID,
@@ -113,15 +100,14 @@ func (s *EffectService) Gate(ctx context.Context, in EffectInput) (EffectDecisio
 		Target:        effectTruncate(in.Target, effectTargetMax),
 		EffectClass:   in.Class,
 		Reversibility: rev,
-		Decision:      final,
-		Status:        status,
 		Summary:       effectTruncate(in.Summary, effectSummaryMax),
 		AppToolCallID: in.AppToolCallID,
+		BaseDecision:  baseDecision,
 	})
 	if err != nil {
 		return EffectDecision{}, fmt.Errorf("record effect event: %w", err)
 	}
-	return EffectDecision{Decision: final, EventID: id}, nil
+	return EffectDecision{Decision: row.Decision, EventID: row.ID}, nil
 }
 
 // Finish settles an awaiting event as executed, failed or blocked. When it is
@@ -246,34 +232,6 @@ func (s *EffectService) storeLevel(key string, level int) {
 		s.levels = map[string]cachedValue[int]{}
 	}
 	s.levels[key] = cachedValue[int]{value: level, until: s.now().Add(effectPolicyCacheTTL)}
-}
-
-// runClass is the class of the task that acts. A call with no task (a person at the
-// CLI) is human.
-func (s *EffectService) runClass(ctx context.Context, in EffectInput) (string, error) {
-	if !in.TaskID.Valid {
-		return runClassHuman, nil
-	}
-	task, err := s.Queries.GetAgentTask(ctx, in.TaskID)
-	if err != nil {
-		return "", fmt.Errorf("load task for effect gate: %w", err)
-	}
-	class, err := RunClassOfTask(ctx, s.Queries, task)
-	if err != nil {
-		return "", err
-	}
-	return string(class), nil
-}
-
-func (s *EffectService) companyState(ctx context.Context, ws pgtype.UUID) (string, error) {
-	paused, err := CompanyIsPaused(ctx, s.Queries, ws)
-	if err != nil {
-		return "", err
-	}
-	if paused {
-		return companyPaused, nil
-	}
-	return "", nil
 }
 
 // sendsToday counts an agent's executed sends since the start of the UTC day.

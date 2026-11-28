@@ -871,6 +871,7 @@ func decodeInitiativeBody(w http.ResponseWriter, r *http.Request, into any) bool
 	if r.Body == nil || r.ContentLength == 0 {
 		return true
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, governanceJSONBodyLimit)
 	if err := json.NewDecoder(r.Body).Decode(into); err != nil && !errors.Is(err, errEmptyBody) {
 		if isBodyTooLarge(err) {
 			writeBodyTooLarge(w, governanceJSONBodyLimit)

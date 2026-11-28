@@ -195,8 +195,10 @@ func (h *Handler) openGraphTasks(ctx context.Context, run *flowRun, rows []flowT
 	var opened []string
 	for _, a := range plan {
 		o := a.open
-		if ok, err := h.flowTaskMayOpen(ctx, run, o.Key, o.Task.Effects); err != nil {
+		if ok, stop, err := h.flowTaskMayOpen(ctx, run, o.Key, o.Task.Effects); err != nil {
 			return advanceOutcome{}, err
+		} else if stop != nil {
+			return *stop, nil
 		} else if !ok {
 			continue
 		}

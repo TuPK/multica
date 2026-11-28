@@ -60,7 +60,15 @@ func (h *Handler) RecordPrincipalPrediction(w http.ResponseWriter, r *http.Reque
 		}
 		task = id
 	}
-	row, err := (&service.PredictionService{Queries: h.Queries, Flags: h.FeatureFlags}).Record(r.Context(), c.actor, service.PredictionInput{
+	row, err := (&service.PredictionService{
+		Queries:   h.Queries,
+		TxStarter: h.TxStarter,
+		Tasks:     h.TaskService,
+		Flags:     h.FeatureFlags,
+		Proposals: h.proposalService(),
+		Intents:   h.durable.Intents,
+		Checks:    h.outcomeService(),
+	}).Record(r.Context(), c.actor, service.PredictionInput{
 		WorkspaceID: c.ws, MemberID: member, SubjectType: req.SubjectType, SubjectID: subject,
 		DecisionKind: req.DecisionKind, Predicted: req.Predicted, Confidence: req.Confidence,
 		Why: req.Why, TraitIDs: traits, TaskID: task,

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
@@ -95,5 +96,28 @@ func TestHoldFlowTaskFlagOffOpensAsOrdinaryTask(t *testing.T) {
 	fx.Pool.QueryRow(context.Background(), `SELECT count(*) FROM effect_intent WHERE issue_id = $1`, issue).Scan(&n)
 	if n != 0 {
 		t.Fatalf("flag off wrote %d intents, want 0", n)
+	}
+}
+
+func TestHoldFlowTaskTerminalIntent(t *testing.T) {
+	for _, state := range []string{"rejected", "expired"} {
+		t.Run(state, func(t *testing.T) {
+			fx, intents, issue := holdFixture(t, true)
+			ctx := context.Background()
+			ws, issueID := util.MustParseUUID(fx.WorkspaceID), util.MustParseUUID(issue)
+			if _, err := intents.HoldFlowTask(ctx, ws, issueID, "draft", "send_quote", 0); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := fx.Pool.Exec(ctx, `UPDATE effect_intent SET state = $1 WHERE workspace_id = $2 AND issue_id = $3`, state, ws, issueID); err != nil {
+				t.Fatal(err)
+			}
+			open, err := intents.HoldFlowTask(ctx, ws, issueID, "draft", "send_quote", 0)
+			if open || err == nil || !strings.Contains(err.Error(), state) {
+				t.Fatalf("terminal intent: open %v, err %v; want closed and reason %q", open, err, state)
+			}
+			if n := pendingHeld(t, fx, issue, "flow/draft.send_quote#0", state); n != 1 {
+				t.Fatalf("terminal intents = %d, want 1", n)
+			}
+		})
 	}
 }

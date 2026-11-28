@@ -250,3 +250,32 @@ func TestAgentOutcomeUsesHomeSquad(t *testing.T) {
 		t.Fatalf("outcome squad = %q, want %q", got, squad)
 	}
 }
+
+// Regression test: an unsettled fail outcome whose issue was deleted before Settle runs must not
+// poison the global Settle sweep with "post settled note: no rows in result set".
+func TestSettleIgnoresDeletedIssueForSettledNote(t *testing.T) {
+	f, _ := companyWorkspace(t)
+	svc, _ := outcomeService(t, f, true)
+	ctx := context.Background()
+
+	orphanIssue := outcomeIssue(t, f, "todo")
+	f.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, orphanIssue)
+	runOutcomeJob(t, svc)
+	// Reopen puts the outcome into fail/reopened, which triggers postSettledNote on settle.
+	f.Exec(t, `UPDATE issue SET status = 'in_progress' WHERE id = $1`, orphanIssue)
+	runOutcomeJob(t, svc)
+	// Delete the issue before settlement (no FK cascade).
+	f.Exec(t, `DELETE FROM issue WHERE id = $1`, orphanIssue)
+
+	// A healthy issue in the same workspace must still settle cleanly.
+	healthyIssue := outcomeIssue(t, f, "todo")
+	f.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, healthyIssue)
+	runOutcomeJob(t, svc)
+
+	if _, err := svc.Settle(ctx, time.Now().Add(8*24*time.Hour)); err != nil {
+		t.Fatalf("Settle failed due to deleted issue: %v", err)
+	}
+	if n := f.Count(t, `SELECT COUNT(*) FROM work_outcome WHERE issue_id = $1 AND settled_at IS NOT NULL`, healthyIssue); n != 1 {
+		t.Fatalf("healthy issue settled outcomes = %d, want 1", n)
+	}
+}

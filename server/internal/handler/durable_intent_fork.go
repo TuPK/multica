@@ -9,11 +9,19 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/connectedapps"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+)
+
+// Size caps for durable JSON request bodies (durable spec 14.4).
+const (
+	durableRequestBodyLimit       int64 = 16 << 10
+	durableIntentPreviewBodyLimit int64 = 32 << 10
 )
 
 // IntentResponse is one rehearsed action as the API shows it (durable spec 5.2). The
@@ -86,8 +94,12 @@ func intentError(w http.ResponseWriter, err error) {
 }
 
 // intentDecider returns the member making a decision and checks they may decide on
-// this intent: the owner, an admin, or the member whose action it is.
+// this intent: a human owner, admin, or the member whose action it is.
 func (h *Handler) intentDecider(w http.ResponseWriter, r *http.Request, workspaceID string, id pgtype.UUID) (db.Member, bool) {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return db.Member{}, false
+	}
 	member, ok := h.workspaceMember(w, r, workspaceID)
 	if !ok {
 		return db.Member{}, false
@@ -107,20 +119,33 @@ func (h *Handler) intentHiddenFrom(r *http.Request, workspaceID string, wsUUID, 
 	if err != nil || !it.IssueID.Valid {
 		return false
 	}
-	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: it.IssueID, WorkspaceID: wsUUID})
-	if err != nil {
+	hidden, hiddenErr := h.hiddenProjects(r, workspaceID)
+	return h.intentIssueHidden(r, wsUUID, it.IssueID, hidden, hiddenErr)
+}
+
+func (h *Handler) intentIssueHidden(r *http.Request, wsUUID, issueID pgtype.UUID, hidden projectaccess.Hidden, hiddenErr error) bool {
+	if hiddenErr == nil && hidden.Empty() {
 		return false
 	}
-	hidden, err := h.hiddenProjects(r, workspaceID)
-	if err != nil {
+	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: issueID, WorkspaceID: wsUUID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false
+	}
+	if err != nil || hiddenErr != nil {
 		return true // fail closed: answer as a missing intent
 	}
 	return !hidden.CanSeeProject(issue.ProjectID)
 }
 
-// mayDecideIntent reports whether member may decide on an intent: the owner, an
-// admin, or the member whose awaiting event the intent is.
+// mayDecideIntent reports whether member may decide on an intent: a human owner,
+// admin, or the member whose awaiting event the intent is. Agents never decide.
 func (h *Handler) mayDecideIntent(r *http.Request, member db.Member, id pgtype.UUID) bool {
+	if isMachineCredentialActor(r) {
+		return false
+	}
+	if actorType, _ := h.resolveActor(r, uuidToString(member.UserID), uuidToString(member.WorkspaceID)); actorType != "member" {
+		return false
+	}
 	if member.Role == "owner" || member.Role == "admin" {
 		return true
 	}
@@ -157,8 +182,31 @@ func (h *Handler) ListIntents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list intents")
 		return
 	}
+	var (
+		hiddenLoaded bool
+		hidden       projectaccess.Hidden
+		hiddenErr    error
+		issueHidden  map[[16]byte]bool
+	)
 	out := make([]IntentResponse, 0, len(rows))
 	for _, it := range rows {
+		if it.IssueID.Valid {
+			if !hiddenLoaded {
+				hidden, hiddenErr = h.hiddenProjects(r, workspaceID)
+				hiddenLoaded = true
+			}
+			if issueHidden == nil {
+				issueHidden = make(map[[16]byte]bool)
+			}
+			blocked, seen := issueHidden[it.IssueID.Bytes]
+			if !seen {
+				blocked = h.intentIssueHidden(r, wsUUID, it.IssueID, hidden, hiddenErr)
+				issueHidden[it.IssueID.Bytes] = blocked
+			}
+			if blocked {
+				continue
+			}
+		}
 		out = append(out, intentResponseOf(it))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"intents": out})
@@ -167,6 +215,10 @@ func (h *Handler) ListIntents(w http.ResponseWriter, r *http.Request) {
 // ApproveIntent runs a pending intent once (POST /api/intents/{id}/approve). The body
 // may carry edited_call, with new text for the message or post, and a note.
 func (h *Handler) ApproveIntent(w http.ResponseWriter, r *http.Request) {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return
+	}
 	workspaceID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
 	if !ok {
@@ -189,8 +241,7 @@ func (h *Handler) ApproveIntent(w http.ResponseWriter, r *http.Request) {
 		Note       string                       `json:"note"`
 	}
 	if r.Body != nil && r.ContentLength != 0 {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid request body")
+		if !readCappedJSON(w, r, durableIntentPreviewBodyLimit, &req, "invalid request body") {
 			return
 		}
 	}
@@ -210,6 +261,10 @@ func (h *Handler) ApproveIntent(w http.ResponseWriter, r *http.Request) {
 // RejectIntent closes a pending intent without running it (POST
 // /api/intents/{id}/reject). The note is required and goes to the agent.
 func (h *Handler) RejectIntent(w http.ResponseWriter, r *http.Request) {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return
+	}
 	workspaceID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
 	if !ok {
@@ -230,8 +285,7 @@ func (h *Handler) RejectIntent(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Note string `json:"note"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if !readCappedJSON(w, r, durableRequestBodyLimit, &req, "invalid request body") {
 		return
 	}
 	if h.durable.Intents == nil {
@@ -251,6 +305,10 @@ func (h *Handler) RejectIntent(w http.ResponseWriter, r *http.Request) {
 // /api/intents/approve-batch). Each intent is decided on its own: one call and one
 // event each. The answer lists each intent's outcome.
 func (h *Handler) ApproveIntentBatch(w http.ResponseWriter, r *http.Request) {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return
+	}
 	workspaceID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
 	if !ok {
@@ -263,7 +321,16 @@ func (h *Handler) ApproveIntentBatch(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		IDs []string `json:"ids"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 || len(req.IDs) > 50 {
+	r.Body = http.MaxBytesReader(w, r.Body, durableRequestBodyLimit)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if isBodyTooLarge(err) {
+			writeBodyTooLarge(w, durableRequestBodyLimit)
+			return
+		}
+		writeError(w, http.StatusBadRequest, "ids must list between 1 and 50 intents")
+		return
+	}
+	if len(req.IDs) == 0 || len(req.IDs) > 50 {
 		writeError(w, http.StatusBadRequest, "ids must list between 1 and 50 intents")
 		return
 	}

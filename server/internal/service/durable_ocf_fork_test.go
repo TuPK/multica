@@ -180,6 +180,10 @@ func TestOCFDossierHistoryRoundTrip(t *testing.T) {
 	if _, err := importOCF(t, dst, dst.Runtime(t, "dossier import runtime"), data); err != nil {
 		t.Fatal(err)
 	}
+	var count int
+	if err := dst.Pool.QueryRow(context.Background(), `SELECT count(*) FROM seat_dossier_entry d JOIN agent a ON a.id = d.agent_id AND a.workspace_id = d.workspace_id WHERE d.workspace_id = $1 AND a.name = 'Dossier Seat' AND d.status = 'active' AND d.text = 'active lesson'`, dst.WorkspaceID).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("active imported dossier count = %d, err = %v", count, err)
+	}
 	imported := ocfGovernanceByKind(t, dst)["ocf.imported.dossier"]
 	if len(imported) != 1 || imported[0]["imported"] != true || imported[0]["text"] != "active lesson" {
 		t.Fatalf("imported dossiers = %v", imported)
@@ -189,6 +193,9 @@ func TestOCFDossierHistoryRoundTrip(t *testing.T) {
 	}
 	if got := len(ocfGovernanceByKind(t, dst)["ocf.imported.dossier"]); got != 1 {
 		t.Fatalf("reimported dossiers = %d", got)
+	}
+	if err := dst.Pool.QueryRow(context.Background(), `SELECT count(*) FROM seat_dossier_entry WHERE workspace_id = $1 AND text = 'active lesson'`, dst.WorkspaceID).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("reimported active dossier count = %d, err = %v", count, err)
 	}
 }
 
@@ -352,6 +359,20 @@ func TestPrincipalsExportedOnlyWithConsent(t *testing.T) {
 	if errs := ValidateOCF(parts["manifest.json"], parts); len(errs) > 0 {
 		t.Fatalf("package with a consented principal fails the schema: %v", errs)
 	}
+	dst, _ := companyWorkspace(t)
+	report, err := importOCF(t, dst, dst.Runtime(t, "principal import runtime"), writeOCFZip(t, parts))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, item := range report.Items {
+		if item.Name == ocfPartPrincipals && item.Action == ImportSkipped && strings.Contains(item.Reason, "identity") && strings.Contains(item.Reason, "consent") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("principal skip must explain identity and consent: %+v", report.Items)
+	}
 
 	// Without the history part a principal is not exported at all.
 	if _, err := ExportOCF(ctx, src.q, ws, ExportOptions{Principals: []OCFPrincipal{consented}}); err == nil {
@@ -362,6 +383,29 @@ func TestPrincipalsExportedOnlyWithConsent(t *testing.T) {
 	if _, ok := without["history/principals.ndjson"]; ok {
 		t.Fatal("a package with no principals carries history/principals.ndjson")
 	}
+}
+
+func TestOCFAttestationImportSkipReason(t *testing.T) {
+	src, _ := ocfSourceCompany(t)
+	files := readOCFZip(t, exportOCF(t, src, ExportOptions{History: true}))
+	var manifest ocfManifest
+	if err := json.Unmarshal(files["manifest.json"], &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Parts = append(manifest.Parts, ocfPartAttestations)
+	files["manifest.json"], _ = json.Marshal(manifest)
+	files["attestations/seat.json"] = []byte(`{"format":"ocf-attestation/1","subject":{"template_ref":"hub:seat@1","seat_label":"Seat"},"issuer":{"host":"example.com","key_id":"key"},"period":{"from":"2025-01-01","to":"2025-02-01"},"work_classes":[],"models":[],"issued_at":"2025-02-02T00:00:00Z","signature":"invalid"}`)
+	dst, _ := companyWorkspace(t)
+	report, err := importOCF(t, dst, dst.Runtime(t, "attestation import runtime"), writeOCFZip(t, files))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range report.Items {
+		if item.Name == ocfPartAttestations && item.Action == ImportSkipped && strings.Contains(item.Reason, "signature") {
+			return
+		}
+	}
+	t.Fatalf("attestation skip must explain signature verification: %+v", report.Items)
 }
 
 func TestEmbeddedSchemaMatchesDocs(t *testing.T) {

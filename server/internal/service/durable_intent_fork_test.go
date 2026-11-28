@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -222,5 +223,181 @@ func TestExpireWakesAgentOnce(t *testing.T) {
 	}
 	if len(fx.exec.calls) != 0 {
 		t.Fatalf("expired intent executed %d calls, want 0", len(fx.exec.calls))
+	}
+}
+
+func TestApproveRejectsMismatchedCallHash(t *testing.T) {
+	fx := newIntentServiceFixture(t)
+	ctx := context.Background()
+	id, _ := fx.rehearseEmail(t, "Original body")
+	if _, err := fx.Pool.Exec(ctx, `UPDATE effect_intent SET call_sha256 = 'wrong' WHERE id = $1 AND workspace_id = $2`, id, fx.ws); err != nil {
+		t.Fatal(err)
+	}
+	it, err := fx.intents.Approve(ctx, fx.ws, fx.user, id, nil, "")
+	if err != nil {
+		t.Fatalf("Approve: %v", err)
+	}
+	if len(fx.exec.calls) != 0 || it.State != "failed" || it.DecisionNote != "call hash mismatch" {
+		t.Fatalf("state = %q, note = %q, gateway calls = %d; want failed, note %q and 0 calls", it.State, it.DecisionNote, len(fx.exec.calls), "call hash mismatch")
+	}
+	if n := fx.Count(t, `SELECT count(*) FROM effect_event WHERE intent_id = $1 AND workspace_id = $2 AND status = 'failed'`, id, fx.ws); n != 1 {
+		t.Fatalf("failed events = %d, want 1", n)
+	}
+	if n := fx.Count(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1 AND agent_id = $2 AND trigger_evidence_kind = 'effect_intent' AND trigger_evidence_ref_id = $3`, fx.issue, fx.agent, util.UUIDToString(id)); n != 1 {
+		t.Fatalf("mismatch wakeups = %d; want 1", n)
+	}
+}
+
+func TestApproveRejectsMismatchedCallHashEvenWithEdit(t *testing.T) {
+	fx := newIntentServiceFixture(t)
+	ctx := context.Background()
+	id, call := fx.rehearseEmail(t, "Original body")
+	if _, err := fx.Pool.Exec(ctx, `UPDATE effect_intent SET call_sha256 = 'wrong' WHERE id = $1 AND workspace_id = $2`, id, fx.ws); err != nil {
+		t.Fatal(err)
+	}
+	call.Args["body"] = "Edited body"
+	it, err := fx.intents.Approve(ctx, fx.ws, fx.user, id, &call, "")
+	if err != nil || it.State != "failed" || it.DecisionNote != "call hash mismatch" || len(fx.exec.calls) != 0 {
+		t.Fatalf("state = %q, note = %q, gateway calls = %d, err = %v; want failed and 0 calls", it.State, it.DecisionNote, len(fx.exec.calls), err)
+	}
+}
+
+func TestApproveRecoversPreviouslyApprovedIntent(t *testing.T) {
+	fx := newIntentServiceFixture(t)
+	ctx := context.Background()
+	id, _ := fx.rehearseEmail(t, "Original body")
+	if _, _, _, err := fx.intents.claimForApproval(ctx, fx.ws, fx.user, id, nil, ""); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if _, err := fx.Pool.Exec(ctx, `UPDATE effect_intent SET decided_at = $1 WHERE id = $2 AND workspace_id = $3`, fx.now.Add(-11*time.Minute), id, fx.ws); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fx.intents.Approve(ctx, fx.ws, fx.user, id, nil, ""); !errors.Is(err, ErrIntentNotPending) {
+		t.Fatalf("re-approve approved intent err = %v; want ErrIntentNotPending", err)
+	}
+	if len(fx.exec.calls) != 0 {
+		t.Fatalf("gateway calls = %d; want 0", len(fx.exec.calls))
+	}
+	if _, err := fx.intents.Expire(ctx); err != nil {
+		t.Fatalf("Expire: %v", err)
+	}
+	if _, err := fx.intents.Approve(ctx, fx.ws, fx.user, id, nil, ""); !errors.Is(err, ErrIntentNotPending) {
+		t.Fatalf("re-approve failed intent err = %v; want ErrIntentNotPending", err)
+	}
+	if len(fx.exec.calls) != 0 {
+		t.Fatalf("gateway calls after failed = %d; want 0", len(fx.exec.calls))
+	}
+}
+
+func TestExpireFlagsStaleApprovedIntentForReview(t *testing.T) {
+	fx := newIntentServiceFixture(t)
+	ctx := context.Background()
+	id, _ := fx.rehearseEmail(t, "Original body")
+	if _, _, _, err := fx.intents.claimForApproval(ctx, fx.ws, fx.user, id, nil, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fx.Pool.Exec(ctx, `UPDATE effect_intent SET decided_at = $1 WHERE id = $2 AND workspace_id = $3`, fx.now, id, fx.ws); err != nil {
+		t.Fatal(err)
+	}
+	fx.now = fx.now.Add(9 * time.Minute)
+	if _, err := fx.intents.Expire(ctx); err != nil {
+		t.Fatal(err)
+	}
+	it, err := fx.intents.Get(ctx, fx.ws, id)
+	if err != nil || it.State != "approved" {
+		t.Fatalf("recent intent = %q, err = %v; want approved", it.State, err)
+	}
+	fx.now = fx.now.Add(2 * time.Minute)
+	if _, err := fx.intents.Expire(ctx); err != nil {
+		t.Fatal(err)
+	}
+	it, err = fx.intents.Get(ctx, fx.ws, id)
+	if err != nil || it.State != "failed" || it.DecisionNote != intentInterruptedNote || len(fx.exec.calls) != 0 {
+		t.Fatalf("stale intent = %q, note = %q, calls = %d, err = %v", it.State, it.DecisionNote, len(fx.exec.calls), err)
+	}
+	var comment string
+	if err := fx.Pool.QueryRow(ctx,
+		`SELECT content FROM comment WHERE issue_id = $1 AND author_type = 'system' ORDER BY created_at DESC LIMIT 1`,
+		fx.issue).Scan(&comment); err != nil {
+		t.Fatalf("read system comment: %v", err)
+	}
+	if !strings.Contains(comment, intentInterruptedNote) {
+		t.Fatalf("system comment = %q, want %q", comment, intentInterruptedNote)
+	}
+	if _, err := fx.intents.Expire(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := fx.Count(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1 AND agent_id = $2 AND trigger_evidence_kind = 'effect_intent' AND trigger_evidence_ref_id = $3`, fx.issue, fx.agent, util.UUIDToString(id)); n != 1 {
+		t.Fatalf("review wakeups = %d; want 1", n)
+	}
+}
+
+func TestExpireKeepsApprovedDeclaredIntent(t *testing.T) {
+	fx := newIntentServiceFixture(t)
+	ctx := context.Background()
+	id, err := fx.intents.Rehearse(ctx, pgtype.UUID{}, connectedapps.EffectRequest{
+		WS: fx.ws, IssueID: util.MustParseUUID(fx.issue), Source: connectedapps.SourceDeclared,
+		Target: "flow/example", Class: connectedapps.EffectWrite, Reversibility: connectedapps.ReversibilityCompensable,
+	}, connectedapps.CanonicalCall{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fx.intents.Approve(ctx, fx.ws, fx.user, id, nil, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fx.Pool.Exec(ctx, `UPDATE effect_intent SET decided_at = $1 WHERE id = $2 AND workspace_id = $3`, fx.now.Add(-11*time.Minute), id, fx.ws); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fx.intents.Expire(ctx); err != nil {
+		t.Fatal(err)
+	}
+	it, err := fx.intents.Get(ctx, fx.ws, id)
+	if err != nil || it.State != "approved" {
+		t.Fatalf("declared intent = %q, err = %v; want approved", it.State, err)
+	}
+}
+
+type blockingIntentExecutor struct {
+	started chan struct{}
+	resume  chan struct{}
+}
+
+func (f *blockingIntentExecutor) ExecuteIntent(context.Context, pgtype.UUID, pgtype.UUID, string, connectedapps.CanonicalCall) (map[string]any, error) {
+	close(f.started)
+	<-f.resume
+	return map[string]any{"ok": true}, nil
+}
+
+func TestLateApprovalOutcomeDoesNotOverwriteReview(t *testing.T) {
+	fx := newIntentServiceFixture(t)
+	ctx := context.Background()
+	id, _ := fx.rehearseEmail(t, "Original body")
+	executor := &blockingIntentExecutor{started: make(chan struct{}), resume: make(chan struct{})}
+	fx.intents.Apps = executor
+	type result struct {
+		state string
+		err   error
+	}
+	done := make(chan result, 1)
+	go func() {
+		it, err := fx.intents.Approve(ctx, fx.ws, fx.user, id, nil, "")
+		done <- result{it.State, err}
+	}()
+	<-executor.started
+	if _, err := fx.Pool.Exec(ctx, `UPDATE effect_intent SET decided_at = $1 WHERE id = $2 AND workspace_id = $3`, fx.now.Add(-11*time.Minute), id, fx.ws); err != nil {
+		close(executor.resume)
+		t.Fatal(err)
+	}
+	if _, err := fx.intents.Expire(ctx); err != nil {
+		close(executor.resume)
+		t.Fatal(err)
+	}
+	close(executor.resume)
+	got := <-done
+	if got.err != nil || got.state != "failed" {
+		t.Fatalf("late outcome state = %q, err = %v; want failed", got.state, got.err)
+	}
+	if n := fx.Count(t, `SELECT count(*) FROM effect_event WHERE intent_id = $1 AND workspace_id = $2 AND status = 'awaiting'`, id, fx.ws); n != 1 {
+		t.Fatalf("events awaiting reconciliation = %d; want 1", n)
 	}
 }

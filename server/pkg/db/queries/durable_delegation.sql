@@ -25,6 +25,20 @@ WHERE workspace_id = sqlc.arg(workspace_id) AND member_id = sqlc.arg(member_id);
 SELECT * FROM decision_prediction
 WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id);
 
+-- name: LockDecisionPredictionByID :one
+SELECT * FROM decision_prediction
+WHERE id = sqlc.arg(id) AND workspace_id = sqlc.arg(workspace_id)
+FOR UPDATE;
+
+-- name: HasDelegationRevertEvent :one
+SELECT EXISTS(
+    SELECT 1 FROM governance_event
+    WHERE workspace_id = sqlc.arg(workspace_id)
+      AND kind = 'principal_delegation_reverted'
+      AND subject_type = 'decision_prediction'
+      AND subject_id = sqlc.arg(subject_id)
+);
+
 -- name: MarkPredictionAppliedByDelegation :execrows
 -- A delegated decision is the prediction, decided: the decision path has already resolved it with the
 -- decision it made, which is the predicted one. The 72-hour revert window starts from resolved_at.
@@ -44,8 +58,8 @@ ORDER BY created_at DESC, id DESC
 LIMIT 20;
 
 -- name: CountDelegationReverts :one
--- How many of the given delegated decisions the person reverted, as the governance log has them.
-SELECT COUNT(*)::int FROM governance_event
+-- How many distinct delegated decisions the person reverted, as the governance log has them.
+SELECT COUNT(DISTINCT subject_id)::int FROM governance_event
 WHERE workspace_id = sqlc.arg(workspace_id) AND kind = 'principal_delegation_reverted'
   AND subject_type = 'decision_prediction' AND subject_id = ANY(sqlc.arg(subject_ids)::uuid[]);
 

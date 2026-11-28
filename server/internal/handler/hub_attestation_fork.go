@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/hub"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -29,6 +30,10 @@ var hubAttestationKeyFetcherFor = func(h *Handler) service.AttestationKeyResolve
 	return &service.WellKnownKeyFetcher{Own: &own}
 }
 
+func (h *Handler) hubItemEnabled(ctx context.Context, item db.HubItem) bool {
+	return item.Kind != string(hub.KindAgent) || featureflags.DurableOpenEnabled(ctx, h.FeatureFlags)
+}
+
 // hubItemAttestation reads attestations/*.json from the item's stored bundle
 // (without modifying or rebuilding the bundle) and verifies the first entry
 // sorted by path using service.Verify. Returns nil when the item has no stored
@@ -37,7 +42,7 @@ var hubAttestationKeyFetcherFor = func(h *Handler) service.AttestationKeyResolve
 func (h *Handler) hubItemAttestation(ctx context.Context, item db.HubItem) *HubItemAttestationResponse {
 	// Only agent templates carry attestations (spec 13.3). Skipping other kinds
 	// keeps a list of skills and plugins from reading every bundle.
-	if item.Kind != string(hub.KindAgent) {
+	if item.Kind != string(hub.KindAgent) || !featureflags.DurableOpenEnabled(ctx, h.FeatureFlags) {
 		return nil
 	}
 	if item.BundleKey == "" || h.HubStorage == nil {
@@ -67,11 +72,14 @@ func (h *Handler) hubItemAttestation(ctx context.Context, item db.HubItem) *HubI
 	if len(atts) == 0 {
 		return nil
 	}
-	return h.verifyHubBundleAttestation(ctx, atts[0].Content)
+	return h.verifyHubBundleAttestation(ctx, atts[0].Content, item.SourceRef)
 }
 
-func (h *Handler) verifyHubBundleAttestation(ctx context.Context, raw []byte) *HubItemAttestationResponse {
+func (h *Handler) verifyHubBundleAttestation(ctx context.Context, raw []byte, templateRef string) *HubItemAttestationResponse {
 	var probe struct {
+		Subject struct {
+			TemplateRef string `json:"template_ref"`
+		} `json:"subject"`
 		Issuer struct {
 			Host string `json:"host"`
 		} `json:"issuer"`
@@ -82,6 +90,9 @@ func (h *Handler) verifyHubBundleAttestation(ctx context.Context, raw []byte) *H
 	issuerHost := strings.TrimSpace(probe.Issuer.Host)
 	if issuerHost == "" {
 		return &HubItemAttestationResponse{Verified: false, IssuerHost: ""}
+	}
+	if templateRef == "" || probe.Subject.TemplateRef != templateRef {
+		return &HubItemAttestationResponse{Verified: false, IssuerHost: issuerHost}
 	}
 	resolver := hubAttestationKeyFetcherFor(h)
 	if resolver == nil {

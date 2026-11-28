@@ -13,7 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/issueposition"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
@@ -124,6 +126,8 @@ var (
 	ErrReachSurfaceInvalid = errors.New("reach surface must be app:, channel:, area: or external: with a name")
 	// ErrReachSurfaceUnknown: the newest snapshot has no row for the surface.
 	ErrReachSurfaceUnknown = errors.New("reach surface is not in the latest snapshot")
+	// ErrReachSquadNotFound: the squad chosen for the gap issue is not in this workspace.
+	ErrReachSquadNotFound = errors.New("squad not found in this workspace")
 	// ErrReachNoSquad: no squad has asked about the surface, so the gap issue has no one to go to.
 	ErrReachNoSquad = errors.New("no squad has asked about this surface")
 )
@@ -207,9 +211,9 @@ func (s *ReachService) Snapshot(ctx context.Context, ws pgtype.UUID, day time.Ti
 		a := acc(SurfaceOf(EffectRef{Source: e.Source, Target: e.Target}))
 		a.stats.Effects30d += int(e.N)
 		if e.Source == "declared" {
+			// Self-declared effects are not platform-controlled agent effects (spec 4.5, 11.2).
 			a.stats.DeclaredEffects30d += int(e.N)
-		}
-		if e.ByAgent {
+		} else if e.ByAgent {
 			a.stats.EffectsAgent30d += int(e.N)
 			if e.Decision == "allow" {
 				a.stats.AllowedAgent = true
@@ -317,8 +321,9 @@ func (s *ReachService) Latest(ctx context.Context, ws pgtype.UUID) (day time.Tim
 
 // CloseGap opens the issue that asks a squad to close a surface's gap (spec 11.3), assigned to
 // squadID, or to the squad that has asked most about the surface when squadID is not set. A second
-// call returns the issue already open for the surface. The issue carries a criterion that the gap
-// asks fall to half of today's count within 30 days. It writes nothing while durable_open is off.
+// call returns the issue already open for the surface. The issue, its metric criterion, and the
+// snapshot's gap_issue_id link commit together in one transaction under a row lock on the surface's
+// snapshots so concurrent calls open at most one issue and a failure leaves no orphan issue.
 func (s *ReachService) CloseGap(ctx context.Context, ws pgtype.UUID, actor GovernanceActor, surface string, squadID pgtype.UUID) (db.Issue, error) {
 	if !s.on(ctx) {
 		return db.Issue{}, ErrReachOff
@@ -326,45 +331,90 @@ func (s *ReachService) CloseGap(ctx context.Context, ws pgtype.UUID, actor Gover
 	if !ValidReachSurface(surface) {
 		return db.Issue{}, ErrReachSurfaceInvalid
 	}
-	if open, err := s.Queries.LatestReachGapIssueID(ctx, db.LatestReachGapIssueIDParams{WorkspaceID: ws, Surface: surface}); err == nil && open.Valid {
-		if issue, err := s.Queries.GetIssue(ctx, open); err == nil {
-			return issue, nil
+	if s.Verification == nil || !s.Verification.outcomesEnabled(ctx) {
+		return db.Issue{}, ErrOutcomesOff
+	}
+	issueCountPolicy := ResolveIssueCountPolicy(ctx, s.Issues.Entitlements, ws)
+
+	tx, err := s.Issues.TxStarter.Begin(ctx)
+	if err != nil {
+		return db.Issue{}, fmt.Errorf("begin close gap tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	qtx := s.Queries.WithTx(tx)
+
+	lockedRows, err := qtx.LockReachSnapshotRowsForSurface(ctx, db.LockReachSnapshotRowsForSurfaceParams{
+		WorkspaceID: ws, Surface: surface,
+	})
+	if err != nil {
+		return db.Issue{}, fmt.Errorf("lock reach snapshot: %w", err)
+	}
+	if len(lockedRows) == 0 {
+		return db.Issue{}, ErrReachSurfaceUnknown
+	}
+	for _, r := range lockedRows {
+		if r.GapIssueID.Valid {
+			if issue, err := qtx.GetIssue(ctx, r.GapIssueID); err == nil {
+				return issue, nil
+			}
 		}
 	}
 
-	day, err := s.Queries.LatestReachSnapshotDate(ctx, ws)
+	day, err := qtx.LatestReachSnapshotDate(ctx, ws)
 	if err != nil {
 		return db.Issue{}, fmt.Errorf("latest snapshot: %w", err)
 	}
-	if !day.Valid {
+	if !day.Valid || lockedRows[0].SnapshotDate != day {
 		return db.Issue{}, ErrReachSurfaceUnknown
 	}
-	row, err := s.Queries.GetReachSnapshotRow(ctx, db.GetReachSnapshotRowParams{WorkspaceID: ws, SnapshotDate: day, Surface: surface})
-	if err != nil {
-		return db.Issue{}, ErrReachSurfaceUnknown
-	}
+	row := lockedRows[0]
 
+	if squadID.Valid {
+		// A squad chosen by the caller must belong to this workspace before the issue is
+		// assigned to it: the schema has no foreign key to check it.
+		if _, err := qtx.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{ID: squadID, WorkspaceID: ws}); err != nil {
+			return db.Issue{}, mapNoRows(err, ErrReachSquadNotFound, "load squad")
+		}
+	}
 	if !squadID.Valid {
-		squadID, err = s.topGapSquad(ctx, ws, surface)
+		squadID, err = s.topGapSquadWith(ctx, qtx, ws, surface)
 		if err != nil {
 			return db.Issue{}, err
 		}
 	}
-	res, err := s.Issues.Create(ctx, IssueCreateParams{
+
+	issueNumber, err := AllocateIssueNumber(ctx, qtx, ws, issueCountPolicy)
+	if err != nil {
+		return db.Issue{}, fmt.Errorf("allocate gap issue number: %w", err)
+	}
+	const status = "todo"
+	pos, err := issueposition.NextTopPosition(ctx, tx, ws, status)
+	if err != nil {
+		return db.Issue{}, fmt.Errorf("gap issue position: %w", err)
+	}
+	issue, err := qtx.CreateIssue(ctx, db.CreateIssueParams{
+		ID:           dbid.NewV7(),
 		WorkspaceID:  ws,
 		Title:        "Lấp khoảng trống: " + surface,
 		Description:  pgtype.Text{String: reachGapBody(surface, row.GapAsks30d), Valid: true},
-		Status:       "todo",
+		Status:       status,
 		Priority:     "none",
 		AssigneeType: pgtype.Text{String: "squad", Valid: true},
 		AssigneeID:   squadID,
 		CreatorType:  actor.Type,
 		CreatorID:    actor.ID,
-	}, IssueCreateOpts{})
+		Position:     pos,
+		Number:       issueNumber,
+		Properties:   []byte("{}"),
+	})
 	if err != nil {
 		return db.Issue{}, fmt.Errorf("create gap issue: %w", err)
 	}
-	if _, err := s.Verification.AddCriterion(ctx, ws, res.Issue.ID, actor, CriterionInput{
+	source := criterionSourceMember
+	if actor.Type == GovernanceActorAgent {
+		source = criterionSourceAgent
+	}
+	if _, err := s.Verification.insertCriterion(ctx, qtx, ws, issue.ID, actor, source, CriterionInput{
 		Text:      fmt.Sprintf("Số câu hỏi thiếu quyền hoặc thông tin của %s giảm còn một nửa (từ %d) trong 30 ngày.", surface, row.GapAsks30d),
 		CheckKind: CheckKindMetric,
 		CheckSpec: map[string]any{
@@ -379,19 +429,28 @@ func (s *ReachService) CloseGap(ctx context.Context, ws pgtype.UUID, actor Gover
 	}); err != nil {
 		return db.Issue{}, fmt.Errorf("add gap criterion: %w", err)
 	}
-	if err := s.Queries.SetReachGapIssue(ctx, db.SetReachGapIssueParams{GapIssueID: res.Issue.ID, WorkspaceID: ws, Surface: surface}); err != nil {
+	if err := qtx.SetReachGapIssue(ctx, db.SetReachGapIssueParams{
+		GapIssueID: issue.ID, WorkspaceID: ws, Surface: surface,
+	}); err != nil {
 		return db.Issue{}, fmt.Errorf("record gap issue: %w", err)
 	}
-	return res.Issue, nil
+	if err := tx.Commit(ctx); err != nil {
+		return db.Issue{}, fmt.Errorf("commit gap issue: %w", err)
+	}
+	return issue, nil
 }
 
-// topGapSquad returns the squad whose gap asks about the surface are most numerous in the 30 days
+// topGapSquadWith returns the squad whose gap asks about the surface are most numerous in the 30 days
 // to now. Ties go to the larger squad id, so the choice is the same on every call.
-func (s *ReachService) topGapSquad(ctx context.Context, ws pgtype.UUID, surface string) (pgtype.UUID, error) {
+func (s *ReachService) topGapSquadWith(ctx context.Context, q *db.Queries, ws pgtype.UUID, surface string) (pgtype.UUID, error) {
 	end := reachDay(s.now()).AddDate(0, 0, 1)
-	rows, err := s.reachAsks(ctx, ws, end.AddDate(0, 0, -reachWindowDays), end)
+	rows, err := q.ReachAskCounts(ctx, db.ReachAskCountsParams{
+		WorkspaceID: ws,
+		WindowStart: pgtype.Timestamptz{Time: end.AddDate(0, 0, -reachWindowDays), Valid: true},
+		WindowEnd:   pgtype.Timestamptz{Time: end, Valid: true},
+	})
 	if err != nil {
-		return pgtype.UUID{}, err
+		return pgtype.UUID{}, fmt.Errorf("count asks: %w", err)
 	}
 	counts := map[pgtype.UUID]int64{}
 	for _, k := range rows {

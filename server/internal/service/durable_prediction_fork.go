@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	proposalkinds "github.com/multica-ai/multica/server/internal/service/proposal_kinds"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -71,10 +72,96 @@ type PredictionService struct {
 	TxStarter TxStarter
 	Tasks     *TaskService
 	Flags     *featureflag.Service
+	// Proposals, Intents, and Checks are optional targets used when an eligible prediction
+	// auto-applies a delegated decision (durable spec 6.5).
+	Proposals *ProposalService
+	Intents   *IntentService
+	Checks    *VerificationService
 }
 
 func (s *PredictionService) on(ctx context.Context) bool {
 	return featureflags.DurablePrincipalEnabled(ctx, s.Flags)
+}
+
+func proposalDecisionKind(kind string) string {
+	switch kind {
+	case "", "proposal", proposalkinds.KeyDecision:
+		return "proposal:general"
+	default:
+		return "proposal:" + kind
+	}
+}
+
+func effectDecisionKind(class string) string {
+	return "effect:" + firstNonEmpty(class, "write")
+}
+
+// validSubjectDecisionKind checks that decision_kind has the exact prefix or value required by
+// subject_type (durable spec 6.2, 6.4).
+func validSubjectDecisionKind(subjectType, kind string) bool {
+	if !validPrincipalKind(kind) {
+		return false
+	}
+	switch subjectType {
+	case "proposal":
+		return strings.HasPrefix(kind, "proposal:")
+	case "effect_intent":
+		return strings.HasPrefix(kind, "effect:")
+	case "outcome_check":
+		return kind == "outcome"
+	case "inquiry":
+		return kind == "inquiry"
+	default:
+		return false
+	}
+}
+
+// lookupSubjectDecisionKind resolves the authoritative decision_kind and delegation constraints of
+// a subject row in workspace ws. found is false when the subject does not exist in ws.
+func lookupSubjectDecisionKind(ctx context.Context, q *db.Queries, ws pgtype.UUID, subjectType string, subjectID pgtype.UUID) (kind string, ask AskInput, found bool, err error) {
+	if !subjectID.Valid {
+		return "", AskInput{}, false, nil
+	}
+	switch subjectType {
+	case "proposal":
+		prop, err := q.GetProposalInWorkspace(ctx, db.GetProposalInWorkspaceParams{ID: subjectID, WorkspaceID: ws})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", AskInput{}, false, nil
+		}
+		if err != nil {
+			return "", AskInput{}, false, fmt.Errorf("load proposal subject: %w", err)
+		}
+		return proposalDecisionKind(prop.Kind), AskInput{SubjectType: "proposal", Urgent: prop.Urgent}, true, nil
+	case "effect_intent":
+		it, err := q.GetEffectIntent(ctx, db.GetEffectIntentParams{ID: subjectID, WorkspaceID: ws})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", AskInput{}, false, nil
+		}
+		if err != nil {
+			return "", AskInput{}, false, fmt.Errorf("load effect intent subject: %w", err)
+		}
+		return effectDecisionKind(it.EffectClass), AskInput{SubjectType: "effect_intent", Irreversible: it.Reversibility == "irreversible"}, true, nil
+	case "outcome_check":
+		_, err := q.GetWorkOutcomeInWorkspace(ctx, db.GetWorkOutcomeInWorkspaceParams{ID: subjectID, WorkspaceID: ws})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", AskInput{}, false, nil
+		}
+		if err != nil {
+			return "", AskInput{}, false, fmt.Errorf("load outcome subject: %w", err)
+		}
+		return "outcome", AskInput{SubjectType: "outcome_check"}, true, nil
+	case "inquiry":
+		exists, err := q.ExistsBriefInquiryInWorkspace(ctx, db.ExistsBriefInquiryInWorkspaceParams{ID: subjectID, WorkspaceID: ws})
+		if err != nil {
+			return "", AskInput{}, false, fmt.Errorf("load inquiry subject: %w", err)
+		}
+		if !exists {
+			return "", AskInput{}, false, nil
+		}
+		return "inquiry", AskInput{SubjectType: "inquiry"}, true, nil
+	default:
+		return "", AskInput{}, false, nil
+	}
 }
 
 // predictionKind is the decision kind a question is predicted under: the kind of the proposal,
@@ -82,12 +169,9 @@ func (s *PredictionService) on(ctx context.Context) bool {
 func predictionKind(ask AskInput) string {
 	switch ask.SubjectType {
 	case "proposal":
-		if ask.EstimateKind != "" && ask.EstimateKind != "proposal" {
-			return "proposal:" + ask.EstimateKind
-		}
-		return "proposal:general"
+		return proposalDecisionKind(ask.EstimateKind)
 	case "effect_intent":
-		return "effect:" + firstNonEmpty(ask.EstimateKind, "write")
+		return effectDecisionKind(ask.EstimateKind)
 	case "outcome_check":
 		return "outcome"
 	case "inquiry":
@@ -106,7 +190,8 @@ func firstNonEmpty(values ...string) string {
 }
 
 // Request makes a pending prediction for each profiled decider of the workspace, for a question just
-// admitted. Nothing is made about the person the question is about (spec 6.4), and nothing while
+// admitted, and enqueues a lightweight routine prediction task for the workspace Secretary
+// (spec 6.4). Nothing is made about the person the question is about, and nothing while
 // durable_principal is off or when no decider has a profile.
 func (s *PredictionService) Request(ctx context.Context, ask AskInput) error {
 	if !s.on(ctx) || !predictionSubjectTypes[ask.SubjectType] || !ask.SubjectID.Valid {
@@ -117,16 +202,214 @@ func (s *PredictionService) Request(ctx context.Context, ask AskInput) error {
 		return fmt.Errorf("list profiled deciders: %w", err)
 	}
 	kind := predictionKind(ask)
+	if subjectKind, _, found, err := lookupSubjectDecisionKind(ctx, s.Queries, ask.WorkspaceID, ask.SubjectType, ask.SubjectID); err != nil {
+		return err
+	} else if found {
+		kind = subjectKind
+	}
+	var pendingMembers []pgtype.UUID
 	for _, member := range deciders {
 		if ask.AboutMember.Valid && principalSameUUID(ask.AboutMember, member) {
 			continue
 		}
-		if _, err := s.Queries.InsertPendingPrediction(ctx, db.InsertPendingPredictionParams{
+		n, err := s.Queries.InsertPendingPrediction(ctx, db.InsertPendingPredictionParams{
 			ID: dbid.NewV7(), WorkspaceID: ask.WorkspaceID, MemberID: member,
 			SubjectType: ask.SubjectType, SubjectID: ask.SubjectID, DecisionKind: kind,
-		}); err != nil {
+		})
+		if err != nil {
 			return fmt.Errorf("request prediction: %w", err)
 		}
+		if n > 0 {
+			pendingMembers = append(pendingMembers, member)
+		}
+	}
+	if len(pendingMembers) == 0 {
+		return nil
+	}
+	return s.enqueuePredictionTask(ctx, ask, kind, pendingMembers)
+}
+
+// principalPredictionKind and principalPredictionTitle identify Secretary routine prediction tasks.
+const (
+	principalPredictionTitle = "Dự đoán quyết định"
+	principalPredictionKind  = "principal_prediction"
+)
+
+// PrincipalPredictionTargetContext carries the traits and recent decisions for one profiled decider.
+type PrincipalPredictionTargetContext struct {
+	MemberID        string                             `json:"member_id"`
+	Traits          []PrincipalLearningTraitContext    `json:"traits"`
+	RecentDecisions []PrincipalLearningDecisionContext `json:"recent_decisions"`
+}
+
+// PrincipalPredictionTaskContext is the JSON context carried by a Secretary routine task for
+// predicting decisions on a newly admitted question (durable spec 6.4).
+type PrincipalPredictionTaskContext struct {
+	Kind         string                             `json:"kind"`
+	RunClass     string                             `json:"run_class"`
+	Title        string                             `json:"title"`
+	WorkspaceID  string                             `json:"workspace_id"`
+	SubjectType  string                             `json:"subject_type"`
+	SubjectID    string                             `json:"subject_id"`
+	DecisionKind string                             `json:"decision_kind"`
+	Prompt       string                             `json:"prompt"`
+	Targets      []PrincipalPredictionTargetContext `json:"targets"`
+}
+
+// enqueuePredictionTask queues a routine task for the workspace Secretary following the standard
+// row-lock order (agent first, then lock_task_owner_rows inside EnqueuePrincipalLearningTask).
+func (s *PredictionService) enqueuePredictionTask(ctx context.Context, ask AskInput, kind string, members []pgtype.UUID) error {
+	secretaryID, err := s.Queries.GetWorkspaceSecretaryAgentID(ctx, ask.WorkspaceID)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !secretaryID.Valid) {
+		slog.Warn("principal prediction: workspace has no secretary agent; skipping task",
+			"workspace_id", util.UUIDToString(ask.WorkspaceID))
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("load workspace secretary: %w", err)
+	}
+	secretary, err := s.Queries.GetAgent(ctx, secretaryID)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && (secretary.WorkspaceID != ask.WorkspaceID || secretary.ArchivedAt.Valid || !secretary.RuntimeID.Valid)) {
+		slog.Warn("principal prediction: workspace secretary unavailable; skipping task",
+			"workspace_id", util.UUIDToString(ask.WorkspaceID), "secretary_id", util.UUIDToString(secretaryID))
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("load secretary agent: %w", err)
+	}
+
+	targets := make([]PrincipalPredictionTargetContext, 0, len(members))
+	for _, member := range members {
+		allTraits, err := s.Queries.ListActivePrincipalTraits(ctx, db.ListActivePrincipalTraitsParams{
+			WorkspaceID: ask.WorkspaceID, MemberID: member,
+		})
+		if err != nil {
+			return fmt.Errorf("list active principal traits: %w", err)
+		}
+		traits := make([]PrincipalLearningTraitContext, 0, len(allTraits))
+		for _, t := range allTraits {
+			if t.DecisionKind != kind && t.DecisionKind != "general" {
+				continue
+			}
+			traits = append(traits, PrincipalLearningTraitContext{
+				ID:           util.UUIDToString(t.ID),
+				DecisionKind: t.DecisionKind,
+				Statement:    t.Statement,
+				Origin:       t.Origin,
+				ReadOnly:     t.Origin == principalOriginEdited,
+			})
+		}
+		recentRows, err := s.Queries.ListRecentResolvedDecisionsForKind(ctx, db.ListRecentResolvedDecisionsForKindParams{
+			WorkspaceID: ask.WorkspaceID, MemberID: member, DecisionKind: kind,
+		})
+		if err != nil {
+			return fmt.Errorf("list recent resolved decisions: %w", err)
+		}
+		recent := make([]PrincipalLearningDecisionContext, len(recentRows))
+		for i, r := range recentRows {
+			var matched *bool
+			if r.Matched.Valid {
+				v := r.Matched.Bool
+				matched = &v
+			}
+			recent[i] = PrincipalLearningDecisionContext{
+				ID:           util.UUIDToString(r.ID),
+				SubjectType:  r.SubjectType,
+				SubjectID:    util.UUIDToString(r.SubjectID),
+				DecisionKind: kind,
+				Predicted:    r.Predicted,
+				Actual:       r.Actual.String,
+				Matched:      matched,
+				ResolvedAt:   r.ResolvedAt.Time.UTC().Format(time.RFC3339),
+			}
+		}
+		targets = append(targets, PrincipalPredictionTargetContext{
+			MemberID:        util.UUIDToString(member),
+			Traits:          traits,
+			RecentDecisions: recent,
+		})
+	}
+
+	subjectIDStr := util.UUIDToString(ask.SubjectID)
+	payload := PrincipalPredictionTaskContext{
+		Kind:         principalPredictionKind,
+		RunClass:     string(RunClassRoutine),
+		Title:        principalPredictionTitle,
+		WorkspaceID:  util.UUIDToString(ask.WorkspaceID),
+		SubjectType:  ask.SubjectType,
+		SubjectID:    subjectIDStr,
+		DecisionKind: kind,
+		Prompt: fmt.Sprintf(
+			"Dự đoán quyết định cho %s (%s, kind=%s). Đọc traits và 10 quyết định gần nhất trong context rồi ghi kết quả qua `multica principal predict --subject %s:%s --predicted <value> --confidence <0..1> --why <reason> --traits <ids>`.",
+			ask.SubjectType, subjectIDStr, kind, ask.SubjectType, subjectIDStr,
+		),
+		Targets: targets,
+	}
+	contextJSON, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encode prediction task context: %w", err)
+	}
+
+	taskID := dbid.NewV7()
+	summary := fmt.Sprintf("%s: %s (%s)", principalPredictionTitle, kind, ask.SubjectType)
+	var task db.AgentTaskQueue
+	enqueued := false
+
+	runEnqueue := func(q *db.Queries) error {
+		created, err := q.EnqueuePrincipalLearningTask(ctx, db.EnqueuePrincipalLearningTaskParams{
+			ID:             taskID,
+			AgentID:        secretary.ID,
+			WorkspaceID:    ask.WorkspaceID,
+			TriggerSummary: pgtype.Text{String: summary, Valid: true},
+			Context:        contextJSON,
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errLearningSecretaryUnavailable
+		}
+		if err != nil {
+			return fmt.Errorf("enqueue principal prediction task: %w", err)
+		}
+		if _, err := q.SetPendingPredictionTaskID(ctx, db.SetPendingPredictionTaskIDParams{
+			PredictorTaskID: created.ID,
+			WorkspaceID:     ask.WorkspaceID,
+			SubjectType:     ask.SubjectType,
+			SubjectID:       ask.SubjectID,
+			MemberIds:       members,
+		}); err != nil {
+			return fmt.Errorf("link pending prediction task: %w", err)
+		}
+		task = created
+		enqueued = true
+		return nil
+	}
+
+	if s.TxStarter != nil {
+		tx, err := s.TxStarter.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("begin prediction enqueue tx: %w", err)
+		}
+		defer tx.Rollback(ctx)
+		if err := runEnqueue(s.Queries.WithTx(tx)); err != nil {
+			if errors.Is(err, errLearningSecretaryUnavailable) {
+				return nil
+			}
+			return err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return fmt.Errorf("commit prediction enqueue tx: %w", err)
+		}
+	} else {
+		if err := runEnqueue(s.Queries); err != nil {
+			if errors.Is(err, errLearningSecretaryUnavailable) {
+				return nil
+			}
+			return err
+		}
+	}
+
+	if enqueued && s.Tasks != nil {
+		s.Tasks.broadcastTaskEvent(ctx, protocol.EventTaskQueued, task)
+		s.Tasks.NotifyTaskEnqueued(ctx, task)
 	}
 	return nil
 }
@@ -144,7 +427,7 @@ func (s *PredictionService) Record(ctx context.Context, actor PrincipalActor, in
 	why := strings.TrimSpace(in.Why)
 	if predicted == "" || utf8.RuneCountInString(predicted) > predictionValueMax ||
 		in.Confidence < 0 || in.Confidence > 1 || utf8.RuneCountInString(why) > predictionReasonMax ||
-		!predictionSubjectTypes[in.SubjectType] || !validPrincipalKind(in.DecisionKind) {
+		!predictionSubjectTypes[in.SubjectType] || !validSubjectDecisionKind(in.SubjectType, in.DecisionKind) {
 		return db.DecisionPrediction{}, ErrPredictionInvalid
 	}
 	profile, err := s.Queries.GetPrincipalProfile(ctx, db.GetPrincipalProfileParams{WorkspaceID: in.WorkspaceID, MemberID: in.MemberID})
@@ -154,6 +437,25 @@ func (s *PredictionService) Record(ctx context.Context, actor PrincipalActor, in
 	if err != nil {
 		return db.DecisionPrediction{}, fmt.Errorf("load principal profile: %w", err)
 	}
+	if existing, err := s.Queries.GetDecisionPrediction(ctx, db.GetDecisionPredictionParams{
+		WorkspaceID: in.WorkspaceID, MemberID: in.MemberID, SubjectType: in.SubjectType, SubjectID: in.SubjectID,
+	}); err == nil {
+		if existing.ResolvedAt.Valid {
+			return db.DecisionPrediction{}, ErrPredictionLate
+		}
+		if existing.DecisionKind != in.DecisionKind {
+			return db.DecisionPrediction{}, ErrPredictionInvalid
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return db.DecisionPrediction{}, fmt.Errorf("load existing prediction: %w", err)
+	}
+	subjectKind, _, found, err := lookupSubjectDecisionKind(ctx, s.Queries, in.WorkspaceID, in.SubjectType, in.SubjectID)
+	if err != nil {
+		return db.DecisionPrediction{}, err
+	}
+	if !found || subjectKind != in.DecisionKind {
+		return db.DecisionPrediction{}, ErrPredictionInvalid
+	}
 	row, err := s.Queries.RecordDecisionPrediction(ctx, db.RecordDecisionPredictionParams{
 		ID: dbid.NewV7(), WorkspaceID: in.WorkspaceID, MemberID: in.MemberID,
 		SubjectType: in.SubjectType, SubjectID: in.SubjectID, DecisionKind: in.DecisionKind,
@@ -161,15 +463,19 @@ func (s *PredictionService) Record(ctx context.Context, actor PrincipalActor, in
 		TraitIds: traitIDsOrEmpty(in.TraitIDs), ProfileVersion: profile.Version, PredictorTaskID: in.TaskID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		// The question is already decided: its prediction keeps the outcome it had.
-		return db.DecisionPrediction{}, ErrPredictionLate
+		existing, gErr := s.Queries.GetDecisionPrediction(ctx, db.GetDecisionPredictionParams{
+			WorkspaceID: in.WorkspaceID, MemberID: in.MemberID, SubjectType: in.SubjectType, SubjectID: in.SubjectID,
+		})
+		if gErr == nil && existing.ResolvedAt.Valid {
+			// The question is already decided: its prediction keeps the outcome it had.
+			return db.DecisionPrediction{}, ErrPredictionLate
+		}
+		return db.DecisionPrediction{}, ErrPredictionInvalid
 	}
 	if err != nil {
 		return db.DecisionPrediction{}, fmt.Errorf("record prediction: %w", err)
 	}
-	if in.SubjectType == "inquiry" {
-		row = s.delegateInquiry(ctx, row)
-	}
+	row = s.maybeAutoDelegate(ctx, row)
 	return row, nil
 }
 
@@ -194,6 +500,17 @@ func (s *PredictionService) Resolve(ctx context.Context, ws pgtype.UUID, subject
 		WorkspaceID: ws, SubjectType: subjectType, SubjectID: subjectID, Actual: actualText,
 	}); err != nil {
 		return fmt.Errorf("record resolved decision outcome: %w", err)
+	}
+	owners, err := s.Queries.ListResolvedPredictionOwnersForSubject(ctx, db.ListResolvedPredictionOwnersForSubjectParams{
+		WorkspaceID: ws, SubjectType: subjectType, SubjectID: subjectID,
+	})
+	if err != nil {
+		return fmt.Errorf("list resolved prediction owners: %w", err)
+	}
+	for _, owner := range owners {
+		if err := s.delegation().ReviewAccuracy(ctx, ws, owner.MemberID, owner.DecisionKind); err != nil {
+			return fmt.Errorf("review delegation accuracy: %w", err)
+		}
 	}
 	return nil
 }
@@ -276,7 +593,13 @@ func traitIDsOrEmpty(ids []pgtype.UUID) []pgtype.UUID {
 
 // delegation is the delegation service over this prediction service's queries.
 func (s *PredictionService) delegation() *DelegationService {
-	return &DelegationService{Queries: s.Queries, Flags: s.Flags, Predictions: s}
+	return &DelegationService{
+		Queries:     s.Queries,
+		TxStarter:   s.TxStarter,
+		Flags:       s.Flags,
+		Predictions: s,
+		Checks:      s.Checks,
+	}
 }
 
 // principalLearningTitle titles the Secretary routine task that updates a person's profile.
@@ -322,7 +645,7 @@ type PrincipalLearningTaskContext struct {
 }
 
 // LearnBatches runs the profile update job over every active profile: each person with unlearned
-// decisions resolved in the six-hour window gets one routine task enqueued for the workspace
+// decisions gets one routine task enqueued for the workspace
 // Secretary (durable spec 6.3, V1.9). It returns the number of tasks enqueued.
 func (s *PredictionService) LearnBatches(ctx context.Context, now time.Time) (int, error) {
 	if !s.on(ctx) {
@@ -346,7 +669,7 @@ func (s *PredictionService) LearnBatches(ctx context.Context, now time.Time) (in
 }
 
 // learnBatch enqueues a routine task for the workspace Secretary covering unlearned decisions
-// resolved in the last six hours. Decisions are stamped with learning_task_id so re-running the
+// at any time. Decisions are stamped with learning_task_id so re-running the
 // job never enqueues a duplicate task for the same decisions.
 func (s *PredictionService) learnBatch(ctx context.Context, ws, member pgtype.UUID, now time.Time) (bool, error) {
 	secretaryID, err := s.Queries.GetWorkspaceSecretaryAgentID(ctx, ws)
@@ -367,9 +690,8 @@ func (s *PredictionService) learnBatch(ctx context.Context, ws, member pgtype.UU
 		return false, fmt.Errorf("load secretary agent: %w", err)
 	}
 
-	since := now.Add(-predictionBatchWindow)
-	rows, err := s.Queries.ListUnlearnedResolvedPredictionsSince(ctx, db.ListUnlearnedResolvedPredictionsSinceParams{
-		WorkspaceID: ws, MemberID: member, Since: pgtype.Timestamptz{Time: since, Valid: true},
+	rows, err := s.Queries.ListUnlearnedResolvedPredictions(ctx, db.ListUnlearnedResolvedPredictionsParams{
+		WorkspaceID: ws, MemberID: member,
 	})
 	if err != nil {
 		return false, fmt.Errorf("list resolved predictions: %w", err)
@@ -480,7 +802,7 @@ var errLearningSecretaryUnavailable = errors.New("secretary unavailable")
 func buildPrincipalLearningContext(
 	ws, member pgtype.UUID,
 	profileVersion int32,
-	rows []db.ListUnlearnedResolvedPredictionsSinceRow,
+	rows []db.ListUnlearnedResolvedPredictionsRow,
 	traits []db.PrincipalTrait,
 ) ([]byte, error) {
 	decisions := make([]PrincipalLearningDecisionContext, len(rows))
@@ -525,9 +847,9 @@ func buildPrincipalLearningContext(
 	return json.Marshal(payload)
 }
 
-func learningBatchPrompt(rows []db.ListUnlearnedResolvedPredictionsSinceRow) string {
+func learningBatchPrompt(rows []db.ListUnlearnedResolvedPredictionsRow) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Cập nhật hồ sơ: %d quyết định mới trong 6 giờ qua.\n", len(rows))
+	fmt.Fprintf(&b, "Cập nhật hồ sơ: %d quyết định chưa được học.\n", len(rows))
 	b.WriteString("Đọc các quyết định, ghi chú và các trait hiện có trong context; đề xuất thêm, sửa (retire + tạo mới kèm bằng chứng) hoặc retire trait đã học.\n")
 	b.WriteString("Không bao giờ sửa hoặc retire các trait có read_only=true (origin=edited): chỉ chính người đó mới được retire.\n")
 	for _, r := range rows {
@@ -543,6 +865,3 @@ func learningBatchPrompt(rows []db.ListUnlearnedResolvedPredictionsSinceRow) str
 	}
 	return b.String()
 }
-
-// predictionBatchWindow is how often a person gets a profile update batch (spec 6.3).
-const predictionBatchWindow = 6 * time.Hour

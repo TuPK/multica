@@ -66,20 +66,35 @@ UPDATE effect_intent SET
 WHERE id = sqlc.arg('id')::uuid AND workspace_id = sqlc.arg('workspace_id')::uuid AND state = 'pending';
 
 -- name: ExpirePendingEffectIntents :many
--- Moves every pending intent past its expiry to expired. The RETURNING rows are the
--- ones this run expired, so each agent is woken once.
+-- Moves a bounded batch of pending intents past their expiry to expired, skipping rows
+-- locked by concurrent decisions. The RETURNING rows are the ones this batch expired,
+-- so each agent is woken once.
 UPDATE effect_intent SET state = 'expired', decided_at = now()
-WHERE state = 'pending' AND expires_at <= sqlc.arg('now')::timestamptz
+WHERE id IN (
+    SELECT id FROM effect_intent
+    WHERE state = 'pending' AND expires_at <= sqlc.arg('now')::timestamptz
+    ORDER BY expires_at ASC, id ASC
+    LIMIT sqlc.arg('row_limit')::integer
+    FOR UPDATE SKIP LOCKED
+)
 RETURNING *;
 
 -- name: LinkEffectEventToIntent :exec
 UPDATE effect_event SET intent_id = sqlc.arg('intent_id')::uuid
-WHERE id = sqlc.arg('id')::uuid AND workspace_id = sqlc.arg('workspace_id')::uuid;
+WHERE id = sqlc.arg('id')::uuid AND workspace_id = sqlc.arg('workspace_id')::uuid
+  AND status = 'awaiting' AND intent_id IS NULL;
 
 -- name: FinishEffectEventForIntent :execrows
--- The rehearsed action's event follows its intent: awaiting to executed or failed.
-UPDATE effect_event SET status = sqlc.arg('status')::text
-WHERE intent_id = sqlc.arg('intent_id')::uuid AND workspace_id = sqlc.arg('workspace_id')::uuid AND status = 'awaiting';
+-- The rehearsed action's event follows its intent: awaiting to executed, blocked, or failed.
+-- When executed, undo, undo_until and result are recorded in the same transition.
+UPDATE effect_event SET
+    status = sqlc.arg('status')::text,
+    undo = COALESCE(sqlc.narg('undo')::jsonb, undo),
+    undo_until = COALESCE(sqlc.narg('undo_until')::timestamptz, undo_until),
+    result = COALESCE(sqlc.narg('result')::jsonb, result)
+WHERE intent_id = sqlc.arg('intent_id')::uuid AND workspace_id = sqlc.arg('workspace_id')::uuid
+  AND status = 'awaiting'
+  AND sqlc.arg('status')::text IN ('executed', 'blocked', 'failed');
 
 -- name: CancelEffectEventForIntent :execrows
 -- A rejected or expired intent's event goes to blocked: the action did not run.

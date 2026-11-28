@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -85,6 +84,10 @@ func (h *Handler) GetEffectPolicy(w http.ResponseWriter, r *http.Request) {
 // an admin may change the policy. A loosening the grid locks is refused with its reason as
 // the code; a loosening that is allowed is recorded in the governance log by the store.
 func (h *Handler) SaveEffectPolicy(w http.ResponseWriter, r *http.Request) {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return
+	}
 	workspaceID := h.resolveWorkspaceID(r)
 	member, ok := h.workspaceMember(w, r, workspaceID)
 	if !ok {
@@ -104,8 +107,7 @@ func (h *Handler) SaveEffectPolicy(w http.ResponseWriter, r *http.Request) {
 		Reversibility string `json:"reversibility"`
 		Decision      string `json:"decision"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if !readCappedJSON(w, r, durableRequestBodyLimit, &req, "invalid request body") {
 		return
 	}
 	if h.durable.EffectPolicy == nil {

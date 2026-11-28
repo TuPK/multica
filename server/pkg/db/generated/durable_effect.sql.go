@@ -65,6 +65,7 @@ UPDATE effect_event SET
 WHERE id = $5::uuid
     AND workspace_id = $6::uuid
     AND status = 'awaiting'
+    AND $1::text IN ('executed', 'blocked', 'failed')
 `
 
 type FinishEffectEventParams struct {
@@ -76,8 +77,8 @@ type FinishEffectEventParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 }
 
-// Moves an awaiting event to its outcome. undo, undo_until and result are set
-// when the forward call succeeded.
+// Moves an awaiting event to its outcome (executed|blocked|failed). undo, undo_until
+// and result are set only during this single transition when the forward call succeeded.
 func (q *Queries) FinishEffectEvent(ctx context.Context, arg FinishEffectEventParams) (int64, error) {
 	result, err := q.db.Exec(ctx, finishEffectEvent,
 		arg.Status,
@@ -189,6 +190,118 @@ func (q *Queries) InsertEffectEvent(ctx context.Context, arg InsertEffectEventPa
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const insertGatedEffectEvent = `-- name: InsertGatedEffectEvent :one
+INSERT INTO effect_event (workspace_id, task_id, agent_id, member_id, source, target,
+    effect_class, reversibility, decision, status, summary, intent_id, app_tool_call_id)
+SELECT
+    $1::uuid,
+    $2::uuid,
+    $3::uuid,
+    $4::uuid,
+    $5::text,
+    $6::text,
+    $7::text,
+    $8::text,
+    g.final_decision,
+    CASE
+        WHEN $5::text = 'declared' THEN 'declared'
+        WHEN g.final_decision = 'block' THEN 'blocked'
+        ELSE 'awaiting'
+    END,
+    $9::text,
+    $10::uuid,
+    $11::uuid
+FROM (
+    SELECT
+        CASE
+            WHEN COALESCE(t.context->>'durable_kind', '') = 'shadow'
+                 AND $7::text <> 'read' THEN 'block'
+            WHEN COALESCE(t.context->>'durable_kind', '') = 'verification'
+                 AND $7::text NOT IN ('read', 'write_internal') THEN 'block'
+            WHEN w.company_state = 'paused'
+                 AND $7::text <> 'read'
+                 AND $2::uuid IS NOT NULL
+                 AND NOT (
+                     COALESCE(t.context->>'durable_kind', '') NOT IN ('shadow', 'verification')
+                     AND NOT (
+                         COALESCE(r.source, '') = 'catchup'
+                         OR (COALESCE(ap.assignee_type, '') = 'agent'
+                             AND w.secretary_agent_id IS NOT NULL
+                             AND COALESCE(ap.assignee_id = w.secretary_agent_id, false)
+                             AND COALESCE(ap.title, '') IN ('Daily brief', 'Weekly review'))
+                     )
+                     AND (
+                         COALESCE(r.source, '') = 'manual'
+                         OR t.chat_session_id IS NOT NULL
+                         OR COALESCE(t.originator_source, '') = 'direct_human'
+                     )
+                 ) THEN 'block'
+            ELSE $12::text
+        END::text AS final_decision
+    FROM workspace w
+    LEFT JOIN agent_task_queue t
+        ON $2::uuid IS NOT NULL
+        AND t.id = $2::uuid
+        -- agent_task_queue has no workspace column: a task counts only when its agent is in this workspace.
+        AND EXISTS (SELECT 1 FROM agent ax WHERE ax.id = t.agent_id AND ax.workspace_id = w.id)
+    LEFT JOIN agent ta
+        ON ta.id = t.agent_id
+        AND ta.workspace_id = w.id
+    LEFT JOIN autopilot_run r
+        ON r.id = t.autopilot_run_id
+        AND ta.id IS NOT NULL
+    LEFT JOIN autopilot ap
+        ON ap.id = r.autopilot_id
+        AND ap.workspace_id = w.id
+    WHERE w.id = $1::uuid
+      AND ($2::uuid IS NULL OR ta.id IS NOT NULL)
+) g
+RETURNING id, decision
+`
+
+type InsertGatedEffectEventParams struct {
+	WorkspaceID   pgtype.UUID `json:"workspace_id"`
+	TaskID        pgtype.UUID `json:"task_id"`
+	AgentID       pgtype.UUID `json:"agent_id"`
+	MemberID      pgtype.UUID `json:"member_id"`
+	Source        string      `json:"source"`
+	Target        string      `json:"target"`
+	EffectClass   string      `json:"effect_class"`
+	Reversibility string      `json:"reversibility"`
+	Summary       string      `json:"summary"`
+	IntentID      pgtype.UUID `json:"intent_id"`
+	AppToolCallID pgtype.UUID `json:"app_tool_call_id"`
+	BaseDecision  string      `json:"base_decision"`
+}
+
+type InsertGatedEffectEventRow struct {
+	ID       pgtype.UUID `json:"id"`
+	Decision string      `json:"decision"`
+}
+
+// Evaluates task run class (shadow/verification/human) and workspace pause state inline
+// during the effect_event insert so Gate issues zero separate SELECT queries on the hot
+// path (durable spec 14.7) and never reads stale shadow or pause state.
+func (q *Queries) InsertGatedEffectEvent(ctx context.Context, arg InsertGatedEffectEventParams) (InsertGatedEffectEventRow, error) {
+	row := q.db.QueryRow(ctx, insertGatedEffectEvent,
+		arg.WorkspaceID,
+		arg.TaskID,
+		arg.AgentID,
+		arg.MemberID,
+		arg.Source,
+		arg.Target,
+		arg.EffectClass,
+		arg.Reversibility,
+		arg.Summary,
+		arg.IntentID,
+		arg.AppToolCallID,
+		arg.BaseDecision,
+	)
+	var i InsertGatedEffectEventRow
+	err := row.Scan(&i.ID, &i.Decision)
+	return i, err
 }
 
 const listEffectEvents = `-- name: ListEffectEvents :many

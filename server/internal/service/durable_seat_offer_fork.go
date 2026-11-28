@@ -303,6 +303,15 @@ func SeatAttestationVerified(payload []byte, keys KeySet) (bool, error) {
 	if len(p.Attestation) == 0 {
 		return false, nil
 	}
+	// The attestation must bind to this payload's template, as VerifySeatAttestation requires.
+	var probe struct {
+		Subject struct {
+			TemplateRef string `json:"template_ref"`
+		} `json:"subject"`
+	}
+	if err := json.Unmarshal(p.Attestation, &probe); err != nil || p.Template == "" || probe.Subject.TemplateRef != p.Template {
+		return false, nil
+	}
 	return Verify(p.Attestation, keys) == nil, nil
 }
 
@@ -371,11 +380,14 @@ func VerifySeatAttestation(ctx context.Context, payload []byte, resolver Attesta
 		return false, nil
 	}
 	var probe struct {
+		Subject struct {
+			TemplateRef string `json:"template_ref"`
+		} `json:"subject"`
 		Issuer struct {
 			Host string `json:"host"`
 		} `json:"issuer"`
 	}
-	if err := json.Unmarshal(p.Attestation, &probe); err != nil || probe.Issuer.Host == "" {
+	if err := json.Unmarshal(p.Attestation, &probe); err != nil || probe.Issuer.Host == "" || p.Template == "" || probe.Subject.TemplateRef != p.Template {
 		return false, nil
 	}
 	keys, err := resolver.KeysForHost(ctx, probe.Issuer.Host)

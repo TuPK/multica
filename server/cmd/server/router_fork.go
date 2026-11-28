@@ -313,22 +313,22 @@ func registerForkWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 	// traits. The handlers refuse agents for the person-only routes. Flat registrations, as the
 	// company endpoints above are.
 	r.Get("/api/principal/profile", h.GetPrincipalProfile)
-	r.Put("/api/principal/profile", h.EnablePrincipalProfile)
-	r.Delete("/api/principal/profile", h.DeletePrincipalProfile)
-	r.Post("/api/principal/profile/traits", h.AddPrincipalTrait)
-	r.Patch("/api/principal/profile/traits/{id}", h.EditPrincipalTrait)
-	r.Delete("/api/principal/profile/traits/{id}", h.RetirePrincipalTrait)
+	r.With(handler.RequireHumanActor).Put("/api/principal/profile", h.EnablePrincipalProfile)
+	r.With(handler.RequireHumanActor).Delete("/api/principal/profile", h.DeletePrincipalProfile)
+	r.With(handler.RequireHumanActor).Post("/api/principal/profile/traits", h.AddPrincipalTrait)
+	r.With(handler.RequireHumanActor).Patch("/api/principal/profile/traits/{id}", h.EditPrincipalTrait)
+	r.With(handler.RequireHumanActor).Delete("/api/principal/profile/traits/{id}", h.RetirePrincipalTrait)
 	r.Post("/api/principal/predictions", h.RecordPrincipalPrediction)
 	r.Get("/api/principal/predictions", h.GetPrincipalPrediction)
 	r.Get("/api/principal/evidence-candidates", h.ListPrincipalEvidenceCandidates)
 	// Delegation by prediction (durable spec 6.5): the person turns a kind on or off, and reverts a
 	// delegated decision within 72 hours.
 	r.Get("/api/principal/delegations", h.GetPrincipalDelegations)
-	r.Put("/api/principal/delegations", h.EnablePrincipalDelegation)
-	r.Delete("/api/principal/delegations", h.DisablePrincipalDelegation)
-	r.Post("/api/principal/decisions/{id}/revert", h.RevertDelegatedDecision)
-	r.Get("/api/principal/interview", h.GetPrincipalInterview)
-	r.Post("/api/principal/interview/answers", h.AnswerPrincipalInterview)
+	r.With(handler.RequireHumanActor).Put("/api/principal/delegations", h.EnablePrincipalDelegation)
+	r.With(handler.RequireHumanActor).Delete("/api/principal/delegations", h.DisablePrincipalDelegation)
+	r.With(handler.RequireHumanActor).Post("/api/principal/decisions/{id}/revert", h.RevertDelegatedDecision)
+	r.With(handler.RequireHumanActor).Get("/api/principal/interview", h.GetPrincipalInterview)
+	r.With(handler.RequireHumanActor).Post("/api/principal/interview/answers", h.AnswerPrincipalInterview)
 
 	// Track records and verification modes (durable spec 3.5). Reads are for members and
 	// agents. Only an owner or an admin pins a mode, as a person.
@@ -399,8 +399,8 @@ func registerDurableSeatRoutes(r chi.Router, h *handler.Handler) {
 // Reads are for members; only an owner or an admin, as a person, writes it.
 func registerDurableSquadEnvelopeRoutes(r chi.Router, h *handler.Handler) {
 	r.Get("/autonomy/envelope", h.GetSquadEnvelope)
-	r.Put("/autonomy/envelope", h.SetSquadEnvelope)
-	r.Delete("/autonomy/envelope", h.ClearSquadEnvelope)
+	r.With(handler.RequireHumanActor).Put("/autonomy/envelope", h.SetSquadEnvelope)
+	r.With(handler.RequireHumanActor).Delete("/autonomy/envelope", h.ClearSquadEnvelope)
 }
 
 func registerDurableEffectRoutes(r chi.Router, h *handler.Handler) {
@@ -408,15 +408,15 @@ func registerDurableEffectRoutes(r chi.Router, h *handler.Handler) {
 	r.Route("/api/effects", func(r chi.Router) {
 		r.Get("/", h.ListEffects)
 		r.Post("/declare", h.DeclareEffect)
-		r.Post("/{id}/undo", h.UndoEffect)
+		r.With(handler.RequireHumanActor).Post("/{id}/undo", h.UndoEffect)
 		r.Get("/policy", h.GetEffectPolicy)
-		r.Put("/policy", h.SaveEffectPolicy)
+		r.With(handler.RequireHumanActor).Put("/policy", h.SaveEffectPolicy)
 	})
 	// Rehearsed actions awaiting a decision (durable spec 5.3).
 	r.Route("/api/intents", func(r chi.Router) {
 		r.Get("/", h.ListIntents)
-		r.Post("/approve-batch", h.ApproveIntentBatch)
-		r.Post("/{id}/approve", h.ApproveIntent)
-		r.Post("/{id}/reject", h.RejectIntent)
+		r.With(handler.RequireHumanActor).Post("/approve-batch", h.ApproveIntentBatch)
+		r.With(handler.RequireHumanActor).Post("/{id}/approve", h.ApproveIntent)
+		r.With(handler.RequireHumanActor).Post("/{id}/reject", h.RejectIntent)
 	})
 }

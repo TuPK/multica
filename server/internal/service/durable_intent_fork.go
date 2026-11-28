@@ -33,6 +33,15 @@ var (
 // intentTTL is how long a pending intent waits for a decision (durable spec 5.2).
 const intentTTL = 72 * time.Hour
 
+const intentApprovedStaleAfter = 10 * time.Minute
+
+// intentSweepBatch bounds how many intents one sweep touches, so a backlog never holds
+// a long transaction or floods the agent wake-ups in one run.
+const intentSweepBatch = 100
+
+const intentInterruptedNote = "interrupted before confirmation; the action may or may not have run; verify the account before retrying"
+const intentHashMismatchNote = "call hash mismatch"
+
 // intentEditableArgs are the arguments a person may change before approving: the text
 // of a message or a post (durable spec 5.3). Other arguments are the call itself.
 var intentEditableArgs = map[string]bool{
@@ -149,6 +158,10 @@ func (s *IntentService) Approve(ctx context.Context, ws, actor, id pgtype.UUID, 
 	if err != nil {
 		return db.EffectIntent{}, err
 	}
+	if it.State == "failed" {
+		s.wake(ctx, it, actor, it.DecisionNote)
+		return s.Get(ctx, ws, id)
+	}
 	if it.Source == connectedapps.SourceDeclared {
 		// A declared action is not run by the platform. The decision goes back to the agent.
 		s.postIntentComment(ctx, it, "approved", wasEdited, "")
@@ -158,20 +171,58 @@ func (s *IntentService) Approve(ctx context.Context, ws, actor, id pgtype.UUID, 
 
 	outcome := "executed"
 	var resultNote string
+	var result map[string]any
 	if s.Apps == nil {
 		outcome, resultNote = "failed", "the platform cannot run approved calls"
-	} else if _, err := s.Apps.ExecuteIntent(ctx, ws, s.memberOf(ctx, it), intentToolkit(it.Target), call); err != nil {
+	} else if r, err := s.Apps.ExecuteIntent(ctx, ws, s.memberOf(ctx, it), intentToolkit(it.Target), call); err != nil {
 		outcome, resultNote = "failed", err.Error()
+	} else {
+		result = r
 	}
-	if _, err := s.Queries.SetEffectIntentOutcome(ctx, db.SetEffectIntentOutcomeParams{
+	tx, err := s.TxStarter.Begin(ctx)
+	if err != nil {
+		return db.EffectIntent{}, err
+	}
+	defer tx.Rollback(ctx)
+	q := s.Queries.WithTx(tx)
+	n, err := q.SetEffectIntentOutcome(ctx, db.SetEffectIntentOutcomeParams{
 		State: outcome, ID: id, WorkspaceID: ws,
-	}); err != nil {
-		slog.Error("intent: set outcome", "error", err, "intent_id", util.UUIDToString(id))
+	})
+	if err != nil {
+		return db.EffectIntent{}, err
 	}
-	if _, err := s.Queries.FinishEffectEventForIntent(ctx, db.FinishEffectEventForIntentParams{
-		Status: outcome, IntentID: id, WorkspaceID: ws,
-	}); err != nil {
-		slog.Error("intent: finish event", "error", err, "intent_id", util.UUIDToString(id))
+	if n == 0 {
+		if err := tx.Rollback(ctx); err != nil {
+			return db.EffectIntent{}, err
+		}
+		return s.Get(ctx, ws, id)
+	}
+	finish := db.FinishEffectEventForIntentParams{Status: outcome, IntentID: id, WorkspaceID: ws}
+	if outcome == "executed" {
+		// The undo is resolved from this call's result, as the gateway does for its own
+		// calls, so a later revert can take the effect back (durable spec 4.4, 6.5).
+		_, spec := connectedapps.ToolEffect(intentToolkit(it.Target), call.Tool, it.EffectClass)
+		if undo := connectedapps.ResolveUndo(spec, result); undo != nil {
+			raw, err := json.Marshal(undo)
+			if err != nil {
+				return db.EffectIntent{}, fmt.Errorf("encode undo: %w", err)
+			}
+			finish.Undo = raw
+			finish.UndoUntil = pgtype.Timestamptz{Time: s.now().Add(effectUndoWindow), Valid: true}
+		}
+		if result != nil {
+			raw, err := json.Marshal(result)
+			if err != nil {
+				return db.EffectIntent{}, fmt.Errorf("encode result: %w", err)
+			}
+			finish.Result = raw
+		}
+	}
+	if _, err := q.FinishEffectEventForIntent(ctx, finish); err != nil {
+		return db.EffectIntent{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.EffectIntent{}, err
 	}
 	if outcome == "executed" {
 		s.postIntentComment(ctx, it, outcome, wasEdited, "")
@@ -242,6 +293,15 @@ func (s *IntentService) claimForApproval(ctx context.Context, ws, actor, id pgty
 		return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, fmt.Errorf("decode intent call: %w", err)
 	}
 	origSHA := it.CallSha256
+	if CallSHA256(call) != origSHA {
+		if err := failIntent(ctx, tx, &it, intentHashMismatchNote, true); err != nil {
+			return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return db.EffectIntent{}, connectedapps.CanonicalCall{}, false, err
+		}
+		return it, connectedapps.CanonicalCall{}, false, nil
+	}
 	wasEdited := false
 	if edited != nil {
 		if err := validateEdit(call, *edited); err != nil {
@@ -276,6 +336,30 @@ func (s *IntentService) claimForApproval(ctx context.Context, ws, actor, id pgty
 	}
 	it.Call, it.CallSha256 = callJSON, sum
 	return it, call, wasEdited, nil
+}
+
+// failIntent is called with the intent row locked. An unknown external outcome stays
+// awaiting in the event log rather than claiming the action failed.
+func failIntent(ctx context.Context, tx pgx.Tx, it *db.EffectIntent, note string, callNotRun bool) error {
+	_, err := tx.Exec(ctx, `UPDATE effect_intent SET state = 'failed',
+		decision_note = concat_ws('; ', nullif(decision_note, ''), $3::text)
+		WHERE id = $1 AND workspace_id = $2`, it.ID, it.WorkspaceID, note)
+	if err != nil {
+		return err
+	}
+	if callNotRun {
+		if _, err := db.New(tx).FinishEffectEventForIntent(ctx, db.FinishEffectEventForIntentParams{
+			Status: "failed", IntentID: it.ID, WorkspaceID: it.WorkspaceID,
+		}); err != nil {
+			return err
+		}
+	}
+	it.State = "failed"
+	if it.DecisionNote != "" {
+		it.DecisionNote += "; "
+	}
+	it.DecisionNote += note
+	return nil
 }
 
 // validateEdit allows the text of a message to change and nothing else: the tool, the
@@ -351,19 +435,80 @@ func (s *IntentService) Expire(ctx context.Context) (int, error) {
 	if !s.enabled(ctx) {
 		return 0, nil
 	}
-	rows, err := s.Queries.ExpirePendingEffectIntents(ctx, pgtype.Timestamptz{Time: s.now(), Valid: true})
-	if err != nil {
+	if err := s.reviewStaleApprovals(ctx); err != nil {
 		return 0, err
 	}
-	for _, it := range rows {
-		if _, err := s.Queries.CancelEffectEventForIntent(ctx, db.CancelEffectEventForIntentParams{
-			IntentID: it.ID, WorkspaceID: it.WorkspaceID,
-		}); err != nil {
-			slog.Error("intent: cancel event on expiry", "error", err, "intent_id", util.UUIDToString(it.ID))
+	total := 0
+	for {
+		rows, err := s.Queries.ExpirePendingEffectIntents(ctx, db.ExpirePendingEffectIntentsParams{
+			Now: pgtype.Timestamptz{Time: s.now(), Valid: true}, RowLimit: intentSweepBatch,
+		})
+		if err != nil {
+			return total, err
 		}
-		s.wake(ctx, it, pgtype.UUID{}, "expired without a decision after 72 hours; the action was not run")
+		for _, it := range rows {
+			if _, err := s.Queries.CancelEffectEventForIntent(ctx, db.CancelEffectEventForIntentParams{
+				IntentID: it.ID, WorkspaceID: it.WorkspaceID,
+			}); err != nil {
+				slog.Error("intent: cancel event on expiry", "error", err, "intent_id", util.UUIDToString(it.ID))
+			}
+			s.wake(ctx, it, pgtype.UUID{}, "expired without a decision after 72 hours; the action was not run")
+		}
+		total += len(rows)
+		if len(rows) < intentSweepBatch {
+			return total, nil
+		}
 	}
-	return len(rows), nil
+}
+
+func (s *IntentService) reviewStaleApprovals(ctx context.Context) error {
+	tx, err := s.TxStarter.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	rows, err := tx.Query(ctx, `SELECT id, workspace_id FROM effect_intent
+		WHERE state = 'approved' AND source <> 'declared' AND decided_at <= $1
+		ORDER BY decided_at, id
+		LIMIT $2
+		FOR UPDATE SKIP LOCKED`, s.now().Add(-intentApprovedStaleAfter), intentSweepBatch)
+	if err != nil {
+		return err
+	}
+	var ids []db.GetEffectIntentForUpdateParams
+	for rows.Next() {
+		var id db.GetEffectIntentForUpdateParams
+		if err := rows.Scan(&id.ID, &id.WorkspaceID); err != nil {
+			rows.Close()
+			return err
+		}
+		ids = append(ids, id)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	q := s.Queries.WithTx(tx)
+	intents := make([]db.EffectIntent, 0, len(ids))
+	for _, id := range ids {
+		it, err := q.GetEffectIntentForUpdate(ctx, id)
+		if err != nil {
+			return err
+		}
+		if err := failIntent(ctx, tx, &it, intentInterruptedNote, false); err != nil {
+			return err
+		}
+		intents = append(intents, it)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	for _, it := range intents {
+		s.postIntentComment(ctx, it, "failed", false, intentInterruptedNote)
+		s.wake(ctx, it, it.DecidedBy, intentInterruptedNote)
+	}
+	return nil
 }
 
 // memberOf is the member an intent's call runs for: the member of its awaiting event.

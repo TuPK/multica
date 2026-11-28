@@ -965,6 +965,7 @@ type metricCheckSpec struct {
 	Op         string  `json:"op"`
 	Value      float64 `json:"value"`
 	WithinDays int     `json:"within_days"`
+	Surface    string  `json:"surface,omitempty"`
 }
 
 // decideMetric writes the verdict of one metric criterion when it has one.
@@ -994,11 +995,22 @@ func (s *VerificationService) decideMetric(ctx context.Context, now time.Time, r
 // metricReached reports whether some company reading of the metric since the criterion was
 // written reaches the value: at or above it for ">=", at or below it for "<=". One reading in
 // the window is enough for either, so a count that dips to half once passes the criterion.
+// Reach gap criteria ("reach.gap_asks_30d") read from reach_snapshot for their surface.
 func (s *VerificationService) metricReached(ctx context.Context, ws pgtype.UUID, spec metricCheckSpec, since time.Time) (bool, error) {
 	ts := pgtype.Timestamptz{Time: since, Valid: true}
 	var best pgtype.Numeric
 	var err error
-	if spec.Op == "<=" {
+	if spec.MetricKey == "reach.gap_asks_30d" && spec.Surface != "" {
+		if spec.Op == "<=" {
+			best, err = s.Queries.LowestReachGapAsksSince(ctx, db.LowestReachGapAsksSinceParams{
+				WorkspaceID: ws, Surface: spec.Surface, Since: ts,
+			})
+		} else {
+			best, err = s.Queries.HighestReachGapAsksSince(ctx, db.HighestReachGapAsksSinceParams{
+				WorkspaceID: ws, Surface: spec.Surface, Since: ts,
+			})
+		}
+	} else if spec.Op == "<=" {
 		best, err = s.Queries.LowestMetricReadingSince(ctx, db.LowestMetricReadingSinceParams{WorkspaceID: ws, MetricKey: spec.MetricKey, Since: ts})
 	} else {
 		best, err = s.Queries.LatestMetricReadingSince(ctx, db.LatestMetricReadingSinceParams{WorkspaceID: ws, MetricKey: spec.MetricKey, Since: ts})

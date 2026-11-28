@@ -267,12 +267,8 @@ func TestEffectEventNoDelete(t *testing.T) {
 	}
 }
 
-// gateReadBudget is the maximum SELECT count allowed for one warm Gate call:
-// 1) runClass -> GetAgentTask (no autopilot_run_id, so RunClassOfTask issues no extra read),
-// 2) companyState -> CompanyIsPaused -> GetWorkspaceCompanyState.
-// autonomyLevel and overridesFor hit their 60s caches after warmup, sendsToday is
-// skipped for non-send classes, and InsertEffectEvent is an INSERT.
-const gateReadBudget = 2
+// A warm gate may only insert an effect event (spec 14.7).
+const gateReadBudget = 0
 
 type gateReadTrace struct {
 	selects atomic.Int64

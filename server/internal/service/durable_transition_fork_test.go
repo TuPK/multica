@@ -836,6 +836,7 @@ func TestEveryWriterSetsActorSession(t *testing.T) {
 		"internal/service/durable_qoder_actor_fork.go:updateQoderIssueStatus":            kindActorDirect,
 		"internal/service/durable_failed_task_actor_fork.go:updateFailedTaskIssueStatus": kindActorDirect,
 		"internal/service/durable_proposal_actor_fork.go:resumeWaitingIssueStatus":       kindActorDirect,
+		"internal/service/durable_delegation_fork.go:revertDelegatedProposal":            kindActorDirect,
 		"internal/service/proposal.go:settleInTx":                                        kindActorDirect,
 		"internal/service/initiative.go:moveTo":                                          kindActorDirect,
 		"internal/service/initiative.go:closeLocked":                                     kindActorDirect,
@@ -936,17 +937,10 @@ func TestEveryWriterSetsActorSession(t *testing.T) {
 	}
 }
 
-// TestTransitionNotRecordedWhenFlagOff checks the durable_outcomes gate for
-// transition processing (plan Task A1, spec 2.10 item 7, D26).
-//
-// Under D26 the PostgreSQL trigger (issue_status_transition_ai) is intentionally
-// flag-independent because feature flags live in Go config rather than Postgres
-// and raw SQL sweepers must never lose history (see TestTransitionRowsIndependentOfFlag).
-// What durable_outcomes gates is consuming and recording those transitions into the
-// durable outcome pipeline (durable_outcome_applied, work_outcome, and
-// durable_outcome_cursor): while the flag is off, zero outcome transitions are
-// recorded and the cursor does not move; turning the flag on resumes recording.
-func TestTransitionNotRecordedWhenFlagOff(t *testing.T) {
+// TestOutcomeTransitionProcessingPausedWhenFlagOff checks the current behavior:
+// the trigger records transitions regardless of the Go flag, while the outcome
+// consumer pauses until the flag is enabled.
+func TestOutcomeTransitionProcessingPausedWhenFlagOff(t *testing.T) {
 	f, _ := companyWorkspace(t)
 	ctx := context.Background()
 	provider := featureflag.NewStaticProvider()
@@ -959,6 +953,9 @@ func TestTransitionNotRecordedWhenFlagOff(t *testing.T) {
 	cursorBefore := outcomeCursor(t, f)
 	f.Exec(t, `UPDATE issue SET status = 'in_progress' WHERE id = $1`, issue)
 	f.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, issue)
+	if transitions := issueTransitions(t, f, issue); len(transitions) != 2 {
+		t.Fatalf("flag off recorded %d transition rows, want 2", len(transitions))
+	}
 
 	n, err := svc.ProcessTransitions(ctx)
 	if err != nil || n != 0 {

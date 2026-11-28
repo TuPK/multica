@@ -22,9 +22,80 @@ VALUES (
 )
 RETURNING id;
 
+-- name: InsertGatedEffectEvent :one
+-- Evaluates task run class (shadow/verification/human) and workspace pause state inline
+-- during the effect_event insert so Gate issues zero separate SELECT queries on the hot
+-- path (durable spec 14.7) and never reads stale shadow or pause state.
+INSERT INTO effect_event (workspace_id, task_id, agent_id, member_id, source, target,
+    effect_class, reversibility, decision, status, summary, intent_id, app_tool_call_id)
+SELECT
+    sqlc.arg('workspace_id')::uuid,
+    sqlc.narg('task_id')::uuid,
+    sqlc.narg('agent_id')::uuid,
+    sqlc.narg('member_id')::uuid,
+    sqlc.arg('source')::text,
+    sqlc.arg('target')::text,
+    sqlc.arg('effect_class')::text,
+    sqlc.arg('reversibility')::text,
+    g.final_decision,
+    CASE
+        WHEN sqlc.arg('source')::text = 'declared' THEN 'declared'
+        WHEN g.final_decision = 'block' THEN 'blocked'
+        ELSE 'awaiting'
+    END,
+    sqlc.arg('summary')::text,
+    sqlc.narg('intent_id')::uuid,
+    sqlc.narg('app_tool_call_id')::uuid
+FROM (
+    SELECT
+        CASE
+            WHEN COALESCE(t.context->>'durable_kind', '') = 'shadow'
+                 AND sqlc.arg('effect_class')::text <> 'read' THEN 'block'
+            WHEN COALESCE(t.context->>'durable_kind', '') = 'verification'
+                 AND sqlc.arg('effect_class')::text NOT IN ('read', 'write_internal') THEN 'block'
+            WHEN w.company_state = 'paused'
+                 AND sqlc.arg('effect_class')::text <> 'read'
+                 AND sqlc.narg('task_id')::uuid IS NOT NULL
+                 AND NOT (
+                     COALESCE(t.context->>'durable_kind', '') NOT IN ('shadow', 'verification')
+                     AND NOT (
+                         COALESCE(r.source, '') = 'catchup'
+                         OR (COALESCE(ap.assignee_type, '') = 'agent'
+                             AND w.secretary_agent_id IS NOT NULL
+                             AND COALESCE(ap.assignee_id = w.secretary_agent_id, false)
+                             AND COALESCE(ap.title, '') IN ('Daily brief', 'Weekly review'))
+                     )
+                     AND (
+                         COALESCE(r.source, '') = 'manual'
+                         OR t.chat_session_id IS NOT NULL
+                         OR COALESCE(t.originator_source, '') = 'direct_human'
+                     )
+                 ) THEN 'block'
+            ELSE sqlc.arg('base_decision')::text
+        END::text AS final_decision
+    FROM workspace w
+    LEFT JOIN agent_task_queue t
+        ON sqlc.narg('task_id')::uuid IS NOT NULL
+        AND t.id = sqlc.narg('task_id')::uuid
+        -- agent_task_queue has no workspace column: a task counts only when its agent is in this workspace.
+        AND EXISTS (SELECT 1 FROM agent ax WHERE ax.id = t.agent_id AND ax.workspace_id = w.id)
+    LEFT JOIN agent ta
+        ON ta.id = t.agent_id
+        AND ta.workspace_id = w.id
+    LEFT JOIN autopilot_run r
+        ON r.id = t.autopilot_run_id
+        AND ta.id IS NOT NULL
+    LEFT JOIN autopilot ap
+        ON ap.id = r.autopilot_id
+        AND ap.workspace_id = w.id
+    WHERE w.id = sqlc.arg('workspace_id')::uuid
+      AND (sqlc.narg('task_id')::uuid IS NULL OR ta.id IS NOT NULL)
+) g
+RETURNING id, decision;
+
 -- name: FinishEffectEvent :execrows
--- Moves an awaiting event to its outcome. undo, undo_until and result are set
--- when the forward call succeeded.
+-- Moves an awaiting event to its outcome (executed|blocked|failed). undo, undo_until
+-- and result are set only during this single transition when the forward call succeeded.
 UPDATE effect_event SET
     status = sqlc.arg('status')::text,
     undo = COALESCE(sqlc.narg('undo')::jsonb, undo),
@@ -32,7 +103,8 @@ UPDATE effect_event SET
     result = COALESCE(sqlc.narg('result')::jsonb, result)
 WHERE id = sqlc.arg('id')::uuid
     AND workspace_id = sqlc.arg('workspace_id')::uuid
-    AND status = 'awaiting';
+    AND status = 'awaiting'
+    AND sqlc.arg('status')::text IN ('executed', 'blocked', 'failed');
 
 -- name: CountAgentSendsSince :one
 -- Executed sends by one agent since a time: the L3 daily cap (durable spec 4.3).

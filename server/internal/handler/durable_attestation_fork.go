@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
@@ -69,8 +71,7 @@ func (h *Handler) IssueAttestation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req IssueAttestationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if !readCappedJSON(w, r, durableRequestBodyLimit, &req, "invalid request body") {
 		return
 	}
 	agent, ok := parseUUIDOrBadRequest(w, req.AgentID, "agent_id")
@@ -161,8 +162,8 @@ func (h *Handler) VerifyAttestation(w http.ResponseWriter, r *http.Request) {
 // attestationKeysFor returns the keys to verify a document from host: this server's own set, or the
 // set host publishes at its well-known path.
 func (h *Handler) attestationKeysFor(ctx context.Context, host string) (service.KeySet, error) {
-	if host == "" {
-		return service.KeySet{}, errors.New("issuer host is empty")
+	if !validAttestationHost(host) {
+		return service.KeySet{}, errors.New("invalid issuer host")
 	}
 	if own := h.attestationService().KeySet(); own.Host == host {
 		return own, nil
@@ -173,6 +174,17 @@ func (h *Handler) attestationKeysFor(ctx context.Context, host string) (service.
 		return service.KeySet{}, err
 	}
 	return service.ParsePublicKeys(host, body)
+}
+
+func validAttestationHost(host string) bool {
+	if host == "" || strings.ContainsAny(host, "/?#@\\ \t\r\n") {
+		return false
+	}
+	u, err := url.Parse("https://" + host)
+	if err != nil || u.Host != host || u.Hostname() == "" || u.User != nil {
+		return false
+	}
+	return true
 }
 
 func attestationReason(err error) string {

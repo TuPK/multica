@@ -158,6 +158,25 @@ func (q *Queries) EnqueuePrincipalLearningTask(ctx context.Context, arg EnqueueP
 	return i, err
 }
 
+const existsBriefInquiryInWorkspace = `-- name: ExistsBriefInquiryInWorkspace :one
+SELECT EXISTS(
+    SELECT 1 FROM brief_inquiry
+    WHERE id = $1 AND workspace_id = $2
+)
+`
+
+type ExistsBriefInquiryInWorkspaceParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) ExistsBriefInquiryInWorkspace(ctx context.Context, arg ExistsBriefInquiryInWorkspaceParams) (bool, error) {
+	row := q.db.QueryRow(ctx, existsBriefInquiryInWorkspace, arg.ID, arg.WorkspaceID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const forgetPredictionReasons = `-- name: ForgetPredictionReasons :execrows
 UPDATE decision_prediction SET why = '', trait_ids = '{}'
 WHERE workspace_id = $1 AND member_id = $2
@@ -401,6 +420,60 @@ func (q *Queries) ListProfiledDeciders(ctx context.Context, workspaceID pgtype.U
 	return items, nil
 }
 
+const listRecentResolvedDecisionsForKind = `-- name: ListRecentResolvedDecisionsForKind :many
+SELECT id, subject_type, subject_id, predicted, actual, matched, resolved_at
+FROM decision_prediction
+WHERE workspace_id = $1 AND member_id = $2
+  AND decision_kind = $3 AND resolved_at IS NOT NULL
+ORDER BY resolved_at DESC, id DESC
+LIMIT 10
+`
+
+type ListRecentResolvedDecisionsForKindParams struct {
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	MemberID     pgtype.UUID `json:"member_id"`
+	DecisionKind string      `json:"decision_kind"`
+}
+
+type ListRecentResolvedDecisionsForKindRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	SubjectType string             `json:"subject_type"`
+	SubjectID   pgtype.UUID        `json:"subject_id"`
+	Predicted   string             `json:"predicted"`
+	Actual      pgtype.Text        `json:"actual"`
+	Matched     pgtype.Bool        `json:"matched"`
+	ResolvedAt  pgtype.Timestamptz `json:"resolved_at"`
+}
+
+// The last ten resolved decisions of one kind for the Secretary prediction task context (spec 6.4).
+func (q *Queries) ListRecentResolvedDecisionsForKind(ctx context.Context, arg ListRecentResolvedDecisionsForKindParams) ([]ListRecentResolvedDecisionsForKindRow, error) {
+	rows, err := q.db.Query(ctx, listRecentResolvedDecisionsForKind, arg.WorkspaceID, arg.MemberID, arg.DecisionKind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRecentResolvedDecisionsForKindRow{}
+	for rows.Next() {
+		var i ListRecentResolvedDecisionsForKindRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubjectType,
+			&i.SubjectID,
+			&i.Predicted,
+			&i.Actual,
+			&i.Matched,
+			&i.ResolvedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRecentResolvedPredictions = `-- name: ListRecentResolvedPredictions :many
 SELECT matched FROM decision_prediction
 WHERE workspace_id = $1 AND member_id = $2
@@ -436,23 +509,59 @@ func (q *Queries) ListRecentResolvedPredictions(ctx context.Context, arg ListRec
 	return items, nil
 }
 
-const listUnlearnedResolvedPredictionsSince = `-- name: ListUnlearnedResolvedPredictionsSince :many
+const listResolvedPredictionOwnersForSubject = `-- name: ListResolvedPredictionOwnersForSubject :many
+SELECT DISTINCT member_id, decision_kind FROM decision_prediction
+WHERE workspace_id = $1 AND subject_type = $2
+  AND subject_id = $3 AND resolved_at IS NOT NULL AND matched IS NOT NULL
+`
+
+type ListResolvedPredictionOwnersForSubjectParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	SubjectType string      `json:"subject_type"`
+	SubjectID   pgtype.UUID `json:"subject_id"`
+}
+
+type ListResolvedPredictionOwnersForSubjectRow struct {
+	MemberID     pgtype.UUID `json:"member_id"`
+	DecisionKind string      `json:"decision_kind"`
+}
+
+func (q *Queries) ListResolvedPredictionOwnersForSubject(ctx context.Context, arg ListResolvedPredictionOwnersForSubjectParams) ([]ListResolvedPredictionOwnersForSubjectRow, error) {
+	rows, err := q.db.Query(ctx, listResolvedPredictionOwnersForSubject, arg.WorkspaceID, arg.SubjectType, arg.SubjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListResolvedPredictionOwnersForSubjectRow{}
+	for rows.Next() {
+		var i ListResolvedPredictionOwnersForSubjectRow
+		if err := rows.Scan(&i.MemberID, &i.DecisionKind); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnlearnedResolvedPredictions = `-- name: ListUnlearnedResolvedPredictions :many
 SELECT id, subject_type, subject_id, decision_kind, predicted, actual, matched, resolved_at
 FROM decision_prediction
 WHERE workspace_id = $1 AND member_id = $2
-  AND resolved_at IS NOT NULL AND resolved_at >= $3
+  AND resolved_at IS NOT NULL
   AND learning_task_id IS NULL
-ORDER BY resolved_at DESC, id DESC
+ORDER BY resolved_at ASC, id ASC
 LIMIT 20
 `
 
-type ListUnlearnedResolvedPredictionsSinceParams struct {
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	MemberID    pgtype.UUID        `json:"member_id"`
-	Since       pgtype.Timestamptz `json:"since"`
+type ListUnlearnedResolvedPredictionsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	MemberID    pgtype.UUID `json:"member_id"`
 }
 
-type ListUnlearnedResolvedPredictionsSinceRow struct {
+type ListUnlearnedResolvedPredictionsRow struct {
 	ID           pgtype.UUID        `json:"id"`
 	SubjectType  string             `json:"subject_type"`
 	SubjectID    pgtype.UUID        `json:"subject_id"`
@@ -463,16 +572,16 @@ type ListUnlearnedResolvedPredictionsSinceRow struct {
 	ResolvedAt   pgtype.Timestamptz `json:"resolved_at"`
 }
 
-// The unconsumed decisions resolved since a time, newest first, for one profile update batch (spec 6.3).
-func (q *Queries) ListUnlearnedResolvedPredictionsSince(ctx context.Context, arg ListUnlearnedResolvedPredictionsSinceParams) ([]ListUnlearnedResolvedPredictionsSinceRow, error) {
-	rows, err := q.db.Query(ctx, listUnlearnedResolvedPredictionsSince, arg.WorkspaceID, arg.MemberID, arg.Since)
+// The unconsumed decisions, oldest first, for one profile update batch (spec 6.3).
+func (q *Queries) ListUnlearnedResolvedPredictions(ctx context.Context, arg ListUnlearnedResolvedPredictionsParams) ([]ListUnlearnedResolvedPredictionsRow, error) {
+	rows, err := q.db.Query(ctx, listUnlearnedResolvedPredictions, arg.WorkspaceID, arg.MemberID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListUnlearnedResolvedPredictionsSinceRow{}
+	items := []ListUnlearnedResolvedPredictionsRow{}
 	for rows.Next() {
-		var i ListUnlearnedResolvedPredictionsSinceRow
+		var i ListUnlearnedResolvedPredictionsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.SubjectType,
@@ -531,14 +640,15 @@ VALUES ($1, $2, $3, $4, $5,
         $6, $7, $8::numeric, $9,
         $10::uuid[], $11, $12::uuid)
 ON CONFLICT (subject_type, subject_id, member_id) DO UPDATE SET
-    decision_kind = EXCLUDED.decision_kind,
     predicted = EXCLUDED.predicted,
     confidence = EXCLUDED.confidence,
     why = EXCLUDED.why,
     trait_ids = EXCLUDED.trait_ids,
     profile_version = EXCLUDED.profile_version,
-    predictor_task_id = EXCLUDED.predictor_task_id
+    predictor_task_id = COALESCE(EXCLUDED.predictor_task_id, decision_prediction.predictor_task_id)
 WHERE decision_prediction.resolved_at IS NULL
+  AND decision_prediction.workspace_id = EXCLUDED.workspace_id
+  AND decision_prediction.decision_kind = EXCLUDED.decision_kind
 RETURNING id, workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, why, trait_ids, profile_version, predictor_task_id, actual, matched, applied_by_delegation, created_at, resolved_at, learning_task_id
 `
 
@@ -557,7 +667,8 @@ type RecordDecisionPredictionParams struct {
 	PredictorTaskID pgtype.UUID    `json:"predictor_task_id"`
 }
 
-// The Secretary's prediction. A resolved question keeps its outcome: no row comes back.
+// The Secretary's prediction. A resolved question keeps its outcome, and an existing
+// pending row never has its decision_kind overwritten: no row comes back.
 func (q *Queries) RecordDecisionPrediction(ctx context.Context, arg RecordDecisionPredictionParams) (DecisionPrediction, error) {
 	row := q.db.QueryRow(ctx, recordDecisionPrediction,
 		arg.ID,
@@ -622,6 +733,39 @@ func (q *Queries) ResolveDecisionPredictions(ctx context.Context, arg ResolveDec
 		arg.WorkspaceID,
 		arg.SubjectType,
 		arg.SubjectID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setPendingPredictionTaskID = `-- name: SetPendingPredictionTaskID :execrows
+UPDATE decision_prediction
+SET predictor_task_id = $1
+WHERE workspace_id = $2
+  AND subject_type = $3
+  AND subject_id = $4
+  AND member_id = ANY($5::uuid[])
+  AND predictor_task_id IS NULL
+`
+
+type SetPendingPredictionTaskIDParams struct {
+	PredictorTaskID pgtype.UUID   `json:"predictor_task_id"`
+	WorkspaceID     pgtype.UUID   `json:"workspace_id"`
+	SubjectType     string        `json:"subject_type"`
+	SubjectID       pgtype.UUID   `json:"subject_id"`
+	MemberIds       []pgtype.UUID `json:"member_ids"`
+}
+
+// Links newly requested pending predictions to the Secretary routine task that will predict them.
+func (q *Queries) SetPendingPredictionTaskID(ctx context.Context, arg SetPendingPredictionTaskIDParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setPendingPredictionTaskID,
+		arg.PredictorTaskID,
+		arg.WorkspaceID,
+		arg.SubjectType,
+		arg.SubjectID,
+		arg.MemberIds,
 	)
 	if err != nil {
 		return 0, err

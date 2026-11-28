@@ -68,14 +68,26 @@ func (q *Queries) CancelEffectEventForIntent(ctx context.Context, arg CancelEffe
 
 const expirePendingEffectIntents = `-- name: ExpirePendingEffectIntents :many
 UPDATE effect_intent SET state = 'expired', decided_at = now()
-WHERE state = 'pending' AND expires_at <= $1::timestamptz
+WHERE id IN (
+    SELECT id FROM effect_intent
+    WHERE state = 'pending' AND expires_at <= $1::timestamptz
+    ORDER BY expires_at ASC, id ASC
+    LIMIT $2::integer
+    FOR UPDATE SKIP LOCKED
+)
 RETURNING id, workspace_id, task_id, agent_id, issue_id, source, target, effect_class, reversibility, call, call_sha256, preview, rationale, predicted, state, decided_by, decided_at, decision_note, expires_at, batch_key, created_at
 `
 
-// Moves every pending intent past its expiry to expired. The RETURNING rows are the
-// ones this run expired, so each agent is woken once.
-func (q *Queries) ExpirePendingEffectIntents(ctx context.Context, now pgtype.Timestamptz) ([]EffectIntent, error) {
-	rows, err := q.db.Query(ctx, expirePendingEffectIntents, now)
+type ExpirePendingEffectIntentsParams struct {
+	Now      pgtype.Timestamptz `json:"now"`
+	RowLimit int32              `json:"row_limit"`
+}
+
+// Moves a bounded batch of pending intents past their expiry to expired, skipping rows
+// locked by concurrent decisions. The RETURNING rows are the ones this batch expired,
+// so each agent is woken once.
+func (q *Queries) ExpirePendingEffectIntents(ctx context.Context, arg ExpirePendingEffectIntentsParams) ([]EffectIntent, error) {
+	rows, err := q.db.Query(ctx, expirePendingEffectIntents, arg.Now, arg.RowLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -117,19 +129,36 @@ func (q *Queries) ExpirePendingEffectIntents(ctx context.Context, now pgtype.Tim
 }
 
 const finishEffectEventForIntent = `-- name: FinishEffectEventForIntent :execrows
-UPDATE effect_event SET status = $1::text
-WHERE intent_id = $2::uuid AND workspace_id = $3::uuid AND status = 'awaiting'
+UPDATE effect_event SET
+    status = $1::text,
+    undo = COALESCE($2::jsonb, undo),
+    undo_until = COALESCE($3::timestamptz, undo_until),
+    result = COALESCE($4::jsonb, result)
+WHERE intent_id = $5::uuid AND workspace_id = $6::uuid
+  AND status = 'awaiting'
+  AND $1::text IN ('executed', 'blocked', 'failed')
 `
 
 type FinishEffectEventForIntentParams struct {
-	Status      string      `json:"status"`
-	IntentID    pgtype.UUID `json:"intent_id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Status      string             `json:"status"`
+	Undo        []byte             `json:"undo"`
+	UndoUntil   pgtype.Timestamptz `json:"undo_until"`
+	Result      []byte             `json:"result"`
+	IntentID    pgtype.UUID        `json:"intent_id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 }
 
-// The rehearsed action's event follows its intent: awaiting to executed or failed.
+// The rehearsed action's event follows its intent: awaiting to executed, blocked, or failed.
+// When executed, undo, undo_until and result are recorded in the same transition.
 func (q *Queries) FinishEffectEventForIntent(ctx context.Context, arg FinishEffectEventForIntentParams) (int64, error) {
-	result, err := q.db.Exec(ctx, finishEffectEventForIntent, arg.Status, arg.IntentID, arg.WorkspaceID)
+	result, err := q.db.Exec(ctx, finishEffectEventForIntent,
+		arg.Status,
+		arg.Undo,
+		arg.UndoUntil,
+		arg.Result,
+		arg.IntentID,
+		arg.WorkspaceID,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -391,6 +420,7 @@ func (q *Queries) InsertEffectIntent(ctx context.Context, arg InsertEffectIntent
 const linkEffectEventToIntent = `-- name: LinkEffectEventToIntent :exec
 UPDATE effect_event SET intent_id = $1::uuid
 WHERE id = $2::uuid AND workspace_id = $3::uuid
+  AND status = 'awaiting' AND intent_id IS NULL
 `
 
 type LinkEffectEventToIntentParams struct {

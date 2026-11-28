@@ -42,6 +42,10 @@ const ocfGenerator = "delegora/dev"
 const (
 	ocfMaxPackageBytes = 64 << 20
 	ocfMaxFileBytes    = 32 << 20
+	// ocfMaxEntries and ocfMaxUncompressedBytes bound what a small, highly compressed package
+	// can expand into: its total decompressed size, not only each file's.
+	ocfMaxEntries           = 1000
+	ocfMaxUncompressedBytes = 256 << 20
 )
 
 // ErrNotOCFPackage means the bytes are not a zip with a manifest.json. The
@@ -807,20 +811,34 @@ func readOCFPackage(r io.ReaderAt, size int64) (map[string][]byte, error) {
 	if err != nil {
 		return nil, ErrNotOCFPackage
 	}
+	if len(zr.File) > ocfMaxEntries {
+		return nil, fmt.Errorf("the package has more than %d files", ocfMaxEntries)
+	}
 	files := map[string][]byte{}
+	var total int64
 	for _, f := range zr.File {
 		if f.UncompressedSize64 > ocfMaxFileBytes {
 			return nil, fmt.Errorf("%s is larger than %d MB", f.Name, ocfMaxFileBytes>>20)
+		}
+		budget := int64(ocfMaxUncompressedBytes) - total
+		limit := int64(ocfMaxFileBytes)
+		if budget < limit {
+			limit = budget
 		}
 		rc, err := f.Open()
 		if err != nil {
 			return nil, fmt.Errorf("open %s: %w", f.Name, err)
 		}
-		body, err := io.ReadAll(io.LimitReader(rc, ocfMaxFileBytes+1))
+		// Read one byte past the limit so an oversize file is detected, not truncated.
+		body, err := io.ReadAll(io.LimitReader(rc, limit+1))
 		rc.Close()
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", f.Name, err)
 		}
+		if int64(len(body)) > limit {
+			return nil, fmt.Errorf("the package expands beyond %d MB", ocfMaxUncompressedBytes>>20)
+		}
+		total += int64(len(body))
 		files[f.Name] = body
 	}
 	if _, ok := files["manifest.json"]; !ok {
@@ -829,10 +847,8 @@ func readOCFPackage(r io.ReaderAt, size int64) (map[string][]byte, error) {
 	return files, nil
 }
 
-// importOCFHistory writes the history parts of a package as governance events, each
-// marked imported. A package already imported (the same exported_at) writes nothing.
-// Its parts are reported as they are; principals are not written by
-// this build.
+// importOCFHistory writes history as marked governance events and restores dossier
+// entries. A package already imported (the same exported_at) writes nothing.
 func importOCFHistory(ctx context.Context, q *db.Queries, txStarter TxStarter, ws pgtype.UUID, m ocfManifest, files map[string][]byte, opts ImportOptions, report *ImportReport) error {
 	exportedAt := m.ExportedAt.UTC().Format(time.RFC3339Nano)
 	marked, err := q.ListGovernanceEvents(ctx, db.ListGovernanceEventsParams{
@@ -848,6 +864,10 @@ func importOCFHistory(ctx context.Context, q *db.Queries, txStarter TxStarter, w
 				switch part {
 				case ocfPartOutcomes, ocfPartTrackRecords, ocfPartGovernance, ocfPartDossiers:
 					report.add("history", part, ImportExists, "imported before")
+				case ocfPartPrincipals:
+					report.add("history", part, ImportSkipped, "member identity and consent cannot be established for import")
+				case ocfPartAttestations:
+					report.add("history", part, ImportSkipped, "signature verification is not available for import")
 				}
 			}
 			return nil
@@ -858,8 +878,11 @@ func importOCFHistory(ctx context.Context, q *db.Queries, txStarter TxStarter, w
 	for _, part := range m.Parts {
 		switch part {
 		case ocfPartOutcomes, ocfPartTrackRecords, ocfPartGovernance, ocfPartDossiers:
-		case ocfPartPrincipals, ocfPartAttestations:
-			report.add("history", part, ImportSkipped, "not imported by this build")
+		case ocfPartPrincipals:
+			report.add("history", part, ImportSkipped, "member identity and consent cannot be established for import")
+			continue
+		case ocfPartAttestations:
+			report.add("history", part, ImportSkipped, "signature verification is not available for import")
 			continue
 		default:
 			continue
@@ -936,6 +959,40 @@ func importRowWriter(ctx context.Context, ws, actor pgtype.UUID, part string, ro
 			return writeImportedRow(ctx, q, ws, actor, ocfImportedTrackRecordKind, "track_record",
 				fmt.Sprintf("Imported track record for %v, %v. Shown for viewing only.", fields["agent"], fields["work_class"]), fields)
 		case ocfPartDossiers:
+			var entry ocfDossierEntry
+			if err := json.Unmarshal(row, &entry); err != nil {
+				return fmt.Errorf("read dossier row: %w", err)
+			}
+			agents, err := q.ListAgents(ctx, ws)
+			if err != nil {
+				return fmt.Errorf("list dossier agents: %w", err)
+			}
+			var seat pgtype.UUID
+			for _, agent := range agents {
+				if agent.Name == entry.Agent {
+					seat = agent.ID
+				}
+			}
+			if !seat.Valid {
+				return fmt.Errorf("import dossier: agent %q not found", entry.Agent)
+			}
+			if err := lockSeatInWorkspace(ctx, q, ws, seat); err != nil {
+				return err
+			}
+			count, err := q.CountActiveSeatDossierEntries(ctx, db.CountActiveSeatDossierEntriesParams{WorkspaceID: ws, AgentID: seat})
+			if err != nil {
+				return fmt.Errorf("count dossier entries: %w", err)
+			}
+			if count >= dossierMaxActive {
+				return fmt.Errorf("import dossier for %q: %w", entry.Agent, ErrDossierFull)
+			}
+			_, err = q.InsertSeatDossierEntry(ctx, db.InsertSeatDossierEntryParams{
+				ID: pgtype.UUID{Bytes: uuid.New(), Valid: true}, WorkspaceID: ws, AgentID: seat,
+				Kind: entry.Kind, Text: entry.Text, WorkClass: entry.WorkClass, Evidence: entry.Evidence, Origin: entry.Origin,
+			})
+			if err != nil {
+				return fmt.Errorf("import dossier for %q: %w", entry.Agent, err)
+			}
 			return writeImportedRow(ctx, q, ws, actor, ocfImportedDossierKind, "dossier",
 				fmt.Sprintf("Imported dossier entry for %v.", fields["agent"]), fields)
 		default:

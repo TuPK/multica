@@ -12,6 +12,10 @@ import (
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
+// ErrFlowTaskIntentTerminal reports that an external flow task's approval intent
+// reached a terminal closed state (rejected or expired) and the flow step must stop.
+var ErrFlowTaskIntentTerminal = errors.New("flow task intent")
+
 // HoldFlowTask decides whether an external task of a flow step may open (durable spec 5.4).
 // The first time a round asks, it records a declared intent that names the step and the task,
 // and the task waits. The task opens once a person has approved that intent. Approval itself
@@ -38,6 +42,9 @@ func (s *IntentService) HoldFlowTask(ctx context.Context, ws, issueID pgtype.UUI
 	}
 	if err != nil {
 		return false, fmt.Errorf("load flow task intent: %w", err)
+	}
+	if latest.State == "rejected" || latest.State == "expired" {
+		return false, fmt.Errorf("%w %s", ErrFlowTaskIntentTerminal, latest.State)
 	}
 	return latest.State == "approved", nil
 }

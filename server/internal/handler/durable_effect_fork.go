@@ -110,8 +110,7 @@ func (h *Handler) DeclareEffect(w http.ResponseWriter, r *http.Request) {
 		Summary       string `json:"summary"`
 		Rationale     string `json:"rationale"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if !readCappedJSON(w, r, durableRequestBodyLimit, &req, "invalid request body") {
 		return
 	}
 	if !validDeclaredClass(req.Class) {
@@ -243,6 +242,10 @@ func (h *Handler) ListEffects(w http.ResponseWriter, r *http.Request) {
 // undo window. The undo runs through the gateway as that member, and records its own
 // event.
 func (h *Handler) UndoEffect(w http.ResponseWriter, r *http.Request) {
+	if isMachineCredentialActor(r) {
+		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
+		return
+	}
 	workspaceID := h.resolveWorkspaceID(r)
 	member, ok := h.workspaceMember(w, r, workspaceID)
 	if !ok {

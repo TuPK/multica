@@ -54,6 +54,27 @@ func (q *Queries) GetReachSnapshotRow(ctx context.Context, arg GetReachSnapshotR
 	return i, err
 }
 
+const highestReachGapAsksSince = `-- name: HighestReachGapAsksSince :one
+SELECT MAX(gap_asks_30d)::numeric AS best FROM reach_snapshot
+WHERE workspace_id = $1
+    AND surface = $2
+    AND computed_at >= $3::timestamptz
+`
+
+type HighestReachGapAsksSinceParams struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Surface     string             `json:"surface"`
+	Since       pgtype.Timestamptz `json:"since"`
+}
+
+// Highest gap_asks_30d recorded for a surface in reach_snapshot since a timestamp.
+func (q *Queries) HighestReachGapAsksSince(ctx context.Context, arg HighestReachGapAsksSinceParams) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, highestReachGapAsksSince, arg.WorkspaceID, arg.Surface, arg.Since)
+	var best pgtype.Numeric
+	err := row.Scan(&best)
+	return best, err
+}
+
 const latestReachGapIssueID = `-- name: LatestReachGapIssueID :one
 SELECT gap_issue_id FROM reach_snapshot
 WHERE workspace_id = $1 AND surface = $2 AND gap_issue_id IS NOT NULL
@@ -128,18 +149,115 @@ func (q *Queries) ListReachSnapshotDay(ctx context.Context, arg ListReachSnapsho
 	return items, nil
 }
 
+const lockReachSnapshotRowsForSurface = `-- name: LockReachSnapshotRowsForSurface :many
+SELECT workspace_id, snapshot_date, surface, state, effects_30d, agent_effects_30d, human_minutes_30d, gap_asks_30d, top_ask_ids, gap_issue_id, computed_at FROM reach_snapshot
+WHERE workspace_id = $1 AND surface = $2
+ORDER BY snapshot_date DESC
+FOR UPDATE
+`
+
+type LockReachSnapshotRowsForSurfaceParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Surface     string      `json:"surface"`
+}
+
+// Serializes CloseGap for one surface in a workspace so concurrent calls open at most one issue.
+func (q *Queries) LockReachSnapshotRowsForSurface(ctx context.Context, arg LockReachSnapshotRowsForSurfaceParams) ([]ReachSnapshot, error) {
+	rows, err := q.db.Query(ctx, lockReachSnapshotRowsForSurface, arg.WorkspaceID, arg.Surface)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReachSnapshot{}
+	for rows.Next() {
+		var i ReachSnapshot
+		if err := rows.Scan(
+			&i.WorkspaceID,
+			&i.SnapshotDate,
+			&i.Surface,
+			&i.State,
+			&i.Effects30d,
+			&i.AgentEffects30d,
+			&i.HumanMinutes30d,
+			&i.GapAsks30d,
+			&i.TopAskIds,
+			&i.GapIssueID,
+			&i.ComputedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lowestReachGapAsksSince = `-- name: LowestReachGapAsksSince :one
+SELECT MIN(gap_asks_30d)::numeric AS best FROM reach_snapshot
+WHERE workspace_id = $1
+    AND surface = $2
+    AND computed_at >= $3::timestamptz
+`
+
+type LowestReachGapAsksSinceParams struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Surface     string             `json:"surface"`
+	Since       pgtype.Timestamptz `json:"since"`
+}
+
+// Lowest gap_asks_30d recorded for a surface in reach_snapshot since a timestamp (spec 11.3).
+func (q *Queries) LowestReachGapAsksSince(ctx context.Context, arg LowestReachGapAsksSinceParams) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, lowestReachGapAsksSince, arg.WorkspaceID, arg.Surface, arg.Since)
+	var best pgtype.Numeric
+	err := row.Scan(&best)
+	return best, err
+}
+
 const reachAskCounts = `-- name: ReachAskCounts :many
-SELECT e.source, e.target, a.reason, a.squad_id,
+SELECT
+    mapped.source::text AS source,
+    mapped.target::text AS target,
+    mapped.reason,
+    mapped.squad_id,
     COUNT(*)::bigint AS n,
-    COALESCE(SUM(COALESCE(a.actual_seconds / 60.0, a.estimated_minutes)), 0)::float8 AS minutes,
-    ((ARRAY_AGG(a.id ORDER BY a.created_at DESC))[1:5])::uuid[] AS top_ask_ids
-FROM attention_ledger a
-JOIN effect_intent e ON e.id = a.subject_id AND e.workspace_id = a.workspace_id
-WHERE a.workspace_id = $1
-    AND a.subject_type = 'effect_intent'
-    AND a.created_at >= $2::timestamptz
-    AND a.created_at < $3::timestamptz
-GROUP BY e.source, e.target, a.reason, a.squad_id
+    COALESCE(SUM(COALESCE(mapped.actual_seconds / 60.0, mapped.estimated_minutes)), 0)::float8 AS minutes,
+    ((ARRAY_AGG(mapped.id ORDER BY mapped.created_at DESC))[1:5])::uuid[] AS top_ask_ids
+FROM (
+    SELECT
+        a.id, a.reason, a.squad_id, a.actual_seconds, a.estimated_minutes, a.created_at,
+        CASE a.subject_type
+            WHEN 'effect_intent' THEN e.source
+            WHEN 'app_action_request' THEN 'connected_app'
+            WHEN 'outcome_check' THEN 'outcome_check'
+            WHEN 'proposal' THEN 'proposal'
+            WHEN 'inquiry' THEN 'inquiry'
+        END AS source,
+        CASE a.subject_type
+            WHEN 'effect_intent' THEN e.target
+            WHEN 'app_action_request' THEN ar.toolkit_slug
+            WHEN 'outcome_check' THEN o.work_class
+            WHEN 'proposal' THEN 'squad:' || p.squad_id::text
+            WHEN 'inquiry' THEN 'squad:' || bi.squad_id::text
+        END AS target
+    FROM attention_ledger a
+    LEFT JOIN effect_intent e
+        ON a.subject_type = 'effect_intent' AND e.id = a.subject_id AND e.workspace_id = a.workspace_id
+    LEFT JOIN app_action_request ar
+        ON a.subject_type = 'app_action_request' AND ar.id = a.subject_id AND ar.workspace_id = a.workspace_id
+    LEFT JOIN work_outcome o
+        ON a.subject_type = 'outcome_check' AND o.id = a.subject_id AND o.workspace_id = a.workspace_id
+    LEFT JOIN proposal p
+        ON a.subject_type = 'proposal' AND p.id = a.subject_id AND p.workspace_id = a.workspace_id
+    LEFT JOIN brief_inquiry bi
+        ON a.subject_type = 'inquiry' AND bi.id = a.subject_id AND bi.workspace_id = a.workspace_id
+    WHERE a.workspace_id = $1
+        AND a.created_at >= $2::timestamptz
+        AND a.created_at < $3::timestamptz
+) mapped
+WHERE mapped.source IS NOT NULL AND mapped.target IS NOT NULL AND mapped.target <> ''
+GROUP BY mapped.source, mapped.target, mapped.reason, mapped.squad_id
 `
 
 type ReachAskCountsParams struct {
@@ -158,8 +276,9 @@ type ReachAskCountsRow struct {
 	TopAskIds []pgtype.UUID `json:"top_ask_ids"`
 }
 
-// Attention asks in [window_start, window_end) whose subject is an effect intent, by the
-// intent's source and target (the surface), the ask's reason and squad. Minutes are the
+// Attention asks in [window_start, window_end) mapped to their surface across all ask
+// subject types (effect_intent, app_action_request, outcome_check, proposal, inquiry),
+// grouped by source, target, reason and squad (durable spec 11.2). Minutes are the
 // actual time when the person answered, else the estimate. The newest ask ids are kept.
 func (q *Queries) ReachAskCounts(ctx context.Context, arg ReachAskCountsParams) ([]ReachAskCountsRow, error) {
 	rows, err := q.db.Query(ctx, reachAskCounts, arg.WorkspaceID, arg.WindowStart, arg.WindowEnd)

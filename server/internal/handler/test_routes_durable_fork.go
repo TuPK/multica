@@ -11,7 +11,7 @@ import (
 
 // RunDurableJobsForTest runs the durable jobs once, now, the way the scheduler runs them:
 // the outcome job (new transitions, then the outcomes that are due), the track record
-// nightly and the envelope nightly (durable spec 2.4, 3.2, 3.4). The clock is the `now`
+// nightly, the envelope nightly, and principal learning (durable spec 2.4, 3.2, 3.4, 6.3). The clock is the `now`
 // query parameter (RFC 3339, default the server's time), so an end-to-end test can move a
 // week on and settle the outcomes that are due. Owners and admins only. Like the retro
 // route, it exists only when MULTICA_TEST_ROUTES=1 (runbook phase 4, section 0).
@@ -66,10 +66,16 @@ func (h *Handler) RunDurableJobsForTest(w http.ResponseWriter, r *http.Request) 
 		fail("envelope", err)
 		return
 	}
+	learning, err := (&service.PredictionService{Queries: h.Queries, TxStarter: h.TxStarter, Flags: h.FeatureFlags}).LearnBatches(ctx, now)
+	if err != nil {
+		fail("principal_learning", err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]int{
-		"opened":       opened,
-		"settled":      settled,
-		"track_pairs":  pairs,
-		"squads_moved": squads,
+		"opened":         opened,
+		"settled":        settled,
+		"track_pairs":    pairs,
+		"squads_moved":   squads,
+		"learning_tasks": learning,
 	})
 }
