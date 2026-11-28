@@ -96,14 +96,12 @@ export function WorkflowDetailDrawer({
             </SheetDescription>
           ) : null}
           <div className="flex items-center gap-2 pt-2">
-            {!workflow.template_ref && (
-              <AppLink href={p.workflowDetail(workflow.id)}>
-                <Button size="sm" className="gap-1.5">
-                  <Workflow className="size-4" />
-                  {t(($) => $.manage.open_designer)}
-                </Button>
-              </AppLink>
-            )}
+            <AppLink href={p.workflowDetail(workflow.id)}>
+              <Button size="sm" className="gap-1.5">
+                <Workflow className="size-4" />
+                {t(($) => $.manage.open_designer)}
+              </Button>
+            </AppLink>
             {workflow.published_at && workflow.squad_id && (
               <Button
                 size="sm"
