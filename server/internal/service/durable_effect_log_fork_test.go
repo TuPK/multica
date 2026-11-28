@@ -2,11 +2,17 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/testutil"
@@ -259,4 +265,114 @@ func TestEffectEventNoDelete(t *testing.T) {
 	if err != nil || again != 0 {
 		t.Fatalf("ClaimEffectEventUndo after undone = (%d, %v), want (0, nil)", again, err)
 	}
+}
+
+// gateReadBudget is the maximum SELECT count allowed for one warm Gate call:
+// 1) runClass -> GetAgentTask (no autopilot_run_id, so RunClassOfTask issues no extra read),
+// 2) companyState -> CompanyIsPaused -> GetWorkspaceCompanyState.
+// autonomyLevel and overridesFor hit their 60s caches after warmup, sendsToday is
+// skipped for non-send classes, and InsertEffectEvent is an INSERT.
+const gateReadBudget = 2
+
+type gateReadTrace struct {
+	selects atomic.Int64
+}
+
+type gateReadTraceKey struct{}
+
+// isSelectSQL strips leading sqlc comment lines ("-- name: ...") before matching SELECT.
+func isSelectSQL(sql string) bool {
+	s := sql
+	for {
+		s = strings.TrimSpace(s)
+		if !strings.HasPrefix(s, "--") {
+			break
+		}
+		nl := strings.IndexByte(s, '\n')
+		if nl < 0 {
+			return false
+		}
+		s = s[nl+1:]
+	}
+	return len(s) >= 6 && strings.EqualFold(s[:6], "SELECT")
+}
+
+func (tr *gateReadTrace) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	return context.WithValue(ctx, gateReadTraceKey{}, isSelectSQL(data.SQL))
+}
+
+func (tr *gateReadTrace) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryEndData) {
+	if isSelect, _ := ctx.Value(gateReadTraceKey{}).(bool); isSelect {
+		tr.selects.Add(1)
+	}
+}
+
+// BenchmarkGate bounds the SELECT query count of a warm (*EffectService).Gate call
+// so an accidental extra read fails the benchmark.
+func BenchmarkGate(b *testing.B) {
+	ctx := context.Background()
+	shared, err := openSharedTestPool()
+	if err != nil {
+		b.Skip(err)
+	}
+	tr := &gateReadTrace{}
+	config := shared.Config()
+	config.ConnConfig.Tracer = tr
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Cleanup(pool.Close)
+
+	fx := testutil.New(pool, "", "")
+	suffix := time.Now().UnixNano()
+	fx.UserID = fx.User(b, "gate bench", fmt.Sprintf("gate-bench-%d@example.test", suffix))
+	fx.WorkspaceID = fx.Workspace(b, "gate bench", fmt.Sprintf("gate-bench-%d", suffix))
+	fx.Member(b, fx.WorkspaceID, fx.UserID, "owner")
+	fx.Cleanup(b, `DELETE FROM effect_event WHERE workspace_id = $1`, fx.WorkspaceID)
+	runtimeID := fx.Runtime(b, "gate bench")
+	agentID := fx.Agent(b, "gate bench", runtimeID)
+	squadID := fx.Squad(b, "gate bench", agentID)
+	fx.SquadMember(b, squadID, "agent", agentID)
+	taskID := fx.Task(b, agentID, testutil.Cols{"runtime_id": runtimeID})
+
+	provider := featureflag.NewStaticProvider()
+	provider.Set(featureflags.DurableEffects, featureflag.Rule{Default: true})
+	svc := &EffectService{Queries: db.New(pool), Flags: featureflag.NewService(provider)}
+
+	// Use a non-send class so sendsToday does not run and the read count stays fixed.
+	in := EffectInput{
+		WS:            util.MustParseUUID(fx.WorkspaceID),
+		TaskID:        util.MustParseUUID(taskID),
+		AgentID:       util.MustParseUUID(agentID),
+		Source:        connectedapps.SourceConnectedApp,
+		Target:        "bench/target",
+		Class:         connectedapps.EffectWrite,
+		Reversibility: connectedapps.ReversibilityReversible,
+		Summary:       "benchmark gate action",
+		Prior:         connectedapps.PolicyAllow,
+	}
+
+	// Warm the 60s autonomy and overrides caches; this call is not counted.
+	if _, err := svc.Gate(ctx, in); err != nil {
+		b.Fatalf("warmup Gate: %v", err)
+	}
+
+	tr.selects.Store(0)
+	if _, err := svc.Gate(ctx, in); err != nil {
+		b.Fatalf("measured Gate: %v", err)
+	}
+	reads := tr.selects.Load()
+	if reads > gateReadBudget {
+		b.Fatalf("Gate issued %d SELECT queries, exceeds budget %d", reads, gateReadBudget)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := svc.Gate(ctx, in); err != nil {
+			b.Fatalf("Gate: %v", err)
+		}
+	}
+	b.StopTimer()
+	b.ReportMetric(float64(reads), "reads/op")
 }
