@@ -15,7 +15,7 @@ import (
 // package cannot import the service, which imports it.
 type AttentionGate interface {
 	AdmitAppRequest(ctx context.Context, req db.AppActionRequest) error
-	AnswerAppRequest(ctx context.Context, id pgtype.UUID) error
+	AnswerAppRequest(ctx context.Context, id pgtype.UUID, actualSeconds *int) error
 }
 
 // admitAttention is the hook createRequest calls once a request is stored. A ledger failure
@@ -31,11 +31,16 @@ func (s *Service) admitAttention(ctx context.Context, req db.AppActionRequest) {
 }
 
 // answerAttention is the hook Approve and Reject call once a person has decided a request.
-func (s *Service) answerAttention(ctx context.Context, id pgtype.UUID) {
+// actualSeconds carries the measured decision time from the request header, if any (durable spec 7.2).
+func (s *Service) answerAttention(ctx context.Context, id pgtype.UUID, actualSeconds ...*int) {
 	if s.attention == nil {
 		return
 	}
-	if err := s.attention.AnswerAppRequest(ctx, id); err != nil {
+	var secs *int
+	if len(actualSeconds) > 0 {
+		secs = actualSeconds[0]
+	}
+	if err := s.attention.AnswerAppRequest(ctx, id, secs); err != nil {
 		slog.Warn("attention ledger: app action answer not recorded",
 			"request_id", util.UUIDToString(id), "error", err)
 	}

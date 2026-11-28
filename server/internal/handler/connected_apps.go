@@ -1458,7 +1458,7 @@ func (h *Handler) ApproveAppRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	row, err := h.ConnectedApps.Approve(r.Context(), workspaceID, member.UserID, id, req.Arguments)
+	row, err := h.ConnectedApps.Approve(r.Context(), workspaceID, member.UserID, id, req.Arguments, attentionSecondsOf(r))
 	if err != nil {
 		writeDecisionError(w, err)
 		return
@@ -1488,7 +1488,7 @@ func (h *Handler) RejectAppRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	row, err := h.ConnectedApps.Reject(r.Context(), workspaceID, member.UserID, id, req.Reason)
+	row, err := h.ConnectedApps.Reject(r.Context(), workspaceID, member.UserID, id, req.Reason, attentionSecondsOf(r))
 	if err != nil {
 		writeDecisionError(w, err)
 		return

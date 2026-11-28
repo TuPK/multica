@@ -412,7 +412,8 @@ func TestAnsweredRecordsTheMeasuredTime(t *testing.T) {
 }
 
 // TestAnswerAppRequestMarksAnswered: a person's decision on an app action request closes its
-// row, and with the flag off the decision writes nothing to the ledger.
+// row and records actual_seconds when measured (or NULL when nil); with the flag off the
+// decision writes nothing to the ledger (durable spec 7.2).
 func TestAnswerAppRequestMarksAnswered(t *testing.T) {
 	f := newAttentionFixture(t, true)
 	ctx := context.Background()
@@ -421,16 +422,34 @@ func TestAnswerAppRequestMarksAnswered(t *testing.T) {
 	if _, err := f.attention.Admit(ctx, ask); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	if err := f.attention.AnswerAppRequest(ctx, ask.SubjectID); err != nil {
+	secs := 75
+	if err := f.attention.AnswerAppRequest(ctx, ask.SubjectID, &secs); err != nil {
 		t.Fatalf("answer app request: %v", err)
 	}
 	var state string
+	var recorded pgtype.Int4
 	if err := f.Pool.QueryRow(ctx,
-		`SELECT state FROM attention_ledger WHERE subject_id = $1`, ask.SubjectID).Scan(&state); err != nil {
+		`SELECT state, actual_seconds FROM attention_ledger WHERE subject_id = $1`, ask.SubjectID).Scan(&state, &recorded); err != nil {
 		t.Fatalf("read row: %v", err)
 	}
-	if state != "answered" {
-		t.Fatalf("state = %q, want answered", state)
+	if state != "answered" || !recorded.Valid || recorded.Int32 != 75 {
+		t.Fatalf("answered row = (%q, %+v), want (answered, 75)", state, recorded)
+	}
+
+	unmeasured := f.outcomeAsk()
+	unmeasured.SubjectType, unmeasured.Reason = "app_action_request", "policy"
+	if _, err := f.attention.Admit(ctx, unmeasured); err != nil {
+		t.Fatalf("admit unmeasured: %v", err)
+	}
+	if err := f.attention.AnswerAppRequest(ctx, unmeasured.SubjectID, nil); err != nil {
+		t.Fatalf("answer unmeasured app request: %v", err)
+	}
+	if err := f.Pool.QueryRow(ctx,
+		`SELECT state, actual_seconds FROM attention_ledger WHERE subject_id = $1`, unmeasured.SubjectID).Scan(&state, &recorded); err != nil {
+		t.Fatalf("read unmeasured row: %v", err)
+	}
+	if state != "answered" || recorded.Valid {
+		t.Fatalf("unmeasured row = (%q, %+v), want (answered, NULL)", state, recorded)
 	}
 
 	provider := featureflag.NewStaticProvider()
@@ -441,7 +460,7 @@ func TestAnswerAppRequestMarksAnswered(t *testing.T) {
 	if _, err := f.attention.Admit(ctx, pending); err != nil {
 		t.Fatalf("admit pending: %v", err)
 	}
-	if err := off.AnswerAppRequest(ctx, pending.SubjectID); err != nil {
+	if err := off.AnswerAppRequest(ctx, pending.SubjectID, &secs); err != nil {
 		t.Fatalf("answer with the flag off: %v", err)
 	}
 	if err := f.Pool.QueryRow(ctx,

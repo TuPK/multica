@@ -1,13 +1,19 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/multica-ai/multica/server/internal/connectedapps"
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/testutil"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 )
 
@@ -93,3 +99,98 @@ func TestAttentionSecondsFromHeader(t *testing.T) {
 		})
 	}
 }
+
+// TestAppRequestDecisionRecordsAttentionSeconds: approving or rejecting an app action request
+// records actual_seconds in attention_ledger when X-Attention-Opened-At is sent, and leaves
+// actual_seconds NULL when the header is absent (durable spec 7.2, plan C1).
+func TestAppRequestDecisionRecordsAttentionSeconds(t *testing.T) {
+	p := featureflag.NewStaticProvider()
+	p.Set(featureflags.ComposioMCPApps, featureflag.Rule{Default: true})
+	p.Set(featureflags.DurablePrincipal, featureflag.Rule{Default: true})
+	flags := featureflag.NewService(p)
+	att := &service.AttentionService{Queries: testHandler.Queries, Flags: flags}
+
+	f := newAppsFixture(t, func(cfg *connectedapps.Config) {
+		cfg.Attention = att
+	})
+	f.h.FeatureFlags = flags
+	if w := f.putAgentApps(t, testUserID, []map[string]string{{"toolkit_slug": "gmail", "account_scope": "personal", "level": "confirm_writes"}}); w.Code != http.StatusOK {
+		t.Fatalf("attach app: %d %s", w.Code, w.Body.String())
+	}
+
+	ctx := context.Background()
+	seedPending := func(t *testing.T, summary string) string {
+		t.Helper()
+		req := f.legacyRequest(t, "personal", "gmail", "GMAIL_SEND_EMAIL", "send", map[string]any{"to": "a@example.com"}, summary)
+		id := parseUUID(req.ID)
+		row, err := f.h.Queries.GetAppActionRequest(ctx, db.GetAppActionRequestParams{ID: id, WorkspaceID: parseUUID(testWorkspaceID)})
+		if err != nil {
+			t.Fatalf("load seeded request: %v", err)
+		}
+		if err := att.AdmitAppRequest(ctx, row); err != nil {
+			t.Fatalf("admit app request: %v", err)
+		}
+		t.Cleanup(func() {
+			testPool.Exec(context.Background(), `DELETE FROM attention_ledger WHERE subject_type = 'app_action_request' AND subject_id = $1`, req.ID)
+		})
+		return req.ID
+	}
+
+	readLedger := func(t *testing.T, reqID string) (string, pgtype.Int4) {
+		t.Helper()
+		var state string
+		var secs pgtype.Int4
+		if err := testPool.QueryRow(ctx,
+			`SELECT state, actual_seconds FROM attention_ledger WHERE subject_type = 'app_action_request' AND subject_id = $1`,
+			reqID).Scan(&state, &secs); err != nil {
+			t.Fatalf("read attention_ledger for %s: %v", reqID, err)
+		}
+		return state, secs
+	}
+
+	cases := []struct {
+		name     string
+		action   string
+		header   string
+		wantSecs *int32
+	}{
+		{"approve with header", "approve", "45", int32Ptr(45)},
+		{"approve without header", "approve", "", nil},
+		{"reject with header", "reject", "120", int32Ptr(120)},
+		{"reject without header", "reject", "", nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			reqID := seedPending(t, tc.name)
+			var body any
+			if tc.action == "reject" {
+				body = map[string]any{"reason": "not now"}
+			}
+			req := appsReqAs(t, testUserID, http.MethodPost, "/api/app-requests/"+reqID+"/"+tc.action, body)
+			if tc.header != "" {
+				req.Header.Set(attentionOpenedHeader, tc.header)
+			}
+			req = withURLParam(req, "id", reqID)
+			if tc.action == "approve" {
+				testutil.Call(t, f.h.ApproveAppRequest, req).Want(http.StatusOK)
+			} else {
+				testutil.Call(t, f.h.RejectAppRequest, req).Want(http.StatusOK)
+			}
+			state, secs := readLedger(t, reqID)
+			if state != "answered" {
+				t.Fatalf("ledger state = %q, want answered", state)
+			}
+			if tc.wantSecs == nil {
+				if secs.Valid {
+					t.Fatalf("actual_seconds = %d, want NULL", secs.Int32)
+				}
+			} else {
+				if !secs.Valid || secs.Int32 != *tc.wantSecs {
+					t.Fatalf("actual_seconds = %+v, want %d", secs, *tc.wantSecs)
+				}
+			}
+		})
+	}
+}
+
+func int32Ptr(v int32) *int32 { return &v }

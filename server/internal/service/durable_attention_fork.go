@@ -417,9 +417,10 @@ func (s *AttentionService) Answered(ctx context.Context, subjectType string, sub
 	return nil
 }
 
-// AnswerAppRequest records that a person decided an app action request.
-func (s *AttentionService) AnswerAppRequest(ctx context.Context, id pgtype.UUID) error {
-	return s.Answered(ctx, "app_action_request", id, nil)
+// AnswerAppRequest records that a person decided an app action request, with the measured
+// seconds from opening it to deciding, or nil when unmeasured (durable spec 7.2).
+func (s *AttentionService) AnswerAppRequest(ctx context.Context, id pgtype.UUID, actualSeconds *int) error {
+	return s.Answered(ctx, "app_action_request", id, actualSeconds)
 }
 
 // MeasureAttentionSeconds returns the elapsed seconds between openedAt and decidedAt, clamped to

@@ -174,7 +174,7 @@ func (s *Service) archiveAdminNotifications(ctx context.Context, req db.AppActio
 
 // Approve executes an approved request with args (nil keeps the agent's) and
 // resumes the agent with the outcome. Only the approver may approve.
-func (s *Service) Approve(ctx context.Context, workspaceID, actorID, requestID pgtype.UUID, args map[string]any) (db.AppActionRequest, error) {
+func (s *Service) Approve(ctx context.Context, workspaceID, actorID, requestID pgtype.UUID, args map[string]any, actualSeconds ...*int) (db.AppActionRequest, error) {
 	req, asAdmin, err := s.pendingForDecider(ctx, workspaceID, actorID, requestID)
 	if err != nil {
 		return db.AppActionRequest{}, err
@@ -217,7 +217,7 @@ func (s *Service) Approve(ctx context.Context, workspaceID, actorID, requestID p
 	if err != nil {
 		return db.AppActionRequest{}, err
 	}
-	s.answerAttention(ctx, decided.ID)
+	s.answerAttention(ctx, decided.ID, actualSeconds...)
 	if decided.Kind == KindConnect {
 		if isTeamConnect(decided) {
 			s.archiveAdminNotifications(ctx, decided, actorID, "app_request_decided")
@@ -318,7 +318,7 @@ func (s *Service) DeclineTeamConnectRequests(ctx context.Context, workspaceID, a
 }
 
 // Reject declines a request and resumes the agent so it can adapt.
-func (s *Service) Reject(ctx context.Context, workspaceID, actorID, requestID pgtype.UUID, reason string) (db.AppActionRequest, error) {
+func (s *Service) Reject(ctx context.Context, workspaceID, actorID, requestID pgtype.UUID, reason string, actualSeconds ...*int) (db.AppActionRequest, error) {
 	_, asAdmin, err := s.pendingForDecider(ctx, workspaceID, actorID, requestID)
 	if err != nil {
 		return db.AppActionRequest{}, err
@@ -332,7 +332,7 @@ func (s *Service) Reject(ctx context.Context, workspaceID, actorID, requestID pg
 		return db.AppActionRequest{}, ErrNotPending
 	}
 	if err == nil {
-		s.answerAttention(ctx, decided.ID)
+		s.answerAttention(ctx, decided.ID, actualSeconds...)
 	}
 	if err != nil {
 		return db.AppActionRequest{}, err
