@@ -21,12 +21,17 @@ import (
 
 func init() {
 	companyExportCmd.Flags().Bool("history", false, "Write an Open Company Format package (company.ocf.zip) with the settled history: outcomes, track records and the governance log. Needs --file")
+	companyExportCmd.Flags().Bool("include-principal", false, "Include your own principal profile if you have consented (only with --history)")
 }
 
 // runCompanyExportOCF writes the package when --history is given.
 func runCompanyExportOCF(cmd *cobra.Command) (bool, error) {
 	history, _ := cmd.Flags().GetBool("history")
+	includePrincipal, _ := cmd.Flags().GetBool("include-principal")
 	if !history {
+		if includePrincipal {
+			return true, fmt.Errorf("--include-principal needs --history")
+		}
 		return false, nil
 	}
 	file, _ := cmd.Flags().GetString("file")
@@ -39,7 +44,11 @@ func runCompanyExportOCF(cmd *cobra.Command) (bool, error) {
 	}
 	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
-	pkg, err := client.GetBytes(ctx, "/api/company/export?format=ocf&history=true")
+	exportPath := "/api/company/export?format=ocf&history=true"
+	if includePrincipal {
+		exportPath += "&include_principal=true"
+	}
+	pkg, err := client.GetBytes(ctx, exportPath)
 	if err != nil {
 		return true, fmt.Errorf("export company: %w", err)
 	}
