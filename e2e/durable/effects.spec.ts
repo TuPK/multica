@@ -13,6 +13,7 @@ import { API_BASE, TestApiClient } from "../fixtures";
 //   1. the environment's env file has FF_DURABLE_EFFECTS=true, and the API has been restarted with it;
 //   2. `node scripts/fake-composio.mjs up` has written COMPOSIO_BASE_URL (loopback) and COMPOSIO_STATE_SECRET
 //      to the same env file. The fake stands in for Composio, so no real email service is called.
+//   3. F5/F6 also need FF_DURABLE_PRINCIPAL=true and MULTICA_TEST_ROUTES=1 on the API.
 //
 // Each agent's run is seeded as a running task, and the gateway token is minted the way the server mints a run's
 // token (connectedapps.SignTaskToken with DeriveTokenSecret). No model runs.
@@ -560,5 +561,134 @@ test.describe.serial("F3, F4: an email an agent wants to send waits for a person
       [ids],
     );
     expect(new Set(events.map((row) => row.intent_id))).toEqual(new Set(ids));
+  });
+
+  test("F5 and F6: a predicted email is edited and approved after thirty seconds", async ({ page }) => {
+    expect(requireEnv("FF_DURABLE_PRINCIPAL")).toBe("true");
+    const secretary = await api.createAgent(`Principal Secretary ${RUN}`, runtimeId);
+    await api.setSecretary(secretary.id);
+    const secretaryRun = await seedRun(secretary.id);
+    const profile = await apiCall("PUT", "/api/principal/profile", { consent_text: "I consent to this profile." });
+    expect(profile.status, profile.text).toBe(200);
+    const memberId = (JSON.parse(profile.text) as { member_id: string }).member_id;
+
+    const before = await apiCall("GET", "/api/company/attention");
+    expect(before.status, before.text).toBe(200);
+    const spentBefore = (JSON.parse(before.text) as { spent_minutes: number }).spent_minutes;
+    const subject = `Predicted quote ${RUN}`;
+    const held = await askToSend(subject, BODY_DRAFT);
+    expect(held.status).toBe("awaiting_approval");
+
+    const pending = await api.queryDb(
+      `SELECT predicted FROM decision_prediction WHERE workspace_id = $1 AND member_id = $2 AND subject_type = 'effect_intent' AND subject_id = $3`,
+      [workspaceId, memberId, held.intentId],
+    );
+    expect(pending).toHaveLength(1);
+    const predictionTask = await api.queryDb(
+      `SELECT id FROM agent_task_queue WHERE agent_id = $1 AND context::text LIKE $2`,
+      [secretary.id, `%${held.intentId}%`],
+    );
+    expect(predictionTask, "the question schedules the Secretary's prediction task").toHaveLength(1);
+
+    const prediction = await fetch(`${API_BASE}/api/principal/predictions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${secretaryRun.token}`, "X-Workspace-Slug": slug },
+      body: JSON.stringify({
+        member_id: memberId, subject_type: "effect_intent", subject_id: held.intentId,
+        decision_kind: "effect:send", predicted: "approve", confidence: 0.9,
+        why: "The customer requested the quote.", trait_ids: [], task_id: predictionTask[0].id,
+      }),
+    });
+    expect(prediction.status, await prediction.text()).toBe(201);
+
+    const openedAt = Date.now();
+    await page.clock.setFixedTime(openedAt);
+    await signIn(page);
+    await page.goto(`/${slug}/inbox`, { waitUntil: "domcontentloaded" });
+    const card = intentCard(page, subject);
+    await expect(card).toBeVisible({ timeout: 120000 });
+    await expect(card).toContainText("90%");
+    await card.getByRole("button", { name: "Edit and approve", exact: true }).click();
+    await card.getByLabel("Message text").fill(BODY_EDITED);
+    await page.clock.setFixedTime(openedAt + 30_000);
+    await card.getByRole("button", { name: "Approve edited version", exact: true }).click();
+    await expect(page.getByText("Approved. The action runs once.")).toBeVisible({ timeout: 30000 });
+
+    expect(await executedSends(subject)).toEqual([expect.objectContaining({ arguments: expect.objectContaining({ body: BODY_EDITED }) })]);
+    const ledger = await api.queryDb(
+      `SELECT state, actual_seconds, estimated_minutes::float8 AS estimated_minutes FROM attention_ledger WHERE workspace_id = $1 AND subject_type = 'effect_intent' AND subject_id = $2`,
+      [workspaceId, held.intentId],
+    );
+    expect(ledger).toEqual([expect.objectContaining({ state: "answered", actual_seconds: 30, estimated_minutes: 1 })]);
+    const after = await apiCall("GET", "/api/company/attention");
+    expect(after.status, after.text).toBe(200);
+    expect((JSON.parse(after.text) as { spent_minutes: number }).spent_minutes).toBe(spentBefore + 1);
+    const resolved = await api.queryDb(
+      `SELECT actual, matched, applied_by_delegation FROM decision_prediction WHERE workspace_id = $1 AND member_id = $2 AND subject_id = $3`,
+      [workspaceId, memberId, held.intentId],
+    );
+    expect(resolved).toEqual([expect.objectContaining({ actual: "approve", matched: true, applied_by_delegation: false })]);
+
+    const jobs = await apiCall("POST", "/api/test/durable/jobs");
+    expect(jobs.status, jobs.text).toBe(200);
+    const learning = await api.queryDb(
+      `SELECT q.context FROM decision_prediction p JOIN agent_task_queue q ON q.id = p.learning_task_id WHERE p.workspace_id = $1 AND p.subject_id = $2 AND q.agent_id = $3`,
+      [workspaceId, held.intentId, secretary.id],
+    );
+    expect(learning).toHaveLength(1);
+  });
+
+  test("F5: an eligible inquiry is answered by the principal's delegated prediction", async () => {
+    expect(requireEnv("FF_DURABLE_PRINCIPAL")).toBe("true");
+    const secretary = await api.createAgent(`Delegation Secretary ${RUN}`, runtimeId);
+    await api.setSecretary(secretary.id);
+    const secretaryRun = await seedRun(secretary.id);
+    const profile = await apiCall("PUT", "/api/principal/profile", { consent_text: "I consent to this profile." });
+    expect(profile.status, profile.text).toBe(200);
+    const memberId = (JSON.parse(profile.text) as { member_id: string }).member_id;
+
+    await api.queryDb(
+      `INSERT INTO decision_prediction (workspace_id, member_id, subject_type, subject_id, decision_kind, predicted, confidence, actual, matched, resolved_at)
+       SELECT $1, $2, 'inquiry', gen_random_uuid(), 'inquiry', 'yes', 0.9, 'yes', true, now() FROM generate_series(1, 20)`,
+      [workspaceId, memberId],
+    );
+    const enabled = await apiCall("PUT", "/api/principal/delegations", { decision_kind: "inquiry", min_confidence: 0.9 });
+    expect(enabled.status, enabled.text).toBe(200);
+
+    const leader = await api.createAgent(`Inquiry leader ${RUN}`, runtimeId);
+    const squad = await api.createSquad(`Inquiry squad ${RUN}`, leader.id);
+    const issue = await api.createIssue(`Inquiry issue ${RUN}`, { assignee_type: "squad", assignee_id: squad.id });
+    const ask = await fetch(`${API_BASE}/api/briefs/inquiries`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${secretaryRun.token}`, "X-Workspace-Slug": slug },
+      body: JSON.stringify({ squad_id: squad.id, issue_id: issue.id, question: "Is this ready?", reason: "judgment", why_not_decide: "The principal owns the decision." }),
+    });
+    expect(ask.status, await ask.clone().text()).toBe(201);
+    const inquiry = (await ask.json()) as { id: string };
+    const pending = await api.queryDb(
+      `SELECT predicted FROM decision_prediction WHERE workspace_id = $1 AND member_id = $2 AND subject_type = 'inquiry' AND subject_id = $3`,
+      [workspaceId, memberId, inquiry.id],
+    );
+    expect(pending).toHaveLength(1);
+
+    const tasks = await api.queryDb(
+      `SELECT id FROM agent_task_queue WHERE agent_id = $1 AND context::text LIKE $2`,
+      [secretary.id, `%${inquiry.id}%`],
+    );
+    expect(tasks, "the inquiry schedules the Secretary's prediction task").toHaveLength(1);
+    const prediction = await fetch(`${API_BASE}/api/principal/predictions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${secretaryRun.token}`, "X-Workspace-Slug": slug },
+      body: JSON.stringify({ member_id: memberId, subject_type: "inquiry", subject_id: inquiry.id, decision_kind: "inquiry", predicted: "yes", confidence: 0.9, why: "The work is ready.", trait_ids: [], task_id: tasks[0].id }),
+    });
+    expect(prediction.status, await prediction.text()).toBe(201);
+    const rows = await api.queryDb(
+      `SELECT p.actual, p.matched, p.applied_by_delegation, i.answer_excerpt, i.answered_at IS NOT NULL AS answered, a.state, a.estimated_minutes::float8 AS estimated_minutes
+       FROM decision_prediction p JOIN brief_inquiry i ON i.id = p.subject_id AND i.workspace_id = p.workspace_id
+       JOIN attention_ledger a ON a.subject_type = p.subject_type AND a.subject_id = p.subject_id AND a.workspace_id = p.workspace_id
+       WHERE p.workspace_id = $1 AND p.member_id = $2 AND p.subject_type = 'inquiry' AND p.subject_id = $3`,
+      [workspaceId, memberId, inquiry.id],
+    );
+    expect(rows).toEqual([expect.objectContaining({ actual: "yes", matched: true, applied_by_delegation: true, answered: true, answer_excerpt: "yes", state: "delegated", estimated_minutes: 0 })]);
   });
 });

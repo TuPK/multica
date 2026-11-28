@@ -9,11 +9,17 @@ import { renderWithI18n } from "../test/i18n";
 import { NavigationProvider, type NavigationAdapter } from "../navigation";
 
 const mocks = vi.hoisted(() => ({
+  open: true,
   activity: [] as Array<Record<string, unknown>>,
   item: undefined as undefined | Record<string, unknown>,
   packages: [] as PluginPackage[],
   installs: [] as Array<Record<string, unknown>>,
   meta: undefined as undefined | Record<string, unknown>,
+}));
+
+vi.mock("@multica/core/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/config")>()),
+  useFeatureEnabled: (key: string, fallback: boolean) => key === "durable_open" ? mocks.open : fallback,
 }));
 
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
@@ -127,6 +133,7 @@ const plugin: PluginPackage = {
 };
 
 beforeEach(() => {
+  mocks.open = true;
   mocks.activity = [];
   mocks.item = undefined;
   mocks.packages = [];
@@ -262,6 +269,13 @@ describe("HubItemPage", () => {
     );
     expect(fetchHubBundleDownload).toHaveBeenCalledWith("ws-1", "plugin", "p1");
     open.mockRestore();
+  });
+
+  it("hides an attestation badge when durable_open is off", () => {
+    mocks.open = false;
+    mocks.item = agentItem({ attestation: { verified: true, issuer_host: "delegora.example.com" } });
+    renderPage("agent", "ag-1");
+    expect(screen.queryByText(/Verified/i)).not.toBeInTheDocument();
   });
 
   it("shows a Verified attestation badge when the item carries a verified attestation", () => {

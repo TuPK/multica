@@ -28,6 +28,9 @@ export function AttestationStatusBadge({
   className?: string;
 }) {
   const { t } = useT("durable");
+  const enabled = useReachEnabled();
+
+  if (!enabled) return null;
 
   if (status === "pending") {
     return (

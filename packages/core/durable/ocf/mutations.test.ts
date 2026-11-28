@@ -76,7 +76,7 @@ describe("downloadOCFExport", () => {
       ok: false,
       status: 500,
       statusText: "Internal Server Error",
-      json: () => Promise.resolve({ error: "failed to export the company" }),
+      json: () => Promise.resolve({ error: "failed to export the company", code: "export_failed" }),
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -84,6 +84,29 @@ describe("downloadOCFExport", () => {
       name: "ApiError",
       status: 500,
       message: "failed to export the company",
+      body: { error: "failed to export the company", code: "export_failed" },
     } satisfies Partial<ApiError>);
+  });
+
+  it.each([
+    ["non-object JSON", () => Promise.resolve(null)],
+    ["missing error", () => Promise.resolve({})],
+    ["invalid error", () => Promise.resolve({ error: 42 })],
+    ["unreadable JSON", () => Promise.reject(new Error("invalid JSON"))],
+  ])("falls back for %s", async (_label, json) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false, status: 502, statusText: "Bad Gateway", json,
+    }));
+    await expect(downloadOCFExport("ws-1", { history: false })).rejects.toMatchObject({
+      name: "ApiError", status: 502, message: "API error: 502 Bad Gateway",
+    });
+  });
+
+  it("validates the error response before passing it to ApiError", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false, status: 400, statusText: "Bad Request", json: () => Promise.resolve(["bad"]),
+    }));
+    const error = await downloadOCFExport("ws-1", { history: false }).catch((err: ApiError) => err);
+    expect(error.body).toEqual({});
   });
 });

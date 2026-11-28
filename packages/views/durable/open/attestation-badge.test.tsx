@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@multica/core/api";
 import { renderWithI18n } from "../../test/i18n";
-import { AttestationBadge } from "./attestation-badge";
+import { AttestationBadge, AttestationStatusBadge } from "./attestation-badge";
 
 const flags = vi.hoisted(() => ({ open: true }));
 
@@ -48,6 +48,12 @@ afterEach(() => {
 });
 
 describe("AttestationBadge", () => {
+  it("hides the status badge when durable_open is off", () => {
+    flags.open = false;
+    const { container } = renderWithI18n(<AttestationStatusBadge status="verified" issuer="delegora.example.com" />);
+    expect(container.innerHTML).toBe("");
+  });
+
   it("renders nothing and skips verification when durable_open is off", () => {
     flags.open = false;
     const { container } = renderBadge(sampleDoc);

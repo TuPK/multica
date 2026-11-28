@@ -1,7 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { api, ApiError } from "../../api";
+import { parseWithFallback } from "../../api/schema";
 import { getCurrentSlug } from "../../platform";
 import { toQueryString } from "../query-string";
+import { ocfErrorSchema } from "./schemas";
 
 export type ExportOCFRequest = {
   /** Include settled outcomes, track records, governance log and active dossiers. */
@@ -28,7 +30,9 @@ export function buildOCFExportPath(opts: ExportOCFRequest): string {
 async function parseErrorResponse(res: Response): Promise<{ message: string; body: unknown }> {
   const fallback = `API error: ${res.status} ${res.statusText}`;
   try {
-    const data = (await res.json()) as { error?: string };
+    const data = parseWithFallback<{ error?: string }>(await res.json(), ocfErrorSchema, {}, {
+      endpoint: "company/export",
+    });
     const message = typeof data.error === "string" && data.error ? data.error : fallback;
     return { message, body: data };
   } catch {
