@@ -261,6 +261,33 @@ describe("hub item detail, skill file save and quota-blocked sync", () => {
     expect(url).toBe(`${BASE}/api/hub/items/skill/sk-1`);
     expect(headers.get("X-Workspace-ID")).toBe("ws-1");
     expect(item).toMatchObject({ id: "hi-1", ref_id: "sk-1", tracking: "forked", update_available: true });
+    expect(item.attestation).toBeUndefined();
+  });
+
+  it("parses attestation on an agent item and degrades malformed attestation safely", async () => {
+    const fetchMock = stubFetch(
+      jsonResponse({
+        ...ITEM,
+        kind: "agent",
+        ref_id: "ag-1",
+        attestation: { verified: true, issuer_host: "delegora.example.com" },
+      }),
+      jsonResponse({
+        ...ITEM,
+        kind: "agent",
+        ref_id: "ag-2",
+        attestation: "not-an-object",
+      }),
+    );
+    const client = new ApiClient(BASE);
+    const verified = await client.getHubItem("ws-1", "agent", "ag-1");
+    expect(requestOf(fetchMock, 0).url).toBe(`${BASE}/api/hub/items/agent/ag-1`);
+    expect(verified.kind).toBe("agent");
+    expect(verified.attestation).toEqual({ verified: true, issuer_host: "delegora.example.com" });
+
+    const malformed = await client.getHubItem("ws-1", "agent", "ag-2");
+    expect(malformed.id).toBe("hi-1");
+    expect(malformed.attestation).toBeUndefined();
   });
 
   it("refuses an item body without an id", async () => {

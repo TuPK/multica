@@ -11,6 +11,65 @@ import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../../i18n";
 import { useReachEnabled } from "../reach/use-reach-enabled";
 
+export type AttestationBadgeStatus = "verified" | "unverified" | "pending";
+
+/**
+ * Presentational badge for track-record attestation verification status
+ * (durable spec 13.2, 13.3). Shared by AttestationBadge (live verify query)
+ * and Hub item detail (server-verified attestation summary).
+ */
+export function AttestationStatusBadge({
+  status,
+  issuer,
+  className,
+}: {
+  status: AttestationBadgeStatus;
+  issuer?: string;
+  className?: string;
+}) {
+  const { t } = useT("durable");
+
+  if (status === "pending") {
+    return (
+      <Badge
+        variant="outline"
+        data-status="pending"
+        className={cn("text-muted-foreground", className)}
+      >
+        <Loader2 className="animate-spin" aria-hidden="true" />
+        {t(($) => $.attestation.verifying)}
+      </Badge>
+    );
+  }
+
+  if (status === "verified") {
+    const trimmedIssuer = issuer?.trim() ?? "";
+    return (
+      <Badge
+        variant="outline"
+        data-status="verified"
+        className={cn("border-success/40 bg-success/10 text-success", className)}
+      >
+        <ShieldCheck aria-hidden="true" />
+        {trimmedIssuer
+          ? t(($) => $.attestation.verified_by, { issuer: trimmedIssuer })
+          : t(($) => $.attestation.verified)}
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge
+      variant="outline"
+      data-status="unverified"
+      className={cn("text-muted-foreground", className)}
+    >
+      <ShieldOff aria-hidden="true" />
+      {t(($) => $.attestation.unverified)}
+    </Badge>
+  );
+}
+
 /**
  * Verifies a signed track-record attestation document through POST /api/attestations/verify
  * and displays Verified (with issuer host when present) or Unverified (durable spec 13.2).
@@ -53,7 +112,6 @@ function AttestationBadgeInner({
   document: unknown;
   className?: string;
 }) {
-  const { t } = useT("durable");
   const hasDocument =
     document !== undefined &&
     document !== null &&
@@ -61,55 +119,22 @@ function AttestationBadgeInner({
   const query = useVerifyAttestationQuery(wsId, document, hasDocument);
 
   if (!hasDocument) {
-    return (
-      <Badge
-        variant="outline"
-        data-status="unverified"
-        className={cn("text-muted-foreground", className)}
-      >
-        <ShieldOff aria-hidden="true" />
-        {t(($) => $.attestation.unverified)}
-      </Badge>
-    );
+    return <AttestationStatusBadge status="unverified" className={className} />;
   }
 
   if (query.isPending) {
-    return (
-      <Badge
-        variant="outline"
-        data-status="pending"
-        className={cn("text-muted-foreground", className)}
-      >
-        <Loader2 className="animate-spin" aria-hidden="true" />
-        {t(($) => $.attestation.verifying)}
-      </Badge>
-    );
+    return <AttestationStatusBadge status="pending" className={className} />;
   }
 
   if (query.isSuccess && query.data.valid === true) {
-    const issuer = query.data.issuer.trim();
     return (
-      <Badge
-        variant="outline"
-        data-status="verified"
-        className={cn("border-success/40 bg-success/10 text-success", className)}
-      >
-        <ShieldCheck aria-hidden="true" />
-        {issuer
-          ? t(($) => $.attestation.verified_by, { issuer })
-          : t(($) => $.attestation.verified)}
-      </Badge>
+      <AttestationStatusBadge
+        status="verified"
+        issuer={query.data.issuer}
+        className={className}
+      />
     );
   }
 
-  return (
-    <Badge
-      variant="outline"
-      data-status="unverified"
-      className={cn("text-muted-foreground", className)}
-    >
-      <ShieldOff aria-hidden="true" />
-      {t(($) => $.attestation.unverified)}
-    </Badge>
-  );
+  return <AttestationStatusBadge status="unverified" className={className} />;
 }

@@ -1,6 +1,7 @@
 import type { PluginPackage, SkillSummary } from "../types";
+import type { HubItemAttestation } from "../types/hub";
 
-export type HubItemKind = "skill" | "plugin";
+export type HubItemKind = "skill" | "plugin" | "agent";
 
 /** Where an item came from. `url_zip`, `registry` and `upload` are the add-flow sources. */
 export type HubSourceType =
@@ -27,6 +28,7 @@ export interface HubItem {
   sourceUrl: string | null;
   version: string | null;
   labels: string[];
+  attestation?: HubItemAttestation;
   updatedAt: string;
   createdAt: string;
 }
@@ -155,7 +157,7 @@ export function summarizeHubSources(items: readonly HubItem[]): HubSourceSummary
     };
     entry.count += 1;
     if (item.kind === "skill") entry.skills += 1;
-    else entry.plugins += 1;
+    else if (item.kind === "plugin") entry.plugins += 1;
     if (item.updatedAt > entry.lastUpdatedAt) entry.lastUpdatedAt = item.updatedAt;
     bySource.set(item.source, entry);
   }

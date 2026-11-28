@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/hub"
 	"github.com/multica-ai/multica/server/internal/logger"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -37,9 +38,10 @@ type HubItemResponse struct {
 	UpdateAvailable bool    `json:"update_available"`
 	RemoteDigest    string  `json:"remote_digest"`
 	CheckedAt       *string `json:"checked_at"`
-	LocalModified   bool    `json:"local_modified"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
+	LocalModified   bool                        `json:"local_modified"`
+	Attestation     *HubItemAttestationResponse `json:"attestation,omitempty"`
+	CreatedAt       string                      `json:"created_at"`
+	UpdatedAt       string                      `json:"updated_at"`
 }
 
 // hubTrackedOrigins are the skill origins (config.origin.type) that name a remote
@@ -127,10 +129,13 @@ func (h *Handler) ListHubItems(w http.ResponseWriter, r *http.Request) {
 	resp := make([]HubItemResponse, 0, len(rows))
 	for _, row := range rows {
 		// A row whose skill or plugin is gone is left over from a delete; it is not listed.
-		if !live[row.Kind+":"+uuidToString(row.RefID)] {
+		// Agent template rows live directly in hub_item.
+		if row.Kind != string(hub.KindAgent) && !live[row.Kind+":"+uuidToString(row.RefID)] {
 			continue
 		}
-		resp = append(resp, hubItemToResponse(row))
+		itemResp := hubItemToResponse(row)
+		itemResp.Attestation = h.hubItemAttestation(ctx, row)
+		resp = append(resp, itemResp)
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -187,7 +192,9 @@ func (h *Handler) GetHubItem(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to load item")
 		return
 	}
-	writeJSON(w, http.StatusOK, hubItemToResponse(row))
+	itemResp := hubItemToResponse(row)
+	itemResp.Attestation = h.hubItemAttestation(ctx, row)
+	writeJSON(w, http.StatusOK, itemResp)
 }
 
 func hubItemToResponse(row db.HubItem) HubItemResponse {

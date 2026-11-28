@@ -79,8 +79,35 @@ describe("HubItemMetaSchema", () => {
     });
   });
 
-  it("shows an unknown kind as skill rather than inventing a plugin", () => {
-    expect(HubItemMetaSchema.parse({ ...ITEM, kind: "agent" }).kind).toBe("skill");
+  it("accepts agent as a known Hub item kind and falls back unknown kinds to skill", () => {
+    expect(HubItemMetaSchema.parse({ ...ITEM, kind: "agent" }).kind).toBe("agent");
+    expect(HubItemMetaSchema.parse({ ...ITEM, kind: "widget" }).kind).toBe("skill");
+  });
+
+  it("omits attestation when absent and parses a valid attestation summary", () => {
+    expect(HubItemMetaSchema.parse(ITEM).attestation).toBeUndefined();
+    const parsed = HubItemMetaSchema.parse({
+      ...ITEM,
+      kind: "agent",
+      attestation: { verified: true, issuer_host: "delegora.example.com" },
+    });
+    expect(parsed.attestation).toEqual({ verified: true, issuer_host: "delegora.example.com" });
+  });
+
+  it("handles malformed attestation fields without failing the item or trusting verified", () => {
+    const badFields = HubItemMetaSchema.parse({
+      ...ITEM,
+      kind: "agent",
+      attestation: { verified: "yes", issuer_host: 42 },
+    });
+    expect(badFields.id).toBe("hi-1");
+    expect(badFields.attestation).toEqual({ verified: false, issuer_host: "" });
+
+    for (const malformed of ["not-an-object", 123, null, ["array"]]) {
+      const parsed = HubItemMetaSchema.parse({ ...ITEM, kind: "agent", attestation: malformed });
+      expect(parsed.id).toBe("hi-1");
+      expect(parsed.attestation).toBeUndefined();
+    }
   });
 });
 

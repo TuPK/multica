@@ -17,7 +17,8 @@
   },
   "kind_singular": {
     "skill": "Kỹ năng",
-    "plugin": "Plugin"
+    "plugin": "Plugin",
+    "agent": "Mẫu agent"
   },
   "view": {
     "list": "Danh sách",

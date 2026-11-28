@@ -6,22 +6,28 @@ import (
 	"testing"
 )
 
-func TestHubItemKindsIncludeSeatOffer(t *testing.T) {
-	if !IsKnownKind(KindSkill) || !IsKnownKind(KindPlugin) || !IsKnownKind(KindSeatOffer) {
-		t.Fatalf("expected skill, plugin and seat_offer to be known Hub item kinds")
+func TestHubItemKindsIncludeSeatOfferAndAgent(t *testing.T) {
+	if !IsKnownKind(KindSkill) || !IsKnownKind(KindPlugin) || !IsKnownKind(KindSeatOffer) || !IsKnownKind(KindAgent) {
+		t.Fatalf("expected skill, plugin, seat_offer and agent to be known Hub item kinds")
+	}
+	if !IsHubItemKind(KindSkill) || !IsHubItemKind(KindPlugin) || !IsHubItemKind(KindAgent) {
+		t.Fatalf("expected skill, plugin and agent to be valid hub_item route kinds")
+	}
+	if IsHubItemKind(KindSeatOffer) || IsHubItemKind(Kind("unknown")) {
+		t.Fatalf("seat_offer and unknown must not be accepted as hub_item route kinds")
 	}
 	if IsKnownKind(Kind("unknown")) {
 		t.Fatalf("unknown kind must not be accepted")
 	}
 	kinds := AllItemKinds()
-	found := false
+	have := make(map[Kind]bool, len(kinds))
 	for _, k := range kinds {
-		if k == KindSeatOffer {
-			found = true
-		}
+		have[k] = true
 	}
-	if !found {
-		t.Fatalf("AllItemKinds() = %v, want %q included", kinds, KindSeatOffer)
+	for _, want := range []Kind{KindSkill, KindPlugin, KindSeatOffer, KindAgent} {
+		if !have[want] {
+			t.Fatalf("AllItemKinds() = %v, want %q included", kinds, want)
+		}
 	}
 }
 

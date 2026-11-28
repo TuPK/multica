@@ -17,7 +17,8 @@
   },
   "kind_singular": {
     "skill": "Skill",
-    "plugin": "Plugin"
+    "plugin": "Plugin",
+    "agent": "Agent template"
   },
   "view": {
     "list": "List",

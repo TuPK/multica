@@ -17,7 +17,8 @@
   },
   "kind_singular": {
     "skill": "skill",
-    "plugin": "插件"
+    "plugin": "插件",
+    "agent": "Agent 模板"
   },
   "view": {
     "list": "列表",

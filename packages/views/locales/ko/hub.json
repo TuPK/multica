@@ -17,7 +17,8 @@
   },
   "kind_singular": {
     "skill": "스킬",
-    "plugin": "플러그인"
+    "plugin": "플러그인",
+    "agent": "에이전트 템플릿"
   },
   "view": {
     "list": "목록",

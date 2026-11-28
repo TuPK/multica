@@ -13,8 +13,12 @@ import (
 // types.go do not conflict with it.
 const KindSeatOffer Kind = "seat_offer"
 
+// KindAgent is the Hub item kind for an agent template carrying optional signed
+// track-record attestations in attestations/*.json (durable spec 13.3, F12).
+const KindAgent Kind = "agent"
+
 // forkItemKinds lists the Hub item kinds added by the fork.
-var forkItemKinds = []Kind{KindSeatOffer}
+var forkItemKinds = []Kind{KindSeatOffer, KindAgent}
 
 // AttestationDir is the directory inside an agent template bundle that holds
 // signed track-record attestations (durable spec 13.3: attestations/*.json).
@@ -45,6 +49,12 @@ func IsKnownKind(k Kind) bool {
 		}
 	}
 	return false
+}
+
+// IsHubItemKind reports whether k is a Hub item kind stored in hub_item and
+// served by /api/hub/items/{kind}/{id} (skill, plugin, agent).
+func IsHubItemKind(k Kind) bool {
+	return k == KindSkill || k == KindPlugin || k == KindAgent
 }
 
 // BundleAttestation is one JSON attestation file carried inside a template bundle.

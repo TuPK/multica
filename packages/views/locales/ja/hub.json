@@ -17,7 +17,8 @@
   },
   "kind_singular": {
     "skill": "スキル",
-    "plugin": "プラグイン"
+    "plugin": "プラグイン",
+    "agent": "エージェントテンプレート"
   },
   "view": {
     "list": "リスト",

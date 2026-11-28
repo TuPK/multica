@@ -37,13 +37,14 @@ import { HubItemSourceTab } from "./hub-source-tab";
 import { HubUpdateBanner } from "./hub-update-banner";
 import { formatHubSize } from "./hub-files";
 import { useHubFiles } from "./use-hub-files";
+import { AttestationStatusBadge } from "../durable/open/attestation-badge";
 
 const HUB_ITEM_LAYOUT_ID = "multica_hub_item_layout";
 const TABS = ["files", "overview", "versions", "usage", "source", "activity"] as const;
 type HubItemTab = (typeof TABS)[number];
 
 export function isHubItemKind(value: string): value is HubItemKind {
-  return value === "skill" || value === "plugin";
+  return value === "skill" || value === "plugin" || value === "agent";
 }
 
 /**
@@ -138,12 +139,13 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
   const kind = item.kind;
   const refId = item.refId;
   const isSkill = kind === "skill";
+  const isPlugin = kind === "plugin";
 
   const skill = useQuery({ ...skillDetailOptions(wsId, refId), enabled: isSkill });
   const skillVersions = useQuery({ ...skillVersionsOptions(wsId, refId), enabled: isSkill });
   const members = useQuery(memberListOptions(wsId));
   // The plugin package list sits behind a feature flag; its failure must not hide the item's shell.
-  const packages = useQuery({ ...pluginPackagesOptions(wsId), enabled: !isSkill, retry: false });
+  const packages = useQuery({ ...pluginPackagesOptions(wsId), enabled: isPlugin, retry: false });
 
   const pkg = packages.data?.packages.find((candidate) => candidate.id === refId);
   const newest = pkg?.versions[0];
@@ -151,19 +153,20 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
   const canEditSkill = useCanEditSkill(skill.data, wsId);
   // Publishing a plugin version is an admin decision: owners and admins only.
   const canEditPlugin = myRole === "admin" || myRole === "owner";
-  const canEdit = isSkill ? canEditSkill : canEditPlugin;
+  const canEdit = isSkill ? canEditSkill : isPlugin ? canEditPlugin : false;
   const itemMeta = useHubItemMeta(wsId, kind, refId);
+  const attestation = item.attestation ?? itemMeta.meta?.attestation;
 
   const files = useHubFiles({
     wsId,
     kind,
     refId,
     versionId: newest?.id,
-    ready: isSkill || newest !== undefined,
+    ready: isSkill || (isPlugin && newest !== undefined),
     canEdit,
   });
 
-  const version = isSkill ? skillVersions.data?.[0]?.version : newest?.version;
+  const version = isSkill ? skillVersions.data?.[0]?.version : isPlugin ? newest?.version : item.version ?? undefined;
   const reservedPath = isSkill ? "SKILL.md" : "multica.plugin.json";
   const publishedVersions = pkg?.versions.map((candidate) => candidate.version) ?? [];
 
@@ -173,7 +176,17 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
         media={<ObjectIconMark icon={isSkill ? BookOpenText : Package} />}
         title={item.name}
         description={item.description || undefined}
-        trailing={<Badge variant="outline">{t(($) => $.kind_singular[kind])}</Badge>}
+        trailing={
+          <div className="flex items-center gap-2">
+            {attestation ? (
+              <AttestationStatusBadge
+                status={attestation.verified ? "verified" : "unverified"}
+                issuer={attestation.issuer_host}
+              />
+            ) : null}
+            <Badge variant="outline">{t(($) => $.kind_singular[kind])}</Badge>
+          </div>
+        }
       />
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 text-caption text-muted-foreground">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">

@@ -42,6 +42,7 @@ function meta(overrides: Partial<HubItemMeta>): HubItemMeta {
 describe("hub item query keys", () => {
   it.each([
     ["items", () => hubItemKeys.items("ws-1")],
+    ["item", () => hubItemKeys.item("ws-1", "agent", "ag-1")],
     ["updates", () => hubItemKeys.updates("ws-1")],
     ["update", () => hubItemKeys.update("ws-1", "skill", "sk-1")],
     ["updateDiff", () => hubItemKeys.updateDiff("ws-1", "plugin", "p1", "a.js")],

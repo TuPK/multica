@@ -263,7 +263,54 @@ describe("HubItemPage", () => {
     expect(fetchHubBundleDownload).toHaveBeenCalledWith("ws-1", "plugin", "p1");
     open.mockRestore();
   });
+
+  it("shows a Verified attestation badge when the item carries a verified attestation", () => {
+    mocks.item = agentItem({
+      attestation: { verified: true, issuer_host: "delegora.example.com" },
+    });
+    renderPage("agent", "ag-1");
+
+    const badge = screen.getByText("Verified by delegora.example.com");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveAttribute("data-status", "verified");
+  });
+
+  it("shows an Unverified badge when the attestation did not verify", () => {
+    mocks.item = agentItem({
+      attestation: { verified: false, issuer_host: "delegora.example.com" },
+    });
+    renderPage("agent", "ag-1");
+
+    const badge = screen.getByText("Unverified");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveAttribute("data-status", "unverified");
+  });
+
+  it("renders no attestation badge when the item has no attestation", () => {
+    mocks.item = agentItem();
+    renderPage("agent", "ag-1");
+
+    expect(screen.queryByText(/Verified/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Unverified/i)).not.toBeInTheDocument();
+  });
 });
+
+function agentItem(overrides: Record<string, unknown> = {}) {
+  return {
+    key: "agent:ag-1",
+    kind: "agent",
+    refId: "ag-1",
+    name: "Code Reviewer",
+    description: "Reviews pull requests",
+    source: "manual",
+    sourceUrl: null,
+    version: "1.0.0",
+    labels: [],
+    updatedAt: "2026-07-02T00:00:00Z",
+    createdAt: "2026-07-01T00:00:00Z",
+    ...overrides,
+  };
+}
 
 function pluginItem() {
   return {

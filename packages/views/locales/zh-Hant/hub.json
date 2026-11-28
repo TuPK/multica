@@ -17,7 +17,8 @@
   },
   "kind_singular": {
     "skill": "技能",
-    "plugin": "外掛"
+    "plugin": "外掛",
+    "agent": "Agent 範本"
   },
   "view": {
     "list": "列表",

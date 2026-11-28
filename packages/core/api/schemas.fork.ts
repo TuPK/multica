@@ -851,9 +851,14 @@ export const EMPTY_HUB_IMPORT_COMMIT_RESULT: HubImportCommitResult = {
   skipped: false,
 };
 
-const HubItemKindSchema = z.enum(["skill", "plugin"]).catch("skill");
+const HubItemKindSchema = z.enum(["skill", "plugin", "agent"]).catch("skill");
 
 const HubCountSchema = z.number().catch(0);
+
+export const HubItemAttestationSchema = z.object({
+  verified: z.boolean().catch(false),
+  issuer_host: z.string().catch(""),
+}).loose();
 
 export const HubItemMetaSchema = z.object({
   id: z.string().catch(""),
@@ -876,6 +881,7 @@ export const HubItemMetaSchema = z.object({
   remote_digest: z.string().catch(""),
   checked_at: z.string().nullable().catch(null),
   local_modified: z.boolean().catch(false),
+  attestation: HubItemAttestationSchema.optional().catch(undefined),
   created_at: z.string().catch(""),
   updated_at: z.string().catch(""),
 }).loose();
@@ -998,7 +1004,7 @@ export const HubActivityEntrySchema = z.object({
   actor_type: z.string().catch(""),
   actor_id: z.string().nullable().catch(null),
   actor_name: z.string().catch(""),
-  kind: z.enum(["skill", "plugin"]).nullable().catch(null),
+  kind: z.enum(["skill", "plugin", "agent"]).nullable().catch(null),
   ref_id: z.string().nullable().catch(null),
   item_name: z.string().catch(""),
   source_id: z.string().nullable().catch(null),

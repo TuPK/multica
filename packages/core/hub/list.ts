@@ -75,6 +75,7 @@ export function buildHubListRows(
       updateAvailable: row?.update_available ?? false,
       scanWarning: row ? row.scan_status !== "clean" : false,
       tracking: row?.tracking ?? null,
+      attestation: row?.attestation ?? item.attestation,
     };
   });
 }

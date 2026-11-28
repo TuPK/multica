@@ -169,8 +169,8 @@ func (h *Handler) hubBundleURL(ctx context.Context, item db.HubItem) (string, er
 // It writes the error response itself and reports false when it cannot.
 func (h *Handler) hubBundleForRequest(w http.ResponseWriter, r *http.Request) (db.HubItem, bool) {
 	kind := chi.URLParam(r, "kind")
-	if kind != "skill" && kind != "plugin" {
-		writeError(w, http.StatusBadRequest, "kind must be skill or plugin")
+	if !hub.IsHubItemKind(hub.Kind(kind)) {
+		writeError(w, http.StatusBadRequest, "kind must be skill, plugin, or agent")
 		return db.HubItem{}, false
 	}
 	refID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "id")
@@ -257,6 +257,12 @@ func (h *Handler) hubItemForRef(ctx context.Context, ws pgtype.UUID, kind string
 		if err := h.ensurePluginHubRows(ctx, ws, []pgtype.UUID{refID}); err != nil {
 			return db.HubItem{}, err
 		}
+	case string(hub.KindAgent):
+		item, err := h.Queries.GetHubItemByRef(ctx, db.GetHubItemByRefParams{WorkspaceID: ws, Kind: kind, RefID: refID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.HubItem{}, errHubItemNotFound
+		}
+		return item, err
 	default:
 		return db.HubItem{}, errHubItemNotFound
 	}
@@ -274,6 +280,12 @@ func (h *Handler) hubItemForRef(ctx context.Context, ws pgtype.UUID, kind string
 // newer version, gets a new bundle, recorded as a new version. The bundle is
 // rebuilt before it is served, so a download never returns stale content.
 func (h *Handler) currentHubBundle(ctx context.Context, ws, user pgtype.UUID, item db.HubItem) (db.HubItem, error) {
+	if item.Kind == string(hub.KindAgent) {
+		if item.BundleKey == "" {
+			return db.HubItem{}, errHubItemNotFound
+		}
+		return item, nil
+	}
 	local, err := h.hubLoadLocal(ctx, ws, item)
 	if err != nil {
 		return db.HubItem{}, err

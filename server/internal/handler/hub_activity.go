@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/hub"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -129,8 +130,8 @@ func (h *Handler) GetHubActivity(w http.ResponseWriter, r *http.Request) {
 		RowLimit:    int32(limit + 1), // one extra row tells us whether a next page exists
 	}
 	if kind := query.Get("kind"); kind != "" {
-		if kind != "skill" && kind != "plugin" {
-			writeError(w, http.StatusBadRequest, "kind must be skill or plugin")
+		if !hub.IsHubItemKind(hub.Kind(kind)) {
+			writeError(w, http.StatusBadRequest, "kind must be skill, plugin, or agent")
 			return
 		}
 		params.Kind = pgtype.Text{String: kind, Valid: true}

@@ -147,7 +147,13 @@ export interface HubImportCommitResult {
 /** `tracking` follows the source; `forked` detaches from it; `manual` has no source. */
 export type HubItemTracking = "tracking" | "forked" | "manual";
 
-/** One row of GET /api/hub/items: every skill and plugin package of the workspace. */
+/** Verification summary of a Hub item's bundled attestation (durable spec 13.2, 13.3). */
+export interface HubItemAttestation {
+  verified: boolean;
+  issuer_host: string;
+}
+
+/** One row of GET /api/hub/items: every skill, plugin package, and agent template of the workspace. */
 export interface HubItemMeta {
   id: string;
   kind: HubItemKind;
@@ -164,6 +170,7 @@ export interface HubItemMeta {
   remote_digest: string;
   checked_at: string | null;
   local_modified: boolean;
+  attestation?: HubItemAttestation;
   created_at: string;
   updated_at: string;
 }

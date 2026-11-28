@@ -67,8 +67,8 @@ type HubItemVersionResponse struct {
 // caller is a member of the workspace the request names.
 func (h *Handler) hubItemRoute(w http.ResponseWriter, r *http.Request) (string, string, pgtype.UUID, bool) {
 	kind := chi.URLParam(r, "kind")
-	if kind != "skill" && kind != "plugin" {
-		writeError(w, http.StatusBadRequest, "kind must be skill or plugin")
+	if !hub.IsHubItemKind(hub.Kind(kind)) {
+		writeError(w, http.StatusBadRequest, "kind must be skill, plugin, or agent")
 		return "", "", pgtype.UUID{}, false
 	}
 	refID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "id")
