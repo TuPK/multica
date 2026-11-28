@@ -11,7 +11,9 @@ import { event } from "./governance-test-mocks";
 const api = vi.hoisted(() => ({
   listGovernanceEvents: vi.fn(),
   exportGovernanceEventsCsv: vi.fn(),
+  request: vi.fn(),
 }));
+const flags = vi.hoisted(() => ({ open: false }));
 const nav = vi.hoisted(() => ({
   pathname: "/acme/governance",
   searchParams: new URLSearchParams(),
@@ -23,6 +25,11 @@ const save = vi.hoisted(() => ({ saveBlob: vi.fn() }));
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
   api,
+}));
+vi.mock("@multica/core/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/config")>()),
+  useFeatureEnabled: (key: string, fallback: boolean) =>
+    key === "durable_open" ? flags.open : fallback,
 }));
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("@multica/core/workspace/hooks", async (importOriginal) => ({
@@ -46,10 +53,12 @@ function renderTab() {
 
 describe("GovernanceLogTab", () => {
   beforeEach(() => {
+    flags.open = false;
     nav.searchParams = new URLSearchParams("tab=log");
     nav.replace.mockReset();
     api.listGovernanceEvents.mockReset();
     api.exportGovernanceEventsCsv.mockReset();
+    api.request.mockReset();
     save.saveBlob.mockReset();
   });
   afterEach(cleanup);
@@ -129,5 +138,25 @@ describe("GovernanceLogTab", () => {
     const [savedBlob, filename] = save.saveBlob.mock.calls[0] as [Blob, string];
     expect(savedBlob).toBe(blob);
     expect(filename).toMatch(/^governance-log-\d{4}-\d{2}-\d{2}\.csv$/);
+  });
+
+  it("opens the OCF export dialog from its trigger when durable_open is on", async () => {
+    flags.open = true;
+    api.listGovernanceEvents.mockResolvedValue({ events: [event("ev-1")], next_cursor: null });
+    api.request.mockRejectedValue(new Error("no profile"));
+    renderTab();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Export OCF package" }));
+
+    expect(await screen.findByText("Export Open Company Format")).toBeTruthy();
+  });
+
+  it("hides the OCF export trigger when durable_open is off", async () => {
+    flags.open = false;
+    api.listGovernanceEvents.mockResolvedValue({ events: [event("ev-1")], next_cursor: null });
+    renderTab();
+
+    await screen.findByRole("button", { name: "Export CSV" });
+    expect(screen.queryByRole("button", { name: "Export OCF package" })).toBeNull();
   });
 });

@@ -30,8 +30,9 @@ import {
   TableHeader,
   TableRow,
 } from "@multica/ui/components/ui/table";
-import { Download } from "@multica/ui/icons";
+import { Download, FileArchive } from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
+import { ExportHistoryDialog } from "../durable/open/export-history-dialog";
 import { PAGE_GUTTER } from "../layout/page-header";
 import { useLocale, useT } from "../i18n";
 import { useNavigation } from "../navigation";
@@ -51,6 +52,7 @@ function knownSubjectType(type: string): GovernanceSubjectType | null {
  */
 export function GovernanceLogTab() {
   const { t } = useT("governance");
+  const { t: tDurable } = useT("durable");
   const locale = useLocale();
   const wsId = useWorkspaceId();
   const { getActorName } = useActorName();
@@ -139,17 +141,27 @@ export function GovernanceLogTab() {
           {filterSelect(t(($) => $.log.filter_actor), filters.actor_type ?? ALL, actorItems, "actor_type", "w-40")}
           {filterSelect(t(($) => $.log.filter_subject), filters.subject_type ?? ALL, subjectItems, "subject_type", "w-40")}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={exportCsv.isPending}
-          aria-busy={exportCsv.isPending}
-          onClick={exportLog}
-        >
-          <Download />
-          {t(($) => $.log.export)}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={exportCsv.isPending}
+            aria-busy={exportCsv.isPending}
+            onClick={exportLog}
+          >
+            <Download />
+            {t(($) => $.log.export)}
+          </Button>
+          <ExportHistoryDialog
+            trigger={
+              <Button type="button" variant="outline" size="sm">
+                <FileArchive />
+                {tDurable(($) => $.open_export.trigger)}
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       {log.isError ? (
