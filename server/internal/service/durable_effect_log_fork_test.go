@@ -307,34 +307,35 @@ func (tr *gateReadTrace) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, _ pgx.T
 	}
 }
 
-// BenchmarkGate bounds the SELECT query count of a warm (*EffectService).Gate call
-// so an accidental extra read fails the benchmark.
-func BenchmarkGate(b *testing.B) {
+// measureGateReads sets up a warm EffectService on a traced pool and returns the
+// SELECT count of one warm non-send Gate call along with the service and input.
+func measureGateReads(tb testing.TB) (int64, *EffectService, EffectInput) {
+	tb.Helper()
 	ctx := context.Background()
 	shared, err := openSharedTestPool()
 	if err != nil {
-		b.Skip(err)
+		tb.Skip(err)
 	}
 	tr := &gateReadTrace{}
 	config := shared.Config()
 	config.ConnConfig.Tracer = tr
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		b.Fatal(err)
+		tb.Fatal(err)
 	}
-	b.Cleanup(pool.Close)
+	tb.Cleanup(pool.Close)
 
 	fx := testutil.New(pool, "", "")
 	suffix := time.Now().UnixNano()
-	fx.UserID = fx.User(b, "gate bench", fmt.Sprintf("gate-bench-%d@example.test", suffix))
-	fx.WorkspaceID = fx.Workspace(b, "gate bench", fmt.Sprintf("gate-bench-%d", suffix))
-	fx.Member(b, fx.WorkspaceID, fx.UserID, "owner")
-	fx.Cleanup(b, `DELETE FROM effect_event WHERE workspace_id = $1`, fx.WorkspaceID)
-	runtimeID := fx.Runtime(b, "gate bench")
-	agentID := fx.Agent(b, "gate bench", runtimeID)
-	squadID := fx.Squad(b, "gate bench", agentID)
-	fx.SquadMember(b, squadID, "agent", agentID)
-	taskID := fx.Task(b, agentID, testutil.Cols{"runtime_id": runtimeID})
+	fx.UserID = fx.User(tb, "gate bench", fmt.Sprintf("gate-bench-%d@example.test", suffix))
+	fx.WorkspaceID = fx.Workspace(tb, "gate bench", fmt.Sprintf("gate-bench-%d", suffix))
+	fx.Member(tb, fx.WorkspaceID, fx.UserID, "owner")
+	fx.Cleanup(tb, `DELETE FROM effect_event WHERE workspace_id = $1`, fx.WorkspaceID)
+	runtimeID := fx.Runtime(tb, "gate bench")
+	agentID := fx.Agent(tb, "gate bench", runtimeID)
+	squadID := fx.Squad(tb, "gate bench", agentID)
+	fx.SquadMember(tb, squadID, "agent", agentID)
+	taskID := fx.Task(tb, agentID, testutil.Cols{"runtime_id": runtimeID})
 
 	provider := featureflag.NewStaticProvider()
 	provider.Set(featureflags.DurableEffects, featureflag.Rule{Default: true})
@@ -355,18 +356,34 @@ func BenchmarkGate(b *testing.B) {
 
 	// Warm the 60s autonomy and overrides caches; this call is not counted.
 	if _, err := svc.Gate(ctx, in); err != nil {
-		b.Fatalf("warmup Gate: %v", err)
+		tb.Fatalf("warmup Gate: %v", err)
 	}
 
 	tr.selects.Store(0)
 	if _, err := svc.Gate(ctx, in); err != nil {
-		b.Fatalf("measured Gate: %v", err)
+		tb.Fatalf("measured Gate: %v", err)
 	}
-	reads := tr.selects.Load()
+	return tr.selects.Load(), svc, in
+}
+
+// TestGateReadBudget enforces gateReadBudget during normal go test runs so an
+// extra SELECT in Gate fails without requiring -bench.
+func TestGateReadBudget(t *testing.T) {
+	reads, _, _ := measureGateReads(t)
+	if reads > gateReadBudget {
+		t.Fatalf("Gate issued %d SELECT queries, exceeds budget %d", reads, gateReadBudget)
+	}
+}
+
+// BenchmarkGate bounds the SELECT query count of a warm (*EffectService).Gate call
+// so an accidental extra read fails the benchmark.
+func BenchmarkGate(b *testing.B) {
+	reads, svc, in := measureGateReads(b)
 	if reads > gateReadBudget {
 		b.Fatalf("Gate issued %d SELECT queries, exceeds budget %d", reads, gateReadBudget)
 	}
 
+	ctx := context.Background()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		if _, err := svc.Gate(ctx, in); err != nil {

@@ -336,7 +336,7 @@ func TestLifecycleCategoryOf(t *testing.T) {
 }
 
 // TestEveryStatusWriterRecordsOneTransition (plan review focus 1, Task A1):
-// exercises every status-writing SQL query and service write path (API/CLI/channel
+// exercises every status-writing SQL query and service write path (API/CLI
 // UpdateIssue, batch update, proposal decide & expiry, initiative advance, failed-task
 // landing, Qoder lifecycle, flow advance/rollback, PR auto-complete, workflow status
 // remap, and raw SQL / runtime sweeper) and asserts each status change leaves exactly
@@ -404,7 +404,9 @@ func TestEveryStatusWriterRecordsOneTransition(t *testing.T) {
 		}
 	}
 
-	t.Run("api_and_channel_member_UpdateIssue", func(t *testing.T) {
+	// Channels (server/internal/integrations/channel) only create issues via IssueService.Create
+	// and do not write status; any new status-writing path is caught by TestEveryWriterSetsActorSession.
+	t.Run("api_member_UpdateIssue", func(t *testing.T) {
 		issue := newIssueOn(t, "todo", nil)
 		tx, err := f.Pool.Begin(ctx)
 		if err != nil {
