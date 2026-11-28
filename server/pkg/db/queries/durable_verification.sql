@@ -199,6 +199,15 @@ WHERE workspace_id = sqlc.arg(workspace_id)
   AND scope_type = 'company'
   AND observed_at >= sqlc.arg(since)::timestamptz;
 
+-- name: LowestMetricReadingSince :one
+-- The lowest company-scope reading of a metric since the criterion was written, for a
+-- criterion that passes at or below its value. Returns NULL when there is no reading.
+SELECT min(value)::numeric AS best FROM metric_reading
+WHERE workspace_id = sqlc.arg(workspace_id)
+  AND metric_key = sqlc.arg(metric_key)
+  AND scope_type = 'company'
+  AND observed_at >= sqlc.arg(since)::timestamptz;
+
 -- name: SetWorkOutcomeOverride :execrows
 -- A person's conclusion on a settled outcome, within the override window (spec 2.6).
 UPDATE work_outcome
