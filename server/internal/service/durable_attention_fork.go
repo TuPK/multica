@@ -422,12 +422,6 @@ func (s *AttentionService) AnswerAppRequest(ctx context.Context, id pgtype.UUID)
 	return s.Answered(ctx, "app_action_request", id, nil)
 }
 
-// AnswerAppRequestWithDuration records that a person decided an app action request, with the
-// measured time in seconds from opening it to deciding (durable spec 7.2).
-func (s *AttentionService) AnswerAppRequestWithDuration(ctx context.Context, id pgtype.UUID, actualSeconds *int) error {
-	return s.Answered(ctx, "app_action_request", id, actualSeconds)
-}
-
 // MeasureAttentionSeconds returns the elapsed seconds between openedAt and decidedAt, clamped to
 // [0, attentionMaxSeconds] (30 minutes, durable spec 7.2). Returns nil when openedAt is zero or
 // after decidedAt so unmeasured requests stay NULL in attention_ledger.

@@ -2,7 +2,9 @@ package handler
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/testutil"
@@ -56,4 +58,38 @@ func TestProposalAgentReasonRequired(t *testing.T) {
 	}
 	wantOutcomeCode(t, file("no reason", nil), http.StatusUnprocessableEntity, "attention_reason_required")
 	file("with reason", map[string]any{"reason": "judgment", "why_not_decide": "the boss owns this call"}).Want(http.StatusCreated)
+}
+
+// TestAttentionSecondsFromHeader: the decision handlers measure the time from opening a question
+// to deciding from X-Attention-Opened-At (seconds or RFC 3339, capped at 30 minutes). A missing or
+// unparseable header leaves the decision unmeasured (durable spec 7.2).
+func TestAttentionSecondsFromHeader(t *testing.T) {
+	now := time.Now().Truncate(time.Second)
+	cases := []struct {
+		name  string
+		value string
+		want  *int
+	}{
+		{"absent", "", nil},
+		{"unparseable", "yesterday", nil},
+		{"negative seconds", "-5", nil},
+		{"seconds", "90", intPtr(90)},
+		{"seconds capped", "9999", intPtr(1800)},
+		{"rfc3339", now.Add(-2 * time.Minute).Format(time.RFC3339), intPtr(120)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodPost, "/", nil)
+			if c.value != "" {
+				r.Header.Set(attentionOpenedHeader, c.value)
+			}
+			got := attentionSecondsOf(r)
+			switch {
+			case c.want == nil && got != nil:
+				t.Fatalf("seconds = %d, want unmeasured", *got)
+			case c.want != nil && (got == nil || *got != *c.want):
+				t.Fatalf("seconds = %v, want %d", got, *c.want)
+			}
+		})
+	}
 }

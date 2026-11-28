@@ -203,7 +203,7 @@ func (h *Handler) ApproveIntent(w http.ResponseWriter, r *http.Request) {
 		intentError(w, err)
 		return
 	}
-	h.answerAttention(r.Context(), "effect_intent", id)
+	h.answerAttention(r.Context(), "effect_intent", id, attentionSecondsOf(r))
 	writeJSON(w, http.StatusOK, intentResponseOf(it))
 }
 
@@ -243,7 +243,7 @@ func (h *Handler) RejectIntent(w http.ResponseWriter, r *http.Request) {
 		intentError(w, err)
 		return
 	}
-	h.answerAttention(r.Context(), "effect_intent", id)
+	h.answerAttention(r.Context(), "effect_intent", id, attentionSecondsOf(r))
 	writeJSON(w, http.StatusOK, intentResponseOf(it))
 }
 
@@ -304,7 +304,7 @@ func (h *Handler) ApproveIntentBatch(w http.ResponseWriter, r *http.Request) {
 			out = append(out, result{ID: raw, Error: err.Error(), Status: status})
 			continue
 		}
-		h.answerAttention(r.Context(), "effect_intent", id)
+		h.answerAttention(r.Context(), "effect_intent", id, attentionSecondsOf(r))
 		out = append(out, result{ID: raw, State: it.State, Status: http.StatusOK})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"results": out})

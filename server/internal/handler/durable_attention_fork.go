@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -172,11 +173,20 @@ func (h *Handler) admitInquiry(ctx context.Context, ws, squad pgtype.UUID, req A
 	}
 }
 
+// attentionOpenedHeader carries when the person opened the question they are deciding: an RFC 3339
+// timestamp or a whole number of seconds. The client sends it; without it the decision is unmeasured.
+const attentionOpenedHeader = "X-Attention-Opened-At"
+
+// attentionSecondsOf reads the measured decision time from the request (durable spec 7.2).
+// It returns nil when the header is missing or unparseable.
+func attentionSecondsOf(r *http.Request) *int {
+	return service.ParseOpenedAtSeconds(r.Header.Get(attentionOpenedHeader), time.Now())
+}
+
 // answerAttention records that a person decided a question. A failure is logged; the decision
-// stands. It records no measured time: the decision handlers do not know when the person opened
-// the question.
-func (h *Handler) answerAttention(ctx context.Context, subject string, id pgtype.UUID) {
-	if err := h.attentionService().Answered(ctx, subject, id, nil); err != nil {
+// stands. actualSeconds is the measured time from opening to deciding, or nil when unmeasured.
+func (h *Handler) answerAttention(ctx context.Context, subject string, id pgtype.UUID, actualSeconds *int) {
+	if err := h.attentionService().Answered(ctx, subject, id, actualSeconds); err != nil {
 		slog.Warn("attention ledger: answer not recorded", "subject_type", subject, "subject_id", util.UUIDToString(id), "error", err)
 	}
 }

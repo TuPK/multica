@@ -580,7 +580,7 @@ func TestAttentionMinutesPerDoneReading(t *testing.T) {
 }
 
 // TestMeasureAndParseAttentionSeconds: MeasureAttentionSeconds and ParseOpenedAtSeconds compute
-// elapsed seconds clamped to 30 minutes and AnswerAppRequestWithDuration persists actual_seconds
+// elapsed seconds clamped to 30 minutes and Answered persists actual_seconds
 // (durable spec 7.2, plan C1).
 func TestMeasureAndParseAttentionSeconds(t *testing.T) {
 	now := time.Date(2026, 11, 27, 12, 0, 0, 0, time.UTC)
@@ -617,7 +617,7 @@ func TestMeasureAndParseAttentionSeconds(t *testing.T) {
 		t.Fatalf("RFC3339 120s ago = %v, want 120", got)
 	}
 
-	// End-to-end check on attention_ledger via AnswerAppRequestWithDuration.
+	// End-to-end check on attention_ledger via Answered.
 	f := newAttentionFixture(t, true)
 	ctx := context.Background()
 	ask := f.outcomeAsk()
@@ -626,8 +626,8 @@ func TestMeasureAndParseAttentionSeconds(t *testing.T) {
 		t.Fatalf("admit: %v", err)
 	}
 	secs := ParseOpenedAtSeconds(now.Add(-75*time.Second).Format(time.RFC3339), now)
-	if err := f.attention.AnswerAppRequestWithDuration(ctx, ask.SubjectID, secs); err != nil {
-		t.Fatalf("AnswerAppRequestWithDuration: %v", err)
+	if err := f.attention.Answered(ctx, "app_action_request", ask.SubjectID, secs); err != nil {
+		t.Fatalf("Answered: %v", err)
 	}
 	var state string
 	var stored int32

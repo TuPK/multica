@@ -706,7 +706,7 @@ func (h *Handler) DecideProposal(w http.ResponseWriter, r *http.Request) {
 		Outcome:     strings.TrimSpace(req.Outcome),
 	})
 	if err == nil && req.Decision != service.ProposalDecisionSnooze {
-		h.answerAttention(r.Context(), "proposal", proposalID)
+		h.answerAttention(r.Context(), "proposal", proposalID, attentionSecondsOf(r))
 	}
 	if writePlanLimitReached(w, err) {
 		return

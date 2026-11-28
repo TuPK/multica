@@ -602,7 +602,7 @@ func (h *Handler) RecordOutcomeVerification(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if !caller.agent {
-		h.answerAttention(r.Context(), "outcome_check", outcomeID)
+		h.answerAttention(r.Context(), "outcome_check", outcomeID, attentionSecondsOf(r))
 	}
 	writeJSON(w, http.StatusCreated, verificationResponse(v))
 }

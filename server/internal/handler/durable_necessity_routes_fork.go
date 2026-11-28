@@ -12,9 +12,11 @@ import (
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
-// NecessityTestRequest starts a necessity test on one skill the seat holds.
+// NecessityTestRequest starts a necessity test on one skill the seat holds (skill_id), or on one
+// level-2 instruction block of the seat's instructions (instruction_block, its heading). Send one.
 type NecessityTestRequest struct {
-	SkillID string `json:"skill_id"`
+	SkillID          string `json:"skill_id"`
+	InstructionBlock string `json:"instruction_block"`
 }
 
 // NecessityTestResponse is one necessity test of a seat (durable spec 10.2).
@@ -88,11 +90,21 @@ func (h *Handler) StartNecessityTest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	skill, ok := parseUUIDOrBadRequest(w, req.SkillID, "skill_id")
-	if !ok {
+	var test db.NecessityTest
+	var err error
+	switch {
+	case req.InstructionBlock != "" && req.SkillID != "":
+		writeError(w, http.StatusBadRequest, "send either skill_id or instruction_block, not both")
 		return
+	case req.InstructionBlock != "":
+		test, err = h.NecessityService().StartInstructionBlock(r.Context(), ws, actor, seat, req.InstructionBlock)
+	default:
+		skill, ok := parseUUIDOrBadRequest(w, req.SkillID, "skill_id")
+		if !ok {
+			return
+		}
+		test, err = h.NecessityService().Start(r.Context(), ws, actor, seat, skill)
 	}
-	test, err := h.NecessityService().Start(r.Context(), ws, actor, seat, skill)
 	if err != nil {
 		writeNecessityStartError(w, err)
 		return
