@@ -62,7 +62,7 @@ export function isMyAgentsSearch(searchParams: URLSearchParams): boolean {
  * tab can be linked to and survives a reload. Lives here because it is URL
  * vocabulary shared by the links and the page that reads them.
  */
-export const GOVERNANCE_TABS = ["goals", "budgets", "autonomy", "reviews", "log", "controls", "effects", "outcomes", "principal"] as const;
+export const GOVERNANCE_TABS = ["goals", "budgets", "autonomy", "reviews", "log", "controls", "effects", "outcomes", "principal", "reach"] as const;
 export type GovernanceTab = (typeof GOVERNANCE_TABS)[number];
 
 /** The tab a `?tab=` value selects. A missing or unknown value is the default tab, goals. */

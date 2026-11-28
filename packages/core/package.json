@@ -249,7 +249,10 @@
     "./durable/jury": "./durable/jury/index.ts",
     "./durable/dossier": "./durable/dossier/index.ts",
     "./durable/shadow": "./durable/shadow/index.ts",
-    "./durable/necessity": "./durable/necessity/index.ts"
+    "./durable/necessity": "./durable/necessity/index.ts",
+    "./durable/reach": "./durable/reach/index.ts",
+    "./durable/ocf": "./durable/ocf/index.ts",
+    "./durable/attestations": "./durable/attestations/index.ts"
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "catalog:",

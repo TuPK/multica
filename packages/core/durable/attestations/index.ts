@@ -1,0 +1,35 @@
+export {
+  ATTESTATION_FORMAT,
+  ATTESTATION_KEYS_PATH,
+  AttestationDocumentSchema,
+  AttestationKeySetSchema,
+  AttestationPublicKeySchema,
+  AttestationVerificationCountsSchema,
+  AttestationWorkClassSchema,
+  EMPTY_ATTESTATION_KEY_SET,
+  parseAttestationDocument,
+  parseAttestationKeySet,
+  parseVerifyAttestationResponse,
+  serializeAttestationBody,
+  UNVERIFIED_ATTESTATION_RESPONSE,
+  VERIFY_ATTESTATION_REASONS,
+  VerifyAttestationResponseSchema,
+  type AttestationDocument,
+  type AttestationKeySet,
+  type AttestationPublicKey,
+  type AttestationWorkClass,
+  type VerifyAttestationReason,
+  type VerifyAttestationResponse,
+} from "./schemas";
+export {
+  attestationKeys,
+  attestationKeySetOptions,
+  useAttestationKeySet,
+  useVerifyAttestationQuery,
+  verifyAttestationOptions,
+} from "./queries";
+export {
+  useIssueAttestation,
+  useVerifyAttestation,
+  type IssueAttestationRequest,
+} from "./mutations";

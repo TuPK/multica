@@ -51,12 +51,14 @@ describe("paths.workspace(slug)", () => {
     expect(ws.governance("controls")).toBe("/acme/governance?tab=controls");
     expect(ws.governance("log")).toBe("/acme/governance?tab=log");
     expect(ws.governance("principal")).toBe("/acme/governance?tab=principal");
+    expect(ws.governance("reach")).toBe("/acme/governance?tab=reach");
   });
 
   it("parses the governance tab, defaulting to goals", () => {
     expect(parseGovernanceTab("log")).toBe("log");
     expect(parseGovernanceTab("controls")).toBe("controls");
     expect(parseGovernanceTab("principal")).toBe("principal");
+    expect(parseGovernanceTab("reach")).toBe("reach");
     expect(parseGovernanceTab("unknown-tab")).toBe("goals");
     expect(parseGovernanceTab("")).toBe("goals");
     expect(parseGovernanceTab(null)).toBe("goals");
