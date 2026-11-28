@@ -440,3 +440,59 @@ func TestIssueRefusesBadTemplateRef(t *testing.T) {
 		t.Fatalf("bare template ref: %v, want ErrAttestationTemplate", err)
 	}
 }
+
+func TestVerifyRejectsMalformedDocument(t *testing.T) {
+	priv := testKey(t, testSeed)
+	keys := testKeySet("ocf.example.test", map[string]ed25519.PrivateKey{"k1": priv})
+	validLenSig := base64.StdEncoding.EncodeToString(make([]byte, ed25519.SignatureSize))
+	shortSig := base64.StdEncoding.EncodeToString([]byte("short"))
+
+	cases := []struct {
+		name    string
+		doc     []byte
+		wantErr error
+	}{
+		{name: "invalid JSON", doc: []byte(`{not json`)},
+		{name: "null", doc: []byte(`null`)},
+		{name: "JSON array", doc: []byte(`[1,2]`)},
+		{name: "JSON string", doc: []byte(`"attestation"`)},
+		{name: "JSON number", doc: []byte(`42`)},
+		{name: "empty bytes", doc: []byte{}},
+		{
+			name:    "missing signature",
+			doc:     []byte(`{"issuer":{"host":"ocf.example.test","key_id":"k1"}}`),
+			wantErr: ErrBadSignature,
+		},
+		{
+			name:    "non-base64 signature",
+			doc:     []byte(`{"issuer":{"host":"ocf.example.test","key_id":"k1"},"signature":"!!!"}`),
+			wantErr: ErrBadSignature,
+		},
+		{
+			name:    "short base64 signature",
+			doc:     []byte(`{"issuer":{"host":"ocf.example.test","key_id":"k1"},"signature":"` + shortSig + `"}`),
+			wantErr: ErrBadSignature,
+		},
+		{
+			name: "missing issuer",
+			doc:  []byte(`{"signature":"` + validLenSig + `"}`),
+		},
+		{
+			name:    "issuer host not a string",
+			doc:     []byte(`{"issuer":{"host":123,"key_id":"k1"},"signature":"` + validLenSig + `"}`),
+			wantErr: ErrForeignKey,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Verify(tc.doc, keys)
+			if err == nil {
+				t.Fatalf("Verify(%s) = nil, want error", tc.name)
+			}
+			if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Verify(%s) = %v, want %v", tc.name, err, tc.wantErr)
+			}
+		})
+	}
+}
