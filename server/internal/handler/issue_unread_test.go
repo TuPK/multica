@@ -66,7 +66,7 @@ func TestIssueUnreadMarkAndClear(t *testing.T) {
 }
 
 func TestIssueUnreadPointsAtTheRunsLastComment(t *testing.T) {
-	userID := dbfx.User(t, "Unread Landing", "issue-unread-landing@multica.ai")
+	userID := dbfx.User(t, "Unread Landing", handlerTestUniqueEmail("issue-unread-landing@multica.ai"))
 	dbfx.Member(t, testWorkspaceID, userID, "member")
 	dbfx.Cleanup(t, `DELETE FROM issue_unread WHERE user_id = $1`, userID)
 	withComments := dbfx.Issue(t, "unread run with comments")
@@ -103,7 +103,7 @@ VALUES ($1, $2, $3, 'completed', $4), ($1, $2, $5, 'failed', $6)`,
 func TestIssueUnreadIsPerUser(t *testing.T) {
 	issueID := dbfx.Issue(t, "issue unread per user")
 	dbfx.Cleanup(t, `DELETE FROM issue_unread WHERE issue_id = $1`, issueID)
-	otherID := dbfx.User(t, "Unread Other", "issue-unread-other@multica.ai")
+	otherID := dbfx.User(t, "Unread Other", handlerTestUniqueEmail("issue-unread-other@multica.ai"))
 	dbfx.Member(t, testWorkspaceID, otherID, "member")
 
 	setIssueUnreadAs(t, testUserID, issueID, true).Want(http.StatusOK)
@@ -117,7 +117,7 @@ func TestIssueUnreadIsPerUser(t *testing.T) {
 }
 
 func TestIssueUnreadRejectsIssueInAnotherWorkspace(t *testing.T) {
-	otherWorkspaceID := dbfx.Workspace(t, "Unread Other WS", "issue-unread-other-ws")
+	otherWorkspaceID := dbfx.Workspace(t, "Unread Other WS", handlerTestSlug("issue-unread-other-ws"))
 	issueID := dbfx.Issue(t, "foreign issue", testutil.Cols{"workspace_id": otherWorkspaceID})
 	dbfx.Cleanup(t, `DELETE FROM issue_unread WHERE issue_id = $1`, issueID)
 
@@ -128,7 +128,7 @@ func TestIssueUnreadRejectsIssueInAnotherWorkspace(t *testing.T) {
 }
 
 func TestIssueUnreadPagesReachEveryRow(t *testing.T) {
-	userID := dbfx.User(t, "Unread Pages", "issue-unread-pages@multica.ai")
+	userID := dbfx.User(t, "Unread Pages", handlerTestUniqueEmail("issue-unread-pages@multica.ai"))
 	dbfx.Member(t, testWorkspaceID, userID, "member")
 	dbfx.Cleanup(t, `DELETE FROM issue_unread WHERE user_id = $1`, userID)
 	// Rows share timestamps in pairs, so a page boundary can fall between two

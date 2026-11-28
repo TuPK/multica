@@ -51,7 +51,7 @@ func TestIssueWakeupAPIAndTrustedOrigin(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatal(rec.Body.String())
 	}
-	outsider := dbfx.User(t, "wake outsider", "wake-outside@multica.test")
+	outsider := dbfx.User(t, "wake outsider", handlerTestUniqueEmail("wake-outside@multica.test"))
 	dbfx.Member(t, testWorkspaceID, outsider, "member")
 	// A task-scoped caller must use the initiating human's rights, never the
 	// runtime owner's rights, even when registering a wakeup for itself.
@@ -147,7 +147,7 @@ func TestWorkspaceWakeupSummariesScopeAndBounds(t *testing.T) {
 	if len(rows) != 3 || rows[0].ID != first.ID || rows[0].ActiveCount != 5 || rows[0].EventCount != 4 {
 		t.Fatalf("wrong bounded summary: %+v", rows)
 	}
-	outsider := dbfx.User(t, "summary outsider", "summary-outsider@multica.test")
+	outsider := dbfx.User(t, "summary outsider", handlerTestUniqueEmail("summary-outsider@multica.test"))
 	req := newRequest("GET", "/", nil)
 	req.Header.Set("X-User-ID", outsider)
 	read(req, 404)
@@ -178,7 +178,7 @@ func TestWorkspaceWakeupSummariesScopeAndBounds(t *testing.T) {
 			t.Fatal("shared issue instruction missing")
 		}
 	}
-	other := dbfx.Workspace(t, "other summary", "other-summary")
+	other := dbfx.Workspace(t, "other summary", handlerTestSlug("other-summary"))
 	dbfx.Member(t, other, testUserID, "owner")
 	req = newRequest("GET", "/", nil)
 	req.Header.Set("X-Workspace-ID", other)
@@ -301,9 +301,9 @@ func TestIssueWakeupActorFilterAPIAndProjection(t *testing.T) {
 	issue := dbfx.Issue(t, "actor filter API")
 	target := dbfx.Agent(t, "actor filter target", testRuntimeID)
 	source := dbfx.Agent(t, "hidden actor name", testRuntimeID)
-	person := dbfx.User(t, "Monitored Person", "actor-projection@multica.test")
+	person := dbfx.User(t, "Monitored Person", handlerTestUniqueEmail("actor-projection@multica.test"))
 	dbfx.Member(t, testWorkspaceID, person, "member")
-	reader := dbfx.User(t, "actor reader", "actor-reader@multica.test")
+	reader := dbfx.User(t, "actor reader", handlerTestUniqueEmail("actor-reader@multica.test"))
 	dbfx.Member(t, testWorkspaceID, reader, "member")
 	dbfx.Cleanup(t, "DELETE FROM issue_wakeup WHERE issue_id=$1", issue)
 	dbfx.Cleanup(t, "DELETE FROM issue_wakeup_receipt WHERE wakeup_id IN(SELECT id FROM issue_wakeup WHERE issue_id=$1)", issue)

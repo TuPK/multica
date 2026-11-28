@@ -90,14 +90,14 @@ func runtimeVisibilityFixture(t *testing.T) (runtimeID, runtimeOwnerID, plainMem
 
 	if err := testPool.QueryRow(ctx, `
 		INSERT INTO "user" (name, email)
-		VALUES ('Runtime Owner', 'runtime-owner@multica.test')
+		VALUES ('Runtime Owner', $1)
 		RETURNING id
-	`).Scan(&runtimeOwnerID); err != nil {
+	`, handlerTestUniqueEmail("runtime-owner@multica.test")).Scan(&runtimeOwnerID); err != nil {
 		t.Fatalf("create runtime owner user: %v", err)
 	}
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(),
-			`DELETE FROM "user" WHERE email = 'runtime-owner@multica.test'`)
+			`DELETE FROM "user" WHERE id = $1`, runtimeOwnerID)
 	})
 
 	if _, err := testPool.Exec(ctx, `
@@ -109,14 +109,14 @@ func runtimeVisibilityFixture(t *testing.T) (runtimeID, runtimeOwnerID, plainMem
 
 	if err := testPool.QueryRow(ctx, `
 		INSERT INTO "user" (name, email)
-		VALUES ('Plain Runtime Member', 'plain-runtime-member@multica.test')
+		VALUES ('Plain Runtime Member', $1)
 		RETURNING id
-	`).Scan(&plainMemberID); err != nil {
+	`, handlerTestUniqueEmail("plain-runtime-member@multica.test")).Scan(&plainMemberID); err != nil {
 		t.Fatalf("create plain member user: %v", err)
 	}
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(),
-			`DELETE FROM "user" WHERE email = 'plain-runtime-member@multica.test'`)
+			`DELETE FROM "user" WHERE id = $1`, plainMemberID)
 	})
 
 	if _, err := testPool.Exec(ctx, `
@@ -741,11 +741,11 @@ func TestUpdateAgent_RuntimeBindingMatchesAgentOwner(t *testing.T) {
 		{"admin public runtime on foreign agent", "admin", false, "public", http.StatusOK},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			agentOwnerID := dbfx.User(t, "Agent binding owner", "binding-owner@multica.test")
+			agentOwnerID := dbfx.User(t, "Agent binding owner", testutil.UniqueEmail("binding-owner"))
 			dbfx.Member(t, testWorkspaceID, agentOwnerID, "member")
 			actorID := agentOwnerID
 			if !tc.actorOwner {
-				actorID = dbfx.User(t, "Agent binding manager", "binding-manager@multica.test")
+				actorID = dbfx.User(t, "Agent binding manager", testutil.UniqueEmail("binding-manager"))
 				dbfx.Member(t, testWorkspaceID, actorID, tc.actorRole)
 			}
 			originalRuntimeID := dbfx.Runtime(t, "Original binding runtime", testutil.Cols{"owner_id": agentOwnerID})

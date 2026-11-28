@@ -255,7 +255,7 @@ func TestCompanyFloors_CapOfSixteen(t *testing.T) {
 func TestCompanyFloors_OnlyOwnersAndAdminsManage(t *testing.T) {
 	requireCompanyDB(t)
 	resetCompany(t)
-	memberID := createPlainMember(t, "company-floors-member@multica.test")
+	memberID := createPlainMember(t, handlerTestUniqueEmail("company-floors-member@multica.test"))
 	floor := createFloor(t, "", testWorkspaceID, "Owner floor")
 
 	w := floorCall(testHandler.CreateCompanyFloor, floorReq(memberID, testWorkspaceID, "POST", "/api/company/floors", map[string]any{"name": "Nope"}, nil))
@@ -273,7 +273,7 @@ func TestCompanyFloors_OnlyOwnersAndAdminsManage(t *testing.T) {
 	}
 
 	// An admin may manage.
-	adminID := createPlainMember(t, "company-floors-admin@multica.test")
+	adminID := createPlainMember(t, handlerTestUniqueEmail("company-floors-admin@multica.test"))
 	if _, err := testPool.Exec(context.Background(), `UPDATE member SET role = 'admin' WHERE workspace_id = $1 AND user_id = $2`, testWorkspaceID, adminID); err != nil {
 		t.Fatalf("promote admin: %v", err)
 	}
@@ -601,8 +601,8 @@ func TestCompanySeats_Validation(t *testing.T) {
 func TestCompanySeats_NonAdminNeedsToBeTheCreator(t *testing.T) {
 	requireCompanyDB(t)
 	resetCompany(t)
-	creatorID := createPlainMember(t, "company-seat-creator@multica.test")
-	strangerID := createPlainMember(t, "company-seat-stranger@multica.test")
+	creatorID := createPlainMember(t, handlerTestUniqueEmail("company-seat-creator@multica.test"))
+	strangerID := createPlainMember(t, handlerTestUniqueEmail("company-seat-stranger@multica.test"))
 	leader := createHandlerTestAgent(t, "company-perm-leader", nil)
 	floor := createFloor(t, "", testWorkspaceID, "Perms")
 
@@ -1168,7 +1168,7 @@ func TestCompanyIsolation_Handlers(t *testing.T) {
 	createFloor(t, "", testWorkspaceID, "WS1 second") // ws1 is unaffected
 
 	// A member of ws1 only gets 404 on ws2's floors.
-	outsider := createPlainMember(t, "company-iso-outsider@multica.test")
+	outsider := createPlainMember(t, handlerTestUniqueEmail("company-iso-outsider@multica.test"))
 	wantStatus(t, floorCall(testHandler.ListCompanyFloors, floorReq(outsider, ws2, "GET", "/api/company/floors", nil, nil)), http.StatusNotFound)
 }
 

@@ -9,6 +9,7 @@ import (
 
 func newTimezoneTestUser(t *testing.T, email string) string {
 	t.Helper()
+	email = handlerTestUniqueEmail(email)
 	ctx := context.Background()
 
 	var userID string

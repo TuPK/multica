@@ -317,7 +317,7 @@ func TestPhase2Acceptance_Bullet4_BriefPushReachesTelegramWithWorkingDecideButto
 	// A Telegram installation with a bot token the notifier can read (the test
 	// stores the token base64 and decrypts with nil, as the notifier tests do).
 	cfg, err := json.Marshal(map[string]string{
-		"app_id":              "111",
+		"app_id":              handlerTestSlug("111"),
 		"bot_token_encrypted": base64.StdEncoding.EncodeToString([]byte("111:acceptance-token")),
 	})
 	if err != nil {

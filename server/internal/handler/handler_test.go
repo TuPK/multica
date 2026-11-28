@@ -3,6 +3,8 @@ package handler
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -36,11 +38,31 @@ var testRuntimeID string
 // writing an INSERT and a matching DELETE by hand; see internal/testutil.
 var dbfx *testutil.Fixture
 
-const (
+const handlerTestName = "Handler Test User"
+
+var (
+	handlerTestSuffix        string
 	handlerTestEmail         = "handler-test@multica.ai"
-	handlerTestName          = "Handler Test User"
 	handlerTestWorkspaceSlug = "handler-tests"
 )
+
+func handlerTestSlug(base string) string {
+	if handlerTestSuffix == "" {
+		return base
+	}
+	return base + "-" + handlerTestSuffix
+}
+
+func handlerTestUniqueEmail(email string) string {
+	if handlerTestSuffix == "" {
+		return email
+	}
+	local, domain, ok := strings.Cut(email, "@")
+	if !ok {
+		return email + "-" + handlerTestSuffix
+	}
+	return local + "-" + handlerTestSuffix + "@" + domain
+}
 
 // requireTestDatabaseURL refuses any database whose name does not end in _test.
 // The handler tests write fixtures, so they must never run against the shared
@@ -111,6 +133,16 @@ func TestMain(m *testing.M) {
 		Recipient: SlidingWindowRateLimit{Limit: 1_000_000, Window: time.Minute},
 	})
 	testPool = pool
+
+	var suffixBytes [4]byte
+	if _, err := rand.Read(suffixBytes[:]); err != nil {
+		fmt.Fprintf(os.Stderr, "handler tests: generate fixture suffix: %v\n", err)
+		pool.Close()
+		os.Exit(1)
+	}
+	handlerTestSuffix = hex.EncodeToString(suffixBytes[:])
+	handlerTestEmail = handlerTestUniqueEmail("handler-test@multica.ai")
+	handlerTestWorkspaceSlug = handlerTestSlug("handler-tests")
 
 	testUserID, testWorkspaceID, err = setupHandlerTestFixture(ctx, pool)
 	if err != nil {
@@ -634,7 +666,7 @@ func TestCreateIssueRejectsCrossWorkspaceParent(t *testing.T) {
 
 	otherWorkspaceID := dbfx.Insert(t, "workspace", testutil.Cols{
 		"name":         "Cross-workspace parent test",
-		"slug":         "xwp-parent-test",
+		"slug":         handlerTestSlug("xwp-parent-test"),
 		"description":  "Foreign workspace",
 		"issue_prefix": "XWP",
 	})
@@ -671,7 +703,7 @@ func TestCreateIssueRejectsCrossWorkspaceProject(t *testing.T) {
 
 	otherWorkspaceID := dbfx.Insert(t, "workspace", testutil.Cols{
 		"name":         "Cross-workspace project test",
-		"slug":         "xwp-project-test",
+		"slug":         handlerTestSlug("xwp-project-test"),
 		"description":  "Foreign workspace",
 		"issue_prefix": "XWP",
 	})
@@ -2196,7 +2228,7 @@ func TestWorkspaceCRUD(t *testing.T) {
 }
 
 func TestCreateWorkspaceUsesRequestedSlug(t *testing.T) {
-	const slug = "handler-create-workspace-requested"
+	slug := handlerTestSlug("handler-create-workspace-requested")
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2246,9 +2278,10 @@ func TestCreateWorkspaceInvalidSlugReturnsBadRequest(t *testing.T) {
 }
 
 func TestSendCode(t *testing.T) {
-	loginAccount(t, "sendcode-test@multica.ai", "")
+	email := handlerTestUniqueEmail("sendcode-test@multica.ai")
+	loginAccount(t, email, "")
 	w := httptest.NewRecorder()
-	body := map[string]string{"email": "sendcode-test@multica.ai"}
+	body := map[string]string{"email": email}
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(body)
 	req := httptest.NewRequest("POST", "/auth/send-code", &buf)
@@ -2265,7 +2298,7 @@ func TestSendCode(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		testPool.Exec(context.Background(), `DELETE FROM verification_code WHERE email = $1`, "sendcode-test@multica.ai")
+		testPool.Exec(context.Background(), `DELETE FROM verification_code WHERE email = $1`, email)
 	})
 }
 
@@ -2303,7 +2336,7 @@ func TestSendCodeDbError(t *testing.T) {
 }
 
 func TestSendCodeRateLimit(t *testing.T) {
-	const email = "ratelimit-test@multica.ai"
+	email := handlerTestUniqueEmail("ratelimit-test@multica.ai")
 	loginAccount(t, email, "")
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `DELETE FROM verification_code WHERE email = $1`, email)
@@ -2334,7 +2367,7 @@ func TestSendCodeRateLimit(t *testing.T) {
 }
 
 func TestVerifyCode(t *testing.T) {
-	const email = "verify-test@multica.ai"
+	email := handlerTestUniqueEmail("verify-test@multica.ai")
 	loginAccount(t, email, "")
 	ctx := context.Background()
 
@@ -2406,7 +2439,7 @@ func TestVerifyCodeRejectsDevCodeUnlessExplicitlyConfigured(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "")
 	t.Setenv("APP_ENV", "")
 
-	const email = "dev-code-disabled-test@multica.ai"
+	email := handlerTestUniqueEmail("dev-code-disabled-test@multica.ai")
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2430,7 +2463,7 @@ func TestVerifyCodeAcceptsConfiguredDevCodeOutsideProduction(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "888888")
 	t.Setenv("APP_ENV", "development")
 
-	const email = "dev-code-enabled-test@multica.ai"
+	email := handlerTestUniqueEmail("dev-code-enabled-test@multica.ai")
 	loginAccount(t, email, "")
 	ctx := context.Background()
 
@@ -2456,7 +2489,7 @@ func TestVerifyCodeRejectsConfiguredDevCodeInProduction(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "888888")
 	t.Setenv("APP_ENV", "production")
 
-	const email = "dev-code-production-test@multica.ai"
+	email := handlerTestUniqueEmail("dev-code-production-test@multica.ai")
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2479,7 +2512,7 @@ func TestVerifyCodeRejectsConfiguredDevCodeInProduction(t *testing.T) {
 func TestVerifyCodeWrongCode(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "")
 
-	const email = "wrong-code-test@multica.ai"
+	email := handlerTestUniqueEmail("wrong-code-test@multica.ai")
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2509,7 +2542,7 @@ func TestVerifyCodeWrongCode(t *testing.T) {
 func TestVerifyCodeBruteForceProtection(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "")
 
-	const email = "bruteforce-test@multica.ai"
+	email := handlerTestUniqueEmail("bruteforce-test@multica.ai")
 	loginAccount(t, email, "")
 	ctx := context.Background()
 
@@ -2562,7 +2595,7 @@ func TestVerifyCodeBruteForceProtection(t *testing.T) {
 // The account is registered by platform management, then signs in for the
 // first time with no workspace yet.
 func TestVerifyCodeRegisteredUserHasNoWorkspace(t *testing.T) {
-	const email = "workspace-verify-test@multica.ai"
+	email := handlerTestUniqueEmail("workspace-verify-test@multica.ai")
 	loginAccount(t, email, "")
 	ctx := context.Background()
 

@@ -616,7 +616,7 @@ func TestIssueViewWriteLimits(t *testing.T) {
 		t.Fatalf("seed quota rows: %v", err)
 	}
 	t.Cleanup(func() {
-		testPool.Exec(context.Background(), `DELETE FROM issue_view WHERE name LIKE 'quota filler %'`)
+		testPool.Exec(context.Background(), `DELETE FROM issue_view WHERE workspace_id = $1 AND name LIKE 'quota filler %'`, testWorkspaceID)
 	})
 	_, code, body = createIssueViewForTest(t, map[string]any{
 		"name":       "One too many",
@@ -658,12 +658,12 @@ func TestRevokeMemberSweepsPrivateViewsAndPreferences(t *testing.T) {
 	}
 	if _, err := testPool.Exec(ctx, `
 		INSERT INTO pinned_item (workspace_id, user_id, item_type, item_id, position)
-		SELECT $1::uuid, $2::uuid, 'view', id, 1 FROM issue_view WHERE name = 'revoke private'
+		SELECT $1::uuid, $2::uuid, 'view', id, 1 FROM issue_view WHERE workspace_id = $1 AND name = 'revoke private'
 	`, testWorkspaceID, otherID); err != nil {
 		t.Fatalf("seed pin: %v", err)
 	}
 	t.Cleanup(func() {
-		testPool.Exec(ctx, `DELETE FROM issue_view WHERE name LIKE 'revoke %'`)
+		testPool.Exec(ctx, `DELETE FROM issue_view WHERE workspace_id = $1 AND name LIKE 'revoke %'`, testWorkspaceID)
 		testPool.Exec(ctx, `DELETE FROM issue_view_preference WHERE user_id = $1`, otherID)
 	})
 
@@ -680,8 +680,8 @@ func TestRevokeMemberSweepsPrivateViewsAndPreferences(t *testing.T) {
 	}
 
 	var privateCount, sharedCount, prefCount, pinCount int
-	testPool.QueryRow(ctx, `SELECT COUNT(*) FROM issue_view WHERE name = 'revoke private'`).Scan(&privateCount)
-	testPool.QueryRow(ctx, `SELECT COUNT(*) FROM issue_view WHERE name = 'revoke shared'`).Scan(&sharedCount)
+	testPool.QueryRow(ctx, `SELECT COUNT(*) FROM issue_view WHERE workspace_id = $1 AND name = 'revoke private'`, testWorkspaceID).Scan(&privateCount)
+	testPool.QueryRow(ctx, `SELECT COUNT(*) FROM issue_view WHERE workspace_id = $1 AND name = 'revoke shared'`, testWorkspaceID).Scan(&sharedCount)
 	testPool.QueryRow(ctx, `SELECT COUNT(*) FROM issue_view_preference WHERE user_id = $1`, otherID).Scan(&prefCount)
 	if privateCount != 0 {
 		t.Fatal("private view survived member removal")

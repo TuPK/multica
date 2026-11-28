@@ -328,7 +328,7 @@ func TestDeleteWorkspace_ClearsSearchIndexChanges(t *testing.T) {
 		t.Skip("database not available")
 	}
 	ctx := context.Background()
-	const slug = "handler-tests-delete-search-index"
+	slug := handlerTestSlug("handler-tests-delete-search-index")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 	var wsID string
 	if err := testPool.QueryRow(ctx, `

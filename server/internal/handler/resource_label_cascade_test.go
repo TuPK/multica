@@ -202,6 +202,7 @@ func TestDeleteAgentRuntime_CleansSystemAgentLabelAssignments(t *testing.T) {
 
 func seedWorkspaceResourceLabelFixture(t *testing.T, ctx context.Context, slug string) (string, string, string) {
 	t.Helper()
+	slug = handlerTestSlug(slug)
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	var wsID string

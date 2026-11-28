@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	publicapiv1 "github.com/multica-ai/multica/server/pkg/publicapi/v1"
 )
 
@@ -407,14 +408,15 @@ func createIssueInForeignWorkspace(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
 
+	foreignTag := "foreign-plugin-" + handlerTestSlug(uuid.NewString()[:8])
 	var ownerID string
 	if err := testPool.QueryRow(ctx, `INSERT INTO "user" (name, email) VALUES ('Foreign Owner', $1) RETURNING id`,
-		"foreign-plugin-"+testUserID+"@multica.test").Scan(&ownerID); err != nil {
+		foreignTag+"@multica.test").Scan(&ownerID); err != nil {
 		t.Fatalf("seed foreign user: %v", err)
 	}
 	var workspaceID string
 	if err := testPool.QueryRow(ctx, `INSERT INTO workspace (name, slug) VALUES ('Foreign', $1) RETURNING id`,
-		"foreign-plugin-"+testUserID).Scan(&workspaceID); err != nil {
+		foreignTag).Scan(&workspaceID); err != nil {
 		t.Fatalf("seed foreign workspace: %v", err)
 	}
 	if _, err := testPool.Exec(ctx, `INSERT INTO member (workspace_id, user_id, role) VALUES ($1, $2, 'owner')`,

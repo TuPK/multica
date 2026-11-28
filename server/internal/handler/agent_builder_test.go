@@ -1239,9 +1239,9 @@ func TestSwitchAgentBuilderRuntimeEnforcesRuntimeAndSessionOwnership(t *testing.
 	// owns them, and a private runtime is usable only by its owner.
 	var plainMemberID string
 	if err := testPool.QueryRow(ctx, `
-		INSERT INTO "user" (name, email) VALUES ('Builder Switch Plain Member', 'builder-switch-plain@multica.ai')
+		INSERT INTO "user" (name, email) VALUES ('Builder Switch Plain Member', $1)
 		RETURNING id
-	`).Scan(&plainMemberID); err != nil {
+	`, handlerTestUniqueEmail("builder-switch-plain@multica.ai")).Scan(&plainMemberID); err != nil {
 		t.Fatalf("create plain member user: %v", err)
 	}
 	t.Cleanup(func() {

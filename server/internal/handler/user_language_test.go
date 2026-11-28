@@ -15,7 +15,7 @@ func TestUpdateMeRussianLanguageRoundTrip(t *testing.T) {
 	if testHandler == nil || testPool == nil {
 		t.Skip("database not available")
 	}
-	userID := dbfx.User(t, "Russian user", "lang-ru@multica.ai", testutil.Cols{"language": "en"})
+	userID := dbfx.User(t, "Russian user", handlerTestUniqueEmail("lang-ru@multica.ai"), testutil.Cols{"language": "en"})
 	var updated UserResponse
 	testutil.Call(t, testHandler.UpdateMe, newPatchMeRequest(userID, `{"language":"ru"}`)).Want(http.StatusOK).JSON(&updated)
 	if updated.Language == nil || *updated.Language != "ru" {
@@ -35,7 +35,7 @@ func TestUpdateMeFrenchLanguageRoundTrip(t *testing.T) {
 	if testHandler == nil || testPool == nil {
 		t.Skip("database not available")
 	}
-	userID := dbfx.User(t, "French user", "lang-fr@multica.ai", testutil.Cols{"language": "en"})
+	userID := dbfx.User(t, "French user", handlerTestUniqueEmail("lang-fr@multica.ai"), testutil.Cols{"language": "en"})
 	var updated UserResponse
 	testutil.Call(t, testHandler.UpdateMe, newPatchMeRequest(userID, `{"language":"fr"}`)).Want(http.StatusOK).JSON(&updated)
 	if updated.Language == nil || *updated.Language != "fr" {
@@ -56,7 +56,7 @@ func TestUpdateMeTraditionalChineseLanguageRoundTrip(t *testing.T) {
 	if testHandler == nil || testPool == nil {
 		t.Skip("database not available")
 	}
-	userID := dbfx.User(t, "Traditional Chinese user", "lang-zh-hant@multica.ai", testutil.Cols{"language": "en"})
+	userID := dbfx.User(t, "Traditional Chinese user", handlerTestUniqueEmail("lang-zh-hant@multica.ai"), testutil.Cols{"language": "en"})
 	var updated UserResponse
 	testutil.Call(t, testHandler.UpdateMe, newPatchMeRequest(userID, `{"language":"zh-Hant"}`)).Want(http.StatusOK).JSON(&updated)
 	if updated.Language == nil || *updated.Language != "zh-Hant" {
@@ -74,6 +74,7 @@ func TestUpdateMeTraditionalChineseLanguageRoundTrip(t *testing.T) {
 
 func newLanguageTestUser(t *testing.T, email string) string {
 	t.Helper()
+	email = handlerTestUniqueEmail(email)
 	ctx := context.Background()
 
 	var userID string

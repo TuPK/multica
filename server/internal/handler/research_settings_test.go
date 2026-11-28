@@ -166,7 +166,7 @@ func TestResearchCredentialsAreForOwnersAdminsAndAgentTasksOnly(t *testing.T) {
 
 	// A user that is not in the workspace gets nothing.
 	var strangerID string
-	if err := testPool.QueryRow(context.Background(), `INSERT INTO "user" (name, email) VALUES ('s','research-cred-stranger@multica.test') RETURNING id`).Scan(&strangerID); err != nil {
+	if err := testPool.QueryRow(context.Background(), `INSERT INTO "user" (name, email) VALUES ('s',$1) RETURNING id`, handlerTestUniqueEmail("research-cred-stranger@multica.test")).Scan(&strangerID); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { testPool.Exec(context.Background(), `DELETE FROM "user" WHERE id = $1`, strangerID) })

@@ -57,7 +57,7 @@ func TestCreateWorkspace_DoesNotMarkOnboarded(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	const slug = "handler-tests-onboarded-null"
+	slug := handlerTestSlug("handler-tests-onboarded-null")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 	// Ensure the test user starts un-onboarded so the assertion is meaningful.
 	_, _ = testPool.Exec(ctx, `UPDATE "user" SET onboarded_at = NULL WHERE id = $1`, testUserID)
@@ -89,7 +89,7 @@ func TestCreateWorkspace_DisabledByConfig(t *testing.T) {
 		t.Skip("database not available")
 	}
 
-	const slug = "handler-tests-disabled-create"
+	slug := handlerTestSlug("handler-tests-disabled-create")
 	ctx := context.Background()
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 	dbfx.Cleanup(t, `DELETE FROM workspace WHERE slug = $1`, slug)
@@ -150,7 +150,7 @@ func TestCreateWorkspace_AllowedEmails(t *testing.T) {
 
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			slug := fmt.Sprintf("handler-tests-create-allowlist-%d", i)
+			slug := handlerTestSlug(fmt.Sprintf("handler-tests-create-allowlist-%d", i))
 			_, _ = testPool.Exec(context.Background(), `DELETE FROM workspace WHERE slug = $1`, slug)
 			dbfx.Cleanup(t, `DELETE FROM workspace WHERE slug = $1`, slug)
 
@@ -188,7 +188,7 @@ func TestCreateWorkspace_AllowedEmails(t *testing.T) {
 func TestDeleteWorkspace_RequiresOwner(t *testing.T) {
 	ctx := context.Background()
 
-	const slug = "handler-tests-delete-403"
+	slug := handlerTestSlug("handler-tests-delete-403")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	wsID := dbfx.Insert(t, "workspace", testutil.Cols{
@@ -219,7 +219,7 @@ VALUES ($1, $2, 'admin')
 func TestDeleteWorkspace_OwnerSucceeds(t *testing.T) {
 	ctx := context.Background()
 
-	const slug = "handler-tests-delete-ok"
+	slug := handlerTestSlug("handler-tests-delete-ok")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	wsID := dbfx.Insert(t, "workspace", testutil.Cols{
@@ -581,10 +581,10 @@ WHERE provider = $1 AND model = 'issue-delete'
 
 func TestDeleteWorkspace_PreservesOtherWorkspaceData(t *testing.T) {
 	ctx := context.Background()
-	const targetSlug = "handler-tests-delete-tenant-target"
-	const neighborSlug = "handler-tests-delete-tenant-neighbor"
-	const targetMediaKey = "workspace-delete-tenant-target-media"
-	const neighborMediaKey = "workspace-delete-tenant-neighbor-media"
+	targetSlug := handlerTestSlug("handler-tests-delete-tenant-target")
+	neighborSlug := handlerTestSlug("handler-tests-delete-tenant-neighbor")
+	targetMediaKey := handlerTestSlug("workspace-delete-tenant-target-media")
+	neighborMediaKey := handlerTestSlug("workspace-delete-tenant-neighbor-media")
 
 	_, _ = testPool.Exec(ctx, `DELETE FROM channel_media_pending_object WHERE storage_key IN ($1, $2)`, targetMediaKey, neighborMediaKey)
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug IN ($1, $2)`, targetSlug, neighborSlug)
@@ -701,7 +701,7 @@ WHERE storage_key = $1
 func TestUpdateWorkspace_AvatarURL(t *testing.T) {
 	ctx := context.Background()
 
-	const slug = "handler-tests-avatar-url"
+	slug := handlerTestSlug("handler-tests-avatar-url")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	wsID := dbfx.Insert(t, "workspace", testutil.Cols{
@@ -769,7 +769,7 @@ func (n *recordingWorkspaceRefreshNotifier) NotifyWorkspacesChanged(userID strin
 func TestUpdateWorkspace_NotifiesDaemonsOnSettingsChange(t *testing.T) {
 	ctx := context.Background()
 
-	const slug = "handler-tests-settings-notify"
+	slug := handlerTestSlug("handler-tests-settings-notify")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	wsID := dbfx.Insert(t, "workspace", testutil.Cols{
@@ -815,7 +815,7 @@ VALUES ($1, $2, 'owner')
 func TestUpdateWorkspace_ReposValidation(t *testing.T) {
 	ctx := context.Background()
 
-	const slug = "handler-tests-repos-validation"
+	slug := handlerTestSlug("handler-tests-repos-validation")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	wsID := dbfx.Insert(t, "workspace", testutil.Cols{
@@ -899,6 +899,7 @@ type revocationFixture struct {
 func setupRevocationFixture(t *testing.T, slug, daemonID string) revocationFixture {
 	t.Helper()
 	ctx := context.Background()
+	slug = handlerTestSlug(slug)
 
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
@@ -1034,9 +1035,9 @@ func TestDeleteMember_RevokesTargetRuntimes(t *testing.T) {
 func TestDeleteMember_PrunesChannelUserBindings(t *testing.T) {
 	fx := setupRevocationFixture(t, "handler-tests-revoke-binding", "daemon-revoke-binding")
 
-	const appID = "cli_revoke_binding"
-	const removedOpenID = "ou_revoke_binding_removed"
-	const keepOpenID = "ou_revoke_binding_keep"
+	appID := handlerTestSlug("cli_revoke_binding")
+	removedOpenID := handlerTestSlug("ou_revoke_binding_removed")
+	keepOpenID := handlerTestSlug("ou_revoke_binding_keep")
 
 	// channel_* rows have no FK to workspace (MUL-3515 §4), so the fixture's
 	// workspace-delete cleanup never reaches them; clear by deterministic key
@@ -1294,7 +1295,7 @@ func TestDeleteMember_CancelsDeferredTasks(t *testing.T) {
 // writes.
 func TestDeleteMember_NoRuntimes_DeletesMember(t *testing.T) {
 	ctx := context.Background()
-	const slug = "handler-tests-revoke-no-runtimes"
+	slug := handlerTestSlug("handler-tests-revoke-no-runtimes")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	wsID := dbfx.Insert(t, "workspace", testutil.Cols{
@@ -1310,7 +1311,7 @@ INSERT INTO member (workspace_id, user_id, role) VALUES ($1, $2, 'owner')
 
 	targetUserID := dbfx.Insert(t, "user", testutil.Cols{
 		"name":  "Revocation No Runtimes Target",
-		"email": "revocation-no-runtimes@multica.ai",
+		"email": handlerTestUniqueEmail("revocation-no-runtimes@multica.ai"),
 	})
 	t.Cleanup(func() {
 		_, _ = testPool.Exec(context.Background(), `DELETE FROM workspace WHERE id = $1`, wsID)
@@ -1469,7 +1470,7 @@ func TestCreateWorkspace_ChineseNameDerivesPrefixFromSlug(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	const slug = "handler-tests-frontend-team"
+	slug := handlerTestSlug("handler-tests-frontend-team")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 	dbfx.Cleanup(t, `DELETE FROM workspace WHERE slug = $1`, slug)
 
@@ -1497,7 +1498,7 @@ func TestCreateWorkspace_HonorsExplicitIssuePrefix(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	const slug = "handler-tests-explicit-prefix"
+	slug := handlerTestSlug("handler-tests-explicit-prefix")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 	dbfx.Cleanup(t, `DELETE FROM workspace WHERE slug = $1`, slug)
 
@@ -1533,7 +1534,7 @@ func TestCreateWorkspace_RejectsInvalidIssuePrefix(t *testing.T) {
 
 	for label, prefix := range invalid {
 		t.Run(label, func(t *testing.T) {
-			slug := "handler-tests-bad-prefix-" + label
+			slug := handlerTestSlug("handler-tests-bad-prefix-" + label)
 			ctx := context.Background()
 			_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 			dbfx.Cleanup(t, `DELETE FROM workspace WHERE slug = $1`, slug)

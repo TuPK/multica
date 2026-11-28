@@ -17,7 +17,7 @@ func TestDeleteWorkspaceRefusesMachineCredentials(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	const slug = "handler-tests-delete-machine-actor"
+	slug := handlerTestSlug("handler-tests-delete-machine-actor")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 	var wsID string
 	if err := testPool.QueryRow(ctx, `

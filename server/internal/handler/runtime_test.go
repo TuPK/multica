@@ -466,7 +466,8 @@ func TestResolveViewingTZ(t *testing.T) {
 	var userID string
 	if err := testPool.QueryRow(ctx,
 		`INSERT INTO "user" (name, email, timezone)
-		 VALUES ('TZ Resolve', 'tz-resolve@multica.ai', 'Asia/Tokyo') RETURNING id`,
+		 VALUES ('TZ Resolve', $1, 'Asia/Tokyo') RETURNING id`,
+		handlerTestUniqueEmail("tz-resolve@multica.ai"),
 	).Scan(&userID); err != nil {
 		t.Fatalf("insert user: %v", err)
 	}
@@ -497,7 +498,8 @@ func TestResolveViewingTZ(t *testing.T) {
 	var bareUserID string
 	if err := testPool.QueryRow(ctx,
 		`INSERT INTO "user" (name, email)
-		 VALUES ('TZ Bare', 'tz-bare@multica.ai') RETURNING id`,
+		 VALUES ('TZ Bare', $1) RETURNING id`,
+		handlerTestUniqueEmail("tz-bare@multica.ai"),
 	).Scan(&bareUserID); err != nil {
 		t.Fatalf("insert bare user: %v", err)
 	}
@@ -515,7 +517,8 @@ func TestResolveViewingTZ(t *testing.T) {
 	var badTZUserID string
 	if err := testPool.QueryRow(ctx,
 		`INSERT INTO "user" (name, email, timezone)
-		 VALUES ('TZ Bad', 'tz-bad@multica.ai', 'Bad/Zone') RETURNING id`,
+		 VALUES ('TZ Bad', $1, 'Bad/Zone') RETURNING id`,
+		handlerTestUniqueEmail("tz-bad@multica.ai"),
 	).Scan(&badTZUserID); err != nil {
 		t.Fatalf("insert bad-tz user: %v", err)
 	}

@@ -38,6 +38,7 @@ type draftRestoreRaceFixture struct {
 func seedDraftRestoreRaceFixture(t *testing.T, slug string) draftRestoreRaceFixture {
 	t.Helper()
 	ctx := context.Background()
+	slug = handlerTestSlug(slug)
 
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 

@@ -68,7 +68,7 @@ func TestDeleteWorkspace_FailsFastWhenRollupLockHeld(t *testing.T) {
 	}
 	defer releaseHolder()
 
-	const slug = "handler-tests-delete-lock"
+	slug := handlerTestSlug("handler-tests-delete-lock")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	var wsID string
@@ -138,7 +138,7 @@ func TestDeleteWorkspace_SucceedsWhenRollupLockIsFree(t *testing.T) {
 
 	setWorkspaceDeleteLockTimeoutForTest(t, 500*time.Millisecond)
 
-	const slug = "handler-tests-delete-lock-free"
+	slug := handlerTestSlug("handler-tests-delete-lock-free")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	var wsID string

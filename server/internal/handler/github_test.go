@@ -2141,7 +2141,7 @@ func TestGitHubRoutes_RoleGating(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	const slug = "github-routes-role-gating"
+	slug := handlerTestSlug("github-routes-role-gating")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 	_, _ = testPool.Exec(ctx, `DELETE FROM "user" WHERE email LIKE $1`, "github-routes-"+slug+"-%")
 

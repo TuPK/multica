@@ -14,6 +14,7 @@ import (
 // user id, registering cleanup.
 func createPermissionTestMember(t *testing.T, email string) string {
 	t.Helper()
+	email = handlerTestUniqueEmail(email)
 	ctx := context.Background()
 	var userID string
 	if err := testPool.QueryRow(ctx, `
@@ -543,13 +544,14 @@ func TestRevokeMember_InvocationTargetCleanupIsWorkspaceScoped(t *testing.T) {
 
 	// Workspace B: fresh workspace with its own runtime + agent that also
 	// allow-lists the same userX.
-	testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = 'xws-b-perm-test'`)
+	wsBSlug := handlerTestSlug("xws-b-perm-test")
+	testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, wsBSlug)
 	var wsB string
 	if err := testPool.QueryRow(ctx, `
 		INSERT INTO workspace (name, slug, description, issue_prefix)
-		VALUES ('XWS B', 'xws-b-perm-test', '', 'XWB')
+		VALUES ('XWS B', $1, '', 'XWB')
 		RETURNING id
-	`).Scan(&wsB); err != nil {
+	`, wsBSlug).Scan(&wsB); err != nil {
 		t.Fatalf("create workspace B: %v", err)
 	}
 	t.Cleanup(func() { testPool.Exec(context.Background(), `DELETE FROM workspace WHERE id = $1`, wsB) })

@@ -294,7 +294,7 @@ func TestDeleteWorkspace_PrunesDraftRestoresOfCascadedSessions(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	const slug = "handler-tests-delete-draft-restores"
+	slug := handlerTestSlug("handler-tests-delete-draft-restores")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 
 	var wsID string

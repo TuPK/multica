@@ -49,8 +49,8 @@ func newWorkspaceDeletePathFixture(t *testing.T, slugSuffix string) workspaceDel
 	t.Helper()
 	ctx := context.Background()
 
-	victimSlug := "handler-tests-delete-paths-victim-" + slugSuffix
-	neighbourSlug := "handler-tests-delete-paths-neighbour-" + slugSuffix
+	victimSlug := handlerTestSlug("handler-tests-delete-paths-victim-" + slugSuffix)
+	neighbourSlug := handlerTestSlug("handler-tests-delete-paths-neighbour-" + slugSuffix)
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = ANY($1::text[])`,
 		[]string{victimSlug, neighbourSlug})
 

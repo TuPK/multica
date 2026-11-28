@@ -3650,7 +3650,7 @@ func TestClaimTask_ChatPopulatesInitiator(t *testing.T) {
 	// A separate user stands in for the Lark group session creator (installer).
 	installerID := dbfx.Insert(t, "user", testutil.Cols{
 		"name":  "Installer User",
-		"email": "installer-test@multica.ai",
+		"email": handlerTestUniqueEmail("installer-test@multica.ai"),
 	})
 
 	sessionID := dbfx.ChatSession(t, agentID, testutil.Cols{
@@ -4248,7 +4248,7 @@ func TestMembershipCache_InvalidatedOnDeleteWorkspace(t *testing.T) {
 	installFreshMembershipCache(t)
 	ctx := context.Background()
 
-	const slug = "membership-cache-delete-ws"
+	slug := handlerTestSlug("membership-cache-delete-ws")
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
 	wsID := dbfx.Insert(t, "workspace", testutil.Cols{
 		"name":         "Membership Cache Delete WS",

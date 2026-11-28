@@ -467,10 +467,11 @@ func TestFreeOwnerLimitCountsOnlyFreeWorkspacesTheUserOwns(t *testing.T) {
 	subscribeWorkspace(t, paid, "pro")
 	owned("member") // not owned
 	owned("admin")  // not owned
-	if got := create("owner-limit-1-" + uuid.NewString()[:6]); got.Code != http.StatusCreated {
+	slug1 := "owner-limit-1-" + uuid.NewString()[:6]
+	if got := create(slug1); got.Code != http.StatusCreated {
 		t.Fatalf("one free owned workspace under a limit of 2: status %d: %s", got.Code, got.Text())
 	}
-	t.Cleanup(func() { testPool.Exec(context.Background(), `DELETE FROM workspace WHERE slug LIKE 'owner-limit-1-%'`) })
+	t.Cleanup(func() { testPool.Exec(context.Background(), `DELETE FROM workspace WHERE slug = $1`, slug1) })
 
 	// The user now owns two free workspaces (one fixture, one just created).
 	resp := create("owner-limit-2-" + uuid.NewString()[:6])

@@ -133,16 +133,17 @@ func privateAgentTestFixture(t *testing.T) (agentID, ownerID, memberID string) {
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `UPDATE agent_runtime SET visibility = $1 WHERE id = $2`, runtimeVisibility, runtimeID)
 	})
+	ownerEmail := handlerTestUniqueEmail("private-agent-owner@multica.test")
 	if err := testPool.QueryRow(ctx, `
 		INSERT INTO "user" (name, email)
-		VALUES ('Private Agent Owner', 'private-agent-owner@multica.test')
+		VALUES ('Private Agent Owner', $1)
 		RETURNING id
-	`).Scan(&ownerID); err != nil {
+	`, ownerEmail).Scan(&ownerID); err != nil {
 		t.Fatalf("create owner user: %v", err)
 	}
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(),
-			`DELETE FROM "user" WHERE email = 'private-agent-owner@multica.test'`)
+			`DELETE FROM "user" WHERE id = $1`, ownerID)
 	})
 
 	if _, err := testPool.Exec(ctx, `
@@ -152,16 +153,17 @@ func privateAgentTestFixture(t *testing.T) (agentID, ownerID, memberID string) {
 		t.Fatalf("add owner as member: %v", err)
 	}
 
+	plainEmail := handlerTestUniqueEmail("plain-member@multica.test")
 	if err := testPool.QueryRow(ctx, `
 		INSERT INTO "user" (name, email)
-		VALUES ('Plain Member', 'plain-member@multica.test')
+		VALUES ('Plain Member', $1)
 		RETURNING id
-	`).Scan(&memberID); err != nil {
+	`, plainEmail).Scan(&memberID); err != nil {
 		t.Fatalf("create plain member user: %v", err)
 	}
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(),
-			`DELETE FROM "user" WHERE email = 'plain-member@multica.test'`)
+			`DELETE FROM "user" WHERE id = $1`, memberID)
 	})
 
 	if _, err := testPool.Exec(ctx, `
@@ -587,28 +589,30 @@ func TestMentionAgent_RejectsCrossWorkspaceAgentUUID(t *testing.T) {
 
 	// Create a separate workspace + agent runtime + private agent.
 	var foreignWorkspaceID, foreignUserID, foreignRuntimeID, foreignAgentID string
+	foreignEmail := handlerTestUniqueEmail("cross-ws-foreign@multica.test")
 	if err := testPool.QueryRow(ctx, `
 		INSERT INTO "user" (name, email)
-		VALUES ('Foreign Owner', 'cross-ws-foreign@multica.test')
+		VALUES ('Foreign Owner', $1)
 		RETURNING id
-	`).Scan(&foreignUserID); err != nil {
+	`, foreignEmail).Scan(&foreignUserID); err != nil {
 		t.Fatalf("create foreign user: %v", err)
 	}
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(),
-			`DELETE FROM "user" WHERE email = 'cross-ws-foreign@multica.test'`)
+			`DELETE FROM "user" WHERE id = $1`, foreignUserID)
 	})
 
+	foreignSlug := handlerTestSlug("cross-ws-foreign")
 	if err := testPool.QueryRow(ctx, `
 		INSERT INTO workspace (name, slug, description, issue_prefix)
-		VALUES ('Cross-WS Foreign', 'cross-ws-foreign', '', 'XWF')
+		VALUES ('Cross-WS Foreign', $1, '', 'XWF')
 		RETURNING id
-	`).Scan(&foreignWorkspaceID); err != nil {
+	`, foreignSlug).Scan(&foreignWorkspaceID); err != nil {
 		t.Fatalf("create foreign workspace: %v", err)
 	}
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(),
-			`DELETE FROM workspace WHERE slug = 'cross-ws-foreign'`)
+			`DELETE FROM workspace WHERE id = $1`, foreignWorkspaceID)
 	})
 	if _, err := testPool.Exec(ctx, `
 		INSERT INTO member (workspace_id, user_id, role)

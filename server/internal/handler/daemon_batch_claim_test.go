@@ -236,11 +236,11 @@ func TestClaimTasksByRuntime_SkipsCrossWorkspaceRuntime(t *testing.T) {
 
 	// A foreign workspace with its own runtime + agent + queued task.
 	var foreignUser, foreignWS string
-	if err := testPool.QueryRow(ctx, `INSERT INTO "user" (name, email) VALUES ('Foreign User', 'batch-foreign@multica.ai') RETURNING id`).Scan(&foreignUser); err != nil {
+	if err := testPool.QueryRow(ctx, `INSERT INTO "user" (name, email) VALUES ('Foreign User', $1) RETURNING id`, handlerTestUniqueEmail("batch-foreign@multica.ai")).Scan(&foreignUser); err != nil {
 		t.Fatalf("foreign user: %v", err)
 	}
 	t.Cleanup(func() { testPool.Exec(ctx, `DELETE FROM "user" WHERE id = $1`, foreignUser) })
-	if err := testPool.QueryRow(ctx, `INSERT INTO workspace (name, slug, description, issue_prefix) VALUES ('Foreign WS','batch-foreign-ws','x','FGN') RETURNING id`).Scan(&foreignWS); err != nil {
+	if err := testPool.QueryRow(ctx, `INSERT INTO workspace (name, slug, description, issue_prefix) VALUES ('Foreign WS',$1,'x','FGN') RETURNING id`, handlerTestSlug("batch-foreign-ws")).Scan(&foreignWS); err != nil {
 		t.Fatalf("foreign workspace: %v", err)
 	}
 	t.Cleanup(func() { testPool.Exec(ctx, `DELETE FROM workspace WHERE id = $1`, foreignWS) })
