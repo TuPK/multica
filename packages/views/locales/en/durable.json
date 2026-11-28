@@ -527,5 +527,70 @@
       "error_invalid": "This skill cannot be tested on this seat.",
       "error_failed": "Could not start the necessity test."
     }
+  },
+  "reach": {
+    "tab_title": "Reach",
+    "title": "Reach map",
+    "agent_share_title": "Agent share of effects (30 days)",
+    "snapshot_date": "Snapshot {{date}}",
+    "empty": "No reach snapshot yet.",
+    "load_failed": "Could not load the reach map.",
+    "grid_heading": "Work surfaces",
+    "gaps_heading": "Gaps by human time",
+    "gaps_empty": "No surfaces recorded.",
+    "state": {
+      "agent_operable": "Agent operable",
+      "agent_with_confirm": "Needs confirmation",
+      "declared_only": "Declared only",
+      "human_only": "Human only",
+      "unknown": "Unknown"
+    },
+    "kind": {
+      "app": "App",
+      "channel": "Channel",
+      "area": "Area",
+      "external": "External",
+      "other": "Surface"
+    },
+    "minutes_short": "{{minutes}}m",
+    "effects_short": "{{count}} effects",
+    "gap_asks_short": "{{count}} gap asks",
+    "close_gap": "Close gap",
+    "open_gap_issue": "Open gap issue",
+    "close_gap_opened": "Opened gap issue.",
+    "close_gap_failed": "Could not open the gap issue.",
+    "close_gap_no_squad": "No squad is available for this surface.",
+    "detail": {
+      "title": "Surface details",
+      "close": "Close details",
+      "surface_id": "Surface",
+      "state_label": "State",
+      "effects_30d": "Effects (30 days)",
+      "agent_effects_30d": "Agent effects (30 days)",
+      "human_minutes_30d": "Human time (30 days)",
+      "gap_asks_30d": "Gap questions (30 days)",
+      "top_asks_count": "Sample gap questions",
+      "gap_issue": "Gap issue",
+      "view_issue": "View issue"
+    }
+  },
+  "attestation": {
+    "verified": "Verified",
+    "verified_by": "Verified by {{issuer}}",
+    "unverified": "Unverified",
+    "verifying": "Verifying..."
+  },
+  "open_export": {
+    "trigger": "Export OCF package",
+    "title": "Export Open Company Format",
+    "description": "Download the workspace as an OCF v1 archive (company.ocf.zip). Secrets, runtimes, documents, issues, and comments are excluded.",
+    "include_history": "Export history",
+    "include_history_hint": "Includes settled outcomes, track records, governance events, and active seat dossiers.",
+    "include_principal": "Include principal profile",
+    "include_principal_hint": "Includes your consented principal profile in this archive.",
+    "export": "Export",
+    "cancel": "Cancel",
+    "exported": "Exported company.ocf.zip.",
+    "export_failed": "Could not export the OCF package."
   }
 }

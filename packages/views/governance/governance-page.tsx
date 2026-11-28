@@ -15,6 +15,7 @@ import { GovernanceGoalsTab } from "./governance-goals-tab";
 import { GovernanceLogTab } from "./governance-log-tab";
 import { GovernanceReviewsTab } from "./governance-reviews-tab";
 import { useDurableGovernanceTabs } from "../durable/governance-durable-tabs";
+import { useReachGovernanceTab } from "../durable/reach/governance-reach-tab";
 
 /**
  * Governance: how the company is steered. Six tabs, selected by the URL's
@@ -26,6 +27,7 @@ export function GovernancePage() {
   const { pathname, searchParams, replace } = useNavigation();
   const tab = parseGovernanceTab(searchParams.get("tab"));
   const durableTabs = useDurableGovernanceTabs();
+  const reachTab = useReachGovernanceTab();
 
   const selectTab = (next: GovernanceTab) => {
     const params = new URLSearchParams(searchParams);
@@ -50,6 +52,7 @@ export function GovernancePage() {
             <TabsTrigger value="log">{t(($) => $.tabs.log)}</TabsTrigger>
             <TabsTrigger value="controls">{t(($) => $.tabs.controls)}</TabsTrigger>
             {durableTabs.triggers}
+            {reachTab.triggers}
           </TabsList>
         </div>
         <TabsContent value="goals" className="min-h-0 flex-1 overflow-y-auto">
@@ -71,6 +74,7 @@ export function GovernancePage() {
           <GovernanceControlsTab />
         </TabsContent>
         {durableTabs.contents}
+        {reachTab.contents}
       </Tabs>
     </div>
   );

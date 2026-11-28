@@ -526,5 +526,70 @@
       "error_invalid": "この skill はこのシートでテストできません。",
       "error_failed": "必要性テストを開始できませんでした。"
     }
+  },
+  "reach": {
+    "tab_title": "リーチ",
+    "title": "リーチマップ",
+    "agent_share_title": "エージェントが実行した影響の割合（30日間）",
+    "snapshot_date": "スナップショット {{date}}",
+    "empty": "リーチスナップショットはまだありません。",
+    "load_failed": "リーチマップを読み込めませんでした。",
+    "grid_heading": "作業サーフェス",
+    "gaps_heading": "人の作業時間順のギャップ",
+    "gaps_empty": "記録されたサーフェスはありません。",
+    "state": {
+      "agent_operable": "エージェント操作可",
+      "agent_with_confirm": "確認付きで可",
+      "declared_only": "申告のみ",
+      "human_only": "人のみ",
+      "unknown": "不明"
+    },
+    "kind": {
+      "app": "アプリ",
+      "channel": "チャネル",
+      "area": "領域",
+      "external": "外部",
+      "other": "サーフェス"
+    },
+    "minutes_short": "{{minutes}}分",
+    "effects_short": "影響 {{count}} 件",
+    "gap_asks_short": "ギャップ質問 {{count}} 件",
+    "close_gap": "ギャップを埋める",
+    "open_gap_issue": "ギャップの Issue を開く",
+    "close_gap_opened": "ギャップの Issue を開きました。",
+    "close_gap_failed": "ギャップの Issue を開けませんでした。",
+    "close_gap_no_squad": "このサーフェスに割り当てられるスクワッドがありません。",
+    "detail": {
+      "title": "サーフェス詳細",
+      "close": "詳細を閉じる",
+      "surface_id": "サーフェス",
+      "state_label": "状態",
+      "effects_30d": "影響数（30日間）",
+      "agent_effects_30d": "エージェントの影響数（30日間）",
+      "human_minutes_30d": "人の作業時間（30日間）",
+      "gap_asks_30d": "ギャップ質問数（30日間）",
+      "top_asks_count": "代表的な質問数",
+      "gap_issue": "ギャップ Issue",
+      "view_issue": "Issue を表示"
+    }
+  },
+  "attestation": {
+    "verified": "検証済み",
+    "verified_by": "{{issuer}} により検証済み",
+    "unverified": "未検証",
+    "verifying": "検証中..."
+  },
+  "open_export": {
+    "trigger": "OCF パッケージをエクスポート",
+    "title": "Open Company Format でエクスポート",
+    "description": "ワークスペースを OCF v1 アーカイブ（company.ocf.zip）としてダウンロードします。シークレット、ランタイム、ドキュメント、Issue、コメントは含まれません。",
+    "include_history": "履歴をエクスポート",
+    "include_history_hint": "確定済みの結果、実績、ガバナンス履歴、有効なシート記録を含めます。",
+    "include_principal": "意思決定プロファイルを含める",
+    "include_principal_hint": "同意済みの意思決定プロファイルをこのアーカイブに含めます。",
+    "export": "エクスポート",
+    "cancel": "キャンセル",
+    "exported": "company.ocf.zip をエクスポートしました。",
+    "export_failed": "OCF パッケージをエクスポートできませんでした。"
   }
 }

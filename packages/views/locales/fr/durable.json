@@ -527,5 +527,70 @@
       "error_invalid": "Ce skill ne peut pas être testé sur ce poste.",
       "error_failed": "Impossible de lancer le test de nécessité."
     }
+  },
+  "reach": {
+    "tab_title": "Portée",
+    "title": "Carte de portée",
+    "agent_share_title": "Part des effets réalisés par les agents (30 jours)",
+    "snapshot_date": "Instantané du {{date}}",
+    "empty": "Aucun instantané de portée pour l'instant.",
+    "load_failed": "Impossible de charger la carte de portée.",
+    "grid_heading": "Surfaces de travail",
+    "gaps_heading": "Écarts par temps humain",
+    "gaps_empty": "Aucune surface enregistrée.",
+    "state": {
+      "agent_operable": "Opérable par agent",
+      "agent_with_confirm": "Avec confirmation",
+      "declared_only": "Déclaré uniquement",
+      "human_only": "Humain uniquement",
+      "unknown": "Inconnu"
+    },
+    "kind": {
+      "app": "App",
+      "channel": "Canal",
+      "area": "Domaine",
+      "external": "Externe",
+      "other": "Surface"
+    },
+    "minutes_short": "{{minutes}} min",
+    "effects_short": "{{count}} effets",
+    "gap_asks_short": "{{count}} questions d'écart",
+    "close_gap": "Combler l'écart",
+    "open_gap_issue": "Ouvrir l'issue d'écart",
+    "close_gap_opened": "Issue d'écart ouverte.",
+    "close_gap_failed": "Impossible d'ouvrir l'issue d'écart.",
+    "close_gap_no_squad": "Aucune équipe disponible pour cette surface.",
+    "detail": {
+      "title": "Détails de la surface",
+      "close": "Fermer les détails",
+      "surface_id": "Surface",
+      "state_label": "État",
+      "effects_30d": "Effets (30 jours)",
+      "agent_effects_30d": "Effets d'agents (30 jours)",
+      "human_minutes_30d": "Temps humain (30 jours)",
+      "gap_asks_30d": "Questions d'écart (30 jours)",
+      "top_asks_count": "Questions d'exemple",
+      "gap_issue": "Issue d'écart",
+      "view_issue": "Voir l'issue"
+    }
+  },
+  "attestation": {
+    "verified": "Vérifié",
+    "verified_by": "Vérifié par {{issuer}}",
+    "unverified": "Non vérifié",
+    "verifying": "Vérification..."
+  },
+  "open_export": {
+    "trigger": "Exporter le paquet OCF",
+    "title": "Exporter au format Open Company Format",
+    "description": "Téléchargez l'espace de travail sous forme d'archive OCF v1 (company.ocf.zip). Les secrets, runtimes, documents, issues et commentaires sont exclus.",
+    "include_history": "Exporter l'historique",
+    "include_history_hint": "Inclut les résultats clôturés, historiques, événements de gouvernance et dossiers actifs.",
+    "include_principal": "Inclure le profil de décision",
+    "include_principal_hint": "Inclut votre profil de décision consenti dans cette archive.",
+    "export": "Exporter",
+    "cancel": "Annuler",
+    "exported": "company.ocf.zip exporté.",
+    "export_failed": "Impossible d'exporter le paquet OCF."
   }
 }

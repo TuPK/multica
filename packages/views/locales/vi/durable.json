@@ -526,5 +526,70 @@
       "error_invalid": "Không thể kiểm tra skill này trên ghế hiện tại.",
       "error_failed": "Không bắt đầu được bài kiểm tra cần thiết."
     }
+  },
+  "reach": {
+    "tab_title": "Độ phủ",
+    "title": "Bản đồ độ phủ",
+    "agent_share_title": "Phần trăm hệ quả do agent làm (30 ngày)",
+    "snapshot_date": "Bản chụp {{date}}",
+    "empty": "Chưa có dữ liệu độ phủ.",
+    "load_failed": "Không tải được bản đồ độ phủ.",
+    "grid_heading": "Các bề mặt công việc",
+    "gaps_heading": "Khoảng trống theo thời gian người",
+    "gaps_empty": "Chưa ghi nhận bề mặt nào.",
+    "state": {
+      "agent_operable": "Agent tự làm được",
+      "agent_with_confirm": "Cần xác nhận",
+      "declared_only": "Chỉ tự khai báo",
+      "human_only": "Chỉ người làm",
+      "unknown": "Chưa rõ"
+    },
+    "kind": {
+      "app": "Ứng dụng",
+      "channel": "Kênh chat",
+      "area": "Nhóm việc",
+      "external": "Hệ thống ngoài",
+      "other": "Bề mặt"
+    },
+    "minutes_short": "{{minutes}} phút",
+    "effects_short": "{{count}} hệ quả",
+    "gap_asks_short": "{{count}} câu hỏi khoảng trống",
+    "close_gap": "Lấp khoảng trống",
+    "open_gap_issue": "Mở issue lấp khoảng trống",
+    "close_gap_opened": "Đã mở issue lấp khoảng trống.",
+    "close_gap_failed": "Không mở được issue lấp khoảng trống.",
+    "close_gap_no_squad": "Chưa có squad phù hợp cho bề mặt này.",
+    "detail": {
+      "title": "Chi tiết bề mặt",
+      "close": "Đóng chi tiết",
+      "surface_id": "Bề mặt",
+      "state_label": "Trạng thái",
+      "effects_30d": "Hệ quả (30 ngày)",
+      "agent_effects_30d": "Hệ quả của agent (30 ngày)",
+      "human_minutes_30d": "Thời gian người (30 ngày)",
+      "gap_asks_30d": "Câu hỏi khoảng trống (30 ngày)",
+      "top_asks_count": "Số câu hỏi tiêu biểu",
+      "gap_issue": "Issue lấp khoảng trống",
+      "view_issue": "Xem issue"
+    }
+  },
+  "attestation": {
+    "verified": "Đã xác minh",
+    "verified_by": "Đã xác minh bởi {{issuer}}",
+    "unverified": "Chưa xác minh",
+    "verifying": "Đang xác minh..."
+  },
+  "open_export": {
+    "trigger": "Xuất gói OCF",
+    "title": "Xuất chuẩn Open Company Format",
+    "description": "Tải workspace dưới dạng gói OCF v1 (company.ocf.zip). Không bao gồm bí mật, runtime, tài liệu, issue và bình luận.",
+    "include_history": "Xuất lịch sử",
+    "include_history_hint": "Bao gồm kết quả đã chốt, thành tích, nhật ký quản trị và hồ sơ ghế đang hoạt động.",
+    "include_principal": "Bao gồm hồ sơ người",
+    "include_principal_hint": "Bao gồm hồ sơ người quyết định mà bạn đã đồng ý trong gói xuất này.",
+    "export": "Xuất",
+    "cancel": "Huỷ",
+    "exported": "Đã xuất company.ocf.zip.",
+    "export_failed": "Không xuất được gói OCF."
   }
 }

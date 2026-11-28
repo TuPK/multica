@@ -527,5 +527,70 @@
       "error_invalid": "Esta skill no se puede probar en este puesto.",
       "error_failed": "No se pudo iniciar la prueba de necesidad."
     }
+  },
+  "reach": {
+    "tab_title": "Alcance",
+    "title": "Mapa de alcance",
+    "agent_share_title": "Porcentaje de efectos hechos por agentes (30 días)",
+    "snapshot_date": "Captura {{date}}",
+    "empty": "Aún no hay una captura de alcance.",
+    "load_failed": "No se pudo cargar el mapa de alcance.",
+    "grid_heading": "Superficies de trabajo",
+    "gaps_heading": "Brechas por tiempo humano",
+    "gaps_empty": "No hay superficies registradas.",
+    "state": {
+      "agent_operable": "Operable por agente",
+      "agent_with_confirm": "Requiere confirmación",
+      "declared_only": "Solo declarado",
+      "human_only": "Solo humano",
+      "unknown": "Desconocido"
+    },
+    "kind": {
+      "app": "App",
+      "channel": "Canal",
+      "area": "Área",
+      "external": "Externo",
+      "other": "Superficie"
+    },
+    "minutes_short": "{{minutes}} min",
+    "effects_short": "{{count}} efectos",
+    "gap_asks_short": "{{count}} consultas de brecha",
+    "close_gap": "Cerrar brecha",
+    "open_gap_issue": "Abrir issue de brecha",
+    "close_gap_opened": "Issue de brecha abierto.",
+    "close_gap_failed": "No se pudo abrir el issue de brecha.",
+    "close_gap_no_squad": "No hay un escuadrón disponible para esta superficie.",
+    "detail": {
+      "title": "Detalles de la superficie",
+      "close": "Cerrar detalles",
+      "surface_id": "Superficie",
+      "state_label": "Estado",
+      "effects_30d": "Efectos (30 días)",
+      "agent_effects_30d": "Efectos de agentes (30 días)",
+      "human_minutes_30d": "Tiempo humano (30 días)",
+      "gap_asks_30d": "Preguntas de brecha (30 días)",
+      "top_asks_count": "Preguntas de ejemplo",
+      "gap_issue": "Issue de brecha",
+      "view_issue": "Ver issue"
+    }
+  },
+  "attestation": {
+    "verified": "Verificado",
+    "verified_by": "Verificado por {{issuer}}",
+    "unverified": "No verificado",
+    "verifying": "Verificando..."
+  },
+  "open_export": {
+    "trigger": "Exportar paquete OCF",
+    "title": "Exportar en Open Company Format",
+    "description": "Descarga el espacio de trabajo como archivo OCF v1 (company.ocf.zip). Se excluyen secretos, runtimes, documentos, issues y comentarios.",
+    "include_history": "Exportar historial",
+    "include_history_hint": "Incluye resultados cerrados, historiales, eventos de gobernanza y expedientes activos.",
+    "include_principal": "Incluir perfil de decisión",
+    "include_principal_hint": "Incluye tu perfil de decisión con consentimiento en este archivo.",
+    "export": "Exportar",
+    "cancel": "Cancelar",
+    "exported": "Se exportó company.ocf.zip.",
+    "export_failed": "No se pudo exportar el paquete OCF."
   }
 }

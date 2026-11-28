@@ -526,5 +526,70 @@
       "error_invalid": "該 skill 無法在此席位上測試。",
       "error_failed": "無法發起必要性測試。"
     }
+  },
+  "reach": {
+    "tab_title": "觸達範圍",
+    "title": "觸達範圍圖",
+    "agent_share_title": "Agent 執行的效應佔比（30天）",
+    "snapshot_date": "快照 {{date}}",
+    "empty": "尚無觸達範圍快照。",
+    "load_failed": "無法載入觸達範圍圖。",
+    "grid_heading": "工作介面",
+    "gaps_heading": "依人工耗時排序的缺口",
+    "gaps_empty": "尚未記錄任何工作介面。",
+    "state": {
+      "agent_operable": "Agent 可直接操作",
+      "agent_with_confirm": "需確認後操作",
+      "declared_only": "僅申報記錄",
+      "human_only": "僅人工可操作",
+      "unknown": "未知"
+    },
+    "kind": {
+      "app": "應用",
+      "channel": "頻道",
+      "area": "領域",
+      "external": "外部系統",
+      "other": "介面"
+    },
+    "minutes_short": "{{minutes}} 分鐘",
+    "effects_short": "{{count}} 次效應",
+    "gap_asks_short": "{{count}} 條缺口提問",
+    "close_gap": "補齊缺口",
+    "open_gap_issue": "開啟缺口 Issue",
+    "close_gap_opened": "已開啟缺口 Issue。",
+    "close_gap_failed": "無法開啟缺口 Issue。",
+    "close_gap_no_squad": "該介面暫無可用的小隊。",
+    "detail": {
+      "title": "介面詳情",
+      "close": "關閉詳情",
+      "surface_id": "介面識別碼",
+      "state_label": "狀態",
+      "effects_30d": "效應次數（30天）",
+      "agent_effects_30d": "Agent 效應次數（30天）",
+      "human_minutes_30d": "人工耗時（30天）",
+      "gap_asks_30d": "缺口提問數（30天）",
+      "top_asks_count": "代表性提問數",
+      "gap_issue": "缺口 Issue",
+      "view_issue": "檢視 Issue"
+    }
+  },
+  "attestation": {
+    "verified": "已驗證",
+    "verified_by": "由 {{issuer}} 驗證",
+    "unverified": "未驗證",
+    "verifying": "驗證中..."
+  },
+  "open_export": {
+    "trigger": "匯出 OCF 封包",
+    "title": "匯出 Open Company Format",
+    "description": "將工作區下載為 OCF v1 壓縮檔（company.ocf.zip）。不包含金鑰、執行環境、文件、Issue 與留言。",
+    "include_history": "匯出歷史",
+    "include_history_hint": "包含已結算結果、績效紀錄、治理日誌及有效席位檔案。",
+    "include_principal": "包含決策檔案",
+    "include_principal_hint": "在本次匯出中包含您已授權的個人決策檔案。",
+    "export": "匯出",
+    "cancel": "取消",
+    "exported": "已匯出 company.ocf.zip。",
+    "export_failed": "無法匯出 OCF 封包。"
   }
 }

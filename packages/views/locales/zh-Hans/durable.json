@@ -526,5 +526,70 @@
       "error_invalid": "该 skill 无法在此席位上测试。",
       "error_failed": "无法发起必要性测试。"
     }
+  },
+  "reach": {
+    "tab_title": "触达范围",
+    "title": "触达范围图",
+    "agent_share_title": "Agent 执行的效应占比（30天）",
+    "snapshot_date": "快照 {{date}}",
+    "empty": "尚无触达范围快照。",
+    "load_failed": "无法加载触达范围图。",
+    "grid_heading": "工作界面",
+    "gaps_heading": "按人工耗时排序的缺口",
+    "gaps_empty": "尚未记录任何工作界面。",
+    "state": {
+      "agent_operable": "Agent 可直接操作",
+      "agent_with_confirm": "需确认后操作",
+      "declared_only": "仅申报记录",
+      "human_only": "仅人工可操作",
+      "unknown": "未知"
+    },
+    "kind": {
+      "app": "应用",
+      "channel": "频道",
+      "area": "领域",
+      "external": "外部系统",
+      "other": "界面"
+    },
+    "minutes_short": "{{minutes}} 分钟",
+    "effects_short": "{{count}} 次效应",
+    "gap_asks_short": "{{count}} 条缺口提问",
+    "close_gap": "补齐缺口",
+    "open_gap_issue": "打开缺口 Issue",
+    "close_gap_opened": "已打开缺口 Issue。",
+    "close_gap_failed": "无法打开缺口 Issue。",
+    "close_gap_no_squad": "该界面暂无可用的小队。",
+    "detail": {
+      "title": "界面详情",
+      "close": "关闭详情",
+      "surface_id": "界面标识",
+      "state_label": "状态",
+      "effects_30d": "效应次数（30天）",
+      "agent_effects_30d": "Agent 效应次数（30天）",
+      "human_minutes_30d": "人工耗时（30天）",
+      "gap_asks_30d": "缺口提问数（30天）",
+      "top_asks_count": "代表性提问数",
+      "gap_issue": "缺口 Issue",
+      "view_issue": "查看 Issue"
+    }
+  },
+  "attestation": {
+    "verified": "已验证",
+    "verified_by": "由 {{issuer}} 验证",
+    "unverified": "未验证",
+    "verifying": "验证中..."
+  },
+  "open_export": {
+    "trigger": "导出 OCF 包",
+    "title": "导出 Open Company Format",
+    "description": "将工作区下载为 OCF v1 压缩包（company.ocf.zip）。不包含密钥、运行时、文档、Issue 与评论。",
+    "include_history": "导出历史",
+    "include_history_hint": "包含已结算结果、业绩记录、治理日志及有效席位档案。",
+    "include_principal": "包含决策档案",
+    "include_principal_hint": "在本次导出中包含你已授权的个人决策档案。",
+    "export": "导出",
+    "cancel": "取消",
+    "exported": "已导出 company.ocf.zip。",
+    "export_failed": "无法导出 OCF 包。"
   }
 }

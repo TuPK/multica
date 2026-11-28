@@ -526,5 +526,70 @@
       "error_invalid": "이 좌석에서는 해당 skill을 테스트할 수 없습니다.",
       "error_failed": "필요성 테스트를 시작하지 못했습니다."
     }
+  },
+  "reach": {
+    "tab_title": "도달 범위",
+    "title": "도달 범위 맵",
+    "agent_share_title": "에이전트가 처리한 영향 비율(30일)",
+    "snapshot_date": "스냅샷 {{date}}",
+    "empty": "아직 도달 범위 스냅샷이 없습니다.",
+    "load_failed": "도달 범위 맵을 불러오지 못했습니다.",
+    "grid_heading": "작업 표면",
+    "gaps_heading": "사람 소요 시간순 격차",
+    "gaps_empty": "기록된 표면이 없습니다.",
+    "state": {
+      "agent_operable": "에이전트 단독 가능",
+      "agent_with_confirm": "확인 필요",
+      "declared_only": "신고 전용",
+      "human_only": "사람 전용",
+      "unknown": "알 수 없음"
+    },
+    "kind": {
+      "app": "앱",
+      "channel": "채널",
+      "area": "영역",
+      "external": "외부",
+      "other": "표면"
+    },
+    "minutes_short": "{{minutes}}분",
+    "effects_short": "영향 {{count}}건",
+    "gap_asks_short": "격차 질문 {{count}}건",
+    "close_gap": "격차 메우기",
+    "open_gap_issue": "격차 이슈 열기",
+    "close_gap_opened": "격차 이슈를 열었습니다.",
+    "close_gap_failed": "격차 이슈를 열지 못했습니다.",
+    "close_gap_no_squad": "이 표면에 배정할 스쿼드가 없습니다.",
+    "detail": {
+      "title": "표면 상세",
+      "close": "상세 닫기",
+      "surface_id": "표면",
+      "state_label": "상태",
+      "effects_30d": "영향(30일)",
+      "agent_effects_30d": "에이전트 영향(30일)",
+      "human_minutes_30d": "사람 소요 시간(30일)",
+      "gap_asks_30d": "격차 질문(30일)",
+      "top_asks_count": "대표 질문 수",
+      "gap_issue": "격차 이슈",
+      "view_issue": "이슈 보기"
+    }
+  },
+  "attestation": {
+    "verified": "검증됨",
+    "verified_by": "{{issuer}}에서 검증됨",
+    "unverified": "미검증",
+    "verifying": "검증 중..."
+  },
+  "open_export": {
+    "trigger": "OCF 패키지 내보내기",
+    "title": "Open Company Format 내보내기",
+    "description": "워크스페이스를 OCF v1 아카이브(company.ocf.zip)로 다운로드합니다. 비밀 값, 런타임, 문서, 이슈 및 댓글은 제외됩니다.",
+    "include_history": "이력 내보내기",
+    "include_history_hint": "확정된 결과, 실적, 거버넌스 기록 및 활성 좌석 기록을 포함합니다.",
+    "include_principal": "의사결정 프로필 포함",
+    "include_principal_hint": "동의한 의사결정 프로필을 이 아카이브에 포함합니다.",
+    "export": "내보내기",
+    "cancel": "취소",
+    "exported": "company.ocf.zip을 내보냈습니다.",
+    "export_failed": "OCF 패키지를 내보내지 못했습니다."
   }
 }
